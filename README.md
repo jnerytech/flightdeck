@@ -180,7 +180,8 @@ Compila o alvo, copia com `scp` para `<path>.new`, troca o binário, reinicia co
 ## App desktop: frota e Windows
 
 - **Precisa de você:** no topo da barra lateral, todos os pedidos de permissão abertos em todos os
-  hosts, do mais antigo ao mais novo; clicar abre a sessão no card do pedido.
+  hosts, do mais antigo ao mais novo. **✓** e **✕** permitem ou negam ali mesmo, no host do
+  pedido; clicar no pedido abre a sessão no card de aprovação.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠.
