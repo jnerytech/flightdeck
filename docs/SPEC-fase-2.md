@@ -162,7 +162,3 @@ Sobe dois daemons `--runtime fake` em portas e `dataDir` diferentes, conecta um 
 - [ ] Divergências registradas em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-2` criada.
 
 **Condição do /goal**
-
-```text
-/goal A Fase 2 de docs/SPEC-fase-2.md está implementada seguindo docs/TDD.md e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, começando por tdd-audit, o bun --config=bunfig.area.toml test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-1 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke imprimindo SMOKE OK e bun run smoke:multi imprimindo SMOKE MULTI OK; (5) bun run build:daemon, bun run build:desktop e cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml saindo com código 0, este último no Windows nativo; (6) flightdeckd service install --dry-run saindo com código 0 e imprimindo a unit ou a tarefa, e, numa chamada separada, o estado do sistema sem alteração; (7) git status sem alterações pendentes e git tag listando fase-2. Todas as rodadas de bun test e dos smokes rodaram com a trava do claude de scripts/test/preload.ts ativa, e nenhum serviço real foi instalado.
-```
