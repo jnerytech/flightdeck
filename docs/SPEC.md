@@ -43,16 +43,16 @@ A Fase 1 entrega um host funcionando de ponta a ponta; tudo que é orquestraçã
 
 TypeScript de ponta a ponta, num monorepo com workspaces do Bun; o único Rust é a casca do Tauri.
 
-| Camada                    | Escolha                                                   |
-| ------------------------- | --------------------------------------------------------- |
-| Runtime e build do daemon | Bun (`bun build --compile` com `--target`)                |
-| Agente                    | `@anthropic-ai/claude-agent-sdk` (oficial), versão fixada |
-| Servidor                  | `Bun.serve` com WebSocket nativo                          |
-| Banco                     | `bun:sqlite`                                              |
-| Validação e contrato      | `zod`                                                     |
-| Desktop                   | Tauri 2 + React + Vite + TypeScript                       |
-| Testes                    | `bun test`                                                |
-| Lint e formatação         | Biome                                                     |
+| Camada | Escolha |
+| --- | --- |
+| Runtime e build do daemon | Bun (`bun build --compile` com `--target`) |
+| Agente | `@anthropic-ai/claude-agent-sdk` (oficial), versão fixada |
+| Servidor | `Bun.serve` com WebSocket nativo |
+| Banco | `bun:sqlite` |
+| Validação e contrato | `zod` |
+| Desktop | Tauri 2 + React + Vite + TypeScript |
+| Testes | `bun test` |
+| Lint e formatação | Biome |
 
 ```text
 flightdeck/
@@ -137,17 +137,17 @@ Mensagens enviadas durante `running` entram numa fila e são entregues no próxi
 
 Arquivo `~/.flightdeck/config.json`, validado com zod; criado com valores padrão na primeira execução:
 
-| Campo                   | Padrão                       | Uso                                       |
-| ----------------------- | ---------------------------- | ----------------------------------------- |
-| `hostName`              | nome da máquina              | rótulo no app                             |
-| `bind`                  | `127.0.0.1`                  | interface de escuta                       |
-| `port`                  | `7420`                       | porta HTTP/WebSocket                      |
-| `token`                 | gerado (32 bytes, base64url) | autenticação dos clientes                 |
-| `dataDir`               | `~/.flightdeck/data`         | SQLite e logs                             |
-| `allowedRoots`          | `[]`                         | diretórios onde sessões podem ser abertas |
-| `runtime`               | `claude`                     | `claude` ou `fake`                        |
-| `defaultPermissionMode` | `default`                    | modo inicial das sessões                  |
-| `allowApiKey`           | `false`                      | repassar chave de API ao Claude           |
+| Campo | Padrão | Uso |
+| --- | --- | --- |
+| `hostName` | nome da máquina | rótulo no app |
+| `bind` | `127.0.0.1` | interface de escuta |
+| `port` | `7420` | porta HTTP/WebSocket |
+| `token` | gerado (32 bytes, base64url) | autenticação dos clientes |
+| `dataDir` | `~/.flightdeck/data` | SQLite e logs |
+| `allowedRoots` | `[]` | diretórios onde sessões podem ser abertas |
+| `runtime` | `claude` | `claude` ou `fake` |
+| `defaultPermissionMode` | `default` | modo inicial das sessões |
+| `allowApiKey` | `false` | repassar chave de API ao Claude |
 
 ### Segurança
 
@@ -177,34 +177,34 @@ O primeiro frame do cliente precisa ser `hello`; qualquer outro antes dele fecha
 
 **Comandos**
 
-| Comando               | Payload                                                               | Resposta                                       |
-| --------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
-| `hello`               | `{ token, client }`                                                   | `{ hostName, daemonVersion, protocolVersion }` |
-| `session.list`        | `{}`                                                                  | resumo de todas as sessões                     |
-| `session.create`      | `{ cwd, prompt, name?, permissionMode?, model? }`                     | `{ sessionId }`                                |
-| `session.send`        | `{ sessionId, text }`                                                 | aceito ou enfileirado                          |
-| `session.interrupt`   | `{ sessionId }`                                                       | ok                                             |
-| `session.close`       | `{ sessionId }`                                                       | ok                                             |
-| `session.resume`      | `{ sessionId }`                                                       | ok (reabre com o `claudeSessionId` guardado)   |
-| `session.subscribe`   | `{ sessionId, sinceSeq? }`                                            | replay, depois eventos ao vivo                 |
-| `session.unsubscribe` | `{ sessionId }`                                                       | ok                                             |
-| `permission.respond`  | `{ requestId, decision: "allow" \| "deny", message?, updatedInput? }` | ok                                             |
+| Comando | Payload | Resposta |
+| --- | --- | --- |
+| `hello` | `{ token, client }` | `{ hostName, daemonVersion, protocolVersion }` |
+| `session.list` | `{}` | resumo de todas as sessões |
+| `session.create` | `{ cwd, prompt, name?, permissionMode?, model? }` | `{ sessionId }` |
+| `session.send` | `{ sessionId, text }` | aceito ou enfileirado |
+| `session.interrupt` | `{ sessionId }` | ok |
+| `session.close` | `{ sessionId }` | ok |
+| `session.resume` | `{ sessionId }` | ok (reabre com o `claudeSessionId` guardado) |
+| `session.subscribe` | `{ sessionId, sinceSeq? }` | replay, depois eventos ao vivo |
+| `session.unsubscribe` | `{ sessionId }` | ok |
+| `permission.respond` | `{ requestId, decision: "allow" \| "deny", message?, updatedInput? }` | ok |
 
 **Eventos de sessão**
 
-| Evento                 | Conteúdo                                              |
-| ---------------------- | ----------------------------------------------------- |
-| `session.created`      | `cwd`, `name`, `permissionMode`                       |
-| `session.status`       | `status`, `reason?`                                   |
-| `session.init`         | `claudeSessionId`, `model`, ferramentas disponíveis   |
-| `message.user`         | texto enviado                                         |
-| `message.assistant`    | blocos de texto e `tool_use` (id, nome, input)        |
-| `message.delta`        | trecho de texto parcial do turno corrente             |
-| `tool.result`          | `toolUseId`, conteúdo resumido, `isError`             |
-| `permission.requested` | `requestId`, `toolName`, `input`                      |
-| `permission.resolved`  | `requestId`, `decision` ou `cancelled` / `expired`    |
-| `turn.result`          | `subtype`, duração, custo e usage informados pelo SDK |
-| `session.error`        | `code`, `message`                                     |
+| Evento | Conteúdo |
+| --- | --- |
+| `session.created` | `cwd`, `name`, `permissionMode` |
+| `session.status` | `status`, `reason?` |
+| `session.init` | `claudeSessionId`, `model`, ferramentas disponíveis |
+| `message.user` | texto enviado |
+| `message.assistant` | blocos de texto e `tool_use` (id, nome, input) |
+| `message.delta` | trecho de texto parcial do turno corrente |
+| `tool.result` | `toolUseId`, conteúdo resumido, `isError` |
+| `permission.requested` | `requestId`, `toolName`, `input` |
+| `permission.resolved` | `requestId`, `decision` ou `cancelled` / `expired` |
+| `turn.result` | `subtype`, duração, custo e usage informados pelo SDK |
+| `session.error` | `code`, `message` |
 
 `message.delta` é efêmero: vai ao vivo e não entra no replay. O `message.assistant` completo do mesmo turno é o que fica persistido. `protocolVersion` começa em `1`; mudança incompatível sobe a versão.
 
@@ -280,17 +280,17 @@ Tudo que prova a Fase 1 roda com o `FakeRuntime`, sem rede e sem gastar cota; o 
 
 **Testes obrigatórios (`bun test`)**
 
-| Área          | O que precisa passar                                                                                                          |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Protocolo     | todo comando e evento válido passa no schema; payload inválido é recusado com `ack ok:false`                                  |
-| Autenticação  | frame antes do `hello` e token errado fecham com 4401; token certo responde `hostName` e versões                              |
-| Ciclo de vida | `create` → `running` → deltas → `message.assistant` → `turn.result` → `idle`; `send` em `idle` inicia novo turno              |
-| Fila          | mensagem enviada durante `running` é entregue no turno seguinte, na ordem                                                     |
-| Permissão     | `[tool]` gera `permission.requested`; allow segue o turno; deny encerra a chamada com a mensagem; interrupt marca `cancelled` |
-| Replay        | cliente que cai e volta com `sinceSeq` recebe exatamente os eventos que perdeu, sem buraco nem duplicado                      |
-| Reinício      | sessão `running` vira `error` no boot; pedido `pending` vira `expired`; `session.resume` reabre                               |
-| Pastas        | `cwd` fora de `allowedRoots` (inclusive via symlink ou `..`) é recusado                                                       |
-| Ambiente      | o env entregue ao runtime não contém `ANTHROPIC_API_KEY` com `allowApiKey: false`                                             |
+| Área | O que precisa passar |
+| --- | --- |
+| Protocolo | todo comando e evento válido passa no schema; payload inválido é recusado com `ack ok:false` |
+| Autenticação | frame antes do `hello` e token errado fecham com 4401; token certo responde `hostName` e versões |
+| Ciclo de vida | `create` → `running` → deltas → `message.assistant` → `turn.result` → `idle`; `send` em `idle` inicia novo turno |
+| Fila | mensagem enviada durante `running` é entregue no turno seguinte, na ordem |
+| Permissão | `[tool]` gera `permission.requested`; allow segue o turno; deny encerra a chamada com a mensagem; interrupt marca `cancelled` |
+| Replay | cliente que cai e volta com `sinceSeq` recebe exatamente os eventos que perdeu, sem buraco nem duplicado |
+| Reinício | sessão `running` vira `error` no boot; pedido `pending` vira `expired`; `session.resume` reabre |
+| Pastas | `cwd` fora de `allowedRoots` (inclusive via symlink ou `..`) é recusado |
+| Ambiente | o env entregue ao runtime não contém `ANTHROPIC_API_KEY` com `allowApiKey: false` |
 
 **Smoke (`bun run smoke`)**
 
