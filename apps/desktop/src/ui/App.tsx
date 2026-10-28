@@ -145,6 +145,7 @@ export function App({ store }: { store: AppStore }) {
           setSettingsOpen(false);
           setHostPage(hostId);
         }}
+        onRespond={(item, decision) => void store.respondTo(item.hostId, item.requestId, decision)}
         onOpenRequest={(item) => {
           setAddingHost(false);
           setSettingsOpen(false);

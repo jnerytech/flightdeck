@@ -17,6 +17,7 @@ export function Sidebar(props: {
   onRemoveHost(hostId: string): void;
   onAddHost(): void;
   onOpenRequest(item: PendingItem): void;
+  onRespond(item: PendingItem, decision: "allow" | "deny"): void;
   onOpenHost(hostId: string): void;
   onOpenSettings(): void;
 }) {
@@ -28,13 +29,32 @@ export function Sidebar(props: {
         <section className="needs-you">
           <h3>Precisa de você ({queue.length})</h3>
           <ul>
-            {queue.map((item) => (
-              <li key={`${item.hostId}/${item.requestId}`}>
-                <button type="button" onClick={() => props.onOpenRequest(item)}>
-                  {`${item.hostName} · ${item.sessionName}: ${item.toolName}`}
-                </button>
-              </li>
-            ))}
+            {queue.map((item) => {
+              const label = `${item.hostName} · ${item.sessionName}: ${item.toolName}`;
+              return (
+                <li key={`${item.hostId}/${item.requestId}`}>
+                  <button type="button" onClick={() => props.onOpenRequest(item)}>
+                    {label}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon"
+                    aria-label={`Permitir ${label}`}
+                    onClick={() => props.onRespond(item, "allow")}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    className="icon"
+                    aria-label={`Negar ${label}`}
+                    onClick={() => props.onRespond(item, "deny")}
+                  >
+                    ✕
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
