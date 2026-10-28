@@ -6,7 +6,7 @@ import type {
   SessionStatus,
   SessionSummary,
 } from "@flightdeck/protocol";
-import { buildChildEnv } from "../env.ts";
+import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
@@ -62,6 +62,19 @@ export class SessionManager {
     for (const session of this.store.listSessions()) {
       if (ACTIVE.has(session.status)) this.setStatus(session.id, "error", RESTART_REASON);
     }
+  }
+
+  /** Sessions with a turn in progress or waiting for a permission. */
+  activeSessionCount(): number {
+    return this.store.listSessions().filter((s) => ACTIVE.has(s.status)).length;
+  }
+
+  /** False when an API key really reaches the agent (billing would bypass the subscription). */
+  apiKeySanitized(): boolean {
+    const env = buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey);
+    return !Object.keys(env).some((k) =>
+      (API_KEY_VARS as readonly string[]).includes(k.toUpperCase()),
+    );
   }
 
   list(): SessionSummary[] {

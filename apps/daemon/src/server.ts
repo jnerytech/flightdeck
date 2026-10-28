@@ -36,6 +36,8 @@ export interface ServerOptions {
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
+  /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
+  claude?: { path: string | null; version(): Promise<string | null> };
 }
 
 export interface RunningServer {
@@ -80,6 +82,7 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
   const authed = new Set<Socket>();
+  const startedAt = Date.now();
   let pingSeq = 0;
 
   const heartbeat = setInterval(() => {
@@ -168,6 +171,18 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "permission.respond":
         manager.respondPermission(command.payload);
         return ok(command.type);
+      case "host.info":
+        return ok(command.type, {
+          hostName: opts.hostName,
+          os: process.platform,
+          arch: process.arch,
+          daemonVersion: DAEMON_VERSION,
+          claudeVersion: (await opts.claude?.version()) ?? null,
+          claudePath: opts.claude?.path ?? null,
+          uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
+          activeSessions: manager.activeSessionCount(),
+          apiKeySanitized: manager.apiKeySanitized(),
+        });
       case "sessions.watch": {
         // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.
         ws.data.unwatch?.();

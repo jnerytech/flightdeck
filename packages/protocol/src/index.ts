@@ -201,6 +201,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.unsubscribe", SessionIdPayload),
   cmd("permission.respond", PermissionRespondPayload),
   cmd("sessions.watch", z.object({}).strict()),
+  cmd("host.info", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -221,6 +222,19 @@ export const HelloResult = z.object({
   allowedRoots: z.array(z.string()),
 });
 export type HelloResult = z.infer<typeof HelloResult>;
+
+export const HostInfoResult = z.object({
+  hostName: z.string(),
+  os: z.string(),
+  arch: z.string(),
+  daemonVersion: z.string(),
+  claudeVersion: z.string().nullable(),
+  claudePath: z.string().nullable(),
+  uptimeSec: z.number().int().nonnegative(),
+  activeSessions: z.number().int().nonnegative(),
+  apiKeySanitized: z.boolean(),
+});
+export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
 export const SessionListResult = z.object({ sessions: z.array(SessionSummary) });
 export type SessionListResult = z.infer<typeof SessionListResult>;
@@ -249,6 +263,7 @@ export interface CommandResults {
   "session.unsubscribe": undefined;
   "permission.respond": undefined;
   "sessions.watch": undefined;
+  "host.info": HostInfoResult;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { join, resolve } from "node:path";
+import { claudeVersionProbe } from "./claude-probe.ts";
 import {
   defaultConfigPath,
   expandHome,
@@ -6,6 +7,7 @@ import {
   RuntimeKind,
   updateConfigFile,
 } from "./config.ts";
+import { spawnExec } from "./exec.ts";
 import { acquireLock } from "./lock.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
@@ -98,10 +100,18 @@ export interface Daemon {
   stop(): Promise<void>;
 }
 
-async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<AgentRuntime> {
-  if (kind === "fake") return new FakeRuntime();
+interface CreatedRuntime {
+  runtime: AgentRuntime;
+  /** What `host.info` reports about `claude`; only the real runtime has one. */
+  claude?: { path: string | null; version(): Promise<string | null> };
+}
+
+async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<CreatedRuntime> {
+  if (kind === "fake") return { runtime: new FakeRuntime() };
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
-  return new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
+  const runtime = new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
+  const path = runtime.claudePath ?? null;
+  return { runtime, claude: { path, version: claudeVersionProbe(path, spawnExec) } };
 }
 
 /** Loads the config, opens the store and starts serving. The token is never logged. */
@@ -118,7 +128,7 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
-  const runtime = await createRuntime(runtimeKind, claudePath);
+  const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
   const manager = new SessionManager({
     store,
     runtime,
@@ -135,6 +145,7 @@ export async function startDaemon(
     token: config.token,
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
+    ...(claude ? { claude } : {}),
   });
 
   const wsl =
