@@ -66,8 +66,14 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   function onHello(ws: Socket, frame: unknown): void {
     const parsed = Command.safeParse(frame);
-    if (!parsed.success || parsed.data.type !== "hello") return unauthorized(ws);
-    if (!tokenMatches(opts.token, parsed.data.payload.token)) return unauthorized(ws);
+    if (!parsed.success || parsed.data.type !== "hello") {
+      unauthorized(ws);
+      return;
+    }
+    if (!tokenMatches(opts.token, parsed.data.payload.token)) {
+      unauthorized(ws);
+      return;
+    }
     ws.data.authed = true;
     const data: CommandResults["hello"] = {
       hostName: opts.hostName,
