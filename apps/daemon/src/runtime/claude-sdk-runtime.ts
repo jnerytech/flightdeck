@@ -143,7 +143,7 @@ export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
  */
 export class ClaudeSdkRuntime implements AgentRuntime {
   private readonly query: QueryFn;
-  private readonly claudePath: string | undefined;
+  readonly claudePath: string | undefined;
 
   constructor(options: ClaudeSdkRuntimeOptions = {}) {
     this.query = options.query ?? (sdkQuery as QueryFn);

@@ -1,18 +1,41 @@
-import { join } from "node:path";
-import { loadConfig, RuntimeKind } from "./config.ts";
+import { join, resolve } from "node:path";
+import {
+  defaultConfigPath,
+  expandHome,
+  loadConfig,
+  RuntimeKind,
+  updateConfigFile,
+} from "./config.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
+import {
+  installService,
+  resolveServiceClaude,
+  type ServiceContext,
+  serviceStatus,
+  uninstallService,
+} from "./service.ts";
+import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
 
+export type ServiceAction = "install" | "uninstall" | "status";
+
 export interface CliArgs {
-  command: "start";
+  command: "start" | "service";
+  /** `service <action>`. */
+  action?: ServiceAction;
+  /** `service ... --dry-run`: print, change nothing. */
+  dryRun?: true;
   config?: string;
   runtime?: RuntimeKind;
 }
 
-const USAGE = "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]";
+const USAGE = [
+  "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
+  "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
+].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
@@ -27,6 +50,18 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     };
     switch (flag) {
       case "start":
+        break;
+      case "service": {
+        args.command = "service";
+        const action = argv[++i];
+        if (action !== "install" && action !== "uninstall" && action !== "status") {
+          throw new Error(`ação de serviço inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        break;
+      }
+      case "--dry-run":
+        args.dryRun = true;
         break;
       case "--config":
         args.config = value();
@@ -67,7 +102,8 @@ export async function startDaemon(
   const config = loadConfig(args.config);
   const runtimeKind = args.runtime ?? config.runtime;
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
-  const runtime = await createRuntime(runtimeKind, config.claudePath);
+  const claudePath = config.claude?.executablePath ?? config.claudePath;
+  const runtime = await createRuntime(runtimeKind, claudePath);
   const manager = new SessionManager({
     store,
     runtime,
@@ -105,17 +141,61 @@ export async function startDaemon(
   };
 }
 
+function configPath(args: CliArgs): string {
+  return resolve(expandHome(args.config ?? defaultConfigPath()));
+}
+
+/**
+ * `flightdeckd service install|uninstall|status`. With `--dry-run` nothing is written, not even
+ * the config, so `loadConfig` (which creates a missing file) is never called in that mode.
+ */
+async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
+  const ctx = (deps.serviceContext ?? osServiceContext)(args.dryRun === true);
+  if (args.action === "status") return printResult(deps, await serviceStatus(ctx));
+  if (args.action === "uninstall") return printResult(deps, await uninstallService(ctx));
+  const file = configPath(args);
+  const claude = resolveServiceClaude(ctx);
+  if (claude.warning) deps.log.error(claude.warning);
+  if (ctx.dryRun) {
+    if (claude.path) {
+      deps.log.log(`claude.executablePath = "${claude.path}" (seria gravado em ${file})`);
+    }
+  } else {
+    loadConfig(file);
+    const executablePath = claude.path;
+    if (executablePath) {
+      updateConfigFile(file, (raw) => ({
+        ...raw,
+        claude: { ...(raw.claude as object), executablePath },
+      }));
+    }
+  }
+  printResult(deps, await installService(ctx));
+}
+
+function printResult(deps: CliDeps, result: { output: string[]; instructions: string[] }): void {
+  for (const line of result.output) deps.log.log(line);
+  for (const line of result.instructions) deps.log.error(line);
+}
+
 export interface CliDeps {
   env: Record<string, string | undefined>;
   log: Logger;
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
+  serviceContext?: (dryRun: boolean) => ServiceContext;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
-    const daemon = await startDaemon(parseArgs(argv), deps.env, deps.log);
+    const args = parseArgs(argv);
+    if (args.command === "service") {
+      await runService(args, deps);
+      deps.exit(0);
+      return null;
+    }
+    const daemon = await startDaemon(args, deps.env, deps.log);
     const stop = async () => {
       await daemon.stop();
       deps.exit(0);

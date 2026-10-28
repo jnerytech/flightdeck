@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
@@ -24,8 +24,10 @@ export const Config = z.object({
   runtime: RuntimeKind.default("claude"),
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),
-  /** Optional path to the `claude` executable; see docs/DECISIONS.md. */
+  /** Legacy (phase 1) path to the `claude` executable; `claude.executablePath` wins. */
   claudePath: z.string().min(1).optional(),
+  /** Written by `service install`: services do not inherit the shell PATH. */
+  claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
 export type Config = z.infer<typeof Config>;
 
@@ -66,4 +68,19 @@ export function loadConfig(path: string = defaultConfigPath()): Config {
     dataDir: resolve(expandHome(config.dataDir)),
     allowedRoots: config.allowedRoots.map((r) => resolve(expandHome(r))),
   };
+}
+
+/**
+ * Rewrites the raw config file through `update`, keeping fields it does not touch. Writes to a
+ * temp file and renames it, so a running daemon never reads a half-written config.
+ */
+export function updateConfigFile(
+  file: string,
+  update: (raw: Record<string, unknown>) => Record<string, unknown>,
+): void {
+  const raw = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  const tmp = `${file}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(update(raw), null, 2)}\n`, { mode: 0o600 });
+  chmodSync(tmp, 0o600);
+  renameSync(tmp, file);
 }

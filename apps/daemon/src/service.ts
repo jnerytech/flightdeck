@@ -151,13 +151,34 @@ const SYSTEMD_INSTALL = [
   ["systemctl", "--user", "daemon-reload"],
   ["systemctl", "--user", "enable", "--now", "flightdeckd"],
 ];
+const SYSTEMD_UNINSTALL = [
+  ["systemctl", "--user", "disable", "--now", "flightdeckd"],
+  ["systemctl", "--user", "daemon-reload"],
+];
+
+/** How a command line is shown in --dry-run output. */
+const display = (cmd: string[]) =>
+  cmd.map((arg) => (arg === TASK_NAME || /\s/.test(arg) ? `"${arg}"` : arg)).join(" ");
 
 const unitPath = (ctx: ServiceContext) => posix.join(ctx.home, SYSTEMD_UNIT_PATH);
+const taskXmlPath = (ctx: ServiceContext) => win32.join(ctx.tempDir, "flightdeckd-task.xml");
+
+function requireSupported(ctx: ServiceContext): "linux" | "win32" {
+  if (ctx.platform === "linux" || ctx.platform === "win32") return ctx.platform;
+  throw new Error(`instalação como serviço não suportado em ${ctx.platform}`);
+}
 
 /** Installs the user unit; enabling linger needs sudo, so it is only printed. */
 async function installSystemd(ctx: ServiceContext): Promise<ServiceResult> {
   const path = unitPath(ctx);
-  ctx.writeFile(path, systemdUnit(ctx.command));
+  const unit = systemdUnit(ctx.command);
+  if (ctx.dryRun) {
+    return {
+      output: [`# ${path}`, unit, "# comandos:", ...SYSTEMD_INSTALL.map(display)],
+      instructions: [],
+    };
+  }
+  ctx.writeFile(path, unit);
   for (const cmd of SYSTEMD_INSTALL) await run(ctx, cmd);
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
@@ -173,6 +194,70 @@ async function installSystemd(ctx: ServiceContext): Promise<ServiceResult> {
   };
 }
 
+async function installTask(ctx: ServiceContext): Promise<ServiceResult> {
+  const xmlPath = taskXmlPath(ctx);
+  const xml = windowsTaskXml(ctx.command, { user: ctx.user, systemRoot: ctx.systemRoot });
+  const create = windowsTaskCreateArgs(xmlPath);
+  if (ctx.dryRun) {
+    return { output: [`# ${xmlPath}`, xml, "# comando:", display(create)], instructions: [] };
+  }
+  ctx.writeFile(xmlPath, xml);
+  await run(ctx, create);
+  return { output: [`tarefa ${TASK_NAME} criada para o logon de ${ctx.user}`], instructions: [] };
+}
+
 export async function installService(ctx: ServiceContext): Promise<ServiceResult> {
-  return installSystemd(ctx);
+  return requireSupported(ctx) === "linux" ? installSystemd(ctx) : installTask(ctx);
+}
+
+export async function uninstallService(ctx: ServiceContext): Promise<ServiceResult> {
+  const linux = requireSupported(ctx) === "linux";
+  const commands = linux ? SYSTEMD_UNINSTALL : [windowsTaskDeleteArgs()];
+  if (ctx.dryRun) {
+    const remove = linux ? [`rm ${unitPath(ctx)}`] : [];
+    return { output: ["# comandos:", ...commands.map(display), ...remove], instructions: [] };
+  }
+  await run(ctx, commands[0] as string[]);
+  if (linux) {
+    ctx.removeFile(unitPath(ctx));
+    await run(ctx, commands[1] as string[]);
+  }
+  return { output: ["serviço removido"], instructions: [] };
+}
+
+/** Prints what the OS reports; a missing service is not an error here. */
+export async function serviceStatus(ctx: ServiceContext): Promise<ServiceResult> {
+  const cmd =
+    requireSupported(ctx) === "linux"
+      ? ["systemctl", "--user", "is-active", "flightdeckd"]
+      : windowsTaskQueryArgs();
+  const { stdout } = await ctx.exec(cmd);
+  return { output: [stdout.trim() || "não instalado"], instructions: [] };
+}
+
+/**
+ * The `claude` executable a service should use (services do not inherit the shell PATH).
+ * On Windows a `.exe` is preferred: `.cmd` shims need a shell to run.
+ */
+export function resolveServiceClaude(ctx: ServiceContext): {
+  path: string | null;
+  warning?: string;
+} {
+  const path =
+    ctx.platform === "win32"
+      ? (ctx.which("claude.exe") ?? ctx.which("claude"))
+      : ctx.which("claude");
+  if (!path) {
+    return {
+      path: null,
+      warning: "aviso: claude não encontrado no PATH; defina claude.executablePath na config",
+    };
+  }
+  if (ctx.platform === "win32" && !path.toLowerCase().endsWith(".exe")) {
+    return {
+      path,
+      warning: `aviso: ${path} não é um .exe; o serviço pode não conseguir executá-lo`,
+    };
+  }
+  return { path };
 }
