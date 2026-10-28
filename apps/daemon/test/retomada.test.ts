@@ -111,7 +111,7 @@ describe("retomada", () => {
       claudeSessionId: ID,
       name: "retomada",
     });
-    expect(manager.list().map((s) => [s.id, s.name])).toEqual([[result?.sessionId, "retomada"]]);
+    expect(manager.list().map((s) => [s.id, s.name])).toEqual([[result?.sessionId ?? "", "retomada"]]);
     expect(runtime.starts[0]?.resume).toBe(ID);
     expect(runtime.starts[0]?.permissionMode).toBe("default");
   });
