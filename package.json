@@ -14,6 +14,7 @@
     "coverage": "bun test && bun run scripts/check-coverage.ts",
     "smoke": "bun run scripts/smoke.ts",
     "smoke:real": "bun run scripts/smoke.ts --real",
+    "tdd:audit": "bun run scripts/tdd-audit.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build"
   },
