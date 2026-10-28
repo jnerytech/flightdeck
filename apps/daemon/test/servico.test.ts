@@ -296,8 +296,9 @@ describe("servico", () => {
     ctx.removeFile(unit);
     ctx.removeFile(unit);
     expect(existsSync(unit)).toBe(false);
-    expect(await ctx.exec([process.execPath, "-e", "console.log('oi'); process.exit(4)"])).toEqual(
-      { code: 4, stdout: "oi\n" },
-    );
+    expect(await ctx.exec([process.execPath, "-e", "console.log('oi'); process.exit(4)"])).toEqual({
+      code: 4,
+      stdout: "oi\n",
+    });
   });
 });
