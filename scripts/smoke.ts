@@ -11,10 +11,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
+import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 
 const REAL = process.argv.includes("--real");
 // The daemon inherits this PATH: with the fake runtime, `claude` must never run (docs/TDD.md).
 const guard = REAL ? null : installClaudeGuard();
+// Same for the real `~/.claude`: the daemon resolves `~` from the HOME it inherits.
+const home = REAL ? null : installHomeGuard();
 const TIMEOUT_MS = REAL ? 180_000 : 10_000;
 const ROOT = resolve(import.meta.dir, "..");
 
@@ -241,6 +244,7 @@ async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string
 try {
   await run();
   if (guard) assertNoClaudeCalls(guard);
+  if (home) assertHomeGuard(home);
   console.log("SMOKE OK");
   process.exit(0);
 } catch (error) {

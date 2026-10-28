@@ -14,9 +14,12 @@ import {
   type SessionEventOf,
 } from "@flightdeck/protocol";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
+import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 
 // The daemons inherit this PATH: with the fake runtime, `claude` must never run (docs/TDD.md).
 const guard = installClaudeGuard();
+// Same for the real `~/.claude`: the daemons resolve `~` from the HOME they inherit.
+const home = installHomeGuard();
 const TIMEOUT_MS = 10_000;
 const ROOT = resolve(import.meta.dir, "..");
 
@@ -218,6 +221,8 @@ try {
   await run(daemons);
   step = "trava do claude";
   assertNoClaudeCalls(guard);
+  step = "trava de home";
+  assertHomeGuard(home);
   console.log("SMOKE MULTI OK");
   code = 0;
 } catch (error) {
