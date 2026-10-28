@@ -1,0 +1,7 @@
+{"type":"file-history-snapshot","messageId":"u-0001","snapshot":{"trackedFileBackups":{}},"isSnapshotUpdate":false}
+{"parentUuid":null,"cwd":"/home/dev/projeto-b","sessionId":"22222222-2222-4222-8222-222222222222","type":"user","message":{"role":"user","content":"linha boa antes"},"uuid":"u-1001","timestamp":"2026-09-02T08:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"linha cortada no meio
+isto não é json
+42
+{"cwd":"/home/dev/projeto-b","type":"queue-operation","operation":"enqueue","uuid":"q-1002","timestamp":"2026-09-02T08:00:01.000Z"}
+{"cwd":"/home/dev/projeto-b","sessionId":"22222222-2222-4222-8222-222222222222","type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"linha boa depois"}]},"uuid":"a-1003","timestamp":"2026-09-02T08:00:02.000Z"}
