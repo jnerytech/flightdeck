@@ -20,6 +20,7 @@ import {
 import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
+import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status";
 
@@ -108,6 +109,7 @@ export async function startDaemon(
   args: CliArgs,
   env: Record<string, string | undefined>,
   logger: Logger,
+  options: { wslCommand?: (item: WslItem) => string[] } = {},
 ): Promise<Daemon> {
   const config = loadConfig(args.config);
   const runtimeKind = args.runtime ?? config.runtime;
@@ -134,6 +136,15 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
   });
 
+  const wsl =
+    config.wsl.length > 0
+      ? new WslSupervisor(config.wsl, {
+          logDir: join(config.dataDir, "logs"),
+          ...(options.wslCommand ? { command: options.wslCommand } : {}),
+        })
+      : null;
+  wsl?.start();
+
   logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
   if (config.allowedRoots.length === 0) {
     logger.error("aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada");
@@ -145,6 +156,7 @@ export async function startDaemon(
     runtime,
     stop: () => {
       stopped ??= (async () => {
+        await wsl?.stop();
         await manager.shutdown();
         await server.stop();
         store.close();

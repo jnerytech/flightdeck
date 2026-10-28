@@ -26,6 +26,16 @@ export const Config = z.object({
   allowApiKey: z.boolean().default(false),
   /** Legacy (phase 1) path to the `claude` executable; `claude.executablePath` wins. */
   claudePath: z.string().min(1).optional(),
+  /** WSL distros whose daemon this (Windows) daemon supervises. */
+  wsl: z
+    .array(
+      z.object({
+        distro: z.string().min(1),
+        command: z.string().min(1),
+        port: z.number().int().min(1).max(65535),
+      }),
+    )
+    .default([]),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
