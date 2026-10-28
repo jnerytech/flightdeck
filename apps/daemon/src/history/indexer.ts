@@ -71,8 +71,10 @@ export class HistoryIndexer {
     const row = this.db
       .query("SELECT offset, parse_errors FROM history_files WHERE path = ?")
       .get(path) as { offset: number; parse_errors: number } | null;
-    const offset = row?.offset ?? 0;
-    if (stat.size <= offset) return null;
+    // Smaller than what was already read: truncated or swapped, so start over.
+    const reset = stat.size < (row?.offset ?? 0);
+    const offset = reset ? 0 : (row?.offset ?? 0);
+    if (!reset && stat.size === offset) return null;
 
     const chunk = Buffer.alloc(stat.size - offset);
     const fd = openSync(path, "r");
@@ -83,10 +85,11 @@ export class HistoryIndexer {
     }
     // Only complete lines: a last line without its newline is left for the next pass.
     const end = chunk.lastIndexOf(0x0a) + 1;
-    if (end === 0) return null;
+    if (end === 0 && !reset) return null;
     const { records, errors } = parseLines(chunk.subarray(0, end).toString("utf8"));
 
     this.db.transaction(() => {
+      if (reset) this.forget(claudeSessionId);
       const insert = this.db.query(
         `INSERT OR IGNORE INTO history_messages (claude_session_id, uuid, ts, role, kind, text)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -105,11 +108,17 @@ export class HistoryIndexer {
           size: stat.size,
           mtime: stat.mtime.toISOString(),
           offset: offset + end,
-          errors: (row?.parse_errors ?? 0) + errors,
+          errors: (reset ? 0 : (row?.parse_errors ?? 0)) + errors,
         });
       this.updateSession(claudeSessionId, path, records);
     })();
-    return { claudeSessionId, path, added: records.length, reset: false };
+    return { claudeSessionId, path, added: records.length, reset };
+  }
+
+  /** Drops everything indexed for a session (its file row is rewritten by the caller). */
+  private forget(claudeSessionId: string): void {
+    this.db.query("DELETE FROM history_messages WHERE claude_session_id = ?").run(claudeSessionId);
+    this.db.query("DELETE FROM history_sessions WHERE claude_session_id = ?").run(claudeSessionId);
   }
 
   /** Recomputes the session row from its stored messages and the records just read. */
@@ -126,7 +135,7 @@ export class HistoryIndexer {
     const cwd = existing?.cwd || records.find((r) => r.cwd)?.cwd || "";
     const totals = this.db
       .query(
-        `SELECT MIN(ts) AS first, MAX(ts) AS last, SUM(kind = 'message') AS count
+        `SELECT MIN(ts) AS first, MAX(ts) AS last, COALESCE(SUM(kind = 'message'), 0) AS count
          FROM history_messages WHERE claude_session_id = ?`,
       )
       .get(claudeSessionId) as { first: string | null; last: string | null; count: number };
