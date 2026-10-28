@@ -33,5 +33,27 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/desktop/src/**", "!apps/desktop/src/platform/tauri/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@tauri-apps/**"],
+                    "message": "Use a camada platform: @tauri-apps/* só é permitido em src/platform/tauri."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

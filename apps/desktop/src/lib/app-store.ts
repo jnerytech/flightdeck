@@ -4,11 +4,11 @@ import type {
   HelloResult,
   SessionSummary,
 } from "@flightdeck/protocol";
+import type { Platform } from "../platform/types.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { notificationFor } from "./notify.ts";
 import { basename } from "./paths.ts";
-import type { Platform } from "./platform.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 
 export interface HostView extends HostConfig {
@@ -71,14 +71,14 @@ export class AppStore {
       this.update({
         hosts: [...this.state.hosts, { ...config, status: "offline", info: null, sessions: [] }],
       });
-      const token = await this.platform.getToken(config.id);
+      const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
     }
   }
 
   async addHost(input: { name: string; url: string; token: string }): Promise<string> {
     const config: HostConfig = { id: crypto.randomUUID(), name: input.name, url: input.url };
-    await this.platform.setToken(config.id, input.token);
+    await this.platform.secrets.set(config.id, input.token);
     this.update({
       hosts: [...this.state.hosts, { ...config, status: "offline", info: null, sessions: [] }],
     });
@@ -90,7 +90,7 @@ export class AppStore {
   async removeHost(hostId: string): Promise<void> {
     this.connections.get(hostId)?.dispose();
     this.connections.delete(hostId);
-    await this.platform.deleteToken(hostId);
+    await this.platform.secrets.delete(hostId);
     const sessions = Object.fromEntries(
       Object.entries(this.state.sessions).filter(([key]) => !key.startsWith(`${hostId}/`)),
     );
