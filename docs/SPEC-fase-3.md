@@ -142,7 +142,3 @@ Começa vermelho, roda com as travas ativas e cria a pasta temporária com dois 
 - [ ] Divergências registradas em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-3` criada.
 
 **Condição do /goal**
-
-```text
-/goal A Fase 3 de docs/SPEC-fase-3.md está implementada seguindo docs/TDD.md e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, o bun --config=bunfig.area.toml test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-2 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, bun run smoke:multi e bun run smoke:history imprimindo SMOKE OK, SMOKE MULTI OK e SMOKE HISTORY OK; (5) bun run build:daemon, bun run build:desktop e cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml saindo com código 0, este último no Windows nativo; (6) git status sem alterações pendentes e git tag listando fase-3. Todas as rodadas de bun test e dos smokes rodaram com a trava do claude e a trava de home ativas.
-```
