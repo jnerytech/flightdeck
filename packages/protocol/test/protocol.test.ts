@@ -35,6 +35,7 @@ const validCommands: Record<CommandType, unknown> = {
   },
   "history.get": { claudeSessionId: "c", cursor: "20", limit: 50 },
   "history.search": { query: "flamingo", cwd: "/p", limit: 5 },
+  "history.resume": { claudeSessionId: "c", name: "n", permissionMode: "default", force: true },
   "history.watch": {},
 };
 
