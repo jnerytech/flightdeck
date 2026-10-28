@@ -1,16 +1,18 @@
-import { afterAll, afterEach, describe, expect, test } from "bun:test";
-import { unregisterDom } from "./dom.ts";
+import { afterEach, describe, expect, test } from "bun:test";
+import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
-// Loaded after dom.ts registered the DOM globals: RTL and react-dom read them on import.
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const {
   act,
   cleanup,
   fireEvent,
   render,
-  screen,
+  within,
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
+const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySession } = await import("../src/lib/session-state.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -22,7 +24,6 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-afterAll(() => unregisterDom());
 
 const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
 
@@ -41,10 +42,11 @@ const type = (label: string, value: string) =>
 
 async function addHost(url: string) {
   type("Nome", "meu pc");
-  type("URL", url);
+  type("Endereço", "127.0.0.1");
+  type("Porta", new URL(url.replace("ws://", "http://")).port);
   type("Token", TOKEN);
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar host" }));
+    fireEvent.click(screen.getByRole("button", { name: "Testar e adicionar" }));
   });
   await waitFor(() => expect(screen.getByLabelText("meu pc: online")).toBeTruthy());
 }
@@ -136,7 +138,7 @@ describe("desktop: interface", () => {
     expect(screen.queryByRole("alert")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Adicionar outro host" }));
-    expect(screen.getByRole("button", { name: "Adicionar host" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Testar e adicionar" })).toBeTruthy();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Remover meu pc" }));
     });
@@ -146,7 +148,7 @@ describe("desktop: interface", () => {
   test("formulário de host exige todos os campos", async () => {
     const { store } = setup();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Adicionar host" }));
+      fireEvent.click(screen.getByRole("button", { name: "Testar e adicionar" }));
     });
     expect(store.getState().hosts).toHaveLength(0);
   });
