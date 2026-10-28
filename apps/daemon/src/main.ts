@@ -6,6 +6,7 @@ import {
   RuntimeKind,
   updateConfigFile,
 } from "./config.ts";
+import { acquireLock } from "./lock.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -76,6 +77,15 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   return args;
 }
 
+/** Exit code when another daemon already owns the same `dataDir`. */
+export const EXIT_ALREADY_RUNNING = 3;
+
+export class AlreadyRunningError extends Error {
+  constructor(dataDir: string) {
+    super(`já em execução (dataDir ${dataDir})`);
+  }
+}
+
 export interface Logger {
   log(message: string): void;
   error(message: string): void;
@@ -101,6 +111,9 @@ export async function startDaemon(
 ): Promise<Daemon> {
   const config = loadConfig(args.config);
   const runtimeKind = args.runtime ?? config.runtime;
+  // Before SQLite and the port: a second daemon must not touch either.
+  const lock = acquireLock(config.dataDir);
+  if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
   const runtime = await createRuntime(runtimeKind, claudePath);
@@ -135,6 +148,7 @@ export async function startDaemon(
         await manager.shutdown();
         await server.stop();
         store.close();
+        lock.release();
       })();
       return stopped;
     },
@@ -205,7 +219,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     return daemon;
   } catch (error) {
     deps.log.error(`flightdeckd: ${error instanceof Error ? error.message : String(error)}`);
-    deps.exit(1);
+    deps.exit(error instanceof AlreadyRunningError ? EXIT_ALREADY_RUNNING : 1);
     return null;
   }
 }
