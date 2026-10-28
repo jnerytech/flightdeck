@@ -4,6 +4,7 @@ import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
+import { HostPage } from "./HostPage.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Sidebar } from "./Sidebar.tsx";
@@ -14,6 +15,9 @@ export function App({ store }: { store: AppStore }) {
   const [hostError, setHostError] = useState<string | null>(null);
   /** Request clicked in the "Precisa de você" queue: the session view scrolls to its card. */
   const [focusRequest, setFocusRequest] = useState<string | null>(null);
+  /** Host whose page is open, if any. */
+  const [hostPage, setHostPage] = useState<string | null>(null);
+  const pageHost = state.hosts.find((h) => h.id === hostPage);
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
@@ -74,6 +78,19 @@ export function App({ store }: { store: AppStore }) {
         />
       </div>
     );
+  } else if (pageHost) {
+    main = (
+      <HostPage
+        key={pageHost.id}
+        host={pageHost}
+        onRename={(name) => store.renameHost(pageHost.id, name)}
+        onReconnect={() => void store.reconnectHost(pageHost.id)}
+        onRemove={() => {
+          setHostPage(null);
+          void store.removeHost(pageHost.id);
+        }}
+      />
+    );
   } else if (selectedHost && sessionId) {
     const summary = selectedHost.sessions.find((s) => s.id === sessionId);
     const session = state.sessions[sessionKey(selectedHost.id, sessionId)] ?? emptySession();
@@ -103,12 +120,18 @@ export function App({ store }: { store: AppStore }) {
         state={state}
         onSelect={(hostId, id) => {
           setAddingHost(false);
+          setHostPage(null);
           store.select(hostId, id);
         }}
         onRemoveHost={(id) => void store.removeHost(id)}
         onAddHost={() => setAddingHost(true)}
+        onOpenHost={(hostId) => {
+          setAddingHost(false);
+          setHostPage(hostId);
+        }}
         onOpenRequest={(item) => {
           setAddingHost(false);
+          setHostPage(null);
           setFocusRequest(item.requestId);
           store.select(item.hostId, item.sessionId);
         }}

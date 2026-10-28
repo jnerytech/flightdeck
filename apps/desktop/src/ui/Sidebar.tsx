@@ -17,6 +17,7 @@ export function Sidebar(props: {
   onRemoveHost(hostId: string): void;
   onAddHost(): void;
   onOpenRequest(item: PendingItem): void;
+  onOpenHost(hostId: string): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
@@ -44,7 +45,23 @@ export function Sidebar(props: {
               role="img"
               aria-label={`${host.name}: ${CONNECTION_LABELS[host.status]}`}
             />
-            <strong>{host.name}</strong>
+            <button
+              type="button"
+              className="host-name"
+              aria-label={`Abrir host ${host.name}`}
+              onClick={() => props.onOpenHost(host.id)}
+            >
+              {host.name}
+            </button>
+            {host.hostInfo?.apiKeySanitized === false && (
+              <span
+                className="badge badge-warn"
+                role="img"
+                aria-label={`${host.name}: chave de API repassada`}
+              >
+                ⚠
+              </span>
+            )}
             <button
               type="button"
               className="icon"

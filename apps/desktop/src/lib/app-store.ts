@@ -2,6 +2,7 @@ import type {
   CommandPayload,
   EventEnvelope,
   HelloResult,
+  HostInfoResult,
   PendingPermission,
   SessionEventOf,
   SessionStatus,
@@ -28,6 +29,10 @@ export interface SidebarSession {
 export interface HostView extends HostConfig {
   status: ConnectionStatus;
   info: HelloResult | null;
+  /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
+  hostInfo: HostInfoResult | null;
+  /** Round trip of the last heartbeat. */
+  latencyMs: number | null;
   sessions: SidebarSession[];
 }
 
@@ -80,6 +85,15 @@ export function needsYou(state: AppState): PendingItem[] {
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
+const newHostView = (config: HostConfig): HostView => ({
+  ...config,
+  status: "offline",
+  info: null,
+  hostInfo: null,
+  latencyMs: null,
+  sessions: [],
+});
+
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
 }
@@ -114,7 +128,7 @@ export class AppStore {
     this.update({ hosts: [], sessions: {}, selected: null });
     for (const config of loadHosts(this.platform.storage)) {
       this.update({
-        hosts: [...this.state.hosts, { ...config, status: "offline", info: null, sessions: [] }],
+        hosts: [...this.state.hosts, newHostView(config)],
       });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
@@ -125,7 +139,7 @@ export class AppStore {
     const config: HostConfig = { id: crypto.randomUUID(), name: input.name, url: input.url };
     await this.platform.secrets.set(config.id, input.token);
     this.update({
-      hosts: [...this.state.hosts, { ...config, status: "offline", info: null, sessions: [] }],
+      hosts: [...this.state.hosts, newHostView(config)],
     });
     this.persistHosts();
     this.connect(config, input.token);
@@ -156,6 +170,19 @@ export class AppStore {
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
     });
     this.persistHosts();
+  }
+
+  renameHost(hostId: string, name: string): void {
+    this.updateHost(hostId, (h) => ({ ...h, name }));
+    this.persistHosts();
+  }
+
+  /** Drops the connection and opens a new one right away. */
+  async reconnectHost(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const token = await this.platform.secrets.get(hostId);
+    this.connections.get(hostId)?.dispose();
+    if (host && token) this.connect(host, token);
   }
 
   /** `flightdeck://` links opened from outside the app (OS deep link or second instance). */
@@ -260,6 +287,7 @@ export class AppStore {
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
       onSubscribed: () => {},
+      onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
     });
     this.connections.set(config.id, conn);
@@ -269,6 +297,7 @@ export class AppStore {
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
     this.updateHost(hostId, (h) => ({ ...h, status, info: conn.info }));
+    if (status === "online") void this.loadHostInfo(hostId, conn);
     if (status === "connecting") {
       // Partial text from before the drop will never be completed by a delta; drop it.
       const sessions = { ...this.state.sessions };
@@ -278,6 +307,12 @@ export class AppStore {
       }
       this.update({ sessions });
     }
+  }
+
+  /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
+  private async loadHostInfo(hostId: string, conn: HostConnection): Promise<void> {
+    const hostInfo = await conn.request("host.info", {}).catch(() => null);
+    this.updateHost(hostId, (h) => ({ ...h, hostInfo }));
   }
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {
