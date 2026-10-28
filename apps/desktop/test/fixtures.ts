@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
@@ -22,7 +23,11 @@ export async function waitFor<T>(
   }
 }
 
-/** In-process daemon with the FakeRuntime; `listen` can be called again on the same port. */
+/**
+ * In-process daemon with the FakeRuntime; `listen` can be called again on the same port. Its
+ * history index reads `historyRoot` (a fake `~/.claude/projects`); call `history.scan()` after
+ * writing transcripts there.
+ */
 export function daemon(
   cleanups: Array<() => unknown>,
   options: { allowApiKey?: boolean; baseEnv?: Record<string, string> } = {},
@@ -30,9 +35,14 @@ export function daemon(
   const root = realpathSync(mkdtempSync(join(tmpdir(), "fd-desk-")));
   const project = join(root, "p");
   mkdirSync(project);
+  const store = new EventStore(":memory:");
+  const historyRoot = join(root, "claude-projects");
+  mkdirSync(historyRoot);
+  const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
+  const runtime = new FakeRuntime({ delayMs: 1 });
   const manager = new SessionManager({
-    store: new EventStore(":memory:"),
-    runtime: new FakeRuntime({ delayMs: 1 }),
+    store,
+    runtime,
     allowedRoots: [root],
     defaultPermissionMode: "default",
     allowApiKey: options.allowApiKey ?? false,
@@ -42,6 +52,7 @@ export function daemon(
     const server = startServer({
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
       manager,
+      history,
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -51,7 +62,7 @@ export function daemon(
     cleanups.push(() => server.stop());
     return server;
   };
-  return { manager, project, root, listen };
+  return { manager, project, root, listen, history, historyRoot, runtime };
 }
 
 /**
