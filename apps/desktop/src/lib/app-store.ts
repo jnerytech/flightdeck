@@ -336,6 +336,40 @@ export class AppStore {
     }
   }
 
+  /**
+   * Continues an indexed transcript as a managed session and opens it. `force` is only sent after
+   * the user confirmed a possibly-in-use session.
+   */
+  async resumeHistory(
+    hostId: string,
+    claudeSessionId: string,
+    force: boolean,
+  ): Promise<string | null> {
+    try {
+      const conn = this.connections.get(hostId);
+      if (!conn) throw new RequestError("offline", "host desconhecido");
+      const { sessionId } = await conn.request("history.resume", {
+        claudeSessionId,
+        ...(force ? { force: true } : {}),
+      });
+      this.select(hostId, sessionId);
+      return sessionId;
+    } catch (error) {
+      this.update({ error: describeError(error) });
+      return null;
+    }
+  }
+
+  async copyText(text: string): Promise<boolean> {
+    try {
+      await this.platform.copyText(text);
+      return true;
+    } catch (error) {
+      this.update({ error: describeError(error) });
+      return false;
+    }
+  }
+
   reportError(message: string): void {
     this.update({ error: message });
   }

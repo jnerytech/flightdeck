@@ -32,6 +32,8 @@ export function TranscriptReader(props: {
   store: AppStore;
   target: ReaderTarget;
   hostName: string;
+  /** The transcript became a managed session (already selected in the store). */
+  onResumed(): void;
 }) {
   const { store, target } = props;
   const [session, setSession] = useState<HistorySessionSummary | null>(null);
@@ -41,6 +43,8 @@ export function TranscriptReader(props: {
   const loading = useRef(false);
   const focused = useRef(false);
   const log = useRef<HTMLDivElement>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -75,6 +79,12 @@ export function TranscriptReader(props: {
     else setPrev(page.prevCursor);
   };
 
+  const resume = async (force: boolean) => {
+    setConfirming(false);
+    const sessionId = await store.resumeHistory(target.hostId, target.claudeSessionId, force);
+    if (sessionId) props.onResumed();
+  };
+
   return (
     <section className="session">
       <header className="session-header">
@@ -82,7 +92,45 @@ export function TranscriptReader(props: {
           <h2>{session?.title ?? target.claudeSessionId}</h2>
           {session && <div className="muted">{`${props.hostName} · ${basename(session.cwd)}`}</div>}
         </div>
+        {session && (
+          <div className="session-controls">
+            {session.maybeActive && <span className="badge badge-warn">possivelmente em uso</span>}
+            <button
+              type="button"
+              className="primary"
+              // Two processes writing the same conversation corrupt it: ask first.
+              onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
+            >
+              Continuar no Flightdeck
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void store
+                  .copyText(`claude --resume ${target.claudeSessionId}`)
+                  .then((ok) => setCopied(ok))
+              }
+            >
+              Copiar comando
+            </button>
+            {copied && <span className="muted">Comando copiado</span>}
+          </div>
+        )}
       </header>
+      {confirming && (
+        <div className="card confirm">
+          <p>
+            Esta sessão pode estar em uso em outro lugar: o arquivo mudou nos últimos 2 minutos.
+            Dois processos escrevendo na mesma conversa a corrompem.
+          </p>
+          <button type="button" className="primary" onClick={() => void resume(true)}>
+            Continuar mesmo assim
+          </button>
+          <button type="button" onClick={() => setConfirming(false)}>
+            Cancelar
+          </button>
+        </div>
+      )}
       <div
         className="timeline"
         role="log"

@@ -112,6 +112,7 @@ export function App({ store }: { store: AppStore }) {
         store={store}
         target={reading}
         hostName={readingHost.name}
+        onResumed={() => setReading(null)}
       />
     );
   } else if (pageHost) {
