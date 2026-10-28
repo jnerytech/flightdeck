@@ -9,6 +9,7 @@ import { type ConnectionStatus, HostConnection, RequestError } from "./host-conn
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { notificationFor } from "./notify.ts";
 import { basename } from "./paths.ts";
+import { probeHost } from "./probe-host.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 
 export interface HostView extends HostConfig {
@@ -85,6 +86,17 @@ export class AppStore {
     this.persistHosts();
     this.connect(config, input.token);
     return config.id;
+  }
+
+  /** Tests the connection (`hello` + `host.info`) and saves the host only if it answers. */
+  async testAndAddHost(input: {
+    name: string;
+    url: string;
+    token: string;
+  }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
+    const probe = await probeHost(input.url, input.token);
+    if (!probe.ok) return probe;
+    return { ok: true, hostId: await this.addHost(input) };
   }
 
   async removeHost(hostId: string): Promise<void> {
