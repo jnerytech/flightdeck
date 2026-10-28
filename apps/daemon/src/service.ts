@@ -117,3 +117,62 @@ export function windowsTaskDeleteArgs(): string[] {
 export function windowsTaskQueryArgs(): string[] {
   return ["schtasks", "/Query", "/TN", TASK_NAME];
 }
+
+/** Everything `service install|uninstall|status` touches, injected so tests never touch the OS. */
+export interface ServiceContext {
+  platform: string;
+  home: string;
+  user: string;
+  /** The daemon command line, from `daemonCommand`. */
+  command: string[];
+  systemRoot: string;
+  tempDir: string;
+  /** Print what would be done; never write files nor run commands. */
+  dryRun: boolean;
+  exec: (cmd: string[]) => Promise<{ code: number; stdout: string }>;
+  writeFile(path: string, content: string): void;
+  removeFile(path: string): void;
+  which(name: string): string | null;
+}
+
+export interface ServiceResult {
+  output: string[];
+  /** Steps the user must run themselves (anything needing sudo). */
+  instructions: string[];
+}
+
+async function run(ctx: ServiceContext, cmd: string[]): Promise<string> {
+  const { code, stdout } = await ctx.exec(cmd);
+  if (code !== 0) throw new Error(`falhou (${code}): ${cmd.join(" ")}`);
+  return stdout;
+}
+
+const SYSTEMD_INSTALL = [
+  ["systemctl", "--user", "daemon-reload"],
+  ["systemctl", "--user", "enable", "--now", "flightdeckd"],
+];
+
+const unitPath = (ctx: ServiceContext) => posix.join(ctx.home, SYSTEMD_UNIT_PATH);
+
+/** Installs the user unit; enabling linger needs sudo, so it is only printed. */
+async function installSystemd(ctx: ServiceContext): Promise<ServiceResult> {
+  const path = unitPath(ctx);
+  ctx.writeFile(path, systemdUnit(ctx.command));
+  for (const cmd of SYSTEMD_INSTALL) await run(ctx, cmd);
+  const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
+  const instructions =
+    linger.code === 0 && linger.stdout.trim() === "Linger=yes"
+      ? []
+      : [
+          "O linger está desligado: o serviço só sobe depois do seu login. Para iniciar no boot, rode:",
+          `  sudo loginctl enable-linger ${ctx.user}`,
+        ];
+  return {
+    output: [`unit gravada em ${path}`, "serviço flightdeckd habilitado e iniciado"],
+    instructions,
+  };
+}
+
+export async function installService(ctx: ServiceContext): Promise<ServiceResult> {
+  return installSystemd(ctx);
+}
