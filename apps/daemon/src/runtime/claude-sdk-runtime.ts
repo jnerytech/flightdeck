@@ -7,6 +7,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AssistantBlock } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
+import { whichOnPath } from "../which.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
 
 /** The part of the SDK `Query` object this runtime uses. */
@@ -40,11 +41,13 @@ export interface ProcessInfo {
  */
 export function resolveClaudePath(
   configured?: string,
-  proc: ProcessInfo = { main: Bun.main, which: Bun.which },
+  proc: Partial<ProcessInfo> = {},
 ): string | undefined {
   if (configured) return configured;
-  const compiled = proc.main.includes("$bunfs") || proc.main.includes("~BUN");
-  return compiled ? (proc.which("claude") ?? undefined) : undefined;
+  const main = proc.main ?? Bun.main;
+  const which = proc.which ?? whichOnPath;
+  const compiled = main.includes("$bunfs") || main.includes("~BUN");
+  return compiled ? (which("claude") ?? undefined) : undefined;
 }
 
 function truncate(text: string): string {
