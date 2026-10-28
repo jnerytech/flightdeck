@@ -2,6 +2,7 @@ import type {
   CommandPayload,
   EventEnvelope,
   HelloResult,
+  HistorySearchHit,
   HostInfoResult,
   PendingPermission,
   SessionEventOf,
@@ -48,6 +49,24 @@ export interface AppState {
   selected: Selection | null;
   error: string | null;
   settings: Settings;
+  /** Last global history search, `null` before the first one. */
+  search: SearchState | null;
+  searchOpen: boolean;
+}
+
+export interface GlobalHit extends HistorySearchHit {
+  hostId: string;
+  hostName: string;
+}
+
+export interface SearchState {
+  query: string;
+  /** Every host's hits so far, newest first. */
+  hits: GlobalHit[];
+  /** Hosts still being asked. */
+  waiting: string[];
+  /** Hosts that were offline or did not answer in time. */
+  silent: string[];
 }
 
 export interface Settings {
@@ -59,6 +78,8 @@ export interface Settings {
 export interface AppStoreOptions {
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** How long the global search waits for each host. */
+  searchTimeoutMs?: number;
 }
 
 export interface PendingItem {
@@ -104,6 +125,17 @@ const newHostView = (config: HostConfig): HostView => ({
   sessions: [],
 });
 
+/** Rejects when `promise` (absent when the host has no connection) takes longer than `ms`. */
+function withTimeout<T>(promise: Promise<T> | undefined, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("sem resposta")), ms);
+  });
+  return Promise.race([promise ?? Promise.reject(new Error("sem conexão")), timeout]).finally(() =>
+    clearTimeout(timer),
+  );
+}
+
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
 }
@@ -117,6 +149,7 @@ export class AppStore {
   private readonly listeners = new Set<() => void>();
   private readonly connections = new Map<string, HostConnection>();
   private tray: TrayStatus | null = null;
+  private searchSeq = 0;
 
   constructor(
     private readonly platform: Platform,
@@ -127,6 +160,8 @@ export class AppStore {
       sessions: {},
       selected: null,
       error: null,
+      search: null,
+      searchOpen: false,
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -235,6 +270,46 @@ export class AppStore {
   async setAutostart(enabled: boolean): Promise<void> {
     await this.platform.autostart.setEnabled(enabled);
     this.update({ settings: { ...this.state.settings, autostart: enabled } });
+  }
+
+  openSearch(): void {
+    this.update({ searchOpen: true });
+  }
+
+  closeSearch(): void {
+    this.update({ searchOpen: false });
+  }
+
+  /**
+   * Asks every online host at once and merges the hits by date as they arrive. Offline hosts are
+   * reported right away; a host that does not answer within `searchTimeoutMs` is reported too.
+   */
+  async searchHistory(query: string): Promise<void> {
+    if (!query.trim()) return;
+    const token = ++this.searchSeq;
+    const online = this.state.hosts.filter((h) => h.status === "online");
+    const offline = this.state.hosts.filter((h) => h.status !== "online").map((h) => h.id);
+    this.update({ search: { query, hits: [], waiting: online.map((h) => h.id), silent: offline } });
+    const timeoutMs = this.options.searchTimeoutMs ?? 5000;
+    await Promise.all(
+      online.map(async (host) => {
+        const request = this.connections.get(host.id)?.request("history.search", { query });
+        const result = await withTimeout(request, timeoutMs).catch(() => null);
+        // A newer search replaced this one.
+        if (token !== this.searchSeq) return;
+        const search = this.state.search as SearchState;
+        const waiting = search.waiting.filter((id) => id !== host.id);
+        if (!result) {
+          this.update({ search: { ...search, waiting, silent: [...search.silent, host.id] } });
+          return;
+        }
+        const hits = [
+          ...search.hits,
+          ...result.hits.map((hit) => ({ ...hit, hostId: host.id, hostName: host.name })),
+        ].sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""));
+        this.update({ search: { ...search, waiting, hits } });
+      }),
+    );
   }
 
   reportError(message: string): void {

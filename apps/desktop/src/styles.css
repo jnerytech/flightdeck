@@ -349,3 +349,41 @@ textarea {
   flex: 1;
   min-height: 60px;
 }
+
+/* Global history search (Ctrl+K) */
+.global-search {
+  position: fixed;
+  inset: 10vh 0 auto;
+  margin: 0 auto;
+  width: min(720px, calc(100vw - 32px));
+  max-height: 75vh;
+  overflow: auto;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 25%);
+}
+
+.global-search input {
+  width: 100%;
+}
+
+.global-search ul {
+  list-style: none;
+  padding: 0;
+}
+
+.global-search li button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
+.snippet mark {
+  background: var(--add);
+  color: inherit;
+}

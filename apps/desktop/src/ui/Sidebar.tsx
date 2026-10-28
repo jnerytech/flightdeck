@@ -20,6 +20,7 @@ export function Sidebar(props: {
   onRespond(item: PendingItem, decision: "allow" | "deny"): void;
   onOpenHost(hostId: string): void;
   onOpenSettings(): void;
+  onOpenSearch(): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
@@ -123,6 +124,9 @@ export function Sidebar(props: {
       ))}
       <button type="button" className="add-host" onClick={props.onAddHost}>
         Adicionar outro host
+      </button>
+      <button type="button" className="add-host" onClick={props.onOpenSearch}>
+        Buscar no histórico (Ctrl+K)
       </button>
       <button type="button" className="add-host" onClick={props.onOpenSettings}>
         Configurações

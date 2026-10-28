@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
+import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { HostPage } from "./HostPage.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
@@ -55,6 +56,18 @@ export function App({ store }: { store: AppStore }) {
   useEffect(() => {
     void store.init();
     return () => store.dispose();
+  }, [store]);
+
+  // Inside the app only: as a global shortcut Ctrl+K would clash with browsers and VS Code.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        store.openSearch();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [store]);
 
   const selectedHost = state.hosts.find((h) => h.id === state.selected?.hostId);
@@ -140,6 +153,7 @@ export function App({ store }: { store: AppStore }) {
           setAddingHost(true);
         }}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSearch={() => store.openSearch()}
         onOpenHost={(hostId) => {
           setAddingHost(false);
           setSettingsOpen(false);
@@ -165,6 +179,13 @@ export function App({ store }: { store: AppStore }) {
         )}
         {main}
       </main>
+      {state.searchOpen && (
+        <GlobalSearch
+          state={state}
+          onSearch={(query) => void store.searchHistory(query)}
+          onClose={() => store.closeSearch()}
+        />
+      )}
     </div>
   );
 }
