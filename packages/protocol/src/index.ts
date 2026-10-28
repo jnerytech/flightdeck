@@ -6,6 +6,9 @@ export const WS_PATH = "/v1/ws";
 /** Close code used when authentication fails or a frame arrives before `hello`. */
 export const CLOSE_UNAUTHORIZED = 4401;
 
+/** Close code used when a client misses two heartbeats in a row. */
+export const CLOSE_HEARTBEAT = 4408;
+
 // ---------------------------------------------------------------------------
 // Shared primitives
 // ---------------------------------------------------------------------------
@@ -263,7 +266,19 @@ export const EventEnvelope = z.object({
 });
 export type EventEnvelope = z.infer<typeof EventEnvelope>;
 
-export const ServerMessage = z.union([AckOk, AckError, EventEnvelope]);
+/** Heartbeat sent by the daemon; `lastRttMs` is the round trip of the previous ping. */
+export const Ping = z.object({
+  type: z.literal("ping"),
+  id: z.string(),
+  lastRttMs: z.number().nonnegative().optional(),
+});
+export type Ping = z.infer<typeof Ping>;
+
+/** Client answer to a `ping`, echoing its id. Control frame: no ack. */
+export const Pong = z.object({ type: z.literal("pong"), id: z.string() });
+export type Pong = z.infer<typeof Pong>;
+
+export const ServerMessage = z.union([AckOk, AckError, EventEnvelope, Ping]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 
 /** Parses a raw JSON frame into a `ServerMessage`, throwing on invalid input. */

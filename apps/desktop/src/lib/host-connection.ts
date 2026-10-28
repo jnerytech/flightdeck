@@ -34,6 +34,8 @@ export interface HostConnectionOptions {
   onStatus(status: ConnectionStatus): void;
   /** Subscription acknowledged; events up to `result.session.lastSeq` are replay. */
   onSubscribed(sessionId: string, result: SessionSubscribeResult): void;
+  /** A heartbeat arrived; `latencyMs` may have changed. */
+  onPing?(): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -52,6 +54,8 @@ interface Pending {
 export class HostConnection {
   status: ConnectionStatus = "offline";
   info: HelloResult | null = null;
+  /** Round trip of the last heartbeat, as measured by the daemon. */
+  latencyMs: number | null = null;
   private ws: WebSocket | null = null;
   private attempt = 0;
   private nextId = 0;
@@ -77,6 +81,12 @@ export class HostConnection {
     ws.addEventListener("message", (msg) => {
       const message = parseServerMessage(String(msg.data));
       if (message.type === "event") return this.opts.onEvent(message);
+      if (message.type === "ping") {
+        if (message.lastRttMs !== undefined) this.latencyMs = message.lastRttMs;
+        ws.send(JSON.stringify({ type: "pong", id: message.id }));
+        this.opts.onPing?.();
+        return;
+      }
       const pending = this.pending.get(message.id);
       this.pending.delete(message.id);
       if (message.ok) pending?.resolve(message.data);
