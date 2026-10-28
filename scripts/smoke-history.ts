@@ -4,7 +4,7 @@
  * indexing it, a search for a term only the second one has, `history.resume` of that session
  * (the FakeRuntime must get `resume` with its id) and `history.changed` when the first grows.
  */
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
@@ -111,10 +111,14 @@ async function run(work: string): Promise<void> {
   mkdirSync(join(transcripts, "-projeto-b"), { recursive: true });
   const firstFile = join(transcripts, "-projeto-a", `${FIRST}.jsonl`);
   writeFileSync(firstFile, line("u1", projectA, "primeira conversa", "2026-09-01T10:00:00.000Z"));
+  const secondFile = join(transcripts, "-projeto-b", `${SECOND}.jsonl`);
   writeFileSync(
-    join(transcripts, "-projeto-b", `${SECOND}.jsonl`),
+    secondFile,
     line("u1", projectB, `segunda conversa com ${TERM}`, "2026-09-02T10:00:00.000Z"),
   );
+  // Finished an hour ago, so it is not `maybeActive` and resumes without `force`.
+  const anHourAgo = new Date(Date.now() - 3_600_000);
+  utimesSync(secondFile, anHourAgo, anHourAgo);
 
   const token = crypto.randomUUID().replaceAll("-", "");
   const configPath = join(work, "config.json");
