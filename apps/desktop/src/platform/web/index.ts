@@ -6,6 +6,8 @@ export interface WebWindow {
   location: { hash: string };
   open(url: string, target: string, features: string): unknown;
   addEventListener(type: "hashchange", listener: () => void): void;
+  navigator?: { clipboard?: { writeText(text: string): Promise<void> } };
+  focus?(): void;
   removeEventListener(type: "hashchange", listener: () => void): void;
   Notification?: {
     permission: string;
@@ -61,5 +63,15 @@ export function createWebPlatform(
     },
     autostart: { supported: false, isEnabled: async () => false, setEnabled: noop },
     setCloseToTray: noop,
+    async copyText(text) {
+      const clipboard = win.navigator?.clipboard;
+      if (!clipboard) throw new Error("área de transferência indisponível");
+      await clipboard.writeText(text);
+    },
+    async showMainWindow() {
+      win.focus?.();
+    },
+    // A page cannot listen to keys while it is not focused.
+    globalShortcut: { supported: false, register: noop, unregister: noop },
   };
 }

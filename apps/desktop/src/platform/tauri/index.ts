@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import {
   isPermissionGranted,
   requestPermission,
@@ -12,6 +13,7 @@ import type { Platform } from "../types.ts";
 export interface BrowserWindow {
   localStorage: Platform["storage"];
   document: { hasFocus(): boolean };
+  navigator: { clipboard: { writeText(text: string): Promise<void> } };
 }
 
 /**
@@ -51,5 +53,16 @@ export function tauriPlatform(win: BrowserWindow = window): Platform {
       setEnabled: (enabled) => (enabled ? enable() : disable()),
     },
     setCloseToTray: (enabled) => invoke("set_close_to_tray", { enabled }),
+    // The webview's Clipboard API works from the click that asks for the copy.
+    copyText: (text) => win.navigator.clipboard.writeText(text),
+    showMainWindow: () => invoke("focus_main"),
+    globalShortcut: {
+      supported: true,
+      register: (accelerator, onPress) =>
+        register(accelerator, (event) => {
+          if (event.state === "Pressed") onPress();
+        }),
+      unregister: (accelerator) => unregister(accelerator),
+    },
   };
 }

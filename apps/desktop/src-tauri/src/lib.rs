@@ -60,6 +60,12 @@ fn tray_set_status(
     Ok(())
 }
 
+/// Brings the window to the front for the global shortcut (the window may be hidden in the tray).
+#[tauri::command]
+fn focus_main(app: tauri::AppHandle) {
+    bring_to_front(&app);
+}
+
 #[tauri::command]
 fn set_close_to_tray(state: State<TrayState>, enabled: bool) {
     state.close_to_tray.store(enabled, Ordering::Relaxed);
@@ -75,8 +81,8 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "open" => focus_main(app),
-            "needs-you" => focus_main(app),
+            "open" => bring_to_front(app),
+            "needs-you" => bring_to_front(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -87,7 +93,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
                 ..
             } = event
             {
-                focus_main(tray.app_handle());
+                bring_to_front(tray.app_handle());
             }
         });
     if let Some(icon) = app.default_window_icon() {
@@ -101,7 +107,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
 }
 
 /// Brings the main window back (from the tray, minimized or behind other windows).
-fn focus_main(app: &tauri::AppHandle) {
+fn bring_to_front(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.show();
@@ -119,13 +125,15 @@ pub fn run() {
     {
         builder = builder
             .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-                focus_main(app);
+                bring_to_front(app);
             }))
             // Off by default; the settings page turns it on through the plugin's JS API.
             .plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                 None,
-            ));
+            ))
+            // Registered from the frontend (configurable accelerator), never with a fixed one here.
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build());
     }
 
     builder
@@ -158,7 +166,8 @@ pub fn run() {
             token_set,
             token_delete,
             tray_set_status,
-            set_close_to_tray
+            set_close_to_tray,
+            focus_main
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");

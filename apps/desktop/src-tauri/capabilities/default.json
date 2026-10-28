@@ -8,6 +8,8 @@
     "notification:default",
     "deep-link:default",
     "opener:default",
-    "autostart:default"
+    "autostart:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
   ]
 }

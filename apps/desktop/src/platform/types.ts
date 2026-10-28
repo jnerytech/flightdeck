@@ -37,4 +37,14 @@ export interface Platform {
   };
   /** Closing the window hides it to the tray instead of quitting. */
   setCloseToTray(enabled: boolean): Promise<void>;
+  copyText(text: string): Promise<void>;
+  /** Brings the main window to the front (from the tray, minimized or behind others). */
+  showMainWindow(): Promise<void>;
+  /** System-wide shortcut, active with the app in the background. */
+  globalShortcut: {
+    supported: boolean;
+    /** Rejects when the OS refuses it, typically because another program already uses it. */
+    register(accelerator: string, onPress: () => void): Promise<void>;
+    unregister(accelerator: string): Promise<void>;
+  };
 }
