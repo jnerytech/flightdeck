@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { AppStore, sessionKey } from "../src/lib/app-store.ts";
+import { AppStore, needsYou, sessionKey } from "../src/lib/app-store.ts";
 import { HOSTS_KEY } from "../src/lib/hosts.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 
@@ -21,11 +21,11 @@ const host = (store: AppStore, id: string) => store.getState().hosts.find((h) =>
 
 describe("desktop: estado do app", () => {
   test("adicionar host guarda o token na plataforma, conecta e cria sessão", async () => {
-    const { store, server, items, tokens, project } = setup();
+    const { store, server, items, platform, project } = setup();
     let notified = 0;
     const unsubscribe = store.subscribe(() => notified++);
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
-    expect(tokens.get(hostId)).toBe(TOKEN);
+    expect(await platform.secrets.get(hostId)).toBe(TOKEN);
     expect(items.get(HOSTS_KEY)).not.toContain(TOKEN);
     await waitFor(() => host(store, hostId)?.status === "online", "online");
     expect(host(store, hostId)?.info?.allowedRoots).toHaveLength(1);
@@ -57,10 +57,10 @@ describe("desktop: estado do app", () => {
     })) as string;
     const key = sessionKey(hostId, sessionId);
     const pending = await waitFor(() => store.getState().sessions[key]?.pending[0], "pedido");
-    expect(notifications.map((n) => n.title)).toContain("p: esperando você");
+    expect(notifications.map((n) => n.title)).toContain("pc · p: esperando você");
     await store.respond(pending, "allow");
     await waitFor(() => store.getState().sessions[key]?.status === "idle");
-    expect(notifications.map((n) => n.title)).toContain("p: turno concluído");
+    expect(notifications.map((n) => n.title)).toContain("pc · p: turno concluído");
 
     await store.send("[tool] de novo");
     const second = await waitFor(
@@ -73,7 +73,7 @@ describe("desktop: estado do app", () => {
     expect(results.some((r) => r.isError && r.content === "não")).toBe(true);
   });
 
-  test("eventos de replay não notificam e janela em foco também não", async () => {
+  test("estado inicial não notifica e janela em foco também não", async () => {
     const d = setup(true);
     const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[tool]" });
     await waitFor(() => d.manager.get(sessionId).status === "awaiting_permission");
@@ -81,26 +81,24 @@ describe("desktop: estado do app", () => {
     const unfocused = memoryPlatform(false);
     const late = new AppStore(unfocused.platform, { baseDelayMs: 10 });
     cleanups.push(() => late.dispose());
-    const lateKey = sessionKey(
-      await late.addHost({ name: "pc", url: d.server.url, token: TOKEN }),
-      sessionId,
-    );
-    const requestId = await waitFor(
-      () => late.getState().sessions[lateKey]?.pending[0],
-      "replay do pedido",
+    await late.addHost({ name: "pc", url: d.server.url, token: TOKEN });
+    const [request] = await waitFor(
+      () => needsYou(late.getState()).length === 1 && needsYou(late.getState()),
+      "pedido aberto",
     );
     expect(unfocused.notifications).toEqual([]);
 
-    const focusedKey = sessionKey(
-      await d.store.addHost({ name: "pc", url: d.server.url, token: TOKEN }),
-      sessionId,
+    await d.store.addHost({ name: "pc", url: d.server.url, token: TOKEN });
+    await waitFor(() => needsYou(d.store.getState()).length === 1);
+    d.manager.respondPermission({ requestId: request?.requestId ?? "", decision: "allow" });
+    await waitFor(
+      () =>
+        needsYou(late.getState()).length === 0 &&
+        late.getState().hosts[0]?.sessions[0]?.status === "idle",
     );
-    await waitFor(() => d.store.getState().sessions[focusedKey]?.pending.length === 1);
-    d.manager.respondPermission({ requestId, decision: "allow" });
-    await waitFor(() => d.store.getState().sessions[focusedKey]?.status === "idle");
-    await waitFor(() => late.getState().sessions[lateKey]?.status === "idle");
+    await waitFor(() => d.store.getState().hosts[0]?.sessions[0]?.status === "idle");
     expect(d.notifications).toEqual([]);
-    expect(unfocused.notifications.map((n) => n.title)).toEqual(["p: turno concluído"]);
+    expect(unfocused.notifications.map((n) => n.title)).toEqual(["pc · p: turno concluído"]);
   });
 
   test("interrupt, close e resume pela sessão selecionada", async () => {
@@ -141,7 +139,7 @@ describe("desktop: estado do app", () => {
   });
 
   test("init recarrega hosts salvos; host sem token fica offline; remover limpa tudo", async () => {
-    const { server, platform, tokens, items, project } = setup();
+    const { server, platform, items, project } = setup();
     platform.storage.setItem(
       HOSTS_KEY,
       JSON.stringify([
@@ -149,7 +147,7 @@ describe("desktop: estado do app", () => {
         { id: "b", name: "sem token", url: server.url },
       ]),
     );
-    tokens.set("a", TOKEN);
+    await platform.secrets.set("a", TOKEN);
     const store = new AppStore(platform, { baseDelayMs: 10 });
     cleanups.push(() => store.dispose());
     await store.init();
@@ -160,7 +158,7 @@ describe("desktop: estado do app", () => {
     store.select("a", null);
     await store.removeHost("a");
     expect(host(store, "a")).toBeUndefined();
-    expect(tokens.has("a")).toBe(false);
+    expect(await platform.secrets.get("a")).toBeNull();
     expect(store.getState().selected).toBeNull();
     expect(store.getState().sessions).toEqual({});
     expect(JSON.parse(items.get(HOSTS_KEY) ?? "[]").map((h: { id: string }) => h.id)).toEqual([
@@ -168,28 +166,17 @@ describe("desktop: estado do app", () => {
     ]);
   });
 
-  test("queda logo após criar sessão vira erro e reconexão limpa o texto parcial", async () => {
+  test("reconexão limpa o texto parcial da sessão aberta", async () => {
     const { store, server, project } = setup();
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
-    const first = (await store.createSession(hostId, {
-      cwd: project,
-      prompt: "primeira",
-    })) as string;
-    await waitFor(() => store.getState().sessions[sessionKey(hostId, first)]?.status === "idle");
-    const stopOnSelect = store.subscribe(() => {
-      if (store.getState().selected?.sessionId !== first) {
-        stopOnSelect();
-        void server.stop();
-      }
-    });
-    const sessionId = await store.createSession(hostId, { cwd: project, prompt: "oi" });
-    expect(sessionId).toBeTruthy();
-    expect(store.getState().error).toContain("offline");
+    const sessionId = (await store.createSession(hostId, { cwd: project, prompt: "oi" })) as string;
+    await waitFor(
+      () => store.getState().sessions[sessionKey(hostId, sessionId)]?.status === "idle",
+    );
+    await server.stop();
     await waitFor(() => host(store, hostId)?.status === "connecting", "tentando reconectar");
-    expect(
-      store.getState().sessions[sessionKey(hostId, sessionId as string)]?.streaming ?? "",
-    ).toBe("");
+    expect(store.getState().sessions[sessionKey(hostId, sessionId)]?.streaming).toBe("");
   });
 
   test("lista de hosts corrompida é ignorada", async () => {

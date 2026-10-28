@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { EventEnvelope, SessionEvent } from "@flightdeck/protocol";
+import type { EventEnvelope, PendingPermission, SessionEvent } from "@flightdeck/protocol";
 import { backoffDelay } from "../src/lib/backoff.ts";
 import { toolDiff } from "../src/lib/diff.ts";
-import { notificationFor } from "../src/lib/notify.ts";
+import { summaryNotifications } from "../src/lib/notify.ts";
 import { applyEnvelope, emptySession, endStreaming } from "../src/lib/session-state.ts";
 import { STATUS_LABELS, statusTone } from "../src/lib/status.ts";
 
@@ -103,6 +103,23 @@ describe("desktop: estado da sessão", () => {
     expect(s.statusReason).toBe("boom");
   });
 
+  test("session.summary não altera a conversa nem o lastSeq", () => {
+    const before = applyEnvelope(emptySession(), env(1, { type: "message.user", text: "oi" }));
+    const after = applyEnvelope(
+      before,
+      env(5, {
+        type: "session.summary",
+        sessionId: "s",
+        name: null,
+        cwd: "/p",
+        status: "idle",
+        pendingPermissions: [],
+        updatedAt: "2026-10-28T00:00:00.000Z",
+      } as SessionEvent),
+    );
+    expect(after).toEqual(before);
+  });
+
   test("endStreaming limpa o texto parcial (usado ao reconectar)", () => {
     const s = applyEnvelope(emptySession(), env(0, { type: "message.delta", text: "x" }));
     expect(endStreaming(s).streaming).toBe("");
@@ -149,29 +166,24 @@ describe("desktop: diff de edição", () => {
 });
 
 describe("desktop: notificações e status", () => {
-  test("notifica pedido de permissão e fim de turno só fora de foco", () => {
-    const req: SessionEvent = {
-      type: "permission.requested",
-      requestId: "r",
-      toolName: "Bash",
-      input: {},
+  test("notifica pedido novo e fim de turno comparando resumos, só fora de foco", () => {
+    const base = { status: "running" as const, pendingPermissions: [] as PendingPermission[] };
+    const asking = {
+      status: "awaiting_permission" as const,
+      pendingPermissions: [{ requestId: "r1", toolName: "Bash", createdAt: "t" }],
     };
-    const done: SessionEvent = {
-      type: "turn.result",
-      subtype: "success",
-      isError: false,
-      durationMs: 1,
-    };
-    expect(notificationFor(req, "proj", false)).toEqual({
-      title: "proj: esperando você",
-      body: "Permitir Bash?",
-    });
-    expect(notificationFor(done, "proj", false)).toEqual({
-      title: "proj: turno concluído",
-      body: "success",
-    });
-    expect(notificationFor(req, "proj", true)).toBeNull();
-    expect(notificationFor({ type: "message.user", text: "x" }, "proj", false)).toBeNull();
+    expect(summaryNotifications(undefined, asking, "pc · s", false)).toEqual([]);
+    expect(summaryNotifications(base, asking, "pc · s", false)).toEqual([
+      { title: "pc · s: esperando você", body: "Permitir Bash?" },
+    ]);
+    expect(summaryNotifications(asking, asking, "pc · s", false)).toEqual([]);
+    expect(summaryNotifications(base, { ...base, status: "idle" }, "pc · s", false)).toEqual([
+      { title: "pc · s: turno concluído", body: "ociosa" },
+    ]);
+    expect(
+      summaryNotifications({ ...base, status: "idle" }, { ...base, status: "idle" }, "x", false),
+    ).toEqual([]);
+    expect(summaryNotifications(base, asking, "pc · s", true)).toEqual([]);
   });
 
   test("rótulos e tons de status", () => {
