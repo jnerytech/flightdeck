@@ -49,6 +49,8 @@ interface Connection {
   subscriptions: Map<string, () => void>;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
+  /** Stops the `sessions.watch` stream, when active. */
+  unwatch?: () => void;
   lastRttMs?: number;
 }
 
@@ -166,6 +168,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "permission.respond":
         manager.respondPermission(command.payload);
         return ok(command.type);
+      case "sessions.watch": {
+        // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.
+        ws.data.unwatch?.();
+        const watch = manager.watchSummaries((envelope) => send(ws, envelope));
+        ws.data.unwatch = watch.unwatch;
+        ok(command.type);
+        for (const envelope of watch.snapshot) send(ws, envelope);
+        return;
+      }
     }
   }
 
@@ -221,6 +232,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       },
       close(ws) {
         authed.delete(ws);
+        ws.data.unwatch?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

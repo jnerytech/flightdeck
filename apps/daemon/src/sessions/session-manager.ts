@@ -45,6 +45,7 @@ export class SessionManager {
   private readonly broker: PermissionBroker;
   private readonly live = new Map<string, LiveSession>();
   private readonly listeners = new Map<string, Set<EventListener>>();
+  private readonly summaryListeners = new Set<EventListener>();
 
   constructor(private readonly opts: SessionManagerOptions) {
     this.store = opts.store;
@@ -88,6 +89,7 @@ export class SessionManager {
     });
     this.emit(id, { type: "session.created", cwd, name, permissionMode });
     this.emit(id, { type: "session.status", status: "starting" });
+    this.emitSummary(id);
     this.startRun(id);
     this.deliver(id, payload.prompt);
     return { sessionId: id };
@@ -176,6 +178,44 @@ export class SessionManager {
         this.listeners.get(sessionId)?.delete(listener);
       },
     };
+  }
+
+  /**
+   * Streams a `session.summary` for every session on each status or pending-permission change.
+   * Returns the current summary of every session, registered in the same synchronous step.
+   */
+  watchSummaries(listener: EventListener): { snapshot: EventEnvelope[]; unwatch: () => void } {
+    const snapshot = this.store.listSessions().map((s) => this.summaryEnvelope(s.id));
+    this.summaryListeners.add(listener);
+    return { snapshot, unwatch: () => this.summaryListeners.delete(listener) };
+  }
+
+  /** Ephemeral: the store does not persist it and stamps it with the last persisted seq. */
+  private summaryEnvelope(sessionId: string): EventEnvelope {
+    const session = this.get(sessionId);
+    return this.store.appendEvent(sessionId, {
+      type: "session.summary",
+      sessionId,
+      name: session.name,
+      cwd: session.cwd,
+      status: session.status,
+      pendingPermissions: this.store
+        .pendingPermissions(sessionId)
+        .map((p) => ({ requestId: p.id, toolName: p.toolName, createdAt: p.createdAt })),
+      updatedAt: session.updatedAt,
+    });
+  }
+
+  private emitSummary(sessionId: string): void {
+    if (this.summaryListeners.size === 0) return;
+    const envelope = this.summaryEnvelope(sessionId);
+    for (const listener of this.summaryListeners) {
+      try {
+        listener(envelope);
+      } catch {
+        // A broken watcher must not break the session.
+      }
+    }
   }
 
   /** Stops every run without touching statuses; the next boot marks active ones as `error`. */
@@ -271,6 +311,9 @@ export class SessionManager {
       this.setStatus(sessionId, "awaiting_permission");
     } else if (pending === 0 && status === "awaiting_permission") {
       this.setStatus(sessionId, "running");
+    } else {
+      // Same status, different list of open requests.
+      this.emitSummary(sessionId);
     }
   }
 
@@ -279,6 +322,7 @@ export class SessionManager {
     if (current === status && reason === undefined) return;
     this.store.updateSession(sessionId, { status });
     this.emit(sessionId, { type: "session.status", status, ...(reason ? { reason } : {}) });
+    this.emitSummary(sessionId);
   }
 
   private emit(sessionId: string, event: SessionEvent): void {

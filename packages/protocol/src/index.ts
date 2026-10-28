@@ -76,6 +76,14 @@ export const Usage = z.object({
 });
 export type Usage = z.infer<typeof Usage>;
 
+/** An open permission request, as listed in `session.summary`. */
+export const PendingPermission = z.object({
+  requestId: z.string(),
+  toolName: z.string(),
+  createdAt: z.string(),
+});
+export type PendingPermission = z.infer<typeof PendingPermission>;
+
 export const SessionEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session.created"),
@@ -124,13 +132,26 @@ export const SessionEvent = z.discriminatedUnion("type", [
     usage: Usage.optional(),
   }),
   z.object({ type: z.literal("session.error"), code: z.string(), message: z.string() }),
+  z.object({
+    type: z.literal("session.summary"),
+    sessionId: z.string(),
+    name: z.string().nullable(),
+    cwd: z.string(),
+    status: SessionStatus,
+    /** Open requests, oldest first; the count is its length. */
+    pendingPermissions: z.array(PendingPermission),
+    updatedAt: z.string(),
+  }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;
 export type SessionEventType = SessionEvent["type"];
 export type SessionEventOf<T extends SessionEventType> = Extract<SessionEvent, { type: T }>;
 
 /** Events that are sent live but never persisted nor replayed. */
-export const EPHEMERAL_EVENTS: ReadonlySet<SessionEventType> = new Set(["message.delta"]);
+export const EPHEMERAL_EVENTS: ReadonlySet<SessionEventType> = new Set([
+  "message.delta",
+  "session.summary",
+]);
 
 // ---------------------------------------------------------------------------
 // Commands (client → daemon)
@@ -179,6 +200,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.subscribe", SessionSubscribePayload),
   cmd("session.unsubscribe", SessionIdPayload),
   cmd("permission.respond", PermissionRespondPayload),
+  cmd("sessions.watch", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -226,6 +248,7 @@ export interface CommandResults {
   "session.subscribe": SessionSubscribeResult;
   "session.unsubscribe": undefined;
   "permission.respond": undefined;
+  "sessions.watch": undefined;
 }
 
 // ---------------------------------------------------------------------------

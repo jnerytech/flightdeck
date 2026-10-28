@@ -65,6 +65,9 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
   const push = (item: ChatItem) => ({ ...next, items: [...state.items, item] });
 
   switch (event.type) {
+    // Host-wide summaries feed the sidebar, not the session timeline.
+    case "session.summary":
+      return state;
     case "session.created":
       return { ...next, cwd: event.cwd };
     case "session.status":
