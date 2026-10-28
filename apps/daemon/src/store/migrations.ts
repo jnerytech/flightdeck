@@ -36,4 +36,37 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX permission_requests_pending ON permission_requests (status, session_id);
   `,
+  // Phase 3: transcripts indexed from ~/.claude/projects. The FTS table depends on FTS5 being
+  // available, so the history index creates it at boot (see history/indexer.ts).
+  `
+  CREATE TABLE history_files (
+    path              TEXT PRIMARY KEY,
+    claude_session_id TEXT,
+    size              INTEGER,
+    mtime             TEXT,
+    offset            INTEGER,
+    parse_errors      INTEGER
+  );
+
+  CREATE TABLE history_sessions (
+    claude_session_id TEXT PRIMARY KEY,
+    cwd               TEXT,
+    title             TEXT,
+    first_ts          TEXT,
+    last_ts           TEXT,
+    message_count     INTEGER,
+    origin            TEXT,
+    file_path         TEXT
+  );
+
+  CREATE TABLE history_messages (
+    claude_session_id TEXT,
+    uuid              TEXT,
+    ts                TEXT,
+    role              TEXT,
+    kind              TEXT,
+    text              TEXT,
+    PRIMARY KEY (claude_session_id, uuid)
+  );
+  `,
 ];
