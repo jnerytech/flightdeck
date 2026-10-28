@@ -95,7 +95,7 @@ interface Listed {
 }
 interface Got {
   session: Record<string, unknown> | null;
-  messages: Array<{ uuid: string }>;
+  messages: Array<{ uuid: string } & Record<string, unknown>>;
   nextCursor: string | null;
   prevCursor: string | null;
 }
