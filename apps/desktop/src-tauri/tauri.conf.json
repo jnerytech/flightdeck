@@ -16,7 +16,8 @@
         "width": 1200,
         "height": 800,
         "minWidth": 720,
-        "minHeight": 480
+        "minHeight": 480,
+        "label": "main"
       }
     ],
     "security": {
@@ -33,5 +34,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["flightdeck"]
+      }
+    }
   }
 }
