@@ -1,4 +1,6 @@
+import { unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
+import { formatPairingLink } from "@flightdeck/protocol";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
   defaultConfigPath,
@@ -7,8 +9,9 @@ import {
   RuntimeKind,
   updateConfigFile,
 } from "./config.ts";
-import { spawnExec } from "./exec.ts";
+import { type Exec, spawnExec } from "./exec.ts";
 import { acquireLock } from "./lock.ts";
+import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -27,17 +30,20 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "service";
+  command: "start" | "pair" | "service";
   /** `service <action>`. */
   action?: ServiceAction;
   /** `service ... --dry-run`: print, change nothing. */
   dryRun?: true;
   config?: string;
   runtime?: RuntimeKind;
+  /** `pair --rotate`: generate a new token first. */
+  rotate?: true;
 }
 
 const USAGE = [
   "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
+  "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
 ].join("\n");
 
@@ -54,6 +60,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     };
     switch (flag) {
       case "start":
+      case "pair":
+        args.command = flag;
+        break;
+      case "--rotate":
+        args.rotate = true;
         break;
       case "service": {
         args.command = "service";
@@ -119,9 +130,10 @@ export async function startDaemon(
   args: CliArgs,
   env: Record<string, string | undefined>,
   logger: Logger,
-  options: { wslCommand?: (item: WslItem) => string[] } = {},
+  options: { configWatchMs?: number; wslCommand?: (item: WslItem) => string[] } = {},
 ): Promise<Daemon> {
-  const config = loadConfig(args.config);
+  const configFile = configPath(args);
+  const config = loadConfig(configFile);
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = acquireLock(config.dataDir);
@@ -157,6 +169,13 @@ export async function startDaemon(
       : null;
   wsl?.start();
 
+  // `pair --rotate` runs in another process: follow the token in the config file.
+  const onConfigChange = () => {
+    const token = readToken(configFile);
+    if (token) server.setToken(token);
+  };
+  watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
+
   logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
   if (config.allowedRoots.length === 0) {
     logger.error("aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada");
@@ -168,6 +187,7 @@ export async function startDaemon(
     runtime,
     stop: () => {
       stopped ??= (async () => {
+        unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
         await manager.shutdown();
         await server.stop();
@@ -181,6 +201,31 @@ export async function startDaemon(
 
 function configPath(args: CliArgs): string {
   return resolve(expandHome(args.config ?? defaultConfigPath()));
+}
+
+/** Current token in the config file, or `null` while it is unreadable or invalid. */
+function readToken(file: string): string | null {
+  try {
+    return loadConfig(file).token;
+  } catch {
+    return null;
+  }
+}
+
+/** `flightdeckd pair`: prints the pairing link and its QR code. */
+async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
+  const file = configPath(args);
+  if (args.rotate) rotateToken(file);
+  const config = loadConfig(file);
+  const address = pairingAddress(config.bind, await tailscaleIp(deps.exec ?? spawnExec));
+  const link = formatPairingLink({
+    address,
+    port: config.port,
+    name: config.hostName,
+    token: config.token,
+  });
+  deps.log.log(link);
+  deps.log.log(await renderQr(link));
 }
 
 /**
@@ -222,14 +267,16 @@ export interface CliDeps {
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
   serviceContext?: (dryRun: boolean) => ServiceContext;
+  /** Runs external commands (`tailscale ip -4`); injected in tests. */
+  exec?: Exec;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
-    if (args.command === "service") {
-      await runService(args, deps);
+    if (args.command === "pair" || args.command === "service") {
+      await (args.command === "pair" ? runPair(args, deps) : runService(args, deps));
       deps.exit(0);
       return null;
     }

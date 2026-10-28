@@ -43,6 +43,8 @@ export interface ServerOptions {
 export interface RunningServer {
   url: string;
   port: number;
+  /** Switches to a new token and closes every connection authenticated with the old one. */
+  setToken(token: string): void;
   stop(): Promise<void>;
 }
 
@@ -82,6 +84,7 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
   const authed = new Set<Socket>();
+  let currentToken = opts.token;
   const startedAt = Date.now();
   let pingSeq = 0;
 
@@ -113,7 +116,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       unauthorized(ws);
       return;
     }
-    if (!tokenMatches(opts.token, parsed.data.payload.token)) {
+    if (!tokenMatches(currentToken, parsed.data.payload.token)) {
       unauthorized(ws);
       return;
     }
@@ -259,6 +262,12 @@ export function startServer(opts: ServerOptions): RunningServer {
   return {
     url: `ws://${host}:${port}${WS_PATH}`,
     port,
+    setToken(token) {
+      if (token === currentToken) return;
+      currentToken = token;
+      // Only one token is valid at a time, so every authenticated client used the old one.
+      for (const ws of authed) ws.close(CLOSE_UNAUTHORIZED, "token rotacionado");
+    },
     stop: () => {
       clearInterval(heartbeat);
       return server.stop(true);

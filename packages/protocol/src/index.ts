@@ -323,3 +323,5 @@ export type ServerMessage = z.infer<typeof ServerMessage>;
 export function parseServerMessage(raw: string): ServerMessage {
   return ServerMessage.parse(JSON.parse(raw));
 }
+
+export * from "./pairing.ts";
