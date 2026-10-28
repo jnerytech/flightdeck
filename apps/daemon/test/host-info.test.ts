@@ -119,6 +119,16 @@ describe("host-info", () => {
     ).toBeNull();
   });
 
+  test("sem caminho do claude resolvido, a sonda não executa nada e devolve null", async () => {
+    const calls: unknown[] = [];
+    const probe = claudeVersionProbe(null, async (cmd) => {
+      calls.push(cmd);
+      return { code: 0, stdout: "1.0.0" };
+    });
+    expect(await probe()).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
   test("com runtime fake o daemon informa null e não executa o claude", async () => {
     const file = configFile({ claude: { executablePath: "/nao/existe/claude" } });
     const daemon = await startDaemon(
