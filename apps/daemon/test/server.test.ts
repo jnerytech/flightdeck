@@ -29,7 +29,7 @@ class TestClient {
     this.ws.addEventListener("message", (msg) => {
       const parsed = parseServerMessage(String(msg.data));
       if (parsed.type === "event") this.events.push(parsed);
-      else this.acks.get(parsed.id)?.(parsed);
+      else if (parsed.type === "ack") this.acks.get(parsed.id)?.(parsed);
     });
     this.ws.addEventListener("close", (e) => {
       this.closed = { code: e.code, reason: e.reason };
