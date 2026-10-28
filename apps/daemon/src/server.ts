@@ -211,6 +211,28 @@ export function startServer(opts: ServerOptions): RunningServer {
         }));
         return ok(command.type, { hits });
       }
+      case "history.resume": {
+        const { claudeSessionId, force, name, permissionMode } = command.payload;
+        const session = history().session(claudeSessionId);
+        if (!session) {
+          throw new FlightdeckError("not_found", `transcript ${claudeSessionId} não indexado`);
+        }
+        if (session.maybeActive && !force) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "sessão possivelmente em uso em outro lugar; envie force: true para retomar mesmo assim",
+          );
+        }
+        return ok(
+          command.type,
+          manager.createResumed({
+            cwd: session.cwd,
+            claudeSessionId,
+            name: name ?? session.title,
+            ...(permissionMode ? { permissionMode } : {}),
+          }),
+        );
+      }
       case "history.watch": {
         const index = history();
         ws.data.unwatchHistory?.();

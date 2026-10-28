@@ -216,6 +216,14 @@ export const HistorySearchPayload = z.object({
   limit: z.number().int().min(1).max(200).optional(),
 });
 
+export const HistoryResumePayload = z.object({
+  claudeSessionId: z.string().min(1),
+  name: z.string().min(1).optional(),
+  permissionMode: PermissionMode.optional(),
+  /** Required when the transcript is `maybeActive`: two writers corrupt the conversation. */
+  force: z.boolean().optional(),
+});
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -235,6 +243,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("history.list", HistoryListPayload),
   cmd("history.get", HistoryGetPayload),
   cmd("history.search", HistorySearchPayload),
+  cmd("history.resume", HistoryResumePayload),
   cmd("history.watch", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
@@ -354,6 +363,7 @@ export interface CommandResults {
   "history.list": HistoryListResult;
   "history.get": HistoryGetResult;
   "history.search": HistorySearchResult;
+  "history.resume": SessionCreateResult;
   "history.watch": undefined;
 }
 

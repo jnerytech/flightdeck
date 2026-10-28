@@ -108,6 +108,35 @@ export class SessionManager {
     return { sessionId: id };
   }
 
+  /**
+   * Turns a transcript started elsewhere into a managed session: the run starts with `resume`
+   * on that Claude session and waits, idle, for the first message.
+   */
+  createResumed(opts: {
+    cwd: string;
+    claudeSessionId: string;
+    name: string | null;
+    permissionMode?: PermissionMode;
+  }): { sessionId: string } {
+    const cwd = resolveAllowedCwd(opts.cwd, this.opts.allowedRoots);
+    const id = ulid();
+    const permissionMode = opts.permissionMode ?? this.opts.defaultPermissionMode;
+    this.store.createSession({
+      id,
+      name: opts.name,
+      cwd,
+      status: "starting",
+      permissionMode,
+      model: null,
+    });
+    this.store.updateSession(id, { claudeSessionId: opts.claudeSessionId });
+    this.emit(id, { type: "session.created", cwd, name: opts.name, permissionMode });
+    this.emit(id, { type: "session.status", status: "starting" });
+    this.startRun(id, opts.claudeSessionId);
+    this.setStatus(id, "idle", "retomada do histórico");
+    return { sessionId: id };
+  }
+
   send(sessionId: string, text: string): { queued: boolean } {
     const session = this.get(sessionId);
     if (session.status === "ended" || session.status === "error") {
