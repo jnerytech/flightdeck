@@ -16,12 +16,17 @@ export interface ClaudeGuard {
   log: string;
 }
 
-export function installClaudeGuard(env: Record<string, string | undefined> = process.env): ClaudeGuard {
+export function installClaudeGuard(
+  env: Record<string, string | undefined> = process.env,
+): ClaudeGuard {
   const dir = mkdtempSync(join(tmpdir(), "fd-claude-guard-"));
   const log = join(dir, "calls.log");
   writeFileSync(join(dir, "claude"), `#!/bin/sh\necho "claude $*" >> "${log}"\nexit 99\n`);
   chmodSync(join(dir, "claude"), 0o755);
-  writeFileSync(join(dir, "claude.cmd"), `@echo off\r\necho claude %* >> "${log}"\r\nexit /b 99\r\n`);
+  writeFileSync(
+    join(dir, "claude.cmd"),
+    `@echo off\r\necho claude %* >> "${log}"\r\nexit /b 99\r\n`,
+  );
 
   // Windows spells it "Path"; rewrite every casing so children inherit the guarded value.
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");
