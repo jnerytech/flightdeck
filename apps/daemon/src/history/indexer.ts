@@ -23,6 +23,10 @@ export interface IndexResult {
 /** Fallback title: the first user message, cut to this many characters. */
 const TITLE_CHARS = 120;
 
+/** `flightdeck` when the transcript belongs to a session this daemon manages. */
+const ORIGIN = `CASE WHEN EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id)
+  THEN 'flightdeck' ELSE 'external' END`;
+
 const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
 
 /** Comparable form of a folder: forward slashes, no trailing slash, case folded where the OS does. */
@@ -54,6 +58,11 @@ export class HistoryIndexer {
 
   /** One pass over every root; returns the files that gained records. */
   scan(): IndexResult[] {
+    // A managed session may get its claudeSessionId after its transcript was indexed.
+    this.db.run(
+      `UPDATE history_sessions SET origin = 'flightdeck' WHERE origin = 'external'
+         AND claude_session_id IN (SELECT claude_session_id FROM sessions)`,
+    );
     const results: IndexResult[] = [];
     for (const path of this.files()) {
       const result = this.indexFile(path);
@@ -186,9 +195,10 @@ export class HistoryIndexer {
       .query(
         `INSERT INTO history_sessions
            (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path)
-         VALUES ($id, $cwd, $title, $first, $last, $count, 'external', $path)
+         VALUES ($id, $cwd, $title, $first, $last, $count, ${ORIGIN}, $path)
          ON CONFLICT(claude_session_id) DO UPDATE SET cwd = $cwd, title = $title,
-           first_ts = $first, last_ts = $last, message_count = $count, file_path = $path`,
+           first_ts = $first, last_ts = $last, message_count = $count, origin = ${ORIGIN},
+           file_path = $path`,
       )
       .run({ id: claudeSessionId, cwd, title, ...totals, path });
   }
