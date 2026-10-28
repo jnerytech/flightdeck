@@ -47,6 +47,23 @@ export async function waitFor<T>(
   }
 }
 
+/**
+ * Like `waitFor`, but returns `null` on timeout instead of throwing, so the test fails on the
+ * `expect` that follows (an assertion), never on the wait itself (docs/TDD.md).
+ */
+export async function poll<T>(
+  check: () => T | undefined | null | false,
+  timeoutMs = 3000,
+): Promise<T | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = check();
+    if (value) return value;
+    if (Date.now() > deadline) return null;
+    await Bun.sleep(5);
+  }
+}
+
 /** Subscribes from the start of a session and records every envelope. */
 export function record(manager: SessionManager, sessionId: string, sinceSeq = 0) {
   const envelopes: EventEnvelope[] = [];
