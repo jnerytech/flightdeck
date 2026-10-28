@@ -9,6 +9,30 @@ export interface HistoryIndexerOptions {
   roots: readonly string[];
   /** Sessions whose `cwd` is one of these folders, or inside one, are never indexed. */
   excludeCwds?: readonly string[];
+  /** Whether SQLite has FTS5; detected when absent (injectable so tests cover both paths). */
+  fts5?: boolean;
+  log?: (message: string) => void;
+}
+
+export interface SearchQuery {
+  query: string;
+  /** Only sessions in this folder or below it. */
+  cwd?: string;
+  /** ISO timestamps, inclusive. */
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+export interface SearchHit {
+  claudeSessionId: string;
+  uuid: string;
+  ts: string | null;
+  cwd: string;
+  title: string | null;
+  role: string;
+  /** Excerpt around the match, each match wrapped in `«` and `»`. */
+  snippet: string;
 }
 
 export interface IndexResult {
@@ -26,6 +50,30 @@ const TITLE_CHARS = 120;
 /** `flightdeck` when the transcript belongs to a session this daemon manages. */
 const ORIGIN = `CASE WHEN EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id)
   THEN 'flightdeck' ELSE 'external' END`;
+
+/** Characters of context kept on each side of the first match. */
+const SNIPPET_RADIUS = 60;
+
+/** Excerpt around the first matched term, every term occurrence wrapped in `«»`. */
+function snippet(text: string, terms: string[]): string {
+  const lower = text.toLowerCase();
+  const found = terms.map((t) => lower.indexOf(t.toLowerCase())).filter((i) => i >= 0);
+  const first = found.length > 0 ? Math.min(...found) : 0;
+  const start = Math.max(0, first - SNIPPET_RADIUS);
+  const end = Math.min(text.length, first + SNIPPET_RADIUS * 2);
+  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(escaped.join("|"), "gi");
+  const excerpt = text.slice(start, end).replace(/\s+/g, " ").replace(pattern, "«$&»");
+  return `${start > 0 ? "…" : ""}${excerpt}${end < text.length ? "…" : ""}`;
+}
+
+/** FTS5 compiled into this SQLite (Bun bundles it; system builds may not). */
+function fts5Available(db: Database): boolean {
+  return (
+    db.query("SELECT 1 FROM pragma_compile_options WHERE compile_options = 'ENABLE_FTS5'").get() !==
+    null
+  );
+}
 
 const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
 
@@ -50,10 +98,81 @@ const entries = (dir: string) => {
 export class HistoryIndexer {
   private readonly db: Database;
   private readonly excludes: string[];
+  /** Full-text search through FTS5; `LIKE` otherwise. */
+  readonly fts: boolean;
 
   constructor(readonly opts: HistoryIndexerOptions) {
     this.db = opts.db;
     this.excludes = (opts.excludeCwds ?? []).map(normalizeCwd);
+    this.fts = opts.fts5 ?? fts5Available(this.db);
+    opts.log?.(
+      this.fts ? "histórico: busca com FTS5" : "histórico: FTS5 indisponível, busca com LIKE",
+    );
+    // Only message rows go into the index: raw lines and tool results are never searchable.
+    if (this.fts) {
+      this.db.run(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(text, content='history_messages')",
+      );
+    }
+  }
+
+  /** Messages containing every term, newest first. */
+  search(query: SearchQuery): SearchHit[] {
+    const terms = query.query.split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return [];
+    const where = ["m.kind = 'message'"];
+    const params: Record<string, string | number> = { limit: query.limit ?? 20 };
+    let source = "history_messages m";
+    if (this.fts) {
+      source = "history_fts JOIN history_messages m ON m.rowid = history_fts.rowid";
+      where.push("history_fts MATCH $match");
+      // Each term quoted (no FTS syntax from the user) and matched as a prefix.
+      params.match = terms.map((t) => `"${t.replaceAll('"', '""')}"*`).join(" ");
+    } else {
+      terms.forEach((term, i) => {
+        where.push(`m.text LIKE $t${i} ESCAPE '\\'`);
+        params[`t${i}`] = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+      });
+    }
+    if (query.cwd) {
+      where.push(
+        "(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\\'))",
+      );
+      params.cwd = query.cwd.replace(/[\\/]+$/, "");
+    }
+    if (query.from) {
+      where.push("m.ts >= $from");
+      params.from = query.from;
+    }
+    if (query.to) {
+      where.push("m.ts <= $to");
+      params.to = query.to;
+    }
+    const rows = this.db
+      .query(
+        `SELECT m.claude_session_id, m.uuid, m.ts, s.cwd, s.title, m.role, m.text
+         FROM ${source} JOIN history_sessions s ON s.claude_session_id = m.claude_session_id
+         WHERE ${where.join(" AND ")}
+         ORDER BY m.ts DESC, m.rowid DESC LIMIT $limit`,
+      )
+      .all(params) as Array<{
+      claude_session_id: string;
+      uuid: string;
+      ts: string | null;
+      cwd: string;
+      title: string | null;
+      role: string;
+      text: string;
+    }>;
+    return rows.map((r) => ({
+      claudeSessionId: r.claude_session_id,
+      uuid: r.uuid,
+      ts: r.ts,
+      cwd: r.cwd,
+      title: r.title,
+      role: r.role,
+      snippet: snippet(r.text, terms),
+    }));
   }
 
   /** One pass over every root; returns the files that gained records. */
@@ -126,8 +245,20 @@ export class HistoryIndexer {
         `INSERT OR IGNORE INTO history_messages (claude_session_id, uuid, ts, role, kind, text)
          VALUES (?, ?, ?, ?, ?, ?)`,
       );
-      if (!excluded) {
-        for (const r of records) insert.run(claudeSessionId, r.uuid, r.ts, r.role, r.kind, r.text);
+      const ftsInsert = this.fts
+        ? this.db.query("INSERT INTO history_fts (rowid, text) VALUES (?, ?)")
+        : null;
+      for (const r of excluded ? [] : records) {
+        const { changes, lastInsertRowid } = insert.run(
+          claudeSessionId,
+          r.uuid,
+          r.ts,
+          r.role,
+          r.kind,
+          r.text,
+        );
+        if (ftsInsert && changes > 0 && r.kind === "message")
+          ftsInsert.run(lastInsertRowid, r.text);
       }
       this.db
         .query(
@@ -151,6 +282,15 @@ export class HistoryIndexer {
 
   /** Drops everything indexed for a session (its file row is rewritten by the caller). */
   private forget(claudeSessionId: string): void {
+    // External-content FTS5 needs the old text to drop its entries.
+    if (this.fts) {
+      this.db.run(
+        `INSERT INTO history_fts (history_fts, rowid, text)
+         SELECT 'delete', rowid, text FROM history_messages
+         WHERE claude_session_id = ? AND kind = 'message'`,
+        [claudeSessionId],
+      );
+    }
     this.db.query("DELETE FROM history_messages WHERE claude_session_id = ?").run(claudeSessionId);
     this.db.query("DELETE FROM history_sessions WHERE claude_session_id = ?").run(claudeSessionId);
   }
