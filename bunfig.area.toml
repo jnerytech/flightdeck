@@ -1,0 +1,4 @@
+# Per-area TDD runs: `bun --config=bunfig.area.toml test <file>`.
+# Same as bunfig.toml without the coverage gate, which only makes sense for the whole suite.
+[test]
+coverage = false
