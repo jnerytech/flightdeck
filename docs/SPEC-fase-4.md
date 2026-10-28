@@ -66,7 +66,8 @@ Mover um card à mão para Backlog ou Concluído trava a coluna até o próximo 
 ### PRs
 
 - Interface `PrProvider` com `create`, `status` e `url`; implementações `GithubCli` (via `gh`) e `AzureDevOpsCli` (via `az repos`). Os dois CLIs precisam estar instalados e autenticados no host; o daemon só os invoca.
-- Cards com PR aberto são consultados a cada 60 s: estado (aberto, mesclado, fechado) e situação dos checks.
+- Cards com PR aberto são consultados a cada 60 s (intervalo injetável nos testes): estado (aberto, mesclado, fechado) e situação dos checks.
+- `gh`, `az` e `git` são procurados com `whichOnPath`, no PATH atual, para os substitutos falsos dos testes funcionarem.
 
 ### Dados
 
@@ -108,26 +109,21 @@ O board é a tela principal de cada projeto; a conversa da sessão continua um c
 
 ## Disciplina TDD
 
-Toda funcionalidade desta fase nasce de um teste que falha, e o histórico do git precisa provar isso.
+Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência. A auditoria `bun run tdd:audit -- --since fase-3` (criada na Fase 2) confere a ordem dos commits e a ausência de testes desligados.
 
-1. Para cada área da tabela de testes, e para qualquer comportamento novo fora dela, escreva primeiro o teste e rode só esse arquivo com `bun test <arquivo>`. Mostre a falha, e ela precisa ser pelo motivo certo: uma asserção, não erro de import, sintaxe ou tipo.
-2. Commit só com o teste: `test(<área>): <comportamento>`, com a área em kebab-case (por exemplo `worktree`, `colunas`).
-3. Escreva a implementação mínima, rode o mesmo arquivo e mostre o verde. Commit `feat(<área>): ...`.
-4. Refatoração só com a suíte inteira verde, em commit `refactor(<área>): ...`.
-5. Bug achado depois: primeiro o teste que reproduz, depois a correção em `fix(<área>): ...`.
-6. Os smokes também começam vermelhos: o script é escrito e roda falhando antes da implementação que ele cobre.
-7. Proibido: implementação antes do teste da área, enfraquecer ou apagar asserção para passar, e `.only`, `.skip` ou `test.todo` no código commitado.
-
-A auditoria `bun run tdd:audit -- --since fase-3` (criada na Fase 2) confere a ordem dos commits e a ausência de testes desligados.
+**Trava desta fase: CLIs de PR e remotos.** O preload de testes ganha sentinelas de `gh` e `az`, que reprovam a suíte se forem chamadas sem um falso instalado pelo próprio teste. No Windows, cada falso tem versão `.cmd`. Push só para remotos locais (`git init --bare` em pasta temporária); o teste confere a URL do remoto antes do push.
 
 ## Testes, critérios e /goal
 
-Os testes usam git de verdade em repositórios temporários e substitutos falsos de `gh` e `az` colocados no PATH, que registram os argumentos e devolvem respostas fixas; nada é enviado a um remoto real.
+Os testes usam git de verdade em repositórios temporários e substitutos falsos de `gh` e `az` colocados no PATH, que registram os argumentos e devolvem respostas fixas, com as travas de `docs/TDD.md` e a trava de CLIs ativas; nada é enviado a um remoto real.
 
 **Áreas de teste (cada uma entra no TDD e na auditoria)**
 
 | Área | O que precisa passar |
 | --- | --- |
+| `projetos` | cadastro valida caminho dentro de `allowedRoots` e repositório git; script de preparação só existe se cadastrado |
+| `protocolo-board` | `board.get` devolve as colunas; `board.watch` recebe `card.updated` após cada mudança |
+| `board-ui` | arrastar entre colunas move o card; filtro por texto; Concluir e Descartar pedem confirmação |
 | `worktree` | iniciar cria branch `fd/<slug>` e a worktree a partir da base; `.flightdeck/` entra em `.git/info/exclude` e o `.gitignore` fica intacto |
 | `preparacao` | script cadastrado roda na worktree antes da sessão; falha leva o card para Esperando você com o erro |
 | `colunas` | cada linha da tabela de colunas automáticas move o card para a coluna certa; trava manual é respeitada |
@@ -139,20 +135,20 @@ Os testes usam git de verdade em repositórios temporários e substitutos falsos
 
 **Smoke (`bun run smoke:board`)**
 
-Cria um repositório temporário com um remoto local (`git init --bare`), cadastra o projeto com provedor `github` apontando para o `gh` falso, cria e inicia um card com o `FakeRuntime` configurado para criar um arquivo e commitar, espera Em revisão, confere o diff, abre o PR, simula o merge no `gh` falso e espera Concluído com a worktree removida. Imprime `SMOKE BOARD OK`.
+Começa vermelho, roda com as travas ativas, cria um repositório temporário com um remoto local (`git init --bare`), cadastra o projeto com provedor `github` apontando para o `gh` falso, cria e inicia um card com o `FakeRuntime` configurado para criar um arquivo e commitar, espera Em revisão, confere o diff, abre o PR, simula o merge no `gh` falso e espera Concluído com a worktree removida. Imprime `SMOKE BOARD OK`.
 
 **Critérios de aceite**
 
-- [ ] Para cada área da tabela acima, a conversa mostra o teste falhando antes da implementação e passando depois.
+- [ ] Para cada área da tabela acima, a conversa mostra o teste falhando por asserção antes da implementação e passando depois.
 - [ ] `bun run tdd:audit -- --since fase-3` imprime `TDD AUDIT OK`.
-- [ ] `bun run typecheck`, `bun run lint` e `bun test` saem com código 0.
+- [ ] `bun run typecheck`, `bun run lint` e `bun test` saem com código 0, com cobertura de 100%.
 - [ ] Todos os smokes anteriores continuam passando e `bun run smoke:board` imprime `SMOKE BOARD OK`.
-- [ ] `bun run build:daemon` e `bun run build:desktop` saem com código 0.
+- [ ] `bun run build:daemon` e `bun run build:desktop` saem com código 0, e `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` também, no Windows nativo, se a casca Rust tiver mudado.
 - [ ] README explica cadastro de projeto, provedores de PR e o limite de execuções paralelas.
 - [ ] Divergências registradas em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-4` criada.
 
 **Condição do /goal**
 
 ```text
-/goal A Fase 4 de docs/SPEC-fase-4.md está implementada em TDD e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes (worktree, preparacao, colunas, fila, diff, pr com gh e az falsos, limpeza e descarte), o bun test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-3 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, bun run smoke:multi, bun run smoke:history e bun run smoke:board imprimindo SMOKE OK, SMOKE MULTI OK, SMOKE HISTORY OK e SMOKE BOARD OK; (5) bun run build:daemon e bun run build:desktop saindo com código 0; (6) git status sem alterações pendentes e git tag listando fase-4. Nenhum teste usou o Claude real nem enviou nada a um remoto real.
+/goal A Fase 4 de docs/SPEC-fase-4.md está implementada seguindo docs/TDD.md e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, o bun --config=bunfig.area.toml test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-3 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, bun run smoke:multi, bun run smoke:history e bun run smoke:board imprimindo SMOKE OK, SMOKE MULTI OK, SMOKE HISTORY OK e SMOKE BOARD OK; (5) bun run build:daemon e bun run build:desktop saindo com código 0, e cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml saindo com código 0 no Windows nativo se src-tauri mudou; (6) git status sem alterações pendentes e git tag listando fase-4. Todas as rodadas de bun test e dos smokes rodaram com as travas do claude, de home e de CLIs ativas, e nenhum push foi para remoto que não fosse local.
 ```

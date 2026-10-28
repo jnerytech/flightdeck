@@ -35,7 +35,7 @@ O JSONL do Claude Code é interno e muda entre versões, então o parser trata t
 - A pasta do projeto vem do campo `cwd` das linhas, nunca da decodificação do nome do diretório.
 - Tipos conhecidos (mensagem de usuário, de assistente, resumo, sistema) viram registros normalizados; qualquer outro tipo é guardado cru e ignorado na busca.
 - Linha que não é JSON válido é contada como erro de parse e pulada.
-- Os fixtures de teste são trechos reais anonimizados, versionados em `apps/daemon/test/fixtures/history/`.
+- Os fixtures de teste ficam em `apps/daemon/test/fixtures/history/` e são escritos à mão a partir do formato observado, ou fornecidos já anonimizados por você. O agente não lê o `~/.claude` real nem para montar fixtures: transcripts podem conter segredos e caminhos privados.
 
 ### Indexador
 
@@ -51,7 +51,7 @@ Sessões criadas pelo próprio Flightdeck também geram transcript; quando o `cl
 ### Busca
 
 - O texto indexado é o das mensagens de usuário e assistente, mais uma linha `[ferramenta Nome]` por chamada de ferramenta; resultados de ferramenta não entram. Cada mensagem é cortada em 8 KB.
-- Usa FTS5 do SQLite. No boot o daemon verifica se o FTS5 está disponível; se não estiver, cai para busca com `LIKE` e registra a decisão.
+- Usa FTS5 do SQLite. No boot o daemon verifica se o FTS5 está disponível; se não estiver, cai para busca com `LIKE` e registra a decisão. A disponibilidade é injetável, para o teste exercitar os dois caminhos sem depender do SQLite da máquina.
 
 ### Retomada
 
@@ -93,7 +93,7 @@ O histórico vira uma área própria do app, separada das sessões ativas.
 
 ### Atalho global
 
-A busca fica a um atalho de distância mesmo com o app em segundo plano, pelo plugin de atalho global do Tauri 2, sempre através da camada `platform`.
+A busca fica a um atalho de distância mesmo com o app em segundo plano, pelo plugin de atalho global do Tauri 2 (`tauri-plugin-global-shortcut`, major 2, com a capability correspondente), sempre através da camada `platform`.
 
 - O atalho é configurável, com padrão `Ctrl+Alt+F`. Ele traz o app para frente com a busca global aberta.
 - O `Ctrl+K` continua valendo dentro do app, mas nunca como atalho global, porque colide com o navegador e o VS Code.
@@ -101,21 +101,13 @@ A busca fica a um atalho de distância mesmo com o app em segundo plano, pelo pl
 
 ## Disciplina TDD
 
-Toda funcionalidade desta fase nasce de um teste que falha, e o histórico do git precisa provar isso.
+Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência. A auditoria `bun run tdd:audit -- --since fase-2` (criada na Fase 2) confere a ordem dos commits e a ausência de testes desligados.
 
-1. Para cada área da tabela de testes, e para qualquer comportamento novo fora dela, escreva primeiro o teste e rode só esse arquivo com `bun test <arquivo>`. Mostre a falha, e ela precisa ser pelo motivo certo: uma asserção, não erro de import, sintaxe ou tipo.
-2. Commit só com o teste: `test(<área>): <comportamento>`, com a área em kebab-case (por exemplo `parser`, `incremental`).
-3. Escreva a implementação mínima, rode o mesmo arquivo e mostre o verde. Commit `feat(<área>): ...`.
-4. Refatoração só com a suíte inteira verde, em commit `refactor(<área>): ...`.
-5. Bug achado depois: primeiro o teste que reproduz, depois a correção em `fix(<área>): ...`.
-6. Os smokes também começam vermelhos: o script é escrito e roda falhando antes da implementação que ele cobre.
-7. Proibido: implementação antes do teste da área, enfraquecer ou apagar asserção para passar, e `.only`, `.skip` ou `test.todo` no código commitado.
-
-A auditoria `bun run tdd:audit -- --since fase-2` (criada na Fase 2) confere a ordem dos commits e a ausência de testes desligados.
+**Trava desta fase: home real.** O preload de testes aponta `HOME` e `USERPROFILE` para uma pasta temporária, e a resolução de `~` lê a variável de ambiente atual (pelo mesmo motivo do `whichOnPath`: valores guardados na partida do processo escapam da trava). A suíte reprova se algo tocar o `~/.claude` real.
 
 ## Testes, critérios e /goal
 
-Os testes rodam contra uma pasta temporária que imita `~/.claude/projects`, montada a partir dos fixtures; o `~/.claude` real nunca é lido nos testes.
+Os testes rodam contra uma pasta temporária que imita `~/.claude/projects`, montada a partir dos fixtures, com as travas de `docs/TDD.md` e a trava de home ativas; o `~/.claude` real nunca é lido.
 
 **Áreas de teste (cada uma entra no TDD e na auditoria)**
 
@@ -129,17 +121,21 @@ Os testes rodam contra uma pasta temporária que imita `~/.claude/projects`, mon
 | `busca` | termo presente acha a mensagem certa com snippet; filtros de pasta e período funcionam; fallback sem FTS5 devolve o mesmo acerto |
 | `retomada` | sessão `maybeActive` recusa sem `force`; com `force` cria sessão gerenciada com `resume` |
 | `reindex` | `history reindex` reconstrói o índice com a mesma contagem de mensagens |
+| `protocolo-historico` | `history.list` e `history.get` paginam com `cursor`; `history.watch` recebe `history.changed` quando um arquivo cresce |
+| `busca-global` | o app consulta todos os hosts online em paralelo, junta por data e mostra host offline como "sem resposta" sem travar |
+| `leitor` | o transcript carrega em páginas na rolagem e abre no ponto do acerto vindo da busca |
+| `continuar` | "Continuar no Flightdeck" cria a sessão; sessão possivelmente em uso pede confirmação antes de mandar `force: true`; "Copiar comando" copia `claude --resume <id>` |
 | `atalho-global` | a configuração valida o formato e recusa `Ctrl+K` e combinações sem modificador; falha de registro na implementação falsa da `platform` leva ao aviso e à tela de configuração |
 
 **Smoke (`bun run smoke:history`)**
 
-Cria a pasta temporária com dois transcripts, sobe o daemon `--runtime fake` apontando para ela, espera a indexação, busca um termo que só existe no segundo, retoma essa sessão e confere que o `FakeRuntime` recebeu o `resume` com o id certo. Depois acrescenta uma linha ao primeiro transcript e confere o `history.changed`. Imprime `SMOKE HISTORY OK`.
+Começa vermelho, roda com as travas ativas e cria a pasta temporária com dois transcripts, sobe o daemon `--runtime fake` apontando para ela, espera a indexação, busca um termo que só existe no segundo, retoma essa sessão e confere que o `FakeRuntime` recebeu o `resume` com o id certo. Depois acrescenta uma linha ao primeiro transcript e confere o `history.changed`. Imprime `SMOKE HISTORY OK`.
 
 **Critérios de aceite**
 
-- [ ] Para cada área da tabela acima, a conversa mostra o teste falhando antes da implementação e passando depois.
+- [ ] Para cada área da tabela acima, a conversa mostra o teste falhando por asserção antes da implementação e passando depois.
 - [ ] `bun run tdd:audit -- --since fase-2` imprime `TDD AUDIT OK`.
-- [ ] `bun run typecheck`, `bun run lint` e `bun test` saem com código 0.
+- [ ] `bun run typecheck`, `bun run lint` e `bun test` saem com código 0, com cobertura de 100%.
 - [ ] `bun run smoke`, `bun run smoke:multi` e `bun run smoke:history` imprimem `SMOKE OK`, `SMOKE MULTI OK` e `SMOKE HISTORY OK`.
 - [ ] `bun run build:daemon`, `bun run build:desktop` e `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` saem com código 0 (o último no Windows nativo).
 - [ ] README explica o que é indexado, como excluir pastas, como reconstruir o índice e como mudar o atalho global.
@@ -148,5 +144,5 @@ Cria a pasta temporária com dois transcripts, sobe o daemon `--runtime fake` ap
 **Condição do /goal**
 
 ```text
-/goal A Fase 3 de docs/SPEC-fase-3.md está implementada em TDD e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes (parser, incremental, truncamento, exclusoes, origem, busca com e sem FTS5, retomada, reindex e atalho-global), o bun test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-2 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, bun run smoke:multi e bun run smoke:history imprimindo SMOKE OK, SMOKE MULTI OK e SMOKE HISTORY OK; (5) bun run build:daemon, bun run build:desktop e cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml saindo com código 0, este último no Windows nativo; (6) git status sem alterações pendentes e git tag listando fase-3. Nenhum teste leu o ~/.claude real nem usou o Claude real.
+/goal A Fase 3 de docs/SPEC-fase-3.md está implementada seguindo docs/TDD.md e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, o bun --config=bunfig.area.toml test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-2 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, bun run smoke:multi e bun run smoke:history imprimindo SMOKE OK, SMOKE MULTI OK e SMOKE HISTORY OK; (5) bun run build:daemon, bun run build:desktop e cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml saindo com código 0, este último no Windows nativo; (6) git status sem alterações pendentes e git tag listando fase-3. Todas as rodadas de bun test e dos smokes rodaram com a trava do claude e a trava de home ativas.
 ```

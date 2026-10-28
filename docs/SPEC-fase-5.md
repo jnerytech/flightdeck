@@ -93,7 +93,8 @@ Etapas `check` executam shell, então cada workflow precisa ser aprovado por voc
 
 - Estado persistido a cada transição; reiniciou o daemon, a execução retoma da etapa corrente (sessão com `resume`, `check` rodado de novo, `gate` continua aberto).
 - O card segue as colunas da Fase 4, com mais duas regras: `gate` aberto leva a Esperando você, e a etapa `pr` leva a Em revisão.
-- Orçamento somado de todas as sessões da execução: turnos, minutos de relógio e o custo que o SDK informa em cada `turn.result` (em assinatura, é uma estimativa útil como teto). Estourou, a execução pausa em Esperando você com o motivo.
+- Orçamento somado de todas as sessões da execução: turnos, minutos de relógio e o custo que o SDK informa (em assinatura, é uma estimativa útil como teto). Estourou, a execução pausa em Esperando você com o motivo.
+- **Custo é cumulativo por sessão.** O `costUsd` do `turn.result` vem do `total_cost_usd` do SDK, que é o total acumulado do processo da sessão, não o custo do turno. Guarde o último valor de cada sessão e some entre sessões; nunca some turno a turno. Uma sessão retomada com `resume` começa já com o total anterior: conte só a diferença em relação ao último valor conhecido.
 
 ### Hub
 
@@ -103,7 +104,7 @@ Etapas `check` executam shell, então cada workflow precisa ser aprovado por voc
 
 ### MCP
 
-O hub expõe um servidor MCP (via `@modelcontextprotocol/sdk`) por HTTP na tailnet, com o mesmo token, e o comando `flightdeckd mcp` oferece a versão stdio para o Claude Code local. Ferramentas: `list_hosts`, `list_projects`, `list_workflows`, `create_card`, `start_card`, `get_card`, `get_run`, `respond_gate`. Não há ferramenta para aprovar permissões: isso fica só com você.
+O hub expõe um servidor MCP (via `@modelcontextprotocol/sdk`, numa versão compatível com a peer dependency do Agent SDK) por HTTP na tailnet, com o mesmo token, e o comando `flightdeckd mcp` oferece a versão stdio para o Claude Code local. Ferramentas: `list_hosts`, `list_projects`, `list_workflows`, `create_card`, `start_card`, `get_card`, `get_run`, `respond_gate`. Não há ferramenta para aprovar permissões: isso fica só com você.
 
 ### Dados
 
@@ -147,25 +148,18 @@ O desktop ganha a visão das execuções; o celular ganha um app enxuto, servido
 
 - Servido pelo hub em `/app`, exposto por `tailscale serve` para ter HTTPS, que é exigido para instalar o PWA e receber push.
 - Telas: fila "Precisa de você" (permissões e gates de todos os hosts), aprovar ou negar, execuções ativas com a etapa corrente, conversa com envio de mensagem curta, e iniciar um card a partir de um workflow.
-- Web Push: o hub gera as chaves VAPID e envia notificação em pedido de permissão, gate aberto, orçamento estourado e execução concluída ou com falha.
+- Web Push: o hub gera as chaves VAPID e envia notificação em pedido de permissão, gate aberto, orçamento estourado e execução concluída ou com falha. O emissor é injetável; a biblioteca escolhida vai para `docs/DECISIONS.md`.
+- `bun run build:pwa` gera o PWA a partir de `packages/ui`. A extração dos componentes para `packages/ui` é feita em commits `refactor` com a suíte verde, antes das telas novas.
 
 ## Disciplina TDD
 
-Toda funcionalidade desta fase nasce de um teste que falha, e o histórico do git precisa provar isso.
+Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência. A auditoria `bun run tdd:audit -- --since fase-4` (criada na Fase 2) confere a ordem dos commits e a ausência de testes desligados.
 
-1. Para cada área da tabela de testes, e para qualquer comportamento novo fora dela, escreva primeiro o teste e rode só esse arquivo com `bun test <arquivo>`. Mostre a falha, e ela precisa ser pelo motivo certo: uma asserção, não erro de import, sintaxe ou tipo.
-2. Commit só com o teste: `test(<área>): <comportamento>`, usando o nome da área da tabela como escopo.
-3. Escreva a implementação mínima, rode o mesmo arquivo e mostre o verde. Commit `feat(<área>): ...`.
-4. Refatoração só com a suíte inteira verde, em commit `refactor(<área>): ...`.
-5. Bug achado depois: primeiro o teste que reproduz, depois a correção em `fix(<área>): ...`.
-6. Os smokes também começam vermelhos: o script é escrito e roda falhando antes da implementação que ele cobre.
-7. Proibido: implementação antes do teste da área, enfraquecer ou apagar asserção para passar, e `.only`, `.skip` ou `test.todo` no código commitado.
-
-A auditoria `bun run tdd:audit -- --since fase-4` (criada na Fase 2) confere que cada escopo com `feat` ou `fix` tem um `test` do mesmo escopo antes, e que não sobrou `.only`, `.skip` ou `test.todo`.
+**Trava desta fase: comandos `check`.** Nos testes, etapas `check` só executam comandos falsos instalados pelo próprio teste (resolvidos com `whichOnPath`); o preload reprova a suíte se um `check` tentar rodar algo fora dessa lista.
 
 ## Testes, critérios e /goal
 
-Tudo roda com o `FakeRuntime`, `check` falso configurável e `gh` falso; o hub e os workers do smoke são processos locais em portas diferentes.
+Tudo roda com o `FakeRuntime`, `check` falso configurável e `gh` falso, com todas as travas de `docs/TDD.md` e das fases anteriores ativas; o hub e os workers do smoke são processos locais em portas diferentes.
 
 **Áreas de teste (cada uma entra no TDD e na auditoria)**
 
@@ -179,29 +173,30 @@ Tudo roda com o `FakeRuntime`, `check` falso configurável e `gh` falso; o hub e
 | `engine-loop` | repete até o `check` passar; estourou `max`, pausa com o motivo |
 | `engine-parallel` | itens rodam juntos dentro da fila do host e as saídas chegam em `outputs` na ordem declarada |
 | `engine-resume` | daemon reiniciado no meio de cada tipo de etapa retoma do ponto certo |
-| `budget` | turnos, minutos e custo somam entre sessões; estouro pausa a execução |
+| `budget` | turnos e minutos somam entre sessões; o custo usa o último total de cada sessão (cumulativo) e só a diferença após `resume`; estouro pausa a execução |
 | `trust` | workflow não confiado não roda; hash diferente pede nova confiança; workflow da branch do card é ignorado |
 | `hub-dispatch` | card vai para o worker com o projeto, os rótulos pedidos e mais vagas |
 | `hub-proxy` | comandos e eventos passam pelo hub nos dois sentidos, inclusive `permission.respond` e `gate.respond` |
 | `mcp` | cada ferramenta responde pelo cliente MCP em processo; não existe ferramenta de permissão |
+| `pwa` | as telas do celular rodam com a implementação web falsa da `platform`: fila "Precisa de você", aprovar ou negar, execuções ativas, conversa e iniciar card |
 | `push` | os quatro gatilhos enviam um payload ao emissor de push falso |
 
 **Smoke (`bun run smoke:workflow`)**
 
-Sobe um hub e dois workers `--runtime fake`, cadastra o mesmo projeto nos dois workers com rótulos diferentes, confia no workflow de exemplo, cria um card pelo hub pedindo um rótulo e confere o despacho. Executa o workflow inteiro: plano, gate aprovado pelo hub, implementação, `check` que falha uma vez e passa na segunda, revisão em paralelo e PR no `gh` falso, até o card chegar a Concluído. Imprime `SMOKE WORKFLOW OK`.
+Começa vermelho, roda com as travas ativas, sobe um hub e dois workers `--runtime fake`, cadastra o mesmo projeto nos dois workers com rótulos diferentes, confia no workflow de exemplo, cria um card pelo hub pedindo um rótulo e confere o despacho. Executa o workflow inteiro: plano, gate aprovado pelo hub, implementação, `check` que falha uma vez e passa na segunda, revisão em paralelo e PR no `gh` falso, até o card chegar a Concluído. Imprime `SMOKE WORKFLOW OK`.
 
 **Critérios de aceite**
 
-- [ ] Para cada área da tabela acima, a conversa mostra o teste falhando antes da implementação e passando depois.
+- [ ] Para cada área da tabela acima, a conversa mostra o teste falhando por asserção antes da implementação e passando depois.
 - [ ] `bun run tdd:audit -- --since fase-4` imprime `TDD AUDIT OK`.
-- [ ] `bun run typecheck`, `bun run lint` e `bun test` saem com código 0.
+- [ ] `bun run typecheck`, `bun run lint` e `bun test` saem com código 0, com cobertura de 100%.
 - [ ] Todos os smokes anteriores continuam passando e `bun run smoke:workflow` imprime `SMOKE WORKFLOW OK`.
-- [ ] `bun run build:daemon`, `bun run build:desktop` e `bun run build:pwa` saem com código 0.
+- [ ] `bun run build:daemon`, `bun run build:desktop` e `bun run build:pwa` saem com código 0, e `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` também, no Windows nativo, se a casca Rust tiver mudado.
 - [ ] README cobre workflows, confiança, hub, MCP e o PWA com `tailscale serve`.
 - [ ] Divergências em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-5` criada.
 
 **Condição do /goal**
 
 ```text
-/goal A Fase 5 de docs/SPEC-fase-5.md está implementada em TDD e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, o bun test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-4 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, smoke:multi, smoke:history, smoke:board e smoke:workflow imprimindo SMOKE OK, SMOKE MULTI OK, SMOKE HISTORY OK, SMOKE BOARD OK e SMOKE WORKFLOW OK; (5) bun run build:daemon, build:desktop e build:pwa saindo com código 0; (6) git status sem alterações pendentes e git tag listando fase-5. Nenhum teste usou o Claude real nem enviou nada a um remoto real.
+/goal A Fase 5 de docs/SPEC-fase-5.md está implementada seguindo docs/TDD.md e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, o bun --config=bunfig.area.toml test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-4 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, smoke:multi, smoke:history, smoke:board e smoke:workflow imprimindo SMOKE OK, SMOKE MULTI OK, SMOKE HISTORY OK, SMOKE BOARD OK e SMOKE WORKFLOW OK; (5) bun run build:daemon, build:desktop e build:pwa saindo com código 0, e cargo check saindo com código 0 no Windows nativo se src-tauri mudou; (6) git status sem alterações pendentes e git tag listando fase-5. Todas as rodadas de bun test e dos smokes rodaram com as travas do claude, de home, de CLIs e de comandos check ativas, e nenhum push foi para remoto que não fosse local.
 ```
