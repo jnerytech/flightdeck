@@ -74,3 +74,41 @@ export function fileRow(db: Database, path: string) {
     .query("SELECT size, offset, parse_errors FROM history_files WHERE path = ?")
     .get(path) as { size: number; offset: number; parse_errors: number } | null;
 }
+
+/** Protocol client that keeps every non-ack frame (events, `history.changed`). */
+export class FrameClient {
+  readonly ws: WebSocket;
+  readonly frames: Array<Record<string, unknown>> = [];
+  private readonly acks = new Map<string, (ack: Record<string, unknown>) => void>();
+  private nextId = 0;
+  private readonly opened: Promise<void>;
+
+  constructor(url: string) {
+    this.ws = new WebSocket(url);
+    this.opened = new Promise((resolve) => this.ws.addEventListener("open", () => resolve()));
+    this.ws.addEventListener("message", (msg) => {
+      const frame = JSON.parse(String(msg.data)) as Record<string, unknown>;
+      if (frame.type === "ack") this.acks.get(String(frame.id))?.(frame);
+      else this.frames.push(frame);
+    });
+  }
+
+  /** Sends a command and resolves with its ack (`{ ok, data }` or `{ ok: false, error }`). */
+  async request(type: string, payload: unknown): Promise<Record<string, unknown>> {
+    await this.opened;
+    const id = String(++this.nextId);
+    const ack = new Promise<Record<string, unknown>>((resolve) => this.acks.set(id, resolve));
+    this.ws.send(JSON.stringify({ id, type, payload }));
+    return ack;
+  }
+
+  /** `data` of a successful ack; `null` when the command failed. */
+  async data<T>(type: string, payload: unknown): Promise<T | null> {
+    const ack = await this.request(type, payload);
+    return ack.ok === true ? (ack.data as T) : null;
+  }
+
+  close(): void {
+    this.ws.close();
+  }
+}
