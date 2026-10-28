@@ -26,8 +26,13 @@ export function draftFromLink(url: string, name: string, token: string): HostDra
  * Adds a host from a pasted `flightdeck://` link or from address, port and token. Saving goes
  * through `onSubmit`, which tests the connection first.
  */
-export function HostForm(props: { error?: string | null; onSubmit(draft: HostDraft): void }) {
-  const [draft, setDraft] = useState<HostDraft>(emptyDraft());
+export function HostForm(props: {
+  initial?: HostDraft;
+  notice?: string;
+  error?: string | null;
+  onSubmit(draft: HostDraft): void;
+}) {
+  const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -53,6 +58,7 @@ export function HostForm(props: { error?: string | null; onSubmit(draft: HostDra
         props.onSubmit({ ...draft, name: draft.name.trim(), address: draft.address.trim() });
       }}
     >
+      {props.notice && <p className="notice">{props.notice}</p>}
       <label>
         Link de pareamento
         <input

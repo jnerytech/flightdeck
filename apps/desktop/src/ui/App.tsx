@@ -1,8 +1,9 @@
+import { parsePairingLink } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
-import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
+import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Sidebar } from "./Sidebar.tsx";
@@ -11,6 +12,24 @@ export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
   const [addingHost, setAddingHost] = useState(false);
   const [hostError, setHostError] = useState<string | null>(null);
+  /** Form prefilled by a deep link; the key remounts the form with the new values. */
+  const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
+
+  // Links come from anywhere: they only prefill the form, saving needs the user's click.
+  useEffect(
+    () =>
+      store.onDeepLink((url) => {
+        const parsed = parsePairingLink(url);
+        if (!parsed.ok) {
+          store.reportError(`Link de pareamento recusado: ${parsed.error}`);
+          return;
+        }
+        const { url: wsUrl, name, token } = parsed.value;
+        setLinked({ draft: draftFromLink(wsUrl, name, token), key: Date.now() });
+        setAddingHost(true);
+      }),
+    [store],
+  );
 
   const submitHost = async (draft: HostDraft) => {
     setHostError(null);
@@ -19,8 +38,10 @@ export function App({ store }: { store: AppStore }) {
       url: draftUrl(draft),
       token: draft.token,
     });
-    if (result.ok) setAddingHost(false);
-    else setHostError(result.error);
+    if (result.ok) {
+      setAddingHost(false);
+      setLinked(null);
+    } else setHostError(result.error);
   };
 
   useEffect(() => {
@@ -38,7 +59,17 @@ export function App({ store }: { store: AppStore }) {
         {state.hosts.length === 0 && (
           <p>Adicione um host com o endereço e o token do flightdeckd.</p>
         )}
-        <HostForm error={hostError} onSubmit={(draft) => void submitHost(draft)} />
+        <HostForm
+          key={linked?.key ?? 0}
+          {...(linked
+            ? {
+                initial: linked.draft,
+                notice: "Este link veio de fora do app. Confira os dados antes de salvar.",
+              }
+            : {})}
+          error={hostError}
+          onSubmit={(draft) => void submitHost(draft)}
+        />
       </div>
     );
   } else if (selectedHost && sessionId) {

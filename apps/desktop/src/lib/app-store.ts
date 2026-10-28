@@ -118,6 +118,15 @@ export class AppStore {
     this.update({ selected: { hostId, sessionId } });
   }
 
+  reportError(message: string): void {
+    this.update({ error: message });
+  }
+
+  /** `flightdeck://` links opened from outside the app (including the one it started with). */
+  onDeepLink(handler: (url: string) => void): () => void {
+    return this.platform.onDeepLink(handler);
+  }
+
   clearError(): void {
     this.update({ error: null });
   }
