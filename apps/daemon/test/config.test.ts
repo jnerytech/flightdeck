@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
-import { parseArgs } from "../src/main.ts";
+import { parseArgs, runCli, startDaemon } from "../src/main.ts";
+import { ClaudeSdkRuntime } from "../src/runtime/claude-sdk-runtime.ts";
 import { tempDir } from "./helpers.ts";
 
 describe("config", () => {
@@ -48,5 +49,80 @@ describe("cli", () => {
     expect(() => parseArgs(["--runtime", "gpt"])).toThrow();
     expect(() => parseArgs(["deploy"])).toThrow();
     expect(() => parseArgs(["--config"])).toThrow();
+  });
+});
+
+describe("daemon", () => {
+  const writeConfig = (extra: Record<string, unknown> = {}) => {
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ port: 0, token: "t".repeat(32), dataDir: join(dir, "data"), ...extra }),
+    );
+    return { dir, file };
+  };
+  const silent = () => {
+    const lines: string[] = [];
+    return {
+      lines,
+      log: (msg: string) => lines.push(msg),
+      error: (msg: string) => lines.push(msg),
+    };
+  };
+
+  test("startDaemon sobe com runtime fake, avisa allowedRoots vazio e para", async () => {
+    const { file } = writeConfig();
+    const out = silent();
+    const daemon = await startDaemon({ command: "start", config: file, runtime: "fake" }, {}, out);
+    expect(daemon.url).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/v1\/ws$/);
+    expect(out.lines.some((l) => l.includes("listening on"))).toBe(true);
+    expect(out.lines.some((l) => l.includes("allowedRoots está vazio"))).toBe(true);
+    expect(out.lines.join("\n")).not.toContain("t".repeat(32));
+    const health = await fetch(daemon.url.replace("ws://", "http://").replace("/v1/ws", "/health"));
+    expect(await health.json()).toEqual({ ok: true });
+    await daemon.stop();
+    await daemon.stop();
+  });
+
+  test("runtime claude é criado sem iniciar nenhuma sessão", async () => {
+    const { file, dir } = writeConfig({ allowedRoots: ["."], claudePath: "claude-inexistente" });
+    const out = silent();
+    const daemon = await startDaemon({ command: "start", config: file }, {}, out);
+    expect(daemon.runtime).toBeInstanceOf(ClaudeSdkRuntime);
+    expect(out.lines.some((l) => l.includes("runtime=claude"))).toBe(true);
+    expect(out.lines.some((l) => l.includes("allowedRoots está vazio"))).toBe(false);
+    await daemon.stop();
+    expect(dir).toBeTruthy();
+  });
+
+  test("runCli registra sinais que param o daemon e saem com 0", async () => {
+    const { file } = writeConfig();
+    const handlers = new Map<string, () => Promise<void>>();
+    const exits: number[] = [];
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: silent(),
+      exit: (code) => exits.push(code),
+      onSignal: (signal, handler) => handlers.set(signal, handler),
+    });
+    expect(daemon).not.toBeNull();
+    expect([...handlers.keys()]).toEqual(["SIGINT", "SIGTERM"]);
+    await handlers.get("SIGTERM")?.();
+    expect(exits).toEqual([0]);
+  });
+
+  test("runCli com argumento inválido loga o erro e sai com 1", async () => {
+    const out = silent();
+    const exits: number[] = [];
+    const daemon = await runCli(["--bogus"], {
+      env: {},
+      log: out,
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+    });
+    expect(daemon).toBeNull();
+    expect(exits).toEqual([1]);
+    expect(out.lines[0]).toContain("argumento desconhecido");
   });
 });

@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { join } from "node:path";
 import { loadConfig, RuntimeKind } from "./config.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
@@ -42,24 +41,40 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   return args;
 }
 
+export interface Logger {
+  log(message: string): void;
+  error(message: string): void;
+}
+
+export interface Daemon {
+  url: string;
+  runtime: AgentRuntime;
+  stop(): Promise<void>;
+}
+
 async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<AgentRuntime> {
   if (kind === "fake") return new FakeRuntime();
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
   return new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
+/** Loads the config, opens the store and starts serving. The token is never logged. */
+export async function startDaemon(
+  args: CliArgs,
+  env: Record<string, string | undefined>,
+  logger: Logger,
+): Promise<Daemon> {
   const config = loadConfig(args.config);
   const runtimeKind = args.runtime ?? config.runtime;
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const runtime = await createRuntime(runtimeKind, config.claudePath);
   const manager = new SessionManager({
     store,
-    runtime: await createRuntime(runtimeKind, config.claudePath),
+    runtime,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
-    baseEnv: process.env,
+    baseEnv: env,
   });
   const server = startServer({
     manager,
@@ -70,27 +85,47 @@ async function main(): Promise<void> {
     allowedRoots: config.allowedRoots,
   });
 
-  console.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
+  logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
   if (config.allowedRoots.length === 0) {
-    console.warn("aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada");
+    logger.error("aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada");
   }
 
-  let stopping = false;
-  const stop = async () => {
-    if (stopping) return;
-    stopping = true;
-    await manager.shutdown();
-    await server.stop();
-    store.close();
-    process.exit(0);
+  let stopped: Promise<void> | null = null;
+  return {
+    url: server.url,
+    runtime,
+    stop: () => {
+      stopped ??= (async () => {
+        await manager.shutdown();
+        await server.stop();
+        store.close();
+      })();
+      return stopped;
+    },
   };
-  process.on("SIGINT", stop);
-  process.on("SIGTERM", stop);
 }
 
-if (import.meta.main) {
-  main().catch((error) => {
-    console.error(`flightdeckd: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
-  });
+export interface CliDeps {
+  env: Record<string, string | undefined>;
+  log: Logger;
+  exit(code: number): void;
+  onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
+}
+
+/** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
+export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
+  try {
+    const daemon = await startDaemon(parseArgs(argv), deps.env, deps.log);
+    const stop = async () => {
+      await daemon.stop();
+      deps.exit(0);
+    };
+    deps.onSignal("SIGINT", stop);
+    deps.onSignal("SIGTERM", stop);
+    return daemon;
+  } catch (error) {
+    deps.log.error(`flightdeckd: ${error instanceof Error ? error.message : String(error)}`);
+    deps.exit(1);
+    return null;
+  }
 }

@@ -29,15 +29,22 @@ export interface ClaudeSdkRuntimeOptions {
 
 const MAX_TOOL_RESULT = 4000;
 
-/** True when running from a `bun build --compile` binary, where the SDK's bundled CLI can't resolve. */
-function isCompiledBinary(): boolean {
-  return Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
+export interface ProcessInfo {
+  main: string;
+  which: (bin: string) => string | null;
 }
 
-export function resolveClaudePath(configured?: string): string | undefined {
+/**
+ * Picks the `claude` executable: the configured one, else the one on PATH when running from a
+ * `bun build --compile` binary (where the SDK's bundled CLI can't resolve), else the SDK default.
+ */
+export function resolveClaudePath(
+  configured?: string,
+  proc: ProcessInfo = { main: Bun.main, which: Bun.which },
+): string | undefined {
   if (configured) return configured;
-  if (isCompiledBinary()) return Bun.which("claude") ?? undefined;
-  return undefined;
+  const compiled = proc.main.includes("$bunfs") || proc.main.includes("~BUN");
+  return compiled ? (proc.which("claude") ?? undefined) : undefined;
 }
 
 function truncate(text: string): string {

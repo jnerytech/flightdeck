@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "start": "bun run src/main.ts"
+    "start": "bun run src/bin.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.312",

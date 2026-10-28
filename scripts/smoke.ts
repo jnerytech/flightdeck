@@ -104,7 +104,7 @@ async function run(): Promise<void> {
     [
       process.execPath,
       "run",
-      join(ROOT, "apps/daemon/src/main.ts"),
+      join(ROOT, "apps/daemon/src/bin.ts"),
       "start",
       "--config",
       configPath,

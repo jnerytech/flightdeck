@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { buildChildEnv } from "../src/env.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { resolveAllowedCwd } from "../src/paths.ts";
+import { PermissionBroker } from "../src/permissions/permission-broker.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { SessionManager } from "../src/sessions/session-manager.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -366,5 +367,132 @@ describe("ambiente", () => {
   test("buildChildEnv ignora caixa e valores indefinidos", () => {
     const env = buildChildEnv({ anthropic_api_key: "x", EMPTY: undefined, KEEP: "1" }, false);
     expect(env).toEqual({ KEEP: "1" });
+  });
+});
+
+describe("ciclo de vida — bordas", () => {
+  test("sessão idle de um daemon anterior é reanexada no próximo send", async () => {
+    const dir = tempDir();
+    const dbPath = join(dir, "fd.db");
+    const first = newManager({ store: new EventStore(dbPath) });
+    const { sessionId } = first.manager.create({ cwd: first.project, prompt: "oi" });
+    await waitFor(() => first.manager.get(sessionId).status === "idle");
+    const claudeId = first.manager.get(sessionId).claudeSessionId;
+    await first.manager.shutdown();
+
+    const runtime = new FakeRuntime({ delayMs: 1 });
+    const second = new SessionManager({
+      store: new EventStore(dbPath),
+      runtime,
+      allowedRoots: [first.root],
+      defaultPermissionMode: "default",
+      allowApiKey: false,
+      baseEnv: {},
+    });
+    expect(second.get(sessionId).status).toBe("idle");
+    expect(second.send(sessionId, "voltei")).toEqual({ queued: false });
+    expect(runtime.starts[0]?.resume).toBe(claudeId ?? "");
+    await waitFor(() => second.get(sessionId).status === "idle");
+  });
+
+  test("runtime que termina sozinho leva a error", async () => {
+    const { manager, project } = newManager({
+      runtime: {
+        start: () => ({
+          events: (async function* () {})(),
+          send: () => {},
+          interrupt: async () => {},
+          close: async () => {},
+        }),
+      },
+    });
+    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    await waitFor(() => manager.get(sessionId).status === "error");
+    expect(record(manager, sessionId).find("session.error")[0]?.code).toBe("runtime_exit");
+  });
+
+  test("listener com erro não quebra a sessão; interrupt sem runtime e close repetido são inofensivos", async () => {
+    const { manager, project } = newManager();
+    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    manager.subscribe(sessionId, 0, () => {
+      throw new Error("listener ruim");
+    });
+    await waitFor(() => manager.get(sessionId).status === "idle");
+    await manager.close(sessionId);
+    await manager.close(sessionId);
+    await manager.interrupt(sessionId);
+    expect(manager.get(sessionId).status).toBe("ended");
+  });
+
+  test("sessão em error pode ser encerrada", async () => {
+    const { manager, project } = newManager();
+    const { sessionId } = manager.create({ cwd: project, prompt: "[fail]" });
+    await waitFor(() => manager.get(sessionId).status === "error");
+    await manager.close(sessionId);
+    expect(manager.get(sessionId).status).toBe("ended");
+  });
+
+  test("create usa nome, modelo e modo informados", () => {
+    const { manager, project, runtime } = newManager();
+    const { sessionId } = manager.create({
+      cwd: project,
+      prompt: "oi",
+      name: "nome",
+      model: "opus",
+      permissionMode: "plan",
+    });
+    expect(manager.get(sessionId)).toMatchObject({ name: "nome", permissionMode: "plan" });
+    expect((runtime as FakeRuntime).starts[0]).toMatchObject({
+      model: "opus",
+      permissionMode: "plan",
+    });
+  });
+});
+
+describe("permissão — broker", () => {
+  const broker = () => {
+    const store = new EventStore(":memory:");
+    store.createSession({
+      id: "s",
+      name: null,
+      cwd: "/",
+      status: "running",
+      permissionMode: "default",
+      model: null,
+    });
+    const emitted: string[] = [];
+    const b = new PermissionBroker(store, {
+      emit: (_id, event) =>
+        emitted.push(event.type === "permission.resolved" ? event.decision : event.type),
+      onPendingChange: () => {},
+    });
+    return { b, store, emitted };
+  };
+
+  test("sinal de abort do runtime cancela o pedido aberto", async () => {
+    const { b, emitted } = broker();
+    const abort = new AbortController();
+    const decision = b.request("s", "Bash", {}, abort.signal);
+    expect(b.pendingCount("s")).toBe(1);
+    abort.abort();
+    expect(await decision).toEqual({ behavior: "deny", message: "cancelado" });
+    expect(emitted).toEqual(["permission.requested", "cancelled"]);
+  });
+
+  test("sinal já abortado nega sem criar pedido", async () => {
+    const { b, store } = broker();
+    const abort = new AbortController();
+    abort.abort();
+    expect(await b.request("s", "Bash", {}, abort.signal)).toMatchObject({ behavior: "deny" });
+    expect(store.pendingPermissions()).toHaveLength(0);
+  });
+
+  test("deny sem mensagem usa o texto padrão", async () => {
+    const { b, emitted } = broker();
+    const decision = b.request("s", "Bash", {}, new AbortController().signal);
+    const [record] = (b as unknown as { open: Map<string, unknown> }).open.keys();
+    b.respond({ requestId: String(record), decision: "deny" });
+    expect(await decision).toEqual({ behavior: "deny", message: "Negado pelo usuário" });
+    expect(emitted.at(-1)).toBe("deny");
   });
 });

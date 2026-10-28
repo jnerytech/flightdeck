@@ -4,7 +4,7 @@ import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
-const ENTRY = join(ROOT, "apps/daemon/src/main.ts");
+const ENTRY = join(ROOT, "apps/daemon/src/bin.ts");
 const OUT = join(ROOT, "dist");
 
 const TARGETS = [

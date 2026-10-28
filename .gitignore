@@ -9,3 +9,4 @@ apps/desktop/src-tauri/gen/
 *.db-shm
 *.tsbuildinfo
 .DS_Store
+coverage/

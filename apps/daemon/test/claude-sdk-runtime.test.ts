@@ -4,6 +4,7 @@ import {
   ClaudeSdkRuntime,
   normalizeSdkMessage,
   type QueryFn,
+  resolveClaudePath,
 } from "../src/runtime/claude-sdk-runtime.ts";
 import type { CanUseToolFn } from "../src/runtime/types.ts";
 
@@ -215,5 +216,90 @@ describe("ClaudeSdkRuntime", () => {
     await run.close();
     expect(calls).toEqual(["interrupt", "close"]);
     expect((await iterator.next()).done).toBe(true);
+  });
+
+  test("subagente e conteúdos atípicos de tool_result", () => {
+    expect(
+      normalizeSdkMessage(
+        sdk({ type: "assistant", parent_tool_use_id: "t", message: { content: [] } }),
+      ),
+    ).toEqual([]);
+    expect(
+      normalizeSdkMessage(sdk({ type: "user", parent_tool_use_id: "t", message: { content: [] } })),
+    ).toEqual([]);
+    expect(
+      normalizeSdkMessage(
+        sdk({ type: "user", parent_tool_use_id: null, message: { content: "texto" } }),
+      ),
+    ).toEqual([]);
+    const user = (content: unknown) =>
+      sdk({
+        type: "user",
+        parent_tool_use_id: null,
+        message: {
+          content: [
+            { type: "text", text: "x" },
+            { type: "tool_result", tool_use_id: "a", content },
+          ],
+        },
+      });
+    expect(normalizeSdkMessage(user(undefined))[0]).toMatchObject({ content: "" });
+    expect(normalizeSdkMessage(user({ k: 1 }))[0]).toMatchObject({ content: '{"k":1}' });
+    expect(normalizeSdkMessage(user([{ type: "image" }, { type: "text" }, {}]))[0]).toMatchObject({
+      content: ["[image]", "", "[bloco]"].join("\n"),
+    });
+    const otherStream = sdk({
+      type: "stream_event",
+      parent_tool_use_id: null,
+      event: { type: "message_start" },
+    });
+    expect(normalizeSdkMessage(otherStream)).toEqual([]);
+  });
+
+  test("resolveClaudePath: configurado, binário compilado e execução normal", () => {
+    const which = (bin: string) => `/usr/bin/${bin}`;
+    expect(resolveClaudePath("/x/claude", { main: "/src/main.ts", which })).toBe("/x/claude");
+    expect(resolveClaudePath(undefined, { main: "/$bunfs/root/flightdeckd", which })).toBe(
+      "/usr/bin/claude",
+    );
+    expect(
+      resolveClaudePath(undefined, { main: "B:/~BUN/root/f.exe", which: () => null }),
+    ).toBeUndefined();
+    expect(resolveClaudePath(undefined, { main: "/src/main.ts", which })).toBeUndefined();
+    expect(resolveClaudePath()).toBeUndefined();
+  });
+
+  test("falha do SDK propaga pelo stream de eventos; opções mínimas sem resume/model", async () => {
+    let options: Options | undefined;
+    const runtime = new ClaudeSdkRuntime({
+      query: (params) => {
+        options = params.options;
+        return {
+          // biome-ignore lint/correctness/useYield: the stream fails before yielding
+          async *[Symbol.asyncIterator]() {
+            throw new Error("cli morreu");
+          },
+          interrupt: async () => undefined,
+          close: () => {},
+        };
+      },
+    });
+    const run = runtime.start({
+      cwd: "/p",
+      permissionMode: "acceptEdits",
+      env: {},
+      canUseTool: async () => ({ behavior: "allow", updatedInput: { b: 2 } }),
+    });
+    expect(run.events[Symbol.asyncIterator]().next()).rejects.toThrow("cli morreu");
+    expect(options?.resume).toBeUndefined();
+    expect(options?.model).toBeUndefined();
+    expect(options?.pathToClaudeCodeExecutable).toBeUndefined();
+    const signal = new AbortController().signal;
+    expect(
+      await options?.canUseTool?.("Write", { a: 1 }, { signal, toolUseID: "t", requestId: "r" }),
+    ).toEqual({
+      behavior: "allow",
+      updatedInput: { b: 2 },
+    });
   });
 });

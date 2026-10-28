@@ -25,13 +25,11 @@ export function ulid(now: number = Date.now()): string {
 
 function increment(digits: number[]): number[] {
   const next = [...digits];
-  for (let i = next.length - 1; i >= 0; i--) {
-    const d = next[i] ?? 0;
-    if (d < 31) {
-      next[i] = d + 1;
-      return next;
-    }
+  let i = next.length - 1;
+  while (i >= 0 && next[i] === 31) {
     next[i] = 0;
+    i--;
   }
+  if (i >= 0) next[i] = (next[i] ?? 0) + 1;
   return next;
 }

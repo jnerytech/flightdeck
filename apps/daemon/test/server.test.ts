@@ -69,8 +69,8 @@ afterEach(async () => {
   for (const server of servers.splice(0)) await server.stop();
 });
 
-function setup() {
-  const ctx = newManager();
+function setup(overrides: Parameters<typeof newManager>[0] = {}) {
+  const ctx = newManager(overrides);
   const server = startServer({
     manager: ctx.manager,
     hostName: "host-teste",
@@ -252,5 +252,112 @@ describe("replay", () => {
     await Bun.sleep(30);
     expect(client.events.length).toBe(before);
     client.close();
+  });
+});
+
+describe("protocolo — comandos restantes", () => {
+  test("interrupt, close, resume e respostas de erro pela rede", async () => {
+    const { connect, project, manager } = setup();
+    const client = await connect();
+    const { sessionId } = await client.ok<{ sessionId: string }>("session.create", {
+      cwd: project,
+      prompt: "[tool]",
+    });
+    await waitFor(() => manager.get(sessionId).status === "awaiting_permission");
+    await client.ok("session.interrupt", { sessionId });
+    await waitFor(() => manager.get(sessionId).status === "idle");
+    await client.ok("session.close", { sessionId });
+    expect(manager.get(sessionId).status).toBe("ended");
+    await client.ok("session.resume", { sessionId });
+    expect(manager.get(sessionId).status).toBe("idle");
+    const missing = await client.request("session.send", { sessionId: "nope", text: "x" });
+    expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
+    await client.ok("hello", { token: TOKEN, client: "de novo" });
+    client.close();
+  });
+
+  test("JSON inválido depois do hello recebe ack de erro sem derrubar a conexão", async () => {
+    const { connect } = setup();
+    const client = await connect();
+    const acks: unknown[] = [];
+    client.ws.addEventListener("message", (m) => acks.push(JSON.parse(String(m.data))));
+    await client.raw("{quebrado");
+    await waitFor(() => acks.length > 0);
+    expect(acks[0]).toMatchObject({
+      type: "ack",
+      id: "",
+      ok: false,
+      error: { code: "bad_request" },
+    });
+    const noId = await client.raw(JSON.stringify({ type: "session.list" }));
+    expect(noId).toBeUndefined();
+    await waitFor(() => acks.length > 1);
+    expect(acks[1]).toMatchObject({ id: "", ok: false });
+    expect(client.closed).toBeNull();
+    client.close();
+  });
+
+  test("erro inesperado vira ack internal", async () => {
+    const { connect, project } = setup({
+      runtime: {
+        start: () => {
+          throw new Error("runtime quebrado");
+        },
+      },
+    });
+    const client = await connect();
+    const errors: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => errors.push(args);
+    try {
+      const ack = await client.request("session.create", { cwd: project, prompt: "oi" });
+      expect(ack).toMatchObject({ ok: false, error: { code: "internal" } });
+      expect(errors).toHaveLength(1);
+    } finally {
+      console.error = original;
+    }
+    client.close();
+  });
+
+  test("subscribe repetido troca a inscrição sem duplicar eventos", async () => {
+    const { connect, project, manager } = setup();
+    const client = await connect();
+    const { sessionId } = await client.ok<{ sessionId: string }>("session.create", {
+      cwd: project,
+      prompt: "oi",
+    });
+    await waitFor(() => manager.get(sessionId).status === "idle");
+    await client.ok("session.subscribe", { sessionId });
+    const lastSeq = manager.get(sessionId).lastSeq;
+    await client.ok("session.subscribe", { sessionId, sinceSeq: lastSeq });
+    await client.ok("session.send", { sessionId, text: "mais" });
+    await waitFor(
+      () => manager.get(sessionId).status === "idle" && manager.get(sessionId).lastSeq > lastSeq,
+    );
+    await Bun.sleep(20);
+    const seqs = client.events.filter((e) => e.event.type !== "message.delta").map((e) => e.seq);
+    expect(new Set(seqs).size).toBe(seqs.length);
+    await client.ok("session.unsubscribe", { sessionId: "nunca-inscrito" });
+    client.close();
+  });
+
+  test("GET em /v1/ws sem upgrade responde 426", async () => {
+    const { server } = setup();
+    const res = await fetch(server.url.replace("ws://", "http://"));
+    expect(res.status).toBe(426);
+  });
+
+  test("bind IPv6 gera URL com colchetes", async () => {
+    const ctx = newManager();
+    const server = startServer({
+      manager: ctx.manager,
+      hostName: "h",
+      bind: "::1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    servers.push(server);
+    expect(server.url).toMatch(/^ws:\/\/\[::1\]:\d+\/v1\/ws$/);
   });
 });

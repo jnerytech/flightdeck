@@ -58,11 +58,8 @@ export function loadConfig(path: string = defaultConfigPath()): Config {
   if (!existsSync(file) || !hasToken) {
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-    try {
-      chmodSync(file, 0o600);
-    } catch {
-      // Not supported on every platform (e.g. Windows ACLs); best effort.
-    }
+    // No-op on Windows (ACLs), restricts to the owner elsewhere.
+    chmodSync(file, 0o600);
   }
   return {
     ...config,
