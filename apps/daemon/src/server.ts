@@ -8,6 +8,7 @@ import {
   type CommandResults,
   type CommandType,
   type EventEnvelope,
+  type HistoryChanged,
   type Ping,
   Pong,
   PROTOCOL_VERSION,
@@ -17,6 +18,7 @@ import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import { FlightdeckError } from "./errors.ts";
+import type { HistoryIndexer } from "./history/indexer.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 
@@ -36,6 +38,8 @@ export interface ServerOptions {
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
+  /** Transcript index behind the `history.*` commands. */
+  history?: HistoryIndexer;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -55,6 +59,8 @@ interface Connection {
   pendingPings: Map<string, number>;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;
+  /** Stops the `history.watch` stream, when active. */
+  unwatchHistory?: () => void;
   lastRttMs?: number;
 }
 
@@ -67,7 +73,7 @@ export function tokenMatches(expected: string, given: string): boolean {
   return timingSafeEqual(digest(expected), digest(given));
 }
 
-function send(ws: Socket, message: Ack | EventEnvelope | Ping): void {
+function send(ws: Socket, message: Ack | EventEnvelope | Ping | HistoryChanged): void {
   ws.send(JSON.stringify(message));
 }
 
@@ -131,6 +137,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
+  function history(): HistoryIndexer {
+    if (!opts.history) throw new FlightdeckError("invalid_state", "histórico desativado");
+    return opts.history;
+  }
+
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
     ws.data.subscriptions.get(sessionId)?.();
     const sub = manager.subscribe(sessionId, sinceSeq, (envelope) => send(ws, envelope));
@@ -186,6 +197,28 @@ export function startServer(opts: ServerOptions): RunningServer {
           activeSessions: manager.activeSessionCount(),
           apiKeySanitized: manager.apiKeySanitized(),
         });
+      case "history.list":
+        return ok(command.type, history().list(command.payload));
+      case "history.get": {
+        const { claudeSessionId, cursor, limit } = command.payload;
+        return ok(command.type, history().get(claudeSessionId, cursor, limit));
+      }
+      case "history.search": {
+        const index = history();
+        const hits = index.search(command.payload).map((hit) => ({
+          ...hit,
+          cursor: index.cursorFor(hit.claudeSessionId, hit.uuid),
+        }));
+        return ok(command.type, { hits });
+      }
+      case "history.watch": {
+        const index = history();
+        ws.data.unwatchHistory?.();
+        ws.data.unwatchHistory = index.onChange((change) =>
+          send(ws, { type: "history.changed", ...change }),
+        );
+        return ok(command.type);
+      }
       case "sessions.watch": {
         // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.
         ws.data.unwatch?.();
@@ -251,6 +284,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       close(ws) {
         authed.delete(ws);
         ws.data.unwatch?.();
+        ws.data.unwatchHistory?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

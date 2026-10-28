@@ -10,6 +10,7 @@ import {
   updateConfigFile,
 } from "./config.ts";
 import { type Exec, spawnExec } from "./exec.ts";
+import { HistoryIndexer } from "./history/indexer.ts";
 import { acquireLock } from "./lock.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
@@ -149,8 +150,17 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     baseEnv: env,
   });
+  const history = new HistoryIndexer({
+    db: store.db,
+    roots: config.history.roots,
+    excludeCwds: config.history.excludeCwds,
+    log: (m) => logger.log(m),
+    ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
+  });
+  history.start();
   const server = startServer({
     manager,
+    history,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -191,6 +201,7 @@ export async function startDaemon(
         await wsl?.stop();
         await manager.shutdown();
         await server.stop();
+        history.stop();
         store.close();
         lock.release();
       })();

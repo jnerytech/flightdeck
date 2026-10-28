@@ -186,6 +186,36 @@ export const PermissionRespondPayload = z.object({
   updatedInput: ToolInput.optional(),
 });
 
+// Phase 3: transcripts indexed from ~/.claude/projects (read only).
+export const HistoryOrigin = z.enum(["flightdeck", "external"]);
+export type HistoryOrigin = z.infer<typeof HistoryOrigin>;
+
+/** Pages are addressed by an opaque cursor taken from the previous answer. */
+const Cursor = z.string().min(1);
+
+export const HistoryListPayload = z.object({
+  cwd: z.string().min(1).optional(),
+  from: z.string().min(1).optional(),
+  to: z.string().min(1).optional(),
+  origin: HistoryOrigin.optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+  cursor: Cursor.optional(),
+});
+
+export const HistoryGetPayload = z.object({
+  claudeSessionId: z.string().min(1),
+  cursor: Cursor.optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+});
+
+export const HistorySearchPayload = z.object({
+  query: z.string().trim().min(1),
+  cwd: z.string().min(1).optional(),
+  from: z.string().min(1).optional(),
+  to: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -202,6 +232,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("permission.respond", PermissionRespondPayload),
   cmd("sessions.watch", z.object({}).strict()),
   cmd("host.info", z.object({}).strict()),
+  cmd("history.list", HistoryListPayload),
+  cmd("history.get", HistoryGetPayload),
+  cmd("history.search", HistorySearchPayload),
+  cmd("history.watch", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -251,6 +285,59 @@ export const SessionSubscribeResult = z.object({
 });
 export type SessionSubscribeResult = z.infer<typeof SessionSubscribeResult>;
 
+export const HistorySessionSummary = z.object({
+  claudeSessionId: z.string(),
+  cwd: z.string(),
+  title: z.string().nullable(),
+  firstTs: z.string().nullable(),
+  lastTs: z.string().nullable(),
+  messageCount: z.number().int().nonnegative(),
+  origin: HistoryOrigin,
+  /** The file changed in the last 2 minutes: another process may still be writing it. */
+  maybeActive: z.boolean(),
+});
+export type HistorySessionSummary = z.infer<typeof HistorySessionSummary>;
+
+export const HistoryMessage = z.object({
+  uuid: z.string(),
+  ts: z.string().nullable(),
+  role: z.enum(["user", "assistant", "system", "summary"]).nullable(),
+  kind: z.enum(["message", "summary", "system"]),
+  text: z.string(),
+});
+export type HistoryMessage = z.infer<typeof HistoryMessage>;
+
+export const HistoryListResult = z.object({
+  sessions: z.array(HistorySessionSummary),
+  nextCursor: z.string().nullable(),
+});
+export type HistoryListResult = z.infer<typeof HistoryListResult>;
+
+export const HistoryGetResult = z.object({
+  session: HistorySessionSummary,
+  messages: z.array(HistoryMessage),
+  nextCursor: z.string().nullable(),
+  prevCursor: z.string().nullable(),
+});
+export type HistoryGetResult = z.infer<typeof HistoryGetResult>;
+
+export const HistorySearchHit = z.object({
+  claudeSessionId: z.string(),
+  uuid: z.string(),
+  ts: z.string().nullable(),
+  cwd: z.string(),
+  title: z.string().nullable(),
+  role: z.string(),
+  /** Excerpt with every match wrapped in `«` and `»`. */
+  snippet: z.string(),
+  /** `history.get` cursor whose page starts at this message. */
+  cursor: z.string(),
+});
+export type HistorySearchHit = z.infer<typeof HistorySearchHit>;
+
+export const HistorySearchResult = z.object({ hits: z.array(HistorySearchHit) });
+export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
+
 export interface CommandResults {
   hello: HelloResult;
   "session.list": SessionListResult;
@@ -264,6 +351,10 @@ export interface CommandResults {
   "permission.respond": undefined;
   "sessions.watch": undefined;
   "host.info": HostInfoResult;
+  "history.list": HistoryListResult;
+  "history.get": HistoryGetResult;
+  "history.search": HistorySearchResult;
+  "history.watch": undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +407,17 @@ export type Ping = z.infer<typeof Ping>;
 export const Pong = z.object({ type: z.literal("pong"), id: z.string() });
 export type Pong = z.infer<typeof Pong>;
 
-export const ServerMessage = z.union([AckOk, AckError, EventEnvelope, Ping]);
+/** Sent after `history.watch` whenever a transcript gains lines. Not a session event. */
+export const HistoryChanged = z.object({
+  type: z.literal("history.changed"),
+  claudeSessionId: z.string(),
+  cwd: z.string(),
+  lastTs: z.string().nullable(),
+  maybeActive: z.boolean(),
+});
+export type HistoryChanged = z.infer<typeof HistoryChanged>;
+
+export const ServerMessage = z.union([AckOk, AckError, EventEnvelope, Ping, HistoryChanged]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 
 /** Parses a raw JSON frame into a `ServerMessage`, throwing on invalid input. */

@@ -59,7 +59,7 @@ class Client {
       if (parsed.type === "event") this.events.push(parsed);
       else if (parsed.type === "ping")
         this.ws.send(JSON.stringify({ type: "pong", id: parsed.id }));
-      else this.acks.get(parsed.id)?.(parsed);
+      else if (parsed.type === "ack") this.acks.get(parsed.id)?.(parsed);
     });
     await withTimeout(
       new Promise<void>((ok, fail) => {

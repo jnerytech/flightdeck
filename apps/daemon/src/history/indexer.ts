@@ -1,6 +1,16 @@
 import type { Database } from "bun:sqlite";
-import { closeSync, openSync, readdirSync, readSync, statSync } from "node:fs";
+import {
+  closeSync,
+  type FSWatcher,
+  openSync,
+  readdirSync,
+  readSync,
+  statSync,
+  watch,
+} from "node:fs";
 import { basename, join } from "node:path";
+import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
+import { FlightdeckError } from "../errors.ts";
 import { type HistoryRecord, parseLines } from "./parser.ts";
 
 export interface HistoryIndexerOptions {
@@ -12,6 +22,28 @@ export interface HistoryIndexerOptions {
   /** Whether SQLite has FTS5; detected when absent (injectable so tests cover both paths). */
   fts5?: boolean;
   log?: (message: string) => void;
+  /** Fallback full pass while running (file watching is the fast path). Default 10 s. */
+  scanIntervalMs?: number;
+  /** Clock for `maybeActive`. */
+  now?: () => number;
+}
+
+export type HistorySession = HistorySessionSummary;
+
+export interface HistoryChange {
+  claudeSessionId: string;
+  cwd: string;
+  lastTs: string | null;
+  maybeActive: boolean;
+}
+
+export interface HistoryListFilter {
+  cwd?: string;
+  from?: string;
+  to?: string;
+  origin?: "flightdeck" | "external";
+  limit?: number;
+  cursor?: string;
 }
 
 export interface SearchQuery {
@@ -50,6 +82,34 @@ const TITLE_CHARS = 120;
 /** `flightdeck` when the transcript belongs to a session this daemon manages. */
 const ORIGIN = `CASE WHEN EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id)
   THEN 'flightdeck' ELSE 'external' END`;
+
+/** A file that changed this recently may still be written by a running `claude`. */
+export const MAYBE_ACTIVE_MS = 2 * 60_000;
+
+/** Kinds shown by `history.get`: tool results and raw lines are not readable text. */
+const READABLE = "'message', 'summary', 'system'";
+
+/** The session's folder, or anything below it (never a look-alike prefix). */
+const CWD_CONDITION =
+  "(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\\'))";
+
+const SESSION_SELECT = `SELECT s.*, f.mtime FROM history_sessions s
+  LEFT JOIN history_files f ON f.path = s.file_path`;
+
+interface SessionRow {
+  claude_session_id: string;
+  cwd: string;
+  title: string | null;
+  first_ts: string | null;
+  last_ts: string | null;
+  message_count: number;
+  origin: "flightdeck" | "external";
+  mtime: string | null;
+}
+
+const trimSlashes = (path: string) => path.replace(/[\\/]+$/, "");
+const offsetOf = (cursor?: string) => Math.max(0, Number.parseInt(cursor ?? "0", 10) || 0);
+const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Characters of context kept on each side of the first match. */
 const SNIPPET_RADIUS = 60;
@@ -98,6 +158,11 @@ const entries = (dir: string) => {
 export class HistoryIndexer {
   private readonly db: Database;
   private readonly excludes: string[];
+  private readonly listeners = new Set<(change: HistoryChange) => void>();
+  private readonly watchers: FSWatcher[] = [];
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private boot: ReturnType<typeof setTimeout> | null = null;
+  private pending: ReturnType<typeof setTimeout> | null = null;
   /** Full-text search through FTS5; `LIKE` otherwise. */
   readonly fts: boolean;
 
@@ -114,6 +179,150 @@ export class HistoryIndexer {
         "CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(text, content='history_messages')",
       );
     }
+  }
+
+  /** Indexed sessions with at least one message, most recent first. */
+  list(filter: HistoryListFilter): { sessions: HistorySession[]; nextCursor: string | null } {
+    const where = ["s.message_count > 0"];
+    const limit = filter.limit ?? 50;
+    const offset = offsetOf(filter.cursor);
+    const params: Record<string, string | number> = { limit: limit + 1, offset };
+    if (filter.cwd) {
+      where.push(CWD_CONDITION);
+      params.cwd = trimSlashes(filter.cwd);
+    }
+    // Sessions that overlap the period.
+    if (filter.from) {
+      where.push("s.last_ts >= $from");
+      params.from = filter.from;
+    }
+    if (filter.to) {
+      where.push("s.first_ts <= $to");
+      params.to = filter.to;
+    }
+    if (filter.origin) {
+      where.push("s.origin = $origin");
+      params.origin = filter.origin;
+    }
+    const rows = this.db
+      .query(
+        `${SESSION_SELECT} WHERE ${where.join(" AND ")}
+         ORDER BY s.last_ts DESC, s.claude_session_id DESC LIMIT $limit OFFSET $offset`,
+      )
+      .all(params) as SessionRow[];
+    return {
+      sessions: rows.slice(0, limit).map((r) => this.toSession(r)),
+      nextCursor: rows.length > limit ? String(offset + limit) : null,
+    };
+  }
+
+  session(claudeSessionId: string): HistorySession | null {
+    const row = this.db
+      .query(`${SESSION_SELECT} WHERE s.claude_session_id = ?`)
+      .get(claudeSessionId) as SessionRow | null;
+    return row ? this.toSession(row) : null;
+  }
+
+  /** One page of the readable transcript (messages, summaries and system notes). */
+  get(
+    claudeSessionId: string,
+    cursor?: string,
+    limit = 100,
+  ): {
+    session: HistorySession;
+    messages: HistoryMessage[];
+    nextCursor: string | null;
+    prevCursor: string | null;
+  } {
+    const session = this.session(claudeSessionId);
+    if (!session) {
+      throw new FlightdeckError("not_found", `transcript ${claudeSessionId} não indexado`);
+    }
+    const offset = offsetOf(cursor);
+    const rows = this.db
+      .query(
+        `SELECT uuid, ts, role, kind, text FROM history_messages
+         WHERE claude_session_id = ? AND kind IN (${READABLE})
+         ORDER BY rowid LIMIT ? OFFSET ?`,
+      )
+      .all(claudeSessionId, limit + 1, offset) as HistoryMessage[];
+    return {
+      session,
+      messages: rows.slice(0, limit),
+      nextCursor: rows.length > limit ? String(offset + limit) : null,
+      prevCursor: offset > 0 ? String(Math.max(0, offset - limit)) : null,
+    };
+  }
+
+  /** The `get` cursor whose page starts at `uuid`. */
+  cursorFor(claudeSessionId: string, uuid: string): string {
+    const row = this.db
+      .query(
+        `SELECT COUNT(*) AS n FROM history_messages
+         WHERE claude_session_id = $id AND kind IN (${READABLE}) AND rowid <
+           (SELECT rowid FROM history_messages WHERE claude_session_id = $id AND uuid = $uuid)`,
+      )
+      .get({ id: claudeSessionId, uuid }) as { n: number };
+    return String(row.n);
+  }
+
+  /** Called with every transcript that gained lines, after each pass. */
+  onChange(listener: (change: HistoryChange) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Boot pass, then file watching with a periodic full pass as the fallback. */
+  start(): void {
+    if (this.timer) return;
+    this.boot = setTimeout(() => this.safeScan(), 0);
+    this.timer = setInterval(() => this.safeScan(), this.opts.scanIntervalMs ?? 10_000);
+    for (const root of this.opts.roots) {
+      try {
+        this.watchers.push(watch(root, { recursive: true }, () => this.schedule()));
+      } catch (error) {
+        this.opts.log?.(`histórico: sem observação de ${root} (${describe(error)})`);
+      }
+    }
+  }
+
+  stop(): void {
+    if (this.timer) clearInterval(this.timer);
+    if (this.boot) clearTimeout(this.boot);
+    if (this.pending) clearTimeout(this.pending);
+    this.timer = this.boot = this.pending = null;
+    for (const watcher of this.watchers.splice(0)) watcher.close();
+  }
+
+  /** Bursts of file events become one pass. */
+  private schedule(): void {
+    if (this.pending) return;
+    this.pending = setTimeout(() => {
+      this.pending = null;
+      this.safeScan();
+    }, 50);
+  }
+
+  private safeScan(): void {
+    try {
+      this.scan();
+    } catch (error) {
+      this.opts.log?.(`histórico: falha na varredura (${describe(error)})`);
+    }
+  }
+
+  private toSession(row: SessionRow): HistorySession {
+    const now = this.opts.now?.() ?? Date.now();
+    return {
+      claudeSessionId: row.claude_session_id,
+      cwd: row.cwd,
+      title: row.title,
+      firstTs: row.first_ts,
+      lastTs: row.last_ts,
+      messageCount: row.message_count,
+      origin: row.origin,
+      maybeActive: row.mtime !== null && now - Date.parse(row.mtime) < MAYBE_ACTIVE_MS,
+    };
   }
 
   /** Messages containing every term, newest first. */
@@ -135,10 +344,8 @@ export class HistoryIndexer {
       });
     }
     if (query.cwd) {
-      where.push(
-        "(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\\'))",
-      );
-      params.cwd = query.cwd.replace(/[\\/]+$/, "");
+      where.push(CWD_CONDITION);
+      params.cwd = trimSlashes(query.cwd);
     }
     if (query.from) {
       where.push("m.ts >= $from");
@@ -186,6 +393,12 @@ export class HistoryIndexer {
     for (const path of this.files()) {
       const result = this.indexFile(path);
       if (result) results.push(result);
+    }
+    for (const { claudeSessionId } of results) {
+      const { cwd, lastTs, maybeActive } = this.session(claudeSessionId) as HistorySession;
+      for (const listener of this.listeners) {
+        listener({ claudeSessionId, cwd, lastTs, maybeActive });
+      }
     }
     return results;
   }

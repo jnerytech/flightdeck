@@ -89,6 +89,7 @@ export class HostConnection {
         this.opts.onPing?.();
         return;
       }
+      if (message.type !== "ack") return;
       const pending = this.pending.get(message.id);
       this.pending.delete(message.id);
       if (message.ok) pending?.resolve(message.data);
