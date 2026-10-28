@@ -23,7 +23,10 @@ export async function waitFor<T>(
 }
 
 /** In-process daemon with the FakeRuntime; `listen` can be called again on the same port. */
-export function daemon(cleanups: Array<() => unknown>) {
+export function daemon(
+  cleanups: Array<() => unknown>,
+  options: { allowApiKey?: boolean; baseEnv?: Record<string, string> } = {},
+) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "fd-desk-")));
   const project = join(root, "p");
   mkdirSync(project);
@@ -32,11 +35,12 @@ export function daemon(cleanups: Array<() => unknown>) {
     runtime: new FakeRuntime({ delayMs: 1 }),
     allowedRoots: [root],
     defaultPermissionMode: "default",
-    allowApiKey: false,
-    baseEnv: {},
+    allowApiKey: options.allowApiKey ?? false,
+    baseEnv: options.baseEnv ?? {},
   });
-  const listen = (port = 0): RunningServer => {
+  const listen = (port = 0, pingIntervalMs?: number): RunningServer => {
     const server = startServer({
+      ...(pingIntervalMs ? { pingIntervalMs } : {}),
       manager,
       hostName: "h1",
       bind: "127.0.0.1",
