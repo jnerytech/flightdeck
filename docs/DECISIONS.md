@@ -117,3 +117,113 @@ fixados no major `2`, como pede a spec.
 - **Biome não formata Markdown.** O formatador alterou o preenchimento das tabelas do
   `docs/SPEC.md` antes do primeiro commit. O texto foi restaurado, mas espaços em branco do
   original podem diferir (18466 → 18109 bytes), e não há cópia anterior no git.
+
+# Decisões e divergências da Fase 2
+
+Registra onde a implementação diverge de `docs/SPEC-fase-2.md` ou completa um ponto que a spec
+deixou em aberto.
+
+## Versões novas
+
+| Peça | Versão |
+| --- | --- |
+| `qrcode` / `@types/qrcode` | 1.5.4 / 1.5.6 |
+| `@tauri-apps/plugin-deep-link` | 2.6.3 |
+| `@tauri-apps/plugin-opener` | 2.7.2 |
+| `@tauri-apps/plugin-autostart` | 2.7.0 |
+| Crates `tauri-plugin-{deep-link,opener,single-instance,autostart}` | major `2` |
+
+## Serviço
+
+- **Tarefa do Windows por XML.** `schtasks /Create /TN Flightdeck\flightdeckd /XML <arquivo> /F`
+  com um XML em UTF-16 com BOM: `LogonTrigger` do próprio usuário, `InteractiveToken`,
+  `LeastPrivilege`, `MultipleInstancesPolicy=IgnoreNew`, sem limite de tempo e com
+  `RestartOnFailure` (1 min, 999 vezes). A ação é `conhost.exe --headless "<flightdeckd>" start`,
+  que esconde o console sem esconder a saída do `pair` (o `--windows-hide-console` do Bun
+  esconderia). O XML é gravado na pasta temporária do usuário.
+- **Não verificado num sistema real:** a criação da tarefa por um usuário sem administrador e o
+  comportamento do `conhost --headless` no logon. Os testes cobrem só o XML e os argumentos; nenhum
+  serviço foi instalado durante o desenvolvimento.
+- **Unit do systemd** declara `After=`/`Wants=network-online.target`, além do que a spec pede.
+- **`--dry-run` não chama `loadConfig`.** Só mostra o `claude.executablePath` que seria gravado.
+  Sem `--dry-run`, o `install` chama `loadConfig` primeiro (cria a config com token, se faltar, e
+  valida a existente) e só então grava o caminho, de forma atômica (arquivo temporário +
+  `rename`), preservando os outros campos.
+- **`service status`** imprime a saída de `systemctl --user is-active flightdeckd` ou de
+  `schtasks /Query`; sem saída, "não instalado".
+- **Comandos que não existem** (por exemplo `systemctl` fora do Linux) fazem o `install` falhar
+  com a mensagem do sistema e código 1.
+- **Lock de instância única:** `dataDir/flightdeckd.lock` com o pid. Lock com pid morto ou
+  conteúdo ilegível é retomado. Se o daemon falhar depois de pegar o lock (porta ocupada, por
+  exemplo), o processo sai e o próximo retoma o lock do pid morto.
+
+## Supervisão do WSL
+
+- Quando o filho sai com código 3 e a porta responde, a próxima conferência é em 60 s (sem
+  backoff). Sem a porta, conta como falha comum.
+- O supervisor só existe quando a seção `wsl` tem itens, em qualquer sistema; na prática, só a
+  config do Windows a preenche.
+
+## Rede, heartbeat e pareamento
+
+- **Filtro de origem** usa o IP que o Bun informa para a conexão (`server.requestIP`). Vale para
+  todas as rotas, `/health` incluída.
+- **Heartbeat:** o fechamento 4408 acontece no tique seguinte ao segundo ping sem resposta (entre
+  30 s e 45 s com o intervalo padrão). Um `pong` com id conhecido zera as pendências e define o
+  `lastRttMs` (arredondado em ms) enviado no próximo `ping`.
+- **`pair --rotate` e o daemon em execução:** o daemon acompanha o arquivo de config por
+  `fs.watchFile` (a cada 2 s). Quando o token muda, todas as conexões autenticadas são fechadas
+  com 4401, porque só um token vale por vez.
+- **QR** é desenhado em caracteres UTF-8 pelo pacote `qrcode`.
+- **Parser do link:** esquema sem diferença de maiúsculas, barra final aceita e, sem `name`, o
+  nome vira o endereço.
+- **`tailscale ip -4`** que falha, não existe ou não imprime nada leva ao `bind`.
+
+## `host.info`
+
+- `claudePath` é o executável que o runtime vai usar: `claude.executablePath`, senão `claudePath`,
+  senão o `claude` do `PATH` apenas no binário compilado. Pelo código-fonte e sem caminho
+  configurado, o SDK usa o CLI que traz consigo; aí `claudePath` e `claudeVersion` são `null` e a
+  sonda não executa nada.
+- A sonda roda `<claude> --version` uma vez por processo (memoizada).
+
+## Deploy
+
+- `ssh`, `target` e `path` de `deploy.hosts.json` são validados. O `path` vai sem aspas para o
+  shell remoto, então só aceita caracteres de caminho simples (`~`, letras, dígitos, `._/-`).
+- O binário é marcado executável (`chmod +x`) antes da troca. `deploy.hosts.json` está no
+  `.gitignore`.
+
+## App desktop
+
+- **Plataforma web:** segredos só em memória (uma página não tem lugar seguro para tokens), deep
+  link por `#link=<url codificada>`, e a "bandeja" vira o título da janela (`(N) Flightdeck`). O
+  segundo parâmetro de `createWebPlatform` injeta o mapa de segredos; os testes de UI usam isso.
+- **Assinaturas:** cada host recebe `sessions.watch`, e o stream completo só é assinado para a
+  sessão aberta. Trocar de sessão cancela a assinatura da anterior; ao voltar, o replay começa do
+  último `seq` visto.
+- **Notificações** comparam o resumo anterior com o novo da mesma sessão: cada `requestId` novo
+  gera "esperando você" e a passagem de um estado de turno para `idle` gera "turno concluído". O
+  rótulo é `<host> · <sessão>`.
+- **Bandeja:** a contagem e a dica são calculadas no frontend (`trayStatus`) e enviadas ao Rust
+  pelo comando `tray_set_status`. O item "Precisa de você (N)" e o clique no ícone trazem a janela
+  de volta.
+- **Lint da camada `platform`:** override do Biome em `apps/desktop/src/**`, exceto
+  `src/platform/tauri/**`, com `noRestrictedImports` para `@tauri-apps/**`.
+- **Testes de UI** registram o happy-dom uma vez por processo (`registerDom`) e consultam o
+  documento atual (`liveScreen`). A nota da Fase 1 sobre o registro só em `ui.test.tsx` não vale
+  mais.
+
+## TDD e testes
+
+- **Áreas com app e daemon** (`heartbeat` e o reducer em `resumos`) ficam num arquivo só, em
+  `apps/daemon/test/`, e importam o `HostConnection` e o reducer do desktop. Assim o teste do app
+  roda contra o servidor real.
+- **Esperas nos testes:** `poll` (em `apps/daemon/test/helpers.ts`) devolve `null` no tempo
+  esgotado em vez de lançar, para o vermelho ser sempre de asserção.
+- **Casos de recusa do link** (esquema, endereço, porta, token) entraram já em `pareamento`, porque
+  o parser nasceu ali e precisava de cobertura de 100%; `deep-link` repete os casos do ponto de
+  vista do app.
+- **Lado nativo do Tauri** (Rust) não tem teste automatizado: os testes de `platform` conferem
+  que o frontend chama os comandos e plugins certos, e o `cargo check` confere que o lado nativo
+  compila.
