@@ -10,6 +10,7 @@ import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
+import { type ReaderTarget, TranscriptReader } from "./TranscriptReader.tsx";
 
 export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
@@ -21,6 +22,9 @@ export function App({ store }: { store: AppStore }) {
   const [hostPage, setHostPage] = useState<string | null>(null);
   const pageHost = state.hosts.find((h) => h.id === hostPage);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Transcript open in the read-only reader, if any. */
+  const [reading, setReading] = useState<ReaderTarget | null>(null);
+  const readingHost = state.hosts.find((h) => h.id === reading?.hostId);
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
@@ -101,6 +105,15 @@ export function App({ store }: { store: AppStore }) {
         />
       </div>
     );
+  } else if (reading && readingHost) {
+    main = (
+      <TranscriptReader
+        key={`${reading.hostId}/${reading.claudeSessionId}/${reading.cursor ?? ""}`}
+        store={store}
+        target={reading}
+        hostName={readingHost.name}
+      />
+    );
   } else if (pageHost) {
     main = (
       <HostPage
@@ -142,6 +155,7 @@ export function App({ store }: { store: AppStore }) {
       <Sidebar
         state={state}
         onSelect={(hostId, id) => {
+          setReading(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(null);
@@ -155,12 +169,14 @@ export function App({ store }: { store: AppStore }) {
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenSearch={() => store.openSearch()}
         onOpenHost={(hostId) => {
+          setReading(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(hostId);
         }}
         onRespond={(item, decision) => void store.respondTo(item.hostId, item.requestId, decision)}
         onOpenRequest={(item) => {
+          setReading(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(null);
@@ -184,6 +200,17 @@ export function App({ store }: { store: AppStore }) {
           state={state}
           onSearch={(query) => void store.searchHistory(query)}
           onClose={() => store.closeSearch()}
+          onOpenHit={(hit) => {
+            store.closeSearch();
+            setSettingsOpen(false);
+            setAddingHost(false);
+            setReading({
+              hostId: hit.hostId,
+              claudeSessionId: hit.claudeSessionId,
+              cursor: hit.cursor,
+              focusUuid: hit.uuid,
+            });
+          }}
         />
       )}
     </div>

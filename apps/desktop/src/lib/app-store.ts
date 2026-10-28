@@ -2,6 +2,7 @@ import type {
   CommandPayload,
   EventEnvelope,
   HelloResult,
+  HistoryGetResult,
   HistorySearchHit,
   HostInfoResult,
   PendingPermission,
@@ -110,6 +111,9 @@ export function needsYou(state: AppState): PendingItem[] {
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
+
+/** Messages per `history.get` page in the transcript reader. */
+export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
@@ -310,6 +314,26 @@ export class AppStore {
         this.update({ search: { ...search, waiting, hits } });
       }),
     );
+  }
+
+  /** One page of a host's transcript; errors go to the banner and give `null`. */
+  async historyGet(
+    hostId: string,
+    claudeSessionId: string,
+    cursor?: string,
+  ): Promise<HistoryGetResult | null> {
+    try {
+      const conn = this.connections.get(hostId);
+      if (!conn) throw new RequestError("offline", "host desconhecido");
+      return await conn.request("history.get", {
+        claudeSessionId,
+        limit: HISTORY_PAGE,
+        ...(cursor ? { cursor } : {}),
+      });
+    } catch (error) {
+      this.update({ error: describeError(error) });
+      return null;
+    }
   }
 
   reportError(message: string): void {

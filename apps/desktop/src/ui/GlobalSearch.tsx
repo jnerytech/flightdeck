@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AppState } from "../lib/app-store.ts";
+import type { AppState, GlobalHit } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
@@ -23,6 +23,7 @@ export function GlobalSearch(props: {
   state: AppState;
   onSearch(query: string): void;
   onClose(): void;
+  onOpenHit(hit: GlobalHit): void;
 }) {
   const { search, hosts } = props.state;
   const [query, setQuery] = useState(search?.query ?? "");
@@ -62,7 +63,7 @@ export function GlobalSearch(props: {
           <ul aria-label="Resultados da busca">
             {search.hits.map((hit) => (
               <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
-                <button type="button">
+                <button type="button" onClick={() => props.onOpenHit(hit)}>
                   <span className="muted">
                     {`${hit.hostName} · ${basename(hit.cwd)} · ${when(hit.ts)}`}
                   </span>

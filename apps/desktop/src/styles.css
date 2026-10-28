@@ -387,3 +387,13 @@ textarea {
   background: var(--add);
   color: inherit;
 }
+
+/* Read-only transcript */
+.transcript-note {
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.timeline [aria-current="true"] {
+  outline: 2px solid var(--accent);
+}
