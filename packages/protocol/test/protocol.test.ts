@@ -24,6 +24,7 @@ const validCommands: Record<CommandType, unknown> = {
   "session.subscribe": { sessionId: "s", sinceSeq: 3 },
   "session.unsubscribe": { sessionId: "s" },
   "permission.respond": { requestId: "r", decision: "allow", updatedInput: { a: 1 } },
+  "sessions.watch": {},
 };
 
 const validEvents: SessionEvent[] = [

@@ -6,6 +6,7 @@ import {
   SessionEvent,
   type SessionEventOf,
 } from "@flightdeck/protocol";
+import { applyEnvelope, emptySession } from "../../desktop/src/lib/session-state.ts";
 import { type RunningServer, startServer } from "../src/server.ts";
 import { newManager, poll } from "./helpers.ts";
 
@@ -138,6 +139,26 @@ describe("resumos", () => {
     await poll(() => manager.get(sessionId).status === "idle");
     expect(manager.get(sessionId).status).toBe("idle");
     expect(calls).toBeGreaterThan(0);
+  });
+
+  test("o reducer de sessão do app ignora session.summary: a barra lateral é que usa os resumos", () => {
+    const state = { ...emptySession(), lastSeq: 3 };
+    const next = applyEnvelope(state, {
+      type: "event",
+      sessionId: "s",
+      seq: 4,
+      ts: "2026-10-28T00:00:00.000Z",
+      event: {
+        type: "session.summary",
+        sessionId: "s",
+        name: null,
+        cwd: "/p",
+        status: "idle",
+        pendingPermissions: [],
+        updatedAt: "2026-10-28T00:00:00.000Z",
+      },
+    });
+    expect(next).toBe(state);
   });
 
   test("dois pedidos simultâneos geram resumos com 1 e 2 pendências", async () => {
