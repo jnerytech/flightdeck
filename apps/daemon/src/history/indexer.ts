@@ -7,6 +7,8 @@ export interface HistoryIndexerOptions {
   db: Database;
   /** Folders holding one directory per project, each with `<claudeSessionId>.jsonl` files. */
   roots: readonly string[];
+  /** Sessions whose `cwd` is one of these folders, or inside one, are never indexed. */
+  excludeCwds?: readonly string[];
 }
 
 export interface IndexResult {
@@ -20,6 +22,14 @@ export interface IndexResult {
 
 /** Fallback title: the first user message, cut to this many characters. */
 const TITLE_CHARS = 120;
+
+const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
+
+/** Comparable form of a folder: forward slashes, no trailing slash, case folded where the OS does. */
+function normalizeCwd(path: string): string {
+  const slashes = path.replaceAll("\\", "/").replace(/\/+$/, "");
+  return caseInsensitive ? slashes.toLowerCase() : slashes;
+}
 
 const entries = (dir: string) => {
   try {
@@ -35,9 +45,11 @@ const entries = (dir: string) => {
  */
 export class HistoryIndexer {
   private readonly db: Database;
+  private readonly excludes: string[];
 
   constructor(readonly opts: HistoryIndexerOptions) {
     this.db = opts.db;
+    this.excludes = (opts.excludeCwds ?? []).map(normalizeCwd);
   }
 
   /** One pass over every root; returns the files that gained records. */
@@ -69,8 +81,12 @@ export class HistoryIndexer {
     const stat = statSync(path);
     const claudeSessionId = basename(path, ".jsonl");
     const row = this.db
-      .query("SELECT offset, parse_errors FROM history_files WHERE path = ?")
-      .get(path) as { offset: number; parse_errors: number } | null;
+      .query("SELECT claude_session_id, offset, parse_errors FROM history_files WHERE path = ?")
+      .get(path) as {
+      claude_session_id: string | null;
+      offset: number;
+      parse_errors: number;
+    } | null;
     // Smaller than what was already read: truncated or swapped, so start over.
     const reset = stat.size < (row?.offset ?? 0);
     const offset = reset ? 0 : (row?.offset ?? 0);
@@ -88,13 +104,22 @@ export class HistoryIndexer {
     if (end === 0 && !reset) return null;
     const { records, errors } = parseLines(chunk.subarray(0, end).toString("utf8"));
 
+    // An excluded file keeps its row with a null session id, so later passes skip it unread.
+    const wasExcluded = !reset && row !== null && row.claude_session_id === null;
+    const cwd = wasExcluded
+      ? ""
+      : this.sessionCwd(claudeSessionId) || records.find((r) => r.cwd)?.cwd || "";
+    const excluded = wasExcluded || this.isExcluded(cwd);
+
     this.db.transaction(() => {
-      if (reset) this.forget(claudeSessionId);
+      if (reset || excluded) this.forget(claudeSessionId);
       const insert = this.db.query(
         `INSERT OR IGNORE INTO history_messages (claude_session_id, uuid, ts, role, kind, text)
          VALUES (?, ?, ?, ?, ?, ?)`,
       );
-      for (const r of records) insert.run(claudeSessionId, r.uuid, r.ts, r.role, r.kind, r.text);
+      if (!excluded) {
+        for (const r of records) insert.run(claudeSessionId, r.uuid, r.ts, r.role, r.kind, r.text);
+      }
       this.db
         .query(
           `INSERT INTO history_files (path, claude_session_id, size, mtime, offset, parse_errors)
@@ -104,15 +129,15 @@ export class HistoryIndexer {
         )
         .run({
           path,
-          id: claudeSessionId,
+          id: excluded ? null : claudeSessionId,
           size: stat.size,
           mtime: stat.mtime.toISOString(),
           offset: offset + end,
           errors: (reset ? 0 : (row?.parse_errors ?? 0)) + errors,
         });
-      this.updateSession(claudeSessionId, path, records);
+      if (!excluded) this.updateSession(claudeSessionId, path, cwd, records);
     })();
-    return { claudeSessionId, path, added: records.length, reset };
+    return excluded ? null : { claudeSessionId, path, added: records.length, reset };
   }
 
   /** Drops everything indexed for a session (its file row is rewritten by the caller). */
@@ -121,18 +146,36 @@ export class HistoryIndexer {
     this.db.query("DELETE FROM history_sessions WHERE claude_session_id = ?").run(claudeSessionId);
   }
 
+  private sessionCwd(claudeSessionId: string): string {
+    const row = this.db
+      .query("SELECT cwd FROM history_sessions WHERE claude_session_id = ?")
+      .get(claudeSessionId) as { cwd: string } | null;
+    return row?.cwd ?? "";
+  }
+
+  /** The project folder comes from the lines' `cwd`, never from the directory name. */
+  private isExcluded(cwd: string): boolean {
+    if (!cwd) return false;
+    const path = normalizeCwd(cwd);
+    return this.excludes.some((ex) => path === ex || path.startsWith(`${ex}/`));
+  }
+
   /** Recomputes the session row from its stored messages and the records just read. */
-  private updateSession(claudeSessionId: string, path: string, records: HistoryRecord[]): void {
+  private updateSession(
+    claudeSessionId: string,
+    path: string,
+    cwd: string,
+    records: HistoryRecord[],
+  ): void {
     const existing = this.db
-      .query("SELECT cwd, title FROM history_sessions WHERE claude_session_id = ?")
-      .get(claudeSessionId) as { cwd: string; title: string | null } | null;
+      .query("SELECT title FROM history_sessions WHERE claude_session_id = ?")
+      .get(claudeSessionId) as { title: string | null } | null;
     const summary = records.filter((r) => r.kind === "summary").at(-1)?.text;
     const firstUser = records.find((r) => r.kind === "message" && r.role === "user")?.text;
     const title =
       summary ??
       existing?.title ??
       (firstUser === undefined ? null : Array.from(firstUser).slice(0, TITLE_CHARS).join(""));
-    const cwd = existing?.cwd || records.find((r) => r.cwd)?.cwd || "";
     const totals = this.db
       .query(
         `SELECT MIN(ts) AS first, MAX(ts) AS last, COALESCE(SUM(kind = 'message'), 0) AS count

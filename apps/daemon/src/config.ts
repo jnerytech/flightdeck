@@ -6,6 +6,8 @@ import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 
+export const DEFAULT_HISTORY_ROOTS = ["~/.claude/projects"] as const;
+
 export const RuntimeKind = z.enum(["claude", "fake"]);
 export type RuntimeKind = z.infer<typeof RuntimeKind>;
 
@@ -41,6 +43,13 @@ export const Config = z.object({
       }),
     )
     .default([]),
+  /** Claude Code transcripts indexed by the daemon (read only). */
+  history: z
+    .object({
+      roots: z.array(z.string()).default(() => [...DEFAULT_HISTORY_ROOTS]),
+      excludeCwds: z.array(z.string()).default([]),
+    })
+    .default(() => ({ roots: [...DEFAULT_HISTORY_ROOTS], excludeCwds: [] })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
@@ -82,6 +91,11 @@ export function loadConfig(path: string = defaultConfigPath()): Config {
     ...config,
     dataDir: resolve(expandHome(config.dataDir)),
     allowedRoots: config.allowedRoots.map((r) => resolve(expandHome(r))),
+    history: {
+      roots: config.history.roots.map((r) => resolve(expandHome(r))),
+      // Compared with the transcripts' cwd as written, so only `~` is expanded.
+      excludeCwds: config.history.excludeCwds.map(expandHome),
+    },
   };
 }
 
