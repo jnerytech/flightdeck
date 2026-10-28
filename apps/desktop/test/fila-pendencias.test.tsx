@@ -128,6 +128,25 @@ describe("fila-pendencias", () => {
     });
   });
 
+  test("só a sessão aberta tem o stream completo: trocar de sessão cancela a anterior", async () => {
+    const { store, a, hostA, first } = await fleet();
+    const other = a.manager.create({ cwd: a.project, prompt: "outra", name: "s-a2" });
+    await waitFor(() => a.manager.get(other.sessionId).status === "idle", "outra ociosa");
+    const keyFirst = sessionKey(hostA, first.sessionId);
+    store.select(hostA, first.sessionId);
+    await settle(() => (store.getState().sessions[keyFirst]?.pending.length ?? 0) === 1);
+    const seen = store.getState().sessions[keyFirst]?.lastSeq ?? 0;
+    expect(seen).toBeGreaterThan(0);
+
+    store.select(hostA, other.sessionId);
+    await settle(() => store.getState().sessions[sessionKey(hostA, other.sessionId)] !== undefined);
+    const request = needsYou(store.getState()).find((p) => p.sessionId === first.sessionId);
+    a.manager.respondPermission({ requestId: request?.requestId ?? "", decision: "allow" });
+    await waitFor(() => a.manager.get(first.sessionId).status === "idle", "primeira ociosa");
+    await Bun.sleep(50);
+    expect(store.getState().sessions[keyFirst]?.lastSeq).toBe(seen);
+  });
+
   test("responder pela fila um pedido que já não existe mostra o erro", async () => {
     const { store, hostA } = await fleet();
     await store.respondTo(hostA, "pedido-inexistente", "allow").catch(() => {});
