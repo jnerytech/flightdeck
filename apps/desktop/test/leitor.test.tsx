@@ -96,6 +96,17 @@ describe("leitor", () => {
     expect(screen.queryByText("alfa · p")).not.toBeNull();
   });
 
+  test("transcript que não existe mais, ou host sem conexão, vira erro no banner sem quebrar", async () => {
+    const { store } = await setup();
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const missing = await store.historyGet(hostId, "sumiu").catch(() => "rejeitou");
+    expect(missing).toBeNull();
+    expect(store.getState().error ?? "").toContain("not_found");
+    const unknown = await store.historyGet("host-removido", "x").catch(() => "rejeitou");
+    expect(unknown).toBeNull();
+    expect(store.getState().error ?? "").toContain("offline");
+  });
+
   test("rolar até o fim carrega a próxima página; Carregar anteriores traz o começo sem repetir", async () => {
     await setup();
     await openHit();
