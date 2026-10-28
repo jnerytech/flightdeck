@@ -31,9 +31,9 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "pair" | "service";
-  /** `service <action>`. */
-  action?: ServiceAction;
+  command: "start" | "pair" | "service" | "history";
+  /** `service <action>` or `history reindex`. */
+  action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
   dryRun?: true;
   config?: string;
@@ -46,6 +46,7 @@ const USAGE = [
   "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
+  "     flightdeckd history reindex [--config <arquivo>]",
 ].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -76,6 +77,15 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         args.action = action;
         break;
       }
+      case "history": {
+        args.command = "history";
+        const action = argv[++i];
+        if (action !== "reindex") {
+          throw new Error(`ação de histórico inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        break;
+      }
       case "--dry-run":
         args.dryRun = true;
         break;
@@ -96,8 +106,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
 export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
-  constructor(dataDir: string) {
-    super(`já em execução (dataDir ${dataDir})`);
+  constructor(dataDir: string, hint?: string) {
+    super(`já em execução (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
   }
 }
 
@@ -267,6 +277,31 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   printResult(deps, await installService(ctx));
 }
 
+/**
+ * `flightdeckd history reindex`: drops the transcript index and builds it again. Takes the
+ * daemon's lock, so it refuses (exit 3) while a daemon uses the same `dataDir`.
+ */
+function runReindex(args: CliArgs, deps: CliDeps): void {
+  const config = loadConfig(configPath(args));
+  const lock = acquireLock(config.dataDir);
+  if (!lock) {
+    throw new AlreadyRunningError(config.dataDir, "pare o daemon antes de reconstruir o índice");
+  }
+  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  try {
+    const history = new HistoryIndexer({
+      db: store.db,
+      roots: config.history.roots,
+      excludeCwds: config.history.excludeCwds,
+    });
+    const { sessions, messages } = history.rebuild();
+    deps.log.log(`histórico reconstruído: ${sessions} sessões, ${messages} mensagens`);
+  } finally {
+    store.close();
+    lock.release();
+  }
+}
+
 function printResult(deps: CliDeps, result: { output: string[]; instructions: string[] }): void {
   for (const line of result.output) deps.log.log(line);
   for (const line of result.instructions) deps.log.error(line);
@@ -286,6 +321,11 @@ export interface CliDeps {
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
+    if (args.command === "history") {
+      runReindex(args, deps);
+      deps.exit(0);
+      return null;
+    }
     if (args.command === "pair" || args.command === "service") {
       await (args.command === "pair" ? runPair(args, deps) : runService(args, deps));
       deps.exit(0);

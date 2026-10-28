@@ -382,6 +382,22 @@ export class HistoryIndexer {
     }));
   }
 
+  /** Drops everything indexed and reads every transcript again from the start. */
+  rebuild(): { sessions: number; messages: number } {
+    this.db.transaction(() => {
+      if (this.fts) this.db.run("INSERT INTO history_fts (history_fts) VALUES ('delete-all')");
+      this.db.run("DELETE FROM history_messages");
+      this.db.run("DELETE FROM history_sessions");
+      this.db.run("DELETE FROM history_files");
+    })();
+    this.scan();
+    const count = (sql: string) => (this.db.query(sql).get() as { n: number }).n;
+    return {
+      sessions: count("SELECT COUNT(*) AS n FROM history_sessions"),
+      messages: count("SELECT COUNT(*) AS n FROM history_messages WHERE kind = 'message'"),
+    };
+  }
+
   /** One pass over every root; returns the files that gained records. */
   scan(): IndexResult[] {
     // A managed session may get its claudeSessionId after its transcript was indexed.
