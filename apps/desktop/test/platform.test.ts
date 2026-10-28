@@ -9,6 +9,9 @@ const sent: unknown[] = [];
 let deepLinkHandler: ((urls: string[]) => void) | null = null;
 let unlistened = 0;
 let autostartOn = false;
+const shortcutCalls: Array<[string, string]> = [];
+let shortcutHandler: ((event: { state: "Pressed" | "Released" }) => void) | null = null;
+let shortcutTaken = false;
 
 mock.module("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: unknown) => {
@@ -45,6 +48,17 @@ mock.module("@tauri-apps/plugin-autostart", () => ({
   },
 }));
 
+mock.module("@tauri-apps/plugin-global-shortcut", () => ({
+  register: async (accelerator: string, handler: typeof shortcutHandler) => {
+    shortcutCalls.push(["register", accelerator]);
+    if (shortcutTaken) throw new Error(`HotKey already registered: ${accelerator}`);
+    shortcutHandler = handler;
+  },
+  unregister: async (accelerator: string) => {
+    shortcutCalls.push(["unregister", accelerator]);
+  },
+}));
+
 const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
 const { createWebPlatform } = await import("../src/platform/web/index.ts");
 
@@ -53,7 +67,19 @@ function fakeWindow(hash = "") {
   const listeners = new Map<string, () => void>();
   const notifications: Array<{ title: string; body?: string }> = [];
   const opens: unknown[][] = [];
+  const copies: string[] = [];
+  let focused = 0;
   const win = {
+    navigator: {
+      clipboard: {
+        writeText: async (text: string) => {
+          copies.push(text);
+        },
+      },
+    },
+    focus: () => {
+      focused++;
+    },
     localStorage: {
       getItem: (k: string) => items.get(k) ?? null,
       setItem: (k: string, v: string) => void items.set(k, v),
@@ -73,7 +99,7 @@ function fakeWindow(hash = "") {
       { permission: "granted", requestPermission: async () => "granted" },
     ),
   };
-  return { win, listeners, notifications, opens };
+  return { win, listeners, notifications, opens, copies, focused: () => focused };
 }
 
 /**
@@ -204,6 +230,53 @@ describe("platform", () => {
     stop();
     await Bun.sleep(5);
     expect(unlistened).toBe(1);
+  });
+
+  test("web: copiar texto, trazer a janela; sem atalho global no navegador", async () => {
+    const fake = fakeWindow();
+    const platform = createWebPlatform(fake.win);
+    await platform.copyText("claude --resume abc");
+    expect(fake.copies).toEqual(["claude --resume abc"]);
+    await platform.showMainWindow();
+    expect(fake.focused()).toBe(1);
+    expect(platform.globalShortcut.supported).toBe(false);
+    let pressed = 0;
+    await platform.globalShortcut.register("Ctrl+Alt+F", () => pressed++);
+    await platform.globalShortcut.unregister("Ctrl+Alt+F");
+    expect(pressed).toBe(0);
+    // A page without the Clipboard API fails loudly instead of pretending it copied.
+    const { navigator: _, ...noClipboard } = fakeWindow().win;
+    expect(
+      await createWebPlatform(noClipboard)
+        .copyText("x")
+        .catch((e: Error) => e.message),
+    ).toBe("área de transferência indisponível");
+  });
+
+  test("tauri: atalho global pelo plugin, janela pela Rust e cópia pela área de transferência", async () => {
+    const fake = fakeWindow();
+    const platform = tauriPlatform(fake.win);
+    expect(platform.globalShortcut.supported).toBe(true);
+    let pressed = 0;
+    await platform.globalShortcut.register("Ctrl+Alt+F", () => pressed++);
+    shortcutHandler?.({ state: "Pressed" });
+    shortcutHandler?.({ state: "Released" });
+    expect(pressed).toBe(1);
+    await platform.globalShortcut.unregister("Ctrl+Alt+F");
+    expect(shortcutCalls).toEqual([
+      ["register", "Ctrl+Alt+F"],
+      ["unregister", "Ctrl+Alt+F"],
+    ]);
+    shortcutTaken = true;
+    const refused = await platform.globalShortcut
+      .register("Ctrl+Alt+G", () => {})
+      .catch((e: Error) => e.message);
+    expect(refused).toBe("HotKey already registered: Ctrl+Alt+G");
+
+    await platform.showMainWindow();
+    expect(invokes.at(-1)).toEqual(["focus_main", undefined]);
+    await platform.copyText("claude --resume abc");
+    expect(fake.copies).toEqual(["claude --resume abc"]);
   });
 
   test("lint barra @tauri-apps/* fora de src/platform/tauri", async () => {
