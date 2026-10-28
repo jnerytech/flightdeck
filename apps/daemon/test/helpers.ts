@@ -35,7 +35,7 @@ export function newManager(overrides: Partial<SessionManagerOptions> = {}) {
 }
 
 export async function waitFor<T>(
-  check: () => T | undefined | false,
+  check: () => T | undefined | null | false,
   { timeoutMs = 3000, label = "condição" } = {},
 ): Promise<T> {
   const deadline = Date.now() + timeoutMs;
