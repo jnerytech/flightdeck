@@ -62,6 +62,12 @@ export function App({ store }: { store: AppStore }) {
     return () => store.dispose();
   }, [store]);
 
+  // The OS refused the global shortcut: show the warning where another one can be chosen.
+  const shortcutProblem = state.settings.shortcutProblem;
+  useEffect(() => {
+    if (shortcutProblem) setSettingsOpen(true);
+  }, [shortcutProblem]);
+
   // Inside the app only: as a global shortcut Ctrl+K would clash with browsers and VS Code.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -84,6 +90,7 @@ export function App({ store }: { store: AppStore }) {
         settings={state.settings}
         onCloseToTray={(enabled) => void store.setCloseToTray(enabled)}
         onAutostart={(enabled) => void store.setAutostart(enabled)}
+        onGlobalShortcut={(text) => void store.setGlobalShortcut(text)}
       />
     );
   } else if (addingHost || state.hosts.length === 0) {

@@ -16,6 +16,7 @@ import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
+import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { trayStatus } from "./tray.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
@@ -74,6 +75,13 @@ export interface Settings {
   closeToTray: boolean;
   autostart: boolean;
   autostartSupported: boolean;
+  /** Accelerator in use (or tried last, when `shortcutProblem` is set). */
+  globalShortcut: string;
+  globalShortcutSupported: boolean;
+  /** The OS refused the shortcut, typically because another program already uses it. */
+  shortcutProblem: string | null;
+  /** The last shortcut typed in the settings was not valid. */
+  shortcutError: string | null;
 }
 
 export interface AppStoreOptions {
@@ -154,6 +162,8 @@ export class AppStore {
   private readonly connections = new Map<string, HostConnection>();
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
+  /** Accelerator currently registered with the OS. */
+  private shortcut: string | null = null;
 
   constructor(
     private readonly platform: Platform,
@@ -171,6 +181,10 @@ export class AppStore {
         closeToTray: true,
         autostart: false,
         autostartSupported: platform.autostart.supported,
+        globalShortcut: DEFAULT_SHORTCUT,
+        globalShortcutSupported: platform.globalShortcut.supported,
+        shortcutProblem: null,
+        shortcutError: null,
       },
     };
   }
@@ -190,7 +204,9 @@ export class AppStore {
     await this.platform.setCloseToTray(closeToTray);
     const autostart =
       this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
-    this.update({ settings: { ...this.state.settings, closeToTray, autostart } });
+    const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
+    this.update({ settings: { ...this.state.settings, closeToTray, autostart, globalShortcut } });
+    if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     for (const config of loadHosts(this.platform.storage)) {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
@@ -269,6 +285,46 @@ export class AppStore {
     this.platform.storage.setItem(CLOSE_TO_TRAY_KEY, String(enabled));
     await this.platform.setCloseToTray(enabled);
     this.update({ settings: { ...this.state.settings, closeToTray: enabled } });
+  }
+
+  /** Validates, swaps the registration and saves the new shortcut only if the OS took it. */
+  async setGlobalShortcut(text: string): Promise<void> {
+    const check = validateShortcut(text);
+    if (!check.ok) {
+      this.updateSettings({ shortcutError: check.error });
+      return;
+    }
+    if (this.shortcut) await this.platform.globalShortcut.unregister(this.shortcut);
+    this.shortcut = null;
+    if (await this.registerShortcut(check.value)) {
+      this.platform.storage.setItem(SHORTCUT_KEY, check.value);
+    }
+  }
+
+  private async registerShortcut(accelerator: string): Promise<boolean> {
+    try {
+      await this.platform.globalShortcut.register(accelerator, () => {
+        void this.platform.showMainWindow();
+        this.openSearch();
+      });
+      this.shortcut = accelerator;
+      this.updateSettings({
+        globalShortcut: accelerator,
+        shortcutProblem: null,
+        shortcutError: null,
+      });
+      return true;
+    } catch {
+      this.updateSettings({
+        shortcutProblem: `O atalho ${accelerator} não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.`,
+        shortcutError: null,
+      });
+      return false;
+    }
+  }
+
+  private updateSettings(patch: Partial<Settings>): void {
+    this.update({ settings: { ...this.state.settings, ...patch } });
   }
 
   async setAutostart(enabled: boolean): Promise<void> {
