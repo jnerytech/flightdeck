@@ -2,20 +2,33 @@ import type {
   CommandPayload,
   EventEnvelope,
   HelloResult,
-  SessionSummary,
+  PendingPermission,
+  SessionEventOf,
+  SessionStatus,
 } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform, TrayStatus } from "../platform/types.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import { notificationFor } from "./notify.ts";
+import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
+import { trayStatus } from "./tray.ts";
+
+/** What the sidebar knows about a session, straight from `session.summary`. */
+export interface SidebarSession {
+  id: string;
+  name: string | null;
+  cwd: string;
+  status: SessionStatus;
+  pendingPermissions: PendingPermission[];
+  updatedAt: string;
+}
 
 export interface HostView extends HostConfig {
   status: ConnectionStatus;
   info: HelloResult | null;
-  sessions: SessionSummary[];
+  sessions: SidebarSession[];
 }
 
 export interface Selection {
@@ -36,6 +49,35 @@ export interface AppStoreOptions {
   maxDelayMs?: number;
 }
 
+export interface PendingItem {
+  hostId: string;
+  hostName: string;
+  sessionId: string;
+  sessionName: string;
+  requestId: string;
+  toolName: string;
+  createdAt: string;
+}
+
+/** Every open permission request of every host, oldest first. */
+export function needsYou(state: AppState): PendingItem[] {
+  return state.hosts
+    .flatMap((host) =>
+      host.sessions.flatMap((session) =>
+        session.pendingPermissions.map((p) => ({
+          hostId: host.id,
+          hostName: host.name,
+          sessionId: session.id,
+          sessionName: session.name ?? basename(session.cwd),
+          requestId: p.requestId,
+          toolName: p.toolName,
+          createdAt: p.createdAt,
+        })),
+      ),
+    )
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
 function describeError(error: unknown): string {
@@ -47,16 +89,17 @@ function describeError(error: unknown): string {
  * the current selection. React reads it through `useSyncExternalStore`.
  */
 export class AppStore {
-  private state: AppState = { hosts: [], sessions: {}, selected: null, error: null };
+  private state: AppState;
   private readonly listeners = new Set<() => void>();
   private readonly connections = new Map<string, HostConnection>();
-  /** Per session: seq up to which events are replay (no notifications for those). */
-  private readonly liveFrom = new Map<string, number>();
+  private tray: TrayStatus | null = null;
 
   constructor(
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
-  ) {}
+  ) {
+    this.state = { hosts: [], sessions: {}, selected: null, error: null };
+  }
 
   getState = (): AppState => this.state;
 
@@ -66,6 +109,7 @@ export class AppStore {
   };
 
   async init(): Promise<void> {
+    // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.update({ hosts: [], sessions: {}, selected: null });
     for (const config of loadHosts(this.platform.storage)) {
@@ -114,17 +158,23 @@ export class AppStore {
     this.persistHosts();
   }
 
+  /** `flightdeck://` links opened from outside the app (OS deep link or second instance). */
+  onDeepLink(handler: (url: string) => void): () => void {
+    return this.platform.onDeepLink(handler);
+  }
+
+  /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
+    const previous = this.state.selected;
+    if (previous?.sessionId && previous.sessionId !== sessionId) {
+      this.connections.get(previous.hostId)?.unsubscribe(previous.sessionId);
+    }
+    if (sessionId) this.connections.get(hostId)?.subscribe(sessionId);
     this.update({ selected: { hostId, sessionId } });
   }
 
   reportError(message: string): void {
     this.update({ error: message });
-  }
-
-  /** `flightdeck://` links opened from outside the app (including the one it started with). */
-  onDeepLink(handler: (url: string) => void): () => void {
-    return this.platform.onDeepLink(handler);
   }
 
   clearError(): void {
@@ -143,7 +193,6 @@ export class AppStore {
     try {
       const { sessionId } = await conn.request("session.create", payload);
       this.select(hostId, sessionId);
-      await this.refresh(hostId);
       return sessionId;
     } catch (error) {
       this.update({ error: describeError(error) });
@@ -165,6 +214,15 @@ export class AppStore {
 
   resume(): Promise<void> {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
+  }
+
+  /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
+  async respondTo(hostId: string, requestId: string, decision: "allow" | "deny"): Promise<void> {
+    try {
+      await this.connections.get(hostId)?.request("permission.respond", { requestId, decision });
+    } catch (error) {
+      this.update({ error: describeError(error) });
+    }
   }
 
   respond(requestId: string, decision: "allow" | "deny", message?: string): Promise<void> {
@@ -201,13 +259,11 @@ export class AppStore {
       lastSeqFor: (sessionId) =>
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
-      onSubscribed: (sessionId, result) => {
-        this.liveFrom.set(sessionKey(config.id, sessionId), result.session.lastSeq);
-        this.updateSummary(config.id, result.session);
-      },
+      onSubscribed: () => {},
       onEvent: (envelope) => this.onEvent(config.id, envelope),
     });
     this.connections.set(config.id, conn);
+    conn.watch();
     conn.connect();
   }
 
@@ -222,53 +278,39 @@ export class AppStore {
       }
       this.update({ sessions });
     }
-    if (status === "online") void this.refresh(hostId);
-  }
-
-  /** Reloads the session list of a host and subscribes to every session in it. */
-  private async refresh(hostId: string): Promise<void> {
-    const conn = this.connections.get(hostId);
-    if (!conn) return;
-    try {
-      const { sessions } = await conn.request("session.list", {});
-      this.updateHost(hostId, (h) => ({ ...h, sessions }));
-      for (const session of sessions) conn.subscribe(session.id);
-    } catch (error) {
-      this.update({ error: describeError(error) });
-    }
   }
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {
-    const key = sessionKey(hostId, envelope.sessionId);
-    const before = this.state.sessions[key] ?? emptySession();
-    const after = applyEnvelope(before, envelope);
-    this.update({ sessions: { ...this.state.sessions, [key]: after } });
-
-    const { event } = envelope;
-    if (event.type === "session.status") {
-      this.updateHost(hostId, (h) => ({
-        ...h,
-        sessions: h.sessions.map((s) =>
-          s.id === envelope.sessionId ? { ...s, status: event.status } : s,
-        ),
-      }));
+    if (envelope.event.type === "session.summary") {
+      this.onSummary(hostId, envelope.event);
+      return;
     }
-    const liveFrom = this.liveFrom.get(key);
-    if (liveFrom === undefined || envelope.seq <= liveFrom || after === before) return;
-    const summary = this.state.hosts
-      .find((h) => h.id === hostId)
-      ?.sessions.find((s) => s.id === envelope.sessionId);
-    const label = summary?.name ?? basename(summary?.cwd ?? after.cwd ?? envelope.sessionId);
-    const notification = notificationFor(event, label, this.platform.isFocused());
-    if (notification) void this.platform.notify(notification);
+    const key = sessionKey(hostId, envelope.sessionId);
+    const session = applyEnvelope(this.state.sessions[key] ?? emptySession(), envelope);
+    this.update({ sessions: { ...this.state.sessions, [key]: session } });
   }
 
-  /** Subscriptions always follow a `session.list`, so the session is already in the sidebar. */
-  private updateSummary(hostId: string, summary: SessionSummary): void {
+  /** Sidebar, queue, tray and notifications all come from `session.summary`. */
+  private onSummary(hostId: string, summary: SessionEventOf<"session.summary">): void {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!host) return;
+    const next: SidebarSession = {
+      id: summary.sessionId,
+      name: summary.name,
+      cwd: summary.cwd,
+      status: summary.status,
+      pendingPermissions: summary.pendingPermissions,
+      updatedAt: summary.updatedAt,
+    };
+    const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({
       ...h,
-      sessions: h.sessions.map((s) => (s.id === summary.id ? summary : s)),
+      sessions: prev ? h.sessions.map((s) => (s.id === next.id ? next : s)) : [...h.sessions, next],
     }));
+    const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
+    for (const n of summaryNotifications(prev, next, label, this.platform.isFocused())) {
+      void this.platform.notify(n);
+    }
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {
@@ -284,6 +326,15 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
+    if (patch.hosts) this.syncTray();
     for (const listener of this.listeners) listener();
+  }
+
+  /** Pushes the fleet-wide badge to the tray whenever it changes. */
+  private syncTray(): void {
+    const status = trayStatus(this.state.hosts);
+    if (this.tray?.count === status.count && this.tray.tooltip === status.tooltip) return;
+    this.tray = status;
+    void this.platform.setTrayStatus(status);
   }
 }

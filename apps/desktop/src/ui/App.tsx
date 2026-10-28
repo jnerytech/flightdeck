@@ -12,6 +12,8 @@ export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
   const [addingHost, setAddingHost] = useState(false);
   const [hostError, setHostError] = useState<string | null>(null);
+  /** Request clicked in the "Precisa de você" queue: the session view scrolls to its card. */
+  const [focusRequest, setFocusRequest] = useState<string | null>(null);
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
@@ -80,6 +82,7 @@ export function App({ store }: { store: AppStore }) {
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         session={session}
         actions={store}
+        focusRequestId={focusRequest}
       />
     );
   } else if (selectedHost) {
@@ -104,6 +107,11 @@ export function App({ store }: { store: AppStore }) {
         }}
         onRemoveHost={(id) => void store.removeHost(id)}
         onAddHost={() => setAddingHost(true)}
+        onOpenRequest={(item) => {
+          setAddingHost(false);
+          setFocusRequest(item.requestId);
+          store.select(item.hostId, item.sessionId);
+        }}
       />
       <main className="main">
         {state.error && (

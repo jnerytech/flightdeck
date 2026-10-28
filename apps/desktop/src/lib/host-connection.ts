@@ -63,6 +63,7 @@ export class HostConnection {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly pending = new Map<string, Pending>();
   private readonly subscriptions = new Set<string>();
+  private watching = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -75,6 +76,7 @@ export class HostConnection {
         this.info = info;
         this.attempt = 0;
         this.setStatus("online");
+        if (this.watching) this.send("sessions.watch", {}).catch(ignore);
         for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
       }, ignore);
     });
@@ -108,6 +110,13 @@ export class HostConnection {
     if (this.subscriptions.has(sessionId)) return;
     this.subscriptions.add(sessionId);
     if (this.status === "online") this.sendSubscribe(sessionId);
+  }
+
+  /** Streams `session.summary` for every session of the host, again after each reconnect. */
+  watch(): void {
+    if (this.watching) return;
+    this.watching = true;
+    if (this.status === "online") this.send("sessions.watch", {}).catch(ignore);
   }
 
   unsubscribe(sessionId: string): void {

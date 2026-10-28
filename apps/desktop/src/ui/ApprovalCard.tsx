@@ -22,7 +22,10 @@ export function ApprovalCard(props: {
   const resolution = item.resolution;
 
   return (
-    <div className={`approval ${resolution ? "resolved" : "open"}`}>
+    <div
+      className={`approval ${resolution ? "resolved" : "open"}`}
+      data-request-id={item.requestId}
+    >
       <div className="approval-title">
         Permissão para <strong>{item.toolName}</strong>
       </div>

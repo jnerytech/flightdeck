@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { ApprovalCard } from "./ApprovalCard.tsx";
 import { Markdown } from "./Markdown.tsx";
@@ -56,7 +56,16 @@ export function SessionView(props: {
   title: string;
   session: SessionState;
   actions: SessionActions;
+  focusRequestId?: string | null;
 }) {
+  const { focusRequestId } = props;
+  const timeline = useRef<HTMLDivElement>(null);
+  const cards = props.session.items.length;
+  useEffect(() => {
+    if (!focusRequestId || cards === 0) return;
+    const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
+    card?.scrollIntoView?.({ block: "center" });
+  }, [focusRequestId, cards]);
   const { session, actions } = props;
   const [text, setText] = useState("");
   const closed = session.status === "ended" || session.status === "error";
@@ -94,7 +103,7 @@ export function SessionView(props: {
           )}
         </div>
       </header>
-      <div className="timeline">
+      <div className="timeline" ref={timeline}>
         {session.items.map((item) => (
           <TimelineItem key={item.seq} item={item} session={session} actions={actions} />
         ))}
