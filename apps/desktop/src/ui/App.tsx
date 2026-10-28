@@ -7,6 +7,7 @@ import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.ts
 import { HostPage } from "./HostPage.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 
 export function App({ store }: { store: AppStore }) {
@@ -18,6 +19,7 @@ export function App({ store }: { store: AppStore }) {
   /** Host whose page is open, if any. */
   const [hostPage, setHostPage] = useState<string | null>(null);
   const pageHost = state.hosts.find((h) => h.id === hostPage);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
@@ -59,7 +61,15 @@ export function App({ store }: { store: AppStore }) {
   const sessionId = state.selected?.sessionId;
 
   let main: ReactNode;
-  if (addingHost || state.hosts.length === 0) {
+  if (settingsOpen) {
+    main = (
+      <Settings
+        settings={state.settings}
+        onCloseToTray={(enabled) => void store.setCloseToTray(enabled)}
+        onAutostart={(enabled) => void store.setAutostart(enabled)}
+      />
+    );
+  } else if (addingHost || state.hosts.length === 0) {
     main = (
       <div className="welcome">
         {state.hosts.length === 0 && (
@@ -120,17 +130,24 @@ export function App({ store }: { store: AppStore }) {
         state={state}
         onSelect={(hostId, id) => {
           setAddingHost(false);
+          setSettingsOpen(false);
           setHostPage(null);
           store.select(hostId, id);
         }}
         onRemoveHost={(id) => void store.removeHost(id)}
-        onAddHost={() => setAddingHost(true)}
+        onAddHost={() => {
+          setSettingsOpen(false);
+          setAddingHost(true);
+        }}
+        onOpenSettings={() => setSettingsOpen(true)}
         onOpenHost={(hostId) => {
           setAddingHost(false);
+          setSettingsOpen(false);
           setHostPage(hostId);
         }}
         onOpenRequest={(item) => {
           setAddingHost(false);
+          setSettingsOpen(false);
           setHostPage(null);
           setFocusRequest(item.requestId);
           store.select(item.hostId, item.sessionId);

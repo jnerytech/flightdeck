@@ -18,6 +18,7 @@ export function Sidebar(props: {
   onAddHost(): void;
   onOpenRequest(item: PendingItem): void;
   onOpenHost(hostId: string): void;
+  onOpenSettings(): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
@@ -102,6 +103,9 @@ export function Sidebar(props: {
       ))}
       <button type="button" className="add-host" onClick={props.onAddHost}>
         Adicionar outro host
+      </button>
+      <button type="button" className="add-host" onClick={props.onOpenSettings}>
+        Configurações
       </button>
     </nav>
   );

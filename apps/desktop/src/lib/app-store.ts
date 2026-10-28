@@ -47,6 +47,13 @@ export interface AppState {
   sessions: Record<string, SessionState>;
   selected: Selection | null;
   error: string | null;
+  settings: Settings;
+}
+
+export interface Settings {
+  closeToTray: boolean;
+  autostart: boolean;
+  autostartSupported: boolean;
 }
 
 export interface AppStoreOptions {
@@ -83,6 +90,9 @@ export function needsYou(state: AppState): PendingItem[] {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+/** Preference stored in plain settings; anything but "false" means on. */
+export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
 const newHostView = (config: HostConfig): HostView => ({
@@ -112,7 +122,18 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.state = { hosts: [], sessions: {}, selected: null, error: null };
+    this.state = {
+      hosts: [],
+      sessions: {},
+      selected: null,
+      error: null,
+      // Defaults: close to tray on, start with Windows off.
+      settings: {
+        closeToTray: true,
+        autostart: false,
+        autostartSupported: platform.autostart.supported,
+      },
+    };
   }
 
   getState = (): AppState => this.state;
@@ -126,6 +147,11 @@ export class AppStore {
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.update({ hosts: [], sessions: {}, selected: null });
+    const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
+    await this.platform.setCloseToTray(closeToTray);
+    const autostart =
+      this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
+    this.update({ settings: { ...this.state.settings, closeToTray, autostart } });
     for (const config of loadHosts(this.platform.storage)) {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
@@ -198,6 +224,17 @@ export class AppStore {
     }
     if (sessionId) this.connections.get(hostId)?.subscribe(sessionId);
     this.update({ selected: { hostId, sessionId } });
+  }
+
+  async setCloseToTray(enabled: boolean): Promise<void> {
+    this.platform.storage.setItem(CLOSE_TO_TRAY_KEY, String(enabled));
+    await this.platform.setCloseToTray(enabled);
+    this.update({ settings: { ...this.state.settings, closeToTray: enabled } });
+  }
+
+  async setAutostart(enabled: boolean): Promise<void> {
+    await this.platform.autostart.setEnabled(enabled);
+    this.update({ settings: { ...this.state.settings, autostart: enabled } });
   }
 
   reportError(message: string): void {
