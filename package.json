@@ -17,7 +17,8 @@
     "smoke:multi": "bun run scripts/smoke-multi.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
-    "build:desktop": "bun run --filter @flightdeck/desktop build"
+    "build:desktop": "bun run --filter @flightdeck/desktop build",
+    "deploy": "bun run scripts/deploy.ts"
   },
   "dependencies": {
     "@flightdeck/protocol": "workspace:*"

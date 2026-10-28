@@ -10,3 +10,4 @@ apps/desktop/src-tauri/gen/
 *.tsbuildinfo
 .DS_Store
 coverage/
+deploy.hosts.json
