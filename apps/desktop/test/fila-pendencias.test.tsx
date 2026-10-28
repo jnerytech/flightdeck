@@ -119,6 +119,28 @@ describe("fila-pendencias", () => {
     expect(store.getState().sessions[sessionKey(hostA, first.sessionId)]?.pending.length).toBe(1);
   });
 
+  test("permitir e negar direto na fila respondem no host de cada pedido", async () => {
+    const { store, a, b, first, second, win } = await fleet();
+    render(<App store={store} />);
+    await rtlWaitFor(() => expect(screen.queryByText("Precisa de você (2)")).not.toBeNull());
+    const allow = screen.queryByRole("button", { name: "Permitir pi · s-b: Write" });
+    const deny = screen.queryByRole("button", { name: "Negar pc · s-a: Write" });
+    expect(allow).not.toBeNull();
+    expect(deny).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(allow as HTMLElement);
+    });
+    await settle(() => b.manager.get(second.sessionId).status === "idle");
+    expect(b.manager.get(second.sessionId).status).toBe("idle");
+    expect(a.manager.get(first.sessionId).status).toBe("awaiting_permission");
+    await act(async () => {
+      fireEvent.click(deny as HTMLElement);
+    });
+    await settle(() => needsYou(store.getState()).length === 0);
+    expect(needsYou(store.getState())).toEqual([]);
+    expect(win.document.title).toBe("Flightdeck");
+  });
+
   test("host que caiu aparece como reconectando", async () => {
     const { store, serverA } = await fleet();
     render(<App store={store} />);
