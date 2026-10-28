@@ -1,0 +1,33 @@
+import { realpathSync, statSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+import { FlightdeckError } from "./errors.ts";
+
+const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
+
+function realDir(path: string): string | null {
+  try {
+    const real = realpathSync.native(resolve(path));
+    return statSync(real).isDirectory() ? real : null;
+  } catch {
+    return null;
+  }
+}
+
+/** True when `child` is `root` itself or lies inside it. Both must be real paths. */
+export function isInside(root: string, child: string): boolean {
+  const a = caseInsensitive ? root.toLowerCase() : root;
+  const b = caseInsensitive ? child.toLowerCase() : child;
+  const rel = relative(a, b);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+/** Resolves `cwd` with realpath and refuses it unless it lives inside one of `allowedRoots`. */
+export function resolveAllowedCwd(cwd: string, allowedRoots: readonly string[]): string {
+  const real = realDir(cwd);
+  if (!real) throw new FlightdeckError("forbidden_cwd", `diretório inexistente: ${cwd}`);
+  for (const root of allowedRoots) {
+    const realRoot = realDir(root);
+    if (realRoot && isInside(realRoot, real)) return real;
+  }
+  throw new FlightdeckError("forbidden_cwd", `diretório fora de allowedRoots: ${cwd}`);
+}

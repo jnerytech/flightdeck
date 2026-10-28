@@ -1,0 +1,11 @@
+node_modules/
+dist/
+apps/desktop/dist/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+*.bun-build
+*.db
+*.db-wal
+*.db-shm
+*.tsbuildinfo
+.DS_Store
