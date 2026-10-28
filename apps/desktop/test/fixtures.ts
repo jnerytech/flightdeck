@@ -5,7 +5,7 @@ import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
-import type { Platform } from "../src/lib/platform.ts";
+import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
 
@@ -50,29 +50,44 @@ export function daemon(cleanups: Array<() => unknown>) {
   return { manager, project, root, listen };
 }
 
-/** In-memory platform that records notifications. */
+/**
+ * The web platform over a fake window: the UI tests run on the same implementation the PWA will
+ * use. Tokens live in `tokens` (injected as the secrets map); notifications are recorded through
+ * a fake browser Notification API.
+ */
 export function memoryPlatform(focused = false) {
   const items = new Map<string, string>();
   const tokens = new Map<string, string>();
   const notifications: Array<{ title: string; body: string }> = [];
-  const platform: Platform = {
-    storage: {
+  let onHashChange: (() => void) | null = null;
+  const win: WebWindow = {
+    localStorage: {
       getItem: (k) => items.get(k) ?? null,
       setItem: (k, v) => {
         items.set(k, v);
       },
     },
-    getToken: async (id) => tokens.get(id) ?? null,
-    setToken: async (id, token) => {
-      tokens.set(id, token);
+    document: { hasFocus: () => focused, title: "Flightdeck" },
+    location: { hash: "" },
+    open: () => null,
+    addEventListener: (_type, listener) => {
+      onHashChange = listener;
     },
-    deleteToken: async (id) => {
-      tokens.delete(id);
+    removeEventListener: () => {
+      onHashChange = null;
     },
-    notify: async (n) => {
-      notifications.push(n);
-    },
-    isFocused: () => focused,
+    Notification: Object.assign(
+      function (this: unknown, title: string, options?: { body?: string }) {
+        notifications.push({ title, body: options?.body ?? "" });
+      } as unknown as NonNullable<WebWindow["Notification"]>,
+      { permission: "granted", requestPermission: async () => "granted" },
+    ),
   };
-  return { platform, items, tokens, notifications };
+  const platform = createWebPlatform(win, tokens);
+  /** Simulates the OS opening a `flightdeck://` link. */
+  const deepLink = (url: string) => {
+    win.location.hash = `#link=${encodeURIComponent(url)}`;
+    onHashChange?.();
+  };
+  return { platform, items, tokens, notifications, win, deepLink };
 }
