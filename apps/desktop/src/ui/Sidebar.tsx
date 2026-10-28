@@ -21,6 +21,7 @@ export function Sidebar(props: {
   onOpenHost(hostId: string): void;
   onOpenSettings(): void;
   onOpenSearch(): void;
+  onOpenHistory(hostId: string): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
@@ -84,6 +85,14 @@ export function Sidebar(props: {
                 ⚠
               </span>
             )}
+            <button
+              type="button"
+              className="icon"
+              aria-label={`Histórico de ${host.name}`}
+              onClick={() => props.onOpenHistory(host.id)}
+            >
+              🕘
+            </button>
             <button
               type="button"
               className="icon"

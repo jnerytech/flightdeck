@@ -4,6 +4,7 @@ import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { GlobalSearch } from "./GlobalSearch.tsx";
+import { HistoryList } from "./HistoryList.tsx";
 import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { HostPage } from "./HostPage.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
@@ -25,6 +26,9 @@ export function App({ store }: { store: AppStore }) {
   /** Transcript open in the read-only reader, if any. */
   const [reading, setReading] = useState<ReaderTarget | null>(null);
   const readingHost = state.hosts.find((h) => h.id === reading?.hostId);
+  /** Host whose history list is open, if any. */
+  const [historyHost, setHistoryHost] = useState<string | null>(null);
+  const historyHostView = state.hosts.find((h) => h.id === historyHost);
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
@@ -122,6 +126,19 @@ export function App({ store }: { store: AppStore }) {
         onResumed={() => setReading(null)}
       />
     );
+  } else if (historyHostView) {
+    main = (
+      <HistoryList
+        key={historyHostView.id}
+        store={store}
+        hostId={historyHostView.id}
+        hostName={historyHostView.name}
+        onOpen={(claudeSessionId) => {
+          setHistoryHost(null);
+          setReading({ hostId: historyHostView.id, claudeSessionId });
+        }}
+      />
+    );
   } else if (pageHost) {
     main = (
       <HostPage
@@ -164,6 +181,7 @@ export function App({ store }: { store: AppStore }) {
         state={state}
         onSelect={(hostId, id) => {
           setReading(null);
+          setHistoryHost(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(null);
@@ -176,8 +194,16 @@ export function App({ store }: { store: AppStore }) {
         }}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenSearch={() => store.openSearch()}
+        onOpenHistory={(hostId) => {
+          setReading(null);
+          setAddingHost(false);
+          setSettingsOpen(false);
+          setHostPage(null);
+          setHistoryHost(hostId);
+        }}
         onOpenHost={(hostId) => {
           setReading(null);
+          setHistoryHost(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(hostId);
@@ -185,6 +211,7 @@ export function App({ store }: { store: AppStore }) {
         onRespond={(item, decision) => void store.respondTo(item.hostId, item.requestId, decision)}
         onOpenRequest={(item) => {
           setReading(null);
+          setHistoryHost(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(null);
@@ -210,6 +237,7 @@ export function App({ store }: { store: AppStore }) {
           onClose={() => store.closeSearch()}
           onOpenHit={(hit) => {
             store.closeSearch();
+            setHistoryHost(null);
             setSettingsOpen(false);
             setAddingHost(false);
             setReading({

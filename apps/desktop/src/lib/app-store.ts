@@ -3,6 +3,7 @@ import type {
   EventEnvelope,
   HelloResult,
   HistoryGetResult,
+  HistoryListResult,
   HistorySearchHit,
   HostInfoResult,
   PendingPermission,
@@ -119,6 +120,12 @@ export function needsYou(state: AppState): PendingItem[] {
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
+
+/** Filters of the per-host history list. */
+export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
+
+/** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
+export const HISTORY_LIST_LIMIT = 200;
 
 /** Messages per `history.get` page in the transcript reader. */
 export const HISTORY_PAGE = 50;
@@ -370,6 +377,18 @@ export class AppStore {
         this.update({ search: { ...search, waiting, hits } });
       }),
     );
+  }
+
+  /** A host's indexed sessions; errors go to the banner and give `null`. */
+  async historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
+    try {
+      const conn = this.connections.get(hostId);
+      if (!conn) throw new RequestError("offline", "host desconhecido");
+      return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
+    } catch (error) {
+      this.update({ error: describeError(error) });
+      return null;
+    }
   }
 
   /** One page of a host's transcript; errors go to the banner and give `null`. */

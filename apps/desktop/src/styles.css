@@ -411,3 +411,21 @@ textarea {
 .form .error {
   color: var(--danger);
 }
+
+/* Per-host history list */
+.history ul {
+  list-style: none;
+  padding: 0;
+}
+
+.history li button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.history .filters {
+  flex-wrap: wrap;
+}

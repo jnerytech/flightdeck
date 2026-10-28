@@ -16,7 +16,8 @@ export function Snippet({ text }: { text: string }) {
   );
 }
 
-const when = (ts: string | null) => (ts ? ts.slice(0, 16).replace("T", " ") : "");
+/** `YYYY-MM-DD HH:MM` of an ISO timestamp (as stored, UTC). */
+export const when = (ts: string | null) => (ts ? ts.slice(0, 16).replace("T", " ") : "");
 
 /** History search across every host (Ctrl+K), merged by date as each host answers. */
 export function GlobalSearch(props: {
