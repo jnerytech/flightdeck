@@ -4,6 +4,7 @@ import { homedir, hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
+import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 
 export const RuntimeKind = z.enum(["claude", "fake"]);
 export type RuntimeKind = z.infer<typeof RuntimeKind>;
@@ -21,6 +22,10 @@ export const Config = z.object({
     .default(() => generateToken()),
   dataDir: z.string().min(1).default("~/.flightdeck/data"),
   allowedRoots: z.array(z.string()).default([]),
+  /** CIDR ranges allowed to connect; anything else gets 403 before the WebSocket upgrade. */
+  allowedNetworks: z
+    .array(z.string().refine((cidr) => parseCidr(cidr) !== null, "CIDR inválido"))
+    .default(() => [...DEFAULT_ALLOWED_NETWORKS]),
   runtime: RuntimeKind.default("claude"),
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),

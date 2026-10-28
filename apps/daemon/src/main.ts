@@ -134,6 +134,7 @@ export async function startDaemon(
     port: config.port,
     token: config.token,
     allowedRoots: config.allowedRoots,
+    allowedNetworks: config.allowedNetworks,
   });
 
   const wsl =

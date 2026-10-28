@@ -14,6 +14,7 @@ import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import { FlightdeckError } from "./errors.ts";
+import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -25,6 +26,8 @@ export interface ServerOptions {
   port: number;
   token: string;
   allowedRoots: readonly string[];
+  /** CIDR ranges allowed to connect; defaults to loopback only. */
+  allowedNetworks?: readonly string[];
 }
 
 export interface RunningServer {
@@ -150,6 +153,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     hostname: opts.bind,
     port: opts.port,
     fetch(req, srv) {
+      // Origin filter before anything else, on every route, before any upgrade.
+      const origin = srv.requestIP(req)?.address ?? "";
+      if (!ipInNetworks(origin, opts.allowedNetworks ?? DEFAULT_ALLOWED_NETWORKS)) {
+        return new Response("forbidden", { status: 403 });
+      }
       const url = new URL(req.url);
       if (url.pathname === WS_PATH) {
         const upgraded = srv.upgrade(req, { data: { authed: false, subscriptions: new Map() } });
