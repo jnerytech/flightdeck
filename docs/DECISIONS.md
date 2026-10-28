@@ -227,3 +227,132 @@ deixou em aberto.
 - **Lado nativo do Tauri** (Rust) não tem teste automatizado: os testes de `platform` conferem
   que o frontend chama os comandos e plugins certos, e o `cargo check` confere que o lado nativo
   compila.
+
+# Decisões e divergências da Fase 3
+
+Registra onde a implementação diverge de `docs/SPEC-fase-3.md` ou completa um ponto que a spec
+deixou em aberto.
+
+## Versões novas
+
+| Peça | Versão |
+| --- | --- |
+| `@tauri-apps/plugin-global-shortcut` | 2.4.1 (exata) |
+| Crate `tauri-plugin-global-shortcut` | major `2` (resolvido 2.4.1) |
+
+## Trava de home
+
+- **O que ela faz:** `scripts/test/home-guard.ts` aponta `HOME`, `USERPROFILE`, `HOMEDRIVE` e
+  `HOMEPATH` para uma pasta temporária com um `.claude/projects` vazio. O preload, o `smoke`, o
+  `smoke:multi` e o `smoke:history` instalam a trava. Eles abortam se `os.homedir()` ou o
+  `expandHome("~/.claude")` do daemon não caírem nessa pasta, e conferem de novo no fim
+  (`afterAll` e antes do OK).
+- **Divergência:** a spec pede que a suíte reprove "se algo tocar o `~/.claude` real". Não há
+  como detectar uma leitura: interceptar `node:fs` no preload não alcança os imports nomeados dos
+  módulos (testado no Bun 1.4.4). A garantia vem do redirecionamento somado ao aborto. Todo
+  caminho que o indexador lê sai de `history.roots`, e o `~` dessas raízes é resolvido pela
+  variável de ambiente atual.
+- **`expandHome` não mudou:** no Bun 1.4.4, `os.homedir()` já lê `USERPROFILE`/`HOME` no
+  momento da chamada, e não na partida do processo. Testado: mudar a variável muda o resultado
+  na hora. Por isso não houve ciclo TDD para "a resolução de `~` lê a variável atual": esse
+  teste nunca ficaria vermelho.
+
+## Formato dos transcripts
+
+- **Linha de usuário só com `tool_result`** vira registro `tool_result` com texto vazio. Ela fica
+  fora da busca e do título e não conta como mensagem.
+- **Ids sem `uuid`:** resumos usam `summary:<leafUuid>`. Linhas cruas sem `uuid` usam
+  `raw:<sha1 da linha>`, um id estável entre leituras.
+- **Tipo conhecido mal formado** (por exemplo, `assistant` sem `message`) é guardado cru.
+- **Linhas cruas** ficam guardadas inteiras, sem o corte de 8 KB, que vale para mensagens.
+- **Título:** o resumo mais recente; sem resumo, a primeira mensagem do usuário cortada em 120
+  pontos de código.
+
+## Indexador
+
+- **Tabela FTS fora das migrações.** As três tabelas da spec são a migração 2. A
+  `history_fts` (FTS5 com conteúdo externo em `history_messages`) é criada no boot só quando há
+  FTS5, porque no caminho `LIKE` a tabela virtual não pode existir. Só mensagens entram na FTS:
+  linhas cruas e resultados de ferramenta ficam de fora. Apagar uma sessão (truncamento) usa o
+  comando `delete` do FTS5. Trocar de SQLite com FTS5 para um sem (ou o contrário) pede
+  `history reindex`.
+- **Detecção do FTS5** por `pragma_compile_options` (`ENABLE_FTS5`), sem `try/catch`. A
+  disponibilidade é injetável (`fts5`), e os testes rodam os dois caminhos.
+- **Exclusão:** compara o `cwd` normalizado, com barras normais e sem barra final, ignorando a
+  caixa no Windows e no macOS (sem realpath, porque os `cwd` antigos podem não existir mais). O
+  arquivo excluído fica em `history_files` com `claude_session_id` nulo. Assim as próximas
+  varreduras o pulam sem ler. O teste de caixa e barras só roda no Windows (`test.if`).
+- **Sessão sem `cwd` conhecido** fica com `cwd` vazio até uma linha trazê-lo.
+- **Origem:** é calculada a cada indexação e atualizada no início de cada varredura. Assim, um
+  transcript indexado antes do `session.init` da sessão gerenciada passa a `flightdeck` na
+  varredura seguinte.
+- **`history.scanIntervalMs`** (opcional, mínimo 10 ms) troca o intervalo de 10 s da varredura
+  de reserva. Existe para o `smoke:history` não esperar 10 s.
+- **Observação de arquivos:** `fs.watch` recursivo em cada raiz, com uma janela de 50 ms para
+  juntar rajadas. Uma raiz inexistente só é registrada no log, e a varredura periódica continua.
+  Falhas de varredura também vão para o log, sem derrubar o daemon.
+- **`history reindex`** pega o mesmo lock do daemon. Com um daemon rodando no `dataDir`, sai com
+  código 3 e pede para pará-lo.
+
+## Protocolo
+
+- **`history.changed` não é um `SessionEvent`.** É um frame de topo do `ServerMessage`, porque
+  não pertence a nenhuma sessão gerenciada e não tem `seq`. O app ainda não chama
+  `history.watch`; o `HostConnection` ignora qualquer frame que não seja ack, evento ou ping.
+- **Cursores** são deslocamentos em texto, opacos para o cliente. `history.get` devolve também
+  `session`, e o `prevCursor` além do `nextCursor`. Páginas anteriores podem se sobrepor à atual,
+  e o leitor descarta os repetidos pelo `uuid`.
+- **`history.get`** devolve só mensagens, resumos e notas de sistema. Resultados de ferramenta
+  e linhas cruas não fazem parte do transcript legível.
+- **`history.list`** esconde sessões sem nenhuma mensagem. O filtro de período pega as sessões
+  que tocam o intervalo (`last_ts >= from` e `first_ts <= to`). O de pasta pega a pasta e o que
+  está abaixo dela.
+- **Acertos de `history.search`** trazem, além de `snippet`, `ts` e `cwd`: `claudeSessionId`,
+  `uuid`, `title`, `role` e `cursor`, a página de `history.get` que começa no acerto. O trecho
+  marca cada ocorrência com `«` e `»`, e é montado em JS nos dois caminhos.
+- **Casamento:** com FTS5, cada termo vira um prefixo entre aspas (sem sintaxe FTS vinda do
+  usuário), com a remoção de acentos do tokenizador `unicode61`. Com `LIKE`, cada termo é uma
+  substring, sem diferença de caixa só para ASCII. Nos dois, todos os termos precisam estar na
+  mensagem.
+- **`history.resume`:**
+  - O nome padrão é o título do transcript.
+  - O `cwd` precisa estar dentro de `allowedRoots` (`forbidden_cwd` se não estiver).
+  - A recusa sem `force` usa `invalid_state`.
+  - A sessão nasce em `idle` (motivo "retomada do histórico"), como `session.resume`. O
+    `session.init` chega na primeira mensagem.
+
+## App desktop
+
+- **Busca global:** espera até 5 s por host. Hosts fora do ar entram direto como "sem
+  resposta", e uma busca nova descarta as respostas atrasadas da anterior.
+- **Histórico por host:** mostra as 200 sessões mais recentes, e os filtros estreitam a lista. O
+  período usa dias inteiros em UTC (`T00:00:00.000Z` a `T23:59:59.999Z`), porque os horários dos
+  transcripts estão em UTC.
+- **Leitor:** páginas de 50 mensagens. A próxima carrega quando a rolagem chega a 80 px do fim;
+  as anteriores, pelo botão "Carregar anteriores". Ele abre no acerto com `scrollIntoView` e o
+  marca com `aria-current`.
+- **Confirmação de "possivelmente em uso"** é um cartão dentro do app, e não um `window.confirm`.
+- **Atalho global:**
+  - Só `Shift` não conta como modificador, porque roubaria a digitação.
+  - Os apelidos (`Control`, `Option`, `Cmd`, `Meta`, `Win`) são normalizados para os nomes que
+    o plugin entende, na ordem `Ctrl+Alt+Shift+Super`.
+  - Na plataforma web o atalho fica indisponível, porque uma página não ouve teclas fora de
+    foco.
+  - Ao trocar, o atalho antigo é desregistrado antes. O novo só é salvo se o sistema aceitar.
+  - Recarregar o webview em desenvolvimento pode mostrar o aviso de conflito, porque o lado
+    nativo continua com o atalho registrado.
+- **Comando `focus_main`:** o helper Rust que traz a janela de volta virou `bring_to_front`, e o
+  nome `focus_main` ficou para o comando que a `platform` chama quando o atalho é apertado.
+- **Copiar** usa a Clipboard API do webview, sem plugin. A plataforma web falha com "área de
+  transferência indisponível" quando a API não existe.
+
+## TDD e testes
+
+- **Escopos fora da tabela:** `platform` (atalho, janela e cópia nas duas implementações, com o
+  lado Rust) e `historico-host` (a lista por host da seção App desktop da spec) tiveram os próprios
+  ciclos `test` → `feat`.
+- **O daemon dos testes de UI** (`apps/desktop/test/fixtures.ts`) agora tem índice de histórico
+  sobre uma pasta temporária (`historyRoot`), e os testes chamam `history.scan()` depois de
+  escrever os transcripts.
+- **Ramos de erro do app** (`historyGet`), encontrados pela cobertura, seguiram a regra 7: o ramo
+  foi removido, o teste ficou vermelho e só então o ramo voltou.

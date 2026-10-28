@@ -190,6 +190,83 @@ Compila o alvo, copia com `scp` para `<path>.new`, troca o binário, reinicia co
   **Iniciar com o Windows** fica em Configurações, desligado por padrão.
 - **Instância única:** abrir o app de novo (ou um link `flightdeck://`) foca a janela existente.
 
+## Histórico
+
+O daemon de cada host indexa os transcripts do Claude Code desse host, inclusive as sessões que
+nasceram fora do Flightdeck (terminal, VS Code, Desktop). O `~/.claude` é só lido: nada é
+editado, apagado ou copiado entre hosts.
+
+### O que é indexado
+
+- Cada arquivo `<id>.jsonl` em `~/.claude/projects/<pasta>/` é uma sessão; o id é o
+  `claudeSessionId`. A pasta do projeto vem do campo `cwd` das linhas.
+- Entra na busca o texto das mensagens do usuário e do assistente, mais uma linha
+  `[ferramenta Nome]` por chamada de ferramenta. Resultados de ferramenta não entram, e cada
+  mensagem é cortada em 8 KB.
+- O formato é interno ao Claude Code. Tipos de linha desconhecidos ficam guardados crus e fora da
+  busca; linhas que não são JSON são contadas como erro e puladas.
+- A leitura é incremental (só o que foi acrescentado), por observação de arquivos e por varredura
+  a cada 10 s. Um arquivo que encolheu é lido de novo do zero.
+- A busca usa FTS5 do SQLite; sem ele, o daemon cai para `LIKE` e registra a decisão no boot.
+- Uma sessão é marcada **possivelmente em uso** quando o arquivo mudou nos últimos 2 minutos.
+
+As raízes ficam em `history.roots` na config, com padrão `["~/.claude/projects"]`:
+
+```json
+{
+  "history": {
+    "roots": ["~/.claude/projects"],
+    "excludeCwds": ["~/clientes/sigiloso", "C:/Users/eu/privado"]
+  }
+}
+```
+
+### Excluir pastas
+
+Sessões cujo `cwd` é uma pasta de `history.excludeCwds`, ou fica dentro dela, nunca entram no
+índice. A comparação usa o `cwd` gravado nas linhas, nunca o nome do diretório em
+`~/.claude/projects`. No Windows e no macOS ela ignora maiúsculas e o tipo de barra. Mudou a
+lista? Reconstrua o índice (abaixo): sessões já indexadas só saem, e arquivos já excluídos só
+voltam, depois disso.
+
+### Reconstruir o índice
+
+```sh
+flightdeckd history reindex [--config <arquivo>]
+```
+
+Apaga o índice de histórico e lê todos os transcripts de novo, imprimindo quantas sessões e
+mensagens entraram. Pare o daemon antes: com outro processo no mesmo `dataDir`, o comando sai com
+código 3.
+
+### No app
+
+- **Histórico por host** (🕘 ao lado do nome do host): sessões indexadas com título, pasta, data
+  da última mensagem, origem (`Flightdeck` ou `externa`) e o selo "possivelmente em uso";
+  filtros por pasta, período (dias inteiros, em UTC) e origem.
+- **Busca global** (`Ctrl+K` dentro do app, ou "Buscar no histórico"): consulta todos os hosts
+  online em paralelo e junta os acertos por data, com host, pasta e trecho destacado. Host offline,
+  ou que não responde em 5 s, aparece como "sem resposta" sem travar o resto.
+- **Leitor:** somente leitura, com o visual do chat, carregando páginas conforme a rolagem. Vindo
+  da busca, abre no ponto do acerto; "Carregar anteriores" traz o começo.
+- **Continuar no Flightdeck** transforma o transcript numa sessão gerenciada com `resume`. Se a
+  sessão estiver possivelmente em uso, o app pede confirmação antes, porque dois processos
+  escrevendo na mesma conversa a corrompem. **Copiar comando** copia `claude --resume <id>` para
+  usar no terminal.
+
+### Atalho global
+
+`Ctrl+Alt+F` traz o app para frente com a busca global aberta, mesmo com ele em segundo plano ou
+na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a combinação e clique em
+**Salvar atalho**.
+
+- Formato `Modificadores+Tecla`, por exemplo `Ctrl+Shift+Y`. A tecla é uma letra, um dígito ou
+  `F1` a `F24`, e é preciso ao menos `Ctrl`, `Alt` ou `Super`.
+- `Ctrl+K` é recusado: ele abre a busca dentro do app e, como atalho global, colidiria com o
+  navegador e o VS Code.
+- Se outro programa já usa a combinação, o app avisa e abre as Configurações para você escolher
+  outra. O atalho só é salvo depois que o sistema o aceita.
+
 ## Desenvolvimento
 
 ```sh
@@ -199,7 +276,8 @@ bun test               # todos os testes, com limite de cobertura de 100% (linha
 bun run test           # bun test + garante que nenhum arquivo-fonte ficou fora da medição
 bun run smoke          # ponta a ponta com o daemon real e --runtime fake; imprime SMOKE OK
 bun run smoke:multi    # dois daemons, um cliente, permissão via session.summary; SMOKE MULTI OK
-bun run tdd:audit -- --since fase-1   # todo feat/fix tem um commit test do mesmo escopo antes
+bun run smoke:history  # indexa, busca, retoma e vê history.changed; SMOKE HISTORY OK
+bun run tdd:audit -- --since fase-2   # todo feat/fix tem um commit test do mesmo escopo antes
 bun run build:daemon   # binários em dist/
 bun run build:desktop  # frontend Vite em apps/desktop/dist
 cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml   # requer apps/desktop/dist
@@ -209,7 +287,9 @@ Desde a Fase 2 o desenvolvimento é em TDD ([`docs/TDD.md`](docs/TDD.md)): o tes
 nasce vermelho, roda sozinho com `bun --config=bunfig.area.toml test ./<arquivo>` (mesmo bunfig,
 sem o limite global de cobertura) e é commitado como `test(<área>)` antes do `feat(<área>)`. O
 preload dos dois bunfigs instala uma trava que reprova a suíte se algum teste executar o `claude`
-de verdade; os smokes (menos o `smoke:real`) usam a mesma trava.
+de verdade, e outra que aponta `HOME`/`USERPROFILE` para uma pasta temporária, para nenhum teste
+ler o `~/.claude` real. Os smokes (menos o `smoke:real`) usam as mesmas travas. Os fixtures de
+transcript ficam em `apps/daemon/test/fixtures/history/` e são escritos à mão.
 
 Testes e smoke usam só o `FakeRuntime`. `bun run smoke:real` repete o roteiro com o Claude de
 verdade numa pasta descartável. Ele é manual, gasta cota e não faz parte dos critérios de aceite.
