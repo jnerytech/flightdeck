@@ -26,6 +26,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import type { Platform, TrayAction, TrayStatus } from "../platform/types.ts";
+import { localDay } from "./costs.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -116,6 +117,8 @@ export type HostCommandType = Extract<
   | `quota.${string}`
   | `usage.${string}`
   | `rules.${string}`
+  | `costs.${string}`
+  | `budget.${string}`
 >;
 
 const isRun = (value: unknown): value is WorkflowRun =>
@@ -173,6 +176,8 @@ export interface AppStoreOptions {
     setTimeout(fn: () => void, ms: number): unknown;
     clearTimeout(handle: unknown): void;
   };
+  /** `YYYY-MM-DD` of an instant (cost periods); this machine's time zone when absent. */
+  day?: (ms: number) => string;
 }
 
 export interface PendingItem {
@@ -365,6 +370,11 @@ export class AppStore {
   /** Milliseconds now (injected in tests). */
   now(): number {
     return (this.options.now ?? Date.now)();
+  }
+
+  /** Today as `YYYY-MM-DD`, in this machine's time zone unless injected. */
+  today(): string {
+    return (this.options.day ?? localDay)(this.now());
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
@@ -773,6 +783,16 @@ export class AppStore {
       await this.platform.terminal.open(launch.program, launch.args);
     } catch (error) {
       this.update({ error: `Terminal não abriu: ${describeError(error)}` });
+    }
+  }
+
+  /** Saves a file through the system dialog; errors go to the banner. */
+  async saveFile(name: string, text: string): Promise<boolean> {
+    try {
+      return await this.platform.saveFile(name, text);
+    } catch (error) {
+      this.update({ error: (error as Error).message });
+      return false;
     }
   }
 

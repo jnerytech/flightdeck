@@ -68,6 +68,8 @@ export interface Platform {
   /** Closing the window hides it to the tray instead of quitting. */
   setCloseToTray(enabled: boolean): Promise<void>;
   copyText(text: string): Promise<void>;
+  /** Saves `text` through the system's save dialog; `false` when the user cancels. */
+  saveFile(name: string, text: string): Promise<boolean>;
   /** Brings the main window to the front (from the tray, minimized or behind others). */
   showMainWindow(): Promise<void>;
   /**

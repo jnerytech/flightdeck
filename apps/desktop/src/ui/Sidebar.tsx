@@ -26,6 +26,7 @@ export function Sidebar(props: {
   onOpenHistory(hostId: string): void;
   onOpenProjects(hostId: string): void;
   onOpenHub(): void;
+  onOpenCosts(): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
@@ -39,6 +40,12 @@ export function Sidebar(props: {
       >
         Sessões
       </button>
+      {/* Hosts from phase 8 on read their costs from the transcripts. */}
+      {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
+        <button type="button" className="hub-link" onClick={props.onOpenCosts}>
+          Custos
+        </button>
+      )}
       {queue.length > 0 && (
         <section className="needs-you">
           <h3>Precisa de você ({queue.length})</h3>

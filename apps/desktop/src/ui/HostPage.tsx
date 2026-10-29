@@ -59,8 +59,14 @@ export function HostPage(props: {
           </p>
         </div>
       )}
-      {hasFeature(info?.features, "quota", false) && (
-        <UsagePanel store={store} hostId={host.id} online={host.status === "online"} />
+      {(hasFeature(info?.features, "quota", false) ||
+        hasFeature(info?.features, "costs", false)) && (
+        <UsagePanel
+          store={store}
+          hostId={host.id}
+          online={host.status === "online"}
+          costs={hasFeature(info?.features, "costs", false)}
+        />
       )}
       {info ? (
         <ul className="host-info">

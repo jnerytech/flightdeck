@@ -9,9 +9,10 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { Platform, TrayAction } from "../types.ts";
 
-export interface BrowserWindow {
+export interface BrowserWindow extends FilePickerWindow {
   localStorage: Platform["storage"];
   document: { hasFocus(): boolean };
   navigator: { clipboard: { writeText(text: string): Promise<void> } };
@@ -77,6 +78,8 @@ export function tauriPlatform(
       probe: () => call<{ windows: boolean; wt: boolean }>("terminal_probe"),
       open: (program, args) => call("terminal_open", { program, args }),
     },
+    // WebView2's save dialog; no dialog plugin, so the Rust shell stays as it is.
+    saveFile: (name, text) => saveWithPicker(win, name, text),
     globalShortcut: {
       supported: true,
       register: (accelerator, onPress) =>

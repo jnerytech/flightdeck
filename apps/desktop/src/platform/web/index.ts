@@ -1,6 +1,7 @@
+import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { Platform } from "../types.ts";
 
-export interface WebWindow {
+export interface WebWindow extends FilePickerWindow {
   localStorage: Platform["storage"];
   document: { hasFocus(): boolean; title: string };
   location: { hash: string };
@@ -84,6 +85,7 @@ export function createWebPlatform(
       if (!clipboard) throw new Error("área de transferência indisponível");
       await clipboard.writeText(text);
     },
+    saveFile: (name, text) => saveWithPicker(win, name, text),
     async showMainWindow() {
       win.focus?.();
     },

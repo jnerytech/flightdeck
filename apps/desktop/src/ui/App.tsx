@@ -8,6 +8,7 @@ import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
+import { CostsPage } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { HistoryList } from "./HistoryList.tsx";
@@ -53,6 +54,8 @@ export function App({ store }: { store: AppStore }) {
   } | null>(null);
   /** The Sessões screen, opened from the sidebar (it is also what shows when nothing else does). */
   const [hubOpen, setHubOpen] = useState(false);
+  /** The Custos screen (phase 8). */
+  const [costsOpen, setCostsOpen] = useState(false);
   /** A live session opened in the terminal, shown with its requests and message box. */
   const [external, setExternal] = useState<{ hostId: string; claudeSessionId: string } | null>(
     null,
@@ -65,6 +68,7 @@ export function App({ store }: { store: AppStore }) {
     setOpenCard(null);
     setWorkflowsOf(null);
     setHubOpen(false);
+    setCostsOpen(false);
     setExternal(null);
   };
   /** From the Sessões screen: the conversation, the live external view or the reader. */
@@ -304,6 +308,18 @@ export function App({ store }: { store: AppStore }) {
         onResumed={closeBoard}
       />
     );
+  } else if (costsOpen) {
+    main = (
+      <CostsPage
+        store={store}
+        state={state}
+        onOpenSession={(hostId, session) => {
+          closeBoard();
+          if (session.sessionId) store.select(hostId, session.sessionId);
+          else setReading({ hostId, claudeSessionId: session.claudeSessionId });
+        }}
+      />
+    );
   } else if (hubOpen) {
     main = <SessionsHub store={store} state={state} onOpen={openRow} />;
   } else if (reading && readingHost) {
@@ -442,6 +458,15 @@ export function App({ store }: { store: AppStore }) {
           setSettingsOpen(false);
           setHostPage(null);
           setHubOpen(true);
+        }}
+        onOpenCosts={() => {
+          closeBoard();
+          setReading(null);
+          setHistoryHost(null);
+          setAddingHost(false);
+          setSettingsOpen(false);
+          setHostPage(null);
+          setCostsOpen(true);
         }}
         onOpenRequest={openRequest}
       />
