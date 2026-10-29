@@ -18,6 +18,8 @@ mock.module("@tauri-apps/api/core", () => ({
     invokes.push([cmd, args]);
     return cmd === "token_get" ? "segredo" : undefined;
   },
+  // @tauri-apps/api/event (the tray's clicks) imports it; without it this file fails to load alone.
+  transformCallback: () => 0,
 }));
 mock.module("@tauri-apps/plugin-notification", () => ({
   isPermissionGranted: async () => granted,
