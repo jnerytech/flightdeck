@@ -277,20 +277,20 @@ describe("automacoes", () => {
       time.now = UTC(text);
       await automations.tick(time.now);
     };
-    // Monday 5, Thursday 1, Friday 2, Saturday 10 and Sunday 11 of October 2026.
+    // Thursday 1, Friday 2, Monday 5, Saturday 10 and Sunday 11 of October 2026, in order.
     for (const at of [
+      "2026-10-01T00:00:00Z",
+      "2026-10-02T00:00:00Z",
+      "2026-10-02T22:05:00Z",
+      "2026-10-02T22:06:00Z",
+      "2026-10-02T22:07:00Z",
+      "2026-10-05T00:00:00Z",
       "2026-10-05T08:00:00Z",
       "2026-10-05T08:15:00Z",
       "2026-10-05T08:20:00Z",
       "2026-10-05T09:45:00Z",
       "2026-10-05T10:00:00Z",
       "2026-10-10T08:00:00Z",
-      "2026-10-01T00:00:00Z",
-      "2026-10-05T00:00:00Z",
-      "2026-10-02T00:00:00Z",
-      "2026-10-02T22:05:00Z",
-      "2026-10-02T22:06:00Z",
-      "2026-10-02T22:07:00Z",
       "2026-10-11T06:00:00Z",
     ]) {
       await tick(at);
@@ -312,7 +312,6 @@ describe("automacoes", () => {
       action: {
         type: "start_workflow",
         workflow: "wf",
-        inputs: { x: "1" },
         description: "olhe os PRs",
       },
     });
@@ -360,6 +359,8 @@ describe("automacoes", () => {
       name: "Recente",
       trigger: { type: "cron", expr: "0 12 * * *", tz: "UTC" },
     });
+    // The first time the scheduler looks there is no past, so nothing can have been missed.
+    time.now = UTC("2026-10-05T09:00:00Z");
     automations.start();
     expect(automations.runs(old.id)).toEqual([]);
     time.now = UTC("2026-10-05T12:00:00Z");
@@ -378,13 +379,33 @@ describe("automacoes", () => {
     }
     time.now = UTC("2026-10-06T12:00:00Z");
     await automations.tick(time.now);
-    expect(
-      automations.runs(a.id).map((r) => (r.status === "failed" ? "executou" : r.status)),
-    ).toEqual(["executou", "limited", "executou", "executou"]);
+    // The day-long gap records the slots it skipped as missed (not runs), and the late tick
+    // fires the three slots of its 2-minute grace: the new day starts over with the limit.
+    const acted = automations
+      .runs(a.id)
+      .filter((r) => r.status !== "missed")
+      .reverse();
+    expect(acted.map((r) => (r.status === "failed" ? "executou" : r.status))).toEqual([
+      "executou",
+      "executou",
+      "limited",
+      "executou",
+      "executou",
+      "limited",
+    ]);
+  });
+
+  test("um tick que encontra outro em andamento deixa os minutos dele para o próximo", async () => {
+    const { automations, on, time } = await setup();
+    const a = on();
+    await Promise.all([automations.tick(time.now), automations.tick(time.now + 60_000)]);
+    expect(fired(automations, a.id)).toHaveLength(1);
+    await automations.tick(time.now + 60_000);
+    expect(fired(automations, a.id)).toHaveLength(2);
   });
 
   test("um disparo que falha fica registrado com o motivo e não repete sozinho", async () => {
-    const { automations, on, time } = await setup();
+    const { automations, on, time, board, project } = await setup();
     const a = on({ action: { type: "start_workflow", workflow: "nao-existe" } });
     await automations.tick(time.now);
     await automations.tick(time.now);
@@ -395,6 +416,9 @@ describe("automacoes", () => {
       status: "failed",
       detail: expect.stringContaining("nao-existe"),
     });
+    // A card that never started is not left behind in the Backlog.
+    const titles = board.getBoard(project.id).columns.flatMap((c) => c.cards.map((x) => x.title));
+    expect(titles).not.toContain("Auto");
   });
 
   test("as filas de orçamento e de cota continuam valendo: o card nasce e espera", async () => {
@@ -600,6 +624,17 @@ describe("automacoes", () => {
     expect(ctx.board.cardForIssue(ctx.project.id, "github:Acme/App#10")).not.toBeNull();
   });
 
+  test("uma busca de issues em andamento não começa outra por cima (o intervalo é mais curto que o gh)", async () => {
+    const gh = fake("gh", GH([ghIssue(7)]));
+    const ctx = await setup({ github: true });
+    ctx.on({ trigger: { type: "issue_label", label: "auto" }, action: { type: "create_card" } });
+    await Promise.all([ctx.automations.pollIssues(), ctx.automations.pollIssues()]);
+    expect(gh.calls().filter((c) => c.includes("list"))).toHaveLength(1);
+    // Done, the next one goes ahead.
+    await ctx.automations.pollIssues();
+    expect(gh.calls().filter((c) => c.includes("list"))).toHaveLength(2);
+  });
+
   test("a busca de issues que falha só vai para o log, sem derrubar nem registrar execução", async () => {
     fake("gh", [{ args: ["issue", "list"], code: 1 }]);
     const ctx = await setup({ github: true });
@@ -649,6 +684,8 @@ describe("automacoes", () => {
       action: { type: "create_card" },
     });
     timed.start();
+    // Whatever happens, the timers stop with the test: they would reach the CLIs after it.
+    cleanups.push(() => timed.stop());
     clock.now = UTC("2026-10-05T12:01:00Z");
     expect(await poll(() => fired(timed, cron.id).length >= 1, 3000)).toBe(true);
     expect(await poll(() => timed.runs(issue.id).length >= 1, 3000)).toBe(true);
