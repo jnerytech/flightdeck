@@ -61,8 +61,11 @@ async function setup(opts: { stale: boolean; cwd?: string }) {
     fireEvent.change(input, { target: { value: "girafa" } });
     fireEvent.submit(input);
   });
-  await settle(() => screen.queryAllByText(/girafa/).length > 0);
-  const hit = screen.queryByRole("list", { name: "Resultados da busca" })?.querySelector("button");
+  // The Sessões screen behind it also lists the transcript: wait for the search's own results.
+  const results = () =>
+    screen.queryByRole("list", { name: "Resultados da busca" })?.querySelector("button") ?? null;
+  await settle(() => results() !== null);
+  const hit = results();
   await act(async () => {
     fireEvent.click(hit as HTMLElement);
   });
