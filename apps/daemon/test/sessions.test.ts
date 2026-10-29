@@ -465,6 +465,7 @@ describe("permissão — broker", () => {
       emit: (_id, event) =>
         emitted.push(event.type === "permission.resolved" ? event.decision : event.type),
       onPendingChange: () => {},
+      classify: () => ({ level: "medium", reason: "teste", network: false }),
     });
     return { b, store, emitted };
   };
