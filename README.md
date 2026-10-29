@@ -108,10 +108,16 @@ O daemon sobrevive a reboot e a SSH fechado rodando como serviço do próprio us
 
 ```sh
 flightdeckd service install --dry-run   # mostra a unit ou a tarefa, não altera nada
-flightdeckd service install
-flightdeckd service status
-flightdeckd service uninstall
+flightdeckd service install [--config <arquivo>]
+flightdeckd service status              # estado e a config que o serviço usa
+flightdeckd service uninstall           # para o daemon e remove o serviço
 ```
+
+- **Config:** com `--config`, o serviço roda `start --config <caminho absoluto>`; sem, usa
+  `~/.flightdeck/config.json`.
+- **Parar:** o `uninstall` pede `daemon.shutdown` ao daemon antes de remover a tarefa ou a unit.
+  No Windows, `schtasks /End` sozinho não basta: ele encerra o `conhost.exe` e deixa o daemon
+  rodando.
 
 - **Linux (WSL, Orange Pi, VPS):** grava `~/.config/systemd/user/flightdeckd.service`
   (`Restart=always`, `RestartSec=5`) e roda `systemctl --user enable --now flightdeckd`. Sem
@@ -208,15 +214,21 @@ O `update` instala sempre em `~/.flightdeck/bin/flightdeckd` (`flightdeckd.exe` 
 
 1. Roda `<binário novo> --version` e recusa o que não responder como um `flightdeckd`. Uma versão
    menor que a de quem roda o `update` só passa com `--allow-downgrade`.
-2. Com o daemon rodando fora do serviço, recusa: "pare o daemon e rode de novo". Com serviço, para
-   o serviço e espera o daemon soltar o `dataDir`.
+2. Com o daemon rodando fora do serviço, recusa: "pare o daemon e rode de novo". Com serviço:
+   - pede `daemon.shutdown` ao daemon e para o serviço;
+   - espera o daemon soltar o `dataDir`;
+   - se o lock continua preso, encerra o processo, mas só se ele for o executável do serviço.
 3. Guarda o binário atual como `flightdeckd.old` (`.exe.old`) e põe o novo no lugar.
 4. Se o serviço apontava para outro caminho (por exemplo `dist/` ou `~/.local/bin`), reinstala o
-   serviço no caminho estável. Os hooks do Claude Code são reescritos só se já estavam
-   instalados e apontam para outro lugar. A saída diz o que foi reescrito.
-5. Sobe o serviço e espera `GET /health` responder por até 30 s. Se o daemon novo não sobe, o
-   `.old` volta, o serviço sobe de novo e o comando sai com 1. O `.old` de um update bem
-   sucedido é apagado no próximo.
+   serviço no caminho estável, com o mesmo `--config`. Os hooks do Claude Code são reescritos só
+   se já estavam instalados e apontam para outro lugar. A saída diz o que foi reescrito.
+5. Sobe o serviço e espera `GET /health` responder por até 30 s. Sem `--config` no `update`, a
+   porta vem da config do serviço. Se o daemon novo não sobe:
+   - o `.old` volta para o lugar;
+   - o serviço volta ao caminho e à config de antes e sobe de novo;
+   - o comando sai com 1.
+
+   O `.old` de um update bem sucedido é apagado no próximo.
 
 Sem serviço instalado, o `update` só instala o binário e diz como subir. Use o binário instalado
 para rodar o `update` (ele compara a versão nova com a dele); na primeira vez, rode o próprio
@@ -258,9 +270,9 @@ binário novo.
   (horário UTC), mantendo os últimos `keep`. Funciona com o daemon rodando.
 - **À mão:** `flightdeckd backup [--out <arquivo>]`, ou **Fazer backup agora** na seção
   Manutenção. Os arquivos ficam só para o dono (0600 fora do Windows).
-- **Restaurar:** com o daemon parado (`systemctl --user stop flightdeckd`, ou
-  `schtasks /End /TN Flightdeck\flightdeckd` no Windows), rode `flightdeckd restore <arquivo>` e
-  suba de novo. O comando recusa com o daemon rodando, confere a integridade e se o backup não
+- **Restaurar:** com o daemon parado, rode `flightdeckd restore <arquivo>` e suba de novo. No
+  Linux, pare com `systemctl --user stop flightdeckd`. No Windows, `schtasks /End` não para o
+  daemon: use `flightdeckd service uninstall` e, depois do restore, `service install` de novo. O comando recusa com o daemon rodando, confere a integridade e se o backup não
   veio de uma versão mais nova, e guarda o banco atual em `flightdeck.db.before-restore`. As
   migrações que faltarem rodam no boot seguinte.
 - **A `config.json` fica fora do backup**, porque tem os tokens: guarde uma cópia à parte.
