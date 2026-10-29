@@ -1,6 +1,6 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
-import { budgetLines, RUN_LABELS, STEP_LABELS, stepDuration } from "../lib/runs.ts";
+import { budgetLines, RUN_LABELS, STEP_LABELS, stepDuration, stepUsage } from "../lib/runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 
@@ -75,6 +75,7 @@ export function RunTimeline(props: {
             `tentativa ${step.attempt}`,
             STEP_LABELS[step.status],
             stepDuration(step),
+            ...(step.usage ? [stepUsage(step.usage)] : []),
           ].join(" · ");
           const opens = step.type === "check" || (step.type === "agent" && step.sessionId);
           const attempt = step.attempt > 1 ? ` (tentativa ${step.attempt})` : "";

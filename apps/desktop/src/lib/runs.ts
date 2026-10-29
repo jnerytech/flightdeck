@@ -26,6 +26,12 @@ export function stepDuration(step: StepRun, now = Date.now()): string {
   return seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
 }
 
+/** What an agent step's turns spent: `1 turno · US$ 0.50`. */
+export function stepUsage(usage: NonNullable<StepRun["usage"]>): string {
+  const turns = `${usage.turns} ${usage.turns === 1 ? "turno" : "turnos"}`;
+  return `${turns} · US$ ${usage.costUsd.toFixed(2)}`;
+}
+
 export interface BudgetLine {
   label: string;
   text: string;
