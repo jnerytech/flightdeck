@@ -6,6 +6,7 @@ import {
   type CommandType,
   type EventEnvelope,
   type HelloResult,
+  type HistoryChanged,
   parseServerMessage,
   type SessionSubscribeResult,
 } from "@flightdeck/protocol";
@@ -39,6 +40,8 @@ export interface HostConnectionOptions {
   onPing?(): void;
   /** A card changed on the host's board (after `watchBoard`). */
   onCardUpdated?(card: Card): void;
+  /** A transcript of the host gained lines (after `watchHistory`). */
+  onHistoryChanged?(change: HistoryChanged): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -68,6 +71,7 @@ export class HostConnection {
   private readonly subscriptions = new Set<string>();
   private watching = false;
   private watchingBoard = false;
+  private watchingHistory = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -83,6 +87,7 @@ export class HostConnection {
         if (this.watching) this.send("sessions.watch", {}).catch(ignore);
         // Daemons before phase 4 answer with an error: nothing to watch there.
         if (this.watchingBoard) this.send("board.watch", {}).catch(ignore);
+        if (this.watchingHistory) this.send("history.watch", {}).catch(ignore);
         for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
       }, ignore);
     });
@@ -90,6 +95,7 @@ export class HostConnection {
       const message = parseServerMessage(String(msg.data));
       if (message.type === "event") return this.opts.onEvent(message);
       if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
+      if (message.type === "history.changed") return this.opts.onHistoryChanged?.(message);
       if (message.type === "ping") {
         if (message.lastRttMs !== undefined) this.latencyMs = message.lastRttMs;
         ws.send(JSON.stringify({ type: "pong", id: message.id }));
@@ -130,6 +136,11 @@ export class HostConnection {
   /** Streams `card.updated` for every card of the host from the next (re)connect on; call it before `connect`. */
   watchBoard(): void {
     this.watchingBoard = true;
+  }
+
+  /** Streams `history.changed` from the next (re)connect on; call it before `connect`. */
+  watchHistory(): void {
+    this.watchingHistory = true;
   }
 
   unsubscribe(sessionId: string): void {

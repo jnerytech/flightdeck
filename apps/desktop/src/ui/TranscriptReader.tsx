@@ -41,6 +41,9 @@ export function TranscriptReader(props: {
   const [next, setNext] = useState<string | null>(null);
   const [prev, setPrev] = useState<string | null>(null);
   const loading = useRef(false);
+  /** Cursor of the latest page read forward: new lines are fetched from there and merged. */
+  const lastAfter = useRef(target.cursor ?? "0");
+  const atEnd = useRef(false);
   const focused = useRef(false);
   const log = useRef<HTMLDivElement>(null);
   const [confirming, setConfirming] = useState(false);
@@ -53,6 +56,7 @@ export function TranscriptReader(props: {
       setSession(page.session);
       setMessages(page.messages);
       setNext(page.nextCursor);
+      atEnd.current = page.nextCursor === null;
       setPrev(page.prevCursor);
     });
     return () => {
@@ -75,9 +79,25 @@ export function TranscriptReader(props: {
     loading.current = false;
     if (!page) return;
     setMessages((list) => merge(list, page.messages, where));
-    if (where === "after") setNext(page.nextCursor);
-    else setPrev(page.prevCursor);
+    if (where === "after") {
+      lastAfter.current = cursor;
+      atEnd.current = page.nextCursor === null;
+      setNext(page.nextCursor);
+    } else setPrev(page.prevCursor);
   };
+
+  const loadLatest = useRef(loadPage);
+  loadLatest.current = loadPage;
+  // Live: a session still being written grows at the end; read it again from the last forward
+  // page and merge, without reloading what is on screen.
+  useEffect(
+    () =>
+      store.onHistoryChanged((hostId, change) => {
+        if (hostId !== target.hostId || change.claudeSessionId !== target.claudeSessionId) return;
+        if (atEnd.current) void loadLatest.current(lastAfter.current, "after");
+      }),
+    [store, target],
+  );
 
   const resume = async (force: boolean) => {
     setConfirming(false);

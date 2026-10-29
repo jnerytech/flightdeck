@@ -26,6 +26,19 @@ export interface HistoryIndexerOptions {
   scanIntervalMs?: number;
   /** Clock for `maybeActive`. */
   now?: () => number;
+  /** Timers (tests drive them by hand). */
+  timers?: IndexerTimers;
+  /** File watcher; `fs.watch` when absent. */
+  watch?: (root: string, onEvent: () => void) => { close(): void };
+  /** Wait after a file event before the pass that publishes `history.changed`. */
+  watchDebounceMs?: number;
+}
+
+export interface IndexerTimers {
+  setTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout>;
+  clearTimeout(id: ReturnType<typeof setTimeout>): void;
+  setInterval(fn: () => void, ms: number): ReturnType<typeof setInterval>;
+  clearInterval(id: ReturnType<typeof setInterval>): void;
 }
 
 export type HistorySession = HistorySessionSummary;
@@ -151,6 +164,9 @@ const entries = (dir: string) => {
   }
 };
 
+/** Default wait between a file event and the pass that publishes `history.changed`. */
+export const WATCH_DEBOUNCE_MS = 250;
+
 /**
  * Indexes Claude Code transcripts incrementally: each file remembers the byte offset after the
  * last newline read, and the next pass reads only what came after it.
@@ -159,7 +175,8 @@ export class HistoryIndexer {
   private readonly db: Database;
   private readonly excludes: string[];
   private readonly listeners = new Set<(change: HistoryChange) => void>();
-  private readonly watchers: FSWatcher[] = [];
+  private readonly watchers: Array<{ close(): void }> = [];
+  private readonly timers: IndexerTimers;
   private timer: ReturnType<typeof setInterval> | null = null;
   private boot: ReturnType<typeof setTimeout> | null = null;
   private pending: ReturnType<typeof setTimeout> | null = null;
@@ -168,6 +185,7 @@ export class HistoryIndexer {
 
   constructor(readonly opts: HistoryIndexerOptions) {
     this.db = opts.db;
+    this.timers = opts.timers ?? globalThis;
     this.excludes = (opts.excludeCwds ?? []).map(normalizeCwd);
     this.fts = opts.fts5 ?? fts5Available(this.db);
     opts.log?.(
@@ -275,11 +293,13 @@ export class HistoryIndexer {
   /** Boot pass, then file watching with a periodic full pass as the fallback. */
   start(): void {
     if (this.timer) return;
-    this.boot = setTimeout(() => this.safeScan(), 0);
-    this.timer = setInterval(() => this.safeScan(), this.opts.scanIntervalMs ?? 10_000);
+    this.boot = this.timers.setTimeout(() => this.safeScan(), 0);
+    this.timer = this.timers.setInterval(() => this.safeScan(), this.opts.scanIntervalMs ?? 10_000);
+    const watchRoot =
+      this.opts.watch ?? ((root, onEvent) => watch(root, { recursive: true }, onEvent));
     for (const root of this.opts.roots) {
       try {
-        this.watchers.push(watch(root, { recursive: true }, () => this.schedule()));
+        this.watchers.push(watchRoot(root, () => this.schedule()));
       } catch (error) {
         this.opts.log?.(`histórico: sem observação de ${root} (${describe(error)})`);
       }
@@ -287,20 +307,23 @@ export class HistoryIndexer {
   }
 
   stop(): void {
-    if (this.timer) clearInterval(this.timer);
-    if (this.boot) clearTimeout(this.boot);
-    if (this.pending) clearTimeout(this.pending);
+    if (this.timer) this.timers.clearInterval(this.timer);
+    if (this.boot) this.timers.clearTimeout(this.boot);
+    if (this.pending) this.timers.clearTimeout(this.pending);
     this.timer = this.boot = this.pending = null;
     for (const watcher of this.watchers.splice(0)) watcher.close();
   }
 
-  /** Bursts of file events become one pass. */
+  /**
+   * Bursts of file events become one pass, `watchDebounceMs` after the first: with the watcher
+   * on, `history.changed` goes out well within the 2 s of the live reader.
+   */
   private schedule(): void {
     if (this.pending) return;
-    this.pending = setTimeout(() => {
+    this.pending = this.timers.setTimeout(() => {
       this.pending = null;
       this.safeScan();
-    }, 50);
+    }, this.opts.watchDebounceMs ?? WATCH_DEBOUNCE_MS);
   }
 
   private safeScan(): void {

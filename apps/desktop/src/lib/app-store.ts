@@ -5,6 +5,7 @@ import type {
   CommandType,
   EventEnvelope,
   HelloResult,
+  HistoryChanged,
   HistoryGetResult,
   HistoryListResult,
   HistorySearchHit,
@@ -195,6 +196,7 @@ export class AppStore {
   private readonly connections = new Map<string, HostConnection>();
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
+  private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Accelerator currently registered with the OS. */
   private shortcut: string | null = null;
 
@@ -487,6 +489,12 @@ export class AppStore {
     }
   }
 
+  /** Transcripts growing on any host (live reader); returns the function that stops it. */
+  onHistoryChanged(listener: (hostId: string, change: HistoryChanged) => void): () => void {
+    this.historyListeners.add(listener);
+    return () => this.historyListeners.delete(listener);
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);
@@ -587,10 +595,14 @@ export class AppStore {
       onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
+      onHistoryChanged: (change) => {
+        for (const listener of this.historyListeners) listener(config.id, change);
+      },
     });
     this.connections.set(config.id, conn);
     conn.watch();
     conn.watchBoard();
+    conn.watchHistory();
     conn.connect();
   }
 
