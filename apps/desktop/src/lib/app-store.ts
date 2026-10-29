@@ -68,6 +68,8 @@ export interface HostView extends HostConfig {
   latencyMs: number | null;
   /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
   incompatibility: string | null;
+  /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
+  daemonUpdate: { target: string; failed: string | null } | null;
   sessions: SidebarSession[];
 }
 
@@ -202,6 +204,8 @@ export interface AppStoreOptions {
   };
   /** `YYYY-MM-DD` of an instant (cost periods); this machine's time zone when absent. */
   day?: (ms: number) => string;
+  /** How long a host may take to come back on the new daemon version (2 min when absent). */
+  daemonUpdateTimeoutMs?: number;
   /** How often the app looks for its own update while open (6 h when absent). */
   appUpdateIntervalMs?: number;
 }
@@ -317,6 +321,7 @@ const newHostView = (config: HostConfig): HostView => ({
   hostInfo: null,
   latencyMs: null,
   incompatibility: null,
+  daemonUpdate: null,
   sessions: [],
 });
 
@@ -1079,11 +1084,41 @@ export class AppStore {
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
   private async loadHostInfo(hostId: string, conn: HostConnection): Promise<void> {
     const hostInfo = await conn.request("host.info", {}).catch(() => null);
-    this.updateHost(hostId, (h) => ({ ...h, hostInfo }));
+    this.updateHost(hostId, (h) => {
+      // Back on the version it was updating to: the update is over.
+      const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
+      return { ...h, hostInfo, ...(done ? { daemonUpdate: null } : {}) };
+    });
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
     }
+  }
+
+  /**
+   * Phase 9: asks the host's daemon to apply its update. The host shows "atualizando…" until it
+   * reconnects on the new version; past the time limit, or on a refusal, it shows why.
+   */
+  async updateDaemon(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const target = host?.hostInfo?.update?.version;
+    const conn = this.connections.get(hostId);
+    if (!target || !conn) return;
+    this.updateHost(hostId, (h) => ({ ...h, daemonUpdate: { target, failed: null } }));
+    const fail = (failed: string) =>
+      this.updateHost(hostId, (h) =>
+        h.daemonUpdate?.target === target ? { ...h, daemonUpdate: { target, failed } } : h,
+      );
+    try {
+      await conn.request("daemon.update.apply", { confirm: true });
+    } catch (error) {
+      fail((error as Error).message);
+      return;
+    }
+    setTimeout(
+      () => fail(`o daemon não voltou na versão ${target} a tempo`),
+      this.options.daemonUpdateTimeoutMs ?? 120_000,
+    );
   }
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {

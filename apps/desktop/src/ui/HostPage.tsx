@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { DaemonUpdate } from "./DaemonUpdate.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
 
@@ -84,6 +85,7 @@ export function HostPage(props: {
       ) : (
         <p className="muted">informações indisponíveis</p>
       )}
+      <DaemonUpdate store={store} host={host} />
       {info?.apiKeySanitized === false && (
         <p className="warning">
           O consumo deste host pode estar indo para crédito de API: o daemon repassa a chave ao
