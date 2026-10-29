@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { SessionEvent } from "@flightdeck/protocol";
+import type { RuntimeEvent } from "../src/runtime/types.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { CanUseToolFn, StartOptions } from "../src/runtime/types.ts";
 import { git, gitRepo } from "./board-helpers.ts";
@@ -15,10 +15,10 @@ const allowAll: CanUseToolFn = async () => ({ behavior: "allow" });
 
 /** Collects events until (and including) the first one matching `stop`. */
 async function collectUntil(
-  events: AsyncIterator<SessionEvent>,
-  stop: (e: SessionEvent) => boolean,
-): Promise<SessionEvent[]> {
-  const out: SessionEvent[] = [];
+  events: AsyncIterator<RuntimeEvent>,
+  stop: (e: RuntimeEvent) => boolean,
+): Promise<RuntimeEvent[]> {
+  const out: RuntimeEvent[] = [];
   for (;;) {
     const { value, done } = await events.next();
     if (done) return out;
@@ -27,7 +27,7 @@ async function collectUntil(
   }
 }
 
-const isResult = (e: SessionEvent) => e.type === "turn.result";
+const isResult = (e: RuntimeEvent) => e.type === "turn.result";
 
 describe("FakeRuntime", () => {
   test("turno simples: init, deltas, message.assistant e turn.result", async () => {

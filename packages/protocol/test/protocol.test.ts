@@ -78,6 +78,8 @@ const validCommands: Record<CommandType, unknown> = {
   "run.get": { runId: "r" },
   "run.watch": {},
   "gate.respond": { runId: "r", stepId: "approve", attempt: 1, decision: "reject", note: "não" },
+  "quota.get": {},
+  "quota.watch": {},
 };
 
 const validEvents: SessionEvent[] = [
