@@ -43,7 +43,7 @@ export function ProjectsPage(props: {
   const [limit, setLimit] = useState("");
 
   const reload = useCallback(async () => {
-    const result = await store.boardCommand(hostId, "project.list", {});
+    const result = await store.hostCommand(hostId, "project.list", {});
     if (result) {
       setList(result);
       setLimit(String(result.maxParallelRuns));
@@ -63,12 +63,12 @@ export function ProjectsPage(props: {
       setupScript: draft.setupScript,
     };
     const saved = editing
-      ? await store.boardCommand(hostId, "project.update", {
+      ? await store.hostCommand(hostId, "project.update", {
           projectId: editing,
           ...fields,
           promptTemplate: draft.promptTemplate,
         })
-      : await store.boardCommand(hostId, "project.add", {
+      : await store.hostCommand(hostId, "project.add", {
           path: draft.path,
           ...fields,
           // Blank keeps the default template.
@@ -149,7 +149,7 @@ export function ProjectsPage(props: {
         <button
           type="button"
           onClick={() =>
-            void store.boardCommand(hostId, "board.settings", { maxParallelRuns: Number(limit) })
+            void store.hostCommand(hostId, "board.settings", { maxParallelRuns: Number(limit) })
           }
         >
           Salvar limite

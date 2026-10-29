@@ -62,8 +62,8 @@ export interface AppState {
   cards: Record<string, Card>;
 }
 
-/** Commands of the board (phase 4), all sent through `boardCommand`. */
-export type BoardCommandType = Extract<
+/** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
+export type HostCommandType = Extract<
   CommandType,
   `project.${string}` | `board.${string}` | `card.${string}`
 >;
@@ -465,7 +465,7 @@ export class AppStore {
    * Sends a project, board or card command to a host. Cards in the answer go to `cards`; errors
    * go to the banner and give `null`.
    */
-  async boardCommand<T extends BoardCommandType>(
+  async hostCommand<T extends HostCommandType>(
     hostId: string,
     type: T,
     payload: CommandPayload<T>,

@@ -58,7 +58,7 @@ export function BoardView(props: {
   const dragging = useRef<string | null>(null);
 
   useEffect(() => {
-    void store.boardCommand(hostId, "board.get", { projectId }).then((board) => {
+    void store.hostCommand(hostId, "board.get", { projectId }).then((board) => {
       if (board) setProject(board.project);
     });
   }, [store, hostId, projectId]);
@@ -72,7 +72,7 @@ export function BoardView(props: {
     const others = all.filter((card) => card.column === column && card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
     dragging.current = null;
-    void store.boardCommand(hostId, "card.move", {
+    void store.hostCommand(hostId, "card.move", {
       cardId,
       column,
       ...(position !== undefined ? { position } : {}),
@@ -81,7 +81,7 @@ export function BoardView(props: {
 
   const create = () => {
     if (!title.trim()) return;
-    void store.boardCommand(hostId, "card.create", { projectId, title: title.trim(), description });
+    void store.hostCommand(hostId, "card.create", { projectId, title: title.trim(), description });
     setTitle("");
     setDescription("");
   };

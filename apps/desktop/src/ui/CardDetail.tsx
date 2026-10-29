@@ -40,14 +40,14 @@ export function CardDetail(props: {
 
   useEffect(() => {
     if (tab !== "diff") return;
-    void store.boardCommand(hostId, "card.diff", { cardId }).then(setDiff);
+    void store.hostCommand(hostId, "card.diff", { cardId }).then(setDiff);
   }, [store, hostId, cardId, tab]);
 
   if (!card) return <p className="muted welcome">Card não encontrado.</p>;
 
   const askDiscard = async () => {
     const current = card.worktreePath
-      ? await store.boardCommand(hostId, "card.diff", { cardId })
+      ? await store.hostCommand(hostId, "card.diff", { cardId })
       : null;
     const files = current?.files ?? [];
     const unsent = files.some((f) => f.uncommitted) || (files.length > 0 && !card.prUrl);
@@ -58,16 +58,16 @@ export function CardDetail(props: {
     const kind = confirming?.kind;
     setConfirming(null);
     if (kind === "complete") {
-      await store.boardCommand(hostId, "card.complete", { cardId, confirm: true });
+      await store.hostCommand(hostId, "card.complete", { cardId, confirm: true });
     } else {
-      const discarded = await store.boardCommand(hostId, "card.discard", { cardId, confirm: true });
+      const discarded = await store.hostCommand(hostId, "card.discard", { cardId, confirm: true });
       if (discarded) props.onBack();
     }
   };
 
   const sendAdjustment = () => {
     if (!adjustment.trim()) return;
-    void store.boardCommand(hostId, "card.message", { cardId, text: adjustment.trim() });
+    void store.hostCommand(hostId, "card.message", { cardId, text: adjustment.trim() });
     setAdjustment("");
   };
 
@@ -96,7 +96,7 @@ export function CardDetail(props: {
         />
         <button
           type="button"
-          onClick={() => void store.boardCommand(hostId, "card.update", { cardId, description })}
+          onClick={() => void store.hostCommand(hostId, "card.update", { cardId, description })}
         >
           Salvar descrição
         </button>
@@ -105,19 +105,19 @@ export function CardDetail(props: {
         <button
           type="button"
           className="primary"
-          onClick={() => void store.boardCommand(hostId, "card.start", { cardId })}
+          onClick={() => void store.hostCommand(hostId, "card.start", { cardId })}
         >
           Iniciar
         </button>
         <button
           type="button"
-          onClick={() => void store.boardCommand(hostId, "card.stop", { cardId })}
+          onClick={() => void store.hostCommand(hostId, "card.stop", { cardId })}
         >
           Parar
         </button>
         <button
           type="button"
-          onClick={() => void store.boardCommand(hostId, "card.pr.create", { cardId })}
+          onClick={() => void store.hostCommand(hostId, "card.pr.create", { cardId })}
         >
           Abrir PR
         </button>
