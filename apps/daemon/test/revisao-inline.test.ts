@@ -300,4 +300,13 @@ describe("revisao-inline", () => {
       comments: 1,
     });
   });
+
+  test("alvo que não resolve mais: os comentários continuam, como histórico desatualizado", async () => {
+    const ctx = await session();
+    const { review, target } = ctx;
+    await review.add({ target, path: "b.txt", side: "old", lineStart: 1, lineEnd: 1, body: "ok?" });
+    ctx.store.db.query("UPDATE sessions SET cwd = ?").run(join(ctx.repo, "sumiu"));
+    const listed = await review.list(target).catch(() => null);
+    expect(listed?.map((c) => [c.body, c.outdated]) ?? "erro").toEqual([["ok?", true]]);
+  });
 });
