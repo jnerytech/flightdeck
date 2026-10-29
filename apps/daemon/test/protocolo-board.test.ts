@@ -168,8 +168,14 @@ describe("protocolo-board", () => {
     const started = await client.data<WireCard>("card.start", { cardId: id });
     expect(started?.column).toBe("in_progress");
     expect(await nextUpdate(client, id, seen, (c) => c.column === "in_progress")).not.toBeNull();
-    const reviewed = await nextUpdate(client, id, seen, (c) => c.column === "review");
-    expect(reviewed?.sessionStatus).toBe("idle");
+    // turn.result moves the card first; the session's idle comes in the next update.
+    const reviewed = await nextUpdate(
+      client,
+      id,
+      seen,
+      (c) => c.column === "review" && c.sessionStatus === "idle",
+    );
+    expect(reviewed).not.toBeNull();
 
     const diff = await client.data<{ files: Array<{ path: string }> }>("card.diff", {
       cardId: id,
