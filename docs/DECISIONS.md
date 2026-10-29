@@ -1351,6 +1351,11 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
   - os comentários do REST vêm de todas as páginas, 100 por vez: `gh api --paginate --slurp "repos/{o}/{r}/pulls/{n}/comments?per_page=100"` (um array de páginas, que o daemon junta). O `per_page` vai no caminho e não em `-F`, porque um campo faria o `gh api` mudar para POST. O `--slurp` pede o `gh` 2.48 ou mais novo;
   - o corte que sobra é o da consulta GraphQL: `reviewThreads(first: 100)` e `comments(first: 100)` por thread. Passando disso, os comentários além do corte aparecem como não resolvidos;
   - o `gh api graphql` faz um POST mesmo para consulta. O teste de "nada postado" confere o conteúdo das chamadas: nenhum `mutation`, `-X`, `--method`, `pr comment` ou `pr review`.
+- **Autoria:** o `PrComment` traz quem escreveu, para as automações da Fase 13 ignorarem comentários de fora e o app marcá-los.
+  - `authorAssociation`: o `author_association` do GitHub (OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE…), nos comentários e nos resumos das revisões. É nulo no Azure.
+  - `authorIdentity`: o `uniqueName` do Azure, ou o id quando não há. É nulo no GitHub.
+- **Nomes na URL do Azure:** projeto e repositório saem da URL do PR com as sequências `%20` decodificadas, porque a API quer o nome como ele é. No Windows o `%` quebra um `.cmd` (o Bun recusa o argumento), então um projeto com espaço no nome não funcionava.
+- **Texto livre no `az`:** a Fase 11 não manda nenhum. Os argumentos do `az devops invoke` são o projeto, o repositório e o número do PR, que vêm da URL, mais a organização e a versão da API. Se isso mudar, vale o helper da área `az-cmd` da dev (uma linha, sem `< > & | ^ " %`, até 400 caracteres).
 - **Busca e cache:** a busca acontece na rodada de poll do PR, enquanto ele está aberto. Uma falha guarda os últimos comentários e não mexe no aviso do card. O `pr.comments` busca na hora quando ainda não há nada.
 - **Formato do envio:** "Comentários do PR:", e cada item com o arquivo e a linha (ou "revisão de <autor>") seguido do texto.
 
