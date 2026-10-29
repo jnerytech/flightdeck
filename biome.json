@@ -21,6 +21,11 @@
       "preset": "recommended"
     }
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "javascript": {
     "formatter": {
       "quoteStyle": "double"
@@ -54,6 +59,11 @@
           }
         }
       }
+    },
+    {
+      "includes": ["apps/desktop/src/components/ui/**"],
+      "linter": { "enabled": false },
+      "assist": { "enabled": false }
     }
   ]
 }

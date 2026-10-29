@@ -1,0 +1,25 @@
+{
+  "shadcn": "4.23.0",
+  "files": {
+    "alert-dialog.tsx": "8b9d3d1c3c5e4e88b8b7872584133d21a376d390d18faa2d9f427670c36bc9ea",
+    "badge.tsx": "34c000745be520413d59e76543039ccfe2a62f9daeea5b0e1b4c398fc651f688",
+    "button.tsx": "f797edbc463333d7558173c13b8a7b227f95ccb22d8dcaad373eca298b125ec4",
+    "card.tsx": "f345aa1bed7ffc28fb15065d47a09f923bb95bd751007d34862e317422b73594",
+    "collapsible.tsx": "725da7a95b858d296a2c7f138026ffa40292a41c590eafc0794426ed0b53ebb0",
+    "command.tsx": "260a1de4d241636c9de367c7d00ebfcc4880235cba7d0ca503f95e668665b67a",
+    "dialog.tsx": "238ad802981959db824d1a29e140cbea1737a7fc56a6c04828ba9b3e923b3a25",
+    "dropdown-menu.tsx": "08b678e30510c75df2867ea7c3744c25767ac9292b4d87c287ba88b7c9c974b3",
+    "input.tsx": "cddd2a11d7f939de117ab2b47070c0bf044683d0ea0c1e40d0c5082b90d8d85b",
+    "label.tsx": "ad6478b1bc0b7e0c14c9de96604f8663c712ffc70457686649bf4ec35ec5a5c2",
+    "popover.tsx": "9cf801357c6e17879ef6e8b4b8ad35c7d25e5b84db69984378c2cf4ec8fdf8fc",
+    "scroll-area.tsx": "68d7880840e383634d75441e025ad754b7d3a086d1b22cf116fa9833a066869e",
+    "select.tsx": "d2902201eea6cf9d8e38efba13d58816ebc11f35119f5946d72ac3bd528c8e5f",
+    "separator.tsx": "dea83d7349dd2db685ea83ba71a84c3d55939254435e12361a3afaac88e8e498",
+    "sheet.tsx": "c49f5ad9d71e098108acdaf6c96a3a7a7a96e7394ee2d83975c9182a939ccbd7",
+    "skeleton.tsx": "e3bd46b60fec62fbe72b7c9a22da75206d507d70700e976fb45778be250d0822",
+    "switch.tsx": "f10fd3accfd324f7282396bdd8c0092ae1eea0fa731043fa2acd22c6c9b2d159",
+    "tabs.tsx": "82d086e91fe080dded33ac160fe2857620d39b33d27e3d0ab9ac99f07c494775",
+    "textarea.tsx": "c87dcda9cf319543d47b42ebd3d63ee8c98e14711169205a79add6520d45df53",
+    "tooltip.tsx": "1eed7b9288d1d3409d43792df8a66fde452378c54f6b0e184b1ab05a43ebe460"
+  }
+}
