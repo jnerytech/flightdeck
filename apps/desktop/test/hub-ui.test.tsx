@@ -300,4 +300,13 @@ describe("hub-ui", () => {
     expect(select("Host")?.value).toBe("alfa");
     expect((screen.queryByLabelText("Filtrar sessões") as HTMLInputElement | null)?.value).toBe("");
   });
+
+  test("uma hora ilegível (ou vazia) não vira texto estranho na linha", () => {
+    const store = new AppStore(memoryPlatform().platform, { timeZone: "America/Sao_Paulo" });
+    expect(() => store.formatDateTime("")).not.toThrow();
+    expect(() => store.formatDateTime("ontem")).not.toThrow();
+    expect(store.formatDateTime("")).toBe("");
+    expect(store.formatDateTime("ontem")).toBe("");
+    expect(store.formatDateTime("2026-09-01T10:00:00.000Z")).toBe("01/09/2026, 07:00");
+  });
 });
