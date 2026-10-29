@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { startDaemon } from "../src/main.ts";
 import { Quota } from "../src/quota/quota.ts";
-import { cardWhen, newBoard } from "./board-helpers.ts";
+import { cardWhen, gitRepo, newBoard } from "./board-helpers.ts";
 import { poll } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 import { manualTime } from "./time-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
@@ -150,5 +154,54 @@ describe("cota-fila", () => {
     await Bun.sleep(100);
     expect(ctx.run()?.steps.map((s) => s.stepId)).toEqual(["a"]);
     expect(ctx.run()?.status).toBe("failed");
+  });
+
+  test("no daemon, o board usa a cota do host", async () => {
+    const { root, repo } = gitRepo();
+    const file = join(root, "config.json");
+    const token = "fila-token-0123456789abcdef";
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token,
+        dataDir: join(root, "data"),
+        allowedRoots: [root],
+        history: { roots: [join(root, "nada")] },
+      }),
+    );
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => daemon.stop());
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token, client: "t" });
+    const resets = Math.floor(Date.now() / 1000) + 600;
+    await client.request("session.create", {
+      cwd: root,
+      prompt: `[ratelimit:five_hour=0.99@${resets}]`,
+    });
+    let blocked = false;
+    for (let i = 0; i < 100 && !blocked; i++) {
+      const state = await client.data<{ windows: unknown[] }>("quota.get", {});
+      blocked = (state?.windows.length ?? 0) > 0;
+      if (!blocked) await Bun.sleep(20);
+    }
+    const project = await client.data<{ id: string }>("project.add", {
+      path: repo,
+      promptTemplate: "",
+    });
+    const card = await client.data<{ id: string }>("card.create", {
+      projectId: project?.id,
+      title: "Na cota",
+      description: "oi",
+    });
+    const started = await client.data<{ queueReason: string | null }>("card.start", {
+      cardId: card?.id,
+    });
+    expect(started?.queueReason).toBe("quota");
   });
 });
