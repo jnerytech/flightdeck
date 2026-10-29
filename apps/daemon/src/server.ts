@@ -10,6 +10,8 @@ import {
   type CommandType,
   type EventEnvelope,
   type ExternalPermissionFrame,
+  type ExternalSession,
+  type ExternalStatus,
   type ExternalUpdated,
   type HistoryChanged,
   MIN_PROTOCOL_VERSION,
@@ -18,6 +20,9 @@ import {
   PROTOCOL_VERSION,
   type QuotaUpdated,
   type RunUpdated,
+  type SessionLine,
+  type SessionStatus,
+  type SessionSummary,
   WS_PATH,
 } from "@flightdeck/protocol";
 import type { ServerWebSocket } from "bun";
@@ -27,6 +32,7 @@ import type { Board } from "./board/board.ts";
 import type { Central } from "./central/central.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
+import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { Quota } from "./quota/quota.ts";
@@ -137,6 +143,24 @@ function decode(raw: string | Buffer): unknown {
   return JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
 }
 
+/** Phase 8: the state of a session's line, from its live status. */
+const MANAGED_LINE: Record<SessionStatus, SessionLine["state"]> = {
+  starting: "running",
+  running: "running",
+  awaiting_permission: "waiting",
+  idle: "idle",
+  ended: "ended",
+  error: "ended",
+};
+
+const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
+  running: "running",
+  awaiting_permission: "waiting",
+  idle: "idle",
+  unknown: "idle",
+  ended: "ended",
+};
+
 export function startServer(opts: ServerOptions): RunningServer {
   const { manager } = opts;
 
@@ -217,14 +241,23 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.central;
   }
 
-  /** Phase 5: every session list carries its project group and meta (with the hub on). */
-  function listed<T extends { cwd: string }>(session: T, claudeSessionId: string | null): T {
+  /**
+   * Phase 5: every session list carries its project group and meta (with the hub on). Phase 8:
+   * and its line, with the transcript index on.
+   */
+  function listed<T extends { cwd: string }>(
+    session: T,
+    claudeSessionId: string | null,
+    live: LiveState,
+  ): T {
     const hub = opts.central;
-    if (!hub) return session;
+    const summary = line(claudeSessionId, live);
     return {
       ...session,
-      projectKey: hub.projectKey(session.cwd),
-      meta: hub.meta.get(claudeSessionId ?? ""),
+      ...(hub
+        ? { projectKey: hub.projectKey(session.cwd), meta: hub.meta.get(claudeSessionId ?? "") }
+        : {}),
+      ...(summary ? { summary } : {}),
     };
   }
 
@@ -232,6 +265,30 @@ export function startServer(opts: ServerOptions): RunningServer {
   function updateStatus() {
     const update = opts.updates?.status();
     return update ? { update } : {};
+  }
+
+  function line(claudeSessionId: string | null, live: LiveState): SessionLine | null {
+    if (!opts.history) return null;
+    return sessionLine(claudeSessionId ? opts.history.lastActivity(claudeSessionId) : null, live);
+  }
+
+  const managedLive = (s: SessionSummary): LiveState => ({
+    state: MANAGED_LINE[s.status],
+    waitingTool: manager.pendingPermissions(s.id)[0]?.toolName ?? null,
+    since: s.updatedAt,
+  });
+
+  /** An external session as the lists and `external.updated` send it: with its line. */
+  function externalListed(s: ExternalSession): ExternalSession {
+    const waiting = opts.central?.permissions
+      .open()
+      .find((frame) => frame.claudeSessionId === s.claudeSessionId);
+    const summary = line(s.claudeSessionId, {
+      state: EXTERNAL_LINE[s.status],
+      waitingTool: waiting?.toolName ?? null,
+      since: s.lastEventAt,
+    });
+    return summary ? { ...s, summary } : s;
   }
 
   function maintenance(): Maintenance {
@@ -270,7 +327,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return onHello(ws, command);
       case "session.list":
         return ok(command.type, {
-          sessions: manager.list().map((s) => listed(s, s.claudeSessionId)),
+          sessions: manager.list().map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
       case "session.create":
         return ok(command.type, manager.create(command.payload));
@@ -353,7 +410,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, central().hooksUninstall(command.payload.confirm === true));
       case "external.list": {
         const { external, meta } = central();
-        const sessions = external.list().map((s) => ({ ...s, meta: meta.get(s.claudeSessionId) }));
+        const sessions = external
+          .list()
+          .map((s) => ({ ...externalListed(s), meta: meta.get(s.claudeSessionId) }));
         return ok(command.type, { sessions });
       }
       case "external.watch": {
@@ -361,15 +420,22 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { external, permissions } = central();
         ws.data.unwatchExternal?.();
         const offSessions = external.onChange((session) =>
-          send(ws, { type: "external.updated", session }),
+          send(ws, { type: "external.updated", session: externalListed(session) }),
         );
-        const offPermissions = permissions.watch((frame) => send(ws, frame));
+        const offPermissions = permissions.watch((frame) => {
+          send(ws, frame);
+          // The session's line names the tool it waits for, known only once the request opens.
+          const session = external.get(frame.claudeSessionId);
+          if (session) send(ws, { type: "external.updated", session: externalListed(session) });
+        });
         ws.data.unwatchExternal = () => {
           offSessions();
           offPermissions();
         };
         ok(command.type);
-        for (const session of external.list()) send(ws, { type: "external.updated", session });
+        for (const session of external.list()) {
+          send(ws, { type: "external.updated", session: externalListed(session) });
+        }
         for (const frame of permissions.open()) send(ws, frame);
         return;
       }
@@ -389,7 +455,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
       case "history.list": {
         const page = history().list(command.payload);
-        const sessions = page.sessions.map((s) => listed(s, s.claudeSessionId));
+        const sessions = page.sessions.map((s) =>
+          listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
+        );
         return ok(command.type, { ...page, sessions });
       }
       case "history.get": {

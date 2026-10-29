@@ -8,6 +8,7 @@ import {
   hubRows,
   ORIGIN_LABELS,
   STATE_LABELS,
+  sessionLineText,
 } from "../lib/hub.ts";
 import { when } from "./GlobalSearch.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
@@ -137,6 +138,7 @@ export function SessionsHub(props: {
                     when(row.lastActivity),
                   ].join(" · ")}
                 </span>
+                <SessionLineText text={sessionLineText(row.summary, store.now())} />
                 {row.controllable && <span className="badge">controlável</span>}
                 {row.claudeSessionId && (
                   <span className="menu">
@@ -186,4 +188,9 @@ export function SessionsHub(props: {
       ))}
     </section>
   );
+}
+
+/** "Pedido: … · rodando Bash" under the row, when the daemon sends one. */
+function SessionLineText({ text }: { text: string }) {
+  return text ? <span className="session-line">{text}</span> : null;
 }

@@ -1,6 +1,7 @@
 import type {
   CommandPayload,
   EventEnvelope,
+  PendingPermission,
   PermissionMode,
   PermissionUpdate,
   SessionEvent,
@@ -89,6 +90,13 @@ export class SessionManager {
 
   list(): SessionSummary[] {
     return this.store.listSessions();
+  }
+
+  /** Open permission requests of a session, oldest first, as its summaries list them. */
+  pendingPermissions(sessionId: string): PendingPermission[] {
+    return this.store
+      .pendingPermissions(sessionId)
+      .map((p) => ({ requestId: p.id, toolName: p.toolName, createdAt: p.createdAt }));
   }
 
   get(sessionId: string): SessionSummary {
@@ -260,9 +268,7 @@ export class SessionManager {
       name: session.name,
       cwd: session.cwd,
       status: session.status,
-      pendingPermissions: this.store
-        .pendingPermissions(sessionId)
-        .map((p) => ({ requestId: p.id, toolName: p.toolName, createdAt: p.createdAt })),
+      pendingPermissions: this.pendingPermissions(sessionId),
       updatedAt: session.updatedAt,
     });
   }

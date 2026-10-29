@@ -521,3 +521,13 @@ textarea {
   padding: 0.2rem 0.6rem;
   text-align: left;
 }
+
+/* Phase 8: "Pedido: … · rodando Bash" under each row of the Sessões screen. */
+.session-line {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

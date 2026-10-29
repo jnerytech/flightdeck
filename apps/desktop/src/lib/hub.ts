@@ -1,4 +1,4 @@
-import type { ExternalStatus, SessionMeta, SessionStatus } from "@flightdeck/protocol";
+import type { ExternalStatus, SessionLine, SessionMeta, SessionStatus } from "@flightdeck/protocol";
 import type { AppState } from "./app-store.ts";
 import { basename } from "./paths.ts";
 
@@ -22,6 +22,8 @@ export interface HubRow {
   lastActivity: string;
   pinned: boolean;
   archived: boolean;
+  /** What the daemon says about it (phase 8); absent on older daemons. */
+  summary: SessionLine | null;
 }
 
 export interface HubFilter {
@@ -109,6 +111,7 @@ export function hubRows(state: AppState): HubRow[] {
         state: MANAGED[live?.status ?? s.status],
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
+        summary: s.summary ?? null,
       };
     });
     const externals = Object.entries(state.externals)
@@ -124,6 +127,7 @@ export function hubRows(state: AppState): HubRow[] {
           state: EXTERNAL[s.status],
           controllable: s.controllable,
           lastActivity: s.lastEventAt,
+          summary: s.summary ?? null,
         };
       });
     const history = data.history
@@ -139,6 +143,7 @@ export function hubRows(state: AppState): HubRow[] {
           state: "ended",
           controllable: false,
           lastActivity: s.lastTs ?? "",
+          summary: s.summary ?? null,
         };
       });
     return [...managed, ...externals, ...history];
@@ -169,4 +174,34 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   return [...byKey.entries()]
     .map(([key, list]) => ({ key, name: groupName(key), rows: list.sort(order) }))
     .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));
+}
+
+/** The session's line in the lists: "Pedido: …" and what it is doing, at `nowMs`. */
+export function sessionLineText(line: SessionLine | null | undefined, nowMs: number): string {
+  if (!line) return "";
+  return [line.request ? `Pedido: ${line.request}` : "", activity(line, nowMs)]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function activity(line: SessionLine, nowMs: number): string {
+  switch (line.state) {
+    case "running":
+      return line.tool ? `rodando ${line.tool}` : "rodando";
+    case "waiting":
+      return line.tool ? `esperando aprovação de ${line.tool}` : "esperando aprovação";
+    case "idle":
+      return `ociosa ${idleFor(nowMs - Date.parse(line.since ?? ""))}`;
+    case "ended":
+      return "";
+  }
+}
+
+/** "há 12 min", "há 2 h"; unknown since says just "ociosa". */
+function idleFor(ms: number): string {
+  if (Number.isNaN(ms)) return "";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "há menos de 1 min";
+  if (minutes < 60) return `há ${minutes} min`;
+  return `há ${Math.floor(minutes / 60)} h`;
 }

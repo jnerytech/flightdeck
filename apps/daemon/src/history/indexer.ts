@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { type HistoryRecord, parseLines } from "./parser.ts";
+import { lastTool, requestLine } from "./session-line.ts";
 
 export interface HistoryIndexerOptions {
   db: Database;
@@ -261,6 +262,28 @@ export class HistoryIndexer {
       messages: rows.slice(0, limit),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
       prevCursor: offset > 0 ? String(Math.max(0, offset - limit)) : null,
+    };
+  }
+
+  /**
+   * What the session lists say about a transcript (phase 8): the first line of the user's last
+   * prompt and the last tool called, in file order. `null` when it is not indexed.
+   */
+  lastActivity(claudeSessionId: string): { request: string | null; tool: string | null } | null {
+    const last = (role: "user" | "assistant") =>
+      this.db
+        .query(
+          `SELECT text FROM history_messages
+           WHERE claude_session_id = ? AND role = ? AND kind = 'message'
+           ORDER BY rowid DESC LIMIT 1`,
+        )
+        .get(claudeSessionId, role) as { text: string } | null;
+    const prompt = last("user");
+    const reply = last("assistant");
+    if (!prompt && !reply) return null;
+    return {
+      request: prompt ? requestLine(prompt.text) || null : null,
+      tool: reply ? lastTool(reply.text) : null,
     };
   }
 

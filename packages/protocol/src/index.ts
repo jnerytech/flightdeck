@@ -46,10 +46,26 @@ export const SessionMeta = z.object({
 });
 export type SessionMeta = z.infer<typeof SessionMeta>;
 
-/** Phase 5 additions to every session list: the project group and the meta. */
+/**
+ * Phase 8 (track B): one line about a session for the lists, derived from its transcript and its
+ * live state, without AI. The app formats it ("Pedido: … · rodando Bash").
+ */
+export const SessionLine = z.object({
+  /** First line of the user's last prompt, up to 80 characters. */
+  request: z.string().nullable(),
+  state: z.enum(["running", "waiting", "idle", "ended"]),
+  /** Running: the last tool called; waiting: the tool asking for approval. */
+  tool: z.string().nullable(),
+  /** Last activity: an idle session is idle since then. */
+  since: z.string().nullable(),
+});
+export type SessionLine = z.infer<typeof SessionLine>;
+
+/** Phase 5 additions to every session list: the project group and the meta (and phase 8's line). */
 const ListExtras = {
   projectKey: z.string().nullable().optional(),
   meta: SessionMeta.optional(),
+  summary: SessionLine.optional(),
 };
 
 export const SessionSummary = z.object({
@@ -591,6 +607,7 @@ export const ExternalSession = z.object({
   lastEventAt: z.string(),
   endedAt: z.string().nullable(),
   meta: SessionMeta.optional(),
+  summary: SessionLine.optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 
