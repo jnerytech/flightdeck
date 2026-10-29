@@ -1,0 +1,70 @@
+import type { HostDraft } from "../ui/HostForm.tsx";
+import type { ReaderTarget } from "../ui/TranscriptReader.tsx";
+
+/** Every screen of the app, with what it shows. */
+export type Route =
+  /** The selected session, the new-session form of the selected host, or the hub. */
+  | { name: "home" }
+  | { name: "hub" }
+  | { name: "session"; host: string; id: string; focus?: string }
+  | { name: "new-session"; host: string }
+  | { name: "external"; host: string; claudeSessionId: string }
+  | { name: "reader"; target: ReaderTarget }
+  | { name: "history"; host: string }
+  | { name: "host"; host: string }
+  | { name: "projects"; host: string }
+  | { name: "board"; host: string; projectId: string }
+  | { name: "card"; host: string; projectId: string; cardId: string }
+  | { name: "workflows"; host: string; projectId: string; projectName: string }
+  | { name: "settings" }
+  /** The Custos screen (phase 8, track A). */
+  | { name: "costs" }
+  | { name: "add-host"; draft?: HostDraft; key?: number };
+
+/** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */
+export class Router {
+  private stack: Route[] = [{ name: "home" }];
+  private index = 0;
+  private readonly listeners = new Set<() => void>();
+
+  get current(): Route {
+    return this.stack[this.index] as Route;
+  }
+
+  get canBack(): boolean {
+    return this.index > 0;
+  }
+
+  get canForward(): boolean {
+    return this.index < this.stack.length - 1;
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  /** Opens `route`; the screens ahead of the current one (after a back) are dropped. */
+  push(route: Route): void {
+    if (JSON.stringify(route) === JSON.stringify(this.current)) return;
+    this.stack = [...this.stack.slice(0, this.index + 1), route];
+    this.index = this.stack.length - 1;
+    this.emit();
+  }
+
+  back(): void {
+    if (!this.canBack) return;
+    this.index--;
+    this.emit();
+  }
+
+  forward(): void {
+    if (!this.canForward) return;
+    this.index++;
+    this.emit();
+  }
+
+  private emit(): void {
+    for (const listener of this.listeners) listener();
+  }
+}

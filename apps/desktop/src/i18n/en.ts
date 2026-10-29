@@ -2,6 +2,8 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
+  nav: { back: "Back", forward: "Forward" },
+  board: { cardActions: "Actions for {title}", startCard: "Start card" },
   shell: {
     sidebar: "Sidebar",
     collapse: "Collapse sidebar",
@@ -13,7 +15,11 @@ export const en: Dictionary = {
     themes: { system: "System", light: "Light", dark: "Dark" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
-  palette: { toggleTheme: "Toggle theme", switchLanguage: "Switch language" },
+  palette: {
+    toggleTheme: "Toggle theme",
+    switchLanguage: "Switch language",
+    startCard: "Start card",
+  },
   time: {
     now: "just now",
     ago: "{d} ago",

@@ -39,6 +39,7 @@ import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
+import { Router } from "./router.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import {
@@ -411,6 +412,8 @@ export class AppStore {
   readonly theme: ThemeController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
+  /** The screen in use and its history (phase 10). */
+  readonly router = new Router();
 
   getState = (): AppState => this.state;
 
@@ -884,6 +887,9 @@ export class AppStore {
     try {
       const { sessionId } = await conn.request("session.create", payload);
       this.select(hostId, sessionId);
+      // A new session opens, wherever it was created from (phase 10).
+      this.closeSearch();
+      this.router.push({ name: "session", host: hostId, id: sessionId });
       return sessionId;
     } catch (error) {
       this.update({ error: describeError(error) });

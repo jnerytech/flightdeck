@@ -4,6 +4,8 @@
  * Terms follow docs/GLOSSARY.md.
  */
 export const ptBR = {
+  nav: { back: "Voltar", forward: "Avançar" },
+  board: { cardActions: "Ações de {title}", startCard: "Iniciar card" },
   shell: {
     sidebar: "Barra lateral",
     collapse: "Recolher barra lateral",
@@ -15,7 +17,11 @@ export const ptBR = {
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
-  palette: { toggleTheme: "Alternar tema", switchLanguage: "Trocar idioma" },
+  palette: {
+    toggleTheme: "Alternar tema",
+    switchLanguage: "Trocar idioma",
+    startCard: "Iniciar card",
+  },
   time: {
     now: "agora",
     ago: "há {d}",

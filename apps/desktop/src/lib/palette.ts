@@ -17,6 +17,7 @@ export type PaletteTarget =
   | { kind: "settings" }
   | { kind: "toggle-theme" }
   | { kind: "switch-language" }
+  | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" };
 
 export interface PaletteAction {
@@ -112,7 +113,13 @@ export function paletteSections(
           label: card.title,
           detail: `${host.name} · card`,
           target,
-          actions: [{ label: "Abrir", target }],
+          actions: [
+            { label: "Abrir", target },
+            {
+              label: t("palette.startCard"),
+              target: { kind: "start-card", hostId: host.id, cardId: card.id },
+            },
+          ],
         };
       }),
   );

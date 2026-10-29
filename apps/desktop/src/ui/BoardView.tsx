@@ -1,5 +1,13 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
+import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import {
   CHECK_LABELS,
@@ -14,7 +22,10 @@ import { StatusBadge } from "./StatusBadge.tsx";
 function CardTile(props: {
   card: Card;
   formatTime(iso: string): string;
+  labels: { actions: string; start: string };
   onOpen(): void;
+  /** "Iniciar card" from the card's menu, without opening it (phase 10). */
+  onStart(): void;
   onDragStart(): void;
   onDropOn(): void;
 }) {
@@ -33,6 +44,16 @@ function CardTile(props: {
       <button type="button" onClick={props.onOpen}>
         {card.title}
       </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label={props.labels.actions}>
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <div className="badges">
         {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
         {card.queued && <span className="badge badge-muted">na fila</span>}
@@ -143,7 +164,14 @@ export function BoardView(props: {
                     key={card.id}
                     card={card}
                     formatTime={(iso) => store.formatTime(iso)}
+                    labels={{
+                      actions: store.i18n.t("board.cardActions", { title: card.title }),
+                      start: store.i18n.t("board.startCard"),
+                    }}
                     onOpen={() => props.onOpenCard(card.id)}
+                    onStart={() =>
+                      void store.hostCommand(hostId, "card.start", { cardId: card.id })
+                    }
                     onDragStart={() => {
                       dragging.current = card.id;
                     }}
