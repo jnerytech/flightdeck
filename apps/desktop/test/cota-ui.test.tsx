@@ -62,7 +62,8 @@ async function online(language = "pt-BR") {
   return { ...d, ...mem, time, quota, store };
 }
 
-const card = () => screen.queryByRole("region", { name: "Cota de alfa" });
+/** The host's quota card, in either language. */
+const card = () => screen.queryByRole("region", { name: /^(Cota de|Quota of) alfa$/ });
 const bar = (label: string) => card()?.querySelector(`[data-window="${label}"]`) ?? null;
 const inBar = (label: string, text: string) => within(bar(label) as HTMLElement).queryByText(text);
 

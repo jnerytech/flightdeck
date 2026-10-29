@@ -129,7 +129,9 @@ describe("cota-ui-historico", () => {
   test("as barras da cota trazem a projeção no tooltip", async () => {
     const { d } = await online();
     await act(async () => {
-      d.quota.record([five(0.4)]);
+      // A reading of the current window (the daemon's quota runs on the real clock): a host with
+      // none shows no bars, so no projection either.
+      d.quota.record([{ ...five(0.4), resetsAt: Date.now() + 3 * 60 * MIN }]);
     });
     const bar = (window: string) =>
       region("Cota de alfa")?.querySelector(`[data-window="${window}"]`)?.getAttribute("title") ??
