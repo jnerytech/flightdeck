@@ -112,6 +112,7 @@ const validCommands: Record<CommandType, unknown> = {
   "pr.comments.send": { cardId: "k", ids: ["1"] },
   "files.sessions": { path: "/work/a.ts" },
   "session.files": { claudeSessionId: "s" },
+  "statusline.get": { claudeSessionId: "s" },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
