@@ -85,6 +85,8 @@ describe("servico", () => {
       config: "c.json",
     });
     expect(parse(["service", "status"])).toEqual({ command: "service", action: "status" });
+    expect(parse(["service", "stop"])).toEqual({ command: "service", action: "stop" });
+    expect(parse(["service", "start"])).toEqual({ command: "service", action: "start" });
   });
 
   test("install --dry-run no Linux imprime a unit e os comandos sem executar, gravar nem criar a config", async () => {
@@ -247,6 +249,95 @@ describe("servico", () => {
     expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Delete"]);
     expect(acquireLock(dataDir)).not.toBeNull();
     expect(out.join("\n")).toContain("serviço removido");
+  });
+
+  /** A Windows service context whose task runs `exe start --config <file>`, recording commands. */
+  function taskWith(file: string) {
+    const exe = "C:\\Users\\dev\\bin\\flightdeckd.exe";
+    const xml = windowsTaskXml([exe], { user: "PC\\dev", systemRoot: "C:\\Windows", config: file });
+    const os = fakeOs("win32");
+    const run = cli(os);
+    run.deps.serviceContext = (dryRun) => ({
+      ...os.ctx(dryRun),
+      exec: async (cmd) => {
+        os.calls.push(cmd);
+        return { code: 0, stdout: cmd.includes("/XML") ? xml : "" };
+      },
+    });
+    return { os, ...run };
+  }
+
+  test("service stop para o daemon do serviço e deixa a tarefa instalada", async () => {
+    const token = "s".repeat(32);
+    const dataDir = join(tempDir(), "data");
+    const lock = acquireLock(dataDir);
+    const { manager } = newManager();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token,
+      allowedRoots: [],
+      onShutdown: () => lock?.release(),
+    });
+    stops.push(() => server.stop());
+    const file = configFile({ token, dataDir, bind: "127.0.0.1", port: server.port });
+    const { os, deps, out, exits } = taskWith(file);
+    await runCli(["service", "stop"], deps);
+    expect(exits).toEqual([0]);
+    expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End"]);
+    expect(acquireLock(dataDir)).not.toBeNull();
+    expect(out.join("\n")).toContain("daemon do serviço parado");
+  });
+
+  test("service stop que não consegue parar sai com 1 sem matar outro programa; sem serviço, avisa", async () => {
+    const dataDir = join(tempDir(), "data");
+    const lock = acquireLock(dataDir);
+    stops.push(async () => lock?.release());
+    const file = configFile({ token: "s".repeat(32), dataDir, port: 1 });
+    const stuck = taskWith(file);
+    stuck.deps.serviceStopTimeoutMs = 50;
+    await runCli(["service", "stop"], stuck.deps);
+    expect(stuck.exits).toEqual([1]);
+    expect(stuck.out.join("\n")).toContain("o daemon do serviço não parou");
+    expect(acquireLock(dataDir)).toBeNull();
+    const none = fakeOs("linux");
+    const noneCli = cli(none);
+    await runCli(["service", "stop"], noneCli.deps);
+    expect(noneCli.exits).toEqual([1]);
+    expect(noneCli.out.join("\n")).toContain("nenhum serviço instalado");
+  });
+
+  test("service start sobe a tarefa e espera o /health da config do serviço", async () => {
+    const hits: string[] = [];
+    const daemon = Bun.serve({
+      port: 0,
+      fetch: (req) => {
+        hits.push(new URL(req.url).pathname);
+        return Response.json({ ok: true });
+      },
+    });
+    stops.push(async () => daemon.stop(true));
+    const file = configFile({ token: "s".repeat(32), dataDir: tempDir(), port: daemon.port });
+    const { os, deps, out, exits } = taskWith(file);
+    await runCli(["service", "start"], deps);
+    expect(exits).toEqual([0]);
+    expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/Run"]);
+    expect(hits).toEqual(["/health"]);
+    expect(out.join("\n")).toContain("daemon do serviço respondendo");
+  });
+
+  test("service start sem resposta no /health sai com 1", async () => {
+    const closed = Bun.serve({ port: 0, fetch: () => new Response("") });
+    const port = closed.port;
+    await closed.stop(true);
+    const file = configFile({ token: "s".repeat(32), dataDir: tempDir(), port });
+    const { deps, out, exits } = taskWith(file);
+    deps.serviceHealthTimeoutMs = 100;
+    await runCli(["service", "start"], deps);
+    expect(exits).toEqual([1]);
+    expect(out.join("\n")).toContain("não respondeu em /health");
   });
 
   test("uninstall com o daemon que não para: remove o serviço e avisa, sem matar outro programa", async () => {
