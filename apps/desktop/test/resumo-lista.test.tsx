@@ -123,8 +123,6 @@ describe("resumo-lista", () => {
     writeTranscript(d.historyRoot, "-app-b", "ext-2", [
       userLine({ uuid: "b1", text: "apague o rascunho", cwd: appB, ts }),
     ]);
-    // Held by the receptor until answered: the session waits for Write.
-    void hook("ext-2", "PermissionRequest", { tool_name: "Write", tool_input: {} });
     const old = writeTranscript(d.historyRoot, "-old", "hist-1", [
       userLine({ uuid: "h1", text: "Do histórico", cwd: d.project, ts: "2026-09-01T10:00:00.000Z" }),
     ]);
@@ -141,6 +139,9 @@ describe("resumo-lista", () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
+    // Held by the receptor (only while an app watches) until answered: the session waits for Write.
+    await settle(() => Object.keys(store.getState().externals).length === 2);
+    void hook("ext-2", "PermissionRequest", { tool_name: "Write", tool_input: {} }).catch(() => {});
     const open = screen.queryByRole("button", { name: "Abrir Sessões" });
     expect(open).not.toBeNull();
     await act(async () => {
