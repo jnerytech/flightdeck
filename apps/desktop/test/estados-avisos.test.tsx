@@ -441,4 +441,19 @@ describe("estados-avisos", () => {
     });
     expect(store.getState().hosts).toEqual([]);
   });
+
+  test("na página do host, Remover host pede confirmação e Cancelar mantém o host", async () => {
+    const { store, hostId } = await online();
+    await act(async () => store.router.push({ name: "host", host: hostId }));
+    await settle(() => screen.queryByRole("button", { name: "Remover host" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Remover host" }) as HTMLElement);
+    });
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(inDialog("Cancelar") as HTMLElement);
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(store.getState().hosts).toHaveLength(1);
+  });
 });
