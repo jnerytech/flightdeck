@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { assertBinaryUntouched, installBinaryGuard } from "../../../scripts/test/binary-guard.ts";
 import { hookEntries, installHooks } from "../src/central/hooks-install.ts";
@@ -345,6 +353,24 @@ describe("update", () => {
     expect(readFileSync(other.stable, "utf8")).toBe("versão antiga");
   });
 
+  test("lock ainda preso: o executável do processo e o do serviço são comparados com os links resolvidos", async () => {
+    const real = join(tempDir(), "versao-1");
+    mkdirSync(real);
+    writeFileSync(join(real, "flightdeckd.exe"), "");
+    const link = join(tempDir(), "atual");
+    symlinkSync(real, link, "junction");
+    const killed: number[] = [];
+    const s = setup("win32", join(link, "flightdeckd.exe"));
+    s.deps.daemonRunning = () => killed.length === 0;
+    s.deps.lockPid = () => 4242;
+    s.deps.processPath = async () => join(real, "flightdeckd.exe");
+    s.deps.kill = (pid) => {
+      killed.push(pid);
+    };
+    expect(await update(s.deps, fakeBinary("0.8.0"))).toBe(0);
+    expect(killed).toEqual([4242]);
+  });
+
   test("peças reais: daemon.shutdown pelo WebSocket, PID do lock, executável e kill de um processo", async () => {
     const token = "update-token-0123456789abcdef";
     const { manager } = newManager();
@@ -373,7 +399,9 @@ describe("update", () => {
     cleanups.push(() => lock?.release());
     expect(readLockPid(dataDir)).toBe(process.pid);
 
-    expect((await processPath(process.pid))?.toLowerCase()).toBe(process.execPath.toLowerCase());
+    // Paths compared after links are resolved (a package manager may install bun behind one).
+    const own = await processPath(process.pid);
+    expect(realpathSync(own ?? "")).toBe(realpathSync(process.execPath));
     const child = Bun.spawn([process.execPath, "-e", "setInterval(() => {}, 1000)"], {
       env: process.env,
     });
@@ -409,7 +437,8 @@ describe("update", () => {
       serviceContext: () => service.ctx,
     });
     expect(code).toBe(0);
-    expect(hits).toEqual(["/health"]);
+    // First the daemon.shutdown attempt on the WebSocket, then the health check.
+    expect(hits).toEqual(["/v1/ws", "/health"]);
   }, 40_000);
 
   test("hooks instalados fora do caminho estável são reinstalados; sem hooks, nada é escrito", async () => {
@@ -526,7 +555,7 @@ describe("update", () => {
     });
     expect(code).toBe(0);
     expect(service.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Create", "/Run"]);
-    expect(hits).toEqual(["/health"]);
+    expect(hits).toEqual(["/v1/ws", "/health"]);
   });
 
   test("trava do binário: o preload reprova se o flightdeckd estável do home real mudar", () => {
