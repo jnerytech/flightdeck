@@ -203,6 +203,8 @@ describe("paleta", () => {
     expect(dialog()).toBeNull();
 
     await choose("flamingo", "Tab", "Enter");
+    // The board names its project once it loaded it.
+    await settle(() => screen.queryByRole("heading", { name: "Board de flamingo" }) !== null);
     expect(screen.queryByRole("heading", { name: "Board de flamingo" })).not.toBeNull();
 
     await choose("Ajuste", "Enter");
