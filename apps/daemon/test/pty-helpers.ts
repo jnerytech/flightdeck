@@ -81,3 +81,35 @@ export function dataOf(frames: TerminalFrame[]): Buffer {
     frames.flatMap((f) => (f.type === "terminal.data" ? [Buffer.from(f.data, "base64")] : [])),
   );
 }
+
+/**
+ * Runs the argv for real over plain pipes, with no terminal: for the tests of what the daemon
+ * starts ("Claude aqui" runs flightdeckd, which runs the fake claude). It refuses anything but
+ * `allowed`, so no test ever starts a shell by mistake.
+ */
+export function pipedRunner(allowed: string): PtyFactory {
+  return (start) => {
+    if (start.argv[0] !== allowed) throw new Error(`só roda ${allowed}, não ${start.argv[0]}`);
+    const proc = Bun.spawn(start.argv, {
+      cwd: start.cwd,
+      env: start.env,
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const pump = async (stream: ReadableStream<Uint8Array>) => {
+      for await (const chunk of stream) start.onData(chunk);
+    };
+    void Promise.all([pump(proc.stdout), pump(proc.stderr)])
+      .then(() => proc.exited)
+      .then((code) => start.onExit(code));
+    return {
+      write: (data) => {
+        proc.stdin.write(data);
+        proc.stdin.flush();
+      },
+      resize: () => {},
+      kill: () => proc.kill(),
+    };
+  };
+}
