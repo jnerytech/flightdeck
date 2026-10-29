@@ -6,6 +6,7 @@ import { git } from "../../daemon/test/board-helpers.ts";
 import { manualTime } from "../../daemon/test/time-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { legacyDaemon } from "./legacy-daemon.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -196,5 +197,33 @@ describe("cota-ui", () => {
     const plain = new AppStore(memoryPlatform().platform);
     const at = new Date(2026, 9, 1, 9, 5);
     expect(plain.formatTime(at.toISOString())).toBe("09:05");
+  });
+
+  test("host sem quota, ou da fase 6 sem features: sem barras nem painel de uso, e sem banner de erro", async () => {
+    const d = makeDaemon(cleanups);
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({
+        name: "sem",
+        url: d.listen(0, undefined, ["central", "workflows"]).url,
+        token: TOKEN,
+      });
+      await store.addHost({ name: "velho", url: legacyDaemon(cleanups).url, token: TOKEN });
+    });
+    await settle(() =>
+      store.getState().hosts.every((h) => h.status === "online" && h.hostInfo !== null),
+    );
+    await act(() => Bun.sleep(100));
+    expect(screen.queryByRole("region", { name: "Cota de sem" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Cota de velho" })).toBeNull();
+    for (const name of ["sem", "velho"]) {
+      await click(`Abrir host ${name}`);
+      await settle(() => screen.queryByRole("heading", { name }) !== null);
+      await act(() => Bun.sleep(100));
+      expect(screen.queryByRole("region", { name: "Uso dos últimos 7 dias" })).toBeNull();
+    }
+    expect(store.getState().error).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

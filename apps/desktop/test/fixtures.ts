@@ -93,9 +93,11 @@ export function daemon(
         backup: { enabled: true, keep: 7 },
       })
     : undefined;
-  const listen = (port = 0, pingIntervalMs?: number): RunningServer => {
+  /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
+  const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
+      ...(features ? { features } : {}),
       manager,
       history,
       board,
