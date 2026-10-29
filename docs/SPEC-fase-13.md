@@ -1,19 +1,19 @@
-# Flightdeck — Spec da Fase 12 (Automação)
+# Flightdeck — Spec da Fase 13 (Automação)
 
 ## Objetivo e escopo
 
-A Fase 12 faz o trabalho chegar e andar sozinho, sem perder o controle:
+A Fase 13 faz o trabalho chegar e andar sozinho, sem perder o controle:
 
 - cards nascem de issues do GitHub e do Azure Boards;
 - automações por horário e por evento: comentário no PR, CI falhou, issue com rótulo;
 - **arena**: o mesmo pedido em 2 a 4 agentes, e você escolhe o melhor;
 - aprovação **graduada por risco**, e aprovação automática por IA, opcional e conservadora.
 
-Pré-requisito: Fases 9 a 11 integradas. É a última fase do roadmap atual.
+Pré-requisito: Fases 9 a 12 integradas, inclusive a base de interface da Fase 10. É a última fase do roadmap atual.
 
 As ideias vêm de emdash e Conductor (issues), octomux, Paradev e agent-deck (agendamentos e gatilhos), parallel-code e Agent Console (arena), ccmanager (aprovação por IA) e Agent Console (aprovação por risco).
 
-**Fora da Fase 12**
+**Fora da Fase 13**
 
 - Escrever no provedor sem opt-in. Comentar na issue quando o PR abre é opcional e vem desligado. Fechar issues fica com o próprio provedor, pelo "Fixes #n" ou pelo `AB#id`.
 - Outros rastreadores, como Jira e Linear.
@@ -51,7 +51,7 @@ As ideias vêm de emdash e Conductor (issues), octomux, Paradev e agent-deck (ag
   | Tipo | Campos | Quando dispara |
   | --- | --- | --- |
   | `cron` | `expr`, `tz` | na expressão cron, no fuso dado |
-  | `pr_comment` | — | comentário novo de revisão no PR de um card do projeto (Fase 10) |
+  | `pr_comment` | — | comentário novo de revisão no PR de um card do projeto (Fase 11) |
   | `ci_failed` | — | os checks do PR de um card mudaram para falha (Fase 4) |
   | `issue_label` | `label` | issue nova com o rótulo, pela busca periódica |
 
@@ -82,7 +82,7 @@ As ideias vêm de emdash e Conductor (issues), octomux, Paradev e agent-deck (ag
   - Cada variante tem a própria worktree e branch: `fd/<slug>-a`, `-b` e assim por diante.
   - Todas recebem o mesmo prompt ou workflow.
 - **Comparação:**
-  - diff de cada uma (aba Mudanças da Fase 10);
+  - diff de cada uma (aba Mudanças da Fase 11);
   - resultado dos `check` do workflow;
   - custo estimado (Fase 8), duração e arquivos tocados.
 - **"Escolher":** a variante escolhida vira a worktree do card e segue o fluxo normal. As outras são paradas e removidas, depois de confirmação.
@@ -203,7 +203,7 @@ Segue [`docs/TDD.md`](TDD.md).
 - [ ] Todos os smokes, inclusive o `smoke:automation`.
 - [ ] Os builds e o `cargo check` passam.
 - [ ] CI verde.
-- [ ] Versões em `0.12.0`.
+- [ ] Versões em `0.13.0`.
 - [ ] README atualizado.
 - [ ] `docs/DECISIONS.md` atualizado e git limpo.
-- [ ] Tag `fase-12` e release `v0.12.0` criadas pelo orquestrador, depois da confirmação com o claude real: aprovação automática e risco numa sessão de verdade.
+- [ ] Tag `fase-13` e release `v0.12.0` criadas pelo orquestrador, depois da confirmação com o claude real: aprovação automática e risco numa sessão de verdade.

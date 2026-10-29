@@ -1,4 +1,4 @@
-# Flightdeck — Spec da Fase 11 (Checkpoints e configuração do agente)
+# Flightdeck — Spec da Fase 12 (Checkpoints e configuração do agente)
 
 ## Objetivo e escopo
 
@@ -9,13 +9,13 @@
   - agentes (`.claude/agents`);
   - skills (`.claude/skills`).
 
-Pré-requisito: Fase 8 fechada. A fase pode ser desenvolvida em paralelo às Fases 9 e 10, num worktree próprio, e é rebaseada sobre a fase anterior integrada antes de fechar.
+Pré-requisito: Fase 8 fechada. As áreas de interface (`*-ui`) usam a base da Fase 10 (shadcn/ui, layout, i18n e tema) e só começam depois que ela estiver integrada; as áreas do daemon e do protocolo podem começar antes. A fase pode ser desenvolvida em paralelo às Fases 9 e 11, num worktree próprio, e é rebaseada sobre a fase anterior integrada antes de fechar.
 
 As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.md e agentes), do Agent Console (snapshot git por turno) e do agent-deck (MCP e skills por projeto).
 
 **Regra de escrita:** a configuração do usuário fica **só para leitura**: `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/agents` e `~/.claude/skills`. O Flightdeck escreve só arquivos do projeto, sempre com confirmação. Em `~/.claude`, o próprio Flightdeck continua escrevendo só os hooks da Fase 5. A exceção é a bifurcação que **você** pede: o `forkSession` do SDK grava o transcript novo em `~/.claude/projects`, escrito pelo próprio SDK, como qualquer sessão do Claude Code.
 
-**Fora da Fase 11**
+**Fora da Fase 12**
 
 - Editar a configuração global do usuário.
 - Registry ou marketplace público de MCP e plugins.
@@ -94,7 +94,7 @@ As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.m
 - **CLAUDE.md:**
   - lista os do projeto: raiz, `.claude/CLAUDE.md`, `CLAUDE.local.md` e os de subpastas;
   - o do usuário aparece só para leitura.
-  - Editor markdown com prévia. Salvar compara o hash, como na Fase 10.
+  - Editor markdown com prévia. Salvar compara o hash, como na Fase 11.
 - **Agentes:**
   - `.claude/agents/*.md` do projeto, editáveis; os do usuário, só leitura.
   - Formulário para o frontmatter (`name`, `description`, `tools`, `model`), mais o corpo.
@@ -102,7 +102,7 @@ As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.m
 - **Skills:**
   - `.claude/skills/<nome>/SKILL.md` do projeto, editáveis; as do usuário, só leitura.
   - Criar uma skill gera a pasta e o `SKILL.md` com o frontmatter (`name`, `description`).
-- **Mudanças em arquivos versionados:** aparecem na aba Mudanças (Fase 10) como qualquer outra mudança.
+- **Mudanças em arquivos versionados:** aparecem na aba Mudanças (Fase 11) como qualquer outra mudança.
 
 ### Protocolo (só adições)
 
@@ -168,7 +168,7 @@ Segue [`docs/TDD.md`](TDD.md).
 - [ ] Todos os smokes, inclusive o `smoke:checkpoints`.
 - [ ] Os builds e o `cargo check` passam.
 - [ ] CI verde.
-- [ ] Versões em `0.11.0`.
+- [ ] Versões em `0.12.0`.
 - [ ] README atualizado, com os limites do rewind ditos com clareza.
 - [ ] `docs/DECISIONS.md` atualizado e git limpo.
-- [ ] Tag `fase-11` criada pelo orquestrador, depois da confirmação com o claude real: rewind e fork numa sessão de verdade.
+- [ ] Tag `fase-12` criada pelo orquestrador, depois da confirmação com o claude real: rewind e fork numa sessão de verdade.

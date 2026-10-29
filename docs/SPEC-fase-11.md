@@ -1,8 +1,8 @@
-# Flightdeck — Spec da Fase 10 (Revisão de mudanças)
+# Flightdeck — Spec da Fase 11 (Revisão de mudanças)
 
 ## Objetivo e escopo
 
-Todo card, e quase toda sessão, termina num diff que você precisa conferir. A Fase 10 faz do Flightdeck o lugar onde se revisa:
+Todo card, e quase toda sessão, termina num diff que você precisa conferir. A Fase 11 faz do Flightdeck o lugar onde se revisa:
 
 - comentar linhas do diff e mandar a revisão para o agente;
 - reverter ou editar arquivos antes do commit;
@@ -13,11 +13,11 @@ Todo card, e quase toda sessão, termina num diff que você precisa conferir. A 
 
 Inclui também um comando de statusline para o terminal.
 
-Pré-requisito: Fase 8 fechada (tag `fase-8`). A fase pode ser desenvolvida em paralelo às Fases 9 e 11, num worktree próprio, e é rebaseada sobre a fase anterior integrada antes de fechar.
+Pré-requisito: Fase 8 fechada (tag `fase-8`). As áreas de interface (`*-ui`) usam a base da Fase 10 (shadcn/ui, layout, i18n e tema) e só começam depois que ela estiver integrada; as áreas do daemon e do protocolo podem começar antes. A fase pode ser desenvolvida em paralelo às Fases 9 e 12, num worktree próprio, e é rebaseada sobre a fase anterior integrada antes de fechar.
 
 As ideias vêm de apps do mesmo espaço (vibe-kanban, parallel-code, Paradev, Agent Console, Crystal, ccmanager, Nimbalyst e ccusage), levantados pelo orquestrador em 29/10/2026.
 
-**Fora da Fase 10**
+**Fora da Fase 11**
 
 - Postar comentários ou respostas no GitHub ou no Azure DevOps: o Flightdeck só lê os comentários do PR.
 - Editor de código completo, como uma IDE. A edição desta fase é pontual, arquivo a arquivo.
@@ -191,7 +191,7 @@ Segue [`docs/TDD.md`](TDD.md). A auditoria vai desde o commit-base da fase, a ta
 - [ ] Todos os smokes, inclusive o `smoke:review`.
 - [ ] Os builds e o `cargo check` passam.
 - [ ] CI verde.
-- [ ] Versões em `0.10.0`.
+- [ ] Versões em `0.11.0`.
 - [ ] README atualizado.
 - [ ] `docs/DECISIONS.md` atualizado e git limpo.
-- [ ] Tag `fase-10` criada pelo orquestrador.
+- [ ] Tag `fase-11` criada pelo orquestrador.
