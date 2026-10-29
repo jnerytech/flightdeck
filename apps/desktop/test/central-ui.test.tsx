@@ -45,6 +45,24 @@ const change = async (label: string, value: string) => {
   });
 };
 
+/** A row's action from its menu (phase 10: no loose icons); Radix opens on pointer down. */
+const rowAction = async (title: string, action: string) => {
+  const trigger = screen.queryByRole("button", { name: `Ações de ${title}` });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+  const entry = screen.queryByRole("menuitem", { name: action });
+  expect(entry).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(entry as HTMLElement);
+  });
+};
+
 /** Titles in a project group, top to bottom. */
 const group = (name: string) =>
   [
@@ -142,25 +160,25 @@ describe("central-ui", () => {
 
   test("fixadas no topo do grupo; arquivadas escondidas por padrão; renomear e copiar o comando", async () => {
     const { copied } = await setup();
-    await click("Fixar Do histórico");
+    await rowAction("Do histórico", "Fixar");
     await settle(() => group("central")[0] === "Do histórico");
     expect(group("central")).toEqual(["Do histórico", "repo", "Gerenciada"]);
     await click("Só fixadas");
     expect(group("central")).toEqual(["Do histórico"]);
     await click("Só fixadas");
-    await click("Arquivar Gerenciada");
+    await rowAction("Gerenciada", "Arquivar");
     await settle(() => !group("central").includes("Gerenciada"));
     expect(group("central")).toEqual(["Do histórico", "repo"]);
     await click("Mostrar arquivadas");
     expect(group("central")).toContain("Gerenciada");
-    await click("Desarquivar Gerenciada");
-    await click("Desafixar Do histórico");
-    await click("Renomear repo");
+    await rowAction("Gerenciada", "Desarquivar");
+    await rowAction("Do histórico", "Desafixar");
+    await rowAction("repo", "Renomear");
     await change("Novo nome", "Terminal X");
     await click("Salvar nome");
     await settle(() => group("central").includes("Terminal X"));
     expect(group("central")).toContain("Terminal X");
-    await click("Copiar comando de Terminal X");
+    await rowAction("Terminal X", "Copiar comando");
     expect(copied).toEqual(["flightdeckd claude --resume ext-1"]);
   });
 
