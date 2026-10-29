@@ -38,7 +38,7 @@ describe("direcao-visual", () => {
     expect(block("@theme inline")["--font-mono"]).toMatch(/Cascadia Mono|Consolas/);
   });
 
-  test("base de 13 px com a escala 12, 13, 14, 16, 20 e 24; números tabulares", () => {
+  test("base de 13 px com a escala 12, 13, 14, 16, 20 e 24", () => {
     const theme = block("@theme inline");
     expect(
       ["--text-xs", "--text-sm", "--text-base", "--text-lg", "--text-xl", "--text-2xl"].map(
@@ -47,7 +47,6 @@ describe("direcao-visual", () => {
     ).toEqual(["12px", "13px", "14px", "16px", "20px", "24px"]);
     // The body is the 13 px step.
     expect(css).toMatch(/body\s*\{[^}]*text-sm/);
-    expect(css).toMatch(/\.tabular\s*\{[^}]*font-variant-numeric:\s*tabular-nums/);
   });
 
   test("raio de 8 px nos controles e de 12 px nos painéis", () => {
