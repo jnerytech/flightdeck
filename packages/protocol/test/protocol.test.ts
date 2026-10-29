@@ -102,6 +102,7 @@ const validCommands: Record<CommandType, unknown> = {
   },
   "budget.remove": { id: "b" },
   "budget.watch": {},
+  "quota.history": { window: "five_hour", hours: 24 },
 };
 
 const validEvents: SessionEvent[] = [
