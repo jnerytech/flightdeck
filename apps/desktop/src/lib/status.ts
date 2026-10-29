@@ -1,4 +1,5 @@
 import type { SessionStatus } from "@flightdeck/protocol";
+import type { StateTone } from "@/components/status/state-badge";
 
 export const STATUS_LABELS: Record<SessionStatus, string> = {
   starting: "iniciando",
@@ -9,18 +10,19 @@ export const STATUS_LABELS: Record<SessionStatus, string> = {
   error: "erro",
 };
 
-export type StatusTone = "active" | "warn" | "muted" | "danger";
-
-export function statusTone(status: SessionStatus): StatusTone {
+/** A session status as the state tone of the theme (its badge color). */
+export function statusTone(status: SessionStatus): StateTone {
   switch (status) {
     case "starting":
     case "running":
-      return "active";
+      return "running";
     case "awaiting_permission":
-      return "warn";
+      return "needs-you";
     case "error":
-      return "danger";
-    default:
-      return "muted";
+      return "error";
+    case "idle":
+      return "idle";
+    case "ended":
+      return "ended";
   }
 }

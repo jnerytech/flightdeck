@@ -220,9 +220,12 @@ export function App({ store }: { store: AppStore }) {
         />
       }
     >
-      <div className="flex h-full min-h-0 flex-col overflow-y-auto">
+      <div className="flex h-full min-h-0 flex-col">
         <UpdateBanner store={store} state={state} />
-        <Screen route={route} store={store} state={state} theme={themeMode} go={go} />
+        {/* Screens that are a Page scroll by themselves; the others scroll here. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <Screen route={route} store={store} state={state} theme={themeMode} go={go} />
+        </div>
       </div>
       <Notices store={store} state={state} />
       {state.searchOpen && (

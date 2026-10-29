@@ -36,6 +36,51 @@ export interface HubFilter {
   showArchived: boolean;
 }
 
+/** Where the hub's filters are kept (not the typed text: a stale one would hide rows). */
+export const HUB_FILTER_KEY = "flightdeck.hubFilter";
+
+export const DEFAULT_HUB_FILTER: HubFilter = {
+  text: "",
+  host: "",
+  origin: "",
+  state: "",
+  pinnedOnly: false,
+  showArchived: false,
+};
+
+const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history"];
+const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended"];
+
+/** The stored filters, field by field: anything unreadable falls back to its default. */
+export function loadHubFilter(storage: { getItem(key: string): string | null }): HubFilter {
+  let stored: Record<string, unknown> = {};
+  try {
+    stored = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
+  } catch {
+    // Not JSON: the defaults.
+  }
+  const text = (key: string, allowed?: readonly string[]) => {
+    const value = stored[key];
+    return typeof value === "string" && (!allowed || allowed.includes(value)) ? value : "";
+  };
+  return {
+    text: "",
+    host: text("host"),
+    origin: text("origin", ORIGINS) as HubFilter["origin"],
+    state: text("state", STATES) as HubFilter["state"],
+    pinnedOnly: stored.pinnedOnly === true,
+    showArchived: stored.showArchived === true,
+  };
+}
+
+export function saveHubFilter(
+  storage: { setItem(key: string, value: string): void },
+  filter: HubFilter,
+): void {
+  const { text: _typed, ...kept } = filter;
+  storage.setItem(HUB_FILTER_KEY, JSON.stringify(kept));
+}
+
 export interface HubGroup {
   key: string;
   /** Repository name (or folder) shown on the group. */
@@ -193,14 +238,19 @@ const matches = (row: HubRow, filter: HubFilter) =>
 /** Repository name of a group: last path segment of the remote or of the folder. */
 const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 
-/** Filtered rows by project; pinned first, then latest activity; groups by latest activity. */
+/**
+ * Filtered rows by project; the ones that need you first, then pinned, then latest activity;
+ * groups by latest activity.
+ */
 export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   const byKey = new Map<string, HubRow[]>();
   for (const row of rows.filter((r) => matches(r, filter))) {
     byKey.set(row.projectKey, [...(byKey.get(row.projectKey) ?? []), row]);
   }
   const order = (a: HubRow, b: HubRow) =>
-    Number(b.pinned) - Number(a.pinned) || b.lastActivity.localeCompare(a.lastActivity);
+    Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
+    Number(b.pinned) - Number(a.pinned) ||
+    b.lastActivity.localeCompare(a.lastActivity);
   return [...byKey.entries()]
     .map(([key, list]) => ({ key, name: groupName(key), rows: list.sort(order) }))
     .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));

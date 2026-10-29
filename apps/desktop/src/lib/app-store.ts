@@ -28,12 +28,14 @@ import type {
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
+import { formatDateTime } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
+import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
@@ -204,6 +206,8 @@ export interface AppStoreOptions {
   now?: () => number;
   /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
   formatTime?: (iso: string) => string;
+  /** IANA time zone of the dates shown (the machine's when absent); tests pin one. */
+  timeZone?: string;
   /** Timers of the tray submenu's debounce (phase 8); the real ones when absent. */
   timers?: {
     setTimeout(fn: () => void, ms: number): unknown;
@@ -451,6 +455,22 @@ export class AppStore {
   formatTime(iso: string): string {
     if (this.options.formatTime) return this.options.formatTime(iso);
     return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  /** Date and time of an instant in local time, in the app's language (phase 10). */
+  formatDateTime(iso: string): string {
+    return Number.isNaN(Date.parse(iso))
+      ? ""
+      : formatDateTime(iso, this.i18n.lang, this.options.timeZone);
+  }
+
+  /** The hub's saved filters (phase 10). */
+  hubFilter(): HubFilter {
+    return loadHubFilter(this.platform.storage);
+  }
+
+  saveHubFilter(filter: HubFilter): void {
+    saveHubFilter(this.platform.storage, filter);
   }
 
   subscribe = (listener: () => void): (() => void) => {
