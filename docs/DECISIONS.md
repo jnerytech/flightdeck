@@ -904,9 +904,18 @@ O que a spec da Fase 7 deixou aberto para a trilha B, ou o que mudou na implemen
 - **"Sempre neste projeto":** o campo leva a regra inteira (`Bash(npm test:*)`). O texto é convertido em `addRules` para `localSettings`, e a validação é do daemon.
 - **Pedidos do terminal:** os botões novos também aparecem na tela da sessão externa. Na fila "Precisa de você" continuam só Permitir e Negar.
 
-## Fora da trilha B até o rebase
+## Rebase sobre a trilha A
 
-- **`features`:** `quota` e `rules` entram no `features` do `host.info` só no rebase sobre a trilha A, que cria o campo.
+- **`features`:**
+  - O `host.info` anuncia `quota` quando o daemon tem a cota do host e `rules` quando tem projetos (o board).
+  - O teste de compatibilidade da trilha A passou a esperar `rules` na lista de um daemon com board.
+- **No app:** são recursos nascidos na Fase 7, então um host sem o anúncio, inclusive um da Fase 6 sem `features`, não os mostra e não pede nada que gere banner de erro.
+  - As barras de cota e o painel de uso dependem de `quota`.
+  - Os botões "permitir nesta sessão" e "sempre neste projeto" (gerenciada, card e terminal) e a seção Regras dependem de `rules`.
+  - O `quota.get` da conexão continua silencioso quando o host não o conhece.
+- **README:** o aviso conhecido do canal ficou só com o texto da trilha A, que tinha o mesmo bullet.
+- **Migração:** a trilha A não acrescentou nenhuma, e a `usage_daily` é o índice 5.
+- **`test(central-ui)`:** o commit saiu no rebase, porque a trilha A fez a mesma correção do setup.
 - **Versões:** a trilha B não mexe em versões, `tauri.conf.json` nem `src-tauri`.
 
 ## TDD e testes
