@@ -4,15 +4,25 @@ import { dirname, join } from "node:path";
 import { assertBinaryUntouched, installBinaryGuard } from "../../../scripts/test/binary-guard.ts";
 import { hookEntries, installHooks } from "../src/central/hooks-install.ts";
 import { Config } from "../src/config.ts";
+import { acquireLock, readLockPid } from "../src/lock.ts";
 import { runCli } from "../src/main.ts";
+import { startServer } from "../src/server.ts";
 import {
   type ServiceContext,
-  serviceCommandPath,
+  serviceCommand,
   systemdUnit,
   windowsTaskXml,
 } from "../src/service.ts";
-import { compareVersions, runUpdate, stableBinPath, waitHealthy } from "../src/update.ts";
-import { tempDir } from "./helpers.ts";
+import { killProcess, processPath } from "../src/service-os.ts";
+import {
+  compareVersions,
+  requestShutdown,
+  runUpdate,
+  stableBinPath,
+  type UpdateDeps,
+  waitHealthy,
+} from "../src/update.ts";
+import { newManager, tempDir } from "./helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -40,9 +50,13 @@ function fakeBinary(version: string | null | "hang"): string {
 
 /**
  * A service context that records commands and answers the query with a service installed at
- * `installed` (in our own task XML or unit format), or with none.
+ * `installed` (in our own task XML or unit format, with `config` as its --config), or with none.
  */
-function fakeService(platform: "win32" | "linux", installed: string | null) {
+function fakeService(
+  platform: "win32" | "linux",
+  installed: string | string[] | null,
+  config: string | null = null,
+) {
   const calls: string[][] = [];
   const written: Record<string, string> = {};
   const user = platform === "win32" ? "PC\\dev" : "dev";
@@ -59,10 +73,11 @@ function fakeService(platform: "win32" | "linux", installed: string | null) {
       const query = cmd[1] === "/Query" || cmd[2] === "cat";
       if (query && !installed) return { code: 1, stdout: "" };
       if (query && installed) {
+        const command = typeof installed === "string" ? [installed] : installed;
         const stdout =
           platform === "win32"
-            ? windowsTaskXml([installed], { user, systemRoot: "C:\\Windows" })
-            : `# ${ctx.home}/.config/systemd/user/flightdeckd.service\n${systemdUnit([installed])}`;
+            ? windowsTaskXml(command, { user, systemRoot: "C:\\Windows", config })
+            : `# ${ctx.home}/.config/systemd/user/flightdeckd.service\n${systemdUnit(command, config)}`;
         return { code: 0, stdout };
       }
       return { code: 0, stdout: "" };
@@ -82,9 +97,9 @@ const DIST_LINUX = "/home/dev/flightdeck/dist/flightdeckd-linux-x64";
 function setup(
   platform: "win32" | "linux",
   installed: string | null,
-  extra: { healthy?: boolean; running?: boolean } = {},
+  extra: { healthy?: boolean; running?: boolean; serviceConfig?: string } = {},
 ) {
-  const service = fakeService(platform, installed);
+  const service = fakeService(platform, installed, extra.serviceConfig ?? null);
   const stable = stableBinPath(service.ctx.home, platform);
   const settingsPath = join(tempDir(), ".claude", "settings.json");
   const out: string[] = [];
@@ -95,7 +110,7 @@ function setup(
     hooks: { port: 7421, token: "h".repeat(20) },
   });
   const healthChecks: number[] = [];
-  const deps = {
+  const deps: UpdateDeps = {
     config,
     ctx: service.ctx,
     currentVersion: "0.7.0",
@@ -113,8 +128,7 @@ function setup(
   return { ...service, stable, settingsPath, out, deps, healthChecks };
 }
 
-type Deps = ReturnType<typeof setup>["deps"];
-const update = (deps: Deps, from: string, allowDowngrade = false) =>
+const update = (deps: UpdateDeps, from: string, allowDowngrade = false) =>
   runUpdate({ from, allowDowngrade }, deps);
 
 /** The installed binary from an earlier version. */
@@ -136,14 +150,34 @@ describe("update", () => {
     expect(compareVersions("1.0.0", "1.0.0")).toBe(0);
   });
 
-  test("o caminho que o serviço instalado executa sai da tarefa ou da unit", async () => {
+  test("o comando e a config do serviço instalado saem da tarefa ou da unit", async () => {
     const spaced = "C:\\Program Files\\flightdeck\\flightdeckd.exe";
-    expect(await serviceCommandPath(fakeService("win32", spaced).ctx)).toBe(spaced);
-    expect(await serviceCommandPath(fakeService("linux", DIST_LINUX).ctx)).toBe(DIST_LINUX);
+    expect(await serviceCommand(fakeService("win32", spaced).ctx)).toEqual({
+      command: [spaced],
+      config: null,
+    });
+    expect(
+      await serviceCommand(
+        fakeService("win32", DIST_WIN, "C:\\Users\\dev\\meu fd\\config.json").ctx,
+      ),
+    ).toEqual({ command: [DIST_WIN], config: "C:\\Users\\dev\\meu fd\\config.json" });
+    expect(await serviceCommand(fakeService("linux", DIST_LINUX, "/etc/fd.json").ctx)).toEqual({
+      command: [DIST_LINUX],
+      config: "/etc/fd.json",
+    });
     const quoted = "/home/dev/meu flightdeck/flightdeckd";
-    expect(await serviceCommandPath(fakeService("linux", quoted).ctx)).toBe(quoted);
-    expect(await serviceCommandPath(fakeService("linux", null).ctx)).toBeNull();
-    expect(await serviceCommandPath(fakeService("win32", null).ctx)).toBeNull();
+    expect(await serviceCommand(fakeService("linux", quoted, "/home/dev/a b/c.json").ctx)).toEqual({
+      command: [quoted],
+      config: "/home/dev/a b/c.json",
+    });
+    // From the source tree, the service runs bun with the entry point.
+    const dev = ["C:\\bun\\bun.exe", "run", "D:\\repos\\flightdeck\\apps\\daemon\\src\\bin.ts"];
+    expect(await serviceCommand(fakeService("win32", dev).ctx)).toEqual({
+      command: dev,
+      config: null,
+    });
+    expect(await serviceCommand(fakeService("linux", null).ctx)).toBeNull();
+    expect(await serviceCommand(fakeService("win32", null).ctx)).toBeNull();
   });
 
   test("recusa binário sem --version válido e downgrade sem a flag", async () => {
@@ -213,19 +247,170 @@ describe("update", () => {
     expect(installed.out.join("\n")).not.toContain("serviço reinstalado");
   });
 
-  test("daemon novo que não responde: volta o .old, sobe de novo e sai com 1", async () => {
-    const { deps, out, calls, stable } = setup("win32", DIST_WIN, { healthy: false });
+  test("daemon novo que não responde: volta o .old e o serviço original, sobe de novo e sai com 1", async () => {
+    const svcConfig = "C:\\fd\\config.json";
+    const { deps, out, calls, written, stable } = setup("win32", DIST_WIN, {
+      healthy: false,
+      serviceConfig: svcConfig,
+    });
     previous(stable);
     expect(await update(deps, fakeBinary("0.8.0"))).toBe(1);
     expect(readFileSync(stable, "utf8")).toBe("versão antiga");
     expect(existsSync(`${stable}.old`)).toBe(false);
-    expect(calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Create", "/Run", "/End", "/Run"]);
+    expect(calls.map((c) => c[1])).toEqual([
+      "/Query",
+      "/End",
+      "/Create",
+      "/Run",
+      "/End",
+      "/Create",
+      "/Run",
+    ]);
+    // The task runs what it ran before, with the same config.
+    expect(Object.values(written).join("\n")).toContain(
+      `"${DIST_WIN}" start --config ${svcConfig}</Arguments>`,
+    );
     expect(out.join("\n")).toContain("versão anterior foi restaurada");
-    // With nothing installed before, there is nothing to go back to.
-    const fresh = setup("win32", DIST_WIN, { healthy: false });
-    expect(await update(fresh.deps, fakeBinary("0.8.0"))).toBe(1);
-    expect(fresh.out.join("\n")).toContain("não havia versão anterior");
+    expect(out.join("\n")).toContain(`serviço reinstalado de volta em ${DIST_WIN}`);
   });
+
+  test("primeiro update que falha: sem binário anterior, o serviço volta ao caminho original e sobe", async () => {
+    const svcConfig = "/home/dev/fd/config.json";
+    const fresh = setup("linux", DIST_LINUX, { healthy: false, serviceConfig: svcConfig });
+    expect(await update(fresh.deps, fakeBinary("0.8.0"))).toBe(1);
+    expect(existsSync(fresh.stable)).toBe(false);
+    expect(Object.values(fresh.written)).toEqual([systemdUnit([DIST_LINUX], svcConfig)]);
+    expect(fresh.calls.at(-1)?.join(" ")).toBe("systemctl --user start flightdeckd");
+    expect(fresh.out.join("\n")).toContain(`serviço reinstalado de volta em ${DIST_LINUX}`);
+  });
+
+  test("reinstala no caminho estável mantendo o --config do serviço; sem --config no CLI, a porta do /health vem dele", async () => {
+    const svcConfig = "C:\\fd\\config.json";
+    const win = setup("win32", DIST_WIN, { serviceConfig: svcConfig });
+    const loaded: string[] = [];
+    win.deps.configFromService = (path) => {
+      loaded.push(path);
+      return Config.parse({ token: "s".repeat(32), port: 7555, dataDir: tempDir() });
+    };
+    expect(await update(win.deps, fakeBinary("0.8.0"))).toBe(0);
+    expect(Object.values(win.written).join("\n")).toContain(
+      `"${win.stable}" start --config ${svcConfig}</Arguments>`,
+    );
+    expect(loaded).toEqual([svcConfig]);
+    expect(win.healthChecks).toEqual([7555]);
+    // With --config on the CLI (no loader), that config decides the port.
+    const explicit = setup("linux", DIST_LINUX, { serviceConfig: "/etc/fd.json" });
+    expect(await update(explicit.deps, fakeBinary("0.8.0"))).toBe(0);
+    expect(Object.values(explicit.written)).toEqual([
+      systemdUnit([explicit.stable], "/etc/fd.json"),
+    ]);
+    expect(explicit.healthChecks).toEqual([7420]);
+  });
+
+  test("para o daemon pedindo daemon.shutdown antes de parar o serviço", async () => {
+    const { deps, calls } = setup("win32", DIST_WIN);
+    const asked: number[] = [];
+    deps.shutdown = async (config) => {
+      // Only the service query ran so far.
+      asked.push(calls.length);
+      return config.port === 7420;
+    };
+    expect(await update(deps, fakeBinary("0.8.0"))).toBe(0);
+    expect(asked).toEqual([1]);
+    expect(calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Create", "/Run"]);
+  });
+
+  test("lock ainda preso: mata o PID só se o executável dele for o do serviço", async () => {
+    const killed: number[] = [];
+    const stuck = (path: string) => {
+      const s = setup("win32", DIST_WIN);
+      s.deps.daemonRunning = () => killed.length === 0;
+      s.deps.lockPid = () => 4242;
+      s.deps.processPath = async (pid) => (pid === 4242 ? path : null);
+      s.deps.kill = (pid) => {
+        killed.push(pid);
+      };
+      return s;
+    };
+    const same = stuck(DIST_WIN.toUpperCase());
+    expect(await update(same.deps, fakeBinary("0.8.0"))).toBe(0);
+    expect(killed).toEqual([4242]);
+    expect(same.out.join("\n")).toContain("processo 4242");
+    killed.length = 0;
+    const other = stuck("C:\\outro\\programa.exe");
+    previous(other.stable);
+    expect(await update(other.deps, fakeBinary("0.8.0"))).toBe(1);
+    expect(killed).toEqual([]);
+    expect(other.out.join("\n")).toContain("o daemon não parou");
+    expect(readFileSync(other.stable, "utf8")).toBe("versão antiga");
+  });
+
+  test("peças reais: daemon.shutdown pelo WebSocket, PID do lock, executável e kill de um processo", async () => {
+    const token = "update-token-0123456789abcdef";
+    const { manager } = newManager();
+    let asked = 0;
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token,
+      allowedRoots: [],
+      onShutdown: () => asked++,
+    });
+    cleanups.push(() => server.stop());
+    expect(await requestShutdown(server.url, token, 2000)).toBe(true);
+    expect(await requestShutdown(server.url, "x".repeat(32), 2000)).toBe(false);
+    const closed = Bun.serve({ port: 0, fetch: () => new Response("") });
+    const port = closed.port;
+    await closed.stop(true);
+    expect(await requestShutdown(`ws://127.0.0.1:${port}/v1/ws`, token, 500)).toBe(false);
+    expect(asked).toBe(1);
+
+    const dataDir = tempDir();
+    expect(readLockPid(dataDir)).toBeNull();
+    const lock = acquireLock(dataDir);
+    cleanups.push(() => lock?.release());
+    expect(readLockPid(dataDir)).toBe(process.pid);
+
+    expect((await processPath(process.pid))?.toLowerCase()).toBe(process.execPath.toLowerCase());
+    const child = Bun.spawn([process.execPath, "-e", "setInterval(() => {}, 1000)"], {
+      env: process.env,
+    });
+    killProcess(child.pid);
+    await child.exited;
+    expect(await processPath(child.pid)).toBeNull();
+  });
+
+  test("CLI sem --config: usa a config do serviço para o /health", async () => {
+    const hits: string[] = [];
+    const daemon = Bun.serve({
+      port: 0,
+      fetch: (req) => {
+        hits.push(new URL(req.url).pathname);
+        return Response.json({ ok: true });
+      },
+    });
+    cleanups.push(() => daemon.stop(true));
+    const config = join(tempDir(), "config.json");
+    writeFileSync(
+      config,
+      JSON.stringify({ token: "t".repeat(32), dataDir: tempDir(), port: daemon.port }),
+    );
+    const service = fakeService("win32", DIST_WIN, config);
+    let code = null as number | null;
+    await runCli(["update", "--from", fakeBinary("0.8.0")], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: (c) => {
+        code = c;
+      },
+      onSignal: () => {},
+      serviceContext: () => service.ctx,
+    });
+    expect(code).toBe(0);
+    expect(hits).toEqual(["/health"]);
+  }, 40_000);
 
   test("hooks instalados fora do caminho estável são reinstalados; sem hooks, nada é escrito", async () => {
     const withHooks = setup("win32", DIST_WIN);
