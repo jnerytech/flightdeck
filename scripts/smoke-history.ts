@@ -9,11 +9,14 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
+import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 
 // The daemon inherits PATH and HOME: neither the real `claude` nor `~/.claude` (docs/TDD.md).
 const guard = installClaudeGuard();
 const home = installHomeGuard();
+const clis = installCliGuard();
+assertCliGuardActive(clis);
 const TIMEOUT_MS = 10_000;
 const ROOT = resolve(import.meta.dir, "..");
 const FIRST = "aaaaaaaa-0000-4000-8000-000000000001";
@@ -219,6 +222,7 @@ try {
   step = "travas";
   assertNoClaudeCalls(guard);
   assertHomeGuard(home);
+  assertNoCliCalls(clis);
   console.log("SMOKE HISTORY OK");
   code = 0;
 } catch (error) {

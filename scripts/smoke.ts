@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
+import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 
 const REAL = process.argv.includes("--real");
@@ -18,6 +19,9 @@ const REAL = process.argv.includes("--real");
 const guard = REAL ? null : installClaudeGuard();
 // Same for the real `~/.claude`: the daemon resolves `~` from the HOME it inherits.
 const home = REAL ? null : installHomeGuard();
+// And for the PR CLIs: nothing here may reach the real `gh` or `az`.
+const clis = REAL ? null : installCliGuard();
+if (clis) assertCliGuardActive(clis);
 const TIMEOUT_MS = REAL ? 180_000 : 10_000;
 const ROOT = resolve(import.meta.dir, "..");
 
@@ -245,6 +249,7 @@ try {
   await run();
   if (guard) assertNoClaudeCalls(guard);
   if (home) assertHomeGuard(home);
+  if (clis) assertNoCliCalls(clis);
   console.log("SMOKE OK");
   process.exit(0);
 } catch (error) {

@@ -14,12 +14,16 @@ import {
   type SessionEventOf,
 } from "@flightdeck/protocol";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
+import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 
 // The daemons inherit this PATH: with the fake runtime, `claude` must never run (docs/TDD.md).
 const guard = installClaudeGuard();
 // Same for the real `~/.claude`: the daemons resolve `~` from the HOME they inherit.
 const home = installHomeGuard();
+// And for the PR CLIs: nothing here may reach the real `gh` or `az`.
+const clis = installCliGuard();
+assertCliGuardActive(clis);
 const TIMEOUT_MS = 10_000;
 const ROOT = resolve(import.meta.dir, "..");
 
@@ -223,6 +227,8 @@ try {
   assertNoClaudeCalls(guard);
   step = "trava de home";
   assertHomeGuard(home);
+  step = "trava de CLIs";
+  assertNoCliCalls(clis);
   console.log("SMOKE MULTI OK");
   code = 0;
 } catch (error) {
