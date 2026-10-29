@@ -49,7 +49,8 @@ async function checkedOutAt(repo: string, branch: string): Promise<string | null
   const list = must(await git(repo, "worktree", "list", "--porcelain"), "git worktree list");
   for (const block of list.stdout.split(/\n\n/)) {
     const path = /^worktree (.+)$/m.exec(block)?.[1];
-    if (path && block.includes(`\nbranch refs/heads/${branch}`)) return path;
+    // The whole line: `refs/heads/dev` must not match `refs/heads/develop`.
+    if (path && block.split(/\r?\n/).includes(`branch refs/heads/${branch}`)) return path;
   }
   return null;
 }
