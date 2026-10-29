@@ -64,7 +64,7 @@ describe("demo-prints", () => {
   });
 
   test("o endereço do demo escolhe a tela, o tema e o idioma de cada print", () => {
-    const route = { name: "session", host: "demo-alfa", id: "s1" };
+    const route = { name: "session", host: "demo-alfa", id: "s1" } as const;
     expect(initialRoute(`?route=${encodeURIComponent(JSON.stringify(route))}`)).toEqual(route);
     expect(initialRoute("")).toBeNull();
     expect(initialRoute("?route=%7Bquebrado")).toBeNull();
