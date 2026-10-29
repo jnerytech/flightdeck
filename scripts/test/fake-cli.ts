@@ -29,10 +29,20 @@ export interface FakeCli {
 
 const MAIN = join(import.meta.dir, "fake-cli-main.ts");
 
+export interface FakeCliOptions {
+  /**
+   * Refuses, like Bun does for a Windows .cmd shim, an argument with a newline or one of
+   * `< > & | ^ "` or `%`, before recording the call. On by default for `az` (a .cmd on Windows),
+   * so the refusal shows on every platform the suite runs on.
+   */
+  rejectCmdChars?: boolean;
+}
+
 export function installFakeCli(
   name: string,
   rules: FakeRule[],
   env: Record<string, string | undefined> = process.env,
+  options: FakeCliOptions = {},
 ): FakeCli {
   const dir = mkdtempSync(join(tmpdir(), `fd-fake-${name}-`));
   const bun = process.execPath;
@@ -45,6 +55,10 @@ export function installFakeCli(
   const respond = (next: FakeRule[]) =>
     writeFileSync(join(dir, "rules.json"), JSON.stringify(next));
   respond(rules);
+  writeFileSync(
+    join(dir, "options.json"),
+    JSON.stringify({ rejectCmdChars: options.rejectCmdChars ?? name === "az" }),
+  );
 
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");
   const saved = new Map(keys.map((k) => [k, env[k]]));

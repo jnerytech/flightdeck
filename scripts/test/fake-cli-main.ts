@@ -6,6 +6,16 @@ import { join } from "node:path";
 import type { FakeRule } from "./fake-cli.ts";
 
 const [stateDir = "", ...args] = process.argv.slice(2);
+// What Bun refuses for a Windows .cmd shim: the call never happens, so nothing is recorded.
+const { rejectCmdChars } = JSON.parse(readFileSync(join(stateDir, "options.json"), "utf8")) as {
+  rejectCmdChars: boolean;
+};
+if (rejectCmdChars && args.some((a) => /[\r\n<>&|^"%]/.test(a))) {
+  process.stderr.write(
+    "fake: argumento com caractere especial do cmd.exe, recusado como o Bun faz\n",
+  );
+  process.exit(1);
+}
 appendFileSync(join(stateDir, "calls.jsonl"), `${JSON.stringify(args)}\n`);
 appendFileSync(join(stateDir, "cwds.jsonl"), `${JSON.stringify(process.cwd())}\n`);
 const call = readFileSync(join(stateDir, "calls.jsonl"), "utf8").trim().split(/\r?\n/).length;
