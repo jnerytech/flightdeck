@@ -142,7 +142,7 @@ export const MIGRATIONS: readonly string[] = [
   );
   `,
   // Phase 6: workflow runs (same id as the card run), their steps and trusted workflows.
-  // `definition` (the YAML that ran) and `step_runs.note`/`message` go beyond the spec
+  // `definition` (the YAML that ran) and `step_runs.note`/`message`/`usage` go beyond the spec
   // (docs/DECISIONS.md).
   `
   CREATE TABLE workflow_runs (
@@ -171,6 +171,7 @@ export const MIGRATIONS: readonly string[] = [
     exit_code  INTEGER,
     note       TEXT,
     message    TEXT,
+    usage      TEXT,
     started_at TEXT NOT NULL,
     ended_at   TEXT,
     PRIMARY KEY (run_id, step_id, attempt)

@@ -79,6 +79,7 @@ interface StepRow {
   exit_code: number | null;
   note: string | null;
   message: string | null;
+  usage: string | null;
   started_at: string;
   ended_at: string | null;
 }
@@ -93,6 +94,7 @@ const toStep = (row: StepRow): StepRun => ({
   exitCode: row.exit_code,
   note: row.note,
   message: row.message,
+  usage: row.usage ? JSON.parse(row.usage) : null,
   startedAt: row.started_at,
   endedAt: row.ended_at,
 });
@@ -700,7 +702,7 @@ export class WorkflowEngine {
       // Left `error` by a restart (or ended): reopened with the stored Claude session.
       if (STOPPED.has(this.manager.get(target).status)) await this.manager.resume(target);
       const since = this.manager.get(target).lastSeq;
-      const done = this.awaitTurn(run, target, since, started);
+      const done = this.awaitTurn(run, { stepId, attempt }, target, since, started);
       this.manager.send(target, prompt);
       return done;
     }
@@ -715,7 +717,7 @@ export class WorkflowEngine {
       .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(sessionId, run.id, stepId, attempt);
     this.emit(run.id);
-    return this.awaitTurn(run, sessionId, 0, started);
+    return this.awaitTurn(run, { stepId, attempt }, sessionId, 0, started);
   }
 
   /**
@@ -725,6 +727,7 @@ export class WorkflowEngine {
    */
   private awaitTurn(
     run: RunRow,
+    step: { stepId: string; attempt: number },
     sessionId: string,
     since: number,
     started: number,
@@ -744,7 +747,7 @@ export class WorkflowEngine {
         } else if (event.type === "message.assistant") {
           for (const block of event.blocks) if (block.type === "text") texts.push(block.text);
         } else if (event.type === "turn.result") {
-          this.spend(run.id, {
+          this.spend(run.id, step, {
             sessionId,
             costUsd: event.costUsd,
             minutes: (this.clock() - started) / 60_000,
@@ -779,11 +782,27 @@ export class WorkflowEngine {
       .get(runId, stepId, attempt);
   }
 
-  private spend(runId: string, turn: Parameters<typeof addTurn>[1]): void {
-    const spending = addTurn(JSON.parse(this.row(runId).usage), turn);
+  /** A turn goes into the run's spending and into its step's share. */
+  private spend(
+    runId: string,
+    step: { stepId: string; attempt: number },
+    turn: Parameters<typeof addTurn>[1],
+  ): void {
+    const before: RunSpending = JSON.parse(this.row(runId).usage);
+    const spending = addTurn(before, turn);
     this.db
       .query("UPDATE workflow_runs SET usage = ? WHERE id = ?")
       .run(JSON.stringify(spending), runId);
+    const row = this.stepRow(runId, step.stepId, step.attempt) as StepRow;
+    const share = JSON.parse(row.usage ?? '{"turns":0,"minutes":0,"costUsd":0}');
+    const usage = {
+      turns: share.turns + 1,
+      minutes: share.minutes + turn.minutes,
+      costUsd: share.costUsd + (spending.costUsd - before.costUsd),
+    };
+    this.db
+      .query("UPDATE step_runs SET usage = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
+      .run(JSON.stringify(usage), runId, step.stepId, step.attempt);
     this.emit(runId);
   }
 

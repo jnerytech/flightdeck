@@ -394,6 +394,14 @@ export const StepRun = z.object({
   note: z.string().nullable(),
   /** The question of a gate. */
   message: z.string().nullable(),
+  /** What the turns of an `agent` step spent; `null` for the other steps. */
+  usage: z
+    .object({
+      turns: z.number().int().nonnegative(),
+      minutes: z.number().nonnegative(),
+      costUsd: z.number().nonnegative(),
+    })
+    .nullable(),
   startedAt: z.string(),
   endedAt: z.string().nullable(),
 });
