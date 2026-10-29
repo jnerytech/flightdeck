@@ -367,4 +367,69 @@ describe("pr-comentarios", () => {
       await client.request("pr.comments.send", { cardId: ctx.cardId, ids: ["nada"] }),
     ).toMatchObject({ ok: false, error: { code: "bad_request" } });
   });
+
+  test("segurança, GitHub: texto de terceiros com @ chega literal ao agente e nada de fora vai por -F ao gh", async () => {
+    // Third parties wrote these: `gh api -F campo=@arquivo` would read a local file.
+    const rules = GH_RULES.map((rule) =>
+      rule.args.includes("--paginate")
+        ? {
+            ...rule,
+            stdout: JSON.stringify([
+              [
+                { id: 201, path: "a.ts", line: 1, user: { login: "m" }, body: "@/etc/passwd" },
+                { id: 202, path: "a.ts", line: 2, user: { login: "m" }, body: "campo=@arquivo" },
+              ],
+            ]),
+          }
+        : rule,
+    );
+    const gh = fake("gh", rules);
+    // The URL itself is also kept out of the arguments as it is: only owner, repo and number.
+    const ctx = await cardWithPr("github", `@/etc/passwd#${GH_URL.replace("https://", "")}`);
+    const comments = await ctx.board.prComments(ctx.cardId);
+    expect(comments.map((c) => c.body)).toEqual([
+      "@/etc/passwd",
+      "campo=@arquivo",
+      "parece bom, mas veja os testes",
+    ]);
+    expect(await ctx.board.sendPrComments(ctx.cardId, ["201", "202"])).toEqual({ sent: 2 });
+    await poll(() => received(ctx, ctx.sessionId, "campo=@arquivo"));
+    expect(received(ctx, ctx.sessionId, "   @/etc/passwd")).toBe(true);
+    expect(received(ctx, ctx.sessionId, "   campo=@arquivo")).toBe(true);
+    // -F (typed fields, which read files for @) only for our fixed query and the PR number;
+    // texts and names go with -f, which sends them as they are.
+    const typed = gh
+      .calls()
+      .flatMap((args) => args.flatMap((a, i) => (args[i - 1] === "-F" ? [a] : [])));
+    expect(typed.sort()).toEqual(["number=7", "query=@-"]);
+    const risky = gh
+      .calls()
+      .flat()
+      .filter((a) => /(^|=)@/.test(a));
+    expect(risky).toEqual(["query=@-"]);
+  });
+
+  test("segurança, Azure: projeto ou repositório da URL que começa com @ (ou tem quebra de linha) é recusado antes do az", async () => {
+    const az = fake("az", AZ_RULES);
+    const base = "https://dev.azure.com/acme";
+    for (const url of [
+      `${base}/%40leia-isto/_git/repo/pullrequest/12`,
+      `${base}/proj/_git/%40repo/pullrequest/12`,
+      `${base}/proj%0Aoutro/_git/repo/pullrequest/12`,
+    ]) {
+      const ctx = await cardWithPr("azure-devops", url);
+      const refused = await ctx.board.prComments(ctx.cardId).then(
+        () => "aceito",
+        (error: { code?: string }) => error.code,
+      );
+      expect(refused).toBe("invalid_state");
+    }
+    expect(
+      az
+        .calls()
+        .flat()
+        .filter((a) => /(^|=)@/.test(a)),
+    ).toEqual([]);
+    expect(az.calls().some((args) => args.includes("invoke"))).toBe(false);
+  });
 });
