@@ -148,6 +148,13 @@ Um teste de lint de estilo reprova `style={{…}}` com medidas fixas nas telas e
     - pedidos de permissão de Bash e Write;
     - um gate aberto;
     - histórico, cota e custos;
+    - **os estados difíceis, para os prints mostrarem:**
+      - um host offline e um host incompatível, com um daemon falso de protocolo antigo;
+      - um projeto vazio;
+      - uma lista longa de sessões (60 ou mais) e um transcript longo, para conferir a rolagem;
+      - um erro vindo do daemon;
+      - aprovações de Bash, Write, Edit e de uma ferramenta MCP;
+      - um texto muito longo num título.
   - sobe o Vite na entrada web, já pareado com o host de demonstração (por um link de pareamento local).
   - Nada sai da máquina, e nenhum dado real é usado.
 - **CI:** um job `screenshots` (ubuntu, Playwright com Chromium).
@@ -164,6 +171,8 @@ Um teste de lint de estilo reprova `style={{…}}` com medidas fixas nas telas e
     - configurações;
     - paleta.
   - Publica os prints como artefato.
+  - Também fotografa os estados difíceis: host offline e incompatível, projeto vazio, fim da lista longa (rolada) e erro.
+  - As peças nativas não aparecem no navegador e ficam para a conferência no app instalado, no fechamento: bandeja, notificações, barra de título, atalho global, abrir no terminal e diálogo de salvar.
   - Roda também o `axe-core` nessas telas e reprova violações `serious` ou `critical`.
 - **O orquestrador revisa os prints** a cada fase daqui em diante.
 
