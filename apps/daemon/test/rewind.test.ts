@@ -58,8 +58,9 @@ describe("rewind", () => {
         { path: "apagar.txt", change: "deleted" },
         { path: "novo.txt", change: "created" },
       ],
-      insertions: 2,
-      deletions: 1,
+      // What the rewind does: puts back apagar.txt's line, removes README's and novo.txt's.
+      insertions: 1,
+      deletions: 2,
     });
     expect(existsSync(join(repo, "novo.txt"))).toBe(true);
   });
