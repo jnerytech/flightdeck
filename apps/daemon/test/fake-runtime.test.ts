@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { RuntimeEvent } from "../src/runtime/types.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
-import type { CanUseToolFn, StartOptions } from "../src/runtime/types.ts";
+import type { CanUseToolFn, RuntimeEvent, StartOptions } from "../src/runtime/types.ts";
 import { git, gitRepo } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 

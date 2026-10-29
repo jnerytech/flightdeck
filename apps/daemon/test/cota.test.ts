@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { QuotaUpdated } from "@flightdeck/protocol";
 import { Config, loadConfig } from "../src/config.ts";
+import { startDaemon } from "../src/main.ts";
 import { Quota, type Timers } from "../src/quota/quota.ts";
 import { normalizeSdkMessage } from "../src/runtime/claude-sdk-runtime.ts";
 import { startServer } from "../src/server.ts";
@@ -237,6 +238,53 @@ describe("cota", () => {
         .events()
         .some((e) => (e.type as string) === "quota"),
     ).toBe(false);
+  });
+
+  test("outras mensagens do SDK continuam ignoradas", () => {
+    const other = { type: "tool_progress", uuid: "u", session_id: "s" } as unknown as SDKMessage;
+    expect(normalizeSdkMessage(other)).toEqual([]);
+  });
+
+  test("o daemon liga as sessões à cota do host, com o pauseAt da config", async () => {
+    const dir = tempDir();
+    const root = join(dir, "root");
+    mkdirSync(root);
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        allowedRoots: [root],
+        quota: { pauseAt: 0.8 },
+        history: { roots: [join(dir, "nada")] },
+      }),
+    );
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => daemon.stop());
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const resets = Math.floor(Date.now() / 1000) + 600;
+    await client.request("session.create", {
+      cwd: root,
+      prompt: `[ratelimit:seven_day=0.5@${resets}]`,
+    });
+    let state: unknown = null;
+    for (let i = 0; i < 100 && !state; i++) {
+      const got = await client.data<{ windows: unknown[] }>("quota.get", {});
+      if (got?.windows.length) state = got;
+      else await Bun.sleep(20);
+    }
+    expect(state).toMatchObject({
+      pauseAt: 0.8,
+      windows: [{ window: "seven_day", utilization: 0.5 }],
+    });
   });
 
   test("quota.pauseAt na config: padrão 0.9, null desliga, fora de 0 a 1 é recusado", () => {
