@@ -2,7 +2,7 @@ import { appendFileSync, mkdirSync, readlinkSync, rmSync, writeFileSync } from "
 import { tmpdir, userInfo } from "node:os";
 import { dirname } from "node:path";
 import { userHome } from "./config.ts";
-import { spawnExec } from "./exec.ts";
+import { type Exec, spawnExec } from "./exec.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { whichOnPath } from "./which.ts";
 
@@ -67,10 +67,11 @@ export async function processPath(
   pid: number,
   platform: string = process.platform,
   readlink: (path: string) => string = readlinkSync,
+  exec: Exec = spawnExec,
 ): Promise<string | null> {
   if (platform === "win32") {
     const command = `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Path`;
-    const { stdout } = await spawnExec([
+    const { stdout } = await exec([
       "powershell.exe",
       "-NoProfile",
       "-NonInteractive",
