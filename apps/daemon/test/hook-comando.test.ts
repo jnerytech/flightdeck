@@ -113,7 +113,9 @@ describe("hook-comando", () => {
     const line =
       hookEntries({ command: self, url, token: TOKEN, permissionTimeoutS: 600 }).SessionStart?.[0]
         ?.hooks[0]?.command ?? "";
-    const result = runHookCommand(line, JSON.stringify(START), { FLIGHTDECK_LAUNCH_ID: "L9" });
+    const result = await runHookCommand(line, JSON.stringify(START), {
+      FLIGHTDECK_LAUNCH_ID: "L9",
+    });
     expect(result.stderr).toBe("");
     expect(result.code).toBe(0);
     expect(await poll(() => external.get("s1")?.launchId)).toBe("L9");

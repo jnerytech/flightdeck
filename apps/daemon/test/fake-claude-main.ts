@@ -43,15 +43,18 @@ let transcript = "";
 const base = () => ({ session_id: sessionId, transcript_path: transcript, cwd });
 
 /** Command hooks go through Claude Code's own shell (Git Bash on Windows, sh elsewhere). */
-function runCommand(command: string, input: string): void {
-  const { code, stdout, stderr } = runHookCommand(command, input);
+async function runCommand(command: string, input: string): Promise<void> {
+  const { code, stdout, stderr } = await runHookCommand(command, input);
   log({ type: "command", command, code, stdout, stderr });
 }
 
 async function postHook(event: string, payload: Record<string, unknown>): Promise<void> {
   for (const hook of hooksFor(event)) {
     if (hook.type === "command" && hook.command) {
-      runCommand(hook.command, JSON.stringify({ ...base(), hook_event_name: event, ...payload }));
+      await runCommand(
+        hook.command,
+        JSON.stringify({ ...base(), hook_event_name: event, ...payload }),
+      );
       continue;
     }
     const response = await fetch(hook.url ?? "", {

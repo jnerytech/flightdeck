@@ -11,16 +11,22 @@ export function claudeHookShell(command: string, platform = process.platform): s
   return [bash, "-c", command];
 }
 
-export function runHookCommand(
+/** Async: a receptor in the same process must keep answering while the hook runs. */
+export async function runHookCommand(
   command: string,
   input: string,
   env: Record<string, string | undefined> = {},
-): { code: number; stdout: string; stderr: string } {
-  const proc = Bun.spawnSync(claudeHookShell(command), {
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  const proc = Bun.spawn(claudeHookShell(command), {
     env: { ...process.env, ...env },
     stdin: new TextEncoder().encode(input),
     stdout: "pipe",
     stderr: "pipe",
   });
-  return { code: proc.exitCode, stdout: proc.stdout.toString(), stderr: proc.stderr.toString() };
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  return { code, stdout, stderr };
 }
