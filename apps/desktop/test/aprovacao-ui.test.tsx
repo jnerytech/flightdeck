@@ -261,7 +261,12 @@ describe("aprovacao-ui", () => {
     await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
     const requestId = d.manager.pendingPermissions(sessionId)[0]?.requestId ?? "";
 
-    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    const mem = memoryPlatform();
+    const copied: string[] = [];
+    mem.platform.copyText = async (text) => {
+      copied.push(text);
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
@@ -288,6 +293,11 @@ describe("aprovacao-ui", () => {
     await act(async () => store.router.push({ name: "session", host: hostId, id: sessionId }));
     await settle(() => group("Bash") !== null);
     expect(group("Bash")?.querySelector("code")?.textContent).toBe("npm test --silent");
+    // Copiar pasta copies the session's whole folder.
+    await act(async () => {
+      fireEvent.click(inGroup(group("Bash"), "Copiar pasta") as HTMLElement);
+    });
+    expect(copied).toEqual([d.project]);
     // The terminal session.
     await act(async () =>
       store.router.push({ name: "external", host: hostId, claudeSessionId: "ext-1" }),
@@ -295,6 +305,8 @@ describe("aprovacao-ui", () => {
     await settle(() => group("Edit") !== null);
     expect(group("Edit")?.textContent ?? "").toContain("app.ts");
     expect(group("Edit")?.textContent ?? "").not.toContain(repo);
+    // A file's card has no folder line: nothing to copy there.
+    expect(inGroup(group("Edit"), "Copiar pasta")).toBeNull();
     // The card.
     await act(async () =>
       store.router.push({ name: "card", host: hostId, projectId: project.id, cardId: card.id }),
@@ -319,6 +331,10 @@ describe("aprovacao-ui", () => {
     const expanded = group("Bash", sidebar);
     expect(expanded).not.toBeNull();
     expect(inGroup(expanded, "Abrir sessão")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(inGroup(expanded, "Copiar pasta") as HTMLElement);
+    });
+    expect(copied).toEqual([d.project, d.project]);
     await act(async () => {
       fireEvent.click(inGroup(expanded, "Aprovar") as HTMLElement);
     });
@@ -417,5 +433,44 @@ describe("aprovacao-ui", () => {
     expect(item).not.toBeNull();
     expect(item?.textContent ?? "").toContain("repo: acme/flightdeck-web · title: Login falha");
     expect(item?.textContent ?? "").not.toContain("{");
+  });
+
+  test("na sessão do terminal, Copiar pasta copia a pasta inteira do pedido de Bash", async () => {
+    const d = makeDaemon(cleanups);
+    d.central.hooksInstall(true);
+    const mem = memoryPlatform();
+    const copied: string[] = [];
+    mem.platform.copyText = async (text) => {
+      copied.push(text);
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const hook = (event: string, body: object) =>
+      fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        body: JSON.stringify({
+          session_id: "ext-b",
+          hook_event_name: event,
+          cwd: d.project,
+          ...body,
+        }),
+      }).catch(() => undefined);
+    await hook("SessionStart", {});
+    void hook("PermissionRequest", { tool_name: "Bash", tool_input: { command: "ls" } });
+    await settle(() => Object.keys(store.getState().externalRequests).length === 1);
+    await act(async () =>
+      store.router.push({ name: "external", host: hostId, claudeSessionId: "ext-b" }),
+    );
+    await settle(() => group("Bash") !== null);
+    await act(async () => {
+      fireEvent.click(inGroup(group("Bash"), "Copiar pasta") as HTMLElement);
+    });
+    expect(copied).toEqual([d.project]);
   });
 });
