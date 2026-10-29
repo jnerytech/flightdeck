@@ -16,6 +16,7 @@
     "smoke:real": "bun run scripts/smoke.ts --real",
     "smoke:multi": "bun run scripts/smoke-multi.ts",
     "smoke:history": "bun run scripts/smoke-history.ts",
+    "smoke:board": "bun run scripts/smoke-board.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build",
