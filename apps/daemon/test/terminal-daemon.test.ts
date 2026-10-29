@@ -393,7 +393,7 @@ describe("terminal-daemon", () => {
       };
     };
     const got: string[] = [];
-    let exit: number | null = null;
+    const result: { exit: number | null } = { exit: null };
     const pty = bunPty(spawn)({
       argv: ["sh", "-c", "x"],
       cwd: "/w",
@@ -402,7 +402,7 @@ describe("terminal-daemon", () => {
       rows: 30,
       onData: (chunk) => got.push(Buffer.from(chunk).toString()),
       onExit: (c) => {
-        exit = c;
+        result.exit = c;
       },
     });
     expect(calls[0]?.argv).toEqual(["sh", "-c", "x"]);
@@ -424,10 +424,10 @@ describe("terminal-daemon", () => {
     // The process ended but the output was not all read yet: not reported.
     ended(7);
     await Bun.sleep(5);
-    expect(exit).toBeNull();
+    expect(result.exit).toBeNull();
     terminal.exit({}, 0, null);
-    await poll(() => exit !== null);
-    expect(exit).toBe(7);
+    await poll(() => result.exit !== null);
+    expect(result.exit).toBe(7);
   });
 
   test("o adaptador do Bun também informa o fim quando o PTY não avisa o fim da saída", async () => {
@@ -439,7 +439,7 @@ describe("terminal-daemon", () => {
       terminal: { write: () => 0, resize: () => {} },
       kill: () => {},
     });
-    let exit: number | null = null;
+    const result: { exit: number | null } = { exit: null };
     bunPty(spawn)({
       argv: ["x"],
       cwd: "/w",
@@ -448,12 +448,12 @@ describe("terminal-daemon", () => {
       rows: 24,
       onData: () => {},
       onExit: (c) => {
-        exit = c;
+        result.exit = c;
       },
     });
     ended(3);
-    expect(await poll(() => exit !== null, 2000)).toBe(true);
-    expect(exit).toBe(3);
+    expect(await poll(() => result.exit !== null, 2000)).toBe(true);
+    expect(result.exit).toBe(3);
   });
 
   test("terminal.* pelo protocolo: abrir, anexar, escrever e receber a saída; a conexão cai e o terminal fica; outro anexa e vê o scrollback; o fim chega como terminal.exited", async () => {
@@ -470,7 +470,7 @@ describe("terminal-daemon", () => {
     const { manager: sessions } = newManager();
     const server = startServer({
       manager: sessions,
-      terminal: manager,
+      terminals: manager,
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
@@ -536,7 +536,7 @@ describe("terminal-daemon", () => {
     const { manager: sessions } = newManager();
     const server = startServer({
       manager: sessions,
-      terminal: manager,
+      terminals: manager,
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
