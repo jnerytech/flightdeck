@@ -308,6 +308,42 @@ describe("update", () => {
     expect(missing.out).toContain("update precisa de --from");
   });
 
+  test("CLI: com serviço, confere GET /health no endereço da config", async () => {
+    const hits: string[] = [];
+    const daemon = Bun.serve({
+      port: 0,
+      fetch: (req) => {
+        hits.push(new URL(req.url).pathname);
+        return Response.json({ ok: true });
+      },
+    });
+    cleanups.push(() => daemon.stop(true));
+    const service = fakeService("win32", DIST_WIN);
+    const config = join(tempDir(), "config.json");
+    writeFileSync(
+      config,
+      JSON.stringify({
+        token: "t".repeat(32),
+        dataDir: tempDir(),
+        bind: "127.0.0.1",
+        port: daemon.port,
+      }),
+    );
+    let code = null as number | null;
+    await runCli(["update", "--from", fakeBinary("0.8.0"), "--config", config], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: (c) => {
+        code = c;
+      },
+      onSignal: () => {},
+      serviceContext: () => service.ctx,
+    });
+    expect(code).toBe(0);
+    expect(service.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Create", "/Run"]);
+    expect(hits).toEqual(["/health"]);
+  });
+
   test("trava do binário: o preload reprova se o flightdeckd estável do home real mudar", () => {
     const home = tempDir();
     const guard = installBinaryGuard(home);
