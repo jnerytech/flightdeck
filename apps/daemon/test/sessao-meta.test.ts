@@ -94,7 +94,7 @@ describe("sessao-meta", () => {
   });
 
   test("nome, fixada e arquivada persistem e voltam nas três listas", async () => {
-    const { client, managed, lists } = await setup();
+    const { client, managed, lists, make } = await setup();
     const set = (payload: Record<string, unknown>) => client.request("session.meta.set", payload);
     expect((await set({ claudeSessionId: managed, name: "Gerenciada", pinned: true })).ok).toBe(
       true,
@@ -106,6 +106,10 @@ describe("sessao-meta", () => {
     expect(all.managed?.meta).toEqual({ name: "Gerenciada", pinned: true, archived: false });
     expect(all.history?.meta).toEqual({ name: null, pinned: false, archived: true });
     expect(all.external?.meta).toEqual({ name: "Do terminal", pinned: true, archived: false });
+    // Persisted: a new hub over the same database sees the same meta.
+    const again = make();
+    cleanups.push(() => again.stop());
+    expect(again.meta.get("h1")).toEqual({ name: null, pinned: false, archived: true });
   });
 
   test("set devolve a meta inteira; nome nulo limpa o nome", async () => {
