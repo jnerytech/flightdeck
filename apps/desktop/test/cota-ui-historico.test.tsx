@@ -62,7 +62,7 @@ const five = (utilization: number): QuotaReading => ({
 });
 
 /** A host with costs and quota samples on a manual clock, and the app on it an hour later. */
-async function online() {
+async function online(steadyWeek = false) {
   let now = T0;
   let history: QuotaHistory | null = null;
   const d = makeDaemon(cleanups, {
@@ -77,8 +77,9 @@ async function online() {
     history?.sample(readings);
   };
   sample(T0, five(0.2), { ...five(0.1), window: "seven_day", resetsAt: T0 + 3 * 1440 * MIN });
-  sample(T0 + 30 * MIN, five(0.3));
-  sample(T0 + 60 * MIN, five(0.4));
+  const week = { ...five(0.1), window: "seven_day", resetsAt: T0 + 3 * 1440 * MIN };
+  sample(T0 + 30 * MIN, five(0.3), ...(steadyWeek ? [week] : []));
+  sample(T0 + 60 * MIN, five(0.4), ...(steadyWeek ? [week] : []));
   spend(d, "kA", T0 + 10 * MIN, 3);
   spend(d, "kB", T0 + 20 * MIN, 1);
   const server = d.listen();
@@ -101,15 +102,16 @@ const region = (name: string) => screen.queryByRole("region", { name });
 
 describe("cota-ui-historico", () => {
   test("gráfico das janelas de 5 horas e 7 dias com projeção e quem consumiu", async () => {
-    await online();
+    await online(true);
     await click("Custos");
     await settle(() => region("Janela de 5 horas")?.querySelector("[data-sample]") != null);
     expect(region("Janela de 5 horas")?.querySelectorAll("[data-sample]").length).toBe(3);
     expect(region("Janela de 5 horas")?.textContent).toContain(
       "no ritmo atual, a janela de 5 h esgota às 16:00",
     );
-    expect(region("Janela de 7 dias")?.querySelectorAll("[data-sample]").length).toBe(1);
-    expect(region("Janela de 7 dias")?.textContent).toContain("poucas leituras para projetar");
+    // A steady week does not run out before it resets.
+    expect(region("Janela de 7 dias")?.querySelectorAll("[data-sample]").length).toBe(3);
+    expect(region("Janela de 7 dias")?.textContent).toContain("não esgota antes de 12:00");
     const consumers = region("Quem consumiu a janela de 5 horas");
     expect([...(consumers?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
       "kA: 75% (US$ 3.00)",
@@ -123,11 +125,13 @@ describe("cota-ui-historico", () => {
     await act(async () => {
       d.quota.record([five(0.4)]);
     });
-    const bar = () =>
-      region("Cota de alfa")?.querySelector('[data-window="five_hour"]')?.getAttribute("title") ??
+    const bar = (window: string) =>
+      region("Cota de alfa")?.querySelector(`[data-window="${window}"]`)?.getAttribute("title") ??
       "";
-    await settle(() => bar() !== "");
-    expect(bar()).toBe("no ritmo atual, a janela de 5 h esgota às 16:00");
+    await settle(() => bar("five_hour") !== "");
+    expect(bar("five_hour")).toBe("no ritmo atual, a janela de 5 h esgota às 16:00");
+    // A single reading of the week: nothing to project yet.
+    expect(bar("seven_day")).toBe("poucas leituras para projetar");
   });
 
   test("custo estimado na linha da sessão, no detalhe, no card e na execução do workflow", async () => {
