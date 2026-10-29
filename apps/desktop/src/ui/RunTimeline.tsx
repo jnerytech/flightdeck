@@ -1,4 +1,5 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
+import { useState } from "react";
 import { budgetLines, RUN_LABELS, STEP_LABELS, stepDuration } from "../lib/runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
@@ -19,11 +20,48 @@ function BudgetMeter({ run }: { run: WorkflowRun }) {
   );
 }
 
+/** An open gate, answered here with an optional note. */
+function GateCard(props: {
+  step: StepRun;
+  onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
+}) {
+  const { step } = props;
+  const [note, setNote] = useState("");
+  return (
+    <section aria-label={`Gate ${step.stepId}`} className="gate">
+      <p>{step.message}</p>
+      {step.output && <pre>{step.output}</pre>}
+      <textarea
+        aria-label="Nota do gate"
+        placeholder="Nota (opcional)"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <div className="row">
+        <button
+          type="button"
+          className="primary"
+          onClick={() => props.onRespond(step, "approve", note)}
+        >
+          Aprovar
+        </button>
+        <button type="button" onClick={() => props.onRespond(step, "reject", note)}>
+          Recusar
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /**
  * A card's workflow run: status, budget and one line per step attempt. Agent and check steps
  * open (their conversation or their output) through `onOpenStep`.
  */
-export function RunTimeline(props: { run: WorkflowRun; onOpenStep(step: StepRun): void }) {
+export function RunTimeline(props: {
+  run: WorkflowRun;
+  onOpenStep(step: StepRun): void;
+  onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
+}) {
   const { run } = props;
   return (
     <section aria-label="Execução do workflow" className="run">
@@ -52,6 +90,9 @@ export function RunTimeline(props: { run: WorkflowRun; onOpenStep(step: StepRun)
                 </button>
               ) : (
                 <span>{line}</span>
+              )}
+              {step.type === "gate" && step.status === "waiting" && (
+                <GateCard step={step} onRespond={props.onRespond} />
               )}
             </li>
           );

@@ -51,7 +51,7 @@ export function Sidebar(props: {
                   <button
                     type="button"
                     className="icon"
-                    aria-label={`Permitir ${label}`}
+                    aria-label={`${item.gate ? "Aprovar" : "Permitir"} ${label}`}
                     onClick={() => props.onRespond(item, "allow")}
                   >
                     ✓
@@ -59,7 +59,7 @@ export function Sidebar(props: {
                   <button
                     type="button"
                     className="icon"
-                    aria-label={`Negar ${label}`}
+                    aria-label={`${item.gate ? "Recusar" : "Negar"} ${label}`}
                     onClick={() => props.onRespond(item, "deny")}
                   >
                     ✕

@@ -152,6 +152,15 @@ export interface PendingItem {
   createdAt: string;
   /** A request of a session opened outside Flightdeck (`sessionId` is its claudeSessionId). */
   external?: boolean;
+  /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
+  gate?: GateRef;
+}
+
+export interface GateRef {
+  runId: string;
+  stepId: string;
+  attempt: number;
+  cardId: string;
 }
 
 /** Every open permission request of every host, oldest first. */
@@ -187,6 +196,28 @@ export function needsYou(state: AppState): PendingItem[] {
             external: true,
           };
         }),
+      // Open gates of the host's workflow runs.
+      ...Object.entries(state.runs)
+        .filter(([key]) => key.startsWith(`${host.id}/`))
+        .flatMap(([, run]) =>
+          run.steps
+            .filter((step) => step.type === "gate" && step.status === "waiting")
+            .map((step) => ({
+              hostId: host.id,
+              hostName: host.name,
+              sessionId: run.cardId,
+              sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
+              requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
+              toolName: `gate ${step.stepId}`,
+              createdAt: step.startedAt,
+              gate: {
+                runId: run.id,
+                stepId: step.stepId,
+                attempt: step.attempt,
+                cardId: run.cardId,
+              },
+            })),
+        ),
     ])
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
@@ -653,6 +684,23 @@ export class AppStore {
     } catch (error) {
       this.update({ error: describeError(error) });
     }
+  }
+
+  /** Answers an open gate, from the card or from the "Precisa de você" queue. */
+  async respondGate(
+    hostId: string,
+    gate: Omit<GateRef, "cardId">,
+    decision: "approve" | "reject",
+    note?: string,
+  ): Promise<void> {
+    const { runId, stepId, attempt } = gate;
+    await this.hostCommand(hostId, "gate.respond", {
+      runId,
+      stepId,
+      attempt,
+      decision,
+      ...(note?.trim() ? { note: note.trim() } : {}),
+    });
   }
 
   respond(requestId: string, decision: "allow" | "deny", message?: string): Promise<void> {

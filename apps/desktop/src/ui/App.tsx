@@ -306,7 +306,15 @@ export function App({ store }: { store: AppStore }) {
           setHostPage(null);
           setProjectsHost(hostId);
         }}
-        onRespond={(item, decision) => void store.respondTo(item.hostId, item.requestId, decision)}
+        onRespond={(item, decision) =>
+          item.gate
+            ? void store.respondGate(
+                item.hostId,
+                item.gate,
+                decision === "allow" ? "approve" : "reject",
+              )
+            : void store.respondTo(item.hostId, item.requestId, decision)
+        }
         onOpenHub={() => {
           closeBoard();
           setReading(null);
@@ -318,6 +326,20 @@ export function App({ store }: { store: AppStore }) {
         }}
         onOpenRequest={(item) => {
           closeBoard();
+          if (item.gate) {
+            // A gate opens its card, where it is answered inline.
+            const { hostId } = item;
+            setSettingsOpen(false);
+            setAddingHost(false);
+            void store
+              .hostCommand(hostId, "card.get", { cardId: item.gate.cardId })
+              .then((card) => {
+                if (!card) return;
+                setBoardOf({ hostId, projectId: card.projectId });
+                setOpenCard(card.id);
+              });
+            return;
+          }
           if (item.external) {
             setReading(null);
             setHostPage(null);

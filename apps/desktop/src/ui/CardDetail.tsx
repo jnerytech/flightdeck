@@ -185,7 +185,15 @@ export function CardDetail(props: {
           </li>
         ))}
       </ul>
-      {run && <RunTimeline run={run} onOpenStep={openStep} />}
+      {run && (
+        <RunTimeline
+          run={run}
+          onOpenStep={openStep}
+          onRespond={(step, decision, note) =>
+            void store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
+          }
+        />
+      )}
       <div className="row">
         <button
           type="button"
