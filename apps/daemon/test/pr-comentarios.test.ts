@@ -26,18 +26,28 @@ const AZ_URL = "https://dev.azure.com/acme/proj/_git/repo/pullrequest/12";
 
 const GH_RULES: FakeRule[] = [
   { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
+  // `--paginate --slurp`: an array of pages (REST pages hold 30 by default, 100 at most).
+  {
+    args: ["api", "--paginate", "--slurp", "repos/acme/repo/pulls/7/comments?per_page=100"],
+    stdout: JSON.stringify([
+      [{ id: 101, path: "src/a.ts", line: 10, user: { login: "alice" }, body: "corrija isto" }],
+      [
+        {
+          id: 102,
+          path: "src/b.ts",
+          line: null,
+          original_line: 4,
+          user: { login: "carol" },
+          body: "resolvido já",
+        },
+      ],
+    ]),
+  },
+  // Without pagination only the first page would come: the second comment would be lost.
   {
     args: ["api", "repos/acme/repo/pulls/7/comments"],
     stdout: JSON.stringify([
       { id: 101, path: "src/a.ts", line: 10, user: { login: "alice" }, body: "corrija isto" },
-      {
-        id: 102,
-        path: "src/b.ts",
-        line: null,
-        original_line: 4,
-        user: { login: "carol" },
-        body: "resolvido já",
-      },
     ]),
   },
   {
@@ -188,6 +198,14 @@ describe("pr-comentarios", () => {
       },
     ]);
     expect(nothingPosted(gh)).toBe(true);
+    // Every page of the comments, 100 at a time, with the GET that `gh api` makes by default.
+    const rest = gh.calls().find((args) => args.some((a) => a.includes("/pulls/7/comments"))) ?? [];
+    expect(rest).toEqual([
+      "api",
+      "--paginate",
+      "--slurp",
+      "repos/acme/repo/pulls/7/comments?per_page=100",
+    ]);
   });
 
   test("Azure DevOps: threads pelo az devops invoke, resolvidas pelo status, sem as do sistema nem as apagadas", async () => {
