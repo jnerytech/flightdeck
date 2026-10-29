@@ -13,6 +13,7 @@ import {
   installHooks,
   uninstallHooks,
 } from "./central/hooks-install.ts";
+import { runClaude } from "./central/wrapper.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
   type Config,
@@ -46,7 +47,7 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "pair" | "service" | "history" | "hooks" | "hook" | "channel";
+  command: "start" | "pair" | "service" | "history" | "hooks" | "hook" | "channel" | "claude";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -60,6 +61,8 @@ export interface CliArgs {
   token?: string;
   /** `channel --launch <id>`: the `flightdeckd claude` launch this channel serves. */
   launch?: string;
+  /** `claude [args]`: everything after `claude` belongs to the real claude. */
+  claudeArgs?: string[];
 }
 
 const USAGE = [
@@ -70,6 +73,7 @@ const USAGE = [
   "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
   "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
   "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
+  "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
 ].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -108,6 +112,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       }
       case "channel":
         args.command = "channel";
+        break;
+      case "claude":
+        args.command = "claude";
+        args.claudeArgs = argv.slice(i + 1);
+        i = argv.length;
         break;
       case "--launch":
         args.launch = value();
@@ -462,6 +471,20 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       });
       deps.exit(0);
+      return null;
+    }
+    if (args.command === "claude") {
+      // Its own arguments all go to claude, so the config comes from the environment.
+      const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
+      const code = await runClaude({
+        args: args.claudeArgs ?? [],
+        config: loadConfig(file),
+        env: deps.env,
+        self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
+        log: deps.log,
+        timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
+      });
+      deps.exit(code);
       return null;
     }
     if (args.command === "channel") {
