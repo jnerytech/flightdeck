@@ -78,6 +78,7 @@ describe("reverter-editar", () => {
     expect(contentOf(join(trash, copy ?? "", "a.txt"))).toBe("mudado\n");
     expect(await files.undoRevert("session:s-1", "a.txt", true)).toEqual({ path: "a.txt" });
     expect(contentOf(join(repo, "a.txt"))).toBe("mudado\n");
+    expect(status(repo)).toBe("M a.txt");
   });
 
   test("arquivo novo é removido e o desfazer o traz de volta; depois de 30 s não há desfazer", async () => {
@@ -125,6 +126,10 @@ describe("reverter-editar", () => {
     await files.revert(`card:${card.id}`, "criado.txt", true);
     expect(contentOf(join(worktree, "README.md"))).toBe("# repo\n");
     expect(existsSync(join(worktree, "criado.txt"))).toBe(false);
+    // Undo puts the index back too: the worktree is as clean as before the reverts.
+    await files.undoRevert(`card:${card.id}`, "README.md", true);
+    await files.undoRevert(`card:${card.id}`, "criado.txt", true);
+    expect(git(worktree, "status", "--porcelain")).toBe("");
   });
 
   test("cópias com mais de 7 dias saem da lixeira no revert seguinte", async () => {
