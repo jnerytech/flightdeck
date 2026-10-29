@@ -145,6 +145,8 @@ export function memoryPlatform(focused = false) {
   const items = new Map<string, string>();
   const tokens = new Map<string, string>();
   const notifications: Array<{ title: string; body: string }> = [];
+  /** The notification objects themselves, to simulate a click (`onclick`). */
+  const shown: Array<{ onclick?: (() => void) | null }> = [];
   let onHashChange: (() => void) | null = null;
   const win: WebWindow = {
     localStorage: {
@@ -163,8 +165,9 @@ export function memoryPlatform(focused = false) {
       onHashChange = null;
     },
     Notification: Object.assign(
-      function (this: unknown, title: string, options?: { body?: string }) {
+      function (this: { onclick?: () => void }, title: string, options?: { body?: string }) {
         notifications.push({ title, body: options?.body ?? "" });
+        shown.push(this);
       } as unknown as NonNullable<WebWindow["Notification"]>,
       { permission: "granted", requestPermission: async () => "granted" },
     ),
@@ -175,5 +178,5 @@ export function memoryPlatform(focused = false) {
     win.location.hash = `#link=${encodeURIComponent(url)}`;
     onHashChange?.();
   };
-  return { platform, items, tokens, notifications, win, deepLink };
+  return { platform, items, tokens, notifications, shown, win, deepLink };
 }
