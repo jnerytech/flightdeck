@@ -324,6 +324,7 @@ export async function startDaemon(
   const board = new Board({
     db: store.db,
     manager,
+    quota,
     allowedRoots: config.allowedRoots,
     maxParallelRuns: config.maxParallelRuns,
     ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
