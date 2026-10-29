@@ -16,12 +16,15 @@ class Interrupted extends Error {}
 /**
  * Deterministic runtime with no network. Replies `Echo: <text>` in chunks, asks permission for
  * a `Write` tool when the message contains `[tool]`, writes and commits a file in its cwd on
- * `[commit]`, fails the run on `[fail]` and honors `interrupt`.
+ * `[commit]`, fails the run on `[fail]` and honors `interrupt`. `[cost:x]` adds `x` to the
+ * session's cumulative cost, which every `turn.result` reports (like `total_cost_usd`).
  */
 export class FakeRuntime implements AgentRuntime {
   /** Every `start` call, so tests can inspect what the session manager handed over. */
   readonly starts: StartOptions[] = [];
   private readonly delayMs: number;
+  /** Cumulative cost by Claude session id: a resumed session starts from its total. */
+  private readonly costs = new Map<string, number>();
 
   constructor(options: FakeRuntimeOptions = {}) {
     this.delayMs = options.delayMs ?? 10;
@@ -29,7 +32,7 @@ export class FakeRuntime implements AgentRuntime {
 
   start(opts: StartOptions): AgentRun {
     this.starts.push(opts);
-    return new FakeRun(opts, this.delayMs);
+    return new FakeRun(opts, this.delayMs, this.costs);
   }
 }
 
@@ -45,6 +48,7 @@ class FakeRun implements AgentRun {
   constructor(
     private readonly opts: StartOptions,
     private readonly delayMs: number,
+    private readonly costs: Map<string, number>,
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
   }
@@ -115,6 +119,10 @@ class FakeRun implements AgentRun {
       if (text.includes("[fail]")) throw new Error("falha simulada do runtime");
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[commit]")) this.commit(text);
+      for (const [, cost] of text.matchAll(/\[cost:(\d+(?:\.\d+)?)\]/g)) {
+        const total = this.costs.get(this.claudeSessionId) ?? 0;
+        this.costs.set(this.claudeSessionId, total + Number(cost));
+      }
       const reply = `Echo: ${text}`;
       await this.stream(reply, abort.signal);
       this.emit({ type: "message.assistant", blocks: [{ type: "text", text: reply }] });
@@ -183,7 +191,7 @@ class FakeRun implements AgentRun {
       subtype,
       isError,
       durationMs: Date.now() - started,
-      costUsd: 0,
+      costUsd: this.costs.get(this.claudeSessionId) ?? 0,
       usage: { inputTokens: 10, outputTokens: 20 },
     });
   }
