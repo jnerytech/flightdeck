@@ -301,4 +301,19 @@ export const MIGRATIONS: readonly string[] = [
 
   DELETE FROM usage_files;
   `,
+  // Phase 12: git snapshots per turn (refs/flightdeck/snapshots/<session>/<n> in `repo`).
+  `
+  CREATE TABLE snapshots (
+    claude_session_id TEXT NOT NULL,
+    n                 INTEGER NOT NULL,
+    ref               TEXT NOT NULL,
+    tree              TEXT NOT NULL,
+    kind              TEXT NOT NULL,
+    turn_uuid         TEXT,
+    prompt            TEXT,
+    created_at        TEXT NOT NULL,
+    repo              TEXT NOT NULL,
+    PRIMARY KEY (claude_session_id, n)
+  );
+  `,
 ];
