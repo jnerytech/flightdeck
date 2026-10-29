@@ -165,6 +165,13 @@ const validCommands: Record<CommandType, unknown> = {
   "files.sessions": { path: "/work/a.ts" },
   "session.files": { claudeSessionId: "s" },
   "statusline.get": { claudeSessionId: "s" },
+  "terminal.open": { cwd: "/w", command: ["bash", "-l"], cols: 80, rows: 24 },
+  "terminal.write": { terminalId: "t", data: "ls" },
+  "terminal.resize": { terminalId: "t", cols: 100, rows: 30 },
+  "terminal.attach": { terminalId: "t" },
+  "terminal.detach": { terminalId: "t" },
+  "terminal.close": { terminalId: "t", kill: false },
+  "terminal.list": {},
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
