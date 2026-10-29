@@ -1330,6 +1330,10 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
   - worktree do card com mudanças não commitadas;
   - nada à frente da base;
   - base que não é uma branch local.
+- **Depois do merge:** ele já está na base e não se desfaz, então nada abaixo deixa o card fora de Concluído.
+  - Se a pasta da worktree não sai (travada, ou segurada por um processo no Windows), o card vai para Concluído com o aviso "a pasta da worktree ficou em <caminho>; remova depois", e mantém o caminho e a branch.
+  - Se só a branch não sai (em checkout em outra worktree), o aviso diz qual branch ficou, e o card perde só o caminho da worktree.
+  - Nos testes, a pasta que não sai é uma worktree travada com `git worktree lock`, e a branch que não sai está em checkout em outra worktree.
 - **Mensagem do commit:** no squash, o título do card; no `--no-ff`, `Merge <branch>: <título>`.
 - **Ordem da limpeza:** a worktree sai antes da branch, porque o git não apaga uma branch em checkout.
 - **Atualizar com a base:** `git rebase --autostash`. No conflito, o `rebase --abort` devolve também as mudanças não commitadas.
@@ -1344,6 +1348,8 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
   - os comentários vêm do REST (`gh api repos/{o}/{r}/pulls/{n}/comments`) e os resumos, do `gh pr view --json reviews`, só os que têm texto;
   - o estado resolvido vem de uma consulta GraphQL (`reviewThreads.isResolved`), porque o REST não informa;
   - a consulta vai pelo stdin (`-F query=@-`), porque os caracteres dela não passam por um `.cmd` no Windows, como o `gh` falso dos testes;
+  - os comentários do REST vêm de todas as páginas, 100 por vez: `gh api --paginate --slurp "repos/{o}/{r}/pulls/{n}/comments?per_page=100"` (um array de páginas, que o daemon junta). O `per_page` vai no caminho e não em `-F`, porque um campo faria o `gh api` mudar para POST. O `--slurp` pede o `gh` 2.48 ou mais novo;
+  - o corte que sobra é o da consulta GraphQL: `reviewThreads(first: 100)` e `comments(first: 100)` por thread. Passando disso, os comentários além do corte aparecem como não resolvidos;
   - o `gh api graphql` faz um POST mesmo para consulta. O teste de "nada postado" confere o conteúdo das chamadas: nenhum `mutation`, `-X`, `--method`, `pr comment` ou `pr review`.
 - **Busca e cache:** a busca acontece na rodada de poll do PR, enquanto ele está aberto. Uma falha guarda os últimos comentários e não mexe no aviso do card. O `pr.comments` busca na hora quando ainda não há nada.
 - **Formato do envio:** "Comentários do PR:", e cada item com o arquivo e a linha (ou "revisão de <autor>") seguido do texto.
@@ -1362,7 +1368,7 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
 ## Statusline
 
 - **Config:** é só lida, sem nunca ser criada. Sem config, a linha sai vazia.
-- **Prazo:** 300 ms cobrindo tudo, do stdin à resposta. Com o daemon mudo ou fora do ar, ou um stdin que não termina, a linha sai vazia e o código é 0.
+- **Prazo:** o comando espera no máximo 250 ms por tudo, do stdin à resposta, para a linha sair em menos dos 300 ms do critério também quando o daemon não responde. O teste confere os 300 ms mesmos. Com o daemon mudo ou fora do ar, ou um stdin que não termina, a linha sai vazia e o código é 0.
 - **Partes:** as janelas da cota em `5h` e `7d` (outras pelo nome), o custo de hoje no fuso do host e o custo da sessão, este só quando ela tem uso.
 
 ## TDD e testes
@@ -1380,4 +1386,6 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
   - Card sem worktree.
 - **Base que não é branch local:** a checagem vai antes da contagem de commits, para a mensagem ser a do Flightdeck e não a do `git rev-list`.
 - **Link para fora do repositório:** no teste é uma junção de diretório, que o Windows cria sem privilégio. Assim a recusa é conferida nas duas pernas.
-- **Auditoria:** por enquanto vai desde `c998016`, a base da fase. Depois do rebase sobre a tag `fase-8`, vai desde ela.
+- **Testes sensíveis a tempo:** com a CI bloqueando nas duas pernas, o watcher real do `mudancas` usa uma janela de 1 s para parar com um diff pendente (eram 20 ms contra um stop 10 ms depois da escrita).
+- **Base por prefixo:** a worktree que tem a base em checkout era achada por prefixo (`dev` casava com `develop`). Agora a linha inteira `branch refs/heads/<base>` é comparada, com um teste vermelho antes.
+- **Rebase:** a fase foi rebaseada sobre a tag `fase-9` (59967a8) sem conflito de código, só nos documentos. A auditoria vai desde `fase-9`.
