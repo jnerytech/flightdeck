@@ -277,7 +277,10 @@ pub fn run() {
                 None,
             ))
             // Registered from the frontend (configurable accelerator), never with a fixed one here.
-            .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+            // Phase 9: the app updates itself from the signed latest.json of each release.
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
     }
 
     builder

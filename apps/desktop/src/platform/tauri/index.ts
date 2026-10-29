@@ -9,6 +9,8 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { Platform, TrayAction } from "../types.ts";
 
@@ -28,6 +30,8 @@ export function tauriPlatform(
   call: typeof invoke = invoke,
   subscribe: typeof listen = listen,
 ): Platform {
+  /** The update found by the last check, installed by `updater.install`. */
+  let pending: Update | null = null;
   return {
     storage: win.localStorage,
     secrets: {
@@ -87,6 +91,19 @@ export function tauriPlatform(
           if (event.state === "Pressed") onPress();
         }),
       unregister: (accelerator) => unregister(accelerator),
+    },
+    updater: {
+      supported: true,
+      check: async () => {
+        pending = await check();
+        return pending ? { version: pending.version, notes: pending.body ?? "" } : null;
+      },
+      // The plugin checks the signature against plugins.updater.pubkey before installing.
+      install: async () => {
+        if (!pending) throw new Error("nenhuma atualização encontrada para instalar");
+        await pending.downloadAndInstall();
+        await relaunch();
+      },
     },
   };
 }

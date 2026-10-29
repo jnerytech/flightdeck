@@ -1,5 +1,10 @@
 import { useState } from "react";
-import type { AppState, AppStore, Settings as SettingsState } from "../lib/app-store.ts";
+import type {
+  AppState,
+  AppStore,
+  AppUpdateState,
+  Settings as SettingsState,
+} from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
 
@@ -14,6 +19,9 @@ export function Settings(props: {
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
+  appUpdate: AppUpdateState;
+  onCheckUpdate(): void;
+  onNotifyUpdates(enabled: boolean): void;
 }) {
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
@@ -40,6 +48,24 @@ export function Settings(props: {
       </label>
       {!settings.autostartSupported && (
         <small className="muted">indisponível nesta plataforma</small>
+      )}
+      {settings.updaterSupported && (
+        <>
+          <h3>Atualizações</h3>
+          <label className="check">
+            <input
+              type="checkbox"
+              aria-label="Avisar sobre atualizações"
+              checked={settings.notifyUpdates}
+              onChange={(e) => props.onNotifyUpdates(e.target.checked)}
+            />
+            Avisar sobre atualizações
+          </label>
+          <button type="button" onClick={props.onCheckUpdate}>
+            Procurar atualização agora
+          </button>
+          {props.appUpdate.upToDate && <p className="muted">Você está na versão mais recente</p>}
+        </>
       )}
       <h3>Atalho global</h3>
       <small className="muted">

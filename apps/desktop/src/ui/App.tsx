@@ -22,6 +22,7 @@ import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { type ReaderTarget, TranscriptReader } from "./TranscriptReader.tsx";
+import { UpdateBanner } from "./UpdateBanner.tsx";
 import { WorkflowsPage } from "./WorkflowsPage.tsx";
 
 export function App({ store }: { store: AppStore }) {
@@ -250,6 +251,9 @@ export function App({ store }: { store: AppStore }) {
         onCloseToTray={(enabled) => void store.setCloseToTray(enabled)}
         onAutostart={(enabled) => void store.setAutostart(enabled)}
         onGlobalShortcut={(text) => void store.setGlobalShortcut(text)}
+        appUpdate={state.appUpdate}
+        onCheckUpdate={() => void store.checkAppUpdate()}
+        onNotifyUpdates={(enabled) => store.setNotifyUpdates(enabled)}
       />
     );
   } else if (addingHost || state.hosts.length === 0) {
@@ -420,6 +424,7 @@ export function App({ store }: { store: AppStore }) {
 
   return (
     <div className="app">
+      <UpdateBanner store={store} state={state} />
       <Sidebar
         state={state}
         onSelect={(hostId, id) => {

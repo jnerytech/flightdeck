@@ -28,7 +28,7 @@ import type {
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import type { Platform, TrayAction, TrayStatus } from "../platform/types.ts";
+import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
@@ -106,7 +106,21 @@ export interface AppState {
   terminalEnv: TerminalEnv | null;
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
+  /** Phase 9: the app's own update. */
+  appUpdate: AppUpdateState;
 }
+
+export interface AppUpdateState {
+  /** A newer version on offer (hidden again by "Depois"). */
+  offer: AppUpdate | null;
+  /** The last check found nothing newer. */
+  upToDate: boolean;
+  /** Why the last check or install failed. */
+  error: string | null;
+}
+
+/** How often the app looks for its own update while open. */
+const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
 export type HostCommandType = Extract<
@@ -167,6 +181,9 @@ export interface Settings {
   shortcutProblem: string | null;
   /** The last shortcut typed in the settings was not valid. */
   shortcutError: string | null;
+  /** Phase 9: look for app updates at startup and every 6 h. */
+  notifyUpdates: boolean;
+  updaterSupported: boolean;
 }
 
 export interface AppStoreOptions {
@@ -185,6 +202,8 @@ export interface AppStoreOptions {
   };
   /** `YYYY-MM-DD` of an instant (cost periods); this machine's time zone when absent. */
   day?: (ms: number) => string;
+  /** How often the app looks for its own update while open (6 h when absent). */
+  appUpdateIntervalMs?: number;
 }
 
 export interface PendingItem {
@@ -282,6 +301,7 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -326,6 +346,7 @@ export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
   private readonly connections = new Map<string, HostConnection>();
+  private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
   /** Quota windows already notified, by host, window and reset. */
@@ -360,6 +381,7 @@ export class AppStore {
       hub: {},
       terminalEnv: null,
       projects: {},
+      appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -369,6 +391,8 @@ export class AppStore {
         globalShortcutSupported: platform.globalShortcut.supported,
         shortcutProblem: null,
         shortcutError: null,
+        notifyUpdates: true,
+        updaterSupported: platform.updater.supported,
       },
     };
   }
@@ -405,7 +429,16 @@ export class AppStore {
     const autostart =
       this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
-    this.update({ settings: { ...this.state.settings, closeToTray, autostart, globalShortcut } });
+    const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
+    this.update({
+      settings: { ...this.state.settings, closeToTray, autostart, globalShortcut, notifyUpdates },
+    });
+    if (this.platform.updater.supported && notifyUpdates) {
+      void this.checkAppUpdate();
+      this.updateTimer = setInterval(() => {
+        if (this.state.settings.notifyUpdates) void this.checkAppUpdate();
+      }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
+    }
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
@@ -913,6 +946,45 @@ export class AppStore {
     this.connections.clear();
     this.offTrayAction?.();
     this.offTrayAction = null;
+    if (this.updateTimer) clearInterval(this.updateTimer);
+    this.updateTimer = null;
+  }
+
+  /** Asks the updater for a newer app version. */
+  async checkAppUpdate(): Promise<void> {
+    try {
+      const offer = await this.platform.updater.check();
+      this.update({ appUpdate: { offer, upToDate: offer === null, error: null } });
+    } catch (error) {
+      this.setAppUpdate({
+        error: `não consegui procurar atualização: ${(error as Error).message ?? String(error)}`,
+      });
+    }
+  }
+
+  /** Installs the offered version; the app restarts. A failure installs nothing and says why. */
+  async installAppUpdate(): Promise<void> {
+    try {
+      await this.platform.updater.install();
+    } catch (error) {
+      this.setAppUpdate({
+        error: `A atualização não foi instalada: ${(error as Error).message ?? String(error)}`,
+      });
+    }
+  }
+
+  /** "Depois": the banner goes until the next check. */
+  dismissAppUpdate(): void {
+    this.setAppUpdate({ offer: null });
+  }
+
+  setNotifyUpdates(enabled: boolean): void {
+    this.platform.storage.setItem(NOTIFY_UPDATES_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, notifyUpdates: enabled } });
+  }
+
+  private setAppUpdate(patch: Partial<AppUpdateState>): void {
+    this.update({ appUpdate: { ...this.state.appUpdate, ...patch } });
   }
 
   // -- internals ------------------------------------------------------------

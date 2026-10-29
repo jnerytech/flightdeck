@@ -41,6 +41,11 @@ export interface TrayStatus {
   tooltip: string;
 }
 
+export interface AppUpdate {
+  version: string;
+  notes: string;
+}
+
 export interface Platform {
   /** Non-secret settings (host names and URLs, preferences). */
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
@@ -81,6 +86,14 @@ export interface Platform {
     /** Windows, and whether Windows Terminal (`wt.exe`) is installed. */
     probe(): Promise<{ windows: boolean; wt: boolean }>;
     open(program: string, args: string[]): Promise<void>;
+  };
+  /** Phase 9: the app's own updates (Tauri updater), checked against the signed latest.json. */
+  updater: {
+    supported: boolean;
+    /** The newer version on offer, or null when this one is the latest. */
+    check(): Promise<AppUpdate | null>;
+    /** Downloads, verifies and installs the update found by `check`, then restarts the app. */
+    install(): Promise<void>;
   };
   /** System-wide shortcut, active with the app in the background. */
   globalShortcut: {

@@ -40,6 +40,10 @@
       "desktop": {
         "schemes": ["flightdeck"]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdFNTAyODNBOTFERkRBQTcKUldTbjJ0K1JPaWhRZmlMTmpaaW5KTys4b1IyeFVhRnorWDlBeEJCN1l4Z3lveC9MSGN0K0FKaGgK",
+      "endpoints": ["https://github.com/jnerytech/flightdeck/releases/latest/download/latest.json"]
     }
   }
 }

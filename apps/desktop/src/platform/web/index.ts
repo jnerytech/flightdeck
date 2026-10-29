@@ -97,5 +97,6 @@ export function createWebPlatform(
     },
     // A page cannot listen to keys while it is not focused.
     globalShortcut: { supported: false, register: noop, unregister: noop },
+    updater: { supported: false, check: async () => null, install: noop },
   };
 }
