@@ -454,6 +454,13 @@ export const PrComment = z.object({
   path: z.string().nullable(),
   line: z.number().int().nullable(),
   author: z.string(),
+  /**
+   * GitHub's `author_association` (OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE…), as the API
+   * says it; `null` on Azure DevOps. The automations ignore comments from outside the team.
+   */
+  authorAssociation: z.string().nullable().default(null),
+  /** Azure DevOps' identity of the author (`uniqueName`, else the id); `null` on GitHub. */
+  authorIdentity: z.string().nullable().default(null),
   body: z.string(),
   resolved: z.boolean(),
   kind: z.enum(["inline", "review"]),

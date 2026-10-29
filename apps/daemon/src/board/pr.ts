@@ -23,6 +23,10 @@ export interface PrComment {
   path: string | null;
   line: number | null;
   author: string;
+  /** GitHub's `author_association` (OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE…). */
+  authorAssociation: string | null;
+  /** Azure DevOps' identity of the author: `uniqueName`, else the id. */
+  authorIdentity: string | null;
   body: string;
   resolved: boolean;
   kind: "inline" | "review";
@@ -34,12 +38,14 @@ interface GhComment {
   line?: number | null;
   original_line?: number | null;
   user: { login: string };
+  author_association?: string | null;
   body: string;
 }
 
 interface GhReview {
   id: string;
   author: { login: string };
+  authorAssociation?: string | null;
   body: string;
 }
 
@@ -73,7 +79,7 @@ interface AzThread {
   threadContext: { filePath: string; rightFileStart?: { line: number } | null } | null;
   comments: Array<{
     id: number;
-    author: { displayName: string };
+    author: { displayName: string; uniqueName?: string; id?: string };
     content: string;
     commentType: string;
   }>;
@@ -232,6 +238,8 @@ export class GithubCli implements PrProvider {
           path: c.path,
           line: c.line ?? c.original_line ?? null,
           author: c.user.login,
+          authorAssociation: c.author_association ?? null,
+          authorIdentity: null,
           body: c.body,
           resolved: resolved.has(c.id),
           kind: "inline",
@@ -245,6 +253,8 @@ export class GithubCli implements PrProvider {
             path: null,
             line: null,
             author: review.author.login,
+            authorAssociation: review.authorAssociation ?? null,
+            authorIdentity: null,
             body: review.body,
             resolved: false,
             kind: "review",
@@ -342,7 +352,16 @@ export class AzureDevOpsCli implements PrProvider {
         url,
       );
     if (!match) throw new FlightdeckError("invalid_state", `URL de PR do Azure inválida: ${url}`);
-    const [, org, project, repo, id] = match as unknown as [string, string, string, string, string];
+    const [, org, encodedProject, encodedRepo, id] = match as unknown as [
+      string,
+      string,
+      string,
+      string,
+      string,
+    ];
+    // The URL has the names encoded; the API wants them as they are ("Meu%20Projeto" → "Meu Projeto").
+    const project = decodeURIComponent(encodedProject);
+    const repo = decodeURIComponent(encodedRepo);
     const { value } = await cliJson<{ value: AzThread[] }>(
       "az",
       [
@@ -376,6 +395,8 @@ export class AzureDevOpsCli implements PrProvider {
               path: thread.threadContext?.filePath.replace(/^\//, "") ?? null,
               line: thread.threadContext?.rightFileStart?.line ?? null,
               author: comment.author.displayName,
+              authorAssociation: null,
+              authorIdentity: comment.author.uniqueName ?? comment.author.id ?? null,
               body: comment.content,
               resolved: AZ_RESOLVED.has(thread.status),
               kind: thread.threadContext ? "inline" : "review",
