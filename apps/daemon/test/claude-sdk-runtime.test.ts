@@ -302,4 +302,38 @@ describe("ClaudeSdkRuntime", () => {
       updatedInput: { b: 2 },
     });
   });
+  test("checkpoint de arquivos ligado; cada mensagem leva o uuid do turno; rewindFiles vai ao SDK", async () => {
+    let captured: { prompt: AsyncIterable<SDKUserMessage>; options: Options } | undefined;
+    const rewinds: Array<[string, unknown]> = [];
+    const queryFn: QueryFn = (params) => {
+      captured = params as typeof captured;
+      return {
+        async *[Symbol.asyncIterator]() {},
+        interrupt: async () => {},
+        close: () => {},
+        rewindFiles: async (id: string, opts?: { dryRun?: boolean }) => {
+          rewinds.push([id, opts]);
+          return { canRewind: true, filesChanged: ["a.ts"], insertions: 1, deletions: 2 };
+        },
+      };
+    };
+    const run = new ClaudeSdkRuntime({ query: queryFn }).start({
+      cwd: "/proj",
+      permissionMode: "default",
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+    });
+    expect(captured?.options.enableFileCheckpointing).toBe(true);
+    run.send("edite", "uuid-1");
+    const first = await captured?.prompt[Symbol.asyncIterator]().next();
+    expect(first?.value).toMatchObject({ type: "user", uuid: "uuid-1" });
+    expect(await run.rewindFiles?.("uuid-1", { dryRun: true })).toEqual({
+      canRewind: true,
+      filesChanged: ["a.ts"],
+      insertions: 1,
+      deletions: 2,
+    });
+    expect(rewinds).toEqual([["uuid-1", { dryRun: true }]]);
+    await run.close();
+  });
 });

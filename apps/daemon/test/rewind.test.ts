@@ -134,6 +134,25 @@ describe("rewind", () => {
     expect((await rewinder.preview(claude, turn)).via).toBe("snapshot");
   });
 
+  test("cada turno gerenciado leva um uuid novo, que vai junto do snapshot antes", async () => {
+    const edges: Array<{ kind: string; turnUuid?: string }> = [];
+    const { manager, project } = newManager({
+      onTurnEdge: (edge) => edges.push({ kind: edge.kind, turnUuid: edge.turnUuid }),
+    });
+    const { sessionId } = manager.create({ cwd: project, prompt: "um" });
+    await poll(() => manager.get(sessionId).status === "idle", 3000);
+    manager.send(sessionId, "dois");
+    await poll(() => edges.length === 4, 3000);
+    const uuids = edges.filter((e) => e.kind === "before").map((e) => e.turnUuid);
+    expect(uuids).toHaveLength(2);
+    expect(uuids[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(uuids[0]).not.toBe(uuids[1]);
+    expect(edges.filter((e) => e.kind === "after").map((e) => e.turnUuid)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
   test("protocolo: rewind.preview, rewind.apply (com confirm) e rewind.undo", async () => {
     const { rewinder, repo, turn, snapshots } = await turnInRepo();
     const { manager } = newManager();
