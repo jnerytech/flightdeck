@@ -584,3 +584,156 @@ O que a spec da Fase 5 (Central de sessões) deixou aberto, ou o que mudou na im
 - **`fix(pr)`:** a consulta de estado do PR roda no repositório do projeto, e não dentro da worktree. No Windows, o cwd do `gh` travava a pasta enquanto Concluir ou Descartar a removia, e isso aparecia como falha intermitente da suíte.
 - **Smoke:** o `smoke:central` foi commitado vermelho em `test(sessao-meta)`, falhando no passo "renomear a sessão". Além dos passos da spec, ele renomeia a sessão externa.
 - **Ramos revelados pela cobertura** seguiram a regra 7: ação de hooks desconhecida, transcript ilegível no `stale`, cancelar a inscrição, getter do receptor, canal só de ida.
+
+# Decisões e divergências da Fase 6
+
+O que a spec da Fase 6 (Workflows) deixou aberto, ou o que mudou na implementação.
+
+## Arquivo e validação
+
+- **YAML:** é lido com o `Bun.YAML` do runtime, sem dependência nova.
+- **Identidade:** o nome de um workflow é o nome do arquivo, sem `.yaml`. O campo `name` é opcional e só informativo.
+- **Ações dentro de `loop.do` e de `parallel`:** só `agent` ou `check`. Gate, loop, parallel e pr aninhados são erro de validação.
+- **`continue`:** precisa apontar para uma etapa `agent` de topo declarada antes. Isso vale também dentro de loop e parallel.
+- **Referências:**
+  - Precisam apontar para etapas declaradas antes.
+  - `outputs` só vale para um `parallel`, e `output` para as demais etapas.
+  - `loop.lastCheck.output` e `loop.lastCheck.exitCode` só valem dentro do `do` de um loop.
+  - Uma referência sem valor em tempo de execução lança erro, embora a validação já a impeça.
+- **O comando de um `check` nunca é interpolado:** ele precisa estar literalmente no arquivo confiado.
+- **8 KB:**
+  - Medido como 8192 caracteres da string, o mesmo limite na interpolação e na saída do check.
+  - A interpolação guarda o começo do valor.
+  - A saída do check guarda o fim de stdout seguido de stderr.
+- **Separadores:**
+  - A saída de um `agent` junta os blocos de texto do turno com uma linha em branco.
+  - `outputs` junta as saídas dos itens com `\n\n---\n\n`.
+- **Mensagens de validação:** em português, no formato `steps.<n> (<id>): <problema>` ou `<caminho>: <problema>`.
+
+## Confiança e o executor de check
+
+- **O conteúdo que rodou fica guardado:** `workflow_runs.definition` (coluna além da spec) guarda o YAML confiado da execução. Uma execução retomada usa esse conteúdo, e não o da base atual.
+- **`workflow.trust`:** recusa um `hash` diferente do atual na base e workflows com erros de validação.
+- **`workflow.validate`:** recebe `projectId` e `name` e valida a versão da base. Não valida texto avulso.
+- **Antes de cada check:** o motor confere que o hash do conteúdo guardado é o da execução, que esse hash continua confiado no projeto e que o comando está entre os `check` dele. Senão, a etapa falha com "comando fora do workflow confiado" e o executor não é chamado.
+- **`CheckRunner`:**
+  - É uma opção do `Board` (`checks`). O padrão é o executor real de shell (`shellCheckRunner`), o mesmo shell do script de preparação.
+  - Os testes do motor que precisam ver o que chega ao executor injetam um executor que só grava a chamada.
+- **Trava de check, a interpretação adotada para "o preload reprova a suíte se o executor real de shell for chamado":**
+  - O preload define `FLIGHTDECK_CHECK_GUARD`, que aponta para uma pasta com uma lista de pastas permitidas.
+  - Com essa variável definida, o executor real só entrega ao shell um comando cujo executável, resolvido no PATH atual com `whichOnPath`, esteja numa pasta permitida.
+  - Qualquer outro comando é registrado e recusado com código 99, sem chegar ao shell, e o preload reprova a suíte se houver registro.
+  - Os comandos falsos (`installFakeCheck`, em `scripts/test/check-guard.ts`) são os falsos de CLI da Fase 4 (sh e `.cmd`), com a pasta acrescentada à lista.
+  - O `smoke:workflow` instala a mesma trava e passa o ambiente explicitamente ao daemon, onde o executor real roda.
+- **Falsos de CLI por número da chamada:** as regras dos falsos ganharam `call` (a n-ésima chamada), para um check falhar uma vez e passar na seguinte sem corrida contra o FakeRuntime.
+
+## Motor
+
+- **Ids:**
+  - Uma execução de workflow tem o mesmo id da execução do card (`card_runs`).
+  - Nela, `card_runs.session_id` fica nulo, porque cada etapa tem a sua sessão.
+  - O `Card` ganhou `workflowRunId`, com `null` como padrão no schema, para não quebrar quem não o envia.
+- **`step_id` e tentativa:**
+  - Etapa de topo: o próprio id, tentativa 1.
+  - Loop: `<id>.check` e `<id>.do`, com a iteração como tentativa.
+  - Parallel: `<id>.<índice>`.
+  - O `gate.respond` usa esses mesmos ids.
+- **`step_runs`:** ganhou `note` (a nota do gate) e `message` (a pergunta do gate), colunas além da spec.
+- **Status da execução:**
+  - `queued` e `running`.
+  - `waiting`: gate aberto.
+  - `paused`: orçamento ou `max` do loop.
+  - `failed`: uma etapa ou a preparação falhou.
+  - `rejected` e `completed`.
+  - Os quatro últimos são finais. Não existe comando para retomar uma execução pausada: inicia-se o card de novo.
+- **Loop:**
+  - O `check` roda primeiro. Passou, o loop acaba sem rodar o `do`.
+  - O `do` roda no máximo `max` vezes, e o check, no máximo `max + 1`.
+  - Com o check ainda falhando, a execução pausa com "loop <id>: o check ainda falha depois de <max> repetições".
+  - A saída do loop é a do check que passou.
+- **Falhas:**
+  - Um `check` fora de loop que sai com código diferente de 0 falha a execução, assim como um check dentro do `do`.
+  - Um turno com erro, um erro da sessão ou Parar (que interrompe as etapas em andamento) também falham a execução.
+  - Em qualquer desses casos, o card vai a Esperando você.
+- **Colunas:**
+  - O evento novo `workflow` (`running`, `waiting`, `done`) move o card, e os status de sessão das etapas seguem as regras da Fase 4.
+  - O `turn.result` de uma etapa não leva o card a Em revisão. Isso só acontece quando a execução termina (ou, antes disso, pela etapa `pr`).
+- **Vagas (`maxParallelRuns`):**
+  - A execução segura a vaga do card desde a preparação até terminar.
+  - Com um gate aberto, a vaga é liberada. Aprovado o gate, a execução pega uma vaga de novo, esperando na frente dos cards na fila.
+  - Um `parallel` usa a vaga do card mais as vagas livres do host no início da etapa, sem esperar por elas, e as devolve no fim. Sem vagas livres, os itens rodam um depois do outro.
+- **Card com execução em andamento** (na fila, rodando ou num gate): não pode ser iniciado de novo.
+- **Conclusão (manual ou merge):** fecha as sessões das etapas. O descarte apaga as execuções do card.
+- **Etapa `pr`:**
+  - Fora da tabela de áreas, com escopo próprio (`engine-pr`). Usa o `createPr` do board.
+  - A URL do PR é a saída da etapa.
+  - Sem provedor no projeto, a execução falha.
+- **Reinício do daemon:**
+  - O board retoma as execuções `running`, que voltam a segurar a vaga, e as `waiting`, que não seguram vaga.
+  - Etapas concluídas devolvem o que gravaram, e um check concluído também.
+  - Um agent cortado retoma a mesma sessão (`session.resume` se estiver `error` ou `ended`) e reenvia o prompt depois do aviso.
+  - Um check cortado roda de novo.
+  - Um gate aprovado durante a espera pela vaga pega a vaga ao retomar.
+- **`run.updated`:** é emitido a cada transição (etapa criada ou encerrada, status, uso, resposta de gate). Um watcher que lança não afeta a execução.
+
+## Orçamento
+
+- **Quando é conferido:** antes de cada turno de agent. Um turno em andamento nunca é cortado, e o estouro pausa a execução antes do turno seguinte.
+- **Minutos:** a soma da duração dos turnos de todas as sessões, medida com o relógio injetável do board (`clock`). A espera num gate não conta.
+- **Custo:**
+  - O `usage` da execução guarda o último total visto de cada sessão. Cada turno soma `max(0, total − último)`.
+  - Um total menor que o último não subtrai nada.
+- **Mensagens de pausa:** "orçamento estourado: 2 de 2 turnos", "… 12.3 de 12 minutos", "… US$ 1.75 de US$ 1.50".
+- **Uso por etapa:** não é guardado. O app mostra o uso da execução no medidor e a duração de cada etapa.
+- **FakeRuntime:** guarda o custo cumulativo por Claude session id (`[cost:x]`). Uma sessão retomada com `resume` no mesmo runtime começa do total anterior, como o SDK.
+
+## Protocolo
+
+- **`workflow.list`:** `{ projectId }` → `{ workflows }`.
+- **`gate.respond`:** devolve a execução.
+- **`run.watch`:** responde o ack, manda as execuções ainda em andamento e depois cada mudança. O app reenvia o `run.watch` a cada reconexão.
+- **`card.get`** (fora da tabela): o card pelo id, para o `get_card` do MCP sem ter que varrer os boards.
+
+## MCP
+
+- **Servidor:**
+  - `flightdeckd mcp` usa o `McpServer` do SDK que já estava no daemon, com os schemas em zod.
+  - O transporte é injetável (`mcpTransport`), como o do `channel` da Fase 5: stdio de verdade, em memória nos testes.
+  - Fechar o cliente encerra o comando com 0. Sem daemon, ou com token recusado, ele sai com 1 e diz por quê.
+- **Endereço do daemon:** vem da config. `bind` `0.0.0.0` ou `::` vira `127.0.0.1`, e um IPv6 vai entre colchetes.
+- **Respostas:** cada ferramenta responde o resultado do comando do protocolo, como JSON em texto. Por exemplo, `list_projects` inclui `maxParallelRuns`. Um erro do daemon volta como erro da ferramenta (`isError`), com `<código>: <mensagem>`.
+
+## App desktop
+
+- **Telas:**
+  - **Workflows de &lt;projeto&gt;**: aberta pelo botão na tela Projetos.
+  - **Confiar**: abre o diálogo do app (não `window.confirm`), que lista os comandos `check`.
+- **Detalhe do card:**
+  - O seletor de workflow mostra só os confiados e válidos, e os campos de input aparecem conforme o escolhido.
+  - O card simples continua sendo "Nenhum".
+- **Linha do tempo:**
+  - Agent e check abrem por clique.
+  - Um gate aberto aparece inline, com nota, Aprovar e Recusar.
+- **Precisa de você:**
+  - Um gate entra com Aprovar e Recusar, que respondem sem nota.
+  - Clicar no item abre o card (`card.get` dá o projeto).
+- **Execuções de um host removido:** ficam no estado do app, mas não aparecem, porque o "Precisa de você" e as telas filtram pelos hosts presentes.
+- **`src-tauri` não mudou** nesta fase, então não houve `cargo check` novo.
+
+## TDD e testes
+
+- **Escopos fora da tabela:**
+  - `fake-runtime`: o gatilho `[cost:x]`.
+  - `engine-pr`: a etapa `pr`.
+  - `protocolo-workflow`: os comandos e o frame `run.updated` no servidor. O `smoke:workflow` foi commitado vermelho nesse `test(protocolo-workflow)`, falhando com saída controlada no passo "listar e confiar no workflow".
+- **Rebase sobre `fase-5`:**
+  - Saíram o `test(pr)` e o `fix(pr)` da Fase 6. Eles repetiam o `de35260` e o `4cedc83` da Fase 5: consultar o PR na raiz do repositório, porque um CLI com cwd na worktree a trava no Windows e a remoção falha. Esse travamento aparecia como falha intermitente do `protocolo-board`.
+  - A migração da Fase 6 ficou depois da da Fase 5 (índice 4).
+  - Os falsos de CLI juntam o `cwds()` da Fase 5 e o `call` da Fase 6.
+- **Ramos revelados pela cobertura** seguiram a regra 7: o ramo saiu, o teste ficou vermelho e só então o ramo voltou.
+  - Mensagem de tipo e valor inválidos na validação.
+  - O watcher de execução que lança.
+- **Correções de teste antes do `feat`:**
+  - Restaurar falsos em ordem inversa.
+  - Esperar a remoção da worktree depois do merge.
+  - No paralelo, mandar as saídas a um gate, e não a um agent que repetiria `[tool]`.

@@ -331,6 +331,120 @@ interrompida ou fica ociosa.
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
 
+## Workflows
+
+Um card pode rodar um workflow em vez de uma sessão só: uma sequência de etapas (agentes,
+verificações, aprovações suas), com orçamento, acompanhada e aprovada pelo app.
+
+### Declarar
+
+Os workflows são arquivos `.flightdeck/workflows/<nome>.yaml`, versionados no próprio
+repositório. O daemon sempre os lê da branch base do projeto (`git show <base>:<caminho>`). Um
+workflow escrito pelo agente na branch do card nunca é usado.
+
+```yaml
+name: feature
+inputs: [task]
+budget: { maxTurns: 80, maxMinutes: 120, maxCostUsd: 15 }
+steps:
+  - id: plan
+    agent: { prompt: "Planeje: {{inputs.task}}", permissionMode: plan }
+  - id: approve-plan
+    gate: { message: "Aprovar o plano?", show: "{{steps.plan.output}}" }
+  - id: implement
+    agent: { prompt: "Implemente este plano e faça commits:\n{{steps.plan.output}}" }
+  - id: tests
+    loop:
+      max: 3
+      until: { check: "bun test" }
+      do:
+        agent: { continue: implement, prompt: "Os testes falharam:\n{{loop.lastCheck.output}}" }
+  - id: review
+    parallel:
+      - agent: { prompt: "Revise o diff com foco em segurança." }
+      - agent: { prompt: "Revise o diff com foco em legibilidade." }
+  - id: pr
+    pr: {}
+```
+
+| Etapa | O que faz |
+| --- | --- |
+| `agent` | Abre uma sessão na worktree do card. Com `continue: <id>`, manda a mensagem à sessão daquela etapa. A saída é o texto do assistente no turno. |
+| `check` | Roda o comando na worktree. Guarda o código de retorno e os últimos 8 KB da saída. Se o comando falhar, a execução falha. |
+| `gate` | Pausa até você aprovar ou recusar, com nota opcional. A nota é a saída do gate. |
+| `loop` | Roda o `check` do `until`. Enquanto ele falhar, roda o `do` (no máximo `max` vezes). Esgotado o `max`, a execução pausa. |
+| `parallel` | Roda os itens ao mesmo tempo, dentro de `maxParallelRuns`. As saídas chegam em `outputs`, na ordem declarada. |
+| `pr` | Faz o push e abre o PR pelo provedor do projeto. |
+
+A interpolação aceita só `{{inputs.*}}`, `{{steps.<id>.output}}` (`outputs` num `parallel`) e
+`{{loop.lastCheck.output|exitCode}}`, este dentro do `do` de um loop. Uma referência
+desconhecida, um campo desconhecido, uma etapa sem `id` ou um `continue` para uma etapa que não
+é um `agent` anterior são erros de validação. Um valor interpolado maior que 8 KB é cortado.
+
+### Confiar
+
+As etapas `check` rodam comandos de shell: `cmd.exe /d /s /c` no Windows e `sh -c` nos demais,
+como o script de preparação. Por isso, cada workflow precisa ser confiado antes da primeira
+execução. Na tela Projetos, **Workflows de &lt;projeto&gt;** lista os workflows da base com a
+validação e os comandos `check`. **Confiar** mostra esses comandos e pede confirmação.
+
+- **O que fica guardado:** a confiança guarda o hash (sha256) do arquivo.
+- **Se o arquivo mudar na base:** o hash muda, e o workflow volta a pedir confiança.
+- **Antes de cada check:** o daemon confere que o comando está literalmente no workflow da
+  execução e que esse conteúdo continua confiado. Qualquer outro comando é recusado sem chegar
+  ao shell.
+
+### Rodar e acompanhar
+
+No detalhe do card, escolha o workflow (ou **Nenhum**, para o card simples da Fase 4),
+preencha os `inputs` e clique em Iniciar.
+
+- **Linha do tempo:** o detalhe mostra cada etapa com status, tentativa e duração. Clicar abre a
+  conversa da etapa ou a saída do `check`.
+- **Gate aberto:** leva o card a Esperando você e libera a vaga do host. Ele aparece no próprio
+  card e em **Precisa de você**, com Aprovar, Recusar e nota.
+  - Aprovado, a execução volta à fila do host e segue.
+  - Recusado, termina como `rejected`.
+- **Etapa `pr`:** leva o card a Em revisão. O merge leva a Concluído e fecha as sessões das
+  etapas.
+- **Reinício do daemon:** a execução retoma de onde parou.
+  - Um agent no meio do turno retoma a sessão e reenvia o prompt, precedido de "A execução foi
+    interrompida; continue de onde parou."
+  - Um check roda de novo.
+  - Um gate continua aberto.
+
+### Orçamento
+
+`budget` limita a execução inteira, somando todas as suas sessões:
+
+- **Turnos:** contados entre todas as sessões.
+- **Minutos:** o tempo de relógio dos turnos.
+- **Custo:** o que o SDK informa (`total_cost_usd`). Em assinatura, é uma estimativa útil como
+  teto.
+  - O valor é cumulativo por sessão: vale o último total de cada sessão.
+  - Uma sessão retomada conta só a diferença.
+
+O orçamento é conferido antes de cada turno. Estourado, a execução pausa em Esperando você com
+o motivo. Uma execução pausada não continua: inicie o card de novo. O medidor no detalhe do
+card mostra turnos, minutos e custo estimado.
+
+### `flightdeckd mcp`
+
+`flightdeckd mcp [--config <arquivo>]` é um servidor MCP stdio para o Claude Code do mesmo host.
+Ele lê a config do daemon e conecta no daemon local pelo protocolo, com o token da config. Isso
+deixa uma sessão do Claude criar cards e disparar workflows. Ferramentas:
+
+- `list_projects` e `list_workflows`;
+- `create_card` e `start_card` (com `workflow` e `inputs`);
+- `get_card` e `get_run`.
+
+Não há ferramenta para aprovar permissões nem para responder gates: isso fica só com você, no
+app. Para registrar no Claude Code:
+
+```sh
+claude mcp add flightdeck -- flightdeckd mcp
+```
+
 ## Central de sessões
 
 A tela **Sessões** é a principal do app: todas as sessões do Claude Code dos hosts online, num lugar só, agrupadas por projeto e ordenadas pela última atividade.
@@ -426,7 +540,8 @@ bun run smoke:multi    # dois daemons, um cliente, permissão via session.summar
 bun run smoke:history  # indexa, busca, retoma e vê history.changed; SMOKE HISTORY OK
 bun run smoke:board    # card com gh falso e remoto local até o PR mesclado; SMOKE BOARD OK
 bun run smoke:central  # hooks, flightdeckd claude com o claude falso, aprovação e canal; SMOKE CENTRAL OK
-bun run tdd:audit -- --since fase-4   # todo feat/fix tem um commit test do mesmo escopo antes
+bun run smoke:workflow # o workflow de exemplo inteiro, check e gh falsos, até o PR mesclado; SMOKE WORKFLOW OK
+bun run tdd:audit -- --since fase-5   # todo feat/fix tem um commit test do mesmo escopo antes
 bun run build:daemon   # binários em dist/
 bun run build:desktop  # frontend Vite em apps/desktop/dist
 cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml   # requer apps/desktop/dist
@@ -437,7 +552,9 @@ nasce vermelho, roda sozinho com `bun --config=bunfig.area.toml test ./<arquivo>
 sem o limite global de cobertura) e é commitado como `test(<área>)` antes do `feat(<área>)`. O
 preload dos dois bunfigs instala uma trava que reprova a suíte se algum teste executar o `claude`
 de verdade, e outra que aponta `HOME`/`USERPROFILE` para uma pasta temporária, para nenhum teste
-ler o `~/.claude` real. Os smokes (menos o `smoke:real`) usam as mesmas travas. Os fixtures de
+ler o `~/.claude` real. A trava de check (Fase 6) só deixa um `check` de workflow chegar ao
+shell se o comando for um falso instalado pelo próprio teste. Os smokes (menos o `smoke:real`)
+usam as mesmas travas. Os fixtures de
 transcript ficam em `apps/daemon/test/fixtures/history/` e são escritos à mão.
 
 Testes e smoke usam só o `FakeRuntime`. `bun run smoke:real` repete o roteiro com o Claude de
