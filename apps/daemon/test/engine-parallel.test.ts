@@ -84,7 +84,8 @@ describe("engine-parallel", () => {
     for (const card of others) await board.startCard(card.id);
     const started = await poll(
       () => (others.every((c) => board.getCard(c.id).sessionId !== null) ? true : null),
-      5000,
+      // Two worktrees made with real git: slow when the whole suite runs at once.
+      15_000,
     );
     expect(started).toBe(true);
   });
