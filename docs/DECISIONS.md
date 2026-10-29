@@ -823,3 +823,94 @@ O que a spec da Fase 7 (operação do host) deixou aberto, ou o que mudou na imp
 - **Escopo `desligar`:** o `daemon.shutdown` ganhou o próprio ciclo (`test` e `feat`). As correções do `--config` e do `uninstall` são `fix(servico)`, e as do `update` são `fix(update)`.
 - **`central-ui`:** o teste de ordem esperava a sessão gerenciada ficar ociosa antes de seguir. Sob a carga da suíte inteira, a ordem às vezes falhava, e isso foi corrigido num `test(central-ui)`.
 - **`smoke:ops` sem vermelho de recurso:** o script foi escrito depois das áreas que ele cobre. As primeiras execuções falharam com saída controlada, mas por expectativas do próprio script: um comando numa conexão incompatível fecha como `unauthorized` em vez de receber ack, e a limpeza do boot apaga de novo o banco restaurado. Nenhuma falha veio de recurso faltando. O script foi commitado verde no `test(smoke-ops)`.
+
+# Decisões e divergências da Fase 7, trilha B (limites e regras)
+
+O que a spec da Fase 7 deixou aberto para a trilha B, ou o que mudou na implementação.
+
+## Cota
+
+- **Evento interno:** o `rate_limit_event` vira um evento `quota` do runtime, que o session manager entrega à `Quota` do host (`onQuota`). Ele nunca vira `SessionEvent`: não é gravado, não é reenviado e o app não o recebe numa assinatura de sessão.
+- **Leitura defensiva:**
+  - O daemon lê `rate_limit_info.unifiedWindows` quando existe; sem ele, a janela do topo (`rateLimitType`, `utilization`, `resetsAt`).
+  - Uma janela com `status` desconhecido (fora de `allowed`, `allowed_warning` e `rejected`) é ignorada.
+  - `utilization` fica como fração; ausente, vira `null`. `resetsAt` chega em segundos e é guardado em milissegundos; ausente, a leitura vale até a próxima.
+- **Onde fica:** a leitura vive só em memória, no daemon, e volta com o próximo turno depois de um reinício.
+  - A única migração da trilha é a `usage_daily`.
+  - `quota.get` e `quota.watch` não têm histórico.
+- **Vencimento:** um timer injetável (relógio e agendador) é armado para o próximo `resetsAt`. Quando dispara, remove a janela e avisa quem faz `quota.watch`. Uma leitura que já chega vencida é descartada.
+- **O app:** pede `quota.get` ao conectar, além do `quota.watch`, porque o `quota.watch` não manda o estado atual.
+
+## Fila por cota
+
+- **O que bloqueia:** uma janela válida com `utilization ≥ pauseAt` ou `status: rejected`. Com `pauseAt: null`, nada bloqueia, nem o `rejected`.
+- **`until`:** é o maior `resetsAt` das janelas que bloqueiam; se alguma não tem `resetsAt`, fica `null`.
+- **Card:**
+  - Ganhou `queueReason` (`slot` ou `quota`) e `quotaUntil`, ambos com `null` como padrão no schema.
+  - O motivo é calculado na leitura do card, e cada mudança de cota manda um `card.updated` para os cards na fila.
+- **Fila:** a cota só segura a escolha de novos cards. Execuções em andamento e a volta de um gate aprovado seguem, porque esperam a cota no próximo turno.
+- **Workflow:**
+  - Antes de cada turno de agente (logo depois do orçamento), se a cota bloqueia, a execução continua `running` com `statusReason: "aguardando cota"`, e a execução expõe `quotaUntil` (só em memória).
+  - Se o card for concluído ou descartado durante a espera, a execução para ali, sem seguir.
+- **HH:MM:** o daemon manda o instante em ISO, e o app formata com uma função injetável (o fuso da máquina quando ausente).
+
+## Uso
+
+- **Custo do turno:** o session manager chama o `UsageLedger` antes de gravar cada `turn.result`. O custo do turno é `max(0, total − total anterior)`, e o total anterior vem do último `turn.result` gravado daquela sessão nos `events`. Isso vale através de reinícios e de `resume`, sem tabela extra.
+- **Tokens:** `input_tokens` e `output_tokens` do `turn.result` são tratados como do turno. Os tipos do SDK não dizem se são cumulativos.
+- **Dia e projeto:**
+  - O dia é `AAAA-MM-DD` por uma função injetada (`localDay` usa o fuso da máquina).
+  - O projeto é a `projectKey` da Fase 5, por um `ProjectKeys` próprio do daemon.
+- **`usage.summary`:** devolve as linhas dos últimos `days` dias, de 1 a 90 (padrão 7). A ordem é do dia mais novo para o mais antigo e, dentro do dia, por projeto.
+
+## "Permitir sempre"
+
+- **Validação compartilhada:** um único validador (`permission-updates.ts`) serve às sessões gerenciadas e às do terminal.
+  - Recusa destinos fora de `session` e `localSettings`.
+  - Recusa `setMode` para `bypassPermissions` ou `auto`.
+  - Aceita só sugestões do próprio pedido, com igualdade campo a campo e as chaves em qualquer ordem, ou uma regra do projeto (`addRules`, `allow`, `localSettings`).
+  - Numa regra do projeto, cada regra precisa ser da ferramenta do pedido, e o `ruleContent`, quando existe, não pode ser vazio, ter quebra de linha nem passar de 500 caracteres.
+- **Sugestões:** as que o daemon não entende são descartadas uma a uma, para que um tipo novo do SDK não derrube o pedido.
+- **Item recusado:** um item ruim recusa a resposta inteira, nada é aplicado e o pedido continua aberto.
+- **FakeRuntime:**
+  - `[tool]` (Write) sugere `addDirectories` e `setMode acceptEdits` de sessão.
+  - `[bash]` (Bash `npm test --silent`) sugere a regra `npm test:*` em `localSettings` e o comando exato em `session`.
+  - O `tool.result` repete os `updatedPermissions` recebidos, e é assim que o smoke vê a regra chegar ao runtime.
+
+## Regras do projeto
+
+- **Qual sessão é de card:** a de uma execução do card (`card_runs`) ou de uma etapa de workflow (`step_runs`). Regras aceitas em outras sessões não vão para a raiz.
+- **Formato:** `Ferramenta(conteúdo)`, ou só `Ferramenta` sem conteúdo, em `permissions.allow`.
+  - O merge não duplica e preserva as outras chaves e a ordem.
+  - Se o arquivo da raiz não é um objeto JSON válido, ele não é reescrito, e o card recebe o aviso "regra não gravada no .claude/settings.local.json: …".
+- **Worktree nova:**
+  - O `.git/info/exclude` recebe `.claude/settings.local.json` (junto com `.flightdeck/worktrees/`) antes do `git worktree add`, e o arquivo da raiz é copiado para a worktree.
+  - Se o repositório versiona o arquivo, a cópia é pulada: a worktree já tem o que está commitado, e sobrescrever mostraria uma alteração no diff.
+- **`rules.remove`:** sem `confirm: true` dá `invalid_state`; uma regra que não existe dá `not_found`.
+- **Mais de um projeto no mesmo repositório:** não acontece, porque o caminho de um projeto é único.
+
+## App
+
+- **Barras:** só as de 5 horas e de 7 dias, na ordem; outras janelas que o daemon conheça não aparecem.
+  - Sem leitura, a barra mostra "sem leitura".
+  - O texto da idade é "lida agora", "lida há N min" ou "lida há N h".
+- **Notificação:** uma por host, janela e `resetsAt`. A janela seguinte, com outro reinício, pode notificar de novo.
+- **Painel de uso:** fica na tela do host.
+- **Seção Regras:** fica na edição do projeto, na tela Projetos.
+- **"Sempre neste projeto":** o campo leva a regra inteira (`Bash(npm test:*)`). O texto é convertido em `addRules` para `localSettings`, e a validação é do daemon.
+- **Pedidos do terminal:** os botões novos também aparecem na tela da sessão externa. Na fila "Precisa de você" continuam só Permitir e Negar.
+
+## Fora da trilha B até o rebase
+
+- **`features`:** `quota` e `rules` entram no `features` do `host.info` só no rebase sobre a trilha A, que cria o campo.
+- **Versões:** a trilha B não mexe em versões, `tauri.conf.json` nem `src-tauri`.
+
+## TDD e testes
+
+- **Escopos:** só os oito da tabela. O gatilho `[ratelimit:…]` do FakeRuntime entrou em `cota`, e `[bash]` e as sugestões entraram em `permitir-sempre`.
+- **Smoke:** o `smoke:limits` foi commitado vermelho dentro de `test(regras-projeto)`, falhando no passo "responder com regra do projeto" (o arquivo da raiz).
+- **Ramos revelados pela cobertura** seguiram a regra 7: o ramo saiu, o teste ficou vermelho e só então o ramo voltou.
+  - A ligação `onQuota` no `startDaemon`.
+  - O formato padrão de hora.
+- **Teste de tempo:** a espera do `engine-parallel` subiu para 15 s; sob carga, duas worktrees com git real passavam de 5 s.
+- **Falha intermitente da Fase 5 observada:** `central-ui` ("junta gerenciada, externa e do histórico…") falhou uma vez na suíte inteira com a ordem de dois itens trocada e passou 3 de 3 sozinho. Parece empate de horário, e não foi mexido nesta trilha.
