@@ -1,5 +1,6 @@
 import type { ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
+import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
 import { ulid } from "../ulid.ts";
@@ -37,7 +38,7 @@ export class ExternalPermissions {
   private readonly risk: RiskClassifier;
 
   /** `risk`: the classifier of the daemon's config; built-in rules alone when absent. */
-  constructor(opts: { risk?: RiskClassifier } = {}) {
+  constructor(opts: { risk?: RiskClassifier; auto?: Pick<AutoApprover, "decide"> } = {}) {
     this.risk = opts.risk ?? new RiskClassifier({ allowedRoots: [], home: userHome() });
   }
 

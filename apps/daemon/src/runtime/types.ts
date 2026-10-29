@@ -5,6 +5,7 @@ import type {
   SessionEvent,
   ToolInput,
 } from "@flightdeck/protocol";
+import type { UsageTokens } from "../costs/usage-indexer.ts";
 
 /** One window of the plan quota, as a runtime read it (`resetsAt` in milliseconds). */
 export interface QuotaReading {
@@ -79,8 +80,26 @@ export interface ForkOptions {
   dir?: string;
 }
 
+/** Phase 13: a short isolated query that judges one permission request. */
+export interface JudgeOptions {
+  model: string;
+  prompt: string;
+  /** A folder of its own, excluded from the history. */
+  cwd: string;
+  signal?: AbortSignal;
+}
+
+export interface JudgeResult {
+  decision: "allow" | "ask" | "deny";
+  reason: string;
+  /** What the query used, for the costs; absent when the runtime does not know. */
+  tokens?: UsageTokens;
+}
+
 export interface AgentRuntime {
   start(opts: StartOptions): AgentRun;
+  /** Phase 13: the AI of the automatic approval. */
+  judgePermission?(opts: JudgeOptions): Promise<JudgeResult>;
   /** Phase 12: copies a transcript (up to a message) into a new session, resumable by its id. */
   forkSession?(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }>;
 }

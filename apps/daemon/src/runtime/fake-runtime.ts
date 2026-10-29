@@ -8,6 +8,8 @@ import type {
   AgentRun,
   AgentRuntime,
   ForkOptions,
+  JudgeOptions,
+  JudgeResult,
   RewindFilesResult,
   RuntimeEvent,
   StartOptions,
@@ -20,6 +22,8 @@ export interface FakeRuntimeOptions {
   rewind?: (userMessageId: string, dryRun: boolean) => RewindFilesResult;
   /** The MCP servers a live run reports (phase 12). */
   mcpServers?: string[];
+  /** Phase 13: the fake AI of the automatic approval. */
+  judge?: (opts: JudgeOptions) => JudgeResult | Promise<JudgeResult>;
 }
 
 class Interrupted extends Error {}
@@ -50,6 +54,14 @@ export class FakeRuntime implements AgentRuntime {
 
   /** MCP servers turned on or off in live runs (phase 12). */
   readonly mcpToggles: Array<{ name: string; enabled: boolean }> = [];
+
+  /** Judge queries so far (phase 13). */
+  readonly judgeCalls: JudgeOptions[] = [];
+
+  /** Stub. */
+  async judgePermission(_opts: JudgeOptions): Promise<JudgeResult> {
+    return { decision: "ask", reason: "" };
+  }
 
   /** Forks asked so far (phase 12). */
   readonly forks: Array<{ claudeSessionId: string } & ForkOptions> = [];

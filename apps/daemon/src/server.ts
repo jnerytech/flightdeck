@@ -46,6 +46,7 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
+import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
@@ -84,6 +85,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Stub. */
+  autoApprove?: AutoApprover;
   /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
   agentcfg?: AgentConfig;
   /** Phase 12: the project's MCP servers (`mcp.*`). */

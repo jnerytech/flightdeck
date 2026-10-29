@@ -16,6 +16,8 @@ import type {
   AgentRun,
   AgentRuntime,
   ForkOptions,
+  JudgeOptions,
+  JudgeResult,
   RewindFilesResult,
   RuntimeEvent,
   StartOptions,
@@ -172,6 +174,11 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     this.query = options.query ?? (sdkQuery as QueryFn);
     this.fork = options.forkSession ?? sdkForkSession;
     this.claudePath = resolveClaudePath(options.claudePath);
+  }
+
+  /** Stub. */
+  async judgePermission(_opts: JudgeOptions): Promise<JudgeResult> {
+    return { decision: "ask", reason: "" };
   }
 
   /** Phase 12: the SDK's forkSession; it writes the new transcript itself. */

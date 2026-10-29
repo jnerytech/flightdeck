@@ -100,6 +100,8 @@ function toProject(row: ProjectRow): Project {
     setupScript: row.setup_script,
     promptTemplate: row.prompt_template,
     worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
+    /** Stub. */
+    autoApprove: { enabled: false, model: "claude-haiku-5-5", lowWithoutAi: true },
   };
 }
 
@@ -247,6 +249,8 @@ export class Board {
       prProvider: input.prProvider ?? "none",
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
+      /** Stub. */
+      autoApprove: { enabled: false, model: "claude-haiku-5-5", lowWithoutAi: true },
     };
     this.db
       .query(

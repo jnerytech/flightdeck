@@ -180,6 +180,9 @@ const OWNER = `SELECT
  * `message.id` and usage, so the id is the key: a message counts once, also when read again.
  */
 export class UsageIndexer {
+  /** Stub. */
+  record(_entry: { at: string; model: string; tokens: UsageTokens; projectPath: string }): void {}
+
   private readonly db: Database;
   private readonly excludes: string[];
   private readonly day: (ms: number) => string;

@@ -332,6 +332,15 @@ export type PrState = z.infer<typeof PrState>;
 export const ChecksState = z.enum(["pending", "passing", "failing"]);
 export type ChecksState = z.infer<typeof ChecksState>;
 
+/** Phase 13: the project's automatic approval, off by default. */
+export const AutoApproveSettings = z.object({
+  enabled: z.boolean().default(false),
+  model: z.string().min(1).default("claude-haiku-5-5"),
+  /** Low risk approved without asking the AI. */
+  lowWithoutAi: z.boolean().default(true),
+});
+export type AutoApproveSettings = z.infer<typeof AutoApproveSettings>;
+
 export const Project = z.object({
   id: z.string(),
   path: z.string(),
@@ -344,6 +353,8 @@ export const Project = z.object({
   promptTemplate: z.string(),
   /** The repository has a `.worktreeinclude` (phase 11): the app suggests one when it has not. */
   worktreeInclude: z.boolean().default(false),
+  /** Phase 13; filled in when an older daemon does not send it. */
+  autoApprove: AutoApproveSettings.default(() => AutoApproveSettings.parse({})),
 });
 export type Project = z.infer<typeof Project>;
 

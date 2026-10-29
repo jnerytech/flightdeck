@@ -15,6 +15,7 @@ import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
+import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
@@ -45,6 +46,8 @@ export interface SessionManagerOptions {
   onTurnEdge?: (edge: TurnEdge) => void;
   /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
   risk?: RiskClassifier;
+  /** Stub. */
+  autoApprove?: Pick<AutoApprover, "decide">;
 }
 
 export interface TurnEdge {
