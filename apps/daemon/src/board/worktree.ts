@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
+import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
 
@@ -43,14 +44,34 @@ async function freeSlug(repo: string, base: string): Promise<string> {
  * Adds a line to the repo's local exclude file, once; `.gitignore` is never touched. It is the
  * common git dir, so it holds for every worktree of the repository too.
  */
-async function exclude(repo: string, line: string): Promise<void> {
-  const where = must(await git(repo, "rev-parse", "--git-path", "info/exclude"), "git rev-parse");
-  const file = resolve(repo, where.stdout.trim());
+function exclude(repo: string, line: string): void {
+  // Synchronous: also called right before a rule is written, in the middle of an answer.
+  const where = Bun.spawnSync(
+    [whichOnPath("git") ?? "git", "rev-parse", "--git-path", "info/exclude"],
+    {
+      cwd: repo,
+      env: process.env,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+  if (where.exitCode !== 0) {
+    throw new FlightdeckError("invalid_state", `git rev-parse: ${where.stderr.toString().trim()}`);
+  }
+  const file = resolve(repo, where.stdout.toString().trim());
   const current = existsSync(file) ? readFileSync(file, "utf8") : "";
   if (current.split(/\r?\n/).includes(line)) return;
   mkdirSync(dirname(file), { recursive: true });
   const separator = current === "" || current.endsWith("\n") ? "" : "\n";
   writeFileSync(file, `${current}${separator}${line}\n`);
+}
+
+/**
+ * The rules file never shows up in a card's diff nor in a commit of the agent. Ensured on every
+ * launch and before every write, so worktrees made before phase 7 get it too.
+ */
+export function excludeLocalSettings(repo: string): void {
+  exclude(repo, LOCAL_SETTINGS);
 }
 
 /**
@@ -75,9 +96,8 @@ export async function addWorktree(
   const slug = await freeSlug(repo, slugify(title));
   const branch = `fd/${slug}`;
   const path = worktreeDir(repo, slug);
-  await exclude(repo, EXCLUDE_LINE);
-  // The rules file never shows up in a card's diff nor in a commit of the agent.
-  await exclude(repo, LOCAL_SETTINGS);
+  exclude(repo, EXCLUDE_LINE);
+  excludeLocalSettings(repo);
   must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
   await copyLocalSettings(repo, path);
   return { slug, branch, path };

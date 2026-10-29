@@ -34,7 +34,7 @@ import type {
   PrProviderKind,
   PrState,
 } from "./types.ts";
-import { addWorktree, must } from "./worktree.ts";
+import { addWorktree, excludeLocalSettings, must } from "./worktree.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
@@ -497,6 +497,7 @@ export class Board {
         .run(added.slug, added.branch, added.path, now(), id);
       this.changed(id);
     }
+    excludeLocalSettings(project.path);
     if (project.setupScript) await runSetup(project.setupScript, worktree);
     // The newest run is the active one: older sessions of the card are closed.
     await this.closeRuns(id, runId);
@@ -611,7 +612,9 @@ export class Board {
       .get(sessionId, sessionId);
     if (rules.length === 0 || !card) return;
     try {
-      addRules(this.getProject(this.getCard(card.card_id).projectId).path, rules);
+      const repo = this.getProject(this.getCard(card.card_id).projectId).path;
+      excludeLocalSettings(repo);
+      addRules(repo, rules);
     } catch (error) {
       const notice = `regra não gravada no ${LOCAL_SETTINGS}: ${(error as Error).message}`;
       this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, card.card_id);
