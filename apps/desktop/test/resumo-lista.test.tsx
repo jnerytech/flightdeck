@@ -124,7 +124,12 @@ describe("resumo-lista", () => {
       userLine({ uuid: "b1", text: "apague o rascunho", cwd: appB, ts }),
     ]);
     const old = writeTranscript(d.historyRoot, "-old", "hist-1", [
-      userLine({ uuid: "h1", text: "Do histórico", cwd: d.project, ts: "2026-09-01T10:00:00.000Z" }),
+      userLine({
+        uuid: "h1",
+        text: "Do histórico",
+        cwd: d.project,
+        ts: "2026-09-01T10:00:00.000Z",
+      }),
     ]);
     utimesSync(old, new Date(Date.now() - 3_600_000), new Date(Date.now() - 3_600_000));
     d.history.scan();
