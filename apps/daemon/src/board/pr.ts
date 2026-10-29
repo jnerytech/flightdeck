@@ -7,6 +7,8 @@ import type { ChecksState, PrProviderKind, PrState } from "./types.ts";
 export interface PrStatus {
   state: PrState;
   checks: ChecksState | null;
+  /** Phase 13: the names of the checks that failed, when the host says. */
+  failed?: string[];
 }
 
 export interface CreatePr {

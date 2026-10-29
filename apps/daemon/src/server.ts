@@ -32,6 +32,7 @@ import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
+import type { Automations } from "./automations/automations.ts";
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
@@ -86,6 +87,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 13: the projects' automations (`automation.*`). */
+  automations?: Automations;
   /** Phase 13: issues of the projects (`issues.*`). */
   issues?: Issues;
   /** Phase 13: the projects' automatic approval (`autoapprove.*`). */
@@ -549,6 +552,12 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
+      case "automation.list":
+      case "automation.save":
+      case "automation.remove":
+      case "automation.toggle":
+      case "automation.runs":
+        throw new FlightdeckError("invalid_state", "stub");
       case "issues.list": {
         const { projectId, query } = command.payload;
         return ok(command.type, { issues: await issues().list(projectId, query) });

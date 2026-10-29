@@ -77,6 +77,8 @@ export interface BoardOptions {
   quota?: Quota;
   /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
+  /** Phase 13: the PR's checks turned to failing (automations' `ci_failed`); the names that failed. */
+  onChecksFailing?: (cardId: string, failed: string[]) => void;
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
