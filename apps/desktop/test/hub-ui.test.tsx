@@ -50,6 +50,9 @@ const group = (name: string) =>
     ...(screen.queryByRole("region", { name: `Projeto ${name}` })?.querySelectorAll("li") ?? []),
   ].map((li) => li.getAttribute("aria-label") ?? "");
 const item = (title: string) => screen.queryByRole("listitem", { name: title });
+/** The badge of a row: its first text with `label` (the summary line may repeat the word). */
+const badge = (title: string, label: string) =>
+  within(item(title) as HTMLElement).queryAllByText(label)[0];
 
 /** A row's menu, opened (Radix opens on pointer down). */
 async function openMenu(title: string) {
@@ -206,23 +209,15 @@ describe("hub-ui", () => {
     const ask = item("repo-ask") as HTMLElement;
     expect(ask.className).toContain("bg-status-needs-you/10");
     expect(ask.querySelector("svg[data-icon='needs-you']")).not.toBeNull();
-    expect(within(ask).queryByText("precisa de você")?.className).toContain(
-      "text-status-needs-you",
-    );
+    expect(badge("repo-ask", "precisa de você")?.className).toContain("text-status-needs-you");
     expect(within(ask).queryByText("alfa")).not.toBeNull();
     expect(item("repo-run")?.className).not.toContain("bg-status-needs-you/10");
-    expect(within(item("repo-run") as HTMLElement).queryByText("rodando")?.className).toContain(
-      "text-status-running",
-    );
-    expect(within(item("Gerenciada") as HTMLElement).queryByText("ociosa")?.className).toContain(
-      "text-status-idle",
-    );
+    expect(badge("repo-run", "rodando")?.className).toContain("text-status-running");
+    expect(badge("Gerenciada", "ociosa")?.className).toContain("text-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
     expect(item("Do histórico")?.textContent ?? "").toContain("histórico · 01/09/2026, 07:00");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
-    expect(
-      within(item("Do histórico") as HTMLElement).queryByText("encerrada")?.className,
-    ).toContain("text-status-ended");
+    expect(badge("Do histórico", "encerrada")?.className).toContain("text-status-ended");
   });
 
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {
