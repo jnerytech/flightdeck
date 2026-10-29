@@ -174,4 +174,31 @@ describe("resumo-lista", () => {
     expect(row("Gerenciada")).toContain("Pedido: corrija o build · ociosa há 12 min");
     expect(row("Do histórico")).toContain("Pedido: Do histórico");
   });
+
+  test("a linha da sessão gerenciada acompanha o estado ao vivo, sem esperar a lista", async () => {
+    const d = makeDaemon(cleanups);
+    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
+    await poll(() => d.manager.get(sessionId).status === "idle");
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts.every((h) => h.status === "online"));
+    const open = screen.queryByRole("button", { name: "Abrir Sessões" });
+    expect(open).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(open as HTMLElement);
+    });
+    await settle(() => row("Viva").includes("ociosa"));
+    expect(row("Viva")).toContain("ociosa");
+
+    // A new turn asks for Bash: the badge and the line say the same thing.
+    d.manager.send(sessionId, "[bash]");
+    await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
+    await settle(() => row("Viva").includes("precisa de você"));
+    expect(row("Viva")).toContain("precisa de você");
+    expect(row("Viva")).toContain("esperando aprovação de Bash");
+    expect(row("Viva")).not.toContain("ociosa");
+  });
 });
