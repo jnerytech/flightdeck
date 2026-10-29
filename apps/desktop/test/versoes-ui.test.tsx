@@ -40,9 +40,12 @@ function fakeDaemon(opts: { incompatible?: boolean; info?: Record<string, unknow
     websocket: {
       message(ws, raw) {
         const { id, type, payload } = JSON.parse(String(raw));
-        const ack = (data: unknown) => ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
-        const fail = (code: string, message: string) =>
+        const ack = (data: unknown) => {
+          ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
+        };
+        const fail = (code: string, message: string) => {
           ws.send(JSON.stringify({ type: "ack", id, ok: false, error: { code, message } }));
+        };
         if (type === "hello") {
           hellos.push(payload);
           if (opts.incompatible) {
