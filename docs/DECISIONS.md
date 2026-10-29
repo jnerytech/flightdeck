@@ -1015,6 +1015,7 @@ A primeira execução da CI no GitHub falhou nas duas pernas. Estas são as caus
   - em `paleta`: os helpers olham só dentro da paleta, a sessão do terminal entrou na lista e o board espera o nome do projeto.
 - **Ramos revelados pela cobertura** seguiram a regra 7: o banner do executor que falha, a sondagem da plataforma web, o link de pedido já respondido e o clique numa entrada da paleta.
 - **Pastas temporárias:** pelo `realTempDir` da área "plataforma", sobre a qual a trilha foi rebaseada no meio do trabalho (antes de abrir-terminal). A home do binário estável vem de `userHome(env)`.
+
 # Decisões e divergências da Fase 8, trilha A (custos)
 
 ## Uso por mensagem
@@ -1113,3 +1114,17 @@ A primeira execução da CI no GitHub falhou nas duas pernas. Estas são as caus
 - **Fixtures:** os transcripts de uso foram escritos à mão em `apps/daemon/test/fixtures/history/`, com `__CWD__` substituído na cópia.
   - `usage-main.jsonl` tem uma mensagem em três linhas, fast mode, cache de 5 min e de 1 h, uma mensagem sem a divisão do cache, um modelo sem preço e uma resposta `<synthetic>`.
   - `usage-subagent.jsonl` tem uma mensagem em duas linhas.
+
+## Rebase sobre a trilha B
+
+- **Paleta:** o App passa `costs={true}` ao `GlobalSearch`, e o destino `{ kind: "costs" }` abre a tela Custos. A ação só aparece quando algum host anuncia `costs`.
+- **Pastas temporárias:** os testes da trilha usam o `tempDir` dos helpers, que já é o `realTempDir` da área "plataforma". O `smoke:costs` passou a usar o `realTempDir` direto.
+- **Conflitos:** foram resolvidos mantendo os dois lados, com a trilha B primeiro.
+  - O fixture do desktop (terminal e os arquivos salvos).
+  - Os imports do store (bandeja e terminal).
+  - O `saveFile` ao lado do `terminal` na plataforma Tauri.
+  - O botão de terminal ao lado do custo na sessão.
+  - A linha de resumo ao lado do custo na tela Sessões.
+  - O `smoke:update` e o `smoke:costs` no `package.json` e na CI.
+  - O README e as decisões.
+- **Migrações:** a trilha B não acrescentou nenhuma. As da trilha A continuam no fim, na ordem: uso e offsets, orçamentos e alertas, amostras da cota.
