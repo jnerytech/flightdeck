@@ -1,4 +1,5 @@
 import { existsSync, unwatchFile, watchFile } from "node:fs";
+import { homedir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -71,6 +72,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { SshImporter } from "./ssh/import.ts";
 import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
@@ -506,6 +508,7 @@ export async function startDaemon(
     selfCommand: daemonCommand(process.execPath, Bun.main),
     settingsPath: claudeSettingsPath,
   });
+  const sshTargets = new SshTargets({ db: store.db });
   const server = startServer({
     manager,
     autoApprove,
@@ -521,7 +524,14 @@ export async function startDaemon(
     changes,
     review: new ReviewComments({ db: store.db, changes, manager, board, central }),
     sessionFiles: new SessionFiles({ db: store.db }),
-    ssh: new SshTargets({ db: store.db }),
+    ssh: sshTargets,
+    // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
+    sshImport: new SshImporter({
+      targets: sshTargets,
+      configPath: join(homedir(), ".ssh", "config"),
+      home: homedir(),
+      defaultUser: userInfo().username,
+    }),
     terminals,
     // Turned on or off from the app: kept in the config file, like the rest of the host settings.
     onTerminalSettings: (enabled) =>

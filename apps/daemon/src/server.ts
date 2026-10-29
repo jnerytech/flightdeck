@@ -61,6 +61,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
@@ -130,6 +131,8 @@ export interface ServerOptions {
   changes?: Changes;
   /** The ssh destinos behind `ssh.*` (phase 15). */
   ssh?: SshTargets;
+  /** The read-only import of `~/.ssh/config` behind `ssh.import.*` (phase 15). */
+  sshImport?: SshImporter;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -448,6 +451,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function ssh(): SshTargets {
     if (!opts.ssh) throw new FlightdeckError("invalid_state", "destinos ssh desativados");
     return opts.ssh;
+  }
+
+  function sshImport(): SshImporter {
+    if (!opts.sshImport) throw new FlightdeckError("invalid_state", "importar do ssh desativado");
+    return opts.sshImport;
   }
 
   function review(): ReviewComments {
@@ -993,6 +1001,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.remove":
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
+      case "ssh.import.preview":
+        return ok(command.type, sshImport().preview());
+      case "ssh.import.apply":
+        return ok(command.type, sshImport().apply(command.payload.aliases));
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });
       case "review.add":

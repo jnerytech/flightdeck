@@ -693,6 +693,25 @@ export const SshTarget = z.object({
 });
 export type SshTarget = z.infer<typeof SshTarget>;
 
+/** One name of `~/.ssh/config` the import would turn into a destino. */
+export const SshImportEntry = z.object({
+  alias: z.string(),
+  host: z.string(),
+  port: z.number().int(),
+  user: z.string(),
+  identityFile: z.string().nullable(),
+  proxyJump: z.string().nullable(),
+  /** A destino with this name, or with the same host, port and user, is already registered. */
+  exists: z.boolean(),
+});
+export type SshImportEntry = z.infer<typeof SshImportEntry>;
+
+export const SshImportResult = z.object({
+  created: z.array(SshTarget),
+  skipped: z.array(z.object({ alias: z.string(), reason: z.string() })),
+});
+export type SshImportResult = z.infer<typeof SshImportResult>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1518,6 +1537,10 @@ export const Command = z.discriminatedUnion("type", [
       .strict(),
   ),
   cmd("ssh.remove", z.object({ id: z.string(), confirm: z.boolean() }).strict()),
+  /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
+  cmd("ssh.import.preview", z.object({}).strict()),
+  /** Creates the chosen names; the ones it cannot create come back with the reason. */
+  cmd("ssh.import.apply", z.object({ aliases: z.array(z.string()).max(500) }).strict()),
   cmd("pr.comments", CardIdPayload),
   /** The data of `flightdeckd statusline`: quota windows, today's cost and the session's. */
   cmd("statusline.get", z.object({ claudeSessionId: z.string().optional() })),
@@ -1901,6 +1924,8 @@ export interface CommandResults {
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
+  "ssh.import.preview": { entries: SshImportEntry[] };
+  "ssh.import.apply": SshImportResult;
   "statusline.get": {
     windows: Array<{ window: string; utilization: number | null }>;
     todayUsd: number;
