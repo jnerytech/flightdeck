@@ -1,11 +1,15 @@
 import { useState } from "react";
-import type { Settings as SettingsState } from "../lib/app-store.ts";
+import type { AppState, AppStore, Settings as SettingsState } from "../lib/app-store.ts";
+import { hasFeature } from "../lib/version.ts";
+import { BudgetsSection } from "./BudgetsSection.tsx";
 
 /**
  * App preferences: close-to-tray (on by default), start with Windows (off by default) and the
  * global shortcut that opens the search (Ctrl+Alt+F by default).
  */
 export function Settings(props: {
+  store: AppStore;
+  state: AppState;
   settings: SettingsState;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
@@ -60,6 +64,18 @@ export function Settings(props: {
       </div>
       {settings.shortcutError && <small className="error">{settings.shortcutError}</small>}
       {shortcutOff && <small className="muted">atalho global indisponível nesta plataforma</small>}
+      {props.state.hosts
+        // Budgets came with the costs (phase 8).
+        .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
+        .map((h) => (
+          <BudgetsSection
+            key={h.id}
+            store={props.store}
+            hostId={h.id}
+            hostName={h.name}
+            budgets={props.state.budgets[h.id] ?? []}
+          />
+        ))}
     </section>
   );
 }

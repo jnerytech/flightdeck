@@ -1,4 +1,5 @@
 import { type AppState, needsYou, type PendingItem } from "../lib/app-store.ts";
+import { budgetAlerts } from "../lib/budgets.ts";
 import type { ConnectionStatus } from "../lib/host-connection.ts";
 import { basename } from "../lib/paths.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
@@ -27,9 +28,11 @@ export function Sidebar(props: {
   onOpenProjects(hostId: string): void;
   onOpenHub(): void;
   onOpenCosts(): void;
+  onOpenBudgets(): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
+  const alerts = budgetAlerts(state);
   return (
     <nav className="sidebar">
       <button
@@ -46,10 +49,17 @@ export function Sidebar(props: {
           Custos
         </button>
       )}
-      {queue.length > 0 && (
+      {queue.length + alerts.length > 0 && (
         <section className="needs-you">
-          <h3>Precisa de você ({queue.length})</h3>
+          <h3>Precisa de você ({queue.length + alerts.length})</h3>
           <ul>
+            {alerts.map((alert) => (
+              <li key={alert.label}>
+                <button type="button" onClick={props.onOpenBudgets}>
+                  {alert.label}
+                </button>
+              </li>
+            ))}
             {queue.map((item) => {
               const label = `${item.hostName} · ${item.sessionName}: ${item.toolName}`;
               return (

@@ -225,6 +225,8 @@ export function App({ store }: { store: AppStore }) {
   if (settingsOpen) {
     main = (
       <Settings
+        store={store}
+        state={state}
         settings={state.settings}
         onCloseToTray={(enabled) => void store.setCloseToTray(enabled)}
         onAutostart={(enabled) => void store.setAutostart(enabled)}
@@ -458,6 +460,14 @@ export function App({ store }: { store: AppStore }) {
           setSettingsOpen(false);
           setHostPage(null);
           setHubOpen(true);
+        }}
+        onOpenBudgets={() => {
+          closeBoard();
+          setReading(null);
+          setHistoryHost(null);
+          setAddingHost(false);
+          setHostPage(null);
+          setSettingsOpen(true);
         }}
         onOpenCosts={() => {
           closeBoard();

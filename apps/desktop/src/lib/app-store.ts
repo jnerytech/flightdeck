@@ -1,4 +1,7 @@
 import type {
+  Budget,
+  BudgetInput,
+  BudgetUpdated,
   Card,
   CommandPayload,
   CommandResults,
@@ -26,7 +29,8 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import type { Platform, TrayAction, TrayStatus } from "../platform/types.ts";
-import { localDay } from "./costs.ts";
+import { budgetLabel } from "./budgets.ts";
+import { localDay, usd } from "./costs.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -43,6 +47,7 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
+import { hasFeature } from "./version.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -91,6 +96,8 @@ export interface AppState {
   meta: Record<string, SessionMeta>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
+  /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
+  budgets: Record<string, Budget[]>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -346,6 +353,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      budgets: {},
       externals: {},
       externalRequests: {},
       meta: {},
@@ -937,6 +945,7 @@ export class AppStore {
       onExternal: (frame) => this.onExternal(config.id, frame),
       onRunUpdated: (run) => this.onRun(config.id, run),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
+      onBudgetUpdated: (update) => this.onBudget(config.id, update),
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
@@ -948,6 +957,7 @@ export class AppStore {
     conn.watchExternal();
     conn.watchRuns();
     conn.watchQuota();
+    conn.watchBudgets();
     conn.connect();
   }
 
@@ -998,6 +1008,10 @@ export class AppStore {
   private async loadHostInfo(hostId: string, conn: HostConnection): Promise<void> {
     const hostInfo = await conn.request("host.info", {}).catch(() => null);
     this.updateHost(hostId, (h) => ({ ...h, hostInfo }));
+    if (hasFeature(hostInfo?.features, "costs", false)) {
+      const list = await conn.request("budget.list", {}).catch(() => null);
+      if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
+    }
   }
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {
@@ -1074,6 +1088,36 @@ export class AppStore {
         body: `${host.name}: ${label} em ${percent}%`,
       });
     }
+  }
+
+  /** Creates a budget or changes the one with `input.id`; the list follows the answer. */
+  async setBudget(hostId: string, input: BudgetInput): Promise<void> {
+    const budget = await this.hostCommand(hostId, "budget.set", input);
+    if (budget) this.keepBudget(hostId, budget, false);
+  }
+
+  async removeBudget(hostId: string, budget: Budget): Promise<void> {
+    const removed = await this.hostCommand(hostId, "budget.remove", { id: budget.id });
+    if (removed !== null) this.keepBudget(hostId, budget, true);
+  }
+
+  /** A crossed threshold notifies (the daemon sends each one once per period). */
+  private onBudget(hostId: string, update: BudgetUpdated): void {
+    this.keepBudget(hostId, update.budget, update.removed);
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (update.threshold === null || !host) return;
+    void this.platform.notify({
+      title: "Orçamento",
+      body: `${host.name}: ${budgetLabel(update.budget)} em ${Math.round(update.threshold * 100)}% de ${usd(update.budget.limitUsd)}`,
+    });
+  }
+
+  private keepBudget(hostId: string, budget: Budget, removed: boolean): void {
+    const others = (this.state.budgets[hostId] ?? []).filter((b) => b.id !== budget.id);
+    const list = removed
+      ? others
+      : [...others, budget].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    this.update({ budgets: { ...this.state.budgets, [hostId]: list } });
   }
 
   private onRun(hostId: string, run: WorkflowRun): void {

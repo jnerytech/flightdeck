@@ -1,4 +1,5 @@
 import {
+  type BudgetUpdated,
   type Card,
   CLOSE_UNAUTHORIZED,
   type CommandPayload,
@@ -59,6 +60,8 @@ export interface HostConnectionOptions {
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
   onQuotaUpdated?(state: QuotaState): void;
+  /** A budget changed, crossed a threshold or entered a new period (after `watchBudgets`). */
+  onBudgetUpdated?(update: BudgetUpdated): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -94,6 +97,7 @@ export class HostConnection {
   private watchingExternal = false;
   private watchingRuns = false;
   private watchingQuota = false;
+  private watchingBudgets = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -121,6 +125,8 @@ export class HostConnection {
           // The runs still going come first, so open gates show up right away.
           if (this.watchingRuns) this.send("run.watch", {}).catch(ignore);
           if (this.watchingQuota) this.send("quota.watch", {}).catch(ignore);
+          // Daemons before phase 8 have no budgets: the error is ignored.
+          if (this.watchingBudgets) this.send("budget.watch", {}).catch(ignore);
           for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
         },
         (error: RequestError) => {
@@ -141,6 +147,7 @@ export class HostConnection {
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
       }
+      if (message.type === "budget.updated") return this.opts.onBudgetUpdated?.(message);
       if (message.type === "external.updated" || message.type === "external.permission") {
         return this.opts.onExternal?.(message);
       }
@@ -194,6 +201,11 @@ export class HostConnection {
   /** Streams external sessions and their requests from the next (re)connect on. */
   watchExternal(): void {
     this.watchingExternal = true;
+  }
+
+  /** Streams `budget.updated` from the next (re)connect on; call it before `connect`. */
+  watchBudgets(): void {
+    this.watchingBudgets = true;
   }
 
   /** Streams `quota.updated` from the next (re)connect on; call it before `connect`. */
