@@ -1,10 +1,12 @@
 /*
- * The only stylesheet: Tailwind CSS v4, shadcn/ui's tokens for both themes and the scales of the
- * spec (phase 10). Screens style themselves with utilities over these tokens; no per-screen rule
- * lives here.
+ * The only stylesheet: Tailwind CSS v4, shadcn/ui's tokens for both themes and the visual
+ * direction of phase 10 (Linear's: Inter, layered surfaces, one accent, status as a dot). Screens
+ * style themselves with utilities over these tokens; no per-screen rule lives here.
  */
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Inter, variable, bundled as local woff2 files (OFL): no network, and the CSP already allows it. */
+@import "@fontsource-variable/inter";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -28,6 +30,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -43,13 +46,13 @@
   --color-status-error: var(--status-error);
   --color-status-risk: var(--status-risk);
 
-  /* Radius: 6 and 10 px only. */
+  /* Radius: 8 px for controls, 12 px for panels (and 6 px for small chips). */
   --radius-sm: 6px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 10px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
 
-  /* Type: 12, 13, 14 (base), 16, 20 and 24 px. */
+  /* Type: 12, 13 (the base), 14, 16, 20 and 24 px; weights 400, 500 and 600. */
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
@@ -60,78 +63,88 @@
   /* Reading width; lists have none. */
   --container-reading: 72ch;
 
-  /* The system's own fonts (Segoe UI on Windows): the Tauri CSP allows no external one. */
-  --font-sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  /* Inter for the interface; the system's monospace for commands and code. */
+  --font-sans: "Inter Variable", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", monospace;
+
+  /* Motion: 120 to 180 ms, ease-out. */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* The app's background sits a step under the panels (neutral-50 against white). */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.2 0.01 270);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.01 270);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.52 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  /* Session states: text on the background, AA in both themes (checked by the tema test). */
+  --popover-foreground: oklch(0.2 0.01 270);
+  /* The single accent: the primary button, the focus ring and the active item. */
+  --brand: oklch(0.55 0.2 275);
+  --primary: var(--brand);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.003 270);
+  --secondary-foreground: oklch(0.2 0.01 270);
+  --muted: oklch(0.955 0.003 270);
+  --muted-foreground: oklch(0.5 0.01 270);
+  --accent: oklch(0.945 0.004 270);
+  --accent-foreground: oklch(0.2 0.01 270);
+  --destructive: oklch(0.55 0.22 27);
+  --border: oklch(0 0 0 / 8%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: var(--brand);
+  --sidebar: oklch(0.965 0.002 270);
+  --sidebar-foreground: oklch(0.2 0.01 270);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.93 0.004 270);
+  --sidebar-accent-foreground: oklch(0.2 0.01 270);
+  --sidebar-border: oklch(0 0 0 / 8%);
+  --sidebar-ring: var(--brand);
+  /* Session states, as a dot (8 px) and as text on the background, AA in both themes. */
   --status-running: oklch(0.5 0.16 255);
   --status-needs-you: oklch(0.52 0.15 55);
-  --status-idle: oklch(0.5 0.12 150);
-  --status-ended: oklch(0.52 0 0);
+  --status-idle: oklch(0.5 0.01 270);
+  --status-ended: oklch(0.54 0 0);
   --status-error: oklch(0.5 0.2 27);
   --status-risk: oklch(0.5 0.2 330);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* A deep gray, never pure black; panels a step above. */
+  --background: oklch(0.175 0.005 270);
+  --foreground: oklch(0.95 0.005 270);
+  --card: oklch(0.21 0.006 270);
+  --card-foreground: oklch(0.95 0.005 270);
+  --popover: oklch(0.235 0.006 270);
+  --popover-foreground: oklch(0.95 0.005 270);
+  --brand: oklch(0.68 0.17 275);
+  --primary: var(--brand);
+  --primary-foreground: oklch(0.16 0.01 270);
+  --secondary: oklch(0.27 0.006 270);
+  --secondary-foreground: oklch(0.95 0.005 270);
+  --muted: oklch(0.27 0.006 270);
+  --muted-foreground: oklch(0.7 0.01 270);
+  --accent: oklch(0.28 0.006 270);
+  --accent-foreground: oklch(0.95 0.005 270);
+  --destructive: oklch(0.7 0.19 22);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: var(--brand);
+  --sidebar: oklch(0.155 0.005 270);
+  --sidebar-foreground: oklch(0.95 0.005 270);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.16 0.01 270);
+  --sidebar-accent: oklch(0.25 0.006 270);
+  --sidebar-accent-foreground: oklch(0.95 0.005 270);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: var(--brand);
   --status-running: oklch(0.75 0.13 255);
   --status-needs-you: oklch(0.8 0.14 70);
-  --status-idle: oklch(0.78 0.13 150);
-  --status-ended: oklch(0.72 0 0);
+  --status-idle: oklch(0.72 0.01 270);
+  --status-ended: oklch(0.66 0 0);
   --status-error: oklch(0.72 0.17 25);
   --status-risk: oklch(0.74 0.17 330);
 }
@@ -146,7 +159,20 @@
   html:is(.dark) {
     color-scheme: dark;
   }
+  /* 13 px is the base step; the interface font is Inter. */
   body {
-    @apply bg-background font-sans text-base text-foreground antialiased;
+    @apply bg-background font-sans text-sm text-foreground antialiased;
+  }
+}
+
+/* Reduced motion: nothing animates for those who ask. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
