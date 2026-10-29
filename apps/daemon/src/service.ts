@@ -24,8 +24,14 @@ function requireAbsolute(command: string[]): void {
 const systemdQuote = (arg: string) =>
   /[\s"\\]/.test(arg) ? `"${arg.replace(/(["\\])/g, "\\$1")}"` : arg;
 
-/** User unit for `systemctl --user`, restarting forever five seconds after any exit. */
-export function systemdUnit(command: string[]): string {
+/** What the service passes after the daemon command: `start`, plus `--config` when given. */
+const startArgs = (config?: string | null) => ["start", ...(config ? ["--config", config] : [])];
+
+/**
+ * User unit for `systemctl --user`, restarting forever five seconds after any exit. `config`
+ * (absolute) is passed as `--config`; without it the daemon reads the default config.
+ */
+export function systemdUnit(command: string[], config?: string | null): string {
   requireAbsolute(command);
   return [
     "[Unit]",
@@ -35,7 +41,7 @@ export function systemdUnit(command: string[]): string {
     "",
     "[Service]",
     "Type=simple",
-    `ExecStart=${[...command, "start"].map(systemdQuote).join(" ")}`,
+    `ExecStart=${[...command, ...startArgs(config)].map(systemdQuote).join(" ")}`,
     "Restart=always",
     "RestartSec=5",
     "",
@@ -61,12 +67,13 @@ const windowsCommandLine = (command: string[]) =>
  */
 export function windowsTaskXml(
   command: string[],
-  options: { user: string; systemRoot: string },
+  options: { user: string; systemRoot: string; config?: string | null },
 ): string {
   requireAbsolute(command);
   const user = xmlEscape(options.user);
   const conhost = xmlEscape(`${options.systemRoot}\\System32\\conhost.exe`);
-  const args = xmlEscape(`--headless ${windowsCommandLine([...command, "start"])}`);
+  const line = windowsCommandLine([...command, ...startArgs(options.config)]);
+  const args = xmlEscape(`--headless ${line}`);
   return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -169,9 +176,9 @@ function requireSupported(ctx: ServiceContext): "linux" | "win32" {
 }
 
 /** Installs the user unit; enabling linger needs sudo, so it is only printed. */
-async function installSystemd(ctx: ServiceContext): Promise<ServiceResult> {
+async function installSystemd(ctx: ServiceContext, config?: string | null): Promise<ServiceResult> {
   const path = unitPath(ctx);
-  const unit = systemdUnit(ctx.command);
+  const unit = systemdUnit(ctx.command, config);
   if (ctx.dryRun) {
     return {
       output: [`# ${path}`, unit, "# comandos:", ...SYSTEMD_INSTALL.map(display)],
@@ -194,9 +201,9 @@ async function installSystemd(ctx: ServiceContext): Promise<ServiceResult> {
   };
 }
 
-async function installTask(ctx: ServiceContext): Promise<ServiceResult> {
+async function installTask(ctx: ServiceContext, config?: string | null): Promise<ServiceResult> {
   const xmlPath = taskXmlPath(ctx);
-  const xml = windowsTaskXml(ctx.command, { user: ctx.user, systemRoot: ctx.systemRoot });
+  const xml = windowsTaskXml(ctx.command, { user: ctx.user, systemRoot: ctx.systemRoot, config });
   const create = windowsTaskCreateArgs(xmlPath);
   if (ctx.dryRun) {
     return { output: [`# ${xmlPath}`, xml, "# comando:", display(create)], instructions: [] };
@@ -206,8 +213,12 @@ async function installTask(ctx: ServiceContext): Promise<ServiceResult> {
   return { output: [`tarefa ${TASK_NAME} criada para o logon de ${ctx.user}`], instructions: [] };
 }
 
-export async function installService(ctx: ServiceContext): Promise<ServiceResult> {
-  return requireSupported(ctx) === "linux" ? installSystemd(ctx) : installTask(ctx);
+/** Installs the service running `ctx.command start`, with `--config <config>` when given. */
+export async function installService(
+  ctx: ServiceContext,
+  config?: string | null,
+): Promise<ServiceResult> {
+  return requireSupported(ctx) === "linux" ? installSystemd(ctx, config) : installTask(ctx, config);
 }
 
 export async function uninstallService(ctx: ServiceContext): Promise<ServiceResult> {
@@ -232,7 +243,10 @@ export async function serviceStatus(ctx: ServiceContext): Promise<ServiceResult>
       ? ["systemctl", "--user", "is-active", "flightdeckd"]
       : windowsTaskQueryArgs();
   const { stdout } = await ctx.exec(cmd);
-  return { output: [stdout.trim() || "não instalado"], instructions: [] };
+  const output = [stdout.trim() || "não instalado"];
+  const installed = await serviceCommand(ctx);
+  if (installed) output.push(`config: ${installed.config ?? "padrão (~/.flightdeck/config.json)"}`);
+  return { output, instructions: [] };
 }
 
 /**
@@ -271,30 +285,54 @@ const xmlUnescape = (text: string) =>
     .replaceAll("&apos;", "'")
     .replaceAll("&amp;", "&");
 
-/** The first argument of a systemd command line, unquoted (`"a b" c` gives `a b`). */
-function firstArgument(line: string): string {
-  const quoted = /^"((?:[^"\\]|\\.)*)"/.exec(line);
-  if (quoted) return (quoted[1] as string).replace(/\\(["\\])/g, "$1");
-  return line.split(/\s/, 1)[0] as string;
+/** Arguments of a command line, unquoted; systemd escapes with `\`, Windows has no escapes. */
+function splitArgs(line: string, escapes: boolean): string[] {
+  const token = escapes ? /"((?:[^"\\]|\\.)*)"|(\S+)/g : /"([^"]*)"|(\S+)/g;
+  return [...line.matchAll(token)].map(([, quoted, plain]) =>
+    quoted === undefined
+      ? (plain as string)
+      : escapes
+        ? quoted.replace(/\\(["\\])/g, "$1")
+        : quoted,
+  );
+}
+
+/** What an installed service runs: the daemon command (before `start`) and its `--config`. */
+export interface ServiceCommand {
+  command: string[];
+  config: string | null;
+}
+
+function parseCommand(args: string[]): ServiceCommand {
+  const start = args.indexOf("start");
+  const rest = start < 0 ? [] : args.slice(start + 1);
+  const flag = rest.indexOf("--config");
+  return {
+    command: start < 0 ? args : args.slice(0, start),
+    config: flag < 0 ? null : (rest[flag + 1] ?? null),
+  };
 }
 
 /**
- * The executable the installed service runs, read back from the OS (`systemctl --user cat` or
+ * The command line of the installed service, read back from the OS (`systemctl --user cat` or
  * the task XML), or null without a service.
  */
-export async function serviceCommandPath(ctx: ServiceContext): Promise<string | null> {
+export async function serviceCommand(ctx: ServiceContext): Promise<ServiceCommand | null> {
   if (requireSupported(ctx) === "linux") {
     const { code, stdout } = await ctx.exec(["systemctl", "--user", "cat", "flightdeckd"]);
     const line = /^ExecStart=(.*)$/m.exec(stdout)?.[1];
-    return code === 0 && line ? firstArgument(line.trim()) : null;
+    return code === 0 && line ? parseCommand(splitArgs(line, true)) : null;
   }
   const { code, stdout } = await ctx.exec([...windowsTaskQueryArgs(), "/XML"]);
   const args = /<Arguments>([\s\S]*?)<\/Arguments>/.exec(stdout)?.[1];
   if (code !== 0 || !args) return null;
-  // Our task runs `conhost.exe --headless "<daemon>" ... start`; Windows command lines have no
-  // escapes, so the quoted executable ends at the next quote.
-  const line = xmlUnescape(args).replace(/^--headless\s+/, "");
-  return /^"([^"]*)"/.exec(line)?.[1] ?? (line.split(/\s/, 1)[0] as string);
+  // Our task runs `conhost.exe --headless "<daemon>" ... start [--config <file>]`.
+  return parseCommand(splitArgs(xmlUnescape(args), false).slice(1));
+}
+
+/** The executable the installed service runs, or null without a service. */
+export async function serviceCommandPath(ctx: ServiceContext): Promise<string | null> {
+  return (await serviceCommand(ctx))?.command[0] ?? null;
 }
 
 /** Stops the service; one that is not running is not an error (the caller waits for the lock). */

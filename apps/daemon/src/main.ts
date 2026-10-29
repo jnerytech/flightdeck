@@ -434,7 +434,8 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
       }));
     }
   }
-  printResult(deps, await installService(ctx));
+  // The service only gets --config when the user gave one, always as an absolute path.
+  printResult(deps, await installService(ctx, args.config ? resolve(args.config) : null));
 }
 
 /**
