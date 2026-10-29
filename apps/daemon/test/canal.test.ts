@@ -103,6 +103,22 @@ describe("canal", () => {
     expect(external.get("s1")?.controllable).toBe(false);
   });
 
+  test("o canal é só de ida: quem manda algo pelo receptor é desconectado", async () => {
+    const { receptor, external } = setup();
+    const ws = new WebSocket(`${receptor.url.replace("http", "ws")}/channel?launch=L1`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    } as unknown as string[]);
+    await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
+    expect(await poll(() => external.get("s1")?.controllable)).toBe(true);
+    const closed = new Promise<number>((resolve) =>
+      ws.addEventListener("close", (event) => resolve(event.code), { once: true }),
+    );
+    ws.send("olá daemon");
+    const code = await Promise.race([closed, Bun.sleep(1000).then(() => 0)]);
+    expect(code).toBe(1008);
+    expect(await poll(() => external.get("s1")?.controllable === false)).toBe(true);
+  });
+
   test("flightdeckd channel liga o servidor MCP ao transporte e sai quando o claude fecha", async () => {
     const { receptor, external } = setup();
     const { client, clientSide, serverSide } = await claude();
