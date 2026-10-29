@@ -218,4 +218,19 @@ describe("mudancas", () => {
     await poll(() => fake.watchers[1]?.closed === true);
     expect(fake.watchers[1]?.closed).toBe(true);
   });
+
+  test("sem watcher injetado, o fs.watch do cwd e o timer real avisam a mudança", async () => {
+    const { repo } = dirtyRepo();
+    const db = new EventStore(":memory:").db;
+    insertHistory(db, "h-1", repo);
+    const updates: number[] = [];
+    const stop = await new Changes({ db, debounceMs: 20 }).watch("session:h-1", (r) =>
+      updates.push(r.files.length),
+    );
+    cleanups.push(stop);
+    await Bun.sleep(100);
+    writeFileSync(join(repo, "outro.txt"), "x");
+    await poll(() => updates.includes(4), 5000);
+    expect(updates).toContain(4);
+  });
 });
