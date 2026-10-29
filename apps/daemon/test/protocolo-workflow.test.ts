@@ -146,6 +146,22 @@ describe("protocolo-workflow", () => {
     expect(snapshot).toMatchObject({ cardId: card.id, status: "waiting" });
   });
 
+  test("um watcher que lança não quebra a execução nem os outros watchers", async () => {
+    const { board, start, runWhen } = await serve("steps:\n  - id: a\n    agent: { prompt: a }\n");
+    const seen: string[] = [];
+    board.workflows.watch(() => {
+      throw new Error("watcher quebrado");
+    });
+    board.workflows.watch((run) => seen.push(run.status));
+    const started = await start().then(
+      () => "ok",
+      (error: Error) => error.message,
+    );
+    expect(started).toBe("ok");
+    expect((await runWhen((r) => r.endedAt !== null))?.status).toBe("completed");
+    expect(seen.at(-1)).toBe("completed");
+  });
+
   test("erros: execução inexistente, gate fechado e payload inválido", async () => {
     const { connect, start, runWhen } = await serve();
     const client = await connect();
