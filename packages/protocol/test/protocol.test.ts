@@ -3,6 +3,7 @@ import {
   Command,
   type CommandType,
   EventEnvelope,
+  Project,
   ServerMessage,
   SessionEvent,
 } from "../src/index.ts";
@@ -202,6 +203,23 @@ const validEvents: SessionEvent[] = [
 ];
 
 describe("protocolo", () => {
+  test("projeto de um daemon anterior à fase 13 ganha a aprovação automática desligada", () => {
+    const old = {
+      id: "p1",
+      path: "/r",
+      name: "r",
+      baseBranch: "main",
+      prProvider: "none",
+      setupScript: null,
+      promptTemplate: "",
+    };
+    expect(Project.safeParse(old).data?.autoApprove).toEqual({
+      enabled: false,
+      model: "claude-haiku-5-5",
+      lowWithoutAi: true,
+    });
+  });
+
   test.each(Object.entries(validCommands))("comando %s válido passa no schema", (type, payload) => {
     expect(Command.safeParse({ id: "1", type, payload }).success).toBe(true);
   });

@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "node:path";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ExternalPermissions } from "../src/central/external-permissions.ts";
 import { UsageIndexer } from "../src/costs/usage-indexer.ts";
+import { runCli } from "../src/main.ts";
 import {
   type AutoApproveRequest,
   AutoApprover,
@@ -11,12 +13,13 @@ import {
   historyExcludes,
 } from "../src/permissions/auto-approve.ts";
 import { RiskClassifier, type RiskLevel } from "../src/permissions/risk.ts";
+import { localDay } from "../src/quota/usage.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { JudgeOptions, JudgeResult } from "../src/runtime/types.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { newBoard } from "./board-helpers.ts";
+import { cardWhen, gitRepo, newBoard } from "./board-helpers.ts";
 import { newManager, poll, record, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
@@ -239,6 +242,51 @@ describe("auto-aprovacao", () => {
     });
   });
 
+  test("consulta pelo SDK: o sinal aborta a consulta; terminar sem resultado é pergunta", async () => {
+    const seen: Options[] = [];
+    const runtime = new ClaudeSdkRuntime({
+      query: ({ options }) => {
+        seen.push(options);
+        return {
+          async *[Symbol.asyncIterator]() {},
+          interrupt: async () => {},
+          close: () => {},
+        } as QueryHandle;
+      },
+    });
+    const controller = new AbortController();
+    const judged = await runtime.judgePermission({
+      model: "m",
+      prompt: "p",
+      cwd: tempDir(),
+      signal: controller.signal,
+    });
+    expect(judged).toEqual({ decision: "ask", reason: "a consulta terminou sem resultado" });
+    expect(seen[0]?.abortController?.signal.aborted).toBe(false);
+    controller.abort();
+    expect(seen[0]?.abortController?.signal.aborted).toBe(true);
+  });
+
+  test("o projeto de uma pasta: o repositório, a worktree de um card (com o card) ou nenhum", async () => {
+    const { board, repo, manager } = newBoard();
+    cleanups.push(() => board.stop());
+    const project = await board.addProject({ path: repo, promptTemplate: "" });
+    const card = board.createCard(project.id, { title: "Login", description: "corrigir o login" });
+    await board.startCard(card.id);
+    const started = await cardWhen(board, card.id, (c) => c.column === "review");
+    const worktree = started?.worktreePath ?? "";
+    expect(board.projectForCwd(join(worktree, "src"))).toMatchObject({
+      project: { id: project.id },
+      card: { id: card.id, description: "corrigir o login" },
+    });
+    expect(board.projectForCwd(join(repo, "src"))).toMatchObject({
+      project: { id: project.id },
+      card: null,
+    });
+    expect(board.projectForCwd(tempDir())).toBeNull();
+    await poll(() => manager.get(started?.sessionId ?? "").status === "idle", 3000);
+  });
+
   test("o cwd da consulta fica fora do histórico", () => {
     expect(
       historyExcludes({ dataDir: "/d", history: { excludeCwds: ["/x"] } }).map((p) =>
@@ -363,6 +411,74 @@ describe("auto-aprovacao", () => {
       auto: { by: "ai", reason: "claramente seguro" },
     });
   });
+
+  test("protocolo: daemon sem a aprovação automática responde invalid_state", async () => {
+    const { manager } = newManager();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    expect(await client.request("autoapprove.list", {})).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+  });
+
+  test("flightdeckd start: num projeto com a aprovação automática, o pedido medium passa pela IA falsa e a consulta entra nos custos", async () => {
+    const { repo } = gitRepo();
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    const token = "auto-start-token-0123456789ab";
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        allowedRoots: [dirname(repo)],
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const client = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => client.close());
+    await client.request("hello", { token, client: "t" });
+    const project = await client.data<{ id: string }>("project.add", { path: repo });
+    await client.data("project.update", {
+      projectId: project?.id,
+      autoApprove: { enabled: true },
+    });
+    await client.data("session.create", { cwd: repo, prompt: "[bash]" });
+    let decisions: Array<{ decision: string; by: string }> = [];
+    const deadline = Date.now() + 5000;
+    while (decisions.length === 0 && Date.now() < deadline) {
+      decisions =
+        (await client.data<{ decisions: typeof decisions }>("autoapprove.list", {}))?.decisions ??
+        [];
+      if (decisions.length === 0) await Bun.sleep(50);
+    }
+    expect(decisions).toMatchObject([{ decision: "allow", by: "ai" }]);
+    const today = localDay(Date.now());
+    const summary = await client.data<{ byOrigin: Array<{ origin: string }> }>("costs.summary", {
+      from: today,
+      to: today,
+    });
+    expect(summary?.byOrigin.map((o) => o.origin)).toContain("auto-approve");
+  }, 20_000);
 
   test("protocolo: a config do projeto, autoapprove.list e autoapprove.resume", async () => {
     const { board, manager, repo } = newBoard();
