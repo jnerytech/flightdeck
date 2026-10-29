@@ -93,7 +93,13 @@ const validCommands: Record<CommandType, unknown> = {
   "costs.run": { runId: "r" },
   "costs.export": { from: "2026-10-01", to: "2026-10-01", projectKey: "p" },
   "budget.list": {},
-  "budget.set": { scope: "project", projectKey: "p", period: "month", limitUsd: 50, action: "queue" },
+  "budget.set": {
+    scope: "project",
+    projectKey: "p",
+    period: "month",
+    limitUsd: 50,
+    action: "queue",
+  },
   "budget.remove": { id: "b" },
   "budget.watch": {},
 };
