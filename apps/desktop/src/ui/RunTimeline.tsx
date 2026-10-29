@@ -59,6 +59,8 @@ function GateCard(props: {
  */
 export function RunTimeline(props: {
   run: WorkflowRun;
+  /** HH:MM of an instant (the quota's reset). */
+  formatTime(iso: string): string;
   onOpenStep(step: StepRun): void;
   onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
 }) {
@@ -66,7 +68,11 @@ export function RunTimeline(props: {
   return (
     <section aria-label="Execução do workflow" className="run">
       <h3>{`Workflow ${run.workflowName} · ${RUN_LABELS[run.status]}`}</h3>
-      {run.statusReason && <p className="notice">{run.statusReason}</p>}
+      {run.quotaUntil ? (
+        <p className="notice">{`aguardando cota até ${props.formatTime(run.quotaUntil)}`}</p>
+      ) : (
+        run.statusReason && <p className="notice">{run.statusReason}</p>
+      )}
       <BudgetMeter run={run} />
       <ol aria-label="Etapas">
         {run.steps.map((step) => {

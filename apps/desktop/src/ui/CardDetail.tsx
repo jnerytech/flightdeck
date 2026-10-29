@@ -231,6 +231,7 @@ export function CardDetail(props: {
       {run && (
         <RunTimeline
           run={run}
+          formatTime={(iso) => store.formatTime(iso)}
           onOpenStep={openStep}
           onRespond={(step, decision, note) =>
             void store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
