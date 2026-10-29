@@ -137,6 +137,8 @@ class FakeRun implements AgentRun {
     ]) {
       const git = Bun.spawnSync([whichOnPath("git") ?? "git", ...args], {
         cwd: this.opts.cwd,
+        // The daemon's current environment, not the one it started with (see board/command.ts).
+        env: process.env,
         stdout: "ignore",
         stderr: "pipe",
       });
