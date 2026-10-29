@@ -13,6 +13,7 @@ import type { BoardEvent } from "../board/columns.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
+import { addTurn, noSpending, overBudget, type RunSpending } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
 import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./interpolate.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
@@ -43,6 +44,8 @@ export interface WorkflowEngineOptions {
   manager: SessionManager;
   host: EngineHost;
   checks: CheckRunner;
+  /** Milliseconds now: the budget's minutes. */
+  clock: () => number;
 }
 
 interface RunRow {
@@ -111,6 +114,7 @@ export class WorkflowEngine {
   private readonly manager: SessionManager;
   private readonly host: EngineHost;
   private readonly checks: CheckRunner;
+  private readonly clock: () => number;
   /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
   private readonly gates = new Map<string, () => void>();
 
@@ -119,6 +123,7 @@ export class WorkflowEngine {
     this.manager = opts.manager;
     this.host = opts.host;
     this.checks = opts.checks;
+    this.clock = opts.clock;
   }
 
   async list(project: Project): Promise<WorkflowInfo[]> {
@@ -188,7 +193,7 @@ export class WorkflowEngine {
         source.hash,
         source.source,
         JSON.stringify(workflow.budget),
-        JSON.stringify({ turns: 0, minutes: 0, costUsd: 0 }),
+        JSON.stringify(noSpending()),
         JSON.stringify(inputs),
         now(),
       );
@@ -287,7 +292,9 @@ export class WorkflowEngine {
       status: row.status,
       statusReason: row.status_reason,
       budget: JSON.parse(row.budget),
-      usage: JSON.parse(row.usage),
+      usage: (({ turns, minutes, costUsd }: RunSpending) => ({ turns, minutes, costUsd }))(
+        JSON.parse(row.usage),
+      ),
       inputs: JSON.parse(row.inputs),
       startedAt: row.started_at,
       endedAt: row.ended_at,
@@ -528,6 +535,9 @@ export class WorkflowEngine {
     action: AgentAction,
     context: InterpolationContext,
   ): Promise<string> {
+    // Checked before every turn: a run over its budget pauses instead of spending more.
+    const over = overBudget(JSON.parse(run.budget), JSON.parse(this.row(run.id).usage));
+    if (over) throw new Stop("paused", over);
     const prompt = interpolate(action.prompt, context);
     const target = action.continue
       ? (this.stepRow(run.id, action.continue, 1)?.session_id ?? null)
@@ -558,8 +568,10 @@ export class WorkflowEngine {
     prompt: string,
     action: { permissionMode?: PermissionMode },
   ): Promise<string> {
+    const started = this.clock();
     if (target) {
-      const done = this.awaitTurn(run.card_id, target, this.manager.get(target).lastSeq);
+      const since = this.manager.get(target).lastSeq;
+      const done = this.awaitTurn(run, target, since, started);
       this.manager.send(target, prompt);
       return done;
     }
@@ -573,14 +585,20 @@ export class WorkflowEngine {
     this.db
       .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(sessionId, run.id, stepId, attempt);
-    return this.awaitTurn(run.card_id, sessionId, 0);
+    return this.awaitTurn(run, sessionId, 0, started);
   }
 
   /**
    * Resolves with the assistant text of the next turn of `sessionId` (events after `since`):
-   * the text blocks of every message of the turn, in order. Session statuses move the card.
+   * the text blocks of every message of the turn, in order. Session statuses move the card;
+   * the turn goes into the run's spending.
    */
-  private awaitTurn(cardId: string, sessionId: string, since: number): Promise<string> {
+  private awaitTurn(
+    run: RunRow,
+    sessionId: string,
+    since: number,
+    started: number,
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const texts: string[] = [];
       let settled = false;
@@ -592,10 +610,15 @@ export class WorkflowEngine {
       const onEvent = (event: SessionEvent) => {
         if (settled) return;
         if (event.type === "session.status") {
-          this.host.place(cardId, { type: "session", status: event.status });
+          this.host.place(run.card_id, { type: "session", status: event.status });
         } else if (event.type === "message.assistant") {
           for (const block of event.blocks) if (block.type === "text") texts.push(block.text);
         } else if (event.type === "turn.result") {
+          this.spend(run.id, {
+            sessionId,
+            costUsd: event.costUsd,
+            minutes: (this.clock() - started) / 60_000,
+          });
           settle(() =>
             event.isError
               ? reject(new Error(`turno terminou com erro (${event.subtype})`))
@@ -624,6 +647,13 @@ export class WorkflowEngine {
         "SELECT * FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?",
       )
       .get(runId, stepId, attempt);
+  }
+
+  private spend(runId: string, turn: Parameters<typeof addTurn>[1]): void {
+    const spending = addTurn(JSON.parse(this.row(runId).usage), turn);
+    this.db
+      .query("UPDATE workflow_runs SET usage = ? WHERE id = ?")
+      .run(JSON.stringify(spending), runId);
   }
 
   private endStep(

@@ -50,6 +50,8 @@ export interface BoardOptions {
   onSettingsChange?: (settings: { maxParallelRuns: number }) => void;
   /** Runs workflow `check` commands; the real shell runner when absent. */
   checks?: CheckRunner;
+  /** Milliseconds now, for the workflow budget's minutes; `Date.now` when absent. */
+  clock?: () => number;
 }
 
 interface ProjectRow {
@@ -149,6 +151,7 @@ export class Board {
         card: (cardId) => this.getCard(cardId),
       },
       checks: opts.checks ?? shellCheckRunner(),
+      clock: opts.clock ?? Date.now,
     });
     this.limit = opts.maxParallelRuns ?? 2;
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
