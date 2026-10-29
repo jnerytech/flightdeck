@@ -81,24 +81,33 @@ function untrackedFile(worktree: string, path: string): DiffFile {
   };
 }
 
+/** Git's empty tree: what a repository without commits is compared with. */
+const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+/** Uncommitted tracked changes against `HEAD` (the empty tree before the first commit), then untracked files. */
+export async function workingDiff(root: string): Promise<DiffFile[]> {
+  const head = await git(root, "rev-parse", "--verify", "--quiet", "HEAD");
+  const against = head.code === 0 ? "HEAD" : EMPTY_TREE;
+  const pending = must(await git(root, ...DIFF, against), "git diff");
+  const others = must(
+    await git(root, ...RAW_PATHS, "ls-files", "--others", "--exclude-standard", "-z"),
+    "git ls-files",
+  );
+  const untracked = others.stdout.split("\0").filter(Boolean);
+  return [
+    ...parseUnifiedDiff(pending.stdout, true),
+    ...untracked.map((path) => untrackedFile(root, path)),
+  ];
+}
+
 /**
  * What the card changed: commits since the base (`<base>...HEAD`, so later moves of the base
  * stay out), then uncommitted tracked changes, then untracked files.
  */
 export async function cardDiff(worktree: string, base: string): Promise<CardDiff> {
   const committed = must(await git(worktree, ...DIFF, `${base}...HEAD`), "git diff");
-  const pending = must(await git(worktree, ...DIFF, "HEAD"), "git diff");
-  const others = must(
-    await git(worktree, ...RAW_PATHS, "ls-files", "--others", "--exclude-standard", "-z"),
-    "git ls-files",
-  );
-  const untracked = others.stdout.split("\0").filter(Boolean);
   return {
     base,
-    files: [
-      ...parseUnifiedDiff(committed.stdout, false),
-      ...parseUnifiedDiff(pending.stdout, true),
-      ...untracked.map((path) => untrackedFile(worktree, path)),
-    ],
+    files: [...parseUnifiedDiff(committed.stdout, false), ...(await workingDiff(worktree))],
   };
 }

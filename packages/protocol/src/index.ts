@@ -407,6 +407,22 @@ export type DiffFile = z.infer<typeof DiffFile>;
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
 
+// Phase 11: review of the changes of any session or card.
+/** `session:<claudeSessionId>` or `card:<id>`. */
+export const ReviewTarget = z
+  .string()
+  .regex(/^(session|card):.+$/, "alvo session:<id> ou card:<id>");
+
+export const ChangesResult = z.object({
+  target: z.string(),
+  /** The repository's top level (the card's worktree). */
+  root: z.string(),
+  /** The card's base branch; `null` for a session, whose diff is against `HEAD`. */
+  base: z.string().nullable(),
+  files: z.array(DiffFile),
+});
+export type ChangesResult = z.infer<typeof ChangesResult>;
+
 // Phase 6: workflows declared in `.flightdeck/workflows/<name>.yaml` on the base branch.
 export const WorkflowInfo = z.object({
   /** The file name without `.yaml`. */
@@ -903,6 +919,10 @@ export const Command = z.discriminatedUnion("type", [
     "quota.history",
     z.object({ window: z.string().min(1), hours: z.number().int().min(1).max(720) }),
   ),
+  cmd("changes.get", z.object({ target: ReviewTarget })),
+  /** `changes.updated` after each change on disk (500 ms debounce), until `changes.unwatch`. */
+  cmd("changes.watch", z.object({ target: ReviewTarget })),
+  cmd("changes.unwatch", z.object({ target: ReviewTarget })),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -1155,6 +1175,9 @@ export interface CommandResults {
   "budget.remove": undefined;
   "budget.watch": undefined;
   "quota.history": QuotaHistory;
+  "changes.get": ChangesResult;
+  "changes.watch": undefined;
+  "changes.unwatch": undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1268,6 +1291,13 @@ export const BudgetUpdated = z.object({
 });
 export type BudgetUpdated = z.infer<typeof BudgetUpdated>;
 
+/** Sent after `changes.watch`: the target's diff after a change on disk. */
+export const ChangesUpdated = z.object({
+  type: z.literal("changes.updated"),
+  ...ChangesResult.shape,
+});
+export type ChangesUpdated = z.infer<typeof ChangesUpdated>;
+
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -1280,6 +1310,7 @@ export const ServerMessage = z.union([
   RunUpdated,
   QuotaUpdated,
   BudgetUpdated,
+  ChangesUpdated,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 

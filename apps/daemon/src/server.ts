@@ -3,6 +3,7 @@ import {
   type Ack,
   type BudgetUpdated,
   type CardUpdated,
+  type ChangesUpdated,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
   Command,
@@ -41,6 +42,7 @@ import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
+import type { Changes } from "./review/changes.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
@@ -89,6 +91,8 @@ export interface ServerOptions {
   budgets?: Budgets;
   /** The quota's samples behind `quota.history` (phase 8). */
   quotaHistory?: QuotaHistory;
+  /** The diff of sessions and cards behind `changes.*` (phase 11). */
+  changes?: Changes;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -122,6 +126,8 @@ interface Connection {
   unwatchQuota?: () => void;
   /** Stops the `budget.watch` stream, when active. */
   unwatchBudgets?: () => void;
+  /** Stops each `changes.watch`, by target. */
+  changeWatchers: Map<string, () => void>;
   lastRttMs?: number;
 }
 
@@ -144,7 +150,8 @@ type Outgoing =
   | ExternalPermissionFrame
   | RunUpdated
   | QuotaUpdated
-  | BudgetUpdated;
+  | BudgetUpdated
+  | ChangesUpdated;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -192,6 +199,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Project rules live in the board's projects.
     ...(opts.board ? ["rules"] : []),
     ...(opts.costs ? ["costs"] : []),
+    ...(opts.changes ? ["review"] : []),
   ];
   let pingSeq = 0;
 
@@ -336,6 +344,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function quotaHistory(): QuotaHistory {
     if (!opts.quotaHistory) throw new FlightdeckError("invalid_state", "sem histórico da cota");
     return opts.quotaHistory;
+  }
+
+  function changes(): Changes {
+    if (!opts.changes) throw new FlightdeckError("invalid_state", "revisão de mudanças desativada");
+    return opts.changes;
   }
 
   function board(): Board {
@@ -629,6 +642,21 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "changes.get":
+        return ok(command.type, await changes().get(command.payload.target));
+      case "changes.watch": {
+        const { target } = command.payload;
+        const stop = await changes().watch(target, (result) =>
+          send(ws, { type: "changes.updated", ...result }),
+        );
+        ws.data.changeWatchers.get(target)?.();
+        ws.data.changeWatchers.set(target, stop);
+        return ok(command.type);
+      }
+      case "changes.unwatch":
+        ws.data.changeWatchers.get(command.payload.target)?.();
+        ws.data.changeWatchers.delete(command.payload.target);
+        return ok(command.type);
       case "quota.history":
         return ok(
           command.type,
@@ -713,7 +741,12 @@ export function startServer(opts: ServerOptions): RunningServer {
       const url = new URL(req.url);
       if (url.pathname === WS_PATH) {
         const upgraded = srv.upgrade(req, {
-          data: { authed: false, subscriptions: new Map(), pendingPings: new Map() },
+          data: {
+            authed: false,
+            subscriptions: new Map(),
+            pendingPings: new Map(),
+            changeWatchers: new Map(),
+          },
         });
         if (upgraded) return undefined;
         return new Response("WebSocket esperado", { status: 426 });
@@ -744,6 +777,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchRuns?.();
         ws.data.unwatchQuota?.();
         ws.data.unwatchBudgets?.();
+        for (const stop of ws.data.changeWatchers.values()) stop();
+        ws.data.changeWatchers.clear();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

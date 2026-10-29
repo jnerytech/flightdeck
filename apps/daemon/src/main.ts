@@ -41,6 +41,7 @@ import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
+import { Changes } from "./review/changes.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -381,6 +382,8 @@ export async function startDaemon(
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
+  // The diff of every session and card, for the review (phase 11).
+  const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
   // Retention at boot and every 24 h (backups join it in the same daily pass).
   const maintenance = new Maintenance({
     db: store.db,
@@ -424,6 +427,7 @@ export async function startDaemon(
     costs,
     budgets,
     quotaHistory,
+    changes,
     central,
     maintenance,
     ...(updates ? { updates } : {}),
