@@ -218,4 +218,21 @@ describe("navegacao", () => {
     await poll(() => d.board.getCard(second.id).runs.length > 0, 8000);
     expect(d.board.getCard(second.id).runs.length).toBe(1);
   });
+
+  test("remover o host da tela aberta (nova sessão nele) volta para o hub em vez de uma tela vazia", async () => {
+    const alfa = makeDaemon(cleanups);
+    const beta = makeDaemon(cleanups);
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
+      await store.addHost({ name: "beta", url: beta.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts.every((h) => h.status === "online"));
+    await click("Nova sessão em beta");
+    expect(heading("Nova sessão em beta")).toBe(true);
+    await click("Remover beta");
+    expect(store.getState().hosts.map((h) => h.name)).toEqual(["alfa"]);
+    expect(heading("Sessões")).toBe(true);
+  });
 });
