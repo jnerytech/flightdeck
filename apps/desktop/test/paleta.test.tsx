@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
@@ -93,6 +94,15 @@ async function setup() {
     }),
   ]);
   d.history.scan();
+  // A session opened in the terminal (hooks), live.
+  const appA = join(d.root, "app-a");
+  mkdirSync(appA);
+  d.central.hooksInstall(true);
+  await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+    body: JSON.stringify({ session_id: "ext-1", hook_event_name: "SessionStart", cwd: appA }),
+  });
 
   const opened: Array<[string, string[]]> = [];
   const mem = memoryPlatform();
@@ -112,7 +122,8 @@ async function setup() {
     () =>
       store.getState().hosts[0]?.status === "online" &&
       store.getState().terminalEnv !== null &&
-      (store.getState().hosts[0]?.sessions.length ?? 0) > 0,
+      (store.getState().hosts[0]?.sessions.length ?? 0) > 0 &&
+      Object.keys(store.getState().externals).length > 0,
   );
   return { d, store, repo, opened };
 }
@@ -125,6 +136,7 @@ describe("paleta", () => {
     expect(sections()).toEqual(["Sessões ao vivo", "Cards", "Projetos", "Hosts", "Ações"]);
     expect(options()).toEqual([
       "Gerenciada",
+      "app-a",
       "Ajuste",
       "flamingo",
       "alfa",
@@ -203,6 +215,18 @@ describe("paleta", () => {
 
     await choose("alfa", "Enter");
     expect(screen.queryByRole("region", { name: "Hooks do Claude Code" })).not.toBeNull();
+
+    await choose("flamingo", "Tab", "ArrowDown", "Enter");
+    expect(screen.queryByRole("heading", { name: "Workflows de flamingo" })).not.toBeNull();
+
+    await choose("alfa", "Tab", "ArrowDown", "ArrowDown", "Enter");
+    expect(screen.queryByRole("heading", { name: "Projetos de alfa" })).not.toBeNull();
+
+    await choose("alfa", "Tab", "ArrowDown", "Enter");
+    expect(screen.queryByRole("heading", { name: "Nova sessão em alfa" })).not.toBeNull();
+
+    await choose("app-a", "Enter");
+    expect(screen.queryByRole("heading", { name: "app-a" })).not.toBeNull();
 
     // Tab again (or Esc) leaves the actions for the list.
     await choose("Gerenciada", "Tab");
