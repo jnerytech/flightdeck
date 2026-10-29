@@ -1,0 +1,26 @@
+name: feature
+inputs: [task]
+budget: { maxTurns: 80, maxMinutes: 120, maxCostUsd: 15 }
+steps:
+  - id: plan
+    agent:
+      prompt: "Planeje a implementação de: {{inputs.task}}. Responda só com o plano."
+      permissionMode: plan
+  - id: approve-plan
+    gate: { message: "Aprovar o plano?", show: "{{steps.plan.output}}" }
+  - id: implement
+    agent: { prompt: "Implemente este plano e faça commits:\n{{steps.plan.output}}" }
+  - id: tests
+    loop:
+      max: 3
+      until: { check: "bun test" }
+      do:
+        agent: { continue: implement, prompt: "Os testes falharam:\n{{loop.lastCheck.output}}\nCorrija." }
+  - id: review
+    parallel:
+      - agent: { prompt: "Revise o diff com foco em segurança." }
+      - agent: { prompt: "Revise o diff com foco em legibilidade." }
+  - id: apply-review
+    agent: { continue: implement, prompt: "Aplique o que fizer sentido destas revisões:\n{{steps.review.outputs}}" }
+  - id: pr
+    pr: {}
