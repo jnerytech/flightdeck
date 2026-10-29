@@ -185,7 +185,7 @@ describe("ClaudeSdkRuntime", () => {
     expect(options.includePartialMessages).toBe(true);
     expect(options.settingSources).toEqual(["user", "project", "local"]);
     expect(options.systemPrompt).toEqual({ type: "preset", preset: "claude_code" });
-    expect(options.env).toEqual({ PATH: "/bin" });
+    expect(options.env).toEqual({ PATH: "/bin", FLIGHTDECK_MANAGED: "1" });
     expect(options.pathToClaudeCodeExecutable).toBe("/bin/claude");
 
     const signal = new AbortController().signal;
