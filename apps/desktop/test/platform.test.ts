@@ -178,9 +178,9 @@ describe("platform", () => {
     const platform = createWebPlatform(win);
     await platform.notify({ title: "pc: esperando você", body: "Permitir Bash?" });
     expect(notifications).toEqual([{ title: "pc: esperando você", body: "Permitir Bash?" }]);
-    await platform.setTrayStatus({ count: 3, tooltip: "3 pedidos" });
+    await platform.setTrayStatus({ count: 3, label: "Precisa de você (3)", tooltip: "3 pedidos" });
     expect(win.document.title).toBe("(3) Flightdeck");
-    await platform.setTrayStatus({ count: 0, tooltip: "" });
+    await platform.setTrayStatus({ count: 0, label: "Precisa de você (0)", tooltip: "" });
     expect(win.document.title).toBe("Flightdeck");
 
     const denied = fakeWindow();
@@ -214,14 +214,14 @@ describe("platform", () => {
     expect(await platform.secrets.get("h1")).toBe("segredo");
     await platform.secrets.set("h1", "novo");
     await platform.secrets.delete("h1");
-    await platform.setTrayStatus({ count: 2, tooltip: "2 pedidos" });
+    await platform.setTrayStatus({ count: 2, label: "Precisa de você (2)", tooltip: "2 pedidos" });
     await platform.setCloseToTray(true);
     await platform.openExternal("https://example.com");
     expect(invokes).toEqual([
       ["token_get", { hostId: "h1" }],
       ["token_set", { hostId: "h1", token: "novo" }],
       ["token_delete", { hostId: "h1" }],
-      ["tray_set_status", { count: 2, tooltip: "2 pedidos" }],
+      ["tray_set_status", { count: 2, label: "Precisa de você (2)", tooltip: "2 pedidos" }],
       ["set_close_to_tray", { enabled: true }],
     ]);
     expect(opened).toEqual(["https://example.com"]);
