@@ -179,6 +179,37 @@ describe("cota", () => {
     expect(time.pending.filter((t) => !t.cleared)).toHaveLength(0);
   });
 
+  test("janela que reinicia em mais de 24,8 dias não estoura o timer de 32 bits", () => {
+    const time = manualTime();
+    const quota = new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers });
+    const resetsAt = time.now() + 40 * 86_400_000;
+    quota.record([{ window: "monthly", utilization: 0.1, status: "allowed", resetsAt }]);
+    const armed = time.pending.filter((t) => !t.cleared).map((t) => t.at - time.now());
+    expect(armed).toHaveLength(1);
+    expect(armed[0] ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(2 ** 31 - 1);
+    // When that early timer fires, the reading is still valid and the timer is armed again.
+    time.advance(2 ** 31 - 1);
+    expect(quota.windows().map((w) => w.window)).toEqual(["monthly"]);
+    expect(time.pending.filter((t) => !t.cleared)).toHaveLength(1);
+    quota.stop();
+  });
+
+  test("um timer que dispara atrasado (host dormindo) não deixa leitura vencida valer", () => {
+    let now = Date.UTC(2026, 9, 1);
+    const quota = new Quota({
+      pauseAt: 0.9,
+      now: () => now,
+      timers: { set: () => null, clear: () => {} },
+    });
+    quota.record([
+      { window: "five_hour", utilization: 0.99, status: "allowed", resetsAt: now + 1000 },
+    ]);
+    expect(quota.blocked()).not.toBeNull();
+    now += 2000;
+    expect(quota.windows()).toEqual([]);
+    expect(quota.blocked()).toBeNull();
+  });
+
   test("um watcher que lança não impede os outros", () => {
     const quota = new Quota({ pauseAt: 0.9 });
     const seen: number[] = [];
