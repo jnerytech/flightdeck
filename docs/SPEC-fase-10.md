@@ -174,6 +174,17 @@ Um teste de lint de estilo reprova `style={{…}}` com medidas fixas nas telas e
   - Também fotografa os estados difíceis: host offline e incompatível, projeto vazio, fim da lista longa (rolada) e erro.
   - As peças nativas não aparecem no navegador e ficam para a conferência no app instalado, no fechamento: bandeja, notificações, barra de título, atalho global, abrir no terminal e diálogo de salvar.
   - Roda também o `axe-core` nessas telas e reprova violações `serious` ou `critical`.
+- **Testes de ponta a ponta (`bun run e2e`, Playwright, no mesmo job):** cinco jornadas no navegador real, contra o demo, nos dois idiomas:
+  1. aprovar um pedido de Bash pela fila lateral, com o atalho `A`, e ver o estado mudar;
+  2. abrir uma sessão, mandar uma mensagem e ver a resposta do runtime falso;
+  3. criar um card, iniciá-lo e abrir o diff;
+  4. abrir a paleta (Ctrl+K), buscar no histórico e abrir o leitor;
+  5. trocar o tema e o idioma, e conferir que a escolha persiste depois de recarregar.
+
+  Cada jornada também confere o layout no navegador real:
+  - na lista longa, o último item fica visível depois de rolar;
+  - nenhum texto passa da largura da tela, a 1280×800 e a 800×600.
+- **Fora desta fase:** testes do app nativo com o `tauri-driver` (WebDriver do WebView2), porque são mais frágeis; ficam registrados como próximo passo.
 - **O orquestrador revisa os prints** a cada fase daqui em diante.
 
 ## Disciplina TDD
@@ -204,6 +215,7 @@ Esta fase não cria tabelas. Se precisar, segue a regra das Fases 11 a 13: acres
 | `hub-ui` | linha com badge, destaque de "precisa de você", menu de ações e filtros persistentes |
 | `textos` | glossário aplicado; modos de permissão com nome e explicação; nenhum termo interno visível (lista proibida testada) |
 | `demo-prints` | `bun run demo` sobe o daemon semeado e a entrada web pareada; job `screenshots` gera os prints de cada tela nos 2 temas e nos 2 idiomas; `axe` sem `serious` nem `critical` |
+| `e2e` | as cinco jornadas passam no Chromium real nos dois idiomas; rolagem da lista longa e ausência de estouro horizontal a 1280×800 e 800×600 |
 
 **Critérios de aceite**
 
