@@ -28,6 +28,7 @@ import {
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { acquireLock } from "./lock.ts";
+import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
@@ -48,7 +49,16 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "pair" | "service" | "history" | "hooks" | "hook" | "channel" | "claude";
+  command:
+    | "start"
+    | "pair"
+    | "service"
+    | "history"
+    | "hooks"
+    | "hook"
+    | "channel"
+    | "claude"
+    | "mcp";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -75,6 +85,7 @@ const USAGE = [
   "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
   "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
   "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
+  "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
 ].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -112,7 +123,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         break;
       }
       case "channel":
-        args.command = "channel";
+      case "mcp":
+        args.command = flag;
         break;
       case "claude":
         args.command = "claude";
@@ -469,6 +481,8 @@ export interface CliDeps {
   hookConnectTimeoutMs?: number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
   channelTransport?: Transport;
+  /** Where `flightdeckd mcp` speaks MCP; stdio when absent. */
+  mcpTransport?: Transport;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
@@ -510,6 +524,16 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         throw new Error(`não consegui abrir o canal do Flightdeck: ${error.message}`);
       });
       void channel.closed.then(() => deps.exit(0));
+      return null;
+    }
+    if (args.command === "mcp") {
+      const config = loadConfig(configPath(args));
+      const mcp = await startMcp({
+        url: daemonUrl(config),
+        token: config.token,
+        transport: deps.mcpTransport ?? new StdioServerTransport(),
+      });
+      void mcp.closed.then(() => deps.exit(0));
       return null;
     }
     if (args.command === "hooks") {
