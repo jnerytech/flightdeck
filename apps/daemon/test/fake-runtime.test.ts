@@ -150,3 +150,41 @@ describe("FakeRuntime: [commit]", () => {
     expect(result.startsWith("git ")).toBe(true);
   });
 });
+
+describe("FakeRuntime: [cost:x]", () => {
+  /** `turn.result.costUsd` of each message, sent one turn at a time. */
+  async function costs(run: ReturnType<FakeRuntime["start"]>, messages: string[]) {
+    const it = run.events[Symbol.asyncIterator]();
+    const out: number[] = [];
+    for (const text of messages) {
+      run.send(text);
+      const result = (await collectUntil(it, isResult)).at(-1);
+      out.push(result?.type === "turn.result" ? (result.costUsd ?? -1) : -1);
+    }
+    return out;
+  }
+
+  test("[cost:x] soma ao total cumulativo da sessão, que vai em todo turn.result", async () => {
+    const runtime = new FakeRuntime({ delayMs: 0 });
+    const run = runtime.start(opts(allowAll));
+    const totals = await costs(run, ["oi", "[cost:0.25]", "nada", "[cost:0.5] e [cost:0.25]"]);
+    expect(totals).toEqual([0, 0.25, 0.25, 1]);
+    await run.close();
+  });
+
+  test("sessão retomada com resume começa já com o total anterior; outra sessão começa do zero", async () => {
+    const runtime = new FakeRuntime({ delayMs: 0 });
+    const first = runtime.start(opts(allowAll));
+    const it = first.events[Symbol.asyncIterator]();
+    first.send("[cost:1.5]");
+    const events = await collectUntil(it, isResult);
+    const init = events.find((e) => e.type === "session.init");
+    const claudeSessionId = init?.type === "session.init" ? init.claudeSessionId : "";
+    await first.close();
+    const resumed = runtime.start(opts(allowAll, { resume: claudeSessionId }));
+    expect(await costs(resumed, ["continua", "[cost:0.5]"])).toEqual([1.5, 2]);
+    const other = runtime.start(opts(allowAll));
+    expect(await costs(other, ["[cost:0.25]"])).toEqual([0.25]);
+    await Promise.all([resumed.close(), other.close()]);
+  });
+});
