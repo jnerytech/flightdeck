@@ -1,5 +1,6 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { usd } from "../lib/costs.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { ApprovalCard } from "./ApprovalCard.tsx";
 import { Markdown } from "./Markdown.tsx";
@@ -78,6 +79,8 @@ export function SessionView(props: {
   alwaysAllow?: boolean;
   /** "Abrir no terminal" (phase 8), when the view belongs to a session of its own. */
   terminal?: ReactNode;
+  /** Estimated cost of the session and its subagents (phase 8); `null` when unknown. */
+  costUsd?: number | null;
 }) {
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
@@ -104,6 +107,11 @@ export function SessionView(props: {
         <div>
           <h2>{props.title}</h2>
           <div className="muted">{session.cwd}</div>
+          {typeof props.costUsd === "number" && (
+            <div className="muted">
+              custo estimado: <output aria-label="Custo da sessão">{usd(props.costUsd)}</output>
+            </div>
+          )}
         </div>
         <div className="session-controls">
           {session.status && <StatusBadge status={session.status} />}

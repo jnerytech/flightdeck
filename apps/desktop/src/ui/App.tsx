@@ -220,6 +220,21 @@ export function App({ store }: { store: AppStore }) {
 
   const selectedHost = state.hosts.find((h) => h.id === state.selected?.hostId);
   const sessionId = state.selected?.sessionId;
+  // Estimated cost of the open managed session, once its claudeSessionId is known (phase 8).
+  const selectedClaudeId = selectedHost
+    ? state.hub[selectedHost.id]?.managed.find((s) => s.id === sessionId)?.claudeSessionId
+    : undefined;
+  const selectedStatus =
+    state.sessions[sessionKey(selectedHost?.id ?? "", sessionId ?? "")]?.status;
+  const withCosts = hasFeature(selectedHost?.hostInfo?.features, "costs", false);
+  const [sessionCost, setSessionCost] = useState<number | null>(null);
+  useEffect(() => {
+    setSessionCost(null);
+    if (!selectedHost?.id || !selectedClaudeId || !withCosts || !selectedStatus) return;
+    void store
+      .hostCommand(selectedHost.id, "costs.session", { claudeSessionId: selectedClaudeId })
+      .then((r) => setSessionCost(r?.costUsd ?? null));
+  }, [store, selectedHost?.id, selectedClaudeId, withCosts, selectedStatus]);
 
   let main: ReactNode;
   if (settingsOpen) {
@@ -384,6 +399,7 @@ export function App({ store }: { store: AppStore }) {
             />
           )
         }
+        costUsd={sessionCost}
       />
     );
   } else if (selectedHost) {

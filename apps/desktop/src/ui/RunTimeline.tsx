@@ -1,5 +1,6 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
+import { usd } from "../lib/costs.ts";
 import { budgetLines, RUN_LABELS, STEP_LABELS, stepDuration, stepUsage } from "../lib/runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
@@ -63,11 +64,19 @@ export function RunTimeline(props: {
   formatTime(iso: string): string;
   onOpenStep(step: StepRun): void;
   onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
+  /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
+  costUsd?: number | null;
 }) {
   const { run } = props;
   return (
     <section aria-label="Execução do workflow" className="run">
       <h3>{`Workflow ${run.workflowName} · ${RUN_LABELS[run.status]}`}</h3>
+      {typeof props.costUsd === "number" && (
+        <p className="muted">
+          custo estimado das sessões:{" "}
+          <output aria-label="Custo da execução">{usd(props.costUsd)}</output>
+        </p>
+      )}
       {run.quotaUntil ? (
         <p className="notice">{`aguardando cota até ${props.formatTime(run.quotaUntil)}`}</p>
       ) : (

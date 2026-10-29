@@ -4,6 +4,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { daysBetween, PERIOD_LABELS, type Period, periodRange, usd } from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
+import { QuotaCharts } from "./QuotaCharts.tsx";
 
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
@@ -214,6 +215,7 @@ export function CostsPage(props: {
             name="Por origem"
             rows={summary.byOrigin.map((o) => ({ label: o.origin, costUsd: o.costUsd }))}
           />
+          <QuotaCharts key={hostId} store={store} hostId={hostId} />
           <section aria-label="Top sessões" className="costs-top">
             <h3>Top sessões</h3>
             <ul>

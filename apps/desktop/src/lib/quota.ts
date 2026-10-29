@@ -1,9 +1,26 @@
-import type { QuotaState, QuotaWindow } from "@flightdeck/protocol";
+import type { QuotaHistory, QuotaState, QuotaWindow } from "@flightdeck/protocol";
 
 export const WINDOW_LABELS: Record<string, string> = { five_hour: "5 horas", seven_day: "7 dias" };
 
+/** How many hours of samples each window's chart shows. */
+export const HISTORY_HOURS: Record<string, number> = { five_hour: 24, seven_day: 168 };
+
+/** "no ritmo atual, a janela de 5 h esgota às 16:00", or why it does not. */
+export function projectionText(
+  window: string,
+  projection: QuotaHistory["projection"],
+  formatTime: (iso: string) => string,
+): string {
+  if (!projection) return "poucas leituras para projetar";
+  const label = window === "five_hour" ? "5 h" : (WINDOW_LABELS[window] ?? window);
+  if (projection.exhaustsAt) {
+    return `no ritmo atual, a janela de ${label} esgota às ${formatTime(projection.exhaustsAt)}`;
+  }
+  return `não esgota antes de ${formatTime(projection.resetsAt ?? "")}`;
+}
+
 /** The two windows the app shows for every host, in order. */
-const SHOWN = ["five_hour", "seven_day"];
+export const SHOWN = ["five_hour", "seven_day"];
 
 export interface QuotaBar {
   window: string;

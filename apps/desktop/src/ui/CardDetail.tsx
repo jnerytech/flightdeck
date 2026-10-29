@@ -2,6 +2,7 @@ import type { CardDiff, StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { CHECK_LABELS, PR_LABELS } from "../lib/board.ts";
+import { usd } from "../lib/costs.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -37,6 +38,10 @@ export function CardDetail(props: {
   const sessionId = card?.sessionId ?? null;
   const host = props.state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
+  const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
+  /** Estimated cost of every session of the card, and of the open run's (phase 8). */
+  const [cardCost, setCardCost] = useState<number | null>(null);
+  const [runCost, setRunCost] = useState<number | null>(null);
   const runId = card?.workflowRunId ?? null;
   const run = runId ? props.state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
@@ -50,6 +55,20 @@ export function CardDetail(props: {
   const openedStep = run?.steps.find(
     (s) => s.stepId === opened?.stepId && s.attempt === opened.attempt,
   );
+
+  // Again whenever the card or its run moves on.
+  const cardMoment = `${card?.updatedAt}/${run?.status}/${run?.steps.length}`;
+  useEffect(() => {
+    if (!withCosts || !cardMoment) return;
+    void store
+      .hostCommand(hostId, "costs.card", { cardId })
+      .then((r) => setCardCost(r?.costUsd ?? null));
+    if (runId) {
+      void store
+        .hostCommand(hostId, "costs.run", { runId })
+        .then((r) => setRunCost(r?.costUsd ?? null));
+    }
+  }, [store, hostId, cardId, runId, withCosts, cardMoment]);
 
   useEffect(() => {
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
@@ -120,6 +139,11 @@ export function CardDetail(props: {
           Voltar ao board
         </button>
         <h2>{card.title}</h2>
+        {cardCost !== null && (
+          <span className="muted">
+            custo estimado: <output aria-label="Custo do card">{usd(cardCost)}</output>
+          </span>
+        )}
         {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
         {card.queued && <span className="badge badge-muted">na fila</span>}
         {card.prState && <span className="badge">{PR_LABELS[card.prState]}</span>}
@@ -244,6 +268,7 @@ export function CardDetail(props: {
         <RunTimeline
           run={run}
           formatTime={(iso) => store.formatTime(iso)}
+          costUsd={runCost}
           onOpenStep={openStep}
           onRespond={(step, decision, note) =>
             void store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
