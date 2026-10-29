@@ -10,7 +10,7 @@ import {
   uninstallHooks,
 } from "../src/central/hooks-install.ts";
 import { expandHome, loadConfig } from "../src/config.ts";
-import { runCli } from "../src/main.ts";
+import { parseArgs, runCli } from "../src/main.ts";
 import { tempDir } from "./helpers.ts";
 
 const TARGET: HookTarget = {
@@ -183,6 +183,16 @@ describe("hooks-install: CLI", () => {
     expect(read(settings)).toEqual({});
     await runCli(["hooks", "status", "--config", file], deps);
     expect(out.join("\n")).toContain("hooks: ausentes");
+  });
+
+  test("ação de hooks desconhecida é recusada", () => {
+    let message = "aceitou";
+    try {
+      parseArgs(["hooks", "limpar"]);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("ação de hooks inválida: limpar");
   });
 
   test("hooks.port 0 é recusado: o receptor não teria endereço fixo", async () => {
