@@ -19,6 +19,7 @@ import type {
   SessionMeta,
   SessionStatus,
   SessionSummary,
+  WorkflowRun,
 } from "@flightdeck/protocol";
 import type { Platform, TrayStatus } from "../platform/types.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
@@ -73,6 +74,8 @@ export interface AppState {
   externalRequests: Record<string, ExternalPermissionFrame>;
   /** Name, pinned and archived, by `sessionKey(hostId, claudeSessionId)`. */
   meta: Record<string, SessionMeta>;
+  /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
+  runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
   hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
 }
@@ -86,7 +89,13 @@ export type HostCommandType = Extract<
   | `hooks.${string}`
   | `external.${string}`
   | "session.meta.set"
+  | `workflow.${string}`
+  | `run.${string}`
+  | `gate.${string}`
 >;
+
+const isRun = (value: unknown): value is WorkflowRun =>
+  typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
 
 const isCard = (value: unknown): value is Card =>
   typeof value === "object" && value !== null && "column" in value && "projectId" in value;
@@ -246,6 +255,7 @@ export class AppStore {
       search: null,
       searchOpen: false,
       cards: {},
+      runs: {},
       externals: {},
       externalRequests: {},
       meta: {},
@@ -273,7 +283,7 @@ export class AppStore {
   async init(): Promise<void> {
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
-    this.update({ hosts: [], sessions: {}, selected: null, cards: {} });
+    this.update({ hosts: [], sessions: {}, selected: null, cards: {}, runs: {} });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
     const autostart =
@@ -520,6 +530,7 @@ export class AppStore {
       if (!conn) throw new RequestError("offline", "host desconhecido");
       const result = await conn.request(type, payload);
       for (const card of cardsIn(result)) this.onCard(hostId, card);
+      if (isRun(result)) this.onRun(hostId, result);
       return result;
     } catch (error) {
       this.update({ error: describeError(error) });
@@ -683,6 +694,7 @@ export class AppStore {
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
+      onRunUpdated: (run) => this.onRun(config.id, run),
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
@@ -692,6 +704,7 @@ export class AppStore {
     conn.watchBoard();
     conn.watchHistory();
     conn.watchExternal();
+    conn.watchRuns();
     conn.connect();
   }
 
@@ -772,6 +785,10 @@ export class AppStore {
   }
 
   /** A discarded card leaves; any other replaces what the app had. */
+  private onRun(hostId: string, run: WorkflowRun): void {
+    this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });
+  }
+
   private onCard(hostId: string, card: Card): void {
     const { [sessionKey(hostId, card.id)]: _previous, ...others } = this.state.cards;
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };

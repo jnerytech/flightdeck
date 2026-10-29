@@ -1,4 +1,4 @@
-import type { CardDiff } from "@flightdeck/protocol";
+import type { CardDiff, StepRun } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { CHECK_LABELS, PR_LABELS } from "../lib/board.ts";
@@ -6,6 +6,7 @@ import { emptySession } from "../lib/session-state.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DiffView } from "./DiffView.tsx";
 import { when } from "./GlobalSearch.tsx";
+import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 
@@ -32,6 +33,18 @@ export function CardDetail(props: {
   const [diff, setDiff] = useState<CardDiff | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const sessionId = card?.sessionId ?? null;
+  const runId = card?.workflowRunId ?? null;
+  const run = runId ? props.state.runs[sessionKey(hostId, runId)] : undefined;
+  /** Step opened from the timeline: its conversation or its check output. */
+  const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
+  const openedStep = run?.steps.find(
+    (s) => s.stepId === opened?.stepId && s.attempt === opened.attempt,
+  );
+
+  // The run follows run.updated; this fetch covers a run that changed before the app watched.
+  useEffect(() => {
+    if (runId) void store.hostCommand(hostId, "run.get", { runId });
+  }, [store, hostId, runId]);
 
   // The conversation is the regular session view: selecting the session subscribes to it.
   useEffect(() => {
@@ -70,6 +83,15 @@ export function CardDetail(props: {
     void store.hostCommand(hostId, "card.message", { cardId, text: adjustment.trim() });
     setAdjustment("");
   };
+
+  const openStep = (step: StepRun) => {
+    setTab("conversation");
+    setOpened({ stepId: step.stepId, attempt: step.attempt });
+    if (step.sessionId) store.select(hostId, step.sessionId);
+  };
+  const stepSession = openedStep?.sessionId
+    ? (props.state.sessions[sessionKey(hostId, openedStep.sessionId)] ?? emptySession())
+    : null;
 
   const session = sessionId
     ? (props.state.sessions[sessionKey(hostId, sessionId)] ?? emptySession())
@@ -163,6 +185,7 @@ export function CardDetail(props: {
           </li>
         ))}
       </ul>
+      {run && <RunTimeline run={run} onOpenStep={openStep} />}
       <div className="row">
         <button
           type="button"
@@ -177,6 +200,22 @@ export function CardDetail(props: {
       </div>
       {tab === "diff" ? (
         diff && <DiffView diff={diff} />
+      ) : openedStep?.type === "check" ? (
+        <div className="check-output">
+          <p className="muted">{`código ${openedStep.exitCode}`}</p>
+          <section aria-label={`Saída do check ${openedStep.stepId}`}>
+            <pre>{openedStep.output}</pre>
+          </section>
+        </div>
+      ) : openedStep && stepSession ? (
+        <div role="log" aria-label={`Conversa da etapa ${openedStep.stepId}`}>
+          <SessionView
+            title={`${card.title} · ${openedStep.stepId}`}
+            session={stepSession}
+            actions={store}
+            focusRequestId={null}
+          />
+        </div>
       ) : session && sessionId ? (
         <div role="log" aria-label="Conversa do card">
           <SessionView title={card.title} session={session} actions={store} focusRequestId={null} />
