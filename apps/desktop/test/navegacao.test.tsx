@@ -261,7 +261,11 @@ describe("navegacao", () => {
     await click("Nova sessão em beta");
     expect(heading("Nova sessão em beta")).toBe(true);
     await openHostMenu("beta");
-    await click("Remover host");
+    const remove = screen.queryByRole("menuitem", { name: "Remover host" });
+    expect(remove).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(remove as HTMLElement);
+    });
     await confirmWith("Remover host");
     expect(store.getState().hosts.map((h) => h.name)).toEqual(["alfa"]);
     expect(heading("Sessões")).toBe(true);
