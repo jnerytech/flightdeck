@@ -128,6 +128,19 @@ describe("tema", () => {
     expect(again.resolved).toBe("light");
   });
 
+  test("fora de um DOM (a store sozinha), o tema não faz nada nem quebra", () => {
+    const { mem, window } = themePlatform();
+    const scope = globalThis as { document?: Document };
+    const saved = scope.document;
+    delete scope.document;
+    try {
+      expect(() => new ThemeController(mem.platform).start()).not.toThrow();
+    } finally {
+      scope.document = saved;
+    }
+    expect(window).toEqual([]);
+  });
+
   test("Configurações e a paleta trocam o tema do app inteiro", async () => {
     const { mem } = themePlatform();
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
