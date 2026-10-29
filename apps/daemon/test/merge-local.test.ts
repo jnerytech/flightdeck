@@ -228,4 +228,34 @@ describe("merge-local", () => {
       await client.data("card.mergeLocal", { cardId: ctx.cardId, mode: "squash", confirm: true }),
     ).toMatchObject({ column: "done" });
   });
+
+  test("depois do merge, a pasta da worktree que não saiu vira aviso no card, que vai a Concluído mesmo assim", async () => {
+    const ctx = await ready();
+    commit(ctx.worktree, "feito.txt", "feito\n");
+    // A locked worktree cannot be removed (on Windows a process holding the folder does the same).
+    git(ctx.repo, "worktree", "lock", ctx.worktree);
+    const card = await ctx.board.mergeLocal(ctx.cardId, "merge", true).catch(() => null);
+    expect(card?.column).toBe("done");
+    expect(card?.notice).toBe(
+      `a pasta da worktree ficou em ${ctx.worktree}; remova depois (a branch ${ctx.branch} sai junto)`,
+    );
+    expect(existsSync(ctx.worktree)).toBe(true);
+    // The merge is in the base, once.
+    expect(git(ctx.repo, "ls-tree", "--name-only", "main").split(/\r?\n/)).toContain("feito.txt");
+    expect(ctx.board.getCard(ctx.cardId).column).toBe("done");
+  });
+
+  test("depois do merge, a branch que não foi apagada também avisa: a worktree sai e o card vai a Concluído", async () => {
+    const ctx = await ready();
+    commit(ctx.worktree, "feito.txt", "feito\n");
+    // The branch is also checked out in another worktree, so git will not delete it.
+    const other = join(ctx.root, "outra-wt");
+    git(ctx.repo, "worktree", "add", "-q", "--force", other, ctx.branch);
+    const card = await ctx.board.mergeLocal(ctx.cardId, "merge", true).catch(() => null);
+    expect(card?.column).toBe("done");
+    expect(card?.worktreePath).toBeNull();
+    expect(card?.notice ?? "").toContain(`a branch ${ctx.branch} ficou`);
+    expect(card?.notice ?? "").toContain("apague depois");
+    expect(existsSync(ctx.worktree)).toBe(false);
+  });
 });
