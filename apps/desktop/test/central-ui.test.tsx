@@ -170,11 +170,11 @@ describe("central-ui", () => {
       tool_name: "Write",
       tool_input: { file_path: "a" },
     });
-    await settle(
-      () => screen.queryByRole("button", { name: "Permitir alfa · repo: Write" }) !== null,
-    );
+    await settle(() => screen.queryByRole("button", { name: "alfa · repo: Write" }) !== null);
     expect(notifications.map((n) => n.title)).toContain("Precisa de você");
-    await click("Permitir alfa · repo: Write");
+    // The queue expands the request and its card answers it.
+    await click("alfa · repo: Write");
+    await click("Aprovar");
     expect(JSON.parse(await answer)).toEqual({
       hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow" } },
     });
@@ -186,8 +186,10 @@ describe("central-ui", () => {
     await settle(() => screen.queryByRole("heading", { name: "repo" }) !== null);
     expect(screen.queryByLabelText("Mensagem para a sessão")).toBeNull();
     const answer = hook("PermissionRequest", { tool_name: "Bash", tool_input: { command: "ls" } });
-    await settle(() => screen.queryByRole("button", { name: "Negar Bash" }) !== null);
-    await click("Negar Bash");
+    await settle(() => screen.queryByRole("group", { name: "Pedido de Bash" }) !== null);
+    // Negar, then (the reason is optional) Negar again sends it.
+    await click("Negar");
+    await click("Negar");
     expect(JSON.parse(await answer).hookSpecificOutput.decision.behavior).toBe("deny");
     const channel = await connectChannel(receptor, hooksToken, "L1");
     cleanups.push(channel.close);
@@ -196,8 +198,8 @@ describe("central-ui", () => {
     await click("Enviar mensagem");
     expect(await poll(() => channel.received[0])).toBe("rode o build");
     const approve = hook("PermissionRequest", { tool_name: "Edit", tool_input: {} });
-    await settle(() => screen.queryByRole("button", { name: "Aprovar Edit" }) !== null);
-    await click("Aprovar Edit");
+    await settle(() => screen.queryByRole("group", { name: "Pedido de Edit" }) !== null);
+    await click("Aprovar");
     expect(JSON.parse(await approve).hookSpecificOutput.decision.behavior).toBe("allow");
   });
 
@@ -214,8 +216,9 @@ describe("central-ui", () => {
     void hook("PermissionRequest", { tool_name: "Read", tool_input: {} });
     await settle(() => screen.queryByRole("button", { name: "alfa · repo: Read" }) !== null);
     await click("alfa · repo: Read");
+    await click("Abrir sessão");
     await settle(() => screen.queryByRole("heading", { name: "repo" }) !== null);
-    expect(screen.queryByRole("button", { name: "Aprovar Read" })).not.toBeNull();
-    await click("Aprovar Read");
+    expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();
+    await click("Aprovar");
   });
 });

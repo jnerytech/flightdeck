@@ -106,12 +106,18 @@ describe("fila-pendencias", () => {
     const { store, first, hostA } = await fleet();
     render(<App store={store} />);
     await rtlWaitFor(() => expect(screen.queryByText("Precisa de você (2)")).not.toBeNull());
+    // The click expands the card in the queue; "Abrir sessão" opens the session.
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "pc · s-a: Write" }));
     });
+    const open = screen.queryByRole("button", { name: "Abrir sessão" });
+    expect(open).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(open as HTMLElement);
+    });
     expect(store.getState().selected).toEqual({ hostId: hostA, sessionId: first.sessionId });
     await rtlWaitFor(
-      () => expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeNull(),
+      () => expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull(),
       {
         timeout: 3000,
       },
@@ -123,19 +129,27 @@ describe("fila-pendencias", () => {
     const { store, a, b, first, second, win } = await fleet();
     render(<App store={store} />);
     await rtlWaitFor(() => expect(screen.queryByText("Precisa de você (2)")).not.toBeNull());
-    const allow = screen.queryByRole("button", { name: "Permitir pi · s-b: Write" });
-    const deny = screen.queryByRole("button", { name: "Negar pc · s-a: Write" });
-    expect(allow).not.toBeNull();
-    expect(deny).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(allow as HTMLElement);
-    });
+    // Each request expands in the queue, where its card answers it.
+    const inQueue = async (label: string, ...buttons: string[]) => {
+      const item = screen.queryByRole("button", { name: label });
+      expect(item).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(item as HTMLElement);
+      });
+      const card = item?.closest("li") as HTMLElement;
+      for (const name of buttons) {
+        const button = within(card).queryByRole("button", { name });
+        expect(button).not.toBeNull();
+        await act(async () => {
+          fireEvent.click(button as HTMLElement);
+        });
+      }
+    };
+    await inQueue("pi · s-b: Write", "Aprovar");
     await settle(() => b.manager.get(second.sessionId).status === "idle");
     expect(b.manager.get(second.sessionId).status).toBe("idle");
     expect(a.manager.get(first.sessionId).status).toBe("awaiting_permission");
-    await act(async () => {
-      fireEvent.click(deny as HTMLElement);
-    });
+    await inQueue("pc · s-a: Write", "Negar", "Negar");
     await settle(() => needsYou(store.getState()).length === 0);
     expect(needsYou(store.getState())).toEqual([]);
     expect(win.document.title).toBe("Flightdeck");

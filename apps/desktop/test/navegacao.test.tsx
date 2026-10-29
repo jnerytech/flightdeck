@@ -111,7 +111,9 @@ describe("navegacao", () => {
     await setup();
     await click("Configurações");
     expect(heading("Configurações")).toBe(true);
+    // The queue expands the request; "Abrir sessão" opens it (and leaves Settings).
     await click("alfa · Pedinte: Bash");
+    await click("Abrir sessão");
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);
 

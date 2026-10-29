@@ -116,10 +116,19 @@ describe("gate-ui", () => {
       sessionName: "Somar",
       toolName: "gate approve",
     });
+    // The queue expands the gate: "Abrir card" opens the card; Aprovar answers from the queue.
     await click(label);
+    await click("Abrir card");
     await settle(() => screen.queryByRole("region", { name: "Gate approve" }) !== null);
     expect(screen.queryByRole("heading", { name: "Somar" })).not.toBeNull();
-    await click(`Aprovar ${label}`);
+    await click(label);
+    const card = screen.queryByRole("group", { name: "Pedido de gate approve" });
+    expect(card).not.toBeNull();
+    const approve = card ? within(card).queryByRole("button", { name: "Aprovar" }) : null;
+    expect(approve).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(approve as HTMLElement);
+    });
     await settle(() => run().status === "completed");
     expect(run().steps[1]?.status).toBe("approved");
     await settle(() => needsYou(store.getState()).length === 0);
@@ -128,7 +137,9 @@ describe("gate-ui", () => {
 
   test("recusar pela fila encerra a execução", async () => {
     const { run } = await atGate();
-    await click("Recusar alfa · Somar: gate approve");
+    await click("alfa · Somar: gate approve");
+    await click("Negar");
+    await click("Negar");
     await settle(() => run().status === "rejected");
     expect(run().statusReason).toBe("gate approve recusado");
   });

@@ -86,19 +86,23 @@ describe("desktop: interface", () => {
     const { server } = setup();
     await addHost(server.url);
     await newSession("[tool]");
-    await waitFor(() => expect(screen.getByRole("button", { name: "Permitir" })).toBeTruthy());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull());
     expect(screen.getAllByText("Write").length).toBeGreaterThan(0);
     expect(screen.getByText("+ conteúdo de teste")).toBeTruthy();
     expect(screen.getAllByText("esperando você").length).toBeGreaterThan(0);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Permitir" }));
+      fireEvent.click(screen.getByRole("button", { name: "Aprovar" }));
     });
-    await waitFor(() => expect(screen.getByText("permitido")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("aprovado")).toBeTruthy());
     await waitFor(() => expect(screen.getByText(/arquivo criado/)).toBeTruthy());
 
     type("Mensagem", "[tool] outra vez");
     fireEvent.keyDown(screen.getByLabelText("Mensagem"), { key: "Enter", ctrlKey: true });
     await waitFor(() => expect(screen.getByRole("button", { name: "Negar" })).toBeTruthy());
+    // The reason opens after Negar (phase 10); a second Negar sends it.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Negar" }));
+    });
     type("Motivo (opcional)", "aqui não");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Negar" }));
@@ -110,7 +114,7 @@ describe("desktop: interface", () => {
     const { server, store } = setup();
     await addHost(server.url);
     await newSession("[tool]");
-    await waitFor(() => expect(screen.getByRole("button", { name: "Permitir" })).toBeTruthy());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull());
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Interromper" }));
     });

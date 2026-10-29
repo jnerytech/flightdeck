@@ -65,7 +65,7 @@ async function asking(prompt: string) {
   cleanups.push(() => events.unsubscribe());
   await poll(() => events.find("permission.requested")[0], 3000);
   await act(async () => ctx.store.select(ctx.hostId, sessionId));
-  await settle(() => screen.queryByRole("button", { name: "Permitir" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
   const result = () => poll(() => events.find("tool.result")[0]?.content, 3000);
   return { ...ctx, sessionId, result };
 }
@@ -118,7 +118,7 @@ describe("permitir-ui", () => {
     await click("Salvar regra");
     await settle(() => store.getState().error !== null);
     expect(store.getState().error ?? "").toContain("invalid_permission_update");
-    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();
     expect(manager.get(sessionId).status).toBe("awaiting_permission");
   });
 
@@ -142,10 +142,12 @@ describe("permitir-ui", () => {
       permission_suggestions: [],
     });
     await settle(() => screen.queryByRole("button", { name: "alfa · p: Read" }) !== null);
+    // The queue expands the request; "Abrir sessão" opens the terminal session's view.
     await click("alfa · p: Read");
-    await settle(() => screen.queryByRole("button", { name: "Aprovar Read" }) !== null);
+    await click("Abrir sessão");
+    await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
     expect(screen.queryByRole("button", { name: "Permitir nesta sessão" })).toBeNull();
-    await click("Aprovar Read");
+    await click("Aprovar");
     expect(JSON.parse(await plain).hookSpecificOutput.decision).toEqual({ behavior: "allow" });
     const suggestion = { type: "addDirectories", directories: ["novo"], destination: "session" };
     const withSuggestion = hook("PermissionRequest", {
@@ -227,8 +229,8 @@ describe("permitir-ui", () => {
     const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash] y" });
     await poll(() => d.eventStore.pendingPermissions(sessionId).length > 0, 3000);
     await act(async () => store.select(hostId, sessionId));
-    await settle(() => screen.queryByRole("button", { name: "Permitir" }) !== null);
-    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeNull();
+    await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
+    expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Sempre neste projeto" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Permitir nesta sessão" })).toBeNull();
     await click("Projetos de alfa");
