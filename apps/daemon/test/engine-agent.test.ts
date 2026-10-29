@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { cardWhen } from "./board-helpers.ts";
-import { record } from "./helpers.ts";
+import { poll, record } from "./helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
@@ -161,5 +161,61 @@ describe("engine-agent", () => {
     await cardWhen(board, other.id, (c) => c.column === "review");
     expect((await board.discardCard(other.id, true)).discarded).toBe(true);
     expect(() => board.workflows.getRun(runId)).toThrow(`execução ${runId} não existe`);
+  });
+
+  test("Parar um card de workflow na fila encerra a execução; o card inicia de novo", async () => {
+    const { board, card, project, start, run } = await setup(PLAN, {
+      board: { maxParallelRuns: 1 },
+    });
+    const holder = board.createCard(project.id, { title: "Segura", description: "[tool] x" });
+    await board.startCard(holder.id);
+    await cardWhen(board, holder.id, (c) => c.sessionStatus === "awaiting_permission");
+    await start({ task: "x" });
+    expect(board.getCard(card.id).queued).toBe(true);
+    await board.stopCard(card.id);
+    expect(run()).toMatchObject({ status: "failed", statusReason: "card parado antes de começar" });
+    expect(run()?.endedAt).not.toBeNull();
+    const again = await start({ task: "y" }).then(
+      (c) => c.workflowRunId,
+      (error: Error) => error.message,
+    );
+    expect(again).not.toBe("o card tem uma execução de workflow em andamento");
+    expect(run()?.inputs).toEqual({ task: "y" });
+  });
+
+  test("Concluir no meio da execução a encerra, fecha o gate e libera a vaga do host", async () => {
+    const yaml =
+      "steps:\n  - id: a\n    agent: { prompt: '[tool] a' }\n  - id: ok\n    gate: { message: ok }\n";
+    const { board, card, project, start, run, runWhen, allow, store } = await setup(yaml, {
+      board: { maxParallelRuns: 1 },
+    });
+    await start();
+    const asking = await runWhen(
+      (r) => store.pendingPermissions(r.steps[0]?.sessionId ?? "").length > 0,
+    );
+    await board.completeCard(card.id, true);
+    expect(run()).toMatchObject({
+      status: "failed",
+      statusReason: "execução encerrada com o card",
+    });
+    expect(run()?.steps.map((s) => s.status)).toEqual(["failed"]);
+    const other = board.createCard(project.id, { title: "Outro", description: "oi" });
+    await board.startCard(other.id);
+    expect((await cardWhen(board, other.id, (c) => c.sessionId !== null))?.queued).toBe(false);
+    // A gate still open when the card is discarded closes with it and cannot be answered.
+    expect(asking).not.toBeNull();
+    await board.completeCard(other.id, true);
+    const gated = board.createCard(project.id, { title: "Gate", description: "x" });
+    await board.startCard(gated.id, { workflow: "wf" });
+    const runId = board.getCard(gated.id).workflowRunId ?? "";
+    const step = await poll(() => {
+      const first = board.workflows.getRun(runId).steps[0];
+      return store.pendingPermissions(first?.sessionId ?? "").length > 0 ? first : null;
+    }, 5000);
+    allow(step?.sessionId);
+    await poll(() => board.workflows.getRun(runId).status === "waiting", 5000);
+    await board.completeCard(gated.id, true);
+    expect(board.workflows.getRun(runId).steps.at(-1)?.status).toBe("failed");
+    expect(() => board.workflows.respond(runId, "ok", 1, "approve")).toThrow("não está aberto");
   });
 });
