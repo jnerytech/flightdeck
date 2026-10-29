@@ -6,7 +6,7 @@
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, parse, relative } from "node:path";
-import { expandHome } from "../../apps/daemon/src/config.ts";
+import { expandHome, userHome } from "../../apps/daemon/src/config.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 export interface HomeGuard {
@@ -37,10 +37,14 @@ export function installHomeGuard(env: Record<string, string | undefined> = proce
   return guard;
 }
 
-/** Throws unless `~` (both `os.homedir()` and the daemon's `expandHome`) lands on the fake home. */
+/**
+ * Throws unless `~` as the daemon resolves it (`userHome()` and `expandHome`) lands on the fake
+ * home. Not `os.homedir()`: on Linux, Bun's keeps the HOME the process started with, and the
+ * daemon does not use it.
+ */
 export function assertHomeGuard(guard: HomeGuard): void {
   for (const [what, path] of [
-    ["os.homedir()", homedir()],
+    ["userHome()", userHome()],
     ['expandHome("~/.claude")', expandHome("~/.claude")],
   ] as const) {
     if (!inside(guard.dir, path) || inside(guard.realClaude, path)) {
