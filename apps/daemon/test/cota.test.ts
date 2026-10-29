@@ -271,6 +271,30 @@ describe("cota", () => {
     ).toBe(false);
   });
 
+  test("host.info anuncia quota só no daemon que tem a cota do host", async () => {
+    const quota = new Quota({ pauseAt: 0.9 });
+    cleanups.push(() => quota.stop());
+    const features = async (withQuota: boolean) => {
+      const { manager, root } = newManager();
+      const server = startServer({
+        manager,
+        ...(withQuota ? { quota } : {}),
+        hostName: "h",
+        bind: "127.0.0.1",
+        port: 0,
+        token: TOKEN,
+        allowedRoots: [root],
+      });
+      cleanups.push(() => server.stop());
+      const client = new FrameClient(server.url);
+      cleanups.push(() => client.close());
+      await client.request("hello", { token: TOKEN, client: "t" });
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features;
+    };
+    expect(await features(true)).toEqual(["quota"]);
+    expect(await features(false)).toEqual([]);
+  });
+
   test("outras mensagens do SDK continuam ignoradas", () => {
     const other = { type: "tool_progress", uuid: "u", session_id: "s" } as unknown as SDKMessage;
     expect(normalizeSdkMessage(other)).toEqual([]);
