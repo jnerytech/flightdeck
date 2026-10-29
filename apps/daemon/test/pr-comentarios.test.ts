@@ -22,7 +22,7 @@ function fake(name: string, rules: FakeRule[]): FakeCli {
 }
 
 const GH_URL = "https://github.com/acme/repo/pull/7";
-const AZ_URL = "https://dev.azure.com/acme/proj/_git/repo/pullrequest/12";
+const AZ_URL = "https://dev.azure.com/acme/Meu%20Projeto/_git/repo/pullrequest/12";
 
 const GH_RULES: FakeRule[] = [
   { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
@@ -30,7 +30,16 @@ const GH_RULES: FakeRule[] = [
   {
     args: ["api", "--paginate", "--slurp", "repos/acme/repo/pulls/7/comments?per_page=100"],
     stdout: JSON.stringify([
-      [{ id: 101, path: "src/a.ts", line: 10, user: { login: "alice" }, body: "corrija isto" }],
+      [
+        {
+          id: 101,
+          path: "src/a.ts",
+          line: 10,
+          user: { login: "alice" },
+          author_association: "MEMBER",
+          body: "corrija isto",
+        },
+      ],
       [
         {
           id: 102,
@@ -38,6 +47,7 @@ const GH_RULES: FakeRule[] = [
           line: null,
           original_line: 4,
           user: { login: "carol" },
+          author_association: "NONE",
           body: "resolvido já",
         },
       ],
@@ -57,6 +67,7 @@ const GH_RULES: FakeRule[] = [
         {
           id: "R_1",
           author: { login: "bob" },
+          authorAssociation: "OWNER",
           body: "parece bom, mas veja os testes",
           state: "COMMENTED",
         },
@@ -95,8 +106,18 @@ const AZ_RULES: FakeRule[] = [
           status: "active",
           threadContext: { filePath: "/src/a.ts", rightFileStart: { line: 3 } },
           comments: [
-            { id: 1, author: { displayName: "Ana" }, content: "nome ruim", commentType: "text" },
-            { id: 2, author: { displayName: "Bia" }, content: "concordo", commentType: "text" },
+            {
+              id: 1,
+              author: { displayName: "Ana", uniqueName: "ana@acme.com", id: "id-ana" },
+              content: "nome ruim",
+              commentType: "text",
+            },
+            {
+              id: 2,
+              author: { displayName: "Bia", id: "id-bia" },
+              content: "concordo",
+              commentType: "text",
+            },
           ],
         },
         {
@@ -104,7 +125,12 @@ const AZ_RULES: FakeRule[] = [
           status: "fixed",
           threadContext: null,
           comments: [
-            { id: 1, author: { displayName: "Caio" }, content: "geral", commentType: "text" },
+            {
+              id: 1,
+              author: { displayName: "Caio", uniqueName: "caio@acme.com", id: "id-caio" },
+              content: "geral",
+              commentType: "text",
+            },
           ],
         },
         {
@@ -174,6 +200,8 @@ describe("pr-comentarios", () => {
         path: "src/a.ts",
         line: 10,
         author: "alice",
+        authorAssociation: "MEMBER",
+        authorIdentity: null,
         body: "corrija isto",
         resolved: false,
         kind: "inline",
@@ -183,6 +211,8 @@ describe("pr-comentarios", () => {
         path: "src/b.ts",
         line: 4,
         author: "carol",
+        authorAssociation: "NONE",
+        authorIdentity: null,
         body: "resolvido já",
         resolved: true,
         kind: "inline",
@@ -192,6 +222,8 @@ describe("pr-comentarios", () => {
         path: null,
         line: null,
         author: "bob",
+        authorAssociation: "OWNER",
+        authorIdentity: null,
         body: "parece bom, mas veja os testes",
         resolved: false,
         kind: "review",
@@ -212,12 +244,18 @@ describe("pr-comentarios", () => {
     const az = fake("az", AZ_RULES);
     const ctx = await cardWithPr("azure-devops", AZ_URL);
     await ctx.board.pollPrs();
-    expect(await ctx.board.prComments(ctx.cardId)).toEqual([
+    // A failure of the fetch shows up as text, so it fails the comparison and not the test run.
+    const comments = await ctx.board
+      .prComments(ctx.cardId)
+      .catch((error: Error) => `erro: ${error.message}`);
+    expect(comments).toEqual([
       {
         id: "5/1",
         path: "src/a.ts",
         line: 3,
         author: "Ana",
+        authorAssociation: null,
+        authorIdentity: "ana@acme.com",
         body: "nome ruim",
         resolved: false,
         kind: "inline",
@@ -227,6 +265,8 @@ describe("pr-comentarios", () => {
         path: "src/a.ts",
         line: 3,
         author: "Bia",
+        authorAssociation: null,
+        authorIdentity: "id-bia",
         body: "concordo",
         resolved: false,
         kind: "inline",
@@ -236,6 +276,8 @@ describe("pr-comentarios", () => {
         path: null,
         line: null,
         author: "Caio",
+        authorAssociation: null,
+        authorIdentity: "caio@acme.com",
         body: "geral",
         resolved: true,
         kind: "review",
@@ -248,7 +290,7 @@ describe("pr-comentarios", () => {
         "git",
         "--resource",
         "pullRequestThreads",
-        "project=proj",
+        "project=Meu Projeto",
         "repositoryId=repo",
         "pullRequestId=12",
         "--org",
