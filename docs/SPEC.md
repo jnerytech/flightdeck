@@ -337,5 +337,6 @@ O agente implementa só a Fase 1, em passos pequenos e verificáveis, sem gastar
 | 6 | Workflows: etapas encadeadas, gates, orçamento e MCP local | [SPEC-fase-6.md](SPEC-fase-6.md) |
 | 7 | Operação: versões e atualização, retenção e backup, cota do plano por host, "permitir sempre" | [SPEC-fase-7.md](SPEC-fase-7.md) |
 | 8 | Custos e uso diário: custo por mensagem e por projeto, orçamentos, histórico da cota, bandeja com aprovação, abrir no terminal, paleta Ctrl+K | [SPEC-fase-8.md](SPEC-fase-8.md) |
+| 9 | Distribuição: release assinada, atualizador do app e atualização do daemon pelo app | [SPEC-fase-9.md](SPEC-fase-9.md) |
 
 Cada fase fecha pelos próprios critérios de aceite e é integrada na ordem do roadmap; duas fases independentes podem ser desenvolvidas em paralelo em worktrees separados, com a posterior rebaseada sobre a tag da anterior antes de fechar. O produto é desktop, sem celular.
