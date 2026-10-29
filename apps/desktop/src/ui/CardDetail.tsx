@@ -71,6 +71,8 @@ export function CardDetail(props: {
   }, [store, hostId, cardId, runId, withCosts, cardMoment]);
 
   useEffect(() => {
+    // The project is known once the card is (a direct route loads it).
+    if (!projectId) return;
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
       setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
     });
