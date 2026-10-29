@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { addWorktree } from "../src/board/worktree.ts";
+import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
 import { record } from "./helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
@@ -117,5 +118,17 @@ describe("worktree", () => {
       }
     }
     expect(codes).toEqual(["not_found", "not_found"]);
+  });
+});
+
+describe("worktree: falhas do git", () => {
+  test("base inexistente: o erro do git chega a quem iniciou e nenhuma branch fica para trás", async () => {
+    const { repo } = gitRepo();
+    const result = await addWorktree(repo, "Sem base", "nao-existe").then(
+      () => "criou",
+      (error: { code?: string; message?: string }) => `${error.code}: ${error.message}`,
+    );
+    expect(result.startsWith("invalid_state: git worktree add: ")).toBe(true);
+    expect(git(repo, "branch", "--list", "fd/*")).toBe("");
   });
 });
