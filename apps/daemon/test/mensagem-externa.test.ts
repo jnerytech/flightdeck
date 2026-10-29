@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { Central } from "../src/central/central.ts";
 import { startChannel } from "../src/central/channel.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { ExternalPermissions } from "../src/central/external-permissions.ts";
@@ -24,7 +25,8 @@ function setup() {
   cleanups.push(() => receptor.stop());
   const server = startServer({
     manager,
-    central: { external, permissions, receptor },
+    // Only what these commands use; the hooks commands are tested with a real Central.
+    central: { external, permissions, receptor } as unknown as Central,
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
