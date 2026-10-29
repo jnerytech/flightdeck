@@ -67,7 +67,8 @@ describe("ao-vivo: history.changed", () => {
     indexer.onChange((change) => changes.push(change));
     indexer.start();
     cleanups.push(() => indexer.stop());
-    timers.flush(); // boot pass
+    timers.flush(); // boot pass, which also publishes the first indexing
+    changes.length = 0;
     return { file, timers, watched, changes };
   }
 
