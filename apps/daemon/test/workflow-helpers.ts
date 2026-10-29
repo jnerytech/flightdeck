@@ -1,7 +1,8 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { WorkflowRun } from "@flightdeck/protocol";
 import type { BoardOptions } from "../src/board/board.ts";
+import type { PrProviderKind } from "../src/board/types.ts";
 import { git, newBoard } from "./board-helpers.ts";
 import { poll } from "./helpers.ts";
 
@@ -29,14 +30,34 @@ export const sha256 = (text: string) => new Bun.CryptoHasher("sha256").update(te
  */
 export async function workflowCard(
   yaml: string,
-  options: { board?: Partial<BoardOptions>; delayMs?: number; setupScript?: string } = {},
+  options: {
+    board?: Partial<BoardOptions>;
+    delayMs?: number;
+    setupScript?: string;
+    /** With a local bare `origin` (pushed to), for `pr` steps. */
+    prProvider?: PrProviderKind;
+  } = {},
 ) {
   const ctx = newBoard(options.board ?? {}, options.delayMs ?? 1);
   commitWorkflow(ctx.repo, "wf", yaml);
+  const remote = join(ctx.root, "remote.git");
+  if (options.prProvider) {
+    git(ctx.root, "init", "-q", "--bare", "remote.git");
+    git(ctx.repo, "remote", "add", "origin", remote);
+    // Push only to local remotes: check where origin points before anything is pushed.
+    if (
+      git(ctx.repo, "remote", "get-url", "origin") !== remote ||
+      !existsSync(join(remote, "HEAD"))
+    ) {
+      throw new Error("origin não é o remoto local");
+    }
+    git(ctx.repo, "push", "-q", "origin", "main");
+  }
   const project = await ctx.board.addProject({
     path: ctx.repo,
     promptTemplate: "",
     ...(options.setupScript ? { setupScript: options.setupScript } : {}),
+    ...(options.prProvider ? { prProvider: options.prProvider } : {}),
   });
   await ctx.board.trustWorkflow(project.id, "wf", sha256(yaml));
   const card = ctx.board.createCard(project.id, { title: "Somar", description: "some" });
@@ -58,5 +79,5 @@ export async function workflowCard(
     const request = ctx.store.pendingPermissions(sessionId ?? "")[0];
     ctx.manager.respondPermission({ requestId: request?.id ?? "", decision: "allow" });
   };
-  return { ...ctx, project, card, start, run, runWhen, allow };
+  return { ...ctx, project, card, start, run, runWhen, allow, remote };
 }
