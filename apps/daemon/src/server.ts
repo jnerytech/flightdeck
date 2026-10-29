@@ -324,6 +324,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function automations(): Automations {
+    if (!opts.automations) throw new FlightdeckError("invalid_state", "automações indisponíveis");
+    return opts.automations;
+  }
+
   function issues(): Issues {
     if (!opts.issues) throw new FlightdeckError("invalid_state", "issues indisponíveis");
     return opts.issues;
@@ -553,11 +558,21 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
       case "automation.list":
+        return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
+        return ok(command.type, automations().save(command.payload));
       case "automation.remove":
-      case "automation.toggle":
+        return ok(command.type, {
+          automations: automations().remove(command.payload.id, command.payload.confirm === true),
+        });
+      case "automation.toggle": {
+        const { id, enabled, confirm } = command.payload;
+        return ok(command.type, automations().toggle(id, enabled, confirm === true));
+      }
       case "automation.runs":
-        throw new FlightdeckError("invalid_state", "stub");
+        return ok(command.type, {
+          runs: automations().runs(command.payload.id, command.payload.limit),
+        });
       case "issues.list": {
         const { projectId, query } = command.payload;
         return ok(command.type, { issues: await issues().list(projectId, query) });

@@ -177,6 +177,8 @@ const GH_FAIL = new Set(["FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_R
 interface GhCheck {
   conclusion?: string | null;
   state?: string | null;
+  name?: string;
+  context?: string;
 }
 
 /** GitHub through `gh`. */
@@ -197,12 +199,21 @@ export class GithubCli implements PrProvider {
       ["pr", "view", url, "--json", "state,statusCheckRollup"],
       cwd,
     );
-    const checks = (pr.statusCheckRollup ?? []).map((check) => {
+    const rollup = pr.statusCheckRollup ?? [];
+    const checks = rollup.map((check) => {
       const result = (check.conclusion ?? check.state ?? "").toUpperCase();
       if (GH_FAIL.has(result)) return "failing" as const;
       return GH_PASS.has(result) ? ("passing" as const) : ("pending" as const);
     });
-    return { state: GH_STATES[pr.state] ?? "open", checks: summarize(checks) };
+    const failed = rollup
+      .filter((_, i) => checks[i] === "failing")
+      .map((check) => check.name ?? check.context ?? "")
+      .filter((name) => name !== "");
+    return {
+      state: GH_STATES[pr.state] ?? "open",
+      checks: summarize(checks),
+      ...(failed.length > 0 ? { failed } : {}),
+    };
   }
 
   /**

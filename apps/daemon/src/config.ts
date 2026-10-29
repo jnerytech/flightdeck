@@ -114,6 +114,10 @@ export const Config = z.object({
     .default(() => ({ pauseAt: 0.9 })),
   /** API prices (phase 8): overrides of the default table, model by model. */
   pricing: PricingConfig.default(() => ({ models: {}, fastMultiplier: {} })),
+  /** Phase 13: how often the issue search of `issue_label` automations runs (5 min when absent). */
+  automations: z
+    .object({ issuePollIntervalMs: z.number().int().min(10).optional() })
+    .default(() => ({})),
   /** Phase 13: shell command regexes that are high risk on top of the built-in rules. */
   risk: z
     .object({

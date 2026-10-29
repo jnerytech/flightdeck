@@ -349,4 +349,41 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN issue_ref TEXT;
   ALTER TABLE cards ADD COLUMN issue_external INTEGER NOT NULL DEFAULT 0;
   `,
+  // Phase 13: automations, their runs, what each one already acted on, and the last minute the
+  // scheduler looked at (to tell, at boot, which slots passed while the daemon was stopped).
+  `
+  CREATE TABLE automations (
+    id                     TEXT PRIMARY KEY,
+    project_id             TEXT NOT NULL,
+    name                   TEXT NOT NULL,
+    enabled                INTEGER NOT NULL DEFAULT 0,
+    trigger                TEXT NOT NULL,
+    action                 TEXT NOT NULL,
+    max_runs_per_day       INTEGER NOT NULL DEFAULT 10,
+    allow_external_authors INTEGER NOT NULL DEFAULT 0,
+    created_at             TEXT NOT NULL
+  );
+
+  CREATE TABLE automation_runs (
+    id            TEXT PRIMARY KEY,
+    automation_id TEXT NOT NULL,
+    fired_at      TEXT NOT NULL,
+    cause         TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    detail        TEXT
+  );
+
+  CREATE INDEX automation_runs_automation ON automation_runs (automation_id, fired_at);
+
+  CREATE TABLE automation_seen (
+    automation_id TEXT NOT NULL,
+    key           TEXT NOT NULL,
+    PRIMARY KEY (automation_id, key)
+  );
+
+  CREATE TABLE automation_clock (
+    id        INTEGER PRIMARY KEY CHECK (id = 1),
+    last_tick INTEGER NOT NULL
+  );
+  `,
 ];

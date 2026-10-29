@@ -77,8 +77,6 @@ export interface BoardOptions {
   quota?: Quota;
   /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
-  /** Phase 13: the PR's checks turned to failing (automations' `ci_failed`); the names that failed. */
-  onChecksFailing?: (cardId: string, failed: string[]) => void;
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
@@ -184,6 +182,7 @@ export class Board {
   private readonly pollTimer: ReturnType<typeof setInterval>;
   private polling = false;
   private readonly watchers = new Set<(card: Card) => void>();
+  private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
@@ -451,6 +450,15 @@ export class Board {
     const { sessionId } = this.getCard(id);
     if (!sessionId) throw new FlightdeckError("invalid_state", "card sem sessão; inicie o card");
     return this.opts.manager.send(sessionId, text);
+  }
+
+  /**
+   * Phase 13: told when a card's PR checks turn to failing (not on every poll that finds them
+   * failing), with the names that failed; returns the function that stops it.
+   */
+  onChecksFailing(listener: (cardId: string, failed: string[]) => void): () => void {
+    this.checkWatchers.add(listener);
+    return () => this.checkWatchers.delete(listener);
   }
 
   /** Gets every card after each change; returns the function that stops it. */
@@ -986,11 +994,14 @@ export class Board {
     if (!provider || !card.prUrl) return;
     // From the main repository: a cwd inside the worktree would lock it while it is removed.
     const cwd = project.path;
-    const { state, checks } = await provider.status({ cwd, url: card.prUrl });
+    const { state, checks, failed } = await provider.status({ cwd, url: card.prUrl });
     this.db
       .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
       .run(state, checks, id);
     this.changed(id);
+    if (checks === "failing" && card.checksState !== "failing") {
+      for (const listener of this.checkWatchers) listener(id, failed ?? []);
+    }
     if (state !== card.prState) this.place(id, { type: "pr", state });
     // The comments come in the same round; a failure keeps the last ones, quietly.
     if (state === "open") await this.fetchPrComments(id).catch(() => {});

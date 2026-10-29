@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
+import { Automations } from "./automations/automations.ts";
 import { Board } from "./board/board.ts";
 import { Central } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
@@ -435,6 +436,17 @@ export async function startDaemon(
   });
   // The diff of every session and card, for the review (phase 11).
   const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
+  const issues = new Issues({ board, autoApprove });
+  // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
+  const automations = new Automations({
+    db: store.db,
+    board,
+    issues,
+    autoApprove,
+    pollMs: config.automations.issuePollIntervalMs,
+    log: logger.log.bind(logger),
+  });
+  automations.start();
   // Retention at boot and every 24 h (backups join it in the same daily pass).
   const maintenance = new Maintenance({
     db: store.db,
@@ -476,7 +488,8 @@ export async function startDaemon(
   const server = startServer({
     manager,
     autoApprove,
-    issues: new Issues({ board, autoApprove }),
+    issues,
+    automations,
     history,
     board,
     quota,
@@ -541,6 +554,7 @@ export async function startDaemon(
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
+        automations.stop();
         board.stop();
         await central.stop();
         maintenance.stop();
