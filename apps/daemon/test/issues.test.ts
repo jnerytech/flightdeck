@@ -209,6 +209,30 @@ describe("issues", () => {
     expect((await service.get(project.id, "1")).external).toBe(true);
   });
 
+  test('Azure: o az antigo escreve o autor como "Nome <email>"; sem autor, é de fora; um remoto com % solto segue como veio', async () => {
+    fake("az", [
+      { args: ["account", "show"], stdout: "ana@acme.com\n" },
+      {
+        args: ["boards", "query"],
+        stdout: JSON.stringify([
+          azItem(1, { "System.CreatedBy": "Ana <ana@acme.com>" }),
+          azItem(2, { "System.CreatedBy": "Beto" }),
+          azItem(3, { "System.CreatedBy": undefined }),
+        ]),
+      },
+    ]);
+    const { service, project } = await setup(AZ_REMOTE, { provider: "azure" });
+    expect((await service.list(project.id)).map((i) => [i.author, i.external])).toEqual([
+      ["Ana <ana@acme.com>", false],
+      ["Beto", true],
+      ["", true],
+    ]);
+    expect(azureCoords("https://dev.azure.com/acme/100%25%/_git/repo")).toEqual({
+      org: "acme",
+      project: "100%25%",
+    });
+  });
+
   test("projeto sem a integração, remoto de outro provedor ou gh que falha: invalid_state", async () => {
     const ctx = newBoard();
     cleanups.push(() => ctx.board.stop());
