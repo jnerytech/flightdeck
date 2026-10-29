@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { type UsageIndexerOptions, UsageIndexer } from "../src/costs/usage-indexer.ts";
+import { UsageIndexer, type UsageIndexerOptions } from "../src/costs/usage-indexer.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { tempDir } from "./helpers.ts";
 import {
+  type EntryRow,
   insertCard,
   insertCardRun,
   insertSession,
@@ -34,7 +35,13 @@ function setup(overrides: Partial<UsageIndexerOptions> = {}) {
   return { db: store.db, root, indexer };
 }
 
-const row = (fields: Record<string, unknown>) => ({
+const row = (fields: Partial<EntryRow>): EntryRow => ({
+  message_id: "",
+  at: "",
+  model: "",
+  input: 0,
+  output: 0,
+  cost_usd: null,
   claude_session_id: SESSION,
   day: "2026-10-01",
   project_key: "k:app",
