@@ -103,6 +103,9 @@ const validCommands: Record<CommandType, unknown> = {
   "budget.remove": { id: "b" },
   "budget.watch": {},
   "quota.history": { window: "five_hour", hours: 24 },
+  "changes.get": { target: "session:abc" },
+  "changes.watch": { target: "card:k" },
+  "changes.unwatch": { target: "card:k" },
 };
 
 const validEvents: SessionEvent[] = [
