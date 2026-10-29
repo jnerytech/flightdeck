@@ -18,7 +18,8 @@ class Interrupted extends Error {}
  * a `Write` tool when the message contains `[tool]`, writes and commits a file in its cwd on
  * `[commit]`, fails the run on `[fail]` and honors `interrupt`. `[cost:x]` adds `x` to the
  * session's cumulative cost, which every `turn.result` reports (like `total_cost_usd`).
- * `[ratelimit:<window>=<fraction>@<epoch seconds>]` reports a plan quota reading.
+ * `[ratelimit:<window>=<fraction>@<epoch seconds>]` reports a plan quota reading, and
+ * `[bash]` asks permission for a Bash command, with suggestions.
  */
 export class FakeRuntime implements AgentRuntime {
   /** Every `start` call, so tests can inspect what the session manager handed over. */
@@ -128,6 +129,7 @@ class FakeRun implements AgentRun {
       await this.sleep(abort.signal);
       if (text.includes("[fail]")) throw new Error("falha simulada do runtime");
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
+      if (text.includes("[bash]")) await this.bashCall(abort.signal);
       if (text.includes("[commit]")) this.commit(text);
       for (const [, cost] of text.matchAll(/\[cost:(\d+(?:\.\d+)?)\]/g)) {
         const total = this.costs.get(this.claudeSessionId) ?? 0;
@@ -164,14 +166,65 @@ class FakeRun implements AgentRun {
     }
   }
 
-  private async toolCall(signal: AbortSignal): Promise<void> {
-    const preface = "Vou criar um arquivo.";
-    await this.stream(preface, signal);
-    const toolUseId = `toolu_${ulid().toLowerCase()}`;
+  /** `[tool]`: a Write that asks permission, with the session suggestions the CLI would send. */
+  private toolCall(signal: AbortSignal): Promise<void> {
     const input = { file_path: "fake.txt", content: "conteúdo de teste\n" };
+    return this.permissionCall(signal, {
+      preface: "Vou criar um arquivo.",
+      toolName: "Write",
+      input,
+      suggestions: [
+        { type: "addDirectories", directories: [this.opts.cwd], destination: "session" },
+        { type: "setMode", mode: "acceptEdits", destination: "session" },
+      ],
+      done: (updated) => `arquivo criado: ${String(updated?.file_path ?? input.file_path)}`,
+    });
+  }
+
+  /** `[bash]`: a Bash command that asks permission, suggesting a project rule and a session one. */
+  private bashCall(signal: AbortSignal): Promise<void> {
+    const command = "npm test --silent";
+    return this.permissionCall(signal, {
+      preface: "Vou rodar um comando.",
+      toolName: "Bash",
+      input: { command },
+      suggestions: [
+        {
+          type: "addRules",
+          rules: [{ toolName: "Bash", ruleContent: "npm test:*" }],
+          behavior: "allow",
+          destination: "localSettings",
+        },
+        {
+          type: "addRules",
+          rules: [{ toolName: "Bash", ruleContent: command }],
+          behavior: "allow",
+          destination: "session",
+        },
+      ],
+      done: () => `comando executado: ${command}`,
+    });
+  }
+
+  /**
+   * Asks `canUseTool` like the CLI does. The tool result says what was allowed and, when the
+   * answer carried `updatedPermissions`, repeats them: that is how a smoke sees them arrive.
+   */
+  private async permissionCall(
+    signal: AbortSignal,
+    call: {
+      preface: string;
+      toolName: string;
+      input: Record<string, unknown>;
+      suggestions: unknown[];
+      done(updatedInput: Record<string, unknown> | undefined): string;
+    },
+  ): Promise<void> {
+    await this.stream(call.preface, signal);
+    const toolUseId = `toolu_${ulid().toLowerCase()}`;
     const blocks: AssistantBlock[] = [
-      { type: "text", text: preface },
-      { type: "tool_use", id: toolUseId, name: "Write", input },
+      { type: "text", text: call.preface },
+      { type: "tool_use", id: toolUseId, name: call.toolName, input: call.input },
     ];
     this.emit({ type: "message.assistant", blocks });
 
@@ -179,15 +232,20 @@ class FakeRun implements AgentRun {
       signal.addEventListener("abort", () => reject(new Interrupted()), { once: true });
     });
     const decision = await Promise.race([
-      this.opts.canUseTool("Write", input, { signal, toolUseId }),
+      this.opts.canUseTool(call.toolName, call.input, {
+        signal,
+        toolUseId,
+        suggestions: call.suggestions,
+      }),
       aborted,
     ]);
     if (decision.behavior === "allow") {
-      const path = String(decision.updatedInput?.file_path ?? input.file_path);
+      const updates = decision.updatedPermissions;
+      const granted = updates ? `; permissões: ${JSON.stringify(updates)}` : "";
       this.emit({
         type: "tool.result",
         toolUseId,
-        content: `arquivo criado: ${path}`,
+        content: `${call.done(decision.updatedInput)}${granted}`,
         isError: false,
       });
     } else {

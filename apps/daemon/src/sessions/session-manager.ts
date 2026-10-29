@@ -11,6 +11,7 @@ import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
+import { parseSuggestions } from "../permissions/permission-updates.ts";
 import type { AgentRun, AgentRuntime, QuotaReading, RuntimeEvent } from "../runtime/types.ts";
 import type { EventStore } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
@@ -282,7 +283,13 @@ export class SessionManager {
       permissionMode: session.permissionMode,
       env: buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
       canUseTool: (toolName, input, ctx) =>
-        this.broker.request(sessionId, toolName, input, ctx.signal),
+        this.broker.request(
+          sessionId,
+          toolName,
+          input,
+          ctx.signal,
+          parseSuggestions(ctx.suggestions),
+        ),
       ...(resume ? { resume } : {}),
       ...(session.model ? { model: session.model } : {}),
     });

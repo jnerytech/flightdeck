@@ -3,6 +3,7 @@ import {
   type PermissionResult,
   type SDKMessage,
   type SDKUserMessage,
+  type PermissionUpdate as SdkPermissionUpdate,
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AssistantBlock } from "@flightdeck/protocol";
@@ -171,10 +172,16 @@ export class ClaudeSdkRuntime implements AgentRuntime {
         const decision = await opts.canUseTool(toolName, input, {
           signal: ctx.signal,
           toolUseId: ctx.toolUseID,
+          suggestions: ctx.suggestions,
         });
-        return decision.behavior === "allow"
-          ? { behavior: "allow", updatedInput: decision.updatedInput ?? input }
-          : { behavior: "deny", message: decision.message };
+        if (decision.behavior === "deny") return { behavior: "deny", message: decision.message };
+        // Validated against the request (permission-updates.ts): same shape as the SDK's.
+        const updatedPermissions = decision.updatedPermissions as SdkPermissionUpdate[] | undefined;
+        return {
+          behavior: "allow",
+          updatedInput: decision.updatedInput ?? input,
+          ...(updatedPermissions ? { updatedPermissions } : {}),
+        };
       },
       ...(opts.resume ? { resume: opts.resume } : {}),
       ...(opts.model ? { model: opts.model } : {}),

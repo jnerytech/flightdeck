@@ -1,8 +1,14 @@
-import type { CommandPayload, SessionEvent, ToolInput } from "@flightdeck/protocol";
+import type {
+  CommandPayload,
+  PermissionUpdate,
+  SessionEvent,
+  ToolInput,
+} from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
+import { checkUpdates } from "./permission-updates.ts";
 
 export interface BrokerHooks {
   emit(sessionId: string, event: SessionEvent): void;
@@ -12,6 +18,9 @@ export interface BrokerHooks {
 
 interface Pending {
   sessionId: string;
+  toolName: string;
+  /** What the CLI offered: the only updates, with project rules, an answer may carry. */
+  suggestions: PermissionUpdate[];
   resolve: (decision: PermissionDecision) => void;
   detach: () => void;
 }
@@ -33,6 +42,7 @@ export class PermissionBroker {
     toolName: string,
     input: ToolInput,
     signal: AbortSignal,
+    suggestions: PermissionUpdate[] = [],
   ): Promise<PermissionDecision> {
     if (signal.aborted) return Promise.resolve({ behavior: "deny", message: "cancelado" });
     const id = ulid();
@@ -42,25 +52,38 @@ export class PermissionBroker {
       signal.addEventListener("abort", onAbort, { once: true });
       this.open.set(id, {
         sessionId,
+        toolName,
+        suggestions,
         resolve,
         detach: () => signal.removeEventListener("abort", onAbort),
       });
-      this.hooks.emit(sessionId, { type: "permission.requested", requestId: id, toolName, input });
+      this.hooks.emit(sessionId, {
+        type: "permission.requested",
+        requestId: id,
+        toolName,
+        input,
+        ...(suggestions.length > 0 ? { suggestions } : {}),
+      });
       this.hooks.onPendingChange(sessionId, this.pendingCount(sessionId));
     });
   }
 
   respond(payload: CommandPayload<"permission.respond">): void {
-    if (!this.open.has(payload.requestId)) {
+    const pending = this.open.get(payload.requestId);
+    if (!pending) {
       throw new FlightdeckError(
         "not_found",
         `pedido de permissão ${payload.requestId} não está aberto`,
       );
     }
     if (payload.decision === "allow") {
+      // Refused updates leave the request open, before anything is applied.
+      const updates = payload.updatedPermissions ?? [];
+      checkUpdates(updates, pending);
       this.finish(payload.requestId, "allow", payload.message, {
         behavior: "allow",
         ...(payload.updatedInput ? { updatedInput: payload.updatedInput } : {}),
+        ...(updates.length > 0 ? { updatedPermissions: updates } : {}),
       });
     } else {
       const message = payload.message ?? "Negado pelo usuário";

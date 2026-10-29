@@ -1,4 +1,9 @@
-import type { PermissionMode, SessionEvent, ToolInput } from "@flightdeck/protocol";
+import type {
+  PermissionMode,
+  PermissionUpdate,
+  SessionEvent,
+  ToolInput,
+} from "@flightdeck/protocol";
 
 /** One window of the plan quota, as a runtime read it (`resetsAt` in milliseconds). */
 export interface QuotaReading {
@@ -22,13 +27,14 @@ export type RuntimeEvent =
   | { type: "quota"; windows: QuotaReading[] };
 
 export type PermissionDecision =
-  | { behavior: "allow"; updatedInput?: ToolInput }
+  | { behavior: "allow"; updatedInput?: ToolInput; updatedPermissions?: PermissionUpdate[] }
   | { behavior: "deny"; message: string };
 
 export type CanUseToolFn = (
   toolName: string,
   input: ToolInput,
-  ctx: { signal: AbortSignal; toolUseId?: string },
+  /** `suggestions` as the CLI sent them; the session manager validates them. */
+  ctx: { signal: AbortSignal; toolUseId?: string; suggestions?: unknown },
 ) => Promise<PermissionDecision>;
 
 export interface StartOptions {

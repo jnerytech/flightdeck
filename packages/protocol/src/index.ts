@@ -101,6 +101,50 @@ export const PendingPermission = z.object({
 });
 export type PendingPermission = z.infer<typeof PendingPermission>;
 
+// Phase 7 (track B): the SDK's PermissionUpdate, for "permitir nesta sessão / sempre neste projeto".
+export const PermissionDestination = z.enum([
+  "userSettings",
+  "projectSettings",
+  "localSettings",
+  "session",
+  "cliArg",
+]);
+export type PermissionDestination = z.infer<typeof PermissionDestination>;
+
+export const PermissionRule = z.object({
+  toolName: z.string(),
+  ruleContent: z.string().optional(),
+});
+export type PermissionRule = z.infer<typeof PermissionRule>;
+
+const RulesUpdate = <T extends string>(type: T) =>
+  z.object({
+    type: z.literal(type),
+    rules: z.array(PermissionRule),
+    behavior: z.enum(["allow", "deny", "ask"]),
+    destination: PermissionDestination,
+  });
+const DirectoriesUpdate = <T extends string>(type: T) =>
+  z.object({
+    type: z.literal(type),
+    directories: z.array(z.string()),
+    destination: PermissionDestination,
+  });
+
+export const PermissionUpdate = z.discriminatedUnion("type", [
+  RulesUpdate("addRules"),
+  RulesUpdate("replaceRules"),
+  RulesUpdate("removeRules"),
+  z.object({
+    type: z.literal("setMode"),
+    mode: PermissionMode,
+    destination: PermissionDestination,
+  }),
+  DirectoriesUpdate("addDirectories"),
+  DirectoriesUpdate("removeDirectories"),
+]);
+export type PermissionUpdate = z.infer<typeof PermissionUpdate>;
+
 export const SessionEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session.created"),
@@ -133,6 +177,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     requestId: z.string(),
     toolName: z.string(),
     input: ToolInput,
+    /** What the CLI offers to stop asking (phase 7). */
+    suggestions: z.array(PermissionUpdate).optional(),
   }),
   z.object({
     type: z.literal("permission.resolved"),
@@ -203,6 +249,8 @@ export const PermissionRespondPayload = z.object({
   decision: z.enum(["allow", "deny"]),
   message: z.string().optional(),
   updatedInput: ToolInput.optional(),
+  /** Only the request's own suggestions or a project rule; anything else is refused. */
+  updatedPermissions: z.array(PermissionUpdate).optional(),
 });
 
 // Phase 3: transcripts indexed from ~/.claude/projects (read only).
@@ -856,6 +904,7 @@ export const ErrorCode = z.enum([
   "forbidden_cwd",
   "protocol_incompatible",
   "internal",
+  "invalid_permission_update",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
