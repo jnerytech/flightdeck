@@ -16,6 +16,10 @@ export type FakeClaudeStep =
   /** Starts the MCP server from --mcp-config and logs its notifications. */
   | { do: "channel" }
   | { do: "wait-channel"; count: number; timeoutMs?: number }
+  /** Edits or creates a file under the session's cwd, like a turn's Write. */
+  | { do: "write"; path: string; text: string }
+  /** Waits for a file the test creates (smoke:checkpoints: once the turn's snapshot is taken). */
+  | { do: "wait-file"; path: string; timeoutMs?: number }
   | { do: "exit"; code: number };
 
 export interface FakeClaudeEvent {

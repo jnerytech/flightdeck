@@ -139,6 +139,15 @@ for (const step of steps) {
         ok: await until(() => notifications.length >= step.count, step.timeoutMs ?? 10_000),
       });
       break;
+    case "write":
+      writeFileSync(join(cwd, step.path), step.text);
+      break;
+    case "wait-file":
+      log({
+        type: "wait-file",
+        ok: await until(() => existsSync(step.path), step.timeoutMs ?? 10_000),
+      });
+      break;
     case "exit":
       code = step.code;
       break;
