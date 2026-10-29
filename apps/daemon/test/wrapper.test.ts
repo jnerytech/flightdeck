@@ -88,7 +88,7 @@ describe("wrapper", () => {
     cleanups.push(fake.restore);
     const url = receptor();
     const { file, dataDir } = config({ receptor: url });
-    const result = await wrapper(["--model", "opus", "-p", "oi"], file);
+    const result = await wrapper(["--model", "opus", "--resume", "abc"], file);
     expect(result.code).toBe(7);
     const start = fake.events().find((e) => e.type === "start") as unknown as {
       args: string[];
@@ -102,8 +102,8 @@ describe("wrapper", () => {
       "server:flightdeck",
       "--model",
       "opus",
-      "-p",
-      "oi",
+      "--resume",
+      "abc",
     ]);
     expect(start.mcpConfig).toEqual({
       mcpServers: {
@@ -115,6 +115,24 @@ describe("wrapper", () => {
     });
     // The --mcp-config file is temporary.
     expect(readdirSync(join(dataDir, "channels"))).toEqual([]);
+  });
+
+  test("com -p ou --print, abre o claude normal, sem canal e sem aviso (o modo print ignora o canal)", async () => {
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const { file } = config({ receptor: receptor() });
+    for (const args of [
+      ["-p", "oi"],
+      ["--model", "opus", "--print", "oi"],
+    ]) {
+      const result = await wrapper(args, file);
+      expect(result).toEqual({ code: 0, out: [] });
+    }
+    const starts = fake.events().filter((e) => e.type === "start");
+    expect(starts.map((e) => e.args)).toEqual([
+      ["-p", "oi"],
+      ["--model", "opus", "--print", "oi"],
+    ]);
   });
 
   test("com o daemon fora do ar, avisa e abre o claude assim mesmo, sem canal", async () => {
