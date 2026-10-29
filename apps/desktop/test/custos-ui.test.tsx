@@ -166,7 +166,17 @@ describe("custos-ui", () => {
       .query(
         "INSERT INTO events (session_id, seq, ts, type, payload) VALUES (?, 999, 'x', 'turn.result', ?)",
       )
-      .run(managed.sessionId, JSON.stringify({ type: "turn.result", costUsd: 30 }));
+      .run(
+        managed.sessionId,
+        // A whole turn.result: the app gets it in the session's replay.
+        JSON.stringify({
+          type: "turn.result",
+          subtype: "success",
+          isError: false,
+          durationMs: 1,
+          costUsd: 30,
+        }),
+      );
     writeTranscript(d.historyRoot, "-p", "s-hist", [
       userLine({ uuid: "u1", text: "Lido do histórico", cwd: d.project }),
     ]);
@@ -190,7 +200,7 @@ describe("custos-ui", () => {
       sessionId: managed.sessionId,
     });
     await click("Custos");
-    await settle(() => region("Top sessões")?.querySelector("button") !== null);
+    await settle(() => (region("Top sessões")?.querySelectorAll("button").length ?? 0) > 1);
     await act(async () => {
       fireEvent.click(region("Top sessões")?.querySelectorAll("button")[1] as HTMLElement);
     });
