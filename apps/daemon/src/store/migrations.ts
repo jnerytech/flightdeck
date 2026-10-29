@@ -69,7 +69,7 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (claude_session_id, uuid)
   );
   `,
-  // Phase 4: projects and their boards. `notice` and `board_settings` go beyond the spec
+  // Phase 4: projects and their boards. `cards.notice` and the run id go beyond the spec
   // (see docs/DECISIONS.md).
   `
   CREATE TABLE projects (
@@ -113,10 +113,5 @@ export const MIGRATIONS: readonly string[] = [
   );
 
   CREATE INDEX card_runs_card ON card_runs (card_id);
-
-  CREATE TABLE board_settings (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
   `,
 ];
