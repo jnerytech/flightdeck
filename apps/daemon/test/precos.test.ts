@@ -234,7 +234,9 @@ describe("precos", () => {
       "costs",
     ]);
     expect(await client.data("costs.reprice", {})).toEqual({ entries: 5 });
+    // Without an indexer there is no load to wait for.
     expect(await client.data("costs.status", {})).toEqual({
+      initialLoad: { state: "done", filesDone: 0, filesTotal: 0 },
       pricingDate: "2026-10-06",
       unpriced: [{ model: "claude-mystery-9", entries: 1, tokens: 10 }],
       divergences: [],
