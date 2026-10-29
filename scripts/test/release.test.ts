@@ -178,8 +178,24 @@ describe("release", () => {
         },
       },
     });
-    expect(() =>
-      tauriReleaseConfig(readFileSync(join(ROOT, "release/flightdeck.pub"), "utf8")),
-    ).toThrow("release/flightdeck.pub não é uma chave pública válida");
+    // A placeholder in place of the key stops the build with a clear message.
+    expect(() => tauriReleaseConfig("PLACEHOLDER: a chave ainda não foi gerada\n")).toThrow(
+      "release/flightdeck.pub não é uma chave pública válida",
+    );
+  });
+
+  test("release/flightdeck.pub é a chave pública do projeto, diferente das chaves de teste", () => {
+    const product = readFileSync(join(ROOT, "release/flightdeck.pub"), "utf8");
+    let config: ReturnType<typeof tauriReleaseConfig> | string;
+    try {
+      config = tauriReleaseConfig(product);
+    } catch (error) {
+      config = (error as Error).message;
+    }
+    expect(config).toMatchObject({ plugins: { updater: { pubkey: product.trim() } } });
+    for (const name of ["test-signing.pub", "tauri-signer.pub"]) {
+      const test = readFileSync(join(ROOT, "apps/daemon/test/fixtures/release", name), "utf8");
+      expect(test.trim()).not.toBe(product.trim());
+    }
   });
 });
