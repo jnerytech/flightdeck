@@ -61,6 +61,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { SshTargets } from "./ssh/targets.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
@@ -127,6 +128,8 @@ export interface ServerOptions {
   quotaHistory?: QuotaHistory;
   /** The diff of sessions and cards behind `changes.*` (phase 11). */
   changes?: Changes;
+  /** The ssh destinos behind `ssh.*` (phase 15). */
+  ssh?: SshTargets;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -440,6 +443,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function changes(): Changes {
     if (!opts.changes) throw new FlightdeckError("invalid_state", "revisão de mudanças desativada");
     return opts.changes;
+  }
+
+  function ssh(): SshTargets {
+    if (!opts.ssh) throw new FlightdeckError("invalid_state", "destinos ssh desativados");
+    return opts.ssh;
   }
 
   function review(): ReviewComments {
@@ -977,6 +985,13 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "changes.unwatch":
         ws.data.changeWatchers.get(command.payload.target)?.();
         ws.data.changeWatchers.delete(command.payload.target);
+        return ok(command.type);
+      case "ssh.list":
+        return ok(command.type, { targets: ssh().list() });
+      case "ssh.save":
+        return ok(command.type, ssh().save(command.payload));
+      case "ssh.remove":
+        ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });

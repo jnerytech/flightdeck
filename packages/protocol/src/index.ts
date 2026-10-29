@@ -653,6 +653,46 @@ export const TerminalSettings = z.object({
 });
 export type TerminalSettings = z.infer<typeof TerminalSettings>;
 
+/** How a ssh destino authenticates: the host's agent, a key file, a vault key or a password. */
+export const SshAuth = z.enum(["agent", "key-file", "vault-key", "password"]);
+export type SshAuth = z.infer<typeof SshAuth>;
+
+/** The short, fixed list of OpenSSH options a destino may set. */
+export const SshOptions = z
+  .object({
+    serverAliveInterval: z.number().int().optional(),
+    compression: z.boolean().optional(),
+    /** `[bind:]port:host:port`, kept as text. */
+    localForward: z.array(z.string()).optional(),
+    /** Off by default; turning it on asks for `confirm`. */
+    forwardAgent: z.boolean().optional(),
+  })
+  .strict();
+export type SshOptions = z.infer<typeof SshOptions>;
+
+/** A ssh destino: only a reference to its secret, never the secret. */
+export const SshTarget = z.object({
+  id: z.string(),
+  name: z.string(),
+  host: z.string(),
+  port: z.number().int(),
+  user: z.string(),
+  /** The Flightdeck host that opens the connection; `null` is the local one. */
+  viaHost: z.string().nullable(),
+  auth: SshAuth,
+  /** `key-file`: the path on the host; `vault-key` and `password`: the item of the vault. */
+  secretRef: z.string().nullable(),
+  /** The destino this one goes through (ProxyJump). */
+  jump: z.string().nullable(),
+  options: SshOptions,
+  tags: z.array(z.string()),
+  /** The fingerprint (SHA256) of the pinned server key; `null` before the first confirmation. */
+  hostKey: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type SshTarget = z.infer<typeof SshTarget>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1456,6 +1496,28 @@ export const Command = z.discriminatedUnion("type", [
   cmd("terminal.list", z.object({}).strict()),
   /** Turns the host's terminals on (asks for `confirm`) or off (ends the live ones). */
   cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
+  cmd("ssh.list", z.object({}).strict()),
+  /** Creates (no `id`) or edits a destino; turning ForwardAgent on asks for `confirm`. */
+  cmd(
+    "ssh.save",
+    z
+      .object({
+        id: z.string().optional(),
+        name: z.string(),
+        host: z.string(),
+        port: z.number().int().optional(),
+        user: z.string(),
+        viaHost: z.string().nullable().optional(),
+        auth: SshAuth.optional(),
+        secretRef: z.string().nullable().optional(),
+        jump: z.string().nullable().optional(),
+        options: SshOptions.optional(),
+        tags: z.array(z.string()).optional(),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
+  cmd("ssh.remove", z.object({ id: z.string(), confirm: z.boolean() }).strict()),
   cmd("pr.comments", CardIdPayload),
   /** The data of `flightdeckd statusline`: quota windows, today's cost and the session's. */
   cmd("statusline.get", z.object({ claudeSessionId: z.string().optional() })),
@@ -1836,6 +1898,9 @@ export interface CommandResults {
   "terminal.close": undefined;
   "terminal.list": { terminals: TerminalInfo[] };
   "terminal.settings": TerminalSettings;
+  "ssh.list": { targets: SshTarget[] };
+  "ssh.save": SshTarget;
+  "ssh.remove": undefined;
   "statusline.get": {
     windows: Array<{ window: string; utilization: number | null }>;
     todayUsd: number;

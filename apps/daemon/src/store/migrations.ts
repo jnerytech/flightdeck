@@ -392,4 +392,24 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN arena_of TEXT;
   ALTER TABLE cards ADD COLUMN variant TEXT;
   `,
+  // Phase 15: the ssh destinos. `secret_ref` is a key file's path or an item of the vault
+  // (phase 16), never a secret; `host_key` is the pinned server key as JSON.
+  `
+  CREATE TABLE ssh_targets (
+    id         TEXT PRIMARY KEY,
+    name       TEXT,
+    host       TEXT,
+    port       INTEGER,
+    user       TEXT,
+    via_host   TEXT,
+    auth       TEXT,
+    secret_ref TEXT,
+    jump       TEXT,
+    options    TEXT,
+    tags       TEXT,
+    host_key   TEXT,
+    created_at TEXT,
+    updated_at TEXT
+  );
+  `,
 ];

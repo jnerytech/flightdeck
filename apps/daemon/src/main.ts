@@ -71,6 +71,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
@@ -520,6 +521,7 @@ export async function startDaemon(
     changes,
     review: new ReviewComments({ db: store.db, changes, manager, board, central }),
     sessionFiles: new SessionFiles({ db: store.db }),
+    ssh: new SshTargets({ db: store.db }),
     terminals,
     // Turned on or off from the app: kept in the config file, like the rest of the host settings.
     onTerminalSettings: (enabled) =>
