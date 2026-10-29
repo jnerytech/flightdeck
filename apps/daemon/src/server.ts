@@ -656,6 +656,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "pr.comments":
+        return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
+      case "pr.comments.send": {
+        const { cardId, ids } = command.payload;
+        return ok(command.type, await board().sendPrComments(cardId, ids));
+      }
       case "card.updateFromBase":
         return ok(command.type, await board().updateFromBase(command.payload.cardId));
       case "card.mergeLocal": {

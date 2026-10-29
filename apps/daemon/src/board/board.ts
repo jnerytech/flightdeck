@@ -27,7 +27,7 @@ import {
   pendingFiles,
   rebaseOnto,
 } from "./merge.ts";
-import { prProvider } from "./pr.ts";
+import { type PrComment, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { runSetup } from "./setup.ts";
 import type {
@@ -163,6 +163,8 @@ export class Board {
   private quotaWaiters: Array<() => void> = [];
   private readonly unwatchQuota: () => void;
   private readonly unwatchBudgets: () => void;
+  /** Review comments of each card's open PR, from the last poll (phase 11). */
+  private readonly prCommentCache = new Map<string, PrComment[]>();
   /** Workflow runs back from a gate, waiting for a slot; served before queued cards. */
   private readonly waiters: Array<{ cardId: string; resume(): void }> = [];
   private limit: number;
@@ -716,6 +718,32 @@ export class Board {
     return this.getCard(id);
   }
 
+  /** The review comments of the card's PR, as last fetched (fetched now when there are none). */
+  async prComments(id: string): Promise<PrComment[]> {
+    if (!this.getCard(id).prUrl) throw new FlightdeckError("invalid_state", "card sem PR");
+    return this.prCommentCache.get(id) ?? this.fetchPrComments(id);
+  }
+
+  /** Asks the provider; read only, nothing is posted back. */
+  private async fetchPrComments(id: string): Promise<PrComment[]> {
+    const card = this.getCard(id);
+    const project = this.getProject(card.projectId);
+    const provider = prProvider(project.prProvider);
+    if (!provider) throw new FlightdeckError("invalid_state", "projeto sem provedor de PR");
+    const comments = await provider.comments({ cwd: project.path, url: card.prUrl as string });
+    this.prCommentCache.set(id, comments);
+    return comments;
+  }
+
+  /** Sends the chosen PR comments to the card's session, in the review's format. */
+  async sendPrComments(id: string, ids: readonly string[]): Promise<{ sent: number }> {
+    const chosen = (await this.prComments(id)).filter((c) => ids.includes(c.id));
+    if (chosen.length === 0)
+      throw new FlightdeckError("bad_request", "nenhum comentário escolhido");
+    this.message(id, prMessage(chosen));
+    return { sent: chosen.length };
+  }
+
   /** The card's worktree and branch, while no turn of its agent is going on. */
   private idleWorktree(id: string): { card: Card; worktree: string; branch: string } {
     const card = this.getCard(id);
@@ -845,6 +873,8 @@ export class Board {
       .run(state, checks, id);
     this.changed(id);
     if (state !== card.prState) this.place(id, { type: "pr", state });
+    // The comments come in the same round; a failure keeps the last ones, quietly.
+    if (state === "open") await this.fetchPrComments(id).catch(() => {});
     if (state === "merged") await this.finish(id);
   }
 

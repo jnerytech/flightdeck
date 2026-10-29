@@ -429,6 +429,19 @@ export type ChangesResult = z.infer<typeof ChangesResult>;
 
 const ReviewSide = z.enum(["new", "old"]);
 
+/** A review comment of a card's PR, read from GitHub or Azure DevOps; nothing is posted back. */
+export const PrComment = z.object({
+  id: z.string(),
+  /** `null` for a review's summary, about the whole PR. */
+  path: z.string().nullable(),
+  line: z.number().int().nullable(),
+  author: z.string(),
+  body: z.string(),
+  resolved: z.boolean(),
+  kind: z.enum(["inline", "review"]),
+});
+export type PrComment = z.infer<typeof PrComment>;
+
 /** An inline comment on a target's diff: a draft until the review goes to the agent. */
 export const ReviewComment = z.object({
   id: z.string(),
@@ -954,6 +967,8 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ window: z.string().min(1), hours: z.number().int().min(1).max(720) }),
   ),
   cmd("changes.get", z.object({ target: ReviewTarget })),
+  cmd("pr.comments", CardIdPayload),
+  cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
   /** "Merge e arquivar", for a card without a PR; `merge` is `--no-ff`. */
@@ -1255,6 +1270,8 @@ export interface CommandResults {
   "budget.watch": undefined;
   "quota.history": QuotaHistory;
   "changes.get": ChangesResult;
+  "pr.comments": { comments: PrComment[] };
+  "pr.comments.send": { sent: number };
   "card.updateFromBase": Card;
   "card.mergeLocal": Card;
   "changes.watch": undefined;

@@ -16,6 +16,89 @@ export interface CreatePr {
   body: string;
 }
 
+/** A review comment of a PR, read from the provider (phase 11); nothing is ever posted back. */
+export interface PrComment {
+  id: string;
+  /** `null` for a review's summary, which is about the whole PR. */
+  path: string | null;
+  line: number | null;
+  author: string;
+  body: string;
+  resolved: boolean;
+  kind: "inline" | "review";
+}
+
+interface GhComment {
+  id: number;
+  path: string;
+  line?: number | null;
+  original_line?: number | null;
+  user: { login: string };
+  body: string;
+}
+
+interface GhReview {
+  id: string;
+  author: { login: string };
+  body: string;
+}
+
+interface GhThreads {
+  data: {
+    repository: {
+      pullRequest: {
+        reviewThreads: {
+          nodes: Array<{ isResolved: boolean; comments: { nodes: Array<{ databaseId: number }> } }>;
+        };
+      };
+    };
+  };
+}
+
+/** Which review threads are resolved: GitHub's REST API does not say. */
+const GH_THREADS = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100) {
+        nodes { isResolved comments(first: 100) { nodes { databaseId } } }
+      }
+    }
+  }
+}`;
+
+interface AzThread {
+  id: number;
+  status: string;
+  isDeleted?: boolean;
+  threadContext: { filePath: string; rightFileStart?: { line: number } | null } | null;
+  comments: Array<{
+    id: number;
+    author: { displayName: string };
+    content: string;
+    commentType: string;
+  }>;
+}
+
+const AZ_RESOLVED = new Set(["fixed", "closed", "wontFix", "byDesign"]);
+
+/** The chosen PR comments as one message to the agent, like the inline review. */
+export function prMessage(comments: readonly PrComment[]): string {
+  return [
+    "Comentários do PR:",
+    ...comments.map((c, i) => {
+      const where = c.path
+        ? `\`${c.path}\`${c.line === null ? "" : ` linha ${c.line}`} (${c.author})`
+        : `revisão de ${c.author}`;
+      const body = c.body
+        .replace(/\r?\n$/, "")
+        .split(/\r?\n/)
+        .map((line) => `   ${line}`)
+        .join("\n");
+      return `${i + 1}. ${where}:\n${body}`;
+    }),
+  ].join("\n");
+}
+
 /** A PR host reached through its CLI, which must be installed and logged in on this host. */
 export interface PrProvider {
   /** Opens the PR (or reuses the one already open for `head`) and returns its URL. */
@@ -23,18 +106,25 @@ export interface PrProvider {
   status(opts: { cwd: string; url: string }): Promise<PrStatus>;
   /** URL of the open PR for `head`, if any. */
   url(opts: { cwd: string; head: string }): Promise<string | null>;
+  /** The PR's review comments and review summaries. */
+  comments(opts: { cwd: string; url: string }): Promise<PrComment[]>;
 }
 
 /** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
-async function cli(name: string, args: string[], cwd: string): Promise<CommandResult> {
+async function cli(
+  name: string,
+  args: string[],
+  cwd: string,
+  input?: string,
+): Promise<CommandResult> {
   const bin = whichOnPath(name);
   if (!bin) throw new FlightdeckError("invalid_state", `${name} não encontrado no PATH`);
-  return runCommand([bin, ...args], cwd);
+  return runCommand([bin, ...args], cwd, input);
 }
 
 /** Stdout of a CLI call that must succeed; the error names the subcommand (`gh pr view`). */
-async function cliOk(name: string, args: string[], cwd: string): Promise<string> {
-  const result = await cli(name, args, cwd);
+async function cliOk(name: string, args: string[], cwd: string, input?: string): Promise<string> {
+  const result = await cli(name, args, cwd, input);
   if (result.code !== 0) {
     const what = [name, ...args.slice(0, name === "az" ? 3 : 2)].join(" ");
     throw new FlightdeckError("invalid_state", `${what} falhou: ${result.stderr.trim()}`);
@@ -42,8 +132,8 @@ async function cliOk(name: string, args: string[], cwd: string): Promise<string>
   return result.stdout;
 }
 
-const cliJson = async <T>(name: string, args: string[], cwd: string): Promise<T> =>
-  JSON.parse(await cliOk(name, args, cwd)) as T;
+const cliJson = async <T>(name: string, args: string[], cwd: string, input?: string): Promise<T> =>
+  JSON.parse(await cliOk(name, args, cwd, input)) as T;
 
 /** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
 function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
@@ -85,6 +175,74 @@ export class GithubCli implements PrProvider {
       return GH_PASS.has(result) ? ("passing" as const) : ("pending" as const);
     });
     return { state: GH_STATES[pr.state] ?? "open", checks: summarize(checks) };
+  }
+
+  /**
+   * Review comments (REST), the summaries of the reviews, and which threads are resolved
+   * (GraphQL, a query: nothing is written).
+   */
+  async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
+    const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
+    if (!match) throw new FlightdeckError("invalid_state", `URL de PR do GitHub inválida: ${url}`);
+    const [, owner, repo, number] = match as unknown as [string, string, string, string];
+    const inline = await cliJson<GhComment[]>(
+      "gh",
+      ["api", `repos/${owner}/${repo}/pulls/${number}/comments`],
+      cwd,
+    );
+    const { reviews } = await cliJson<{ reviews: GhReview[] }>(
+      "gh",
+      ["pr", "view", url, "--json", "reviews"],
+      cwd,
+    );
+    const threads = await cliJson<GhThreads>(
+      "gh",
+      [
+        "api",
+        "graphql",
+        // From stdin: the query's characters do not survive a .cmd wrapper on Windows.
+        "-F",
+        "query=@-",
+        `owner=${owner}`,
+        "-F",
+        `name=${repo}`,
+        "-F",
+        `number=${number}`,
+      ],
+      cwd,
+      GH_THREADS,
+    );
+    const resolved = new Set(
+      threads.data.repository.pullRequest.reviewThreads.nodes
+        .filter((thread) => thread.isResolved)
+        .flatMap((thread) => thread.comments.nodes.map((c) => c.databaseId)),
+    );
+    return [
+      ...inline.map(
+        (c): PrComment => ({
+          id: String(c.id),
+          path: c.path,
+          line: c.line ?? c.original_line ?? null,
+          author: c.user.login,
+          body: c.body,
+          resolved: resolved.has(c.id),
+          kind: "inline",
+        }),
+      ),
+      ...reviews
+        .filter((review) => review.body.trim())
+        .map(
+          (review): PrComment => ({
+            id: `review-${review.id}`,
+            path: null,
+            line: null,
+            author: review.author.login,
+            body: review.body,
+            resolved: false,
+            kind: "review",
+          }),
+        ),
+    ];
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
@@ -164,6 +322,58 @@ export class AzureDevOpsCli implements PrProvider {
     );
     const [first] = prs;
     return first ? azUrl(first) : null;
+  }
+
+  /**
+   * The PR's threads through `az devops invoke` (the `az repos pr` commands have none): each
+   * comment of a person, with the thread's file, line and status.
+   */
+  async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
+    const match =
+      /^(https:\/\/dev\.azure\.com\/[^/]+|https:\/\/[^/]+\.visualstudio\.com)\/([^/]+)\/_git\/([^/]+)\/pullrequest\/(\d+)/.exec(
+        url,
+      );
+    if (!match) throw new FlightdeckError("invalid_state", `URL de PR do Azure inválida: ${url}`);
+    const [, org, project, repo, id] = match as unknown as [string, string, string, string, string];
+    const { value } = await cliJson<{ value: AzThread[] }>(
+      "az",
+      [
+        "devops",
+        "invoke",
+        "--area",
+        "git",
+        "--resource",
+        "pullRequestThreads",
+        "--route-parameters",
+        `project=${project}`,
+        `repositoryId=${repo}`,
+        `pullRequestId=${id}`,
+        "--org",
+        org,
+        "--api-version",
+        "7.1",
+        "--output",
+        "json",
+      ],
+      cwd,
+    );
+    return value
+      .filter((thread) => !thread.isDeleted)
+      .flatMap((thread) =>
+        thread.comments
+          .filter((comment) => comment.commentType !== "system")
+          .map(
+            (comment): PrComment => ({
+              id: `${thread.id}/${comment.id}`,
+              path: thread.threadContext?.filePath.replace(/^\//, "") ?? null,
+              line: thread.threadContext?.rightFileStart?.line ?? null,
+              author: comment.author.displayName,
+              body: comment.content,
+              resolved: AZ_RESOLVED.has(thread.status),
+              kind: thread.threadContext ? "inline" : "review",
+            }),
+          ),
+      );
   }
 }
 
