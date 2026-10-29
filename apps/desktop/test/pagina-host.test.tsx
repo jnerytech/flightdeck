@@ -25,19 +25,6 @@ async function confirmWith(name: string) {
     fireEvent.click(button as HTMLElement);
   });
 }
-
-/** A host's menu in the sidebar, opened (Radix opens on pointer down). */
-async function openHostMenu(host: string) {
-  const trigger = screen.queryByRole("button", { name: `Menu de ${host}` });
-  expect(trigger).not.toBeNull();
-  await act(async () => {
-    fireEvent.pointerDown(trigger as HTMLElement, {
-      button: 0,
-      ctrlKey: false,
-      pointerType: "mouse",
-    });
-  });
-}
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 

@@ -232,11 +232,11 @@ describe("estados-avisos", () => {
       { label: "incompatível: atualize o daemon", tone: "incompatible" },
     ]);
     render(
-      <>
+      <div>
         {all.map((status) => (
           <HostStatusBadge key={status} status={status} t={t} />
         ))}
-      </>,
+      </div>,
     );
     const classOf = (label: string) => screen.queryByText(label)?.className ?? "";
     expect(classOf("offline")).toContain("text-status-error");

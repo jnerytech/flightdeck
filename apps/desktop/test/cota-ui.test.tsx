@@ -102,8 +102,9 @@ describe("cota-ui", () => {
     expect(inBar("five_hour", "42%")?.className).not.toContain("text-status-error");
     expect(inBar("seven_day", "95%")?.className).toContain("text-status-error");
     const meter = screen.queryByRole("meter", { name: "7 dias de alfa" });
-    expect(meter?.getAttribute("aria-valuenow")).toBe("0.95");
-    expect(meter?.getAttribute("aria-valuemax")).toBe("1");
+    expect(meter?.tagName).toBe("METER");
+    expect(meter?.getAttribute("value")).toBe("0.95");
+    expect(meter?.getAttribute("max")).toBe("1");
     // Over pauseAt: new cards wait, manual sessions go on, and the app says so.
     expect(screen.queryByText(/cards novos esperam a cota; sessões manuais seguem/)).not.toBeNull();
   });
