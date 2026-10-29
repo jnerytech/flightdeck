@@ -30,6 +30,7 @@ import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
 import type { Central } from "./central/central.ts";
+import type { Costs } from "./costs/costs.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
@@ -79,6 +80,8 @@ export interface ServerOptions {
   quota?: Quota;
   /** Usage by day and project behind `usage.summary` (phase 7). */
   usage?: UsageLedger;
+  /** Estimated costs behind the `costs.*` commands (phase 8). */
+  costs?: Costs;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -178,6 +181,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.quota ? ["quota"] : []),
     // Project rules live in the board's projects.
     ...(opts.board ? ["rules"] : []),
+    ...(opts.costs ? ["costs"] : []),
   ];
   let pingSeq = 0;
 
@@ -306,6 +310,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function quota(): Quota {
     if (!opts.quota) throw new FlightdeckError("invalid_state", "cota desativada");
     return opts.quota;
+  }
+
+  function costs(): Costs {
+    if (!opts.costs) throw new FlightdeckError("invalid_state", "custos desativados");
+    return opts.costs;
   }
 
   function board(): Board {
@@ -568,6 +577,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { projectId, rule, confirm } = command.payload;
         return ok(command.type, { rules: board().removeRule(projectId, rule, confirm === true) });
       }
+      case "costs.status":
+        return ok(command.type, costs().status());
+      case "costs.reprice":
+        return ok(command.type, costs().reprice());
       case "usage.summary":
         return ok(command.type, usage().summary(command.payload.days));
       case "quota.get":

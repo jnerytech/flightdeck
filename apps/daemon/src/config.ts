@@ -4,6 +4,7 @@ import { homedir, hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
+import { PricingConfig } from "./costs/pricing.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
@@ -108,6 +109,8 @@ export const Config = z.object({
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
     .default(() => ({ pauseAt: 0.9 })),
+  /** API prices (phase 8): overrides of the default table, model by model. */
+  pricing: PricingConfig.default(() => ({ models: {}, fastMultiplier: {} })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });

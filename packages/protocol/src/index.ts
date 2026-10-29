@@ -556,6 +556,34 @@ export const UsageSummary = z.object({
 });
 export type UsageSummary = z.infer<typeof UsageSummary>;
 
+// Phase 8 (track A): estimated costs, read from the transcripts of every session of the host.
+export const UnpricedModel = z.object({
+  model: z.string(),
+  entries: z.number().int(),
+  tokens: z.number().int(),
+});
+export type UnpricedModel = z.infer<typeof UnpricedModel>;
+
+/** A managed session whose computed cost is far from the SDK's `total_cost_usd`. */
+export const CostsDivergence = z.object({
+  claudeSessionId: z.string(),
+  /** The model with most of the session's cost. */
+  model: z.string(),
+  computedUsd: z.number(),
+  sdkUsd: z.number(),
+});
+export type CostsDivergence = z.infer<typeof CostsDivergence>;
+
+export const CostsStatus = z.object({
+  /** When the default price table was taken (`YYYY-MM-DD`). */
+  pricingDate: z.string(),
+  /** Models without a price: their tokens count, their cost does not. */
+  unpriced: z.array(UnpricedModel),
+  /** Over 10% and US$ 0.05 apart: the price table may be out of date. */
+  divergences: z.array(CostsDivergence),
+});
+export type CostsStatus = z.infer<typeof CostsStatus>;
+
 const ProjectFields = {
   name: z.string().min(1).optional(),
   baseBranch: z.string().min(1).optional(),
@@ -712,6 +740,9 @@ export const Command = z.discriminatedUnion("type", [
     "rules.remove",
     z.object({ projectId: z.string(), rule: z.string().min(1), confirm: z.boolean().optional() }),
   ),
+  // Phase 8 (track A).
+  cmd("costs.status", z.object({}).strict()),
+  cmd("costs.reprice", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -950,6 +981,8 @@ export interface CommandResults {
   "usage.summary": UsageSummary;
   "rules.list": { rules: string[] };
   "rules.remove": { rules: string[] };
+  "costs.status": CostsStatus;
+  "costs.reprice": { entries: number };
 }
 
 // ---------------------------------------------------------------------------
