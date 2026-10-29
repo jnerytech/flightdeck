@@ -11,6 +11,8 @@ describe("trava-servico", () => {
       ["schtasks", "/End", "/TN", "x"],
       ["C:\\Windows\\System32\\schtasks.exe", "/Run"],
       ["/usr/bin/loginctl", "show-user"],
+      // Phase 9: the update runs outside the service through a transient user unit.
+      ["systemd-run", "--user", "--collect", "--unit", "flightdeckd-update"],
     ]) {
       expect(isServiceController(cmd)).toBe(true);
     }
