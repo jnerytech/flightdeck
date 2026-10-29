@@ -236,13 +236,25 @@ describe("mudancas", () => {
     writeFileSync(join(repo, "outro.txt"), "x");
     await poll(() => updates.includes(4), 5000);
     expect(updates).toContain(4);
-    // Stopping with a diff pending: the real timer is cancelled too.
-    const before = updates.length;
+  });
+
+  test("parar o watcher real com um diff pendente cancela o timer real", async () => {
+    const { repo } = dirtyRepo();
+    const db = new EventStore(":memory:").db;
+    insertHistory(db, "h-1", repo);
+    const updates: number[] = [];
+    // A window far wider than any scheduling jitter: the event arrives, the diff is pending
+    // for a full second, and the stop comes long before it.
+    const stop = await new Changes({ db, debounceMs: 1000 }).watch("session:h-1", (r) =>
+      updates.push(r.files.length),
+    );
+    cleanups.push(stop);
+    await Bun.sleep(100);
     writeFileSync(join(repo, "mais.txt"), "x");
-    await poll(() => false, 10);
+    await Bun.sleep(400);
     stop();
-    await Bun.sleep(200);
-    expect(updates.length).toBe(before);
+    await Bun.sleep(1300);
+    expect(updates).toEqual([]);
   });
 
   test("pasta que sumiu não é repositório; parar cancela o diff pendente; falha depois de um evento vai para o log", async () => {
