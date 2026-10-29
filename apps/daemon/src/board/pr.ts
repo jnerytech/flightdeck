@@ -1,5 +1,6 @@
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
+import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
 import type { ChecksState, PrProviderKind, PrState } from "./types.ts";
 
@@ -125,7 +126,9 @@ export async function cli(
 ): Promise<CommandResult> {
   const bin = whichOnPath(name);
   if (!bin) throw new FlightdeckError("invalid_state", `${name} não encontrado no PATH`);
-  return runCommand([bin, ...args], cwd, input);
+  // The Azure CLI's free text is made safe for its .cmd shim (az-text.ts); the others keep theirs.
+  const safe = name === "az" ? sanitizeAzArgs(args) : args;
+  return runCommand([bin, ...safe], cwd, input).catch(mapSpawnError);
 }
 
 /** Stdout of a CLI call that must succeed; the error names the subcommand (`gh pr view`). */
