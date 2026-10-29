@@ -80,7 +80,6 @@ async function setup(
     board: {
       prProvider: () => pr.provider,
       prPollIntervalMs: 20,
-      onChecksFailing: (cardId, failed) => automations?.onChecksFailing(cardId, failed),
       ...opts.board,
     },
   });
@@ -563,6 +562,8 @@ describe("automacoes", () => {
   test("ci_failed → send_to_card: quando os checks do PR passam a falhar, o resumo chega à sessão; só na virada", async () => {
     const ctx = await setup({ withPr: true });
     const a = ctx.on({ trigger: { type: "ci_failed" }, action: { type: "send_to_card" } });
+    // Started, the automations listen to the board's PR polling.
+    ctx.automations.start();
     const card = await ctx.sessionCard();
     const worktree = card.worktreePath ?? "";
     writeFileSync(join(worktree, "novo.txt"), "novo\n");
