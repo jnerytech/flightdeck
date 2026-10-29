@@ -1,12 +1,5 @@
 import type { Database } from "bun:sqlite";
-import {
-  closeSync,
-  openSync,
-  readdirSync,
-  readSync,
-  statSync,
-  watch,
-} from "node:fs";
+import { closeSync, openSync, readdirSync, readSync, statSync, watch } from "node:fs";
 import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
