@@ -40,13 +40,21 @@ import {
   installService,
   resolveServiceClaude,
   type ServiceContext,
+  serviceCommand,
   serviceStatus,
   uninstallService,
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
-import { requestShutdown, runUpdate, type StopDeps, stableBinPath, waitHealthy } from "./update.ts";
+import {
+  requestShutdown,
+  runUpdate,
+  type StopDeps,
+  stableBinPath,
+  stopServiceDaemon,
+  waitHealthy,
+} from "./update.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status";
@@ -419,10 +427,36 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
  * `flightdeckd service install|uninstall|status`. With `--dry-run` nothing is written, not even
  * the config, so `loadConfig` (which creates a missing file) is never called in that mode.
  */
+/**
+ * Before the service goes, its daemon goes too (removing the task or unit alone would leave it
+ * running). A daemon that does not stop only gets a warning; the service is removed anyway.
+ */
+async function stopInstalledDaemon(
+  args: CliArgs,
+  ctx: ServiceContext,
+  deps: CliDeps,
+): Promise<void> {
+  const installed = await serviceCommand(ctx);
+  if (!installed) return;
+  const config = loadConfig(
+    args.config ? configPath(args) : (installed.config ?? configPath(args)),
+  );
+  const stop = {
+    ...serviceStopDeps(ctx, deps.log),
+    ...(deps.serviceStopTimeoutMs ? { stopTimeoutMs: deps.serviceStopTimeoutMs } : {}),
+  };
+  if (!(await stopServiceDaemon(stop, config, installed.command[0] as string))) {
+    deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
+  }
+}
+
 async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   const ctx = (deps.serviceContext ?? osServiceContext)(args.dryRun === true);
   if (args.action === "status") return printResult(deps, await serviceStatus(ctx));
-  if (args.action === "uninstall") return printResult(deps, await uninstallService(ctx));
+  if (args.action === "uninstall") {
+    if (!ctx.dryRun) await stopInstalledDaemon(args, ctx, deps);
+    return printResult(deps, await uninstallService(ctx));
+  }
   const file = configPath(args);
   const claude = resolveServiceClaude(ctx);
   if (claude.warning) deps.log.error(claude.warning);
@@ -635,6 +669,8 @@ export interface CliDeps {
   stdin?: ReadableStream<Uint8Array>;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
+  /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */
+  serviceStopTimeoutMs?: number;
   /** Clock of `db prune`, `backup` and `restore`; `Date.now` when absent. */
   now?: () => number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
