@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
   collectReleaseAssets,
@@ -87,10 +86,12 @@ describe("release", () => {
   });
 
   test("falta de arquivo, instalador de outra versão ou dois instaladores param a release", () => {
+    // A fresh folder each run: a fixed one under tmpdir() outlives the run that created it.
+    const never = join(realTempDir("fd-release-out-"), "nunca");
     const { "dist/flightdeckd-linux-arm64": _arm, ...withoutArm } = COMPLETE;
     const fail = (files: Record<string, string>) => {
       try {
-        collectReleaseAssets(built(files), "0.7.0", join(tmpdir(), "nunca"));
+        collectReleaseAssets(built(files), "0.7.0", never);
         return "juntou";
       } catch (error) {
         return (error as Error).message;
@@ -104,7 +105,7 @@ describe("release", () => {
     expect(
       fail({ ...COMPLETE, [`${BUNDLE}/nsis/Flightdeck_0.7.0_x64-setup (1).exe`]: "outro" }),
     ).toContain("mais de um instalador NSIS da versão 0.7.0");
-    expect(existsSync(join(tmpdir(), "nunca", "SHA256SUMS"))).toBe(false);
+    expect(existsSync(join(never, "SHA256SUMS"))).toBe(false);
   });
 
   test("os manifestos do app e do daemon levam versão, URLs, sha256 e assinaturas", () => {
@@ -144,9 +145,10 @@ describe("release", () => {
   });
 
   test("falta de .sig do instalador ou de um daemon para a release", () => {
+    const never = join(realTempDir("fd-release-out-"), "nunca");
     const fail = (files: Record<string, string>) => {
       try {
-        collectReleaseAssets(built(files), "0.7.0", join(tmpdir(), "nunca-sig"));
+        collectReleaseAssets(built(files), "0.7.0", never);
         return "juntou";
       } catch (error) {
         return (error as Error).message;
@@ -157,7 +159,7 @@ describe("release", () => {
     const { [`${BUNDLE}/nsis/Flightdeck_0.7.0_x64-setup.exe.sig`]: _nsis, ...noInstallerSig } =
       COMPLETE;
     expect(fail(noInstallerSig)).toContain("Flightdeck_0.7.0_x64-setup.exe.sig");
-    expect(existsSync(join(tmpdir(), "nunca-sig"))).toBe(false);
+    expect(existsSync(never)).toBe(false);
   });
 
   test("config de build do app para a release: artefatos do updater, chave pública e endpoint", () => {
