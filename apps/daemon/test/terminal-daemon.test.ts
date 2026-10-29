@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { startDaemon } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { bunPty, type SpawnFn } from "../src/terminal/pty.ts";
 import { Ring } from "../src/terminal/ring.ts";
@@ -562,5 +565,46 @@ describe("terminal-daemon", () => {
     expect(await refused("terminal.write", { terminalId: "nada", data: "x" })).toBe("not_found");
     expect(await refused("terminal.close", { terminalId: "nada" })).toBe("bad_request");
     expect(await refused("terminal.close", { terminalId: "nada", kill: true })).toBe("not_found");
+  });
+
+  test("o daemon liga o terminal: PTY injetado, terminal.max da config, o log do daemon, e o stop mata os terminais", async () => {
+    const dir = tempDir();
+    const { root, project } = workspace();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        allowedRoots: [root],
+        history: { roots: [join(dir, "nada")] },
+        terminal: { max: 1 },
+      }),
+    );
+    const ptys = fakePtys();
+    const logs: string[] = [];
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: (message) => logs.push(message), error: () => {} },
+      { pty: ptys.factory },
+    );
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const opened = await client.data<TerminalInfo>("terminal.open", {
+      cwd: project,
+      cols: 80,
+      rows: 24,
+    });
+    expect(opened?.terminalId ?? "").not.toBe("");
+    expect(logs.some((line) => line.includes(`terminal ${opened?.terminalId} aberto em`))).toBe(
+      true,
+    );
+    const second = await client.request("terminal.open", { cwd: project, cols: 80, rows: 24 });
+    expect((second.error as { code?: string } | undefined)?.code).toBe("invalid_state");
+    await daemon.stop();
+    expect(ptys.spawned.map((pty) => pty.killed)).toEqual([true]);
   });
 });
