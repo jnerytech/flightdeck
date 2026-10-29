@@ -3,8 +3,9 @@ import { dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { type CommandResult, git } from "./command.ts";
 
-/** Line added to `.git/info/exclude`: worktrees live inside the repo but never show up in it. */
-export const EXCLUDE_LINE = ".flightdeck/";
+/** Line added to `.git/info/exclude`: worktrees live inside the repo but never show up in it.
+ * Only the worktrees: phase 5 keeps versioned workflows in `.flightdeck/workflows`. */
+export const EXCLUDE_LINE = ".flightdeck/worktrees/";
 
 /** Throws with git's own message when a command fails. */
 export function must(result: CommandResult, what: string): CommandResult {
@@ -37,7 +38,7 @@ async function freeSlug(repo: string, base: string): Promise<string> {
   }
 }
 
-/** Adds `.flightdeck/` to the repo's local exclude file, once; `.gitignore` is never touched. */
+/** Adds `.flightdeck/worktrees/` to the repo's local exclude file, once; `.gitignore` is never touched. */
 async function excludeFlightdeck(repo: string): Promise<void> {
   const where = must(await git(repo, "rev-parse", "--git-path", "info/exclude"), "git rev-parse");
   const file = resolve(repo, where.stdout.trim());
