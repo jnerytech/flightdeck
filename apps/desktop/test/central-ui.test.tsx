@@ -71,7 +71,8 @@ async function setup() {
   const repoA = clone(alfa.root);
   const repoB = clone(beta.root);
   const { sessionId } = alfa.manager.create({ cwd: repoA, prompt: "oi", name: "Gerenciada" });
-  await poll(() => alfa.manager.get(sessionId).claudeSessionId);
+  // Idle before the terminal session acts, so its last activity is older (fixed order).
+  await poll(() => alfa.manager.get(sessionId).status === "idle");
   alfa.central.hooksInstall(true);
   const hooksToken = loadConfig(alfa.configFile).hooks.token ?? "";
   const receptor = alfa.central.receptorUrl() ?? "";
