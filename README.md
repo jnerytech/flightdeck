@@ -267,6 +267,68 @@ na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a com
 - Se outro programa já usa a combinação, o app avisa e abre as Configurações para você escolher
   outra. O atalho só é salvo depois que o sistema o aceita.
 
+## Board
+
+Cada projeto (um repositório git do host) tem um board com cinco colunas: Backlog, Em andamento,
+Esperando você, Em revisão e Concluído. Um card vira uma branch `fd/<slug>`, uma worktree e uma
+sessão; o card anda sozinho conforme a sessão e o PR, e também pode ser arrastado à mão.
+
+### Cadastrar um projeto
+
+No app, o botão ▦ ao lado do host abre **Projetos de &lt;host&gt;**. Cada projeto registra:
+
+- **Caminho do repositório:** precisa ser um repositório git dentro de `allowedRoots`.
+- **Nome** e **branch base:** em branco, ficam o nome da pasta e a branch atual do repositório.
+- **Provedor de PR:** `github`, `azure-devops` ou nenhum.
+- **Script de preparação** (opcional, por exemplo `bun install`): roda na worktree antes da
+  sessão, com `cmd.exe` no Windows e `sh` nos demais. É o único comando de shell que o
+  Flightdeck executa por conta própria, e só existe se for cadastrado. Se falhar, o card vai para
+  Esperando você com a saída do erro.
+- **Modelo de instruções:** anexado ao prompt de todo card. O padrão pede para trabalhar só na
+  worktree e fazer commits com mensagens descritivas.
+
+Ao iniciar um card, o daemon roda `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
+fd/<slug> <base>` e acrescenta `.flightdeck/worktrees/` ao `.git/info/exclude` do repositório
+(o `.gitignore` não é tocado). O prompt da sessão é a descrição do card mais o modelo.
+
+- **Em revisão:** o card entra quando um turno termina bem. Um turno com erro, interrompido por
+  Parar, ou um pedido de permissão levam a Esperando você.
+- **Conclusão:** Concluir (com confirmação) ou o PR mesclado removem a worktree se `git status`
+  estiver limpo. Senão, o card avisa e a worktree fica.
+- **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
+  remove a worktree e a branch local.
+
+### Provedores de PR
+
+Abrir PR faz `git push -u origin fd/<slug>` e depois chama o CLI do provedor, com o título e a
+descrição do card:
+
+- **GitHub:** `gh pr create --base <base> --head fd/<slug>`. Estado e checks vêm de `gh pr view
+  --json state,statusCheckRollup`.
+- **Azure DevOps:** `az repos pr create --source-branch fd/<slug> --target-branch <base>`. Estado
+  vem de `az repos pr show`, e os checks das políticas, de `az repos pr policy list`.
+
+O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a
+extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge continua no
+provedor. Os cards com PR aberto são consultados a cada 60 s, ou a cada
+`board.prPollIntervalMs` da config. PR mesclado leva o card a Concluído; fechado sem merge, a
+Esperando você.
+
+### Limite de execuções paralelas
+
+`maxParallelRuns` (padrão 2) limita quantos cards do host rodam ao mesmo tempo, para não esgotar
+a cota da assinatura com agentes em paralelo. Os cards iniciados além do limite ficam em Em
+andamento com o selo "na fila", em ordem de início. Eles sobem quando uma execução termina, é
+interrompida ou fica ociosa.
+
+- Sessões abertas fora do board não contam no limite.
+- O limite fica na config do daemon e pode ser trocado na tela Projetos, que grava de volta no
+  `config.json`:
+
+```json
+{ "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
+```
+
 ## Desenvolvimento
 
 ```sh
@@ -277,7 +339,8 @@ bun run test           # bun test + garante que nenhum arquivo-fonte ficou fora 
 bun run smoke          # ponta a ponta com o daemon real e --runtime fake; imprime SMOKE OK
 bun run smoke:multi    # dois daemons, um cliente, permissão via session.summary; SMOKE MULTI OK
 bun run smoke:history  # indexa, busca, retoma e vê history.changed; SMOKE HISTORY OK
-bun run tdd:audit -- --since fase-2   # todo feat/fix tem um commit test do mesmo escopo antes
+bun run smoke:board    # card com gh falso e remoto local até o PR mesclado; SMOKE BOARD OK
+bun run tdd:audit -- --since fase-3   # todo feat/fix tem um commit test do mesmo escopo antes
 bun run build:daemon   # binários em dist/
 bun run build:desktop  # frontend Vite em apps/desktop/dist
 cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml   # requer apps/desktop/dist

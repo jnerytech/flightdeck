@@ -356,3 +356,140 @@ deixou em aberto.
   escrever os transcripts.
 - **Ramos de erro do app** (`historyGet`), encontrados pela cobertura, seguiram a regra 7: o ramo
   foi removido, o teste ficou vermelho e só então o ramo voltou.
+
+# Decisões e divergências da Fase 4
+
+O que a spec da Fase 4 deixou aberto ou o que mudou na implementação. Inclui os pontos da revisão
+de consistência da spec recebida durante a fase.
+
+## Trava de CLIs e ambiente dos filhos
+
+- **Sentinelas de `gh` e `az`** (`scripts/test/cli-guard.ts`): mesma ideia da trava do claude. O
+  preload instala as sentinelas antes da do claude, porque testes antigos contam com a do claude
+  em primeiro lugar no PATH. Os falsos dos testes (`scripts/test/fake-cli.ts`) são um script `sh`
+  e um `.cmd` que repassam para `fake-cli-main.ts`. Esse script grava os argumentos e responde por
+  regras trocáveis em tempo de execução, e é assim que o merge é simulado.
+- **`Bun.spawn` sem `env` passa o ambiente da partida do processo**, e não o `process.env` atual.
+  Por isso, até esta fase, o daemon de cada smoke subia sem as travas de PATH e HOME. Era
+  inofensivo enquanto nada chamava `claude` nem lia `~`. O `smoke:board` revelou o problema ao
+  alcançar o `gh` de verdade, que recusou o remoto local, então nada saiu da máquina. Correções:
+  - `runCommand` (git, `gh`, `az`, script de preparação) e o `[commit]` do FakeRuntime passam
+    `env: process.env`, num ciclo próprio (`comandos`, e `fake-runtime` com teste da
+    identidade do commit).
+  - Os quatro smokes passam o ambiente explicitamente ao daemon.
+  - Com isso, o git dos testes deixou de ler o `~/.gitconfig` real e usa a identidade de
+    `GIT_AUTHOR_*` definida pelos testes.
+- **Push só para remotos locais:** os testes e o smoke conferem `git remote get-url origin`
+  (uma pasta `git init --bare`) antes de qualquer push.
+
+## Worktree e preparação
+
+- **`.git/info/exclude` recebe `.flightdeck/worktrees/`**, e não `.flightdeck/` inteiro. A Fase 5
+  guarda workflows versionados em `.flightdeck/workflows`. Isso veio da revisão da spec e teve um
+  ciclo `test(worktree)` → `fix(worktree)`.
+- **Slug:** acentos removidos, minúsculas, não alfanuméricos viram `-` e o máximo é 40
+  caracteres. Fica `card` quando não sobra nada, e um título repetido ganha `-2`, `-3`.
+- **Shell do script de preparação:** `cmd.exe /d /s /c` (ou `%ComSpec%`) no Windows e `sh -c`
+  nos demais. O aviso guarda o código de saída e os últimos 2000 caracteres de stderr, ou de
+  stdout se stderr estiver vazio.
+- **Falha ao criar a worktree** (por exemplo, base inexistente) tem o mesmo destino da falha de
+  preparação: Esperando você com a mensagem do git, sem sessão.
+- **`cards.notice`** (coluna fora da spec) guarda o último aviso do card: falha de preparação,
+  worktree mantida na conclusão, erro do CLI ao consultar o PR.
+
+## Colunas, fila e execuções
+
+- **"idle após um turno" segue o `turn.result`**, e não o status `idle`: `session.resume` e
+  `history.resume` vão a `idle` sem turno. Um turno com sucesso leva a Em revisão; com erro, a
+  Esperando você. O status sozinho (`idle`, `ended`) não move o card.
+- **`card.stop`:**
+  - Num card rodando, interrompe o turno. O `turn.result` interrompido (`error_during_execution`)
+    leva a Esperando você.
+  - Num card na fila, encerra a execução enfileirada e o card volta ao Backlog, travado até o
+    próximo início.
+- **`card.move` para Concluído é só movimento manual**, com trava e sem limpeza. A conclusão
+  manual com limpeza é o `card.complete`.
+- **`card_runs` ganhou `id` próprio** e `session_id` anulável, no lugar da chave
+  `(card_id, session_id)`. Uma execução na fila ou em preparação ainda não tem sessão, e uma que
+  falhou antes dela nunca terá. Isso substituiu um marcador `''` que quebrava a chave na segunda
+  execução.
+- **Nova execução de um card** fecha a sessão da execução anterior. A mais recente é a ativa.
+- **`maxParallelRuns`:**
+  - É chave da config (padrão 2).
+  - O app edita pelo comando `board.settings`, que não está na tabela da spec, e o daemon grava
+    de volta no `config.json`. `project.list` devolve o valor atual.
+  - Sessões fora de cards não contam.
+  - `card.message` num card ocioso vai direto à sessão, sem passar pela fila.
+  - Uma vaga é liberada quando a sessão fica `idle`, `error` ou `ended`, ou quando a preparação
+    falha.
+- **Reinício do daemon:** o board volta a acompanhar as sessões das execuções não encerradas e
+  sobe as execuções que estavam na fila.
+
+## PR
+
+- **`board.prPollIntervalMs`** na config (padrão 60 s), no mesmo molde de
+  `history.scanIntervalMs`. O daemon do smoke é outro processo, então injetar o intervalo nos
+  testes não bastaria.
+- **GitHub:**
+  - `url` usa `gh pr view <branch> --json url`, e um PR já aberto para a branch é
+    reaproveitado.
+  - A descrição vai em `--body`.
+  - Os checks vêm de `statusCheckRollup`, e o pior vence: falha, depois pendente, depois
+    passando. Sem checks, `null`.
+- **Azure DevOps:**
+  - `url` usa `az repos pr list --source-branch --status active`.
+  - A URL do PR é `<repository.webUrl>/pullrequest/<id>`.
+  - Os checks vêm das políticas (`az repos pr policy list`): `approved` e `notApplicable`
+    passam, `rejected` e `broken` falham, o resto fica pendente.
+- **Erro do CLI ao consultar** vira aviso no card, e o estado do PR não muda.
+
+## Protocolo
+
+- **`card.updated`** é um frame de topo, como `history.changed`, e não um `SessionEvent`. O
+  `HostConnection` o encaminha e reenvia `board.watch` a cada reconexão.
+- **`card.complete` e `card.discard`** aceitam `confirm` opcional no schema. O daemon recusa
+  (`invalid_state`) qualquer coisa que não seja `confirm: true`.
+- **Card descartado** sai do banco. O último `card.updated` traz o card com `discarded: true`.
+- **`board.get`** devolve o projeto e as cinco colunas, cada uma com seus cards por posição.
+- **Tipos:** os do board (projeto, card, diff) vivem no protocolo, e o daemon os reexporta.
+
+## Diff
+
+- **Ordem dos arquivos:** commits desde a base (`git diff <base>...HEAD`, então avanços da base
+  ficam de fora), alterações rastreadas não commitadas (`git diff HEAD`) e arquivos não
+  rastreados (`git ls-files --others --exclude-standard`).
+- **Não rastreados** aparecem como adicionados e não commitados. Arquivo binário (com byte nulo)
+  vem sem linhas.
+
+## FakeRuntime
+
+- **`[commit]`** na mensagem grava `fake-<n>.txt` no cwd da sessão e faz `git add` e
+  `git commit`, com o git do PATH atual. É o gatilho do `smoke:board`, já que o daemon do smoke
+  é outro processo e não recebe opções.
+
+## App desktop
+
+- **Telas:** Projetos (▦ ao lado do host), Board e Detalhe do card. A conversa é o mesmo
+  `SessionView` das fases anteriores: abrir o detalhe seleciona a sessão da execução ativa.
+- **Arrastar e soltar** usa eventos nativos. O card arrastado fica numa ref, e não no
+  `DataTransfer`, que alguns webviews deixam vazio. Usar estado deixava a soltura ler um valor
+  velho. Soltar sobre um card põe o arrastado antes dele (média das posições vizinhas).
+- **Confirmações** de Concluir e Descartar são diálogos do app, e não `window.confirm`.
+- **O aviso de Descartar** aparece quando o diff tem arquivo não commitado, ou tem arquivos e o
+  card não tem PR.
+- **Host no card:** o board é por projeto, e um projeto mora num host. Não há visão que junte
+  projetos de vários hosts, então o card não mostra o host.
+- **`src-tauri` não mudou** nesta fase, então não houve `cargo check` novo.
+
+## TDD e testes
+
+- **Escopos fora da tabela:**
+  - `fake-runtime` (o gatilho `[commit]` e o ambiente do git).
+  - `comandos` (ambiente atual nos filhos do daemon).
+- **Smoke:** o `smoke:board` foi commitado vermelho dentro de `test(protocolo-board)`. Ele
+  falhava no passo "cadastrar projeto" com saída controlada.
+- **Tempo dos testes:** os testes do board que somam esperas de git real e CLIs falsos (cada um
+  é um processo Bun) usam `setDefaultTimeout(20_000)`. O padrão de 5 s estourava com a suíte
+  inteira.
+- **Ramos revelados pela cobertura** (falha do git em `must`, watcher que lança, remoção de host
+  com cards) seguiram a regra 7: o ramo saiu, o teste ficou vermelho e só então o ramo voltou.
