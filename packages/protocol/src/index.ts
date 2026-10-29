@@ -443,6 +443,19 @@ const ProjectFields = {
 export const ProjectAddPayload = z.object({ path: z.string().min(1), ...ProjectFields });
 export const ProjectUpdatePayload = z.object({ projectId: z.string(), ...ProjectFields });
 export const CardIdPayload = z.object({ cardId: z.string() });
+/** Phase 6: with `workflow`, the card runs that trusted workflow with `inputs`. */
+export const CardStartPayload = z.object({
+  cardId: z.string(),
+  workflow: z.string().min(1).optional(),
+  inputs: z.record(z.string(), z.string()).optional(),
+});
+export const GateRespondPayload = z.object({
+  runId: z.string(),
+  stepId: z.string().min(1),
+  attempt: z.number().int().min(1),
+  decision: z.enum(["approve", "reject"]),
+  note: z.string().optional(),
+});
 /** Completion and discard only happen with `confirm: true`; the daemon refuses anything else. */
 export const CardConfirmPayload = z.object({ cardId: z.string(), confirm: z.boolean().optional() });
 
@@ -518,7 +531,8 @@ export const Command = z.discriminatedUnion("type", [
     "card.move",
     z.object({ cardId: z.string(), column: BoardColumn, position: z.number().optional() }),
   ),
-  cmd("card.start", CardIdPayload),
+  cmd("card.start", CardStartPayload),
+  cmd("card.get", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
@@ -542,6 +556,18 @@ export const Command = z.discriminatedUnion("type", [
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
   cmd("hooks.uninstall", z.object({ confirm: z.boolean().optional() })),
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
+  // Phase 6: workflows of a project (read from its base branch) and their runs.
+  cmd("workflow.list", z.object({ projectId: z.string() })),
+  cmd("workflow.validate", z.object({ projectId: z.string(), name: z.string().min(1) })),
+  /** `hash` is the content the user reviewed; a workflow that changed since is refused. */
+  cmd(
+    "workflow.trust",
+    z.object({ projectId: z.string(), name: z.string().min(1), hash: z.string().min(1) }),
+  ),
+  cmd("run.get", z.object({ runId: z.string() })),
+  cmd("run.watch", z.object({}).strict()),
+  /** Only the user answers gates: there is no MCP tool for it. */
+  cmd("gate.respond", GateRespondPayload),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -712,6 +738,13 @@ export interface CommandResults {
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
+  "card.get": Card;
+  "workflow.list": { workflows: WorkflowInfo[] };
+  "workflow.validate": WorkflowInfo;
+  "workflow.trust": WorkflowInfo;
+  "run.get": WorkflowRun;
+  "run.watch": undefined;
+  "gate.respond": WorkflowRun;
 }
 
 // ---------------------------------------------------------------------------
@@ -801,6 +834,10 @@ export const ExternalPermissionFrame = z.object({
 });
 export type ExternalPermissionFrame = z.infer<typeof ExternalPermissionFrame>;
 
+/** Sent after `run.watch` with the whole workflow run after each change. Not a session event. */
+export const RunUpdated = z.object({ type: z.literal("run.updated"), run: WorkflowRun });
+export type RunUpdated = z.infer<typeof RunUpdated>;
+
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -810,6 +847,7 @@ export const ServerMessage = z.union([
   CardUpdated,
   ExternalUpdated,
   ExternalPermissionFrame,
+  RunUpdated,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 

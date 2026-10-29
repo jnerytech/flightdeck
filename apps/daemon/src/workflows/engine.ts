@@ -127,6 +127,7 @@ export class WorkflowEngine {
   private readonly clock: () => number;
   /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
   private readonly gates = new Map<string, () => void>();
+  private readonly watchers = new Set<(run: WorkflowRun) => void>();
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
@@ -207,6 +208,7 @@ export class WorkflowEngine {
         JSON.stringify(inputs),
         now(),
       );
+    this.emit(runId);
   }
 
   /** Whether `runId` (a card run) is a workflow run. */
@@ -284,9 +286,31 @@ export class WorkflowEngine {
         "UPDATE step_runs SET status = ?, note = ?, ended_at = ? WHERE run_id = ? AND step_id = ? AND attempt = ?",
       )
       .run(status, note ?? null, now(), runId, stepId, attempt);
+    this.emit(runId);
     const key = `${runId}/${stepId}/${attempt}`;
     this.gates.get(key)?.();
     this.gates.delete(key);
+  }
+
+  /** Gets every run after each change; returns the function that stops it. */
+  watch(listener: (run: WorkflowRun) => void): () => void {
+    this.watchers.add(listener);
+    return () => this.watchers.delete(listener);
+  }
+
+  /** Runs still going, for a watcher that just arrived. */
+  activeRuns(): WorkflowRun[] {
+    return this.db
+      .query<{ id: string }, []>(
+        "SELECT id FROM workflow_runs WHERE status IN ('queued', 'running', 'waiting') ORDER BY started_at",
+      )
+      .all()
+      .map(({ id }) => this.getRun(id));
+  }
+
+  /** The workflow as it is on the base branch, with its validation. */
+  async validate(project: Project, name: string): Promise<WorkflowInfo> {
+    return this.info(project.id, await this.source(project, name));
   }
 
   /** Whether the run is still going (queued, running or at a gate). */
@@ -389,6 +413,7 @@ export class WorkflowEngine {
          VALUES (?, ?, 1, 'parallel', 'running', ?)`,
       )
       .run(run.id, stepId, now());
+    this.emit(run.id);
     const extra = this.host.takeSlots(run.card_id, items.length - 1);
     const outputs: string[] = [];
     /** By item index: the first declared failure is the one reported. */
@@ -430,6 +455,7 @@ export class WorkflowEngine {
          VALUES (?, ?, 1, 'pr', 'running', ?)`,
       )
       .run(run.id, stepId, now());
+    this.emit(run.id);
     try {
       const url = await this.host.createPr(run.card_id);
       this.endStep(run.id, stepId, 1, "completed", url);
@@ -482,6 +508,7 @@ export class WorkflowEngine {
          VALUES (?, ?, 1, 'loop', 'running', ?)`,
       )
       .run(run.id, stepId, now());
+    this.emit(run.id);
     try {
       for (let attempt = 1; ; attempt++) {
         const check = await this.checkStep(
@@ -527,6 +554,7 @@ export class WorkflowEngine {
            VALUES (?, ?, 1, 'gate', 'waiting', ?, ?, ?)`,
         )
         .run(run.id, stepId, show, interpolate(gate.message, context), now());
+      this.emit(run.id);
       this.setStatus(run.id, "waiting", null);
       this.host.place(run.card_id, { type: "workflow", state: "waiting" });
       this.host.release(run.card_id);
@@ -567,6 +595,7 @@ export class WorkflowEngine {
          ON CONFLICT (run_id, step_id, attempt) DO UPDATE SET started_at = excluded.started_at`,
       )
       .run(run.id, stepId, attempt, now());
+    this.emit(run.id);
     try {
       if (!this.allowed(run.id, command)) {
         throw new Error(`comando fora do workflow confiado: ${command}`);
@@ -619,6 +648,7 @@ export class WorkflowEngine {
            VALUES (?, ?, ?, 'agent', 'running', ?, ?)`,
         )
         .run(run.id, stepId, attempt, target, now());
+      this.emit(run.id);
     }
     const text = cut ? `${RESUMED_NOTE}\n\n${prompt}` : prompt;
     try {
@@ -660,6 +690,7 @@ export class WorkflowEngine {
     this.db
       .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(sessionId, run.id, stepId, attempt);
+    this.emit(run.id);
     return this.awaitTurn(run, sessionId, 0, started);
   }
 
@@ -729,6 +760,7 @@ export class WorkflowEngine {
     this.db
       .query("UPDATE workflow_runs SET usage = ? WHERE id = ?")
       .run(JSON.stringify(spending), runId);
+    this.emit(runId);
   }
 
   private endStep(
@@ -745,17 +777,32 @@ export class WorkflowEngine {
          WHERE run_id = ? AND step_id = ? AND attempt = ?`,
       )
       .run(status, output, exitCode, now(), runId, stepId, attempt);
+    this.emit(runId);
   }
 
   private setStatus(runId: string, status: RunStatus, why: string | null): void {
     this.db
       .query("UPDATE workflow_runs SET status = ?, status_reason = ? WHERE id = ?")
       .run(status, why, runId);
+    this.emit(runId);
   }
 
   private end(runId: string, status: RunStatus, why: string | null): void {
-    this.setStatus(runId, status, why);
     this.db.query("UPDATE workflow_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
+    this.setStatus(runId, status, why);
+  }
+
+  /** Sends the run as it is now to every watcher. */
+  private emit(runId: string): void {
+    if (this.watchers.size === 0) return;
+    const run = this.getRun(runId);
+    for (const watcher of this.watchers) {
+      try {
+        watcher(run);
+      } catch {
+        // A broken watcher must not break the run.
+      }
+    }
   }
 
   /** The run is over: the card goes to Em revisão (completed) or Esperando você. */

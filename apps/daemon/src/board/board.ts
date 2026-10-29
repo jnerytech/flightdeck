@@ -536,6 +536,11 @@ export class Board {
     return this.workflows.list(this.getProject(projectId));
   }
 
+  /** One workflow of the project's base branch, with its validation. */
+  validateWorkflow(projectId: string, name: string): Promise<WorkflowInfo> {
+    return this.workflows.validate(this.getProject(projectId), name);
+  }
+
   /** Trusts the workflow's current content (`hash`), which lets its `check` commands run. */
   trustWorkflow(projectId: string, name: string, hash: string): Promise<WorkflowInfo> {
     return this.workflows.trust(this.getProject(projectId), name, hash);

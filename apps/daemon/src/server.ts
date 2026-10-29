@@ -15,6 +15,7 @@ import {
   type Ping,
   Pong,
   PROTOCOL_VERSION,
+  type RunUpdated,
   WS_PATH,
 } from "@flightdeck/protocol";
 import type { ServerWebSocket } from "bun";
@@ -74,6 +75,8 @@ interface Connection {
   unwatchBoard?: () => void;
   /** Stops the `external.watch` stream, when active. */
   unwatchExternal?: () => void;
+  /** Stops the `run.watch` stream, when active. */
+  unwatchRuns?: () => void;
   lastRttMs?: number;
 }
 
@@ -93,7 +96,8 @@ type Outgoing =
   | HistoryChanged
   | CardUpdated
   | ExternalUpdated
-  | ExternalPermissionFrame;
+  | ExternalPermissionFrame
+  | RunUpdated;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -378,8 +382,40 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, column, position } = command.payload;
         return ok(command.type, board().moveCard(cardId, column, position));
       }
-      case "card.start":
-        return ok(command.type, await board().startCard(command.payload.cardId));
+      case "card.get":
+        return ok(command.type, board().getCard(command.payload.cardId));
+      case "workflow.list":
+        return ok(command.type, {
+          workflows: await board().listWorkflows(command.payload.projectId),
+        });
+      case "workflow.validate": {
+        const { projectId, name } = command.payload;
+        return ok(command.type, await board().validateWorkflow(projectId, name));
+      }
+      case "workflow.trust": {
+        const { projectId, name, hash } = command.payload;
+        return ok(command.type, await board().trustWorkflow(projectId, name, hash));
+      }
+      case "run.get":
+        return ok(command.type, board().workflows.getRun(command.payload.runId));
+      case "gate.respond": {
+        const { runId, stepId, attempt, decision, note } = command.payload;
+        board().workflows.respond(runId, stepId, attempt, decision, note);
+        return ok(command.type, board().workflows.getRun(runId));
+      }
+      case "run.watch": {
+        // Ack, the runs still going, then every change: the app sees open gates right away.
+        const runs = board().workflows;
+        ws.data.unwatchRuns?.();
+        ws.data.unwatchRuns = runs.watch((run) => send(ws, { type: "run.updated", run }));
+        ok(command.type);
+        for (const run of runs.activeRuns()) send(ws, { type: "run.updated", run });
+        return;
+      }
+      case "card.start": {
+        const { cardId, workflow, inputs } = command.payload;
+        return ok(command.type, await board().startCard(cardId, { workflow, inputs }));
+      }
       case "card.stop":
         return ok(command.type, await board().stopCard(command.payload.cardId));
       case "card.diff":
@@ -464,6 +500,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchHistory?.();
         ws.data.unwatchBoard?.();
         ws.data.unwatchExternal?.();
+        ws.data.unwatchRuns?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },
