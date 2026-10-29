@@ -11,7 +11,13 @@ import {
 } from "../lib/board.ts";
 import { StatusBadge } from "./StatusBadge.tsx";
 
-function CardTile(props: { card: Card; onOpen(): void; onDragStart(): void; onDropOn(): void }) {
+function CardTile(props: {
+  card: Card;
+  formatTime(iso: string): string;
+  onOpen(): void;
+  onDragStart(): void;
+  onDropOn(): void;
+}) {
   const { card } = props;
   return (
     <li
@@ -30,6 +36,13 @@ function CardTile(props: { card: Card; onOpen(): void; onDragStart(): void; onDr
       <div className="badges">
         {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
         {card.queued && <span className="badge badge-muted">na fila</span>}
+        {card.queueReason === "quota" && (
+          <span className="badge badge-warn">
+            {card.quotaUntil
+              ? `aguardando cota até ${props.formatTime(card.quotaUntil)}`
+              : "aguardando cota"}
+          </span>
+        )}
         {card.prState && <span className="badge">{PR_LABELS[card.prState]}</span>}
         {card.checksState && <span className="badge">{CHECK_LABELS[card.checksState]}</span>}
       </div>
@@ -129,6 +142,7 @@ export function BoardView(props: {
                   <CardTile
                     key={card.id}
                     card={card}
+                    formatTime={(iso) => store.formatTime(iso)}
                     onOpen={() => props.onOpenCard(card.id)}
                     onDragStart={() => {
                       dragging.current = card.id;

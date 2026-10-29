@@ -15,6 +15,7 @@ import type {
   HistorySessionSummary,
   HostInfoResult,
   PendingPermission,
+  QuotaState,
   SessionEventOf,
   SessionMeta,
   SessionStatus,
@@ -28,6 +29,7 @@ import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
+import { isHot, WINDOW_LABELS } from "./quota.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { trayStatus } from "./tray.ts";
@@ -77,6 +79,8 @@ export interface AppState {
   externalRequests: Record<string, ExternalPermissionFrame>;
   /** Name, pinned and archived, by `sessionKey(hostId, claudeSessionId)`. */
   meta: Record<string, SessionMeta>;
+  /** Plan quota of each host, by host id; kept by `quota.updated`. */
+  quota: Record<string, QuotaState>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -96,6 +100,9 @@ export type HostCommandType = Extract<
   | `run.${string}`
   | `gate.${string}`
   | `maintenance.${string}`
+  | `quota.${string}`
+  | `usage.${string}`
+  | `rules.${string}`
 >;
 
 const isRun = (value: unknown): value is WorkflowRun =>
@@ -144,6 +151,10 @@ export interface AppStoreOptions {
   maxDelayMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
+  /** Milliseconds now: the age of quota readings. */
+  now?: () => number;
+  /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
+  formatTime?: (iso: string) => string;
 }
 
 export interface PendingItem {
@@ -275,6 +286,8 @@ export class AppStore {
   private readonly connections = new Map<string, HostConnection>();
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
+  /** Quota windows already notified, by host, window and reset. */
+  private readonly quotaNotified = new Set<string>();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Accelerator currently registered with the OS. */
   private shortcut: string | null = null;
@@ -292,6 +305,7 @@ export class AppStore {
       searchOpen: false,
       cards: {},
       runs: {},
+      quota: {},
       externals: {},
       externalRequests: {},
       meta: {},
@@ -311,6 +325,17 @@ export class AppStore {
 
   getState = (): AppState => this.state;
 
+  /** Milliseconds now (injected in tests). */
+  now(): number {
+    return (this.options.now ?? Date.now)();
+  }
+
+  /** HH:MM of an instant, in this machine's time zone unless injected. */
+  formatTime(iso: string): string {
+    if (this.options.formatTime) return this.options.formatTime(iso);
+    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -319,7 +344,7 @@ export class AppStore {
   async init(): Promise<void> {
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
-    this.update({ hosts: [], sessions: {}, selected: null, cards: {}, runs: {} });
+    this.update({ hosts: [], sessions: {}, selected: null, cards: {}, runs: {}, quota: {} });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
     const autostart =
@@ -751,6 +776,7 @@ export class AppStore {
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
       onRunUpdated: (run) => this.onRun(config.id, run),
+      onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
@@ -761,6 +787,7 @@ export class AppStore {
     conn.watchHistory();
     conn.watchExternal();
     conn.watchRuns();
+    conn.watchQuota();
     conn.connect();
   }
 
@@ -771,7 +798,14 @@ export class AppStore {
       info: conn.info,
       incompatibility: conn.incompatibility,
     }));
-    if (status === "online") void this.loadHostInfo(hostId, conn);
+    if (status === "online") {
+      void this.loadHostInfo(hostId, conn);
+      // Daemons before phase 7 have no quota: quietly nothing.
+      void conn.request("quota.get", {}).then(
+        (state) => this.onQuota(hostId, state),
+        () => {},
+      );
+    }
     if (status === "connecting") {
       // Partial text from before the drop will never be completed by a delta; drop it.
       const sessions = { ...this.state.sessions };
@@ -863,6 +897,23 @@ export class AppStore {
   }
 
   /** A discarded card leaves; any other replaces what the app had. */
+  /** Crossing `pauseAt` notifies once per host, window and reset. */
+  private onQuota(hostId: string, state: QuotaState): void {
+    this.update({ quota: { ...this.state.quota, [hostId]: state } });
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    for (const window of state.windows) {
+      const key = `${hostId}/${window.window}/${window.resetsAt}`;
+      if (!host || !isHot(window, state.pauseAt) || this.quotaNotified.has(key)) continue;
+      this.quotaNotified.add(key);
+      const label = WINDOW_LABELS[window.window] ?? window.window;
+      const percent = Math.round((window.utilization ?? 0) * 100);
+      void this.platform.notify({
+        title: "Cota do plano",
+        body: `${host.name}: ${label} em ${percent}%`,
+      });
+    }
+  }
+
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });
   }

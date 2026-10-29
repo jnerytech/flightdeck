@@ -4,6 +4,7 @@ import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
+import { UsagePanel } from "./UsagePanel.tsx";
 
 const HOOK_LABELS: Record<HooksStatusResult["status"], string> = {
   installed: "instalados",
@@ -58,6 +59,7 @@ export function HostPage(props: {
           </p>
         </div>
       )}
+      <UsagePanel store={store} hostId={host.id} online={host.status === "online"} />
       {info ? (
         <ul className="host-info">
           <li>{`${info.os} · ${info.arch}`}</li>

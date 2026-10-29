@@ -485,3 +485,39 @@ textarea {
   table-layout: fixed;
   font-family: monospace;
 }
+
+/* Phase 7: plan quota per host. */
+.quota-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.quota {
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+.quota-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.25rem 0;
+}
+.quota-bar meter {
+  width: 16rem;
+}
+.quota-hot {
+  color: #b3261e;
+}
+.quota-hot meter::-webkit-meter-optimum-value {
+  background: #b3261e;
+}
+.usage table {
+  border-collapse: collapse;
+}
+.usage td,
+.usage th {
+  padding: 0.2rem 0.6rem;
+  text-align: left;
+}

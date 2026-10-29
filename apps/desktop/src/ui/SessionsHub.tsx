@@ -10,6 +10,7 @@ import {
   STATE_LABELS,
 } from "../lib/hub.ts";
 import { when } from "./GlobalSearch.tsx";
+import { QuotaPanel } from "./QuotaPanel.tsx";
 
 const ALL: HubFilter = {
   text: "",
@@ -46,6 +47,7 @@ export function SessionsHub(props: {
 
   return (
     <section className="hub">
+      <QuotaPanel store={store} state={state} />
       <h2>Sessões</h2>
       <div className="row filters">
         <input

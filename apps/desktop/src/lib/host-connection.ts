@@ -11,6 +11,7 @@ import {
   type HistoryChanged,
   PROTOCOL_VERSION,
   parseServerMessage,
+  type QuotaState,
   type SessionSubscribeResult,
   type WorkflowRun,
 } from "@flightdeck/protocol";
@@ -56,6 +57,8 @@ export interface HostConnectionOptions {
   onExternal?(frame: ExternalUpdated | ExternalPermissionFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
+  /** The host's plan quota changed (after `watchQuota`). */
+  onQuotaUpdated?(state: QuotaState): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -90,6 +93,7 @@ export class HostConnection {
   private watchingHistory = false;
   private watchingExternal = false;
   private watchingRuns = false;
+  private watchingQuota = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -116,6 +120,7 @@ export class HostConnection {
           if (this.watchingExternal) this.send("external.watch", {}).catch(ignore);
           // The runs still going come first, so open gates show up right away.
           if (this.watchingRuns) this.send("run.watch", {}).catch(ignore);
+          if (this.watchingQuota) this.send("quota.watch", {}).catch(ignore);
           for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
         },
         (error: RequestError) => {
@@ -133,6 +138,9 @@ export class HostConnection {
       if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
       if (message.type === "history.changed") return this.opts.onHistoryChanged?.(message);
       if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
+      if (message.type === "quota.updated") {
+        return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
+      }
       if (message.type === "external.updated" || message.type === "external.permission") {
         return this.opts.onExternal?.(message);
       }
@@ -186,6 +194,11 @@ export class HostConnection {
   /** Streams external sessions and their requests from the next (re)connect on. */
   watchExternal(): void {
     this.watchingExternal = true;
+  }
+
+  /** Streams `quota.updated` from the next (re)connect on; call it before `connect`. */
+  watchQuota(): void {
+    this.watchingQuota = true;
   }
 
   /** Streams `run.updated` from the next (re)connect on; call it before `connect`. */
