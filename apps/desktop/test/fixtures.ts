@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
+import { Costs } from "../../daemon/src/costs/costs.ts";
+import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
@@ -44,6 +46,8 @@ export function daemon(
     quota?: Quota;
     /** What `host.info` says for "Abrir no terminal" (phase 8). */
     terminal?: { flightdeckdPath: string | null; wslDistro: string | null };
+    /** Estimated costs (phase 8) over this daemon's own usage entries. */
+    costs?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -95,6 +99,7 @@ export function daemon(
         backup: { enabled: true, keep: 7 },
       })
     : undefined;
+  const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -108,6 +113,7 @@ export function daemon(
       central,
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
+      ...(costs ? { costs } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -120,6 +126,7 @@ export function daemon(
   return {
     quota,
     usage,
+    costs,
     manager,
     project,
     root,
@@ -147,6 +154,9 @@ export function memoryPlatform(focused = false) {
   const notifications: Array<{ title: string; body: string }> = [];
   /** The notification objects themselves, to simulate a click (`onclick`). */
   const shown: Array<{ onclick?: (() => void) | null }> = [];
+  /** Files saved through the save dialog; `cancelSave` makes the next dialog a cancel. */
+  const saved: Array<{ name: string; text: string }> = [];
+  const save = { cancel: false };
   let onHashChange: (() => void) | null = null;
   const win: WebWindow = {
     localStorage: {
@@ -164,6 +174,25 @@ export function memoryPlatform(focused = false) {
     removeEventListener: () => {
       onHashChange = null;
     },
+    showSaveFilePicker: async ({ suggestedName }) => {
+      if (save.cancel) {
+        save.cancel = false;
+        throw Object.assign(new Error("The user aborted a request."), { name: "AbortError" });
+      }
+      return {
+        createWritable: async () => {
+          let text = "";
+          return {
+            write: async (chunk: string) => {
+              text += chunk;
+            },
+            close: async () => {
+              saved.push({ name: suggestedName, text });
+            },
+          };
+        },
+      };
+    },
     Notification: Object.assign(
       function (this: { onclick?: () => void }, title: string, options?: { body?: string }) {
         notifications.push({ title, body: options?.body ?? "" });
@@ -178,5 +207,5 @@ export function memoryPlatform(focused = false) {
     win.location.hash = `#link=${encodeURIComponent(url)}`;
     onHashChange?.();
   };
-  return { platform, items, tokens, notifications, shown, win, deepLink };
+  return { platform, items, tokens, notifications, shown, win, deepLink, saved, save };
 }
