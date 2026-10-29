@@ -3,6 +3,7 @@ import type {
   PermissionMode,
   RunStatus,
   SessionEvent,
+  SessionStatus,
   StepRun,
   StepStatus,
   StepType,
@@ -32,6 +33,8 @@ export interface EngineHost {
   place(cardId: string, event: BoardEvent): void;
   /** The run stopped holding the card's slot in the host queue. */
   release(cardId: string): void;
+  /** Back from a restart: the card's run holds its slot again, without waiting. */
+  hold(cardId: string): void;
   /** Takes a slot for the card again, waiting in the host queue (ahead of queued cards). */
   acquire(cardId: string): Promise<void>;
   /** Up to `count` free slots of the host right now, without waiting; `release` gives each back. */
@@ -109,6 +112,11 @@ class Stop extends Error {
 }
 
 const ACTIVE: ReadonlySet<RunStatus> = new Set(["queued", "running", "waiting"]);
+
+const STOPPED: ReadonlySet<SessionStatus> = new Set(["error", "ended"]);
+
+/** Before the prompt of an agent step whose turn a restart cut short. */
+export const RESUMED_NOTE = "A execução foi interrompida; continue de onde parou.";
 
 /** Workflows of the projects: catalog read from the base branch, trust and runs. */
 export class WorkflowEngine {
@@ -210,6 +218,22 @@ export class WorkflowEngine {
   begin(runId: string, worktree: string): void {
     this.setStatus(runId, "running", null);
     void this.execute(runId, worktree);
+  }
+
+  /**
+   * Back from a restart: runs that were going on continue from where they stopped. Steps already
+   * finished keep their stored results; see `runStep`.
+   */
+  recover(): void {
+    const runs = this.db
+      .query<RunRow, []>("SELECT * FROM workflow_runs WHERE status IN ('running', 'waiting')")
+      .all();
+    for (const run of runs) {
+      const { worktreePath } = this.host.card(run.card_id);
+      // At a gate the run holds no slot; it takes one again once the gate is approved.
+      if (run.status === "running") this.host.hold(run.card_id);
+      void this.execute(run.id, worktreePath as string);
+    }
   }
 
   /** Nothing reached an agent (worktree or setup failed); the board moves the card itself. */
@@ -328,6 +352,13 @@ export class WorkflowEngine {
     step: Step,
     context: InterpolationContext,
   ): Promise<{ output?: string; outputs?: string[] }> {
+    // Replayed after a restart: a finished step gives back what it stored.
+    const finished = this.stepRow(run.id, step.id, 1);
+    if (finished?.status === "completed") {
+      if (!("parallel" in step)) return { output: finished.output ?? "" };
+      const items = step.parallel.map((_, i) => this.stepRow(run.id, `${step.id}.${i}`, 1));
+      return { outputs: items.map((item) => item?.output ?? "") };
+    }
     if ("gate" in step) return { output: await this.gateStep(run, step.id, step.gate, context) };
     if ("loop" in step) {
       return { output: await this.loopStep(run, worktree, step.id, step.loop, context) };
@@ -354,7 +385,7 @@ export class WorkflowEngine {
   ): Promise<string[]> {
     this.db
       .query(
-        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+        `INSERT OR IGNORE INTO step_runs (run_id, step_id, attempt, type, status, started_at)
          VALUES (?, ?, 1, 'parallel', 'running', ?)`,
       )
       .run(run.id, stepId, now());
@@ -395,7 +426,7 @@ export class WorkflowEngine {
   private async prStep(run: RunRow, stepId: string): Promise<string> {
     this.db
       .query(
-        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+        `INSERT OR IGNORE INTO step_runs (run_id, step_id, attempt, type, status, started_at)
          VALUES (?, ?, 1, 'pr', 'running', ?)`,
       )
       .run(run.id, stepId, now());
@@ -447,7 +478,7 @@ export class WorkflowEngine {
   ): Promise<string> {
     this.db
       .query(
-        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+        `INSERT OR IGNORE INTO step_runs (run_id, step_id, attempt, type, status, started_at)
          VALUES (?, ?, 1, 'loop', 'running', ?)`,
       )
       .run(run.id, stepId, now());
@@ -487,25 +518,34 @@ export class WorkflowEngine {
     gate: { message: string; show?: string },
     context: InterpolationContext,
   ): Promise<string> {
-    const show = gate.show === undefined ? null : interpolate(gate.show, context);
-    this.db
-      .query(
-        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, output, message, started_at)
-         VALUES (?, ?, 1, 'gate', 'waiting', ?, ?, ?)`,
-      )
-      .run(run.id, stepId, show, interpolate(gate.message, context), now());
-    this.setStatus(run.id, "waiting", null);
-    this.host.place(run.card_id, { type: "workflow", state: "waiting" });
-    this.host.release(run.card_id);
-    await new Promise<void>((resolve) => this.gates.set(`${run.id}/${stepId}/1`, resolve));
-    const answer = this.stepRow(run.id, stepId, 1) as StepRow;
+    let answer = this.stepRow(run.id, stepId, 1);
+    if (!answer) {
+      const show = gate.show === undefined ? null : interpolate(gate.show, context);
+      this.db
+        .query(
+          `INSERT INTO step_runs (run_id, step_id, attempt, type, status, output, message, started_at)
+           VALUES (?, ?, 1, 'gate', 'waiting', ?, ?, ?)`,
+        )
+        .run(run.id, stepId, show, interpolate(gate.message, context), now());
+      this.setStatus(run.id, "waiting", null);
+      this.host.place(run.card_id, { type: "workflow", state: "waiting" });
+      this.host.release(run.card_id);
+    }
+    // Still open (just now, or since before a restart): wait for the answer.
+    if (answer?.status !== "approved") {
+      await new Promise<void>((resolve) => this.gates.set(`${run.id}/${stepId}/1`, resolve));
+    }
+    answer = this.stepRow(run.id, stepId, 1) as StepRow;
     if (answer.status === "rejected") {
       const note = answer.note ? `: ${answer.note}` : "";
       throw new Stop("rejected", `gate ${stepId} recusado${note}`);
     }
-    await this.host.acquire(run.card_id);
-    this.setStatus(run.id, "running", null);
-    this.host.place(run.card_id, { type: "workflow", state: "running" });
+    // Approved while waiting: take a slot again (a run past the gate already holds one).
+    if (this.row(run.id).status === "waiting") {
+      await this.host.acquire(run.card_id);
+      this.setStatus(run.id, "running", null);
+      this.host.place(run.card_id, { type: "workflow", state: "running" });
+    }
     return answer.note ?? "";
   }
 
@@ -517,10 +557,14 @@ export class WorkflowEngine {
     attempt: number,
     command: string,
   ): Promise<CheckResult> {
+    // A check that finished before a restart keeps its result; one cut short runs again.
+    const done = this.stepRow(run.id, stepId, attempt);
+    if (done?.ended_at) return { exitCode: done.exit_code ?? 1, output: done.output ?? "" };
     this.db
       .query(
         `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
-         VALUES (?, ?, ?, 'check', 'running', ?)`,
+         VALUES (?, ?, ?, 'check', 'running', ?)
+         ON CONFLICT (run_id, step_id, attempt) DO UPDATE SET started_at = excluded.started_at`,
       )
       .run(run.id, stepId, attempt, now());
     try {
@@ -556,21 +600,29 @@ export class WorkflowEngine {
     action: AgentAction,
     context: InterpolationContext,
   ): Promise<string> {
+    const cut = this.stepRow(run.id, stepId, attempt);
+    if (cut?.status === "completed") return cut.output ?? "";
     // Checked before every turn: a run over its budget pauses instead of spending more.
     const over = overBudget(JSON.parse(run.budget), JSON.parse(this.row(run.id).usage));
     if (over) throw new Stop("paused", over);
     const prompt = interpolate(action.prompt, context);
-    const target = action.continue
+    let target = action.continue
       ? (this.stepRow(run.id, action.continue, 1)?.session_id ?? null)
       : null;
-    this.db
-      .query(
-        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, session_id, started_at)
-         VALUES (?, ?, ?, 'agent', 'running', ?, ?)`,
-      )
-      .run(run.id, stepId, attempt, target, now());
+    if (cut) {
+      // The turn was cut short by a restart: same session, the prompt again with a note.
+      target = cut.session_id;
+    } else {
+      this.db
+        .query(
+          `INSERT INTO step_runs (run_id, step_id, attempt, type, status, session_id, started_at)
+           VALUES (?, ?, ?, 'agent', 'running', ?, ?)`,
+        )
+        .run(run.id, stepId, attempt, target, now());
+    }
+    const text = cut ? `${RESUMED_NOTE}\n\n${prompt}` : prompt;
     try {
-      const output = await this.turn(run, worktree, stepId, attempt, target, prompt, action);
+      const output = await this.turn(run, worktree, stepId, attempt, target, text, action);
       this.endStep(run.id, stepId, attempt, "completed", output);
       return output;
     } catch (error) {
@@ -591,6 +643,8 @@ export class WorkflowEngine {
   ): Promise<string> {
     const started = this.clock();
     if (target) {
+      // Left `error` by a restart (or ended): reopened with the stored Claude session.
+      if (STOPPED.has(this.manager.get(target).status)) await this.manager.resume(target);
       const since = this.manager.get(target).lastSeq;
       const done = this.awaitTurn(run, target, since, started);
       this.manager.send(target, prompt);

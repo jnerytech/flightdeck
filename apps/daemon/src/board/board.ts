@@ -146,6 +146,9 @@ export class Board {
       host: {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
+        hold: (cardId) => {
+          this.running.add(cardId);
+        },
         acquire: (cardId) => this.acquire(cardId),
         takeSlots: (cardId, count) => this.takeSlots(cardId, count),
         createPr: async (cardId) => (await this.createPr(cardId)).prUrl as string,
@@ -166,6 +169,8 @@ export class Board {
       const sessionId = run.session_id as string;
       this.follow(run.card_id, sessionId, opts.manager.get(sessionId).lastSeq);
     }
+    // Workflow runs take their slots back before the queue moves.
+    this.workflows.recover();
     this.pump();
   }
 
