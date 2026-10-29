@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { DAEMON_VERSION } from "../../daemon/src/server.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -47,7 +48,7 @@ describe("pagina-host", () => {
     await setup();
     expect(screen.queryByRole("heading", { name: "pc" })).not.toBeNull();
     await waitFor(() => expect(text()).toContain(`${process.platform} · ${process.arch}`));
-    expect(text()).toContain("flightdeckd 0.1.0");
+    expect(text()).toContain(`flightdeckd ${DAEMON_VERSION}`);
     expect(text()).toContain("claude: não informado");
     expect(text()).toContain("sessões ativas: 0");
     expect(text()).toMatch(/no ar há \d+ s/);
