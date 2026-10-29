@@ -21,9 +21,7 @@ import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
-import type { ExternalSessions } from "./central/external.ts";
-import type { ExternalPermissions } from "./central/external-permissions.ts";
-import type { Receptor } from "./central/receptor.ts";
+import type { Central } from "./central/central.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
@@ -50,12 +48,7 @@ export interface ServerOptions {
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
   /** External sessions and their permission requests (phase 5). */
-  central?: {
-    external: ExternalSessions;
-    permissions: ExternalPermissions;
-    /** Delivers `external.message` to the channel of a launch. */
-    receptor?: Pick<Receptor, "sendToLaunch">;
-  };
+  central?: Central;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -244,6 +237,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type);
       }
+      case "hooks.status":
+        return ok(command.type, central().hooksStatus());
+      case "hooks.install":
+        return ok(command.type, central().hooksInstall(command.payload.confirm === true));
+      case "hooks.uninstall":
+        return ok(command.type, central().hooksUninstall(command.payload.confirm === true));
       case "external.list":
         return ok(command.type, { sessions: central().external.list() });
       case "external.watch": {

@@ -4,6 +4,7 @@ import { formatPairingLink } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Board } from "./board/board.ts";
+import { Central } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
 import {
@@ -240,10 +241,21 @@ export async function startDaemon(
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
+  const central = new Central({
+    db: store.db,
+    manager,
+    hooks: config.hooks,
+    dataDir: config.dataDir,
+    hostName: config.hostName,
+    configFile,
+    selfCommand: daemonCommand(process.execPath, Bun.main),
+    settingsPath: claudeSettingsPath,
+  });
   const server = startServer({
     manager,
     history,
     board,
+    central,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -283,6 +295,7 @@ export async function startDaemon(
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
         board.stop();
+        await central.stop();
         await manager.shutdown();
         await server.stop();
         history.stop();

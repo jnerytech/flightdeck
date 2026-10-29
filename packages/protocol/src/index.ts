@@ -412,6 +412,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
   /** Only for sessions opened with `flightdeckd claude` (`controllable`). */
+  cmd("hooks.status", z.object({}).strict()),
+  /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
+  cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
+  cmd("hooks.uninstall", z.object({ confirm: z.boolean().optional() })),
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
 ]);
 export type Command = z.infer<typeof Command>;
@@ -532,6 +536,15 @@ export const BoardResult = z.object({
 });
 export type BoardResult = z.infer<typeof BoardResult>;
 
+export const HooksStatusResult = z.object({
+  status: z.enum(["installed", "absent", "outdated"]),
+  /** The settings.json the hooks go to. */
+  settingsPath: z.string(),
+  /** Receptor of this daemon, `null` until hooks are installed. */
+  receptorUrl: z.string().nullable(),
+});
+export type HooksStatusResult = z.infer<typeof HooksStatusResult>;
+
 export interface CommandResults {
   hello: HelloResult;
   "session.list": SessionListResult;
@@ -569,6 +582,9 @@ export interface CommandResults {
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;
   "external.message": undefined;
+  "hooks.status": HooksStatusResult;
+  "hooks.install": HooksStatusResult;
+  "hooks.uninstall": HooksStatusResult;
 }
 
 // ---------------------------------------------------------------------------

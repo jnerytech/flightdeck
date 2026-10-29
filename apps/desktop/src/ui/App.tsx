@@ -190,6 +190,7 @@ export function App({ store }: { store: AppStore }) {
     main = (
       <HostPage
         key={pageHost.id}
+        store={store}
         host={pageHost}
         onRename={(name) => store.renameHost(pageHost.id, name)}
         onReconnect={() => void store.reconnectHost(pageHost.id)}

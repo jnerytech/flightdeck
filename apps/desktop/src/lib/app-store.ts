@@ -65,7 +65,12 @@ export interface AppState {
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
 export type HostCommandType = Extract<
   CommandType,
-  `project.${string}` | `board.${string}` | `card.${string}`
+  | `project.${string}`
+  | `board.${string}`
+  | `card.${string}`
+  | `hooks.${string}`
+  | `external.${string}`
+  | "session.meta.set"
 >;
 
 const isCard = (value: unknown): value is Card =>
