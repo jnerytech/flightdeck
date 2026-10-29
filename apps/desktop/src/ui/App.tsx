@@ -223,12 +223,13 @@ export function App({ store }: { store: AppStore }) {
 
   const selectedHost = state.hosts.find((h) => h.id === state.selected?.hostId);
   const sessionId = state.selected?.sessionId;
-  // Estimated cost of the open managed session, once its claudeSessionId is known (phase 8).
-  const selectedClaudeId = selectedHost
-    ? state.hub[selectedHost.id]?.managed.find((s) => s.id === sessionId)?.claudeSessionId
-    : undefined;
-  const selectedStatus =
-    state.sessions[sessionKey(selectedHost?.id ?? "", sessionId ?? "")]?.status;
+  // Estimated cost of the open managed session, once its claudeSessionId is known (phase 8):
+  // from its own events, else from the Sessões list.
+  const selectedSession = state.sessions[sessionKey(selectedHost?.id ?? "", sessionId ?? "")];
+  const selectedClaudeId =
+    selectedSession?.claudeSessionId ??
+    state.hub[selectedHost?.id ?? ""]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
+  const selectedStatus = selectedSession?.status;
   const withCosts = hasFeature(selectedHost?.hostInfo?.features, "costs", false);
   const [sessionCost, setSessionCost] = useState<number | null>(null);
   useEffect(() => {
