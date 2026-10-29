@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Board } from "../../daemon/src/board/board.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
@@ -24,7 +25,7 @@ export async function waitFor<T>(
 }
 
 /**
- * In-process daemon with the FakeRuntime; `listen` can be called again on the same port. Its
+ * In-process daemon with the FakeRuntime and a board; `listen` can be called again on the same port. Its
  * history index reads `historyRoot` (a fake `~/.claude/projects`); call `history.scan()` after
  * writing transcripts there.
  */
@@ -48,11 +49,14 @@ export function daemon(
     allowApiKey: options.allowApiKey ?? false,
     baseEnv: options.baseEnv ?? {},
   });
+  const board = new Board({ db: store.db, manager, allowedRoots: [root] });
+  cleanups.push(() => board.stop());
   const listen = (port = 0, pingIntervalMs?: number): RunningServer => {
     const server = startServer({
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
       manager,
       history,
+      board,
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -62,7 +66,17 @@ export function daemon(
     cleanups.push(() => server.stop());
     return server;
   };
-  return { manager, project, root, listen, history, historyRoot, runtime };
+  return {
+    manager,
+    project,
+    root,
+    listen,
+    history,
+    historyRoot,
+    runtime,
+    board,
+    eventStore: store,
+  };
 }
 
 /**
