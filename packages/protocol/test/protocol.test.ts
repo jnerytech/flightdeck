@@ -86,6 +86,12 @@ const validCommands: Record<CommandType, unknown> = {
   "rules.remove": { projectId: "p", rule: "Bash(npm test:*)", confirm: true },
   "costs.status": {},
   "costs.reprice": {},
+  "costs.summary": { from: "2026-10-01", to: "2026-10-31", origin: "card" },
+  "costs.session": { claudeSessionId: "c" },
+  "costs.sessions": { claudeSessionIds: ["c"] },
+  "costs.card": { cardId: "k" },
+  "costs.run": { runId: "r" },
+  "costs.export": { from: "2026-10-01", to: "2026-10-01", projectKey: "p" },
 };
 
 const validEvents: SessionEvent[] = [
