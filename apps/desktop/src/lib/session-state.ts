@@ -19,6 +19,8 @@ export type ChatItem =
       /** What the CLI offers to stop asking (phase 7). */
       suggestions?: PermissionUpdate[];
       resolution?: { decision: PermissionResolution; message?: string };
+      /** When it was asked (the event's time): the card shows its age (phase 10). */
+      at?: string;
     }
   | {
       kind: "result";
@@ -102,6 +104,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
           toolName: event.toolName,
           input: event.input,
           ...(event.suggestions ? { suggestions: event.suggestions } : {}),
+          at: envelope.ts,
         }),
         pending: [...state.pending, event.requestId],
       };

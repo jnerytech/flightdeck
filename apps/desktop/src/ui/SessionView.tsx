@@ -1,11 +1,14 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ApprovalCard } from "@/components/approval/approval-card";
+import { type T, translator } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
-import { ApprovalCard } from "./ApprovalCard.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
+
+const PT = translator("pt-BR");
 
 export interface SessionActions {
   send(text: string): Promise<void>;
@@ -25,6 +28,8 @@ function TimelineItem(props: {
   session: SessionState;
   actions: SessionActions;
   alwaysAllow: boolean;
+  t: T;
+  nowMs: number;
 }) {
   const { item, session, actions } = props;
   switch (item.kind) {
@@ -51,9 +56,21 @@ function TimelineItem(props: {
     case "permission":
       return (
         <ApprovalCard
-          item={item}
+          request={{
+            requestId: item.requestId,
+            toolName: item.toolName,
+            input: item.input,
+            cwd: session.cwd ?? null,
+            createdAt: item.at ?? null,
+            ...(item.suggestions ? { suggestions: item.suggestions } : {}),
+          }}
+          t={props.t}
+          nowMs={props.nowMs}
           alwaysAllow={props.alwaysAllow}
-          onRespond={(...args) => void actions.respond(...args)}
+          {...(item.resolution ? { resolution: item.resolution } : {})}
+          onRespond={(decision, message, updates) =>
+            void actions.respond(item.requestId, decision, message, updates)
+          }
         />
       );
     case "result": {
@@ -81,6 +98,9 @@ export function SessionView(props: {
   terminal?: ReactNode;
   /** Estimated cost of the session and its subagents (phase 8); `null` when unknown. */
   costUsd?: number | null;
+  /** The app's translator and clock (phase 10); pt-BR and the real clock when absent. */
+  t?: T;
+  nowMs?: number;
 }) {
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
@@ -144,6 +164,8 @@ export function SessionView(props: {
             session={session}
             actions={actions}
             alwaysAllow={props.alwaysAllow === true}
+            t={props.t ?? PT}
+            nowMs={props.nowMs ?? Date.now()}
           />
         ))}
         {session.streaming && (

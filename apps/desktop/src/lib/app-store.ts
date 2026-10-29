@@ -227,6 +227,8 @@ export interface PendingItem {
   external?: boolean;
   /** The tool input, long strings cut (phase 8: the tray shows a summary). */
   input?: Record<string, unknown>;
+  /** The session's folder (phase 10: the queue's card makes paths relative to it). */
+  cwd?: string | null;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
 }
@@ -252,6 +254,7 @@ export function needsYou(state: AppState): PendingItem[] {
           toolName: p.toolName,
           createdAt: p.createdAt,
           ...(p.input ? { input: p.input } : {}),
+          cwd: session.cwd,
         })),
       ),
       // Sessions opened in the terminal: the hook holds the request while the app watches.
@@ -271,6 +274,7 @@ export function needsYou(state: AppState): PendingItem[] {
             createdAt: request.createdAt,
             external: true,
             input: request.input,
+            cwd: session?.cwd ?? null,
           };
         }),
       // Open gates of the host's workflow runs.
@@ -931,12 +935,15 @@ export class AppStore {
     requestId: string,
     decision: "allow" | "deny",
     updatedPermissions?: PermissionUpdate[],
+    /** Why it was denied (phase 10: the card's reason). */
+    message?: string,
   ): Promise<void> {
     try {
       await this.connections.get(hostId)?.request("permission.respond", {
         requestId,
         decision,
         ...(updatedPermissions ? { updatedPermissions } : {}),
+        ...(message ? { message } : {}),
       });
     } catch (error) {
       this.update({ error: describeError(error) });

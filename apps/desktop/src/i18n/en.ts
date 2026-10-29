@@ -3,6 +3,20 @@ import type { Dictionary } from "./index.ts";
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
   nav: { back: "Back", forward: "Forward" },
+  approval: {
+    label: "Request for {tool}",
+    title: "Permission for",
+    approve: "Approve",
+    deny: "Deny",
+    reason: "Reason (optional)",
+    cancel: "Cancel",
+    cwd: "Folder",
+    keys: "A approves · N denies · Esc leaves",
+    openSession: "Open session",
+    openCard: "Open card",
+    deniedWith: "denied: {message}",
+    resolved: { allow: "approved", deny: "denied", cancelled: "cancelled", expired: "expired" },
+  },
   states: { connecting: "Connecting to {host}…", loading: "Loading…" },
   board: { cardActions: "Actions for {title}", startCard: "Start card" },
   shell: {

@@ -302,6 +302,8 @@ export function CardDetail(props: {
             title={`${card.title} · ${openedStep.stepId}`}
             session={stepSession}
             actions={store}
+            t={store.i18n.t}
+            nowMs={store.now()}
             focusRequestId={null}
             alwaysAllow={alwaysAllow}
           />
@@ -312,6 +314,8 @@ export function CardDetail(props: {
             title={card.title}
             session={session}
             actions={store}
+            t={store.i18n.t}
+            nowMs={store.now()}
             focusRequestId={null}
             alwaysAllow={alwaysAllow}
           />

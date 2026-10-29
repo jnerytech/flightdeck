@@ -83,6 +83,8 @@ function ManagedSession(props: {
   }, [store, hostId, claudeId, withCosts, status]);
   return (
     <SessionView
+      t={store.i18n.t}
+      nowMs={store.now()}
       title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
       session={session}
       actions={store}

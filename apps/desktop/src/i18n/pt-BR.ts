@@ -5,6 +5,20 @@
  */
 export const ptBR = {
   nav: { back: "Voltar", forward: "Avançar" },
+  approval: {
+    label: "Pedido de {tool}",
+    title: "Permissão para",
+    approve: "Aprovar",
+    deny: "Negar",
+    reason: "Motivo (opcional)",
+    cancel: "Cancelar",
+    cwd: "Pasta",
+    keys: "A aprova · N nega · Esc sai",
+    openSession: "Abrir sessão",
+    openCard: "Abrir card",
+    deniedWith: "negado: {message}",
+    resolved: { allow: "aprovado", deny: "negado", cancelled: "cancelado", expired: "expirado" },
+  },
   states: { connecting: "Conectando a {host}…", loading: "Carregando…" },
   board: { cardActions: "Ações de {title}", startCard: "Iniciar card" },
   shell: {

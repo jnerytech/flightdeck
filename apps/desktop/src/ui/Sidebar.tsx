@@ -1,7 +1,13 @@
+import { useState } from "react";
+import { ApprovalCard } from "@/components/approval/approval-card";
+import { Button } from "@/components/ui/button";
+import { formatAgo } from "../i18n/format.ts";
+import type { T } from "../i18n/index.ts";
 import { type AppState, needsYou, type PendingItem } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import type { ConnectionStatus } from "../lib/host-connection.ts";
 import { basename } from "../lib/paths.ts";
+import { inputSummary } from "../lib/tool-input.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { StatusBadge } from "./StatusBadge.tsx";
 
@@ -20,7 +26,11 @@ export function Sidebar(props: {
   onRemoveHost(hostId: string): void;
   onAddHost(): void;
   onOpenRequest(item: PendingItem): void;
-  onRespond(item: PendingItem, decision: "allow" | "deny"): void;
+  /** Aprovar or Negar in the queue's expanded card; `message` is the reason (or a gate's note). */
+  onRespond(item: PendingItem, decision: "allow" | "deny", message?: string): void;
+  /** The app's translator and clock (phase 10): the queue's card and the request's age. */
+  t: T;
+  nowMs: number;
   onOpenHost(hostId: string): void;
   onOpenSettings(): void;
   onOpenSearch(): void;
@@ -32,6 +42,8 @@ export function Sidebar(props: {
 }) {
   const { state } = props;
   const queue = needsYou(state);
+  /** The queue's request whose card is open (one at a time). */
+  const [expanded, setExpanded] = useState<string | null>(null);
   const alerts = budgetAlerts(state);
   return (
     <nav className="sidebar">
@@ -62,27 +74,52 @@ export function Sidebar(props: {
             ))}
             {queue.map((item) => {
               const label = `${item.hostName} · ${item.sessionName}: ${item.toolName}`;
+              const key = `${item.hostId}/${item.requestId}`;
+              const open = expanded === key;
+              const summary = inputSummary(item.input);
               return (
-                <li key={`${item.hostId}/${item.requestId}`}>
-                  <button type="button" onClick={() => props.onOpenRequest(item)}>
-                    {label}
-                  </button>
+                <li key={key} className="flex flex-col gap-2">
                   <button
                     type="button"
-                    className="icon"
-                    aria-label={`${item.gate ? "Aprovar" : "Permitir"} ${label}`}
-                    onClick={() => props.onRespond(item, "allow")}
+                    aria-label={label}
+                    aria-expanded={open}
+                    onClick={() => setExpanded(open ? null : key)}
+                    className="flex w-full min-w-0 flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent"
                   >
-                    ✓
+                    <span className="w-full truncate text-sm">{`${item.hostName} · ${item.sessionName}`}</span>
+                    <span className="w-full truncate text-muted-foreground text-xs">
+                      {summary ? `${item.toolName}: ${summary}` : item.toolName}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {formatAgo(props.nowMs - Date.parse(item.createdAt), props.t)}
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    className="icon"
-                    aria-label={`${item.gate ? "Recusar" : "Negar"} ${label}`}
-                    onClick={() => props.onRespond(item, "deny")}
-                  >
-                    ✕
-                  </button>
+                  {open && (
+                    <ApprovalCard
+                      request={{
+                        requestId: item.requestId,
+                        toolName: item.toolName,
+                        input: item.input ?? {},
+                        cwd: item.cwd ?? null,
+                        createdAt: item.createdAt,
+                      }}
+                      t={props.t}
+                      nowMs={props.nowMs}
+                      onRespond={(decision, message) => props.onRespond(item, decision, message)}
+                      actions={
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            // The opened screen shows the card: the queue's copy closes.
+                            setExpanded(null);
+                            props.onOpenRequest(item);
+                          }}
+                        >
+                          {props.t(item.gate ? "approval.openCard" : "approval.openSession")}
+                        </Button>
+                      }
+                    />
+                  )}
                 </li>
               );
             })}

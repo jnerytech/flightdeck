@@ -199,15 +199,18 @@ export function App({ store }: { store: AppStore }) {
           onOpenHistory={(hostId) => go({ name: "history", host: hostId })}
           onOpenHost={(hostId) => go({ name: "host", host: hostId })}
           onOpenProjects={(hostId) => go({ name: "projects", host: hostId })}
-          onRespond={(item, decision) =>
+          onRespond={(item, decision, message) =>
             item.gate
               ? void store.respondGate(
                   item.hostId,
                   item.gate,
                   decision === "allow" ? "approve" : "reject",
+                  message,
                 )
-              : void store.respondTo(item.hostId, item.requestId, decision)
+              : void store.respondTo(item.hostId, item.requestId, decision, undefined, message)
           }
+          t={t}
+          nowMs={store.now()}
           onOpenHub={() => go({ name: "hub" })}
           onOpenCosts={() => go({ name: "costs" })}
           // Budgets live in Settings (phase 8).

@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
+import { ApprovalCard } from "@/components/approval/approval-card";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
-import { AlwaysAllow } from "./AlwaysAllow.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
@@ -61,32 +61,23 @@ export function ExternalView(props: {
         )}
       </header>
       {requests.map((request) => (
-        <div key={request.requestId} className="card approval">
-          <span>{`${request.toolName}: ${JSON.stringify(request.input)}`}</span>
-          <button
-            type="button"
-            className="primary"
-            onClick={() => void store.respondTo(hostId, request.requestId, "allow")}
-          >
-            {`Aprovar ${request.toolName}`}
-          </button>
-          <button
-            type="button"
-            onClick={() => void store.respondTo(hostId, request.requestId, "deny")}
-          >
-            {`Negar ${request.toolName}`}
-          </button>
-          {alwaysAllow && (
-            <AlwaysAllow
-              toolName={request.toolName}
-              input={request.input}
-              suggestions={request.suggestions}
-              onAllow={(updates) =>
-                void store.respondTo(hostId, request.requestId, "allow", updates)
-              }
-            />
-          )}
-        </div>
+        <ApprovalCard
+          key={request.requestId}
+          request={{
+            requestId: request.requestId,
+            toolName: request.toolName,
+            input: request.input,
+            cwd: session?.cwd ?? null,
+            createdAt: request.createdAt,
+            ...(request.suggestions ? { suggestions: request.suggestions } : {}),
+          }}
+          t={store.i18n.t}
+          nowMs={store.now()}
+          alwaysAllow={alwaysAllow}
+          onRespond={(decision, message, updates) =>
+            void store.respondTo(hostId, request.requestId, decision, updates, message)
+          }
+        />
       ))}
       {session?.controllable && (
         <div className="composer">
