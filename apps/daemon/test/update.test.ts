@@ -37,6 +37,9 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
+/** Newer than any product version: the CLI compares the binary with the real DAEMON_VERSION. */
+const NEWER = "999.0.0";
+
 /**
  * A file that answers `--version` like flightdeckd; `null` answers something else and `"hang"`
  * never answers in time.
@@ -435,7 +438,7 @@ describe("update", () => {
     );
     const service = fakeService("win32", DIST_WIN, config);
     let code = null as number | null;
-    await runCli(["update", "--from", fakeBinary("0.8.0")], {
+    await runCli(["update", "--from", fakeBinary(NEWER)], {
       env: {},
       log: { log: () => {}, error: () => {} },
       exit: (c) => {
@@ -552,7 +555,7 @@ describe("update", () => {
       }),
     );
     let code = null as number | null;
-    await runCli(["update", "--from", fakeBinary("0.8.0"), "--config", config], {
+    await runCli(["update", "--from", fakeBinary(NEWER), "--config", config], {
       env: {},
       log: { log: () => {}, error: () => {} },
       exit: (c) => {
