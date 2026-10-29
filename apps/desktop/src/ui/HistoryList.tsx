@@ -1,5 +1,7 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { EmptyState, LoadingState } from "@/components/layout/states";
+import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { when } from "./GlobalSearch.tsx";
@@ -36,7 +38,10 @@ export function HistoryList(props: {
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>({ cwd: "", from: "", to: "", origin: "" });
   const [filter, setFilter] = useState<HistoryFilter>({});
-  const [sessions, setSessions] = useState<HistorySessionSummary[]>([]);
+  /** `null` until the host answers (the skeleton shows meanwhile). */
+  const [sessions, setSessions] = useState<HistorySessionSummary[] | null>(null);
+  const loading = useMinLoading(sessions === null);
+  const { t } = store.i18n;
 
   useEffect(() => {
     let live = true;
@@ -69,23 +74,27 @@ export function HistoryList(props: {
           Filtrar
         </button>
       </div>
-      <ul aria-label="Sessões do histórico">
-        {sessions.map((s) => (
-          <li key={s.claudeSessionId}>
-            <button type="button" onClick={() => props.onOpen(s.claudeSessionId)}>
-              <span>
-                {[
-                  s.title ?? s.claudeSessionId,
-                  basename(s.cwd),
-                  when(s.lastTs),
-                  ORIGIN_LABELS[s.origin],
-                ].join(" · ")}
-              </span>
-              {s.maybeActive && <span className="badge badge-warn">possivelmente em uso</span>}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {loading && <LoadingState label={t("states.loadingSessions")} />}
+      {!loading && sessions?.length === 0 && <EmptyState title={t("states.emptyHistory")} />}
+      {!loading && sessions && sessions.length > 0 && (
+        <ul aria-label="Sessões do histórico">
+          {sessions.map((s) => (
+            <li key={s.claudeSessionId}>
+              <button type="button" onClick={() => props.onOpen(s.claudeSessionId)}>
+                <span>
+                  {[
+                    s.title ?? s.claudeSessionId,
+                    basename(s.cwd),
+                    when(s.lastTs),
+                    ORIGIN_LABELS[s.origin],
+                  ].join(" · ")}
+                </span>
+                {s.maybeActive && <span className="badge badge-warn">possivelmente em uso</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

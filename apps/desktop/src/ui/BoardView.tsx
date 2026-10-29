@@ -1,6 +1,7 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import {
   CHECK_LABELS,
@@ -90,6 +92,9 @@ export function BoardView(props: {
    * DataTransfer either, which some webviews leave empty.
    */
   const dragging = useRef<string | null>(null);
+  const loading = useMinLoading(project === null);
+  const titleField = useRef<HTMLInputElement>(null);
+  const { t } = store.i18n;
 
   useEffect(() => {
     void store.hostCommand(hostId, "board.get", { projectId }).then((board) => {
@@ -131,6 +136,7 @@ export function BoardView(props: {
           onChange={(e) => setFilter(e.target.value)}
         />
         <input
+          ref={titleField}
           aria-label="Título do card"
           placeholder="Título"
           value={title}
@@ -146,6 +152,15 @@ export function BoardView(props: {
           Criar card
         </button>
       </div>
+      {loading && <LoadingState label={t("states.loadingBoard")} />}
+      {!loading && project && all.length === 0 && (
+        <EmptyState
+          title={t("states.emptyCards")}
+          action={
+            <Button onClick={() => titleField.current?.focus()}>{t("states.newCard")}</Button>
+          }
+        />
+      )}
       <div className="columns">
         {COLUMNS.map(({ id, label }) => (
           <section

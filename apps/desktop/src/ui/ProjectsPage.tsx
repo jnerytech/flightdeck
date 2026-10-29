@@ -1,5 +1,8 @@
 import type { Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { EmptyState, LoadingState } from "@/components/layout/states";
+import { Button } from "@/components/ui/button";
+import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
 import { RulesSection } from "./RulesSection.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
@@ -46,6 +49,9 @@ export function ProjectsPage(props: {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [limit, setLimit] = useState("");
+  const loading = useMinLoading(list === null);
+  const { t } = props.store.i18n;
+  const pathField = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
     const result = await store.hostCommand(hostId, "project.list", {});
@@ -94,6 +100,15 @@ export function ProjectsPage(props: {
   return (
     <section className="card projects">
       <h2>{`Projetos de ${props.hostName}`}</h2>
+      {loading && <LoadingState label={t("states.loadingProjects")} />}
+      {!loading && list?.projects.length === 0 && (
+        <EmptyState
+          title={t("states.emptyProjects")}
+          action={
+            <Button onClick={() => pathField.current?.focus()}>{t("states.addProject")}</Button>
+          }
+        />
+      )}
       <ul aria-label="Projetos">
         {(list?.projects ?? []).map((project) => (
           <li key={project.id}>
@@ -125,6 +140,7 @@ export function ProjectsPage(props: {
       <h3>{editing ? "Editar projeto" : "Novo projeto"}</h3>
       <div className="form">
         <input
+          ref={pathField}
           aria-label="Caminho do repositório"
           placeholder="Caminho (dentro de allowedRoots)"
           disabled={editing !== null}
