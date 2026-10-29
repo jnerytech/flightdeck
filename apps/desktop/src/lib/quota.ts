@@ -1,6 +1,6 @@
 import type { QuotaHistory, QuotaState, QuotaWindow } from "@flightdeck/protocol";
-
-export const WINDOW_LABELS: Record<string, string> = { five_hour: "5 horas", seven_day: "7 dias" };
+import { formatAgo } from "../i18n/format.ts";
+import type { Key, T } from "../i18n/index.ts";
 
 /** How many hours of samples each window's chart shows. */
 export const HISTORY_HOURS: Record<string, number> = { five_hour: 24, seven_day: 168 };
@@ -10,13 +10,18 @@ export function projectionText(
   window: string,
   projection: QuotaHistory["projection"],
   formatTime: (iso: string) => string,
+  t: T,
 ): string {
-  if (!projection) return "poucas leituras para projetar";
-  const label = window === "five_hour" ? "5 h" : (WINDOW_LABELS[window] ?? window);
+  if (!projection) return t("quota.projection.few");
+  // Only the two windows the panel shows ask for a projection.
+  const label = t(`quota.shortWindows.${window}` as Key);
   if (projection.exhaustsAt) {
-    return `no ritmo atual, a janela de ${label} esgota às ${formatTime(projection.exhaustsAt)}`;
+    return t("quota.projection.exhausts", {
+      window: label,
+      time: formatTime(projection.exhaustsAt),
+    });
   }
-  return `não esgota antes de ${formatTime(projection.resetsAt ?? "")}`;
+  return t("quota.projection.holds", { time: formatTime(projection.resetsAt ?? "") });
 }
 
 /** The two windows the app shows for every host, in order. */
@@ -25,18 +30,16 @@ export const SHOWN = ["five_hour", "seven_day"];
 export interface QuotaBar {
   window: string;
   label: string;
+  /** False until the host reports the window: no bar then. */
+  hasReading: boolean;
   /** Fraction from 0 to 1; 0 without a reading. */
   value: number;
+  percent: number;
   /** At or over `pauseAt` (or rejected): new cards wait. */
   hot: boolean;
-  text: string;
-}
-
-/** "lida agora", "lida há 12 min", "lida há 3 h". */
-export function readingAge(readAt: string, now: number): string {
-  const minutes = Math.floor((now - Date.parse(readAt)) / 60_000);
-  if (minutes < 1) return "lida agora";
-  return minutes < 60 ? `lida há ${minutes} min` : `lida há ${Math.floor(minutes / 60)} h`;
+  /** "reinicia às 15:00" and "lida há 12 min"; empty without a reading. */
+  reset: string;
+  age: string;
 }
 
 /** At or over the host's `pauseAt`, or rejected by the plan. */
@@ -50,22 +53,32 @@ export function quotaBars(
   quota: QuotaState | undefined,
   now: number,
   formatTime: (iso: string) => string,
+  t: T,
 ): QuotaBar[] {
   return SHOWN.map((window) => {
-    const label = WINDOW_LABELS[window] as string;
+    const label = t(`quota.windows.${window}` as Key);
     const reading = quota?.windows.find((w) => w.window === window);
-    if (!reading) return { window, label, value: 0, hot: false, text: `${label}: sem leitura` };
-    const parts = [
-      `${label}: ${Math.round((reading.utilization ?? 0) * 100)}%`,
-      ...(reading.resetsAt ? [`reinicia às ${formatTime(reading.resetsAt)}`] : []),
-      readingAge(reading.readAt, now),
-    ];
+    if (!reading) {
+      return {
+        window,
+        label,
+        hasReading: false,
+        value: 0,
+        percent: 0,
+        hot: false,
+        reset: "",
+        age: "",
+      };
+    }
     return {
       window,
       label,
+      hasReading: true,
       value: reading.utilization ?? 0,
+      percent: Math.round((reading.utilization ?? 0) * 100),
       hot: isHot(reading, quota?.pauseAt ?? null),
-      text: parts.join(" · "),
+      reset: reading.resetsAt ? t("quota.resets", { time: formatTime(reading.resetsAt) }) : "",
+      age: t("quota.read", { ago: formatAgo(now - Date.parse(reading.readAt), t) }),
     };
   });
 }

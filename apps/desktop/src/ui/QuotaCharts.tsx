@@ -1,8 +1,9 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
-import { HISTORY_HOURS, projectionText, SHOWN, WINDOW_LABELS } from "../lib/quota.ts";
+import { HISTORY_HOURS, projectionText, SHOWN } from "../lib/quota.ts";
 
 const WIDTH = 240;
 const HEIGHT = 60;
@@ -10,7 +11,7 @@ const HEIGHT = 60;
 /** One window's utilization over time, its projection and, for 5 hours, who used it. */
 function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
   const { history } = props;
-  const label = WINDOW_LABELS[history.window] as string;
+  const label = props.store.i18n.t(`quota.windows.${history.window}` as Key);
   const times = history.samples.map((s) => Date.parse(s.takenAt));
   const first = Math.min(...times);
   const span = Math.max(1, Math.max(...times) - first);
@@ -32,7 +33,12 @@ function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
         ))}
       </svg>
       <p>
-        {projectionText(history.window, history.projection, (iso) => props.store.formatTime(iso))}
+        {projectionText(
+          history.window,
+          history.projection,
+          (iso) => props.store.formatTime(iso),
+          props.store.i18n.t,
+        )}
       </p>
       {history.window === "five_hour" && (
         <section aria-label="Quem consumiu a janela de 5 horas">

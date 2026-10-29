@@ -94,7 +94,21 @@ export const ptBR = {
     quotaTitle: "Cota do plano",
     quotaBody: "{host}: {window} em {percent}%",
   },
-  quota: { windows: { five_hour: "5 horas", seven_day: "7 dias" } },
+  quota: {
+    windows: { five_hour: "5 horas", seven_day: "7 dias" },
+    shortWindows: { five_hour: "5 h", seven_day: "7 dias" },
+    region: "Cota de {host}",
+    meter: "{window} de {host}",
+    noReading: "sem leitura ainda",
+    resets: "reinicia às {time}",
+    read: "lida {ago}",
+    hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
+    projection: {
+      few: "poucas leituras para projetar",
+      exhausts: "no ritmo atual, a janela de {window} esgota às {time}",
+      holds: "não esgota antes de {time}",
+    },
+  },
   errors: {
     bad_request: "O host recusou o pedido.",
     unauthorized: "O host recusou o token.",

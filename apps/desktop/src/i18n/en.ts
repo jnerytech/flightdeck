@@ -92,7 +92,21 @@ export const en: Dictionary = {
     quotaTitle: "Plan quota",
     quotaBody: "{host}: {window} at {percent}%",
   },
-  quota: { windows: { five_hour: "5 hours", seven_day: "7 days" } },
+  quota: {
+    windows: { five_hour: "5 hours", seven_day: "7 days" },
+    shortWindows: { five_hour: "5 h", seven_day: "7 days" },
+    region: "Quota of {host}",
+    meter: "{window} of {host}",
+    noReading: "no reading yet",
+    resets: "resets at {time}",
+    read: "read {ago}",
+    hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
+    projection: {
+      few: "too few readings to project",
+      exhausts: "at the current pace, the {window} window runs out at {time}",
+      holds: "won't run out before {time}",
+    },
+  },
   errors: {
     bad_request: "The host refused the request.",
     unauthorized: "The host refused the token.",

@@ -28,7 +28,7 @@ import type {
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { formatDateTime } from "../i18n/format.ts";
+import { formatDateTime, formatTime } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { budgetLabel } from "./budgets.ts";
@@ -454,7 +454,7 @@ export class AppStore {
   /** HH:MM of an instant, in this machine's time zone unless injected. */
   formatTime(iso: string): string {
     if (this.options.formatTime) return this.options.formatTime(iso);
-    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return formatTime(iso, this.i18n.lang, this.options.timeZone);
   }
 
   /** Date and time of an instant in local time, in the app's language (phase 10). */
