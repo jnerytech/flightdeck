@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import { ExternalSessions } from "../src/central/external.ts";
+import { hookEntries } from "../src/central/hooks-install.ts";
 import { startReceptor } from "../src/central/receptor.ts";
 import { runCli } from "../src/main.ts";
+import { daemonCommand } from "../src/service.ts";
 import { EventStore } from "../src/store/event-store.ts";
+import { poll } from "./helpers.ts";
+import { runHookCommand } from "./hook-shell.ts";
 
 const TOKEN = "hooks-token-0123456789";
 const cleanups: Array<() => unknown> = [];
@@ -99,6 +104,19 @@ describe("hook-comando", () => {
       out: [],
     });
     expect(external.list()).toEqual([]);
+  });
+
+  test("a linha gravada pelo install roda no shell do Claude Code e chega ao receptor", async () => {
+    const { external, url } = receptor();
+    // What install writes for this daemon (`bun run <bin.ts>` in development).
+    const self = daemonCommand(process.execPath, join(import.meta.dir, "..", "src", "bin.ts"));
+    const line =
+      hookEntries({ command: self, url, token: TOKEN, permissionTimeoutS: 600 }).SessionStart?.[0]
+        ?.hooks[0]?.command ?? "";
+    const result = runHookCommand(line, JSON.stringify(START), { FLIGHTDECK_LAUNCH_ID: "L9" });
+    expect(result.stderr).toBe("");
+    expect(result.code).toBe(0);
+    expect(await poll(() => external.get("s1")?.launchId)).toBe("L9");
   });
 
   test("evento de hook desconhecido é recusado pelo CLI", async () => {

@@ -1,7 +1,8 @@
 /**
  * Fake `claude` for the wrapper tests and smoke:central: a folder put first on PATH (ahead of the
  * claude guard's sentinel) with a `claude` script and a `claude.cmd`, both forwarding to
- * fake-claude-main.ts, which plays a hand-written script of hooks, transcript lines and channel
+ * fake-claude-main.ts, which plays a hand-written script of hooks (command hooks through Claude
+ * Code's shell, see hook-shell.ts), transcript lines and channel
  * messages. Payloads follow the proof of concept (docs/SPEC-fase-5.md).
  */
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";

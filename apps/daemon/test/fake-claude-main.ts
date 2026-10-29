@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { FakeClaudeStep } from "./fake-claude.ts";
+import { runHookCommand } from "./hook-shell.ts";
 
 const [stateDir = "", ...args] = process.argv.slice(2);
 const log = (entry: Record<string, unknown>) =>
@@ -41,20 +42,10 @@ let sessionId = "";
 let transcript = "";
 const base = () => ({ session_id: sessionId, transcript_path: transcript, cwd });
 
-/** Command hooks go through the shell, as Claude Code runs them. */
+/** Command hooks go through Claude Code's own shell (Git Bash on Windows, sh elsewhere). */
 function runCommand(command: string, input: string): void {
-  const windows = process.platform === "win32";
-  const proc = Bun.spawnSync(
-    windows ? ["cmd.exe", "/d", "/s", "/c", `"${command}"`] : ["sh", "-c", command],
-    {
-      env: process.env,
-      stdin: new TextEncoder().encode(input),
-      stdout: "pipe",
-      stderr: "pipe",
-      windowsVerbatimArguments: windows,
-    } as Parameters<typeof Bun.spawnSync>[1],
-  );
-  log({ type: "command", command, code: proc.exitCode, stdout: proc.stdout?.toString() ?? "" });
+  const { code, stdout, stderr } = runHookCommand(command, input);
+  log({ type: "command", command, code, stdout, stderr });
 }
 
 async function postHook(event: string, payload: Record<string, unknown>): Promise<void> {
