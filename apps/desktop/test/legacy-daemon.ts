@@ -12,8 +12,9 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
       message(ws, raw) {
         const { id, type } = JSON.parse(String(raw));
         asked.push(type);
-        const ack = (data?: unknown) =>
+        const ack = (data?: unknown) => {
           ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
+        };
         const known: Record<string, unknown> = {
           hello: { hostName: "h", daemonVersion: "0.6.0", protocolVersion: 1, allowedRoots: [] },
           "host.info": {
