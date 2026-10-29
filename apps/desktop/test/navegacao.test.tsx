@@ -339,8 +339,9 @@ describe("navegacao", () => {
     const store = new AppStore(createWebPlatform(mem.win, secrets), { baseDelayMs: 60_000 });
     store.router.push({ name: "reader", target: { hostId: "h-fixo", claudeSessionId: "hist-2" } });
     render(<App store={store} />);
-    // While connecting, the screen says so.
-    expect(screen.queryByRole("status", { name: "Conectando a alfa…" })).not.toBeNull();
+    // While the saved hosts load and connect, the screen says so (its name may not be known yet).
+    const status = screen.queryByRole("status")?.getAttribute("aria-label") ?? "";
+    expect(status).toMatch(/^(Carregando…|Conectando a alfa…)$/);
     await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("Leitura cedo"));
     expect(screen.queryByRole("main")?.textContent ?? "").toContain("Leitura cedo");
     expect(screen.queryByRole("alert")).toBeNull();
