@@ -167,6 +167,16 @@ describe("mcp-projeto", () => {
     expect(await code(() => config.save(project, { name: "remoto", url: "https://x" }, true))).toBe(
       "invalid_state",
     );
+    expect(await code(() => config.toggle(project, "nao-existe", true, true))).toBe("not_found");
+  });
+
+  test("testar sem confirm também mostra o que rodaria para os servidores do ~/.claude.json", async () => {
+    const { config, project } = setup();
+    const preview = (name: string) =>
+      config.test(project, name, false).catch((error: { code?: string }) => error.code);
+    expect(await preview("remoto")).toEqual({ preview: { url: "https://mcp.example.com" } });
+    expect(await preview("local")).toEqual({ preview: { command: "python", args: ["srv.py"] } });
+    expect(await preview("nao-existe")).toBe("not_found");
   });
 
   test("ligar e desligar pela lista do settings.local.json, preservando o resto", () => {
