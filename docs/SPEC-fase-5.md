@@ -31,7 +31,7 @@ Feita em 2026-10-29 com `claude` 2.1.312, Windows nativo, assinatura Max, com ho
 - **Permissão:** o hook `PermissionRequest` pode segurar a resposta. Enquanto ele segura, o diálogo do terminal aparece normalmente e chega um `Notification` com `notification_type: "permission_prompt"`. A resposta `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}` libera a ferramenta e fecha o diálogo ("Allowed by PermissionRequest hook"). O payload traz `tool_name`, `tool_input` e `permission_suggestions`, mas não `tool_use_id`.
 - **Daemon fora do ar:** com a porta fechada, a sessão segue em segundos; com o servidor morto no meio da espera, segue em cerca de 4 s. O Claude nunca trava por causa do Flightdeck.
 - **Timeout do hook:** estourado, a chamada segue o comportamento normal da sessão (em `-p`, negada).
-- **Canal:** um servidor MCP com a capability `experimental["claude/channel"]`, carregado com `claude --dangerously-load-development-channels server:<nome>`, empurra mensagens para uma sessão interativa aberta (`notifications/claude/channel`); o Claude agiu em cerca de 5 s com a sessão ociosa. A primeira abertura mostra um aviso de canal de desenvolvimento que precisa ser aceito.
+- **Canal:** um servidor MCP com a capability `experimental["claude/channel"]`, carregado com `claude --dangerously-load-development-channels server:<nome>`, empurra mensagens para uma sessão interativa aberta (`notifications/claude/channel`); o Claude agiu em cerca de 5 s com a sessão ociosa. Cada abertura com essa flag mostra um aviso de canal de desenvolvimento que precisa ser aceito (o README avisa).
 - **Fora do terminal:** na extensão do VS Code o mesmo canal subiu como MCP, mas nenhuma mensagem chegou.
 
 ## Design
@@ -44,14 +44,14 @@ O daemon de cada host passa a saber, além das próprias sessões, quais sessõe
 
 - **Mescla, nunca sobrescreve:** mantém todas as outras chaves e hooks; grava antes uma cópia `settings.json.flightdeck-backup`; reinstalar é idempotente. As entradas do Flightdeck são reconhecidas pela URL do receptor e pelo comando `flightdeckd hook`.
 - **Eventos instalados:**
-  - `SessionStart`: `type: "command"`, rodando `flightdeckd hook session-start`, que lê o JSON da entrada, acrescenta `FLIGHTDECK_LAUNCH_ID` (se houver) e envia ao receptor. Falhou o envio, sai com código 0 sem saída.
+  - `SessionStart`: `type: "command"`, rodando `<caminho absoluto do flightdeckd> hook session-start` (o install grava o caminho do executável em uso, nunca só `flightdeckd`), que lê o JSON da entrada, acrescenta `FLIGHTDECK_LAUNCH_ID` (se houver) e envia ao receptor. Falhou o envio, sai com código 0 sem saída.
   - `UserPromptSubmit`, `Notification`, `PermissionRequest`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `Stop` e `SessionEnd`: `type: "http"` para o receptor, com o cabeçalho de token.
   - Timeouts: 5 s para todos, exceto `PermissionRequest`, com `hooks.permissionTimeoutS` (padrão 600).
-- **WSL:** o daemon do WSL instala no `~/.claude` do WSL; cada daemon cuida do próprio host.
+- **WSL:** o daemon do WSL instala no `~/.claude` do WSL; cada daemon cuida do próprio host. O daemon do WSL usa um `hooks.port` diferente do Windows (como `wsl.port`), porque no modo de rede espelhado os dois compartilham o loopback.
 
 ### Receptor de hooks
 
-- Listener HTTP separado, sempre em `127.0.0.1:hooks.port` (padrão 7421), independente do `bind` do protocolo, porque os hooks rodam na mesma máquina.
+- Listener HTTP separado, sempre em `127.0.0.1:hooks.port` (padrão 7421; testes e smokes usam porta 0), independente do `bind` do protocolo, porque os hooks rodam na mesma máquina.
 - Token próprio (`hooks.token`, gerado no install), aceito só nas rotas de hook. Token errado: 401 e nada muda.
 - Hooks de sessões gerenciadas pelo próprio daemon são ignorados (resposta vazia na hora): o `ClaudeSdkRuntime` usa `settingSources: ["user", ...]`, então essas sessões também disparam os hooks do usuário. A sessão gerenciada é reconhecida pelo `claudeSessionId` e por `FLIGHTDECK_MANAGED=1` no ambiente que o runtime passa ao `claude`.
 - Resposta vazia (2xx sem corpo) sempre que o Flightdeck não decide nada, para o Claude seguir como se o hook não existisse.
@@ -92,7 +92,7 @@ O daemon mantém um registro das sessões externas vivas, alimentado pelos hooks
 
 - Resolve o `claude` real com `whichOnPath` (ou `claude.executablePath`) e o executa no mesmo terminal, com stdio herdado e o código de saída repassado.
 - Acrescenta `--dangerously-load-development-channels server:flightdeck` e um `--mcp-config` que registra o servidor `flightdeck` como `flightdeckd channel`. Não toca no `.mcp.json` do projeto.
-- Define `FLIGHTDECK_LAUNCH_ID` (ULID) no ambiente. O `SessionStart` repassa esse id e o `flightdeckd channel` o usa para se ligar à sessão certa.
+- Define `FLIGHTDECK_LAUNCH_ID` (ULID) no ambiente. O `SessionStart` repassa esse id e o `flightdeckd channel` o usa para se ligar à sessão certa. O launch id segue a sessão corrente: `/clear`, `/compact` e `--resume` disparam um `SessionStart` novo, com outro `session_id` e o mesmo launch id, e o canal passa a valer para esse `session_id`.
 - Sem `claude` no PATH, ou com o daemon do host fora do ar, avisa com uma linha clara. Sem daemon, abre o `claude` assim mesmo.
 
 `flightdeckd channel` é um servidor MCP stdio de canal **só de ida**:
@@ -175,14 +175,14 @@ Os testes simulam o Claude Code pelos hooks (requisições HTTP e o comando `fli
 | --- | --- |
 | `hooks-install` | mescla no `settings.json` existente sem perder chaves nem hooks de terceiros, grava o backup, reinstalar não duplica, `uninstall` remove só as entradas do Flightdeck, `status` reporta instalado/ausente/desatualizado |
 | `hooks-receptor` | escuta só em `127.0.0.1`; token errado dá 401; cada evento da tabela muda o estado da sessão externa; hooks de sessão gerenciada são ignorados |
-| `hook-comando` | `flightdeckd hook session-start` repassa a entrada e o launch id; com o receptor fora do ar sai com código 0 em menos de 2 s |
+| `hook-comando` | `flightdeckd hook session-start` repassa a entrada e o launch id; com o receptor fora do ar sai com código 0 sem esperar o timeout (limite de conexão injetável) |
 | `permissao-externa` | sem app conectado responde vazio na hora; com app, segura e publica na fila; `permission.respond` devolve o JSON de allow e de deny; conexão caída ou evento posterior da sessão tira o pedido da fila |
 | `sessoes-externas` | transições da tabela de estados, `stale` após o limite, `unknown` depois de reiniciar, `controllable` segue o canal |
 | `wrapper` | `flightdeckd claude` acha o `claude` com `whichOnPath`, repassa argumentos e código de saída, acrescenta o canal, o `--mcp-config` e o launch id, e avisa sem `claude` no PATH |
 | `canal` | declara `claude/channel` e nenhuma ferramenta; se liga à sessão pelo launch id; mensagem do daemon vira `notifications/claude/channel`; conexão sem token é recusada |
 | `mensagem-externa` | `external.message` chega ao canal certo; sessão sem canal é recusada com erro claro |
 | `projeto-chave` | SSH e HTTPS do mesmo remoto dão a mesma chave; worktree cai no repositório principal; sem remoto e sem repositório usam o fallback |
-| `ao-vivo` | linha nova no transcript gera `history.changed` em até 2 s; o leitor acrescenta as mensagens sem recarregar |
+| `ao-vivo` | linha nova no transcript gera `history.changed` dentro do intervalo configurado (relógio e intervalos injetáveis, sem depender de tempo real); o leitor acrescenta as mensagens sem recarregar |
 | `sessao-meta` | nome, fixada e arquivada persistem e voltam nas três listas |
 | `central-ui` | a lista junta sessões gerenciadas, externas e do histórico de dois hosts no mesmo grupo de projeto; filtros; fixadas no topo; arquivadas escondidas; pedido externo aparece em Precisa de você e é respondido; a caixa de mensagem só aparece para sessão controlável |
 | `hooks-ui` | a tela do host mostra o estado dos hooks; Instalar e Remover pedem confirmação |
