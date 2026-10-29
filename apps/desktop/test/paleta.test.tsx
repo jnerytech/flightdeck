@@ -31,13 +31,15 @@ async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
 }
 
 const dialog = () => screen.queryByRole("dialog", { name: "Busca global" });
-const sections = () =>
-  screen.queryAllByRole("listbox").map((list) => list.getAttribute("aria-label") ?? "");
-const options = () =>
-  screen.queryAllByRole("option").map((option) => option.getAttribute("aria-label") ?? "");
+/** Inside the palette only: the screen behind it has lists and selects of its own. */
+const inPalette = (role: "listbox" | "option") => {
+  const palette = dialog();
+  return palette ? within(palette).queryAllByRole(role) : [];
+};
+const sections = () => inPalette("listbox").map((list) => list.getAttribute("aria-label") ?? "");
+const options = () => inPalette("option").map((option) => option.getAttribute("aria-label") ?? "");
 const selected = () =>
-  screen
-    .queryAllByRole("option")
+  inPalette("option")
     .find((option) => option.getAttribute("aria-selected") === "true")
     ?.getAttribute("aria-label") ?? null;
 const input = () => screen.queryByLabelText("Buscar no histórico") as HTMLInputElement | null;
@@ -160,7 +162,7 @@ describe("paleta", () => {
     await press("ArrowDown");
     expect(selected()).toBe("Gerenciada");
     await press("ArrowDown");
-    expect(selected()).toBe("Ajuste");
+    expect(selected()).toBe("app-a");
     await press("ArrowUp");
     expect(selected()).toBe("Gerenciada");
     await press("Enter");
