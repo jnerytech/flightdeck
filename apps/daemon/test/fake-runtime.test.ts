@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { SessionEvent } from "@flightdeck/protocol";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { CanUseToolFn, StartOptions } from "../src/runtime/types.ts";
+import { git, gitRepo } from "./board-helpers.ts";
+import { tempDir } from "./helpers.ts";
 
 function opts(canUseTool: CanUseToolFn, extra: Partial<StartOptions> = {}): StartOptions {
   return { cwd: "/x", permissionMode: "default", env: {}, canUseTool, ...extra };
@@ -109,5 +113,36 @@ describe("FakeRuntime", () => {
     const it = run.events[Symbol.asyncIterator]();
     await run.close();
     expect((await it.next()).done).toBe(true);
+  });
+});
+
+describe("FakeRuntime: [commit]", () => {
+  test("cria um arquivo no cwd e commita, como um agente faria", async () => {
+    const { repo } = gitRepo();
+    const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, { cwd: repo }));
+    const it = run.events[Symbol.asyncIterator]();
+    run.send("crie o arquivo [commit]");
+    const first = await collectUntil(it, isResult);
+    expect(first.at(-1)).toMatchObject({ type: "turn.result", isError: false });
+    expect(git(repo, "status", "--porcelain")).toBe("");
+    expect(git(repo, "log", "-1", "--format=%s")).toBe("fake: crie o arquivo [commit]");
+    expect(git(repo, "show", "--name-only", "--format=", "HEAD")).toBe("fake-1.txt");
+    const file = join(repo, "fake-1.txt");
+    expect(existsSync(file) ? readFileSync(file, "utf8") : "").toBe("crie o arquivo [commit]\n");
+    run.send("outro [commit]");
+    await collectUntil(it, isResult);
+    expect(git(repo, "show", "--name-only", "--format=", "HEAD")).toBe("fake-2.txt");
+    await run.close();
+  });
+
+  test("fora de um repositório git, o commit falha e o runtime acusa o erro", async () => {
+    const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, { cwd: tempDir() }));
+    const it = run.events[Symbol.asyncIterator]();
+    run.send("[commit]");
+    const result = await collectUntil(it, isResult).then(
+      () => "turno terminou",
+      (error: Error) => error.message,
+    );
+    expect(result.startsWith("git ")).toBe(true);
   });
 });
