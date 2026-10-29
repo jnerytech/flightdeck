@@ -233,4 +233,42 @@ describe("mudancas", () => {
     await poll(() => updates.includes(4), 5000);
     expect(updates).toContain(4);
   });
+
+  test("pasta que sumiu não é repositório; parar cancela o diff pendente; falha depois de um evento vai para o log", async () => {
+    const { repo } = dirtyRepo();
+    const db = new EventStore(":memory:").db;
+    insertHistory(db, "h-gone", join(repo, "nao-existe"));
+    insertHistory(db, "h-1", repo);
+    const time = manualTime();
+    const fake = fakeWatch();
+    const logs: string[] = [];
+    const changes = new Changes({
+      db,
+      watch: fake.watch,
+      timers: time.timers,
+      log: (m) => logs.push(m),
+    });
+    const code = await changes.get("session:h-gone").then(
+      () => "ok",
+      (error: { code?: string }) => error.code ?? "sem código",
+    );
+    expect(code).toBe("invalid_state");
+    const updates: unknown[] = [];
+    const stop = await changes.watch("session:h-1", (r) => updates.push(r));
+    fake.watchers[0]?.fire("README.md");
+    stop();
+    time.advance(500);
+    await Bun.sleep(50);
+    expect(updates).toEqual([]);
+    // The repository goes away between the event and the diff.
+    await changes.watch("session:h-1", (r) => updates.push(r));
+    fake.watchers[1]?.fire("README.md");
+    db.query("UPDATE history_sessions SET cwd = ? WHERE claude_session_id = 'h-1'").run(
+      join(repo, "nao-existe"),
+    );
+    time.advance(500);
+    await poll(() => logs.length > 0);
+    expect(updates).toEqual([]);
+    expect(logs[0] ?? "").toContain("mudanças: diff de session:h-1 falhou");
+  });
 });
