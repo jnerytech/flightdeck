@@ -307,6 +307,17 @@ describe("board-ui", () => {
     expect(screen.queryByRole("log")).not.toBeNull();
   });
 
+  test("remover o host tira os cards dele do app", async () => {
+    const { repo, store } = await setup();
+    await openBoard(repo);
+    await createCard("Some junto", "faça");
+    expect(Object.keys(store.getState().cards)).toHaveLength(1);
+    await act(async () => {
+      await store.removeHost(store.getState().hosts[0]?.id ?? "");
+    });
+    expect(store.getState().cards).toEqual({});
+  });
+
   test("cards mostram fila, estado do PR, checks e avisos vindos do daemon", async () => {
     const { repo, board, eventStore } = await setup();
     await openBoard(repo);
