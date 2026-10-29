@@ -70,6 +70,7 @@ const validCommands: Record<CommandType, unknown> = {
   "maintenance.prune": { dryRun: true },
   "daemon.shutdown": {},
   "daemon.update.apply": { confirm: true },
+  "snapshots.list": { claudeSessionId: "c1" },
   "hooks.status": {},
   "hooks.install": { confirm: true },
   "hooks.uninstall": { confirm: true },
