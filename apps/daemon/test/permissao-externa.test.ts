@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import type { Central } from "../src/central/central.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { ExternalPermissions, summarizeInput } from "../src/central/external-permissions.ts";
 import { type Receptor, startReceptor } from "../src/central/receptor.ts";
@@ -27,7 +28,8 @@ function setup() {
   cleanups.push(() => receptor.stop());
   const server = startServer({
     manager,
-    central: { external, permissions },
+    // Only what these commands use; the hooks commands are tested with a real Central.
+    central: { external, permissions } as unknown as Central,
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
