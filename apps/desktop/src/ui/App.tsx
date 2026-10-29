@@ -2,6 +2,7 @@ import { parsePairingLink } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type AppStore, type PendingItem, sessionKey } from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
+import type { PaletteTarget } from "../lib/palette.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -167,6 +168,51 @@ export function App({ store }: { store: AppStore }) {
   const openRequestRef = useRef(openRequest);
   openRequestRef.current = openRequest;
   useEffect(() => store.onOpenRequest((item) => openRequestRef.current(item)), [store]);
+
+  /** An entry or action of the Ctrl+K palette: its screen, or a terminal. */
+  const goTo = (target: PaletteTarget) => {
+    store.closeSearch();
+    if (target.kind === "terminal") {
+      void store.openInTerminal(target.hostId, target.target);
+      return;
+    }
+    closeBoard();
+    setReading(null);
+    setHistoryHost(null);
+    setAddingHost(false);
+    setSettingsOpen(false);
+    setHostPage(null);
+    switch (target.kind) {
+      case "session":
+        store.select(target.hostId, target.sessionId);
+        break;
+      case "new-session":
+        store.select(target.hostId, null);
+        break;
+      case "external":
+        setExternal({ hostId: target.hostId, claudeSessionId: target.claudeSessionId });
+        break;
+      case "card":
+        setBoardOf({ hostId: target.hostId, projectId: target.projectId });
+        setOpenCard(target.cardId);
+        break;
+      case "board":
+        setBoardOf({ hostId: target.hostId, projectId: target.projectId });
+        break;
+      case "workflows":
+        setWorkflowsOf({ hostId: target.hostId, projectId: target.projectId, name: target.name });
+        break;
+      case "host":
+        setHostPage(target.hostId);
+        break;
+      case "projects":
+        setProjectsHost(target.hostId);
+        break;
+      case "settings":
+        setSettingsOpen(true);
+        break;
+    }
+  };
 
   const selectedHost = state.hosts.find((h) => h.id === state.selected?.hostId);
   const sessionId = state.selected?.sessionId;
@@ -413,6 +459,10 @@ export function App({ store }: { store: AppStore }) {
       {state.searchOpen && (
         <GlobalSearch
           state={state}
+          store={store}
+          // Track B has no Custos screen: the palette offers it once there is one.
+          costs={false}
+          onGo={goTo}
           onSearch={(query) => void store.searchHistory(query)}
           onClose={() => store.closeSearch()}
           onOpenHit={(hit) => {

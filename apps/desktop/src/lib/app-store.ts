@@ -16,6 +16,7 @@ import type {
   HostInfoResult,
   PendingPermission,
   PermissionUpdate,
+  Project,
   QuotaState,
   SessionEventOf,
   SessionMeta,
@@ -95,6 +96,8 @@ export interface AppState {
   hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
   /** This machine's terminals (phase 8), probed at init; `null` where none can be opened. */
   terminalEnv: TerminalEnv | null;
+  /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
+  projects: Record<string, Project[]>;
 }
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
@@ -296,6 +299,9 @@ function withTimeout<T>(promise: Promise<T> | undefined, ms: number): Promise<T>
   );
 }
 
+/** A request whose failure only means less to show (an older daemon, a host without a board). */
+const quiet = <T>(promise: Promise<T>) => promise.catch(() => null);
+
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
 }
@@ -340,6 +346,7 @@ export class AppStore {
       meta: {},
       hub: {},
       terminalEnv: null,
+      projects: {},
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -556,6 +563,26 @@ export class AppStore {
     this.update({ settings: { ...this.state.settings, autostart: enabled } });
   }
 
+  /**
+   * What the palette lists besides live state: the Sessões lists, each host's projects and their
+   * cards. Quiet: a host without a board (or offline) just lists less.
+   */
+  async loadPalette(): Promise<void> {
+    const boards = this.state.hosts
+      .filter((host) => host.status === "online")
+      .map(async (host) => {
+        const conn = this.connections.get(host.id) as HostConnection;
+        const list = await quiet(conn.request("project.list", {}));
+        if (!list) return;
+        this.update({ projects: { ...this.state.projects, [host.id]: list.projects } });
+        for (const project of list.projects) {
+          const board = await quiet(conn.request("board.get", { projectId: project.id }));
+          for (const card of cardsIn(board)) this.onCard(host.id, card);
+        }
+      });
+    await Promise.all([this.refreshHub(), ...boards]);
+  }
+
   openSearch(): void {
     this.update({ searchOpen: true });
   }
@@ -687,7 +714,6 @@ export class AppStore {
         .filter((host) => host.status === "online")
         .map(async (host) => {
           const conn = this.connections.get(host.id) as HostConnection;
-          const quiet = <T>(p: Promise<T>) => p.catch(() => null);
           const [managed, history, external] = await Promise.all([
             quiet(conn.request("session.list", {})),
             quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),

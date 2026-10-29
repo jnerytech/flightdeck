@@ -531,3 +531,21 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Phase 8: the Ctrl+K palette's sections and the entry chosen with the arrows. */
+.palette-section h3 {
+  margin: 12px 0 4px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.global-search [role="option"][aria-selected="true"] {
+  outline: 2px solid var(--accent, currentColor);
+}
+
+.palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
