@@ -215,6 +215,9 @@ export function App({ store }: { store: AppStore }) {
       case "settings":
         setSettingsOpen(true);
         break;
+      case "costs":
+        setCostsOpen(true);
+        break;
     }
   };
 
@@ -511,8 +514,7 @@ export function App({ store }: { store: AppStore }) {
         <GlobalSearch
           state={state}
           store={store}
-          // Track B has no Custos screen: the palette offers it once there is one.
-          costs={false}
+          costs={true}
           onGo={goTo}
           onSearch={(query) => void store.searchHistory(query)}
           onClose={() => store.closeSearch()}
