@@ -6,7 +6,7 @@ import { realTempDir, testHome } from "../../../scripts/test/temp-dir.ts";
 import { Config, defaultConfigPath, expandHome, userHome } from "../src/config.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { RuntimeEvent } from "../src/runtime/types.ts";
-import { osServiceContext } from "../src/service-os.ts";
+import { osServiceContext, processPath } from "../src/service-os.ts";
 import { stopServiceDaemon } from "../src/update.ts";
 
 describe("plataforma", () => {
@@ -97,6 +97,19 @@ describe("plataforma", () => {
       expect(stopped).toBe(true);
     },
   );
+
+  test("no Windows, o executável do processo vem do Get-Process do PowerShell", async () => {
+    const calls: string[][] = [];
+    const exec = async (cmd: string[]) => {
+      calls.push(cmd);
+      return { code: 0, stdout: "C:\\fd\\flightdeckd.exe\r\n" };
+    };
+    const read = () => "nunca";
+    expect(await processPath(42, "win32", read, exec)).toBe("C:\\fd\\flightdeckd.exe");
+    expect(calls[0]?.at(-1)).toBe("(Get-Process -Id 42 -ErrorAction SilentlyContinue).Path");
+    const gone = async () => ({ code: 0, stdout: "" });
+    expect(await processPath(42, "win32", read, gone)).toBeNull();
+  });
 
   test("um ~ fora do começo do caminho não é o home", () => {
     for (const path of ["C:\\Users\\RUNNER~1\\x", "/tmp/a~b", "a~", "~user/x"]) {
