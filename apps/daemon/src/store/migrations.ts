@@ -248,4 +248,16 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (budget_id, period, threshold)
   );
   `,
+  // Phase 8 (track A): every reading of the plan quota, for its history and projection.
+  `
+  CREATE TABLE quota_samples (
+    window      TEXT,
+    utilization REAL,
+    resets_at   TEXT,
+    status      TEXT,
+    taken_at    TEXT
+  );
+
+  CREATE INDEX quota_samples_window ON quota_samples (window, taken_at);
+  `,
 ];

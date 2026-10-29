@@ -5,13 +5,20 @@ export interface RetentionPolicy {
   eventsDays: number;
   /** External sessions ended more than this many days ago. 0 means "as soon as it ends". */
   externalSessionsDays: number;
+  /** Usage entries of messages older than this many days (phase 8). */
+  usageDays: number;
 }
 
 export type PruneCounts = {
   events: number;
   permission_requests: number;
   external_sessions: number;
+  usage_entries: number;
+  quota_samples: number;
 };
+
+/** Quota samples are history for charts: a month is enough. */
+export const QUOTA_SAMPLES_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 
@@ -48,6 +55,8 @@ export function prune(
 ): PruneCounts {
   const sessions = { cutoff: cutoffOf(opts.now, policy.eventsDays) };
   const external = { cutoff: cutoffOf(opts.now, policy.externalSessionsDays) };
+  const usage = { cutoff: cutoffOf(opts.now, policy.usageDays) };
+  const samples = { cutoff: cutoffOf(opts.now, QUOTA_SAMPLES_DAYS) };
   const count = (sql: string, params: { cutoff: string }) =>
     (db.query(sql).get(params) as { n: number }).n;
   const counts: PruneCounts = {
@@ -60,6 +69,11 @@ export function prune(
       sessions,
     ),
     external_sessions: count(`SELECT COUNT(*) AS n ${PRUNABLE_EXTERNAL}`, external),
+    usage_entries: count("SELECT COUNT(*) AS n FROM usage_entries WHERE at < $cutoff", usage),
+    quota_samples: count(
+      "SELECT COUNT(*) AS n FROM quota_samples WHERE taken_at < $cutoff",
+      samples,
+    ),
   };
   if (opts.dryRun) return counts;
   db.transaction(() => {
@@ -70,6 +84,8 @@ export function prune(
     db.query(
       `DELETE FROM external_sessions WHERE claude_session_id IN (SELECT e.claude_session_id ${PRUNABLE_EXTERNAL})`,
     ).run(external);
+    db.query("DELETE FROM usage_entries WHERE at < $cutoff").run(usage);
+    db.query("DELETE FROM quota_samples WHERE taken_at < $cutoff").run(samples);
   })();
   return counts;
 }

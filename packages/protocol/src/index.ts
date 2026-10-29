@@ -652,6 +652,35 @@ export const CostsSession = z.object({
 });
 export type CostsSession = z.infer<typeof CostsSession>;
 
+/** The readings of one quota window over the last hours, with where it is heading. */
+export const QuotaHistory = z.object({
+  window: z.string(),
+  hours: z.number().int(),
+  samples: z.array(
+    z.object({
+      utilization: z.number().nullable(),
+      status: z.string(),
+      resetsAt: z.string().nullable(),
+      takenAt: z.string(),
+    }),
+  ),
+  /** From 3 samples of the current window on (a linear fit); `null` before that. */
+  projection: z
+    .object({
+      /** When the window reaches 100% at the current pace; `null` when not before it resets. */
+      exhaustsAt: z.string().nullable(),
+      resetsAt: z.string().nullable(),
+      samples: z.number().int(),
+    })
+    .nullable(),
+  /**
+   * The 5-hour window only: each project's share of the estimated cost of the entries since the
+   * window began (an approximation: the plan does not say who used it).
+   */
+  consumers: z.array(z.object({ projectKey: z.string(), costUsd: z.number(), share: z.number() })),
+});
+export type QuotaHistory = z.infer<typeof QuotaHistory>;
+
 /** A cost limit of the host or of one project, per day or month (host time zone). */
 export const BudgetInput = z.object({
   /** Present to change an existing budget. */
@@ -870,6 +899,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("budget.remove", z.object({ id: z.string() })),
   /** `budget.updated` after each change, threshold crossed or new period. */
   cmd("budget.watch", z.object({}).strict()),
+  cmd(
+    "quota.history",
+    z.object({ window: z.string().min(1), hours: z.number().int().min(1).max(720) }),
+  ),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -1121,6 +1154,7 @@ export interface CommandResults {
   "budget.set": Budget;
   "budget.remove": undefined;
   "budget.watch": undefined;
+  "quota.history": QuotaHistory;
 }
 
 // ---------------------------------------------------------------------------

@@ -82,8 +82,10 @@ export const Config = z.object({
     .object({
       eventsDays: z.number().int().min(0).default(90),
       externalSessionsDays: z.number().int().min(0).default(30),
+      /** Usage entries for costs (phase 8). */
+      usageDays: z.number().int().min(1).default(400),
     })
-    .default(() => ({ eventsDays: 90, externalSessionsDays: 30 })),
+    .default(() => ({ eventsDays: 90, externalSessionsDays: 30, usageDays: 400 })),
   /** Daily `VACUUM INTO <dataDir>/backups`, keeping the newest `keep`. */
   backup: z
     .object({

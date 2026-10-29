@@ -38,6 +38,7 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
+import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
@@ -86,6 +87,8 @@ export interface ServerOptions {
   costs?: Costs;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
+  /** The quota's samples behind `quota.history` (phase 8). */
+  quotaHistory?: QuotaHistory;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -327,6 +330,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function budgets(): Budgets {
     if (!opts.budgets) throw new FlightdeckError("invalid_state", "orçamentos desativados");
     return opts.budgets;
+  }
+
+  function quotaHistory(): QuotaHistory {
+    if (!opts.quotaHistory) throw new FlightdeckError("invalid_state", "sem histórico da cota");
+    return opts.quotaHistory;
   }
 
   function board(): Board {
@@ -620,6 +628,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "quota.history":
+        return ok(
+          command.type,
+          quotaHistory().history(command.payload.window, command.payload.hours),
+        );
       case "usage.summary":
         return ok(command.type, usage().summary(command.payload.days));
       case "quota.get":

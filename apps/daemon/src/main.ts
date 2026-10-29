@@ -38,6 +38,7 @@ import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
@@ -322,6 +323,7 @@ export async function startDaemon(
   const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
+  const quotaHistory = new QuotaHistory({ db: store.db });
   const keys = new ProjectKeys(config.hostName);
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.keyFor(cwd) });
   const manager = new SessionManager({
@@ -331,7 +333,10 @@ export async function startDaemon(
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
     baseEnv: env,
-    onQuota: (readings) => quota.record(readings),
+    onQuota: (readings) => {
+      quota.record(readings);
+      quotaHistory.sample(readings);
+    },
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
   });
   const history = new HistoryIndexer({
@@ -418,6 +423,7 @@ export async function startDaemon(
     usage,
     costs,
     budgets,
+    quotaHistory,
     central,
     maintenance,
     ...(updates ? { updates } : {}),
