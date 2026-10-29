@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Board } from "../../daemon/src/board/board.ts";
+import { Central } from "../../daemon/src/central/central.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
@@ -51,12 +52,28 @@ export function daemon(
   });
   const board = new Board({ db: store.db, manager, allowedRoots: [root] });
   cleanups.push(() => board.stop());
+  // Hooks go to a settings.json of this daemon only, never the home of the test process.
+  const settingsFile = join(root, "claude-home", "settings.json");
+  const configFile = join(root, "config.json");
+  writeFileSync(configFile, JSON.stringify({ token: TOKEN }));
+  const central = new Central({
+    db: store.db,
+    manager,
+    hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
+    dataDir: join(root, "data"),
+    hostName: "h1",
+    configFile,
+    selfCommand: [process.execPath, "run", "flightdeckd.ts"],
+    settingsPath: () => settingsFile,
+  });
+  cleanups.push(() => central.stop());
   const listen = (port = 0, pingIntervalMs?: number): RunningServer => {
     const server = startServer({
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
       manager,
       history,
       board,
+      central,
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -75,6 +92,9 @@ export function daemon(
     historyRoot,
     runtime,
     board,
+    central,
+    settingsFile,
+    configFile,
     eventStore: store,
   };
 }

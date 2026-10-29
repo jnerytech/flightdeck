@@ -63,6 +63,9 @@ const validCommands: Record<CommandType, unknown> = {
   "external.list": {},
   "external.watch": {},
   "external.message": { claudeSessionId: "c", text: "oi" },
+  "hooks.status": {},
+  "hooks.install": { confirm: true },
+  "hooks.uninstall": { confirm: true },
 };
 
 const validEvents: SessionEvent[] = [
