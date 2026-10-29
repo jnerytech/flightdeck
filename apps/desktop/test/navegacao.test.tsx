@@ -389,6 +389,9 @@ describe("navegacao", () => {
     await settle(() => heading("Ajuste"));
     expect(heading("Ajuste")).toBe(true);
     expect(screen.queryByText("Card não encontrado.")).toBeNull();
+    // Nothing was asked of the host with an empty project while the card was still loading.
+    await act(async () => Bun.sleep(300));
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(d.board.getCard(card.id).title).toBe("Ajuste");
   });
 });
