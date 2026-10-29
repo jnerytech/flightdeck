@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { type CliDeps, parseArgs, runCli, startDaemon } from "../src/main.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../src/service.ts";
@@ -196,6 +196,7 @@ describe("servico", () => {
     expect(win.calls).toEqual([
       ["schtasks", "/Delete", "/TN", "Flightdeck\\flightdeckd", "/F"],
       ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd"],
+      ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd", "/XML"],
     ]);
     expect(winStatus.out).toEqual(["Flightdeck\\flightdeckd  Pronto"]);
 
@@ -205,6 +206,70 @@ describe("servico", () => {
     expect(dry.calls).toEqual([]);
     expect(dry.removed).toEqual([]);
     expect(dryCli.out.join("\n")).toContain("systemctl --user disable --now flightdeckd");
+  });
+
+  test("com --config, a tarefa e a unit rodam start --config <caminho absoluto>; sem, só start", async () => {
+    const exe = "C:\\Users\\dev\\bin\\flightdeckd.exe";
+    const options = { user: "PC\\dev", systemRoot: "C:\\Windows" };
+    expect(
+      windowsTaskXml([exe], { ...options, config: "C:\\Users\\dev\\meu fd\\config.json" }),
+    ).toContain(
+      `<Arguments>--headless "${exe}" start --config "C:\\Users\\dev\\meu fd\\config.json"</Arguments>`,
+    );
+    expect(windowsTaskXml([exe], options)).toContain(
+      `<Arguments>--headless "${exe}" start</Arguments>`,
+    );
+    const bin = "/home/dev/.local/bin/flightdeckd";
+    expect(systemdUnit([bin], "/home/dev/meu fd/config.json")).toContain(
+      `ExecStart=${bin} start --config "/home/dev/meu fd/config.json"\n`,
+    );
+    expect(systemdUnit([bin])).toContain(`ExecStart=${bin} start\n`);
+    // The CLI passes --config as an absolute path; without it, nothing changes.
+    const withConfig = cli(fakeOs("win32"));
+    await runCli(["service", "install", "--dry-run", "--config", "rel/c.json"], withConfig.deps);
+    expect(withConfig.out.join("\n")).toContain(
+      `start --config ${resolve("rel/c.json")}</Arguments>`,
+    );
+    const without = cli(fakeOs("win32"));
+    await runCli(["service", "install", "--dry-run"], without.deps);
+    expect(without.out.join("\n")).toContain(`"${exe}" start</Arguments>`);
+  });
+
+  test("status mostra a config que o serviço usa", async () => {
+    const run = async (os: ReturnType<typeof fakeOs>, answer: (cmd: string[]) => string) => {
+      const out: string[] = [];
+      await runCli(["service", "status"], {
+        ...cli(os).deps,
+        log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+        serviceContext: (dryRun) => ({
+          ...os.ctx(dryRun),
+          exec: async (cmd) => ({ code: 0, stdout: answer(cmd) }),
+        }),
+      });
+      return out;
+    };
+    const bin = "/home/dev/.local/bin/flightdeckd";
+    const linux = (config?: string) => (cmd: string[]) =>
+      cmd.includes("cat") ? systemdUnit([bin], config) : "active\n";
+    expect(await run(fakeOs("linux"), linux("/home/dev/fd/config.json"))).toEqual([
+      "active",
+      "config: /home/dev/fd/config.json",
+    ]);
+    expect(await run(fakeOs("linux"), linux())).toEqual([
+      "active",
+      "config: padrão (~/.flightdeck/config.json)",
+    ]);
+    const exe = "C:\\Users\\dev\\bin\\flightdeckd.exe";
+    const xml = windowsTaskXml([exe], {
+      user: "PC\\dev",
+      systemRoot: "C:\\Windows",
+      config: "C:\\fd\\config.json",
+    });
+    const win = (cmd: string[]) => (cmd.includes("/XML") ? xml : "Flightdeck\\flightdeckd  Pronto");
+    expect(await run(fakeOs("win32"), win)).toEqual([
+      "Flightdeck\\flightdeckd  Pronto",
+      "config: C:\\fd\\config.json",
+    ]);
   });
 
   test("status sem serviço instalado diz que não está instalado", async () => {
