@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { Central } from "../../daemon/src/central/central.ts";
 import { RECEPTOR_FILE } from "../../daemon/src/central/wrapper.ts";
 import { loadConfig } from "../../daemon/src/config.ts";
+import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -118,6 +119,17 @@ describe("hooks-ui", () => {
       central.receptorUrl(),
     );
     expect((await fetch(`${central.receptorUrl()}/health`)).status).toBe(200);
+    // Its receptor feeds the external sessions and skips the daemon's own sessions.
+    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi" });
+    const managed = await poll(() => d.manager.get(sessionId).claudeSessionId);
+    for (const id of ["externa", managed ?? ""]) {
+      await fetch(`${central.receptorUrl()}/hooks/UserPromptSubmit`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${"t".repeat(24)}` },
+        body: JSON.stringify({ session_id: id, cwd: d.project }),
+      });
+    }
+    expect(central.external.list().map((s) => s.claudeSessionId)).toEqual(["externa"]);
     await central.stop();
     expect(existsSync(published)).toBe(false);
   });
