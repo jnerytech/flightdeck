@@ -115,10 +115,13 @@ const samePath = (a: string, b: string, platform: string) =>
     ? a.replaceAll("/", "\\").toLowerCase() === b.replaceAll("/", "\\").toLowerCase()
     : a === b;
 
-/** The file a path ends up at once links are followed; the path itself when it does not exist. */
+/**
+ * The file a path ends up at once links and 8.3 short names (`RUNNER~1`) are followed; the path
+ * itself when it does not exist.
+ */
 function resolved(path: string): string {
   try {
-    return realpathSync(path);
+    return realpathSync.native(path);
   } catch {
     return path;
   }
@@ -219,7 +222,8 @@ export async function runUpdate(
   chmodSync(incoming, 0o755);
   renameSync(incoming, stableBin);
 
-  const reinstalled = installed !== null && !samePath(serviceExe, stableBin, ctx.platform);
+  const reinstalled =
+    installed !== null && !samePath(resolved(serviceExe), resolved(stableBin), ctx.platform);
   if (reinstalled) {
     // The service keeps the config it had.
     const result = await installService({ ...ctx, command: [stableBin] }, installed.config);
