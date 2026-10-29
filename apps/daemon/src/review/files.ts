@@ -142,6 +142,9 @@ export class ReviewFiles {
     } else {
       rmSync(full, { force: true });
     }
+    // The revert staged the source's version (or the removal): the index goes back to HEAD.
+    const { root } = await this.opts.changes.resolve(target);
+    await git(root, "reset", "-q", "--", path.replaceAll("\\", "/"));
     this.undos.delete(key);
     return { path };
   }
