@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
 import { signForTest, TEST_PUBLIC_KEY } from "../../../scripts/test/minisign.ts";
+import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../src/service.ts";
 import { assetKey, DaemonUpdater } from "../src/updates/apply.ts";
@@ -169,6 +170,77 @@ describe("daemon-update-apply", () => {
     expect(await code(updates.apply(true))).toBe("update_needs_service");
     expect(calls.some((c) => c[0] === "systemd-run")).toBe(false);
     expect(files()).toEqual([]);
+  });
+
+  test("manifesto sem o binário do host, ou download com HTTP de erro, recusam", async () => {
+    const noArm = updater(release(), { platform: "win32", arch: "arm64" });
+    let message = "";
+    try {
+      await noArm.updates.apply(true);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toBe("o manifesto 0.9.0 não tem binário para windows-arm64");
+    const manifest = release();
+    for (const asset of Object.values(manifest.assets)) asset.url = `${asset.url}-sumiu`;
+    const gone = new DaemonUpdater({
+      manifest: () => manifest,
+      dataDir: tempDir(),
+      ctx: service("linux", true).ctx,
+      publicKey: TEST_PUBLIC_KEY,
+      platform: "linux",
+      arch: "x64",
+      fetch: async () => new Response("não achei", { status: 404 }),
+    });
+    try {
+      await gone.apply(true);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toBe("o download respondeu HTTP 404");
+  });
+
+  test("flightdeckd start: o daemon confere com a chave do projeto e recusa a assinatura da chave de teste", async () => {
+    const manifest = release();
+    const server = Bun.serve({ port: 0, fetch: () => Response.json(manifest) });
+    cleanups.push(() => server.stop(true));
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        updates: { manifestUrl: `http://127.0.0.1:${server.port}/daemon-latest.json` },
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const client = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const deadline = Date.now() + 3000;
+    let ack: Record<string, unknown> = {};
+    while (Date.now() < deadline) {
+      ack = await client.request("daemon.update.apply", { confirm: true });
+      const error = ack.error as { message?: string } | undefined;
+      if (!error?.message?.includes("ainda não verificou")) break;
+      await Bun.sleep(20);
+    }
+    expect(ack).toMatchObject({
+      ok: false,
+      error: {
+        code: "update_verification_failed",
+        message: "a assinatura é de outra chave, não da chave do Flightdeck",
+      },
+    });
   });
 
   test("protocolo: daemon.update.apply responde started; sem atualizador, invalid_state", async () => {
