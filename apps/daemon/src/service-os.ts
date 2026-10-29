@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir, userInfo } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { basename, dirname } from "node:path";
+import { userHome } from "./config.ts";
 import { spawnExec } from "./exec.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { whichOnPath } from "./which.ts";
@@ -40,7 +41,7 @@ export function osServiceContext(
   const env = overrides.env ?? process.env;
   return {
     platform,
-    home: homedir(),
+    home: userHome(),
     user: platform === "win32" ? `${env.USERDOMAIN}\\${env.USERNAME}` : userInfo().username,
     command: daemonCommand(process.execPath, Bun.main),
     systemRoot: env.SystemRoot ?? "C:\\Windows",

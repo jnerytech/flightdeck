@@ -92,8 +92,19 @@ export const Config = z.object({
 });
 export type Config = z.infer<typeof Config>;
 
+/**
+ * The user's home, read from the environment on each call (`HOME`; `USERPROFILE` on Windows),
+ * as Node's `os.homedir()` does. Bun's keeps, on Linux, the HOME the process started with.
+ */
+export function userHome(
+  env: Record<string, string | undefined> = process.env,
+  platform: string = process.platform,
+): string {
+  return (platform === "win32" ? env.USERPROFILE : env.HOME) || homedir();
+}
+
 export function defaultConfigPath(): string {
-  return join(homedir(), ".flightdeck", "config.json");
+  return join(userHome(), ".flightdeck", "config.json");
 }
 
 export function generateToken(): string {
@@ -101,8 +112,8 @@ export function generateToken(): string {
 }
 
 export function expandHome(path: string): string {
-  if (path === "~") return homedir();
-  if (path.startsWith("~/") || path.startsWith("~\\")) return join(homedir(), path.slice(2));
+  if (path === "~") return userHome();
+  if (path.startsWith("~/") || path.startsWith("~\\")) return join(userHome(), path.slice(2));
   return path;
 }
 
