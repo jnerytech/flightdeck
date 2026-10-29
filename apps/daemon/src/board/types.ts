@@ -66,3 +66,32 @@ export interface Card {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface DiffLine {
+  op: "+" | "-" | " ";
+  text: string;
+}
+
+export interface DiffHunk {
+  /** The `@@ -a,b +c,d @@` line. */
+  header: string;
+  lines: DiffLine[];
+}
+
+export interface DiffFile {
+  path: string;
+  /** Previous path of a renamed file. */
+  oldPath: string | null;
+  status: "added" | "modified" | "deleted" | "renamed";
+  additions: number;
+  deletions: number;
+  /** Not committed yet (tracked change or new file). */
+  uncommitted: boolean;
+  binary: boolean;
+  hunks: DiffHunk[];
+}
+
+export interface CardDiff {
+  base: string;
+  files: DiffFile[];
+}

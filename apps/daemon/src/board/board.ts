@@ -7,10 +7,12 @@ import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
+import { cardDiff } from "./diff.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
   Card,
+  CardDiff,
   CardRun,
   ChecksState,
   NewProject,
@@ -363,6 +365,13 @@ export class Board {
       await this.opts.manager.interrupt(card.sessionId);
     }
     return this.getCard(id);
+  }
+
+  /** Commits since the base plus uncommitted changes, per file. */
+  async diff(id: string): Promise<CardDiff> {
+    const card = this.getCard(id);
+    if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    return cardDiff(card.worktreePath, this.getProject(card.projectId).baseBranch);
   }
 
   get maxParallelRuns(): number {
