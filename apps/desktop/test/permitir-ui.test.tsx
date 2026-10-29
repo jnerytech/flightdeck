@@ -198,4 +198,44 @@ describe("permitir-ui", () => {
       outra: 1,
     });
   });
+
+  test("host sem rules: nem os botões de permitir sempre nem a seção Regras, e sem banner de erro", async () => {
+    const d = makeDaemon(cleanups);
+    const repo = join(d.root, "repo");
+    mkdirSync(repo);
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "commit.gpgsign", "false");
+    writeFileSync(join(repo, "README.md"), "# repo\n");
+    git(repo, "add", "README.md");
+    git(repo, "commit", "-q", "-m", "inicial");
+    await d.board.addProject({ path: repo, promptTemplate: "" });
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({
+        name: "alfa",
+        url: d.listen(0, undefined, ["central", "workflows"]).url,
+        token: TOKEN,
+      });
+    });
+    await settle(
+      () =>
+        store.getState().hosts[0]?.hostInfo !== null &&
+        store.getState().hosts[0]?.hostInfo !== undefined,
+    );
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash] y" });
+    await poll(() => d.eventStore.pendingPermissions(sessionId).length > 0, 3000);
+    await act(async () => store.select(hostId, sessionId));
+    await settle(() => screen.queryByRole("button", { name: "Permitir" }) !== null);
+    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Sempre neste projeto" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Permitir nesta sessão" })).toBeNull();
+    await click("Projetos de alfa");
+    await settle(() => screen.queryByRole("button", { name: "Editar repo" }) !== null);
+    await click("Editar repo");
+    await act(() => Bun.sleep(100));
+    expect(screen.queryByRole("region", { name: "Regras" })).toBeNull();
+    expect(store.getState().error).toBeNull();
+  });
 });
