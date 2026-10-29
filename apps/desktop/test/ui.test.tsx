@@ -137,9 +137,15 @@ describe("desktop: interface", () => {
     await act(async () => {
       await store.createSession(store.getState().hosts[0]?.id ?? "", { cwd: "/fora", prompt: "x" });
     });
-    expect(screen.getByRole("alert").textContent).toContain("forbidden_cwd");
-    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
-    expect(screen.queryByRole("alert")).toBeNull();
+    // The error is a toast, titled by its code (phase 10); Fechar closes it.
+    await waitFor(() =>
+      expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
+        "A pasta está fora das pastas permitidas do host.",
+      ),
+    );
+    const toast = screen.queryByRole("alert") as HTMLElement;
+    fireEvent.click(within(toast).getByRole("button", { name: "Fechar" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
 
     fireEvent.click(screen.getByRole("button", { name: "Adicionar outro host" }));
     expect(screen.getByRole("button", { name: "Testar e adicionar" })).toBeTruthy();

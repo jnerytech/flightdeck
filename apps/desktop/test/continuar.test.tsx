@@ -131,7 +131,10 @@ describe("continuar", () => {
     const { runtime } = await setup({ stale: true, cwd: "/fora/dos/roots" });
     await click("Continuar no Flightdeck");
     await settle(() => screen.queryByRole("alert") !== null);
-    expect(screen.queryByRole("alert")?.textContent ?? "").toContain("forbidden_cwd");
+    // A toast titled by the code (phase 10).
+    expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
+      "A pasta está fora das pastas permitidas do host.",
+    );
     expect(runtime.starts).toEqual([]);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
   });
