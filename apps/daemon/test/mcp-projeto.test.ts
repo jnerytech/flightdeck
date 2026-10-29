@@ -138,7 +138,7 @@ describe("mcp-projeto", () => {
   });
 
   test("testar: sem confirm só mostra o comando exato; com confirm lista as ferramentas; respeita o timeout", async () => {
-    const { config, project, marker } = setup(300);
+    const { config, project, marker, userConfigPath } = setup();
     expect(await config.test(project, "marcador", false)).toEqual({
       preview: {
         command: process.execPath,
@@ -150,7 +150,9 @@ describe("mcp-projeto", () => {
       tools: ["eco"],
       resources: ["nota"],
     });
-    const timedOut = await config.test(project, "mudo", true).then(
+    // A short limit only for the server that never answers: a real one needs time to start.
+    const quick = new McpConfig({ userConfigPath, timeoutMs: 300 });
+    const timedOut = await quick.test(project, "mudo", true).then(
       () => "respondeu",
       (error: Error) => error.message,
     );
