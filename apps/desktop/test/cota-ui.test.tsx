@@ -43,12 +43,12 @@ const START = Date.UTC(2026, 9, 1, 12, 0, 0);
 const MINUTE = 60_000;
 
 /** A host whose quota runs on a manual clock, and the app online on it, 12 minutes later. */
-async function online() {
+async function online(language = "pt-BR") {
   const time = manualTime(START);
   const quota = new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers });
   const d = makeDaemon(cleanups, { quota });
   const server = d.listen();
-  const mem = memoryPlatform(false);
+  const mem = memoryPlatform(false, language);
   const store = new AppStore(mem.platform, {
     baseDelayMs: 60_000,
     now: () => time.now() + 12 * MINUTE,
@@ -62,10 +62,9 @@ async function online() {
   return { ...d, ...mem, time, quota, store };
 }
 
-const bar = (label: string) =>
-  screen
-    .queryByRole("region", { name: "Cota de alfa" })
-    ?.querySelector(`[data-window="${label}"]`) ?? null;
+const card = () => screen.queryByRole("region", { name: "Cota de alfa" });
+const bar = (label: string) => card()?.querySelector(`[data-window="${label}"]`) ?? null;
+const inBar = (label: string, text: string) => within(bar(label) as HTMLElement).queryByText(text);
 
 describe("cota-ui", () => {
   test("barras de 5 horas e 7 dias com porcentagem, reinício e idade; vermelho a partir de pauseAt", async () => {
@@ -87,22 +86,59 @@ describe("cota-ui", () => {
       ]);
     });
     await settle(() => bar("five_hour") !== null);
-    expect(bar("five_hour")?.textContent).toBe("5 horas: 42% · reinicia às 15:00 · lida há 12 min");
-    expect(bar("seven_day")?.textContent).toBe("7 dias: 95% · reinicia às 12:00 · lida há 12 min");
-    expect(bar("five_hour")?.className).not.toContain("quota-hot");
-    expect(bar("seven_day")?.className).toContain("quota-hot");
-    expect(screen.queryByRole("meter", { name: "7 dias de alfa" })?.getAttribute("value")).toBe(
-      "0.95",
-    );
+    // One card per host, in a grid: the host's name, then each window with its bar.
+    expect(within(card() as HTMLElement).queryByRole("heading", { name: "alfa" })).not.toBeNull();
+    expect(card()?.parentElement?.className ?? "").toContain("grid");
+    expect(inBar("five_hour", "5 horas")).not.toBeNull();
+    expect(inBar("five_hour", "42%")).not.toBeNull();
+    expect(inBar("five_hour", "reinicia às 15:00")).not.toBeNull();
+    expect(inBar("five_hour", "lida há 12 min")).not.toBeNull();
+    expect(inBar("seven_day", "7 dias")).not.toBeNull();
+    expect(inBar("seven_day", "95%")).not.toBeNull();
+    expect(inBar("seven_day", "reinicia às 12:00")).not.toBeNull();
+    expect(bar("five_hour")?.getAttribute("data-hot")).toBe("false");
+    expect(bar("seven_day")?.getAttribute("data-hot")).toBe("true");
+    expect(inBar("five_hour", "42%")?.className).not.toContain("text-status-error");
+    expect(inBar("seven_day", "95%")?.className).toContain("text-status-error");
+    const meter = screen.queryByRole("meter", { name: "7 dias de alfa" });
+    expect(meter?.getAttribute("aria-valuenow")).toBe("0.95");
+    expect(meter?.getAttribute("aria-valuemax")).toBe("1");
     // Over pauseAt: new cards wait, manual sessions go on, and the app says so.
     expect(screen.queryByText(/cards novos esperam a cota; sessões manuais seguem/)).not.toBeNull();
   });
 
-  test("sem leitura, a barra diz que não há leitura ainda", async () => {
+  test('host sem leitura mostra só "sem leitura ainda", sem barras vazias', async () => {
     await online();
+    await settle(() => card() !== null);
+    expect(within(card() as HTMLElement).queryByText("sem leitura ainda")).not.toBeNull();
+    expect(within(card() as HTMLElement).queryByRole("heading", { name: "alfa" })).not.toBeNull();
+    expect(within(card() as HTMLElement).queryAllByRole("meter")).toEqual([]);
+    expect(bar("five_hour")).toBeNull();
+  });
+
+  test("em inglês, o painel de cota inteiro fala inglês, inclusive o aviso", async () => {
+    const { quota } = await online("en-US");
+    await act(async () => {
+      quota.record([
+        {
+          window: "five_hour",
+          utilization: 0.95,
+          status: "allowed",
+          resetsAt: START + 3 * 60 * MINUTE,
+        },
+      ]);
+    });
     await settle(() => bar("five_hour") !== null);
-    expect(bar("five_hour")?.textContent).toBe("5 horas: sem leitura");
-    expect(bar("seven_day")?.textContent).toBe("7 dias: sem leitura");
+    expect(inBar("five_hour", "5 hours")).not.toBeNull();
+    expect(inBar("five_hour", "95%")).not.toBeNull();
+    expect(inBar("five_hour", "resets at 15:00")).not.toBeNull();
+    expect(inBar("five_hour", "read 12 min ago")).not.toBeNull();
+    // The window with no reading says so, in English, without an empty bar.
+    expect(within(card() as HTMLElement).queryByText("no reading yet")).not.toBeNull();
+    expect(
+      screen.queryByText(/over 90%: new cards wait for the quota; manual sessions go on/),
+    ).not.toBeNull();
+    expect(card()?.textContent ?? "").not.toMatch(/horas|reinicia|lida|leitura/);
   });
 
   test("cruzar o pauseAt notifica uma vez por janela", async () => {
