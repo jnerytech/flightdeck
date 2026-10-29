@@ -51,7 +51,7 @@ jobs:
         run: bun run tauri build --bundles nsis,msi
 
       - name: Juntar os arquivos e o SHA256SUMS
-        run: bun run release:assets release
+        run: bun run release:assets release-assets
 
       - name: Publicar a release
-        run: gh release create "$TAG" --title "$TAG" --generate-notes release/*
+        run: gh release create "$TAG" --title "$TAG" --generate-notes release-assets/*

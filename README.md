@@ -778,7 +778,7 @@ verdade numa pasta descartável. Ele é manual, gasta cota e não faz parte dos 
   1. `bun run release:version <tag>`, que recusa uma tag que não bate com a versão do produto;
   2. `bun run build:daemon`, que gera os três daemons;
   3. `bun run tauri build --bundles nsis,msi` em `apps/desktop`, que gera os instaladores;
-  4. `bun run release:assets`, que junta os arquivos em `release/` com o `SHA256SUMS`;
+  4. `bun run release:assets`, que junta os arquivos em `release-assets/` com o `SHA256SUMS`;
   5. `gh release create <tag> --generate-notes`, com esses arquivos.
 - **Repetir uma publicação:** pelo `workflow_dispatch`, informando a tag, que já precisa existir.
 - **Ambiente:** o job usa só o `GITHUB_TOKEN`, com `contents: write`, sem outros segredos. Os

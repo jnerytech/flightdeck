@@ -1,0 +1,2 @@
+PLACEHOLDER: a chave pública do Flightdeck ainda não foi gerada.
+O orquestrador gera o par com `tauri signer generate` e põe aqui o conteúdo do .pub.
