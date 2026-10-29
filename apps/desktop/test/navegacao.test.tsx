@@ -6,6 +6,7 @@ import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { Router } from "../src/lib/router.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -272,5 +273,76 @@ describe("navegacao", () => {
     await settle(() => store.router.current.name === "home");
     expect(store.router.current).toEqual({ name: "home" });
     expect(screen.queryByRole("button", { name: "Encerrar" })).not.toBeNull();
+  });
+
+  test("uma rota aberta antes de o host conectar (deep link na partida) carrega quando ele conecta", async () => {
+    const d = makeDaemon(cleanups);
+    writeTranscript(d.historyRoot, "-p", "hist-1", [
+      userLine({
+        uuid: "u1",
+        text: "Do histórico",
+        cwd: d.project,
+        ts: "2026-09-01T10:00:00.000Z",
+      }),
+    ]);
+    d.history.scan();
+    const { sessionId } = d.manager.create({
+      cwd: d.project,
+      prompt: "olá do começo",
+      name: "Cedo",
+    });
+    await poll(() => d.manager.get(sessionId).status === "idle");
+    const url = d.listen().url;
+
+    // The hosts are already saved, and the route comes before the app connects.
+    const mem = memoryPlatform();
+    const secrets = new Map<string, string>();
+    seedDemoHosts(mem.win.localStorage, secrets, [
+      { id: "h-fixo", name: "alfa", url, token: TOKEN },
+    ]);
+    const { createWebPlatform } = await import("../src/platform/web/index.ts");
+    const store = new AppStore(createWebPlatform(mem.win, secrets), { baseDelayMs: 60_000 });
+    store.router.push({ name: "session", host: "h-fixo", id: sessionId });
+    render(<App store={store} />);
+    await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("olá do começo"));
+    expect(screen.queryByRole("main")?.textContent ?? "").toContain("olá do começo");
+
+    await act(async () =>
+      store.router.push({
+        name: "reader",
+        target: { hostId: "h-fixo", claudeSessionId: "hist-1" },
+      }),
+    );
+    await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("Do histórico"));
+    expect(screen.queryByRole("main")?.textContent ?? "").toContain("Do histórico");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("o leitor aberto antes da conexão espera o host, sem banner de erro", async () => {
+    const d = makeDaemon(cleanups);
+    writeTranscript(d.historyRoot, "-p", "hist-2", [
+      userLine({
+        uuid: "u2",
+        text: "Leitura cedo",
+        cwd: d.project,
+        ts: "2026-09-01T10:00:00.000Z",
+      }),
+    ]);
+    d.history.scan();
+    const url = d.listen().url;
+    const mem = memoryPlatform();
+    const secrets = new Map<string, string>();
+    seedDemoHosts(mem.win.localStorage, secrets, [
+      { id: "h-fixo", name: "alfa", url, token: TOKEN },
+    ]);
+    const { createWebPlatform } = await import("../src/platform/web/index.ts");
+    const store = new AppStore(createWebPlatform(mem.win, secrets), { baseDelayMs: 60_000 });
+    store.router.push({ name: "reader", target: { hostId: "h-fixo", claudeSessionId: "hist-2" } });
+    render(<App store={store} />);
+    // While connecting, the screen says so.
+    expect(screen.queryByRole("status", { name: "Conectando a alfa…" })).not.toBeNull();
+    await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("Leitura cedo"));
+    expect(screen.queryByRole("main")?.textContent ?? "").toContain("Leitura cedo");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
