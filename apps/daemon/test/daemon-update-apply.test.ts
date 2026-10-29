@@ -7,6 +7,7 @@ import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../src/service.ts";
 import { assetKey, DaemonUpdater } from "../src/updates/apply.ts";
+import { updatePublicKey } from "../src/updates/public-key.ts";
 import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
@@ -104,6 +105,16 @@ async function code(promise: Promise<unknown>): Promise<string> {
 }
 
 describe("daemon-update-apply", () => {
+  test("a chave que confere as atualizações é a do projeto; só do código-fonte um teste troca por variável", () => {
+    const product = readFileSync(join(import.meta.dir, "../../../release/flightdeck.pub"), "utf8");
+    expect(updatePublicKey({}, false)).toBe(product);
+    expect(updatePublicKey({ FLIGHTDECK_TEST_PUBLIC_KEY: TEST_PUBLIC_KEY }, false)).toBe(
+      TEST_PUBLIC_KEY,
+    );
+    // A compiled flightdeckd never takes a key from the environment.
+    expect(updatePublicKey({ FLIGHTDECK_TEST_PUBLIC_KEY: TEST_PUBLIC_KEY }, true)).toBe(product);
+  });
+
   test("o asset vem do sistema e da arquitetura do host", () => {
     expect(assetKey("win32", "x64")).toBe("windows-x64");
     expect(assetKey("linux", "x64")).toBe("linux-x64");
