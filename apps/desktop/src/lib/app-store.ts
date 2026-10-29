@@ -24,13 +24,14 @@ import type {
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import type { Platform, TrayStatus } from "../platform/types.ts";
+import type { Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot, WINDOW_LABELS } from "./quota.ts";
+import { parseRequestLink, requestLink } from "./request-link.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import {
@@ -39,7 +40,7 @@ import {
   type TerminalTarget,
   terminalLaunch,
 } from "./terminal.ts";
-import { trayStatus } from "./tray.ts";
+import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -164,6 +165,11 @@ export interface AppStoreOptions {
   now?: () => number;
   /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
   formatTime?: (iso: string) => string;
+  /** Timers of the tray submenu's debounce (phase 8); the real ones when absent. */
+  timers?: {
+    setTimeout(fn: () => void, ms: number): unknown;
+    clearTimeout(handle: unknown): void;
+  };
 }
 
 export interface PendingItem {
@@ -176,6 +182,8 @@ export interface PendingItem {
   createdAt: string;
   /** A request of a session opened outside Flightdeck (`sessionId` is its claudeSessionId). */
   external?: boolean;
+  /** The tool input, long strings cut (phase 8: the tray shows a summary). */
+  input?: Record<string, unknown>;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
 }
@@ -200,6 +208,7 @@ export function needsYou(state: AppState): PendingItem[] {
           requestId: p.requestId,
           toolName: p.toolName,
           createdAt: p.createdAt,
+          ...(p.input ? { input: p.input } : {}),
         })),
       ),
       // Sessions opened in the terminal: the hook holds the request while the app watches.
@@ -218,6 +227,7 @@ export function needsYou(state: AppState): PendingItem[] {
             toolName: request.toolName,
             createdAt: request.createdAt,
             external: true,
+            input: request.input,
           };
         }),
       // Open gates of the host's workflow runs.
@@ -260,6 +270,11 @@ export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
+const REAL_TIMERS = {
+  setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms),
+  clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
+
 const newHostView = (config: HostConfig): HostView => ({
   ...config,
   status: "offline",
@@ -300,6 +315,11 @@ export class AppStore {
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Accelerator currently registered with the OS. */
   private shortcut: string | null = null;
+  /** The tray submenu last sent, and the debounce that will send the next one (phase 8). */
+  private trayMenuSent = JSON.stringify(trayMenu([]));
+  private trayMenuTimer: unknown = null;
+  private offTrayAction: (() => void) | null = null;
+  private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   constructor(
     private readonly platform: Platform,
@@ -362,6 +382,8 @@ export class AppStore {
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     this.update({ settings: { ...this.state.settings, closeToTray, autostart, globalShortcut } });
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
+    this.offTrayAction?.();
+    this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
     for (const config of loadHosts(this.platform.storage)) {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
@@ -427,6 +449,45 @@ export class AppStore {
     const token = await this.platform.secrets.get(hostId);
     this.connections.get(hostId)?.dispose();
     if (host && token) this.connect(host, token);
+  }
+
+  /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
+  onOpenRequest(listener: (item: PendingItem) => void): () => void {
+    this.openRequestListeners.add(listener);
+    return () => this.openRequestListeners.delete(listener);
+  }
+
+  /**
+   * A `flightdeck://request` link (a notification click): brings the window up on the request.
+   * False for any other link, which the caller handles (pairing).
+   */
+  openRequestLink(url: string): boolean {
+    const link = parseRequestLink(url);
+    if (!link) return false;
+    const item = needsYou(this.state).find(
+      (i) => i.hostId === link.hostId && i.requestId === link.requestId,
+    );
+    // Already answered: the window still comes up.
+    if (item) this.openRequest(item);
+    else void this.platform.showMainWindow();
+    return true;
+  }
+
+  private openRequest(item: PendingItem): void {
+    void this.platform.showMainWindow();
+    for (const listener of this.openRequestListeners) listener(item);
+  }
+
+  /** A click in the tray submenu: approve and deny answer without the window. */
+  private onTrayAction({ key, action }: TrayAction): void {
+    if (key === "more") {
+      void this.platform.showMainWindow();
+      return;
+    }
+    const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
+    if (!item) return;
+    if (action === "open") this.openRequest(item);
+    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** `flightdeck://` links opened from outside the app (OS deep link or second instance). */
@@ -796,6 +857,8 @@ export class AppStore {
   dispose(): void {
     for (const conn of this.connections.values()) conn.dispose();
     this.connections.clear();
+    this.offTrayAction?.();
+    this.offTrayAction = null;
   }
 
   // -- internals ------------------------------------------------------------
@@ -919,7 +982,8 @@ export class AppStore {
       sessions: prev ? h.sessions.map((s) => (s.id === next.id ? next : s)) : [...h.sessions, next],
     }));
     const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
-    for (const n of summaryNotifications(prev, next, label, this.platform.isFocused())) {
+    const linkFor = (requestId: string) => requestLink(hostId, requestId);
+    for (const n of summaryNotifications(prev, next, label, this.platform.isFocused(), linkFor)) {
       void this.platform.notify(n);
     }
   }
@@ -943,6 +1007,7 @@ export class AppStore {
       void this.platform.notify({
         title: "Precisa de você",
         body: `${host?.name ?? hostId} · ${frame.toolName}`,
+        link: requestLink(hostId, frame.requestId),
       });
     }
   }
@@ -989,7 +1054,27 @@ export class AppStore {
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
     if (patch.hosts) this.syncTray();
+    if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
+      this.scheduleTrayMenu();
+    }
     for (const listener of this.listeners) listener();
+  }
+
+  /**
+   * Rebuilds the tray submenu once the list stops changing for `TRAY_MENU_DELAY_MS`: each change
+   * restarts the wait, and a list equal to the one sent cancels it.
+   */
+  private scheduleTrayMenu(): void {
+    const timers = this.options.timers ?? REAL_TIMERS;
+    if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
+    this.trayMenuTimer = null;
+    if (JSON.stringify(trayMenu(needsYou(this.state))) === this.trayMenuSent) return;
+    this.trayMenuTimer = timers.setTimeout(() => {
+      this.trayMenuTimer = null;
+      const menu = trayMenu(needsYou(this.state));
+      this.trayMenuSent = JSON.stringify(menu);
+      void this.platform.setTrayMenu(menu);
+    }, TRAY_MENU_DELAY_MS);
   }
 
   /** Pushes the fleet-wide badge to the tray whenever it changes. */

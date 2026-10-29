@@ -1,6 +1,6 @@
 import { parsePairingLink } from "@flightdeck/protocol";
-import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
-import { type AppStore, sessionKey } from "../lib/app-store.ts";
+import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type AppStore, type PendingItem, sessionKey } from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
@@ -81,10 +81,12 @@ export function App({ store }: { store: AppStore }) {
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
-  // Links come from anywhere: they only prefill the form, saving needs the user's click.
+  // Links come from anywhere: they only prefill the form, saving needs the user's click. A
+  // request link (a notification click) only shows the request.
   useEffect(
     () =>
       store.onDeepLink((url) => {
+        if (store.openRequestLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
           store.reportError(`Link de pareamento recusado: ${parsed.error}`);
@@ -132,6 +134,39 @@ export function App({ store }: { store: AppStore }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [store]);
+
+  /** A request from the queue, the tray or a notification: its session, card or terminal view. */
+  const openRequest = (item: PendingItem) => {
+    closeBoard();
+    if (item.gate) {
+      // A gate opens its card, where it is answered inline.
+      const { hostId } = item;
+      setSettingsOpen(false);
+      setAddingHost(false);
+      void store.hostCommand(hostId, "card.get", { cardId: item.gate.cardId }).then((card) => {
+        if (!card) return;
+        setBoardOf({ hostId, projectId: card.projectId });
+        setOpenCard(card.id);
+      });
+      return;
+    }
+    if (item.external) {
+      setReading(null);
+      setHostPage(null);
+      setExternal({ hostId: item.hostId, claudeSessionId: item.sessionId });
+      return;
+    }
+    setReading(null);
+    setHistoryHost(null);
+    setAddingHost(false);
+    setSettingsOpen(false);
+    setHostPage(null);
+    setFocusRequest(item.requestId);
+    store.select(item.hostId, item.sessionId);
+  };
+  const openRequestRef = useRef(openRequest);
+  openRequestRef.current = openRequest;
+  useEffect(() => store.onOpenRequest((item) => openRequestRef.current(item)), [store]);
 
   const selectedHost = state.hosts.find((h) => h.id === state.selected?.hostId);
   const sessionId = state.selected?.sessionId;
@@ -362,36 +397,7 @@ export function App({ store }: { store: AppStore }) {
           setHostPage(null);
           setHubOpen(true);
         }}
-        onOpenRequest={(item) => {
-          closeBoard();
-          if (item.gate) {
-            // A gate opens its card, where it is answered inline.
-            const { hostId } = item;
-            setSettingsOpen(false);
-            setAddingHost(false);
-            void store
-              .hostCommand(hostId, "card.get", { cardId: item.gate.cardId })
-              .then((card) => {
-                if (!card) return;
-                setBoardOf({ hostId, projectId: card.projectId });
-                setOpenCard(card.id);
-              });
-            return;
-          }
-          if (item.external) {
-            setReading(null);
-            setHostPage(null);
-            setExternal({ hostId: item.hostId, claudeSessionId: item.sessionId });
-            return;
-          }
-          setReading(null);
-          setHistoryHost(null);
-          setAddingHost(false);
-          setSettingsOpen(false);
-          setHostPage(null);
-          setFocusRequest(item.requestId);
-          store.select(item.hostId, item.sessionId);
-        }}
+        onOpenRequest={openRequest}
       />
       <main className="main">
         {state.error && (

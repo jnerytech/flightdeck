@@ -28,6 +28,8 @@ export function createWebPlatform(
   secrets: Map<string, string> = new Map(),
 ): Platform {
   const noop = async () => {};
+  /** Deep-link handlers, also reached by a click on a notification that carries a link. */
+  const linkHandlers = new Set<(url: string) => void>();
   return {
     storage: win.localStorage,
     secrets: {
@@ -39,11 +41,18 @@ export function createWebPlatform(
         secrets.delete(id);
       },
     },
-    async notify({ title, body }) {
+    async notify({ title, body, link }) {
       const api = win.Notification;
       if (!api) return;
       const permission = api.permission === "granted" ? "granted" : await api.requestPermission();
-      if (permission === "granted") new api(title, { body });
+      if (permission !== "granted") return;
+      const shown = new api(title, { body }) as { onclick?: (() => void) | null };
+      if (link) {
+        shown.onclick = () => {
+          win.focus?.();
+          for (const handler of linkHandlers) handler(link);
+        };
+      }
     },
     isFocused: () => win.document.hasFocus(),
     async openExternal(url) {
@@ -56,11 +65,18 @@ export function createWebPlatform(
       };
       check();
       win.addEventListener("hashchange", check);
-      return () => win.removeEventListener("hashchange", check);
+      linkHandlers.add(handler);
+      return () => {
+        linkHandlers.delete(handler);
+        win.removeEventListener("hashchange", check);
+      };
     },
     async setTrayStatus({ count }) {
       win.document.title = count > 0 ? `(${count}) ${TITLE}` : TITLE;
     },
+    // A page has no tray: the badge goes to the title, the submenu nowhere.
+    setTrayMenu: noop,
+    onTrayAction: () => () => {},
     autostart: { supported: false, isEnabled: async () => false, setEnabled: noop },
     setCloseToTray: noop,
     async copyText(text) {

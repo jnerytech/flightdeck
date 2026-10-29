@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
@@ -8,7 +9,7 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { Platform } from "../types.ts";
+import type { Platform, TrayAction } from "../types.ts";
 
 export interface BrowserWindow {
   localStorage: Platform["storage"];
@@ -18,10 +19,14 @@ export interface BrowserWindow {
 
 /**
  * Desktop implementation: tokens in the OS keyring and tray state through the Rust commands in
- * src-tauri, everything else through the official Tauri 2 plugins. `call` stands in for `invoke` in
- * tests.
+ * src-tauri, everything else through the official Tauri 2 plugins. `call` and `subscribe` stand in
+ * for `invoke` and `listen` in tests.
  */
-export function tauriPlatform(win: BrowserWindow = window, call: typeof invoke = invoke): Platform {
+export function tauriPlatform(
+  win: BrowserWindow = window,
+  call: typeof invoke = invoke,
+  subscribe: typeof listen = listen,
+): Platform {
   return {
     storage: win.localStorage,
     secrets: {
@@ -31,7 +36,8 @@ export function tauriPlatform(win: BrowserWindow = window, call: typeof invoke =
     },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
-      if (granted) sendNotification(notification);
+      // The desktop plugin reports no clicks, so the link has nowhere to go (docs/DECISIONS.md).
+      if (granted) sendNotification({ title: notification.title, body: notification.body });
     },
     isFocused: () => win.document.hasFocus(),
     openExternal: (url) => openUrl(url),
@@ -48,6 +54,14 @@ export function tauriPlatform(win: BrowserWindow = window, call: typeof invoke =
       };
     },
     setTrayStatus: (status) => call("tray_set_status", { ...status }),
+    setTrayMenu: (menu) => call("tray_set_menu", { ...menu }),
+    // The Rust tray emits `tray-action` for each click in the "Precisa de você" submenu.
+    onTrayAction(handler) {
+      const unlisten = subscribe<TrayAction>("tray-action", (event) => handler(event.payload));
+      return () => {
+        void unlisten.then((stop) => stop());
+      };
+    },
     autostart: {
       supported: true,
       isEnabled: () => isEnabled(),

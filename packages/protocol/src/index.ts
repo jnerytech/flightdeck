@@ -114,6 +114,8 @@ export const PendingPermission = z.object({
   requestId: z.string(),
   toolName: z.string(),
   createdAt: z.string(),
+  /** Phase 8: the tool input with long strings cut, for the tray's "ferramenta: resumo". */
+  input: z.record(z.string(), z.unknown()).optional(),
 });
 export type PendingPermission = z.infer<typeof PendingPermission>;
 

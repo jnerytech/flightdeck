@@ -7,6 +7,32 @@
 export interface Notification {
   title: string;
   body: string;
+  /** `flightdeck://` link opened by a click on it, where the platform supports that (phase 8). */
+  link?: string;
+}
+
+/** One open request in the tray's "Precisa de você" submenu (phase 8). */
+export interface TrayMenuEntry {
+  /** `hostId/requestId`, sent back with the action. */
+  key: string;
+  /** `host · sessão · ferramenta: resumo da entrada`. */
+  label: string;
+  /** Gates only open: they ask for reading. */
+  actions: TrayActionKind[];
+}
+
+export type TrayActionKind = "approve" | "deny" | "open";
+
+/** The submenu: up to 10 requests, then "e mais N…" (which opens the app). */
+export interface TrayMenu {
+  items: TrayMenuEntry[];
+  more: number;
+}
+
+/** A click in the submenu; `key` is "more" for "e mais N…". */
+export interface TrayAction {
+  key: string;
+  action: TrayActionKind;
 }
 
 /** What the tray icon shows: the number of open requests and the tooltip text. */
@@ -30,6 +56,10 @@ export interface Platform {
   /** Delivers `flightdeck://` links, including the one the app was opened with. */
   onDeepLink(handler: (url: string) => void): () => void;
   setTrayStatus(status: TrayStatus): Promise<void>;
+  /** Rebuilds the "Precisa de você" submenu (phase 8). */
+  setTrayMenu(menu: TrayMenu): Promise<void>;
+  /** Clicks in that submenu: approve and deny answer without opening the window. */
+  onTrayAction(handler: (action: TrayAction) => void): () => void;
   autostart: {
     supported: boolean;
     isEnabled(): Promise<boolean>;

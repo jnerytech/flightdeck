@@ -9,6 +9,7 @@ import type {
   SessionStatus,
   SessionSummary,
 } from "@flightdeck/protocol";
+import { summarizeInput } from "../central/external-permissions.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
@@ -94,9 +95,12 @@ export class SessionManager {
 
   /** Open permission requests of a session, oldest first, as its summaries list them. */
   pendingPermissions(sessionId: string): PendingPermission[] {
-    return this.store
-      .pendingPermissions(sessionId)
-      .map((p) => ({ requestId: p.id, toolName: p.toolName, createdAt: p.createdAt }));
+    return this.store.pendingPermissions(sessionId).map((p) => ({
+      requestId: p.id,
+      toolName: p.toolName,
+      createdAt: p.createdAt,
+      input: summarizeInput(p.input),
+    }));
   }
 
   get(sessionId: string): SessionSummary {

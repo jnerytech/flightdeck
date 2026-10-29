@@ -18,12 +18,18 @@ export function summaryNotifications(
   next: SummarySnapshot,
   label: string,
   focused: boolean,
+  /** The `flightdeck://` link of a request, opened by a click on its notification (phase 8). */
+  linkFor?: (requestId: string) => string,
 ): Notification[] {
   if (focused || !prev) return [];
   const known = new Set(prev.pendingPermissions.map((p) => p.requestId));
-  const notifications = next.pendingPermissions
+  const notifications: Notification[] = next.pendingPermissions
     .filter((p) => !known.has(p.requestId))
-    .map((p) => ({ title: `${label}: esperando você`, body: `Permitir ${p.toolName}?` }));
+    .map((p) => ({
+      title: `${label}: esperando você`,
+      body: `Permitir ${p.toolName}?`,
+      ...(linkFor ? { link: linkFor(p.requestId) } : {}),
+    }));
   if (IN_TURN.has(prev.status) && next.status === "idle") {
     notifications.push({ title: `${label}: turno concluído`, body: STATUS_LABELS.idle });
   }
