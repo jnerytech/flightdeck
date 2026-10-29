@@ -159,6 +159,31 @@ describe("sessoes-externas", () => {
     expect(registry.sessionForLaunch("nenhum")).toBeNull();
   });
 
+  test("sessão sem transcript legível também vira stale", () => {
+    const { registry, tick } = setup(1);
+    registry.apply("UserPromptSubmit", { session_id: "s9" });
+    tick(5_000);
+    const status = (() => {
+      try {
+        registry.sweep();
+        return registry.get("s9")?.status;
+      } catch {
+        return "a varredura falhou";
+      }
+    })();
+    expect(status).toBe("ended");
+  });
+
+  test("quem para de ouvir não recebe mais nada", () => {
+    const { start, registry } = setup();
+    const seen: string[] = [];
+    const stop = registry.onChange((session) => seen.push(session.status));
+    start();
+    stop();
+    registry.apply("UserPromptSubmit", { session_id: "s1" });
+    expect(seen).toEqual(["idle"]);
+  });
+
   test("cada mudança é publicada", () => {
     const { start, registry, updates } = setup();
     start();
