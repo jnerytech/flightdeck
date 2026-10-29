@@ -73,6 +73,36 @@ const EXTERNAL: Record<ExternalStatus, HubState> = {
   ended: "ended",
 };
 
+/** A managed session's line state, from its status. */
+const LINE: Record<SessionStatus, SessionLine["state"]> = {
+  starting: "running",
+  running: "running",
+  awaiting_permission: "waiting",
+  idle: "idle",
+  ended: "ended",
+  error: "ended",
+};
+
+/**
+ * The list's line of a managed session with its live state on top: the lists reload only when
+ * sessions come and go, while `session.summary` follows every change. The request (and the
+ * running tool) stay the list's.
+ */
+function liveLine(
+  line: SessionLine | undefined,
+  live: AppState["hosts"][number]["sessions"][number] | undefined,
+): SessionLine | null {
+  if (!line || !live) return line ?? null;
+  const state = LINE[live.status];
+  const tool =
+    state === "waiting"
+      ? (live.pendingPermissions[0]?.toolName ?? null)
+      : state === "running"
+        ? line.tool
+        : null;
+  return { ...line, state, tool, since: live.updatedAt };
+}
+
 const NO_META: SessionMeta = { name: null, pinned: false, archived: false };
 
 /**
@@ -111,7 +141,7 @@ export function hubRows(state: AppState): HubRow[] {
         state: MANAGED[live?.status ?? s.status],
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
-        summary: s.summary ?? null,
+        summary: liveLine(s.summary, live),
       };
     });
     const externals = Object.entries(state.externals)
