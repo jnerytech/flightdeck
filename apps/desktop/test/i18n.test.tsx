@@ -25,6 +25,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
 
 afterEach(() => {
   cleanup();
@@ -154,6 +155,16 @@ describe("i18n", () => {
       { title: "pc · api: needs you", body: "Allow Bash?" },
       { title: "pc · api: turn finished", body: "idle" },
     ]);
+  });
+
+  test("o idioma do sistema vem do navigator, no app desktop e na versão web", () => {
+    const win = {
+      localStorage: { getItem: () => null, setItem: () => {} },
+      document: { hasFocus: () => true },
+      navigator: { language: "pt-PT", clipboard: { writeText: async () => {} } },
+    };
+    expect(tauriPlatform(win).systemLanguage()).toBe("pt-PT");
+    expect(memoryPlatform(false, "en-GB").platform.systemLanguage()).toBe("en-GB");
   });
 
   test("o idioma guardado vence o do sistema; trocar não pede reinício e muda o lang do html", () => {
