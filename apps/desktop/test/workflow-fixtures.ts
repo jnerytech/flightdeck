@@ -12,8 +12,9 @@ export async function workflowDaemon(
   cleanups: Array<() => unknown>,
   workflows: Record<string, string>,
   trusted: string[] = Object.keys(workflows),
+  options: Parameters<typeof makeDaemon>[1] = {},
 ) {
-  const d = makeDaemon(cleanups);
+  const d = makeDaemon(cleanups, options);
   const repo = join(d.root, "repo");
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");

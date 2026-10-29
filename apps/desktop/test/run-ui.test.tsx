@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCheck } from "../../../scripts/test/check-guard.ts";
+import { Quota } from "../../daemon/src/quota/quota.ts";
+import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
@@ -115,5 +117,53 @@ describe("run-ui", () => {
     await settle(() => screen.queryByRole("heading", { name: "Workflow wf · concluída" }) !== null);
     expect(screen.queryByRole("heading", { name: "Workflow wf · concluída" })).not.toBeNull();
     expect(steps()[2] ?? "").toStartWith("ok · tentativa 1 · aprovado");
+  });
+
+  test("workflow esperando a cota mostra até quando, em HH:MM", async () => {
+    const quota = new Quota({ pauseAt: 0.9 });
+    const yaml =
+      "steps:\n  - id: a\n    agent: { prompt: '[tool] a' }\n  - id: b\n    agent: { prompt: b }\n";
+    const d = await workflowDaemon(cleanups, { wf: yaml }, ["wf"], { quota });
+    const card = d.board.createCard(d.project.id, { title: "Cota", description: "x" });
+    await d.board.startCard(card.id, { workflow: "wf" });
+    const runId = d.board.getCard(card.id).workflowRunId ?? "";
+    const store = new AppStore(memoryPlatform().platform, {
+      baseDelayMs: 60_000,
+      formatTime: (iso) => new Date(iso).toISOString().slice(11, 16),
+    });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.server.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const sessionId = await poll(() => d.board.workflows.getRun(runId).steps[0]?.sessionId, 3000);
+    await poll(() => d.eventStore.pendingPermissions(sessionId ?? "").length > 0, 3000);
+    quota.record([
+      {
+        window: "five_hour",
+        utilization: 0.97,
+        status: "allowed",
+        resetsAt: Date.UTC(2030, 0, 1, 18, 45),
+      },
+    ]);
+    const request = d.eventStore.pendingPermissions(sessionId ?? "")[0]?.id ?? "";
+    d.manager.respondPermission({ requestId: request, decision: "allow" });
+    await settle(() => d.board.workflows.getRun(runId).quotaUntil !== null);
+    await click("Projetos de alfa");
+    await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
+    await click("Abrir board de repo");
+    await settle(() => screen.queryByLabelText("Card Cota") !== null);
+    const open = screen.queryByLabelText("Card Cota")?.querySelector("button") ?? null;
+    await act(async () => {
+      fireEvent.click(open as HTMLElement);
+    });
+    await settle(() =>
+      (screen.queryByRole("region", { name: "Execução do workflow" })?.textContent ?? "").includes(
+        "cota",
+      ),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Execução do workflow" })?.textContent ?? "",
+    ).toContain("aguardando cota até 18:45");
   });
 });
