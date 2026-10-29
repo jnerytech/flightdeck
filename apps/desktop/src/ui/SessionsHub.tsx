@@ -1,5 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { HostsBanner } from "@/components/hosts/hosts-banner";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import {
@@ -72,6 +73,7 @@ export function SessionsHub(props: {
 
   return (
     <section className="hub">
+      <HostsBanner hosts={state.hosts} t={store.i18n.t} />
       <QuotaPanel store={store} state={state} />
       <h2>Sessões</h2>
       <div className="row filters">

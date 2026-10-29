@@ -5,6 +5,18 @@
  */
 export const ptBR = {
   nav: { back: "Voltar", forward: "Avançar" },
+  hosts: {
+    status: {
+      online: "online",
+      offline: "offline",
+      connecting: "reconectando",
+      unauthorized: "token recusado",
+      incompatible: "incompatível: atualize o daemon",
+    },
+    bannerLabel: "Hosts com problema",
+    down: { one: "{n} host offline", other: "{n} hosts offline" },
+    reconnecting: { one: "{n} host reconectando", other: "{n} hosts reconectando" },
+  },
   toast: { copied: "Copiado", details: "Detalhes", close: "Fechar" },
   approval: {
     label: "Pedido de {tool}",

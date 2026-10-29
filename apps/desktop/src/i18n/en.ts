@@ -3,6 +3,18 @@ import type { Dictionary } from "./index.ts";
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
   nav: { back: "Back", forward: "Forward" },
+  hosts: {
+    status: {
+      online: "online",
+      offline: "offline",
+      connecting: "reconnecting",
+      unauthorized: "token refused",
+      incompatible: "incompatible: update the daemon",
+    },
+    bannerLabel: "Hosts with a problem",
+    down: { one: "{n} host offline", other: "{n} hosts offline" },
+    reconnecting: { one: "{n} host reconnecting", other: "{n} hosts reconnecting" },
+  },
   toast: { copied: "Copied", details: "Details", close: "Close" },
   approval: {
     label: "Request for {tool}",
