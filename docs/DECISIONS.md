@@ -1110,7 +1110,9 @@ A primeira execução da CI no GitHub falhou nas duas pernas. Estas são as caus
   - O `invalid_state` dos comandos novos sem o recurso.
   - A troca de host da tela Custos.
   - O dia padrão do app.
-- **`smoke:costs` sem vermelho de recurso:** o script foi escrito depois das áreas que ele cobre e passou na primeira execução. Foi commitado no `test(smoke-costs)`, como o `smoke:ops` da Fase 7.
+- **Vermelho do `smoke:costs`:** o script foi escrito depois das áreas que ele cobre e passou na primeira execução. Ele foi commitado no `test(smoke-costs)`.
+  - O vermelho veio depois, rodando o mesmo script e os fixtures numa cópia da base sem a trilha A (`git archive 93b06fd`, numa pasta descartável).
+  - Saída: `SMOKE COSTS FAIL no passo "carga inicial": costs.status: bad_request`, com código 1. É uma falha controlada no passo certo.
 - **Fixtures:** os transcripts de uso foram escritos à mão em `apps/daemon/test/fixtures/history/`, com `__CWD__` substituído na cópia.
   - `usage-main.jsonl` tem uma mensagem em três linhas, fast mode, cache de 5 min e de 1 h, uma mensagem sem a divisão do cache, um modelo sem preço e uma resposta `<synthetic>`.
   - `usage-subagent.jsonl` tem uma mensagem em duas linhas.
