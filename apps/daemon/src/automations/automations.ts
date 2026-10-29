@@ -154,8 +154,9 @@ export class Automations {
   private readonly specs = new Map<string, CronSpec>();
   private timers: Array<ReturnType<typeof setInterval>> = [];
   private unwatchChecks: () => void = () => {};
-  private polling = false;
-  private ticking = false;
+  /** The search and the tick in progress, so `idle` can wait for them. */
+  private searching: Promise<void> | null = null;
+  private ticking: Promise<void> | null = null;
 
   constructor(private readonly opts: AutomationsOptions) {
     this.db = opts.db;
@@ -271,24 +272,20 @@ export class Automations {
     // A tick that finds another one running leaves its minutes to the next: they are scanned
     // from the last minute seen.
     if (this.ticking) return;
-    this.ticking = true;
-    try {
-      await this.advance(now, true);
-    } finally {
-      this.ticking = false;
-    }
+    this.ticking = this.advance(now, true).finally(() => {
+      this.ticking = null;
+    });
+    await this.ticking;
   }
 
   /** The search of issues for `issue_label` automations, one list per project. */
   async pollIssues(): Promise<void> {
     // One search at a time: a slow CLI must not pile searches up under a short interval.
-    if (this.polling) return;
-    this.polling = true;
-    try {
-      await this.search();
-    } finally {
-      this.polling = false;
-    }
+    if (this.searching) return;
+    this.searching = this.search().finally(() => {
+      this.searching = null;
+    });
+    await this.searching;
   }
 
   private async search(): Promise<void> {
@@ -327,7 +324,9 @@ export class Automations {
   }
 
   /** Resolves when the tick and the search in progress, if any, are done. */
-  async idle(): Promise<void> {}
+  async idle(): Promise<void> {
+    await Promise.all([this.ticking, this.searching]);
+  }
 
   stop(): void {
     for (const timer of this.timers) clearInterval(timer);

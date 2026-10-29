@@ -555,6 +555,7 @@ export async function startDaemon(
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
         automations.stop();
+        await automations.idle();
         board.stop();
         await central.stop();
         maintenance.stop();
