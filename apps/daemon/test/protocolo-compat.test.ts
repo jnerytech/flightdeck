@@ -100,6 +100,7 @@ describe("protocolo-compat", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
       "workflows",
+      "rules",
     ]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());

@@ -204,6 +204,9 @@ describe("regras-projeto", () => {
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
+    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
+      "rules",
+    );
     expect(await client.data("rules.list", { projectId: project.id })).toEqual({
       rules: ["Read", "Bash(npm test:*)"],
     });
