@@ -279,6 +279,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       },
       ...(opts.resume ? { resume: opts.resume } : {}),
       ...(opts.model ? { model: opts.model } : {}),
+      ...(opts.effort ? { effort: opts.effort } : {}),
       ...(this.claudePath ? { pathToClaudeCodeExecutable: this.claudePath } : {}),
     };
     const handle = this.query({ prompt, options });

@@ -429,6 +429,7 @@ export async function startDaemon(
     maxParallelRuns: config.maxParallelRuns,
     budgets,
     projectKeys: keys,
+    cardCost: costs.card.bind(costs),
     ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>

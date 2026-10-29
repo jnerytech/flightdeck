@@ -1,5 +1,6 @@
 import type {
   CommandPayload,
+  EffortLevel,
   EventEnvelope,
   McpLiveStatus,
   PendingPermission,
@@ -82,6 +83,8 @@ export class SessionManager {
   private readonly broker: PermissionBroker;
   private readonly risk: RiskClassifier;
   private readonly live = new Map<string, LiveSession>();
+  /** Phase 13: the effort of a session started with one (arena variants); not kept across restarts. */
+  private readonly efforts = new Map<string, EffortLevel>();
   private readonly listeners = new Map<string, Set<EventListener>>();
   private readonly summaryListeners = new Set<EventListener>();
   private readonly updateListeners = new Set<
@@ -176,6 +179,7 @@ export class SessionManager {
     this.emit(id, { type: "session.created", cwd, name, permissionMode });
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
+    if (payload.effort) this.efforts.set(id, payload.effort);
     this.startRun(id);
     this.deliver(id, payload.prompt);
     return { sessionId: id };
@@ -366,6 +370,9 @@ export class SessionManager {
         ),
       ...(resume ? { resume } : {}),
       ...(session.model ? { model: session.model } : {}),
+      ...(this.efforts.has(sessionId)
+        ? { effort: this.efforts.get(sessionId) as EffortLevel }
+        : {}),
     });
     const live: LiveSession = { run, queue: [], closing: false };
     this.live.set(sessionId, live);

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import {
   type Arena,
+  type ArenaVariant,
   AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
@@ -133,6 +134,8 @@ interface CardRow {
   notice: string | null;
   issue_ref: string | null;
   issue_external: number;
+  arena_of: string | null;
+  variant: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -367,10 +370,11 @@ export class Board {
       discarded: false,
       runs,
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
-      /** Stub. */
-      arenaOf: null,
-      variant: null,
-      arenaVariants: 0,
+      arenaOf: row.arena_of,
+      variant: row.variant ? JSON.parse(row.variant) : null,
+      arenaVariants: this.db
+        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM cards WHERE arena_of = ?")
+        .get(id)?.n as number,
       issueRef: row.issue_ref,
       issueExternal: row.issue_external === 1,
       ...this.queueState(
@@ -385,7 +389,15 @@ export class Board {
   /** A new card goes to the end of the Backlog. */
   createCard(
     projectId: string,
-    input: { title: string; description: string; issueRef?: string; issueExternal?: boolean },
+    input: {
+      title: string;
+      description: string;
+      issueRef?: string;
+      issueExternal?: boolean;
+      /** An arena variant: the arena's card, and what makes it different. */
+      arenaOf?: string;
+      variant?: { label: string; model: string | null; effort: EffortLevel | null };
+    },
   ): Card {
     this.getProject(projectId);
     const { last } = this.db
@@ -398,8 +410,8 @@ export class Board {
     this.db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
-           issue_external, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?)`,
+           issue_external, arena_of, variant, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -409,32 +421,171 @@ export class Board {
         (last ?? 0) + 1,
         input.issueRef ?? null,
         input.issueExternal ? 1 : 0,
+        input.arenaOf ?? null,
+        input.variant ? JSON.stringify(input.variant) : null,
         at,
         at,
       );
     return this.changed(id);
   }
 
-  /** Stub. */
+  /**
+   * "Iniciar em arena": the same request in 2 to 4 variants. Each is a card of its own, hidden
+   * from the board, with its own worktree (`fd/<slug>-a`, `-b`…), session, queue entry and
+   * slot, so the arena takes one slot per variant and a variant without one waits its turn.
+   * Model and effort apply to plain requests; a workflow defines its own.
+   */
   async startArena(
     cardId: string,
-    _input: {
+    input: {
       variants: Array<{ model?: string | undefined; effort?: EffortLevel | undefined }>;
       workflow?: string | undefined;
       inputs?: Record<string, string> | undefined;
     },
   ): Promise<Arena> {
-    return { cardId, variants: [] };
+    const card = this.getCard(cardId);
+    if (input.variants.length < 2 || input.variants.length > 4) {
+      throw new FlightdeckError("bad_request", "uma arena tem de 2 a 4 variantes");
+    }
+    if (card.arenaOf || card.arenaVariants > 0) {
+      throw new FlightdeckError("invalid_state", "o card já está numa arena");
+    }
+    if (card.queued || card.worktreePath || this.running.has(cardId)) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "o card já foi iniciado: a arena parte de um card novo",
+      );
+    }
+    const made: string[] = [];
+    try {
+      for (const [i, wanted] of input.variants.entries()) {
+        const label = "abcd"[i] as string;
+        const variant = this.createCard(card.projectId, {
+          title: `${card.title} (${label})`,
+          description: card.description,
+          arenaOf: cardId,
+          variant: { label, model: wanted.model ?? null, effort: wanted.effort ?? null },
+        });
+        made.push(variant.id);
+        await this.startCard(variant.id, {
+          workflow: input.workflow,
+          inputs: input.inputs,
+        });
+      }
+    } catch (error) {
+      // Half an arena is nothing: the variants already made go, and the card stays as it was.
+      for (const id of made) await this.discardCard(id, true);
+      throw error;
+    }
+    this.place(cardId, { type: "started" });
+    this.changed(cardId);
+    return this.arena(cardId);
   }
 
-  /** Stub. */
+  /** The comparison: each variant's diff, workflow checks, cost, duration and state. */
   async arena(cardId: string): Promise<Arena> {
-    return { cardId, variants: [] };
+    this.getCard(cardId);
+    const ids = this.variantIds(cardId);
+    return { cardId, variants: await Promise.all(ids.map((id) => this.variantView(id))) };
   }
 
-  /** Stub. */
-  async chooseVariant(cardId: string, _variantId: string, _confirm: boolean): Promise<Card> {
-    return this.getCard(cardId);
+  private variantIds(cardId: string): string[] {
+    return this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE arena_of = ? ORDER BY created_at, rowid",
+      )
+      .all(cardId)
+      .map((row) => row.id);
+  }
+
+  private async variantView(id: string): Promise<ArenaVariant> {
+    const card = this.getCard(id);
+    const startedAt = card.runs[0]?.startedAt ?? null;
+    const finished = card.sessionStatus !== null && FREES_SLOT.has(card.sessionStatus);
+    const endedAt = card.runs.at(-1)?.endedAt ?? (finished ? card.updatedAt : null);
+    const files = card.worktreePath
+      ? (await this.diff(id)).files.map(({ path, additions, deletions }) => ({
+          path,
+          additions,
+          deletions,
+        }))
+      : [];
+    const steps = card.workflowRunId ? this.workflows.getRun(card.workflowRunId).steps : [];
+    return {
+      id,
+      label: card.variant?.label ?? "?",
+      model: card.variant?.model ?? null,
+      effort: card.variant?.effort ?? null,
+      branch: card.branch,
+      worktreePath: card.worktreePath,
+      queued: card.queued,
+      sessionStatus: card.sessionStatus,
+      column: card.column,
+      startedAt,
+      endedAt,
+      durationMs: startedAt
+        ? Math.max(0, Date.parse(endedAt ?? new Date().toISOString()) - Date.parse(startedAt))
+        : null,
+      costUsd: this.opts.cardCost?.(id) ?? null,
+      files,
+      checks: steps
+        .filter((step) => step.type === "check")
+        .map((step) => ({ stepId: step.stepId, status: step.status })),
+      notice: card.notice,
+    };
+  }
+
+  /**
+   * "Escolher": the variant becomes the card's worktree, branch and runs, and carries on as a
+   * normal card; the other variants are stopped and removed. Only a variant that has stopped.
+   */
+  async chooseVariant(cardId: string, variantId: string, confirm: boolean): Promise<Card> {
+    if (!confirm) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "escolher a variante remove as outras: confirm: true",
+      );
+    }
+    this.getCard(cardId);
+    const ids = this.variantIds(cardId);
+    if (!ids.includes(variantId)) {
+      throw new FlightdeckError("not_found", `a variante ${variantId} não é desta arena`);
+    }
+    const chosen = this.getCard(variantId);
+    const working =
+      chosen.queued ||
+      this.running.has(variantId) ||
+      (chosen.workflowRunId !== null && this.workflows.active(chosen.workflowRunId));
+    if (working) {
+      throw new FlightdeckError("invalid_state", "a variante ainda está rodando: espere terminar");
+    }
+    for (const id of ids) if (id !== variantId) await this.discardCard(id, true);
+    this.follows.get(variantId)?.();
+    this.follows.delete(variantId);
+    this.db.transaction(() => {
+      for (const table of ["card_runs", "workflow_runs"]) {
+        this.db.query(`UPDATE ${table} SET card_id = ? WHERE card_id = ?`).run(cardId, variantId);
+      }
+      this.db
+        .query(
+          `UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, board_column = ?,
+           column_locked = ?, notice = ?, updated_at = ? WHERE id = ?`,
+        )
+        .run(
+          chosen.slug,
+          chosen.branch,
+          chosen.worktreePath,
+          chosen.column,
+          chosen.columnLocked ? 1 : 0,
+          chosen.notice,
+          now(),
+          cardId,
+        );
+      this.db.query("DELETE FROM cards WHERE id = ?").run(variantId);
+    })();
+    const moved = this.getCard(cardId);
+    if (moved.sessionId) this.follow(cardId, moved.sessionId, 0);
+    return this.changed(cardId);
   }
 
   /** The card already made from an issue of the project, if any. */
@@ -464,7 +615,7 @@ export class Board {
     const project = this.getProject(projectId);
     const cards = this.db
       .query<{ id: string }, [string]>(
-        "SELECT id FROM cards WHERE project_id = ? ORDER BY position, created_at",
+        "SELECT id FROM cards WHERE project_id = ? AND arena_of IS NULL ORDER BY position, created_at",
       )
       .all(projectId)
       .map(({ id }) => this.getCard(id));
@@ -667,7 +818,14 @@ export class Board {
     const prompt = [card.description, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
-    const { sessionId } = this.opts.manager.create({ cwd: worktree, prompt, name: card.title });
+    const { variant } = card;
+    const { sessionId } = this.opts.manager.create({
+      cwd: worktree,
+      prompt,
+      name: card.title,
+      ...(variant?.model ? { model: variant.model } : {}),
+      ...(variant?.effort ? { effort: variant.effort } : {}),
+    });
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);
     this.follow(id, sessionId, 0);
@@ -972,6 +1130,8 @@ export class Board {
     if (!confirm)
       throw new FlightdeckError("invalid_state", "confirme o descarte com confirm: true");
     const card = this.getCard(id);
+    // The variants of an arena go with its card.
+    for (const variant of this.variantIds(id)) await this.discardCard(variant, true);
     await this.closeRuns(id);
     this.follows.get(id)?.();
     this.follows.delete(id);
@@ -1076,9 +1236,11 @@ export class Board {
   }
 
   private emit(card: Card): void {
+    // A variant is not on the board: what changed in it is news of the arena's card.
+    const shown = card.arenaOf ? this.getCard(card.arenaOf) : card;
     for (const watcher of this.watchers) {
       try {
-        watcher(card);
+        watcher(shown);
       } catch {
         // A broken watcher must not break the board.
       }

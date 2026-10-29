@@ -386,4 +386,10 @@ export const MIGRATIONS: readonly string[] = [
     last_tick INTEGER NOT NULL
   );
   `,
+  // Phase 13: an arena variant is a card of its own (hidden from the board) that points at the
+  // card of the arena, with what makes it different (label, model, effort) as JSON.
+  `
+  ALTER TABLE cards ADD COLUMN arena_of TEXT;
+  ALTER TABLE cards ADD COLUMN variant TEXT;
+  `,
 ];
