@@ -18,6 +18,7 @@ const TARGET: HookTarget = {
   url: "http://127.0.0.1:7421",
   token: "tok-0123456789",
   permissionTimeoutS: 600,
+  platform: "win32",
 };
 
 /** A user's settings with other keys and third-party hooks on the same events. */
@@ -41,7 +42,7 @@ function settingsFile(content?: unknown): string {
 const read = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 
 describe("hooks-install", () => {
-  test("entradas: SessionStart por comando com o caminho absoluto, os outros http com token", () => {
+  test("entradas: SessionStart por comando com o caminho absoluto em barras normais, os outros http com token", () => {
     const entries = hookEntries(TARGET);
     expect(Object.keys(entries).sort()).toEqual(["SessionStart", ...HTTP_HOOK_EVENTS].sort());
     expect(entries.SessionStart).toEqual([
@@ -50,7 +51,7 @@ describe("hooks-install", () => {
           {
             type: "command",
             command:
-              '"C:\\Program Files\\flightdeck\\flightdeckd.exe" hook session-start --url http://127.0.0.1:7421 --token tok-0123456789',
+              '"C:/Program Files/flightdeck/flightdeckd.exe" hook session-start --url http://127.0.0.1:7421 --token tok-0123456789',
             timeout: 5,
           },
         ],
@@ -69,10 +70,50 @@ describe("hooks-install", () => {
       },
     ]);
     expect(entries.PermissionRequest?.[0]?.hooks[0]?.timeout).toBe(600);
-    const dev = hookEntries({ ...TARGET, command: ["C:\\bun\\bun.exe", "D:\\fd\\bin.ts"] });
-    expect(
-      dev.SessionStart?.[0]?.hooks[0]?.command?.startsWith("C:\\bun\\bun.exe D:\\fd\\bin.ts hook"),
-    ).toBe(true);
+    // Claude Code runs command hooks through Git Bash on Windows, where `\\` is an escape.
+    const dev = hookEntries({ ...TARGET, command: ["C:\\bun\\bun.exe", "run", "D:\\fd\\bin.ts"] });
+    expect(dev.SessionStart?.[0]?.hooks[0]?.command).toBe(
+      "C:/bun/bun.exe run D:/fd/bin.ts hook session-start --url http://127.0.0.1:7421 --token tok-0123456789",
+    );
+    // Elsewhere the path goes as it is.
+    const linux = hookEntries({ ...TARGET, command: ["/opt/fd/flightdeckd"], platform: "linux" });
+    expect(linux.SessionStart?.[0]?.hooks[0]?.command?.startsWith("/opt/fd/flightdeckd hook")).toBe(
+      true,
+    );
+  });
+
+  test("entrada antiga, com barras invertidas, fica desatualizada; install a troca e uninstall a reconhece", () => {
+    // A complete install from before, differing only in how the SessionStart path is written.
+    const current = hookEntries({ ...TARGET, command: ["C:\\fd\\flightdeckd.exe"] });
+    const old = {
+      ...ORIGINAL,
+      hooks: {
+        ...ORIGINAL.hooks,
+        ...current,
+        Stop: [...ORIGINAL.hooks.Stop, ...(current.Stop ?? [])],
+        SessionStart: [
+          {
+            hooks: [
+              {
+                type: "command",
+                command:
+                  "C:\\fd\\flightdeckd.exe hook session-start --url http://127.0.0.1:7421 --token tok-0123456789",
+                timeout: 5,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const target = { ...TARGET, command: ["C:\\fd\\flightdeckd.exe"] };
+    const file = settingsFile(old);
+    expect(hooksStatus(file, target)).toBe("outdated");
+    installHooks(file, target);
+    expect(hooksStatus(file, target)).toBe("installed");
+    expect(read(file).hooks.SessionStart).toEqual(hookEntries(target).SessionStart);
+    writeFileSync(file, JSON.stringify(old));
+    expect(uninstallHooks(file)).toBe(true);
+    expect(read(file)).toEqual(ORIGINAL);
   });
 
   test("mescla no settings.json existente sem perder chaves nem hooks de terceiros, com backup", () => {
