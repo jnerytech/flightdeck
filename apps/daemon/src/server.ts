@@ -31,7 +31,7 @@ import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
-import type { Central } from "./central/central.ts";
+import { type Central, messageExternal } from "./central/central.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { FlightdeckError } from "./errors.ts";
@@ -43,6 +43,7 @@ import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import type { Changes } from "./review/changes.ts";
+import type { ReviewComments } from "./review/comments.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
@@ -93,6 +94,8 @@ export interface ServerOptions {
   quotaHistory?: QuotaHistory;
   /** The diff of sessions and cards behind `changes.*` (phase 11). */
   changes?: Changes;
+  /** Inline comments behind `review.*` (phase 11). */
+  review?: ReviewComments;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -351,6 +354,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.changes;
   }
 
+  function review(): ReviewComments {
+    if (!opts.review) throw new FlightdeckError("invalid_state", "revisão desativada");
+    return opts.review;
+  }
+
   function board(): Board {
     if (!opts.board) throw new FlightdeckError("invalid_state", "board desativado");
     return opts.board;
@@ -409,12 +417,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "external.message": {
         const { claudeSessionId, text } = command.payload;
-        const { external, receptor } = central();
-        const session = external.get(claudeSessionId);
-        if (!session)
+        const hub = central();
+        if (!hub.external.get(claudeSessionId))
           throw new FlightdeckError("not_found", `sessão ${claudeSessionId} não existe`);
-        const sent = session.launchId ? receptor?.sendToLaunch(session.launchId, text) : false;
-        if (!sent) {
+        if (!messageExternal(hub, claudeSessionId, text)) {
           throw new FlightdeckError(
             "invalid_state",
             "sessão sem canal: só sessões abertas com flightdeckd claude recebem mensagens",
@@ -657,6 +663,17 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.changeWatchers.get(command.payload.target)?.();
         ws.data.changeWatchers.delete(command.payload.target);
         return ok(command.type);
+      case "review.list":
+        return ok(command.type, { comments: await review().list(command.payload.target) });
+      case "review.add":
+        return ok(command.type, await review().add(command.payload));
+      case "review.update":
+        return ok(command.type, await review().update(command.payload.id, command.payload.body));
+      case "review.remove":
+        review().remove(command.payload.id);
+        return ok(command.type);
+      case "review.send":
+        return ok(command.type, await review().send(command.payload.target));
       case "quota.history":
         return ok(
           command.type,

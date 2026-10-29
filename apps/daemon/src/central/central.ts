@@ -35,6 +35,16 @@ export interface CentralOptions {
  * receptor. The receptor only listens once `hooks.token` exists (at boot, or when hooks are
  * installed through the protocol), so a daemon without hooks opens no extra port.
  */
+/** Sends to the channel of a session opened with `flightdeckd claude`; `false` without one. */
+export function messageExternal(
+  central: Pick<Central, "external" | "receptor">,
+  claudeSessionId: string,
+  text: string,
+): boolean {
+  const launchId = central.external.get(claudeSessionId)?.launchId;
+  return launchId ? (central.receptor?.sendToLaunch(launchId, text) ?? false) : false;
+}
+
 export class Central {
   readonly external: ExternalSessions;
   readonly permissions = new ExternalPermissions();

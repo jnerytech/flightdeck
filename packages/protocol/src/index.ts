@@ -423,6 +423,36 @@ export const ChangesResult = z.object({
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
 
+const ReviewSide = z.enum(["new", "old"]);
+
+/** An inline comment on a target's diff: a draft until the review goes to the agent. */
+export const ReviewComment = z.object({
+  id: z.string(),
+  target: z.string(),
+  path: z.string(),
+  /** `new`: the file as it is now; `old`: the version it is compared with (HEAD or the base). */
+  side: ReviewSide,
+  lineStart: z.number().int(),
+  lineEnd: z.number().int(),
+  /** The quoted lines, read by the daemon; the comment follows them when the file changes. */
+  quote: z.string(),
+  body: z.string(),
+  state: z.enum(["draft", "sent"]),
+  createdAt: z.string(),
+  sentAt: z.string().nullable(),
+  /** The quoted lines are no longer in the file. */
+  outdated: z.boolean(),
+});
+export type ReviewComment = z.infer<typeof ReviewComment>;
+
+export const ReviewSent = z.object({
+  /** `copy`: the session takes no messages, the app hands `text` over. */
+  via: z.enum(["session", "card", "terminal", "copy"]),
+  text: z.string(),
+  comments: z.number().int(),
+});
+export type ReviewSent = z.infer<typeof ReviewSent>;
+
 // Phase 6: workflows declared in `.flightdeck/workflows/<name>.yaml` on the base branch.
 export const WorkflowInfo = z.object({
   /** The file name without `.yaml`. */
@@ -923,6 +953,21 @@ export const Command = z.discriminatedUnion("type", [
   /** `changes.updated` after each change on disk (500 ms debounce), until `changes.unwatch`. */
   cmd("changes.watch", z.object({ target: ReviewTarget })),
   cmd("changes.unwatch", z.object({ target: ReviewTarget })),
+  cmd("review.list", z.object({ target: ReviewTarget })),
+  cmd(
+    "review.add",
+    z.object({
+      target: ReviewTarget,
+      path: z.string().min(1),
+      side: ReviewSide,
+      lineStart: z.number().int().min(1),
+      lineEnd: z.number().int().min(1),
+      body: z.string().min(1),
+    }),
+  ),
+  cmd("review.update", z.object({ id: z.string(), body: z.string().min(1) })),
+  cmd("review.remove", z.object({ id: z.string() })),
+  cmd("review.send", z.object({ target: ReviewTarget })),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -1178,6 +1223,11 @@ export interface CommandResults {
   "changes.get": ChangesResult;
   "changes.watch": undefined;
   "changes.unwatch": undefined;
+  "review.list": { comments: ReviewComment[] };
+  "review.add": ReviewComment;
+  "review.update": ReviewComment | null;
+  "review.remove": undefined;
+  "review.send": ReviewSent;
 }
 
 // ---------------------------------------------------------------------------

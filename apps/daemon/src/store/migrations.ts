@@ -260,4 +260,22 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX quota_samples_window ON quota_samples (window, taken_at);
   `,
+  // Phase 11: inline review comments of a session or card, drafts until sent to the agent.
+  `
+  CREATE TABLE review_comments (
+    id         TEXT PRIMARY KEY,
+    target     TEXT,
+    path       TEXT,
+    side       TEXT,
+    line_start INTEGER,
+    line_end   INTEGER,
+    quote      TEXT,
+    body       TEXT,
+    state      TEXT,
+    created_at TEXT,
+    sent_at    TEXT
+  );
+
+  CREATE INDEX review_comments_target ON review_comments (target, created_at);
+  `,
 ];
