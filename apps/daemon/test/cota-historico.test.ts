@@ -209,4 +209,31 @@ describe("cota-historico", () => {
     }
     expect(count).toBe(1);
   });
+
+  test("daemon sem os recursos da fase recusa quota.history, costs.* e budget.* com invalid_state", async () => {
+    const { manager, root } = newManager();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const codes = await Promise.all(
+      [
+        ["quota.history", { window: "five_hour", hours: 1 }],
+        ["costs.status", {}],
+        ["budget.list", {}],
+      ].map(async ([type, payload]) => {
+        const ack = await client.request(type as string, payload);
+        return (ack.error as { code?: string } | undefined)?.code ?? "ok";
+      }),
+    );
+    expect(codes).toEqual(["invalid_state", "invalid_state", "invalid_state"]);
+  });
 });
