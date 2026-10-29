@@ -343,5 +343,10 @@ O agente implementa só a Fase 1, em passos pequenos e verificáveis, sem gastar
 | 12 | Checkpoints e configuração do agente: snapshots por turno, voltar arquivos, bifurcar, MCP, CLAUDE.md, agentes e skills do projeto | [SPEC-fase-12.md](SPEC-fase-12.md) |
 | 13 | Automação: issues do GitHub e Azure Boards, automações por horário e evento, arena, risco e aprovação automática por IA | [SPEC-fase-13.md](SPEC-fase-13.md) |
 | 14 | Espaço de trabalho: abas e tela dividida, terminal embutido em qualquer host, "Claude aqui" controlável | [SPEC-fase-14.md](SPEC-fase-14.md) |
+| 15 | Hosts SSH: destinos com importação do ~/.ssh/config, terminal SSH por aba, fingerprint confirmado, askpass | [SPEC-fase-15.md](SPEC-fase-15.md) |
+| 16 | Cofre de segredos no cofre do sistema, entrega só no uso, backup cifrado com age | [SPEC-fase-16.md](SPEC-fase-16.md) |
+| 17 | O Claude usa o segredo sem vê-lo: ações declaradas, máscara na saída, MCP e mod | [SPEC-fase-17.md](SPEC-fase-17.md) |
+| 18 | Snippets de comando e de prompt, por projeto, host ou globais | [SPEC-fase-18.md](SPEC-fase-18.md) |
+| 19 | Regras de uso por segredo: solicitante, janela, limites, teto seguro e auditoria | [SPEC-fase-19.md](SPEC-fase-19.md) |
 
 Cada fase fecha pelos próprios critérios de aceite e é integrada na ordem do roadmap; duas fases independentes podem ser desenvolvidas em paralelo em worktrees separados, com a posterior rebaseada sobre a tag da anterior antes de fechar. O produto é desktop, sem celular.
