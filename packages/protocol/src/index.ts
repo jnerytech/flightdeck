@@ -422,6 +422,8 @@ export const ChangesResult = z.object({
   /** The card's base branch; `null` for a session, whose diff is against `HEAD`. */
   base: z.string().nullable(),
   files: z.array(DiffFile),
+  /** A card's commits ahead of and behind its base; `null` for a session. */
+  position: z.object({ ahead: z.number().int(), behind: z.number().int() }).nullable(),
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
 
@@ -952,6 +954,17 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ window: z.string().min(1), hours: z.number().int().min(1).max(720) }),
   ),
   cmd("changes.get", z.object({ target: ReviewTarget })),
+  /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
+  cmd("card.updateFromBase", CardIdPayload),
+  /** "Merge e arquivar", for a card without a PR; `merge` is `--no-ff`. */
+  cmd(
+    "card.mergeLocal",
+    z.object({
+      cardId: z.string(),
+      mode: z.enum(["merge", "squash"]).default("merge"),
+      confirm: z.boolean().optional(),
+    }),
+  ),
   /** `changes.updated` after each change on disk (500 ms debounce), until `changes.unwatch`. */
   cmd("changes.watch", z.object({ target: ReviewTarget })),
   cmd("changes.unwatch", z.object({ target: ReviewTarget })),
@@ -1242,6 +1255,8 @@ export interface CommandResults {
   "budget.watch": undefined;
   "quota.history": QuotaHistory;
   "changes.get": ChangesResult;
+  "card.updateFromBase": Card;
+  "card.mergeLocal": Card;
   "changes.watch": undefined;
   "changes.unwatch": undefined;
   "review.list": { comments: ReviewComment[] };

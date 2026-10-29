@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { cardDiff, workingDiff } from "../board/diff.ts";
+import { aheadBehind } from "../board/merge.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
@@ -42,6 +43,8 @@ export interface ChangesResult {
   root: string;
   base: string | null;
   files: DiffFile[];
+  /** A card's commits ahead of and behind its base; `null` for a session. */
+  position: { ahead: number; behind: number } | null;
 }
 
 const DEBOUNCE_MS = 500;
@@ -110,8 +113,10 @@ export class Changes {
 
   async get(target: string): Promise<ChangesResult> {
     const { root, base } = await this.resolve(target);
-    const files = base === null ? await workingDiff(root) : (await cardDiff(root, base)).files;
-    return { target, root, base, files };
+    if (base === null)
+      return { target, root, base, files: await workingDiff(root), position: null };
+    const { files } = await cardDiff(root, base);
+    return { target, root, base, files, position: await aheadBehind(root, base) };
   }
 
   /**

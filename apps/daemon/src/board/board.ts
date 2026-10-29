@@ -20,6 +20,13 @@ import { WorkflowEngine } from "../workflows/engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cardDiff } from "./diff.ts";
+import {
+  aheadBehind,
+  assertLocalBranch,
+  mergeIntoBase,
+  pendingFiles,
+  rebaseOnto,
+} from "./merge.ts";
 import { prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { runSetup } from "./setup.ts";
@@ -135,6 +142,9 @@ const toRun = (row: RunRow): CardRun => ({
   startedAt: row.started_at,
   endedAt: row.ended_at,
 });
+
+/** A card's session in one of these is still working: no rebase or merge under it. */
+const BUSY: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission"]);
 
 /** A blank script means "no script": nothing is ever run unless the user registered one. */
 const script = (value: string | null | undefined) => value?.trim() || null;
@@ -704,6 +714,60 @@ export class Board {
       .run(url, id);
     this.place(id, { type: "pr", state: "open" });
     return this.getCard(id);
+  }
+
+  /** The card's worktree and branch, while no turn of its agent is going on. */
+  private idleWorktree(id: string): { card: Card; worktree: string; branch: string } {
+    const card = this.getCard(id);
+    if (!card.worktreePath || !card.branch) {
+      throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    }
+    if (card.queued || (card.sessionStatus !== null && BUSY.has(card.sessionStatus))) {
+      throw new FlightdeckError("invalid_state", "card em execução: espere o agente terminar");
+    }
+    return { card, worktree: card.worktreePath, branch: card.branch };
+  }
+
+  /** Rebases the card's branch on its base; a conflict aborts and leaves the worktree as it was. */
+  async updateFromBase(id: string): Promise<Card> {
+    const { card, worktree } = this.idleWorktree(id);
+    await rebaseOnto(worktree, this.getProject(card.projectId).baseBranch);
+    return this.changed(id);
+  }
+
+  /**
+   * "Merge e arquivar" for a card without a PR: into the base where it is checked out (clean), or
+   * through a temporary worktree; then the card's worktree and branch go and it is Concluído.
+   */
+  async mergeLocal(id: string, mode: "merge" | "squash", confirm: boolean): Promise<Card> {
+    if (!confirm) throw new FlightdeckError("invalid_state", "confirme o merge com confirm: true");
+    const { card, worktree, branch } = this.idleWorktree(id);
+    if (card.prUrl) {
+      throw new FlightdeckError("invalid_state", "card com PR: ele é concluído pelo PR");
+    }
+    const pending = await pendingFiles(worktree);
+    if (pending.length > 0) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `worktree do card com mudanças não commitadas: ${pending.join(", ")}`,
+      );
+    }
+    const project = this.getProject(card.projectId);
+    const base = project.baseBranch;
+    await assertLocalBranch(project.path, base);
+    const { ahead } = await aheadBehind(worktree, base);
+    if (ahead === 0) throw new FlightdeckError("invalid_state", `nada à frente de ${base}`);
+    const message = mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`;
+    await mergeIntoBase(project.path, base, branch, mode, message);
+    // The worktree first: git does not delete a branch checked out somewhere.
+    await this.closeRuns(id);
+    must(await git(project.path, "worktree", "remove", worktree), "git worktree remove");
+    must(await git(project.path, "branch", "-D", branch), "git branch -D");
+    this.db
+      .query("UPDATE cards SET worktree_path = NULL, branch = NULL, notice = NULL WHERE id = ?")
+      .run(id);
+    this.place(id, { type: "moved", column: "done" });
+    return this.changed(id);
   }
 
   /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */

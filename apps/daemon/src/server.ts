@@ -656,6 +656,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "card.updateFromBase":
+        return ok(command.type, await board().updateFromBase(command.payload.cardId));
+      case "card.mergeLocal": {
+        const { cardId, mode, confirm } = command.payload;
+        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true));
+      }
       case "changes.get":
         return ok(command.type, await changes().get(command.payload.target));
       case "changes.watch": {
