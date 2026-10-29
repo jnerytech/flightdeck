@@ -256,6 +256,27 @@ describe("abrir-terminal", () => {
     });
   });
 
+  test("o executor que falha (programa ausente) vira aviso no banner", async () => {
+    const d = makeDaemon(cleanups);
+    const mem = memoryPlatform();
+    mem.platform.terminal = {
+      supported: true,
+      probe: async () => ({ windows: true, wt: true }),
+      open: async () => {
+        throw new Error("wt.exe não encontrado");
+      },
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    await store.init();
+    const hostId = await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await poll(() => store.getState().hosts[0]?.hostInfo, 3000);
+    await store.openInTerminal(hostId, { cwd: d.project, claudeSessionId: null });
+    expect(store.getState().error ?? "").toContain(
+      "Terminal não abriu: Error: wt.exe não encontrado",
+    );
+  });
+
   test("botão na sessão, no card e no projeto abre pelo executor injetado; sem terminal, copia", async () => {
     const FD = "/opt/fd/flightdeckd";
     const d = makeDaemon(cleanups, { terminal: { flightdeckdPath: FD, wslDistro: "Ubuntu" } });
