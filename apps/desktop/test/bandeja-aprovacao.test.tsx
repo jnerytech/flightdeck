@@ -70,6 +70,17 @@ const item = (n: number, patch: Partial<PendingItem> = {}): PendingItem => ({
 
 const BOTH: TrayActionKind[] = ["approve", "deny", "open"];
 
+/** The submenu's own texts in Portuguese (phase 10: they come from the dictionary). */
+const LABELS = (more: number) => ({
+  approve: "Aprovar",
+  deny: "Negar",
+  open: "Abrir",
+  more: `e mais ${more}…`,
+  empty: "Nada esperando você",
+  show: "Abrir",
+  quit: "Sair",
+});
+
 /** The platform's tray as the store drives it: menus pushed, the action handler, window shown. */
 function trayPlatform(focused = false) {
   const mem = memoryPlatform(focused);
@@ -106,7 +117,7 @@ const status = (d: ReturnType<typeof makeDaemon>, requestId: string) =>
 
 describe("bandeja-aprovacao", () => {
   test("submenu: host · sessão · ferramenta: resumo, até 10, gates só com Abrir, e mais N", () => {
-    expect(trayMenu([])).toEqual({ items: [], more: 0 });
+    expect(trayMenu([])).toEqual({ items: [], more: 0, labels: LABELS(0) });
     expect(
       trayMenu([
         item(1),
@@ -136,6 +147,7 @@ describe("bandeja-aprovacao", () => {
         { key: "h1/r5", label: `alfa · Gerenciada · Bash: ${"x".repeat(80)}…`, actions: BOTH },
       ],
       more: 0,
+      labels: LABELS(0),
     });
     const twelve = trayMenu(Array.from({ length: 12 }, (_, i) => item(i + 1)));
     expect(twelve.items.map((i) => i.key)).toEqual(
@@ -178,6 +190,7 @@ describe("bandeja-aprovacao", () => {
         },
       ],
       more: 0,
+      labels: LABELS(0),
     });
 
     // Abrir: the window comes up on the request's session.
@@ -206,7 +219,7 @@ describe("bandeja-aprovacao", () => {
         false,
     );
     await act(async () => clock.fire());
-    expect(tray.menus.at(-1)).toEqual({ items: [], more: 0 });
+    expect(tray.menus.at(-1)).toEqual({ items: [], more: 0, labels: LABELS(0) });
     await act(async () => tray.act({ key: "more", action: "open" }));
     expect(tray.shown()).toBe(2);
     // An unknown key (a request already answered elsewhere) does nothing.
@@ -276,7 +289,11 @@ describe("bandeja-aprovacao", () => {
       navigator: { clipboard: { writeText: async () => {} } },
     };
     const platform = tauriPlatform(win, call, listen);
-    const menu = { items: [{ key: "h1/r1", label: "alfa · s · Bash", actions: BOTH }], more: 3 };
+    const menu = {
+      items: [{ key: "h1/r1", label: "alfa · s · Bash", actions: BOTH }],
+      more: 3,
+      labels: LABELS(3),
+    };
     await platform.setTrayMenu(menu as TrayMenu);
     expect(calls).toEqual([["tray_set_menu", menu]]);
     const got: TrayAction[] = [];

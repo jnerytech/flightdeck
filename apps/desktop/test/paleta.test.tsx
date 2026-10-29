@@ -144,6 +144,7 @@ describe("paleta", () => {
       "alfa",
       "Nova sessão em alfa",
       "Alternar tema",
+      "Trocar idioma",
       "Ir para Configurações",
     ]);
     // No screen for it on this host: no "Ir para Custos".

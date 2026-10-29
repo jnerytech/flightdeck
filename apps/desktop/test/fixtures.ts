@@ -162,7 +162,7 @@ export function daemon(
  * use. Tokens live in `tokens` (injected as the secrets map); notifications are recorded through
  * a fake browser Notification API.
  */
-export function memoryPlatform(focused = false) {
+export function memoryPlatform(focused = false, language = "pt-BR") {
   const items = new Map<string, string>();
   const tokens = new Map<string, string>();
   const notifications: Array<{ title: string; body: string }> = [];
@@ -180,6 +180,8 @@ export function memoryPlatform(focused = false) {
       },
     },
     document: { hasFocus: () => focused, title: "Flightdeck" },
+    // The suite reads the app in Portuguese; tests of English pass their own language.
+    navigator: { language },
     location: { hash: "" },
     open: () => null,
     addEventListener: (_type, listener) => {

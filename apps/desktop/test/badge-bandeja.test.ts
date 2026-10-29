@@ -16,9 +16,14 @@ const session = (n: number) =>
 
 describe("badge-bandeja", () => {
   test("sem pedidos: contagem zero e dica neutra", () => {
-    expect(trayStatus([])).toEqual({ count: 0, tooltip: "Flightdeck: nada esperando você" });
+    expect(trayStatus([])).toEqual({
+      count: 0,
+      label: "Precisa de você (0)",
+      tooltip: "Flightdeck: nada esperando você",
+    });
     expect(trayStatus([{ name: "pc", sessions: [session(0)] }])).toEqual({
       count: 0,
+      label: "Precisa de você (0)",
       tooltip: "Flightdeck: nada esperando você",
     });
   });
@@ -26,6 +31,7 @@ describe("badge-bandeja", () => {
   test("um pedido usa singular e cita o host", () => {
     expect(trayStatus([{ name: "pc", sessions: [session(1), session(0)] }])).toEqual({
       count: 1,
+      label: "Precisa de você (1)",
       tooltip: "Flightdeck: 1 pedido esperando você (pc: 1)",
     });
   });
@@ -38,6 +44,10 @@ describe("badge-bandeja", () => {
         { name: "pc", sessions: [session(2), session(1)] },
         { name: "pi", sessions: [session(1)] },
       ]),
-    ).toEqual({ count: 5, tooltip: "Flightdeck: 5 pedidos esperando você (pc: 3, pi: 1, vps: 1)" });
+    ).toEqual({
+      count: 5,
+      label: "Precisa de você (5)",
+      tooltip: "Flightdeck: 5 pedidos esperando você (pc: 3, pi: 1, vps: 1)",
+    });
   });
 });
