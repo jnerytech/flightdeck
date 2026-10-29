@@ -5,6 +5,7 @@ import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { StateBadge, type StateTone } from "@/components/status/state-badge";
+import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -215,7 +216,7 @@ export function SessionsHub(props: {
                         >
                           {row.title}
                         </button>
-                        <StateBadge tone={TONES[row.state]}>{STATE_LABELS[row.state]}</StateBadge>
+                        <StatusDot tone={TONES[row.state]} label={STATE_LABELS[row.state]} />
                         <span className="text-muted-foreground text-sm">{row.hostName}</span>
                         {row.controllable && <StateBadge tone="running">controlável</StateBadge>}
                         {cost !== undefined && (
@@ -228,9 +229,13 @@ export function SessionsHub(props: {
                         )}
                       </div>
                       <div className="text-muted-foreground text-xs">
-                        {[ORIGIN_LABELS[row.origin], store.formatDateTime(row.lastActivity)]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        {ORIGIN_LABELS[row.origin] ? `${ORIGIN_LABELS[row.origin]} · ` : ""}
+                        <time
+                          dateTime={new Date(row.lastActivity).toISOString()}
+                          className="tabular-nums"
+                        >
+                          {store.formatDateTime(row.lastActivity)}
+                        </time>
                       </div>
                       {line && (
                         <span className="truncate text-muted-foreground text-xs">{line}</span>
