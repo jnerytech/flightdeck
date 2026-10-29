@@ -493,3 +493,84 @@ de consistência da spec recebida durante a fase.
   inteira.
 - **Ramos revelados pela cobertura** (falha do git em `must`, watcher que lança, remoção de host
   com cards) seguiram a regra 7: o ramo saiu, o teste ficou vermelho e só então o ramo voltou.
+
+# Decisões e divergências da Fase 5
+
+O que a spec da Fase 5 (Central de sessões) deixou aberto, ou o que mudou na implementação.
+
+## Princípio de `~/.claude`
+
+- **A Fase 3 dizia que o Flightdeck só lê `~/.claude`.** A partir desta fase, `hooks install` e `hooks uninstall` escrevem no `~/.claude/settings.json`, sempre por comando explícito do usuário (CLI, ou botão com confirmação no app). Os transcripts continuam só lidos.
+- **`uninstall`:**
+  - Remove só as entradas do Flightdeck: as reconhecidas pela URL do receptor (`http://127.0.0.1:<porta>/hooks/`) ou pelo comando `hook session-start`.
+  - Grupos, eventos e a chave `hooks` que ficarem vazios saem.
+  - Se o `install` criou o arquivo, o `uninstall` deixa `{}`.
+- **`status`:** "desatualizado" quer dizer que as entradas existem, mas diferem do que o `install` escreveria agora (eventos, comando, URL, token ou timeouts).
+
+## Receptor e token
+
+- **O receptor só escuta quando existe `hooks.token`:** no boot, se o token já estiver na config, ou quando o `hooks.install` chega pelo protocolo.
+  - Este gera o token uma vez, sobe o receptor e grava os hooks com a porta real em que ele escuta.
+  - Um daemon sem hooks não abre porta extra, e os testes e smokes que sobem daemons continuam só na porta 0.
+- **O `hooks install` do CLI:**
+  - Recusa `hooks.port` 0, porque o receptor não teria endereço fixo.
+  - Com o daemon rodando, os hooks passam a valer depois de reiniciá-lo.
+  - O token não é rotacionado em reinstalações, e com isso reinstalar continua idempotente.
+- **URL do receptor:** o daemon a publica em `<dataDir>/receptor.json`. O `flightdeckd claude` a lê e confere em `/health`, com limite de 1 s.
+- **`idleTimeout: 0`** no `Bun.serve` do receptor: o padrão do Bun (10 s) fecharia um `PermissionRequest` segurado.
+- **O comando do `SessionStart`** leva a URL e o token nos argumentos (`hook session-start --url … --token …`), e não lê a config na hora do hook. Os caminhos só ganham aspas quando têm espaços, e assim a linha vale em sh, cmd e PowerShell. Fica para a confirmação manual com o `claude` real.
+- **Sessões gerenciadas são ignoradas** pelo `claudeSessionId` conhecido ou pelo `managed: true` que o comando do `SessionStart` acrescenta quando vê `FLIGHTDECK_MANAGED=1`. O `ClaudeSdkRuntime` passa essa variável ao `claude`.
+
+## Sessões externas
+
+- **`external_sessions` tem a coluna `source`** (`startup`, `resume`, `clear` ou `compact`), fora da spec.
+- **`Notification` sem `permission_prompt`** não muda o estado; só atualiza a última atividade.
+- **Evento de uma sessão sem `SessionStart` visto** (daemon iniciado no meio da sessão) cria o registro.
+- **`stale`:** a varredura roda a cada 60 s. Transcript ilegível conta como parado.
+- **Depois de reiniciar:** as sessões não encerradas viram `unknown`, e nenhum canal fica conectado.
+- **`projectKey`:** sem remoto, a chave usa o `hostName` do daemon no lugar do `hostId`, que só o app conhece.
+
+## Permissões externas
+
+- **"App conectado"** é uma conexão com `external.watch` ativo: quem não vê a fila não poderia responder, e um `claude -p` esperaria à toa.
+- **O `external.watch`** manda, depois do ack, as sessões vivas e os pedidos ainda abertos, como o `sessions.watch`. Assim, um app que reconecta não perde a fila.
+- **O `Notification` com `permission_prompt`** chega enquanto o hook segura e nunca fecha o pedido. Qualquer outro evento posterior da sessão o fecha com resposta vazia (`answered_elsewhere`).
+- **Outros fechamentos:**
+  - Conexão do hook caída: `dropped`.
+  - Daemon parando: todos os segurados recebem resposta vazia.
+- **`requestId` externo** começa com `ext-`. O `permission.respond` tenta os externos primeiro e manda o resto para as sessões gerenciadas.
+- **Entrada resumida:** textos com mais de 200 caracteres são cortados.
+
+## Canal e `flightdeckd claude`
+
+- **Argumentos do canal:** o `flightdeckd channel` recebe `--launch`, `--url` e `--token` nos argumentos do `--mcp-config`, e não por variáveis de ambiente, porque não dá para garantir o que o `claude` repassa ao servidor MCP.
+- **Ligação com o daemon:** o canal se conecta ao receptor por WebSocket (`/channel?launch=<id>`, com o token de hooks).
+  - É só de ida: um cliente que manda algo é desconectado com 1008.
+  - A conexão define o `controllable`.
+- **Config do wrapper:** vem de `FLIGHTDECK_CONFIG` ou do caminho padrão, porque os argumentos de `flightdeckd claude` são todos do `claude`.
+- **Ordem dos argumentos:** `--mcp-config <arquivo temporário>` e `--dangerously-load-development-channels server:flightdeck` vêm antes dos do usuário. A opção seguinte encerra o variádico `--mcp-config`.
+  - O arquivo fica em `<dataDir>/channels/<launch>.json` e é apagado quando o `claude` sai.
+  - Confirmação manual pendente, junto com o registro por `--mcp-config` no lugar do `.mcp.json` da prova de conceito.
+- **Sem daemon:** o `claude` abre sem os argumentos do canal (só com o launch id).
+
+## Ao vivo
+
+- **Tempo do `history.changed`:** com a observação de arquivos ativa, sai 250 ms depois do evento (`watchDebounceMs`). A varredura completa de 10 s continua como reserva.
+- **Injeção nos testes:** timers, watcher e debounce do indexador são injetáveis, e os testes nunca esperam o relógio.
+- **O leitor de uma sessão viva** relê a partir da última página carregada para a frente e mescla por `uuid`, sem recarregar o que está na tela.
+
+## App desktop
+
+- **A tela Sessões** abre pelo botão "Sessões" da barra lateral e é também o que aparece quando nada mais está aberto.
+  - Ela carrega as listas sem barulho: um host antigo, sem histórico ou sem central, só contribui com menos.
+  - A meta das sessões fica num mapa único no app, alimentado pelas três listas e pelo `session.meta.set`.
+- **O filtro de host** usa o nome do host.
+- **"Copiar comando"** copia `flightdeckd claude --resume <id>`, e não `claude --resume` (Fase 3), para a sessão retomada já vir controlável.
+
+## TDD e testes
+
+- **`claude` falso por teste** (`apps/daemon/test/fake-claude*.ts`): lê o `settings.json` do HOME temporário e roda os hooks de comando como o Claude Code, por `cmd /d /s /c` com `windowsVerbatimArguments` no Windows. Também faz os POSTs http com os cabeçalhos instalados, escreve o transcript, sobe o servidor do `--mcp-config` e registra o que chega pelo canal.
+- **Achado do caminho:** o Bun, sem `windowsVerbatimArguments`, quebra comandos com aspas no `cmd /s /c`. O `shellCommand` do script de preparação da Fase 4 tem esse limite para scripts com aspas. Ficou anotado e não foi corrigido.
+- **`fix(pr)`:** a consulta de estado do PR roda no repositório do projeto, e não dentro da worktree. No Windows, o cwd do `gh` travava a pasta enquanto Concluir ou Descartar a removia, e isso aparecia como falha intermitente da suíte.
+- **Smoke:** o `smoke:central` foi commitado vermelho em `test(sessao-meta)`, falhando no passo "renomear a sessão". Além dos passos da spec, ele renomeia a sessão externa.
+- **Ramos revelados pela cobertura** seguiram a regra 7: ação de hooks desconhecida, transcript ilegível no `stale`, cancelar a inscrição, getter do receptor, canal só de ida.

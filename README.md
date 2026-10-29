@@ -194,8 +194,9 @@ Compila o alvo, copia com `scp` para `<path>.new`, troca o binário, reinicia co
 ## Histórico
 
 O daemon de cada host indexa os transcripts do Claude Code desse host, inclusive as sessões que
-nasceram fora do Flightdeck (terminal, VS Code, Desktop). O `~/.claude` é só lido: nada é
-editado, apagado ou copiado entre hosts.
+nasceram fora do Flightdeck (terminal, VS Code, Desktop). Os transcripts são só lidos: nada é
+editado, apagado ou copiado entre hosts. A única escrita em `~/.claude` é a dos hooks, por
+comando explícito (veja "Central de sessões").
 
 ### O que é indexado
 
@@ -330,6 +331,88 @@ interrompida ou fica ociosa.
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
 
+## Central de sessões
+
+A tela **Sessões** é a principal do app: todas as sessões do Claude Code dos hosts online, num lugar só, agrupadas por projeto e ordenadas pela última atividade.
+
+### O que aparece na lista
+
+| Origem | De onde vem |
+| --- | --- |
+| Flightdeck | sessões que o próprio daemon roda (`session.list`) |
+| terminal | sessões abertas fora do Flightdeck, no terminal ou no terminal integrado do VS Code, vistas pelos hooks do Claude Code (`external.list`) |
+| histórico | transcripts indexados de `~/.claude/projects` (`history.list`) |
+
+Uma sessão aparece uma vez só. A ordem de preferência é gerenciada, depois terminal, depois histórico.
+
+- **Grupo:** é o projeto. Vale o `remote.origin.url` do repositório da pasta da sessão, normalizado, de modo que SSH e HTTPS do mesmo repositório caem juntos. Worktrees contam como o repositório principal. Sem remoto, vale a raiz do repositório; sem repositório, a pasta.
+- **Linha:** mostra host, origem, estado (rodando, precisa de você, ociosa, encerrada), o selo "controlável" e a hora.
+- **Filtros:** texto, host, origem, estado, "Só fixadas" e "Mostrar arquivadas". As arquivadas ficam fora por padrão.
+- **Menu:** renomear, fixar (as fixadas vão para o topo do grupo), arquivar e "Copiar comando" (`flightdeckd claude --resume <id>`).
+- **Abrir uma sessão:**
+  - gerenciada: abre a conversa;
+  - do terminal ainda viva: abre o transcript ao vivo, com os pedidos de permissão dela e, se for controlável, a caixa de mensagem;
+  - encerrada ou do histórico: abre o leitor, com "Continuar no Flightdeck".
+
+### Hooks do Claude Code
+
+As sessões abertas fora do Flightdeck só aparecem com os hooks instalados no host. Há dois caminhos, e ambos são opt-in: na tela do host, o botão **Instalar hooks**, que pede confirmação, ou no terminal do host:
+
+```sh
+flightdeckd hooks install     # grava as entradas do Flightdeck em ~/.claude/settings.json
+flightdeckd hooks status      # instalados, ausentes ou desatualizados
+flightdeckd hooks uninstall   # remove só as entradas do Flightdeck
+```
+
+- **O que é escrito:** é a única escrita do Flightdeck em `~/.claude`.
+  - O `install` mescla as entradas com o que já existe, sem tocar nas outras chaves nem nos hooks de terceiros.
+  - Antes, guarda uma cópia em `settings.json.flightdeck-backup`.
+  - Reinstalar substitui as entradas antigas em vez de duplicar.
+- **Entradas:**
+  - `SessionStart` é um hook de comando: `<flightdeckd> hook session-start --url <receptor> --token <token>`.
+  - `UserPromptSubmit`, `Notification`, `PermissionRequest`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `Stop` e `SessionEnd` são hooks http para o receptor do daemon, em `http://127.0.0.1:<hooks.port>`, com o cabeçalho de token.
+- **Config:** `hooks.port` vale 7421 por padrão. `hooks.token` é gerado no primeiro install. `hooks.permissionTimeoutS` vale 600. `hooks.staleAfterS` vale 900; uma sessão sem eventos e sem mudança no transcript por esse tempo passa a encerrada.
+- **WSL:** o daemon do WSL instala no `~/.claude` do WSL e precisa de um `hooks.port` diferente do Windows.
+- **Instalar pelo CLI com o daemon rodando:** o daemon passa a receber os hooks depois de reiniciado. Instalando pelo app, o receptor sobe na hora.
+- **O Claude nunca espera pelo Flightdeck:**
+  - Com o daemon fora do ar, os hooks falham rápido e a sessão segue.
+  - Sem nenhum app aberto, o pedido de permissão é respondido na hora, vazio, e o diálogo do terminal decide.
+
+### Aprovar pelo app
+
+Com o app aberto, o `PermissionRequest` de uma sessão do terminal espera a resposta e aparece em **Precisa de você**, com notificação do sistema. Enquanto isso, o diálogo do terminal continua ativo. Vale o que vier primeiro:
+
+- **Aprovar ou Negar no app:** libera ou nega a ferramenta.
+- **Responder no terminal:** o pedido sai da fila no próximo evento da sessão.
+
+Nada é aprovado sem um clique.
+
+### `flightdeckd claude` (alias `fd`)
+
+```sh
+flightdeckd claude [argumentos do claude]
+# sugestão: alias fd="flightdeckd claude"
+```
+
+Abre o `claude` de verdade no mesmo terminal, com os mesmos argumentos e o mesmo código de saída, e acrescenta o canal do Flightdeck. O canal é um servidor MCP (`flightdeckd channel`) que deixa o app mandar mensagens para essa sessão como se você as digitasse.
+
+- **Argumentos:** o wrapper acrescenta `--mcp-config` (arquivo temporário) e `--dangerously-load-development-channels server:flightdeck` e define `FLIGHTDECK_LAUNCH_ID`. O `.mcp.json` do projeto não é tocado.
+- **Config:** como os argumentos são todos do `claude`, a config do daemon vem de `FLIGHTDECK_CONFIG`, ou do caminho padrão.
+- **Sem `claude` no PATH** (nem em `claude.executablePath`): avisa e sai.
+- **Sem o daemon:** avisa e abre o `claude` assim mesmo, sem canal.
+- **Research preview:** o canal é um recurso de pré-visualização do Claude Code. Cada abertura mostra um aviso de canal de desenvolvimento, que precisa ser aceito.
+
+| | `claude` puro | `flightdeckd claude` |
+| --- | --- | --- |
+| aparece na lista, com estado ao vivo | sim (com hooks) | sim (com hooks) |
+| aprovar e negar pelo app | sim | sim |
+| transcript ao vivo | sim | sim |
+| mandar mensagem pelo app | não | sim (selo "controlável") |
+
+### Por que a extensão do VS Code fica de fora
+
+A extensão do Claude Code para VS Code e o app Claude Desktop rodam o `claude` em modo SDK, que ignora o canal de desenvolvimento. Na prova de conceito, o canal subiu como MCP dentro da extensão, mas nenhuma mensagem chegou. O terminal integrado do VS Code é um terminal comum: lá, `flightdeckd claude` funciona.
+
 ## Desenvolvimento
 
 ```sh
@@ -341,7 +424,8 @@ bun run smoke          # ponta a ponta com o daemon real e --runtime fake; impri
 bun run smoke:multi    # dois daemons, um cliente, permissão via session.summary; SMOKE MULTI OK
 bun run smoke:history  # indexa, busca, retoma e vê history.changed; SMOKE HISTORY OK
 bun run smoke:board    # card com gh falso e remoto local até o PR mesclado; SMOKE BOARD OK
-bun run tdd:audit -- --since fase-3   # todo feat/fix tem um commit test do mesmo escopo antes
+bun run smoke:central  # hooks, flightdeckd claude com o claude falso, aprovação e canal; SMOKE CENTRAL OK
+bun run tdd:audit -- --since fase-4   # todo feat/fix tem um commit test do mesmo escopo antes
 bun run build:daemon   # binários em dist/
 bun run build:desktop  # frontend Vite em apps/desktop/dist
 cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml   # requer apps/desktop/dist
