@@ -7,7 +7,7 @@ import { ClaudeSdkRuntime, type QueryHandle } from "../src/runtime/claude-sdk-ru
 import { startServer } from "../src/server.ts";
 import type { CheckRunner } from "../src/workflows/check-runner.ts";
 import { git } from "./board-helpers.ts";
-import { poll, record } from "./helpers.ts";
+import { record } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
@@ -18,6 +18,17 @@ const TOKEN = "arena-token-0123456789abcdef0";
 const WF =
   "steps:\n  - id: work\n    agent: { prompt: '[commit] faça' }\n  - id: verify\n    check: bun test\n";
 const slash = (path: string) => path.replaceAll("\\", "/");
+
+/** Polls an async check until it gives something; `null` on timeout, so the `expect` fails. */
+async function until<T>(check: () => Promise<T | null>, timeoutMs: number): Promise<T | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) return null;
+    await Bun.sleep(20);
+  }
+}
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -54,7 +65,7 @@ async function setup(board: Partial<BoardOptions> = {}) {
     );
   /** Polls the comparison until every variant has finished its work. */
   const finished = () =>
-    poll(async () => {
+    until(async () => {
       const arena = await ctx.board.arena(card.id);
       return settled(arena) ? arena : null;
     }, 8000);
@@ -168,7 +179,7 @@ describe("arena", () => {
     const arena = await board.startArena(arenaCard.id, { variants: [{}, {}], workflow: "wf" });
     costs.set(arena.variants[0]?.id ?? "", 0.5);
     costs.set(arena.variants[1]?.id ?? "", 1.25);
-    const done = await poll(async () => {
+    const done = await until(async () => {
       const current = await board.arena(arenaCard.id);
       return current.variants.every(
         (v) => v.checks.length > 0 && v.checks.every((c) => c.status !== "running"),
@@ -232,7 +243,7 @@ describe("arena", () => {
     expect(chosen.sessionId).not.toBeNull();
     expect(existsSync(doneB?.worktreePath ?? "")).toBe(true);
     expect(existsSync(doneA?.worktreePath ?? "?")).toBe(false);
-    expect(git(repo, "branch", "--list", "fd/arena-*").replace(/[* ]/g, "")).toBe("fd/arena-b");
+    expect(git(repo, "branch", "--list", "fd/arena-*").replace(/[*+ ]/g, "")).toBe("fd/arena-b");
     expect(await code(() => board.getCard(a?.id ?? ""))).toBe("not_found");
     expect(await code(() => board.getCard(b?.id ?? ""))).toBe("not_found");
     expect((await board.arena(arenaCard.id)).variants).toEqual([]);
@@ -240,6 +251,31 @@ describe("arena", () => {
     // From here it is a card like any other.
     const again = board.getCard(arenaCard.id) as Card;
     expect(again.runs.length).toBeGreaterThan(0);
+  });
+
+  test("uma arena que não consegue começar não deixa nada: as variantes já criadas saem e o card fica como estava", async () => {
+    const { board, arenaCard, repo } = await setup();
+    const code = await board
+      .startArena(arenaCard.id, { variants: [{}, {}], workflow: "nao-existe" })
+      .then(
+        () => "ok",
+        (error: { code?: string }) => error.code,
+      );
+    // The workflow is not on the base branch: the first variant cannot start.
+    expect(code).toBe("not_found");
+    expect(board.getCard(arenaCard.id)).toMatchObject({ arenaVariants: 0, column: "backlog" });
+    expect(git(repo, "branch", "--list", "fd/arena-*")).toBe("");
+  });
+
+  test("descartar o card da arena leva as variantes: worktrees e branches saem", async () => {
+    const { board, arenaCard, finished, repo } = await setup();
+    await board.startArena(arenaCard.id, { variants: [{}, {}] });
+    const done = await finished();
+    const paths = (done?.variants ?? []).map((v) => v.worktreePath ?? "");
+    expect(paths.every((p) => existsSync(p))).toBe(true);
+    await board.discardCard(arenaCard.id, true);
+    expect(paths.some((p) => existsSync(p))).toBe(false);
+    expect(git(repo, "branch", "--list", "fd/arena-*")).toBe("");
   });
 
   test("quem acompanha o board vê só o card da arena, nunca as variantes", async () => {
