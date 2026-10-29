@@ -3,10 +3,12 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { loadConfig } from "../src/config.ts";
+import { acquireLock } from "../src/lock.ts";
 import { type CliDeps, parseArgs, runCli, startDaemon } from "../src/main.ts";
+import { startServer } from "../src/server.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../src/service.ts";
 import { osServiceContext } from "../src/service-os.ts";
-import { tempDir } from "./helpers.ts";
+import { newManager, tempDir } from "./helpers.ts";
 
 const stops: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -181,7 +183,9 @@ describe("servico", () => {
     const linuxCli = cli(linux);
     await runCli(["service", "uninstall"], linuxCli.deps);
     expect(linuxCli.exits).toEqual([0]);
+    // The query comes first: a service whose command is not readable has no daemon to stop.
     expect(linux.calls).toEqual([
+      ["systemctl", "--user", "cat", "flightdeckd"],
       ["systemctl", "--user", "disable", "--now", "flightdeckd"],
       ["systemctl", "--user", "daemon-reload"],
     ]);
@@ -195,6 +199,7 @@ describe("servico", () => {
     const winStatus = cli(win);
     await runCli(["service", "status"], winStatus.deps);
     expect(win.calls).toEqual([
+      ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd", "/XML"],
       ["schtasks", "/Delete", "/TN", "Flightdeck\\flightdeckd", "/F"],
       ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd"],
       ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd", "/XML"],
@@ -207,6 +212,65 @@ describe("servico", () => {
     expect(dry.calls).toEqual([]);
     expect(dry.removed).toEqual([]);
     expect(dryCli.out.join("\n")).toContain("systemctl --user disable --now flightdeckd");
+  });
+
+  test("uninstall para o daemon do serviço (daemon.shutdown, depois a tarefa) antes de removê-la", async () => {
+    const token = "u".repeat(32);
+    const dataDir = join(tempDir(), "data");
+    // The daemon of the service: its lock and its server, which frees the lock on shutdown.
+    const lock = acquireLock(dataDir);
+    const { manager } = newManager();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token,
+      allowedRoots: [],
+      onShutdown: () => lock?.release(),
+    });
+    stops.push(() => server.stop());
+    const file = configFile({ token, dataDir, bind: "127.0.0.1", port: server.port });
+    const exe = "C:\\Users\\dev\\bin\\flightdeckd.exe";
+    const xml = windowsTaskXml([exe], { user: "PC\\dev", systemRoot: "C:\\Windows", config: file });
+    const os = fakeOs("win32");
+    const { deps, out, exits } = cli(os);
+    deps.serviceContext = (dryRun) => ({
+      ...os.ctx(dryRun),
+      exec: async (cmd) => {
+        os.calls.push(cmd);
+        return { code: 0, stdout: cmd.includes("/XML") ? xml : "" };
+      },
+    });
+    await runCli(["service", "uninstall"], deps);
+    expect(exits).toEqual([0]);
+    expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Delete"]);
+    expect(acquireLock(dataDir)).not.toBeNull();
+    expect(out.join("\n")).toContain("serviço removido");
+  });
+
+  test("uninstall com o daemon que não para: remove o serviço e avisa, sem matar outro programa", async () => {
+    const dataDir = join(tempDir(), "data");
+    // Held by this test process, which is not the service's executable.
+    const lock = acquireLock(dataDir);
+    stops.push(async () => lock?.release());
+    const file = configFile({ token: "u".repeat(32), dataDir, port: 1 });
+    const os = fakeOs("linux");
+    const { deps, out, exits } = cli(os);
+    deps.serviceStopTimeoutMs = 50;
+    deps.serviceContext = (dryRun) => ({
+      ...os.ctx(dryRun),
+      exec: async (cmd) => {
+        os.calls.push(cmd);
+        const unit = systemdUnit(["/home/dev/.local/bin/flightdeckd"], file);
+        return { code: 0, stdout: cmd.includes("cat") ? unit : "" };
+      },
+    });
+    await runCli(["service", "uninstall"], deps);
+    expect(exits).toEqual([0]);
+    expect(os.calls.map((c) => c[2])).toEqual(["cat", "stop", "disable", "daemon-reload"]);
+    expect(out.join("\n")).toContain("o daemon do serviço continua rodando");
+    expect(acquireLock(dataDir)).toBeNull();
   });
 
   test("com --config, a tarefa e a unit rodam start --config <caminho absoluto>; sem, só start", async () => {
