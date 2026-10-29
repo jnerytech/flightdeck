@@ -1,5 +1,6 @@
 // Loaded before every test file (bunfig `preload`): no test may run the real `claude`, `gh` or
-// `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`.
+// `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`, nor reach
+// the Tauri shell (the terminal opened by "Abrir no terminal").
 import { afterAll } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,6 +11,7 @@ import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
+import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
 const clis = installCliGuard();
@@ -23,6 +25,7 @@ process.env.FLIGHTDECK_SERVICE_GUARD = serviceGuard;
 const checks = installCheckGuard();
 // No test reaches the internet: only 127.0.0.1 and localhost (phase 9).
 const network = installNetworkGuard();
+const tauri = installTauriGuard();
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the
 // current one. Make sure that lookup now lands on the sentinel, or stop before any test runs.
@@ -44,6 +47,8 @@ afterAll(() => {
   assertHomeGuard(home);
   assertBinaryUntouched(binary);
   assertNoNetwork(network);
+  // The executor of "Abrir no terminal" is injected; the real one goes through the Tauri bridge.
+  assertNoTauriCalls(tauri);
   if (existsSync(serviceGuard)) {
     throw new Error(`controlador de serviço real chamado: ${readFileSync(serviceGuard, "utf8")}`);
   }

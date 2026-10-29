@@ -42,6 +42,8 @@ export function daemon(
     retention?: { eventsDays: number; externalSessionsDays: number };
     /** The host's plan quota (phase 7); pass one on a manual clock to drive it. */
     quota?: Quota;
+    /** What `host.info` says for "Abrir no terminal" (phase 8). */
+    terminal?: { flightdeckdPath: string | null; wslDistro: string | null };
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -105,6 +107,7 @@ export function daemon(
       usage,
       central,
       ...(maintenance ? { maintenance } : {}),
+      ...(options.terminal ? { terminal: options.terminal } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
