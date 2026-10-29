@@ -3,6 +3,7 @@ import type {
   EventEnvelope,
   PermissionMode,
   SessionEvent,
+  SessionEventOf,
   SessionStatus,
   SessionSummary,
 } from "@flightdeck/protocol";
@@ -25,6 +26,8 @@ export interface SessionManagerOptions {
   baseEnv: Record<string, string | undefined>;
   /** Plan quota readings of any session go to the host's quota (phase 7). */
   onQuota?: (readings: QuotaReading[]) => void;
+  /** Every turn of a managed session, before it is stored (phase 7's usage). */
+  onTurn?: (sessionId: string, cwd: string, turn: SessionEventOf<"turn.result">) => void;
 }
 
 export type EventListener = (envelope: EventEnvelope) => void;
@@ -323,6 +326,8 @@ export class SessionManager {
         this.opts.onQuota?.(event.windows);
         return;
       case "turn.result": {
+        // Before the event is stored: the usage reads the session's previous total.
+        this.opts.onTurn?.(sessionId, this.get(sessionId).cwd, event);
         this.emit(sessionId, event);
         const next = live.queue.shift();
         if (next !== undefined) this.deliver(sessionId, next);

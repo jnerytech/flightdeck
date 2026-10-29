@@ -185,4 +185,16 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (project_id, name, hash)
   );
   `,
+  // Phase 7 (track B): usage of the managed sessions by day (host time zone) and project.
+  `
+  CREATE TABLE usage_daily (
+    day           TEXT NOT NULL,
+    project_key   TEXT NOT NULL,
+    cost_usd      REAL NOT NULL,
+    input_tokens  INTEGER NOT NULL,
+    output_tokens INTEGER NOT NULL,
+    turns         INTEGER NOT NULL,
+    PRIMARY KEY (day, project_key)
+  );
+  `,
 ];

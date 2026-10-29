@@ -14,6 +14,7 @@ import {
   installHooks,
   uninstallHooks,
 } from "./central/hooks-install.ts";
+import { ProjectKeys } from "./central/project-key.ts";
 import { runClaude } from "./central/wrapper.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
@@ -33,6 +34,7 @@ import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { Quota } from "./quota/quota.ts";
+import { UsageLedger } from "./quota/usage.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -304,6 +306,8 @@ export async function startDaemon(
   const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
+  const keys = new ProjectKeys(config.hostName);
+  const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.keyFor(cwd) });
   const manager = new SessionManager({
     store,
     runtime,
@@ -312,6 +316,7 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     baseEnv: env,
     onQuota: (readings) => quota.record(readings),
+    onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
   });
   const history = new HistoryIndexer({
     db: store.db,
@@ -355,6 +360,7 @@ export async function startDaemon(
     history,
     board,
     quota,
+    usage,
     central,
     maintenance,
     hostName: config.hostName,

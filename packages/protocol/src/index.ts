@@ -470,6 +470,26 @@ export const QuotaState = z.object({
 });
 export type QuotaState = z.infer<typeof QuotaState>;
 
+/** Usage of the host's managed sessions in one day (host time zone) and project. */
+export const UsageRow = z.object({
+  /** `YYYY-MM-DD`. */
+  day: z.string(),
+  projectKey: z.string(),
+  /** What the SDK reports (an estimate on a subscription). */
+  costUsd: z.number(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  turns: z.number().int(),
+});
+export type UsageRow = z.infer<typeof UsageRow>;
+
+export const UsageSummary = z.object({
+  days: z.number().int(),
+  /** Newest day first, then by project. */
+  rows: z.array(UsageRow),
+});
+export type UsageSummary = z.infer<typeof UsageSummary>;
+
 const ProjectFields = {
   name: z.string().min(1).optional(),
   baseBranch: z.string().min(1).optional(),
@@ -616,6 +636,7 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -820,6 +841,7 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "usage.summary": UsageSummary;
 }
 
 // ---------------------------------------------------------------------------

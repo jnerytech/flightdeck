@@ -30,6 +30,7 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { Quota } from "./quota/quota.ts";
+import type { UsageLedger } from "./quota/usage.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -64,6 +65,8 @@ export interface ServerOptions {
   features?: string[];
   /** The host's plan quota behind `quota.*` (phase 7). */
   quota?: Quota;
+  /** Usage by day and project behind `usage.summary` (phase 7). */
+  usage?: UsageLedger;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -219,6 +222,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function maintenance(): Maintenance {
     if (!opts.maintenance) throw new FlightdeckError("invalid_state", "manutenção indisponível");
     return opts.maintenance;
+  }
+
+  function usage(): UsageLedger {
+    if (!opts.usage) throw new FlightdeckError("invalid_state", "uso desativado");
+    return opts.usage;
   }
 
   function quota(): Quota {
@@ -461,6 +469,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
+      case "usage.summary":
+        return ok(command.type, usage().summary(command.payload.days));
       case "quota.get":
         return ok(command.type, quota().state());
       case "quota.watch": {
