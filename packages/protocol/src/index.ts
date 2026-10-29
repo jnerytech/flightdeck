@@ -616,6 +616,38 @@ export const ChangesResult = z.object({
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
 
+// Phase 14: terminals embedded in the host (a real shell behind a PTY).
+export const TerminalInfo = z.object({
+  terminalId: z.string(),
+  cwd: z.string(),
+  /** The program only, never its arguments. */
+  command: z.string(),
+  startedAt: z.string(),
+  /** Connections following it now. */
+  attached: z.number().int().nonnegative(),
+  cols: z.number().int(),
+  rows: z.number().int(),
+  /** `null` while the process runs. */
+  exitCode: z.number().int().nullable(),
+  /** The launch of a "Claude aqui" terminal, which the session in the central also carries. */
+  launchId: z.string().nullable(),
+});
+export type TerminalInfo = z.infer<typeof TerminalInfo>;
+
+export const TerminalAttachResult = z.object({
+  terminalId: z.string(),
+  /** base64 of the output the terminal kept (at most 2 MB): where to continue from. */
+  scrollback: z.string(),
+  cols: z.number().int(),
+  rows: z.number().int(),
+  exitCode: z.number().int().nullable(),
+});
+export type TerminalAttachResult = z.infer<typeof TerminalAttachResult>;
+
+const TerminalId = z.string().min(1);
+const TerminalCols = z.number().int().min(1).max(500);
+const TerminalRows = z.number().int().min(1).max(300);
+
 const ReviewSide = z.enum(["new", "old"]);
 
 /** A file a session wrote (Write, Edit, MultiEdit, NotebookEdit; Bash does not count). */
@@ -1378,6 +1410,28 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ window: z.string().min(1), hours: z.number().int().min(1).max(720) }),
   ),
   cmd("changes.get", z.object({ target: ReviewTarget })),
+  cmd(
+    "terminal.open",
+    z.object({
+      cwd: z.string().min(1),
+      /** An argv, never run through a shell; the host's default shell when absent. */
+      command: z.array(z.string().min(1)).min(1).max(64).optional(),
+      cols: TerminalCols,
+      rows: TerminalRows,
+    }),
+  ),
+  /** Keyboard input, UTF-8. */
+  cmd("terminal.write", z.object({ terminalId: TerminalId, data: z.string().max(262_144) })),
+  cmd(
+    "terminal.resize",
+    z.object({ terminalId: TerminalId, cols: TerminalCols, rows: TerminalRows }),
+  ),
+  /** Returns the scrollback and starts `terminal.data` frames for this connection. */
+  cmd("terminal.attach", z.object({ terminalId: TerminalId })),
+  cmd("terminal.detach", z.object({ terminalId: TerminalId })),
+  /** `kill` ends the process; without it the terminal is only detached (and a dead one removed). */
+  cmd("terminal.close", z.object({ terminalId: TerminalId, kill: z.boolean() })),
+  cmd("terminal.list", z.object({}).strict()),
   cmd("pr.comments", CardIdPayload),
   /** The data of `flightdeckd statusline`: quota windows, today's cost and the session's. */
   cmd("statusline.get", z.object({ claudeSessionId: z.string().optional() })),
@@ -1748,6 +1802,13 @@ export interface CommandResults {
   "quota.history": QuotaHistory;
   "changes.get": ChangesResult;
   "pr.comments": { comments: PrComment[] };
+  "terminal.open": TerminalInfo;
+  "terminal.write": undefined;
+  "terminal.resize": undefined;
+  "terminal.attach": TerminalAttachResult;
+  "terminal.detach": undefined;
+  "terminal.close": undefined;
+  "terminal.list": { terminals: TerminalInfo[] };
   "statusline.get": {
     windows: Array<{ window: string; utilization: number | null }>;
     todayUsd: number;
@@ -1898,6 +1959,32 @@ export const ChangesUpdated = z.object({
 });
 export type ChangesUpdated = z.infer<typeof ChangesUpdated>;
 
+/** Output of an attached terminal: base64, in frames of at most 16 KB every 16 ms. */
+export const TerminalData = z.object({
+  type: z.literal("terminal.data"),
+  terminalId: z.string(),
+  data: z.string(),
+});
+export type TerminalData = z.infer<typeof TerminalData>;
+
+/** The process of a terminal ended (after the last of its output). */
+export const TerminalExited = z.object({
+  type: z.literal("terminal.exited"),
+  terminalId: z.string(),
+  exitCode: z.number().int(),
+});
+export type TerminalExited = z.infer<typeof TerminalExited>;
+
+/**
+ * This connection could not follow the terminal's output and lost it: attach again, which
+ * returns the scrollback to continue from. Nothing more arrives until it does.
+ */
+export const TerminalResync = z.object({
+  type: z.literal("terminal.resync"),
+  terminalId: z.string(),
+});
+export type TerminalResync = z.infer<typeof TerminalResync>;
+
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -1911,6 +1998,9 @@ export const ServerMessage = z.union([
   QuotaUpdated,
   BudgetUpdated,
   ChangesUpdated,
+  TerminalData,
+  TerminalExited,
+  TerminalResync,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 

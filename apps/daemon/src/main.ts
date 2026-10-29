@@ -72,6 +72,8 @@ import {
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
+import { bunPty, type PtyFactory } from "./terminal/pty.ts";
+import { TerminalManager } from "./terminal/terminal-manager.ts";
 import {
   requestShutdown,
   runUpdate,
@@ -327,6 +329,8 @@ export async function startDaemon(
     wslCommand?: (item: WslItem) => string[];
     /** What `daemon.shutdown` triggers; the command is refused without it. */
     onShutdown?: () => void;
+    /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
+    pty?: PtyFactory;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
@@ -475,6 +479,15 @@ export async function startDaemon(
         ctx: osServiceContext(false),
       })
     : undefined;
+  // Real shells behind a PTY, kept across connections; none outlives the daemon.
+  const terminals = new TerminalManager({
+    pty: options.pty ?? bunPty(),
+    allowedRoots: config.allowedRoots,
+    max: config.terminal.max,
+    idleMinutes: config.terminal.idleMinutes,
+    allowApiKey: config.allowApiKey,
+    log: (message) => logger.log(message),
+  });
   const central = new Central({
     risk,
     autoApprove,
@@ -503,6 +516,7 @@ export async function startDaemon(
     changes,
     review: new ReviewComments({ db: store.db, changes, manager, board, central }),
     sessionFiles: new SessionFiles({ db: store.db }),
+    terminals,
     files: new ReviewFiles({
       changes,
       dataDir: config.dataDir,
@@ -560,6 +574,7 @@ export async function startDaemon(
         automations.stop();
         await automations.idle();
         board.stop();
+        terminals.stop();
         await central.stop();
         maintenance.stop();
         updates?.stop();

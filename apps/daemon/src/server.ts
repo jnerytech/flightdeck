@@ -25,6 +25,9 @@ import {
   type SessionLine,
   type SessionStatus,
   type SessionSummary,
+  type TerminalData,
+  type TerminalExited,
+  type TerminalResync,
   WS_PATH,
 } from "@flightdeck/protocol";
 import type { ServerWebSocket } from "bun";
@@ -58,6 +61,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 
@@ -129,6 +133,8 @@ export interface ServerOptions {
   files?: ReviewFiles;
   /** Which session wrote which file, behind `files.sessions` and `session.files` (phase 11). */
   sessionFiles?: SessionFiles;
+  /** The host's terminals behind `terminal.*` (phase 14). */
+  terminals?: TerminalManager;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -164,6 +170,8 @@ interface Connection {
   unwatchBudgets?: () => void;
   /** Stops each `changes.watch`, by target. */
   changeWatchers: Map<string, () => void>;
+  /** This connection's end of the terminals it is attached to. */
+  terminalSink?: TerminalSink;
   lastRttMs?: number;
 }
 
@@ -187,7 +195,10 @@ type Outgoing =
   | RunUpdated
   | QuotaUpdated
   | BudgetUpdated
-  | ChangesUpdated;
+  | ChangesUpdated
+  | TerminalData
+  | TerminalExited
+  | TerminalResync;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -442,6 +453,20 @@ export function startServer(opts: ServerOptions): RunningServer {
   function sessionFiles(): SessionFiles {
     if (!opts.sessionFiles) throw new FlightdeckError("invalid_state", "sem arquivos das sessões");
     return opts.sessionFiles;
+  }
+
+  function terminals(): TerminalManager {
+    if (!opts.terminals) throw new FlightdeckError("invalid_state", "terminal indisponível");
+    return opts.terminals;
+  }
+
+  /** The connection's end of its terminals: frames out, and how full its socket is. */
+  function terminalSink(ws: Socket): TerminalSink {
+    ws.data.terminalSink ??= {
+      send: (frame) => send(ws, frame),
+      backlog: () => ws.getBufferedAmount(),
+    };
+    return ws.data.terminalSink;
   }
 
   function board(): Board {
@@ -877,6 +902,29 @@ export function startServer(opts: ServerOptions): RunningServer {
           }),
         );
       }
+      case "terminal.open": {
+        const { cwd, command: argv, cols, rows } = command.payload;
+        return ok(
+          command.type,
+          terminals().open({ cwd, ...(argv ? { command: argv } : {}), cols, rows }),
+        );
+      }
+      case "terminal.write":
+        terminals().write(command.payload.terminalId, command.payload.data);
+        return ok(command.type);
+      case "terminal.resize":
+        terminals().resize(command.payload.terminalId, command.payload.cols, command.payload.rows);
+        return ok(command.type);
+      case "terminal.attach":
+        return ok(command.type, terminals().attach(command.payload.terminalId, terminalSink(ws)));
+      case "terminal.detach":
+        terminals().detach(command.payload.terminalId, terminalSink(ws));
+        return ok(command.type);
+      case "terminal.close":
+        terminals().close(command.payload.terminalId, command.payload.kill, terminalSink(ws));
+        return ok(command.type);
+      case "terminal.list":
+        return ok(command.type, { terminals: terminals().list() });
       case "pr.comments":
         return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
       case "pr.comments.send": {
@@ -1049,6 +1097,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchRuns?.();
         ws.data.unwatchQuota?.();
         ws.data.unwatchBudgets?.();
+        if (ws.data.terminalSink) opts.terminals?.detachAll(ws.data.terminalSink);
         for (const stop of ws.data.changeWatchers.values()) stop();
         ws.data.changeWatchers.clear();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();

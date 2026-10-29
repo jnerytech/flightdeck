@@ -112,6 +112,15 @@ export const Config = z.object({
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
     .default(() => ({ pauseAt: 0.9 })),
+  /** Terminals embedded in the host (phase 14). */
+  terminal: z
+    .object({
+      /** Live terminals at most. */
+      max: z.number().int().min(1).default(10),
+      /** Minutes without anyone attached before a terminal is ended; the timer stays under 2³¹ ms. */
+      idleMinutes: z.number().int().min(1).max(35_000).default(120),
+    })
+    .default(() => ({ max: 10, idleMinutes: 120 })),
   /** API prices (phase 8): overrides of the default table, model by model. */
   pricing: PricingConfig.default(() => ({ models: {}, fastMultiplier: {} })),
   /** Phase 13: how often the issue search of `issue_label` automations runs (5 min when absent). */
