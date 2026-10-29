@@ -261,3 +261,56 @@ export function resolveServiceClaude(ctx: ServiceContext): {
   }
   return { path };
 }
+
+/** XML text back to what it encodes (the entities `windowsTaskXml` and Task Scheduler write). */
+const xmlUnescape = (text: string) =>
+  text
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll("&amp;", "&");
+
+/** The first argument of a systemd command line, unquoted (`"a b" c` gives `a b`). */
+function firstArgument(line: string): string {
+  const quoted = /^"((?:[^"\\]|\\.)*)"/.exec(line);
+  if (quoted) return (quoted[1] as string).replace(/\\(["\\])/g, "$1");
+  return line.split(/\s/, 1)[0] as string;
+}
+
+/**
+ * The executable the installed service runs, read back from the OS (`systemctl --user cat` or
+ * the task XML), or null without a service.
+ */
+export async function serviceCommandPath(ctx: ServiceContext): Promise<string | null> {
+  if (requireSupported(ctx) === "linux") {
+    const { code, stdout } = await ctx.exec(["systemctl", "--user", "cat", "flightdeckd"]);
+    const line = /^ExecStart=(.*)$/m.exec(stdout)?.[1];
+    return code === 0 && line ? firstArgument(line.trim()) : null;
+  }
+  const { code, stdout } = await ctx.exec([...windowsTaskQueryArgs(), "/XML"]);
+  const args = /<Arguments>([\s\S]*?)<\/Arguments>/.exec(stdout)?.[1];
+  if (code !== 0 || !args) return null;
+  // Our task runs `conhost.exe --headless "<daemon>" ... start`; Windows command lines have no
+  // escapes, so the quoted executable ends at the next quote.
+  const line = xmlUnescape(args).replace(/^--headless\s+/, "");
+  return /^"([^"]*)"/.exec(line)?.[1] ?? (line.split(/\s/, 1)[0] as string);
+}
+
+/** Stops the service; one that is not running is not an error (the caller waits for the lock). */
+export async function stopService(ctx: ServiceContext): Promise<void> {
+  await ctx.exec(
+    requireSupported(ctx) === "linux"
+      ? ["systemctl", "--user", "stop", "flightdeckd"]
+      : ["schtasks", "/End", "/TN", TASK_NAME],
+  );
+}
+
+export async function startService(ctx: ServiceContext): Promise<void> {
+  await run(
+    ctx,
+    requireSupported(ctx) === "linux"
+      ? ["systemctl", "--user", "start", "flightdeckd"]
+      : ["schtasks", "/Run", "/TN", TASK_NAME],
+  );
+}

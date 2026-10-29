@@ -46,6 +46,7 @@ import {
 import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
+import { runUpdate, stableBinPath, waitHealthy } from "./update.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status";
@@ -64,7 +65,8 @@ export interface CliArgs {
     | "version"
     | "db"
     | "backup"
-    | "restore";
+    | "restore"
+    | "update";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -82,6 +84,9 @@ export interface CliArgs {
   out?: string;
   /** `restore <file>`. */
   file?: string;
+  /** `update --from <binary> [--allow-downgrade]`. */
+  from?: string;
+  allowDowngrade?: true;
   /** `claude [args]`: everything after `claude` belongs to the real claude. */
   claudeArgs?: string[];
 }
@@ -92,6 +97,7 @@ const USAGE = [
   "     flightdeckd db prune [--dry-run] [--config <arquivo>]",
   "     flightdeckd backup [--out <arquivo>] [--config <arquivo>]",
   "     flightdeckd restore <arquivo> [--config <arquivo>]   (com o daemon parado)",
+  "     flightdeckd update --from <binário> [--allow-downgrade] [--config <arquivo>]",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
@@ -133,6 +139,15 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         if (next && !next.startsWith("--")) args.file = argv[++i];
         break;
       }
+      case "update":
+        args.command = "update";
+        break;
+      case "--from":
+        args.from = value();
+        break;
+      case "--allow-downgrade":
+        args.allowDowngrade = true;
+        break;
       case "--version":
         args.command = "version";
         break;
@@ -524,6 +539,31 @@ function runBackup(args: CliArgs, deps: CliDeps): void {
   }
 }
 
+/** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
+async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
+  if (!args.from) throw new Error("update precisa de --from <binário novo>");
+  const config = loadConfig(configPath(args));
+  const ctx = (deps.serviceContext ?? osServiceContext)(false);
+  const health = new URL("/health", daemonUrl(config).replace(/^ws:/, "http:")).href;
+  return runUpdate(
+    { from: args.from, allowDowngrade: args.allowDowngrade === true },
+    {
+      config,
+      ctx,
+      currentVersion: DAEMON_VERSION,
+      settingsPath: claudeSettingsPath(),
+      stableBin: stableBinPath(ctx.home, ctx.platform),
+      healthy: () => waitHealthy(health, 30_000, 250),
+      daemonRunning: () => {
+        const lock = acquireLock(config.dataDir);
+        lock?.release();
+        return lock === null;
+      },
+      log: deps.log,
+    },
+  );
+}
+
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
 function runRestore(args: CliArgs, deps: CliDeps): void {
   if (!args.file) throw new Error("restore precisa do arquivo: flightdeckd restore <arquivo>");
@@ -590,6 +630,10 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     if (args.command === "restore") {
       runRestore(args, deps);
       deps.exit(0);
+      return null;
+    }
+    if (args.command === "update") {
+      deps.exit(await runUpdateCommand(args, deps));
       return null;
     }
     if (args.command === "db") {
