@@ -394,4 +394,36 @@ describe("navegacao", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(d.board.getCard(card.id).title).toBe("Ajuste");
   });
+
+  test("o nome dado a uma sessão do terminal chega pelo external.updated, sem carregar a lista de sessões", async () => {
+    const d = makeDaemon(cleanups);
+    d.central.hooksInstall(true);
+    const hook = (event: string, body: object) =>
+      fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        body: JSON.stringify({
+          session_id: "ext-n",
+          hook_event_name: event,
+          cwd: d.project,
+          ...body,
+        }),
+      }).catch(() => undefined);
+    await hook("SessionStart", {});
+    d.central.meta.set("ext-n", { name: "Corrigir o import" });
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    // On Settings from the start, the hub is never mounted: the name cannot come from its list.
+    store.router.push({ name: "settings" });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    void hook("PermissionRequest", { tool_name: "Bash", tool_input: { command: "ls" } });
+    await settle(
+      () => screen.queryByRole("button", { name: "alfa · Corrigir o import: Bash" }) !== null,
+    );
+    expect(store.router.current.name).toBe("settings");
+    expect(screen.queryByRole("button", { name: "alfa · Corrigir o import: Bash" })).not.toBeNull();
+  });
 });
