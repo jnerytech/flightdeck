@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
-import { basename, dirname } from "node:path";
+import { dirname } from "node:path";
 import { userHome } from "./config.ts";
 import { spawnExec } from "./exec.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
@@ -11,9 +11,9 @@ const CONTROLLERS = new Set(["systemctl", "schtasks", "loginctl"]);
 
 /** True for a command that would talk to the real service manager. */
 export function isServiceController(cmd: string[]): boolean {
-  const name = basename(cmd[0] ?? "")
-    .toLowerCase()
-    .replace(/.exe$/, "");
+  // Both separators on every OS: posix basename keeps "C:\…\schtasks.exe" whole.
+  const last = (cmd[0] ?? "").split(/[\\/]/).pop() as string;
+  const name = last.toLowerCase().replace(/\.exe$/, "");
   return CONTROLLERS.has(name);
 }
 

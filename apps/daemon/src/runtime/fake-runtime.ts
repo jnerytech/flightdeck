@@ -106,7 +106,8 @@ class FakeRun implements AgentRun {
   private async turn(text: string): Promise<void> {
     const abort = new AbortController();
     this.turnAbort = abort;
-    const started = Date.now();
+    // Monotonic: a wall clock that syncs backwards (WSL, containers) would give a negative duration.
+    const started = performance.now();
     if (!this.initialized) {
       this.initialized = true;
       this.emit({
@@ -258,7 +259,7 @@ class FakeRun implements AgentRun {
       type: "turn.result",
       subtype,
       isError,
-      durationMs: Date.now() - started,
+      durationMs: Math.round(performance.now() - started),
       costUsd: this.costs.get(this.claudeSessionId) ?? 0,
       usage: { inputTokens: 10, outputTokens: 20 },
     });
