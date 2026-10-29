@@ -793,7 +793,11 @@ O que a spec da Fase 7 (operação do host) deixou aberto, ou o que mudou na imp
 
 - **`--config` no serviço:** com `service install --config <arquivo>`, a tarefa e a unit rodam `start --config <caminho absoluto>`, com as mesmas regras de aspas de antes. Sem `--config`, continuam com `start` e a config padrão. Antes, o `--config` só servia para gravar o `claude.executablePath`.
 - **`service status`:** mostra também a config que o serviço usa, ou "padrão".
-- **Parar o serviço no Windows:** ainda não há um `service stop`. O README manda usar `service uninstall` (que para o daemon) e instalar de novo.
+- **`service stop` e `service start`:**
+  - o `stop` usa a mesma `stopServiceDaemon` do `update` e do `uninstall`, e deixa a tarefa ou a unit instalada;
+  - o `start` roda `schtasks /Run` ou `systemctl --user start` e espera o `/health` da config do serviço, por até 30 s;
+  - os dois saem com 1 sem serviço instalado, com um daemon que não parou ou sem resposta no `/health`;
+  - a restauração no README é `service stop`, `restore` e `service start`.
 - **`bun run deploy`:** continua trocando o `path` do `deploy.hosts.json`. O README pede para apontá-lo para `~/.flightdeck/bin/flightdeckd` depois do primeiro `update`.
 
 ## Travas novas

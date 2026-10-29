@@ -110,14 +110,20 @@ O daemon sobrevive a reboot e a SSH fechado rodando como serviço do próprio us
 flightdeckd service install --dry-run   # mostra a unit ou a tarefa, não altera nada
 flightdeckd service install [--config <arquivo>]
 flightdeckd service status              # estado e a config que o serviço usa
+flightdeckd service stop                # para o daemon; o serviço continua instalado
+flightdeckd service start               # sobe o serviço e espera o /health
 flightdeckd service uninstall           # para o daemon e remove o serviço
 ```
 
 - **Config:** com `--config`, o serviço roda `start --config <caminho absoluto>`; sem, usa
   `~/.flightdeck/config.json`.
-- **Parar:** o `uninstall` pede `daemon.shutdown` ao daemon antes de remover a tarefa ou a unit.
+- **Parar:** o `stop` e o `uninstall` seguem a mesma sequência:
+  - pedem `daemon.shutdown` ao daemon;
+  - param a tarefa ou a unit;
+  - esperam o lock do `dataDir`, encerrando o processo só se ele for o executável do serviço.
+
   No Windows, `schtasks /End` sozinho não basta: ele encerra o `conhost.exe` e deixa o daemon
-  rodando.
+  rodando. O `start` sobe o serviço e espera o `/health` da config dele por até 30 s.
 
 - **Linux (WSL, Orange Pi, VPS):** grava `~/.config/systemd/user/flightdeckd.service`
   (`Restart=always`, `RestartSec=5`) e roda `systemctl --user enable --now flightdeckd`. Sem
@@ -270,9 +276,8 @@ binário novo.
   (horário UTC), mantendo os últimos `keep`. Funciona com o daemon rodando.
 - **À mão:** `flightdeckd backup [--out <arquivo>]`, ou **Fazer backup agora** na seção
   Manutenção. Os arquivos ficam só para o dono (0600 fora do Windows).
-- **Restaurar:** com o daemon parado, rode `flightdeckd restore <arquivo>` e suba de novo. No
-  Linux, pare com `systemctl --user stop flightdeckd`. No Windows, `schtasks /End` não para o
-  daemon: use `flightdeckd service uninstall` e, depois do restore, `service install` de novo. O comando recusa com o daemon rodando, confere a integridade e se o backup não
+- **Restaurar:** `flightdeckd service stop`, depois `flightdeckd restore <arquivo>`, depois
+  `flightdeckd service start`. Sem serviço, pare o daemon à mão antes do `restore`. O comando recusa com o daemon rodando, confere a integridade e se o backup não
   veio de uma versão mais nova, e guarda o banco atual em `flightdeck.db.before-restore`. As
   migrações que faltarem rodam no boot seguinte.
 - **A `config.json` fica fora do backup**, porque tem os tokens: guarde uma cópia à parte.
