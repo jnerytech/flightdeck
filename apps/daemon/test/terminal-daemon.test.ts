@@ -262,7 +262,7 @@ describe("terminal-daemon", () => {
     expect(
       Buffer.from(again.scrollback, "base64")
         .toString()
-        .endsWith("x".repeat(10) + "FIM\r\n"),
+        .endsWith(`${"x".repeat(10)}FIM\r\n`),
     ).toBe(true);
     slow.frames.length = 0;
     pty?.emit("depois\r\n");
