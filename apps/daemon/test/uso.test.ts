@@ -122,8 +122,8 @@ describe("uso", () => {
   test("o dia padrão é o do fuso do host, em AAAA-MM-DD", () => {
     const at = new Date(2026, 9, 1, 23, 59);
     expect(localDay(at.getTime())).toBe("2026-10-01");
-    // Phase 7 is migration index 5; later phases append after it.
-    expect(MIGRATIONS[5]).toContain("CREATE TABLE usage_daily");
+    // Found by content: parallel tracks renumber their migrations on rebase.
+    expect(MIGRATIONS.some((m) => m.includes("CREATE TABLE usage_daily"))).toBe(true);
   });
 
   test("usage.summary pelo protocolo, e o daemon liga as sessões ao uso", async () => {
