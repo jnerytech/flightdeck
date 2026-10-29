@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { CHECK_LABELS, PR_LABELS } from "../lib/board.ts";
 import { emptySession } from "../lib/session-state.ts";
+import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DiffView } from "./DiffView.tsx";
 import { when } from "./GlobalSearch.tsx";
@@ -33,6 +34,8 @@ export function CardDetail(props: {
   const [diff, setDiff] = useState<CardDiff | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const sessionId = card?.sessionId ?? null;
+  const host = props.state.hosts.find((h) => h.id === hostId);
+  const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
   const runId = card?.workflowRunId ?? null;
   const run = runId ? props.state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
@@ -266,11 +269,18 @@ export function CardDetail(props: {
             session={stepSession}
             actions={store}
             focusRequestId={null}
+            alwaysAllow={alwaysAllow}
           />
         </div>
       ) : session && sessionId ? (
         <div role="log" aria-label="Conversa do card">
-          <SessionView title={card.title} session={session} actions={store} focusRequestId={null} />
+          <SessionView
+            title={card.title}
+            session={session}
+            actions={store}
+            focusRequestId={null}
+            alwaysAllow={alwaysAllow}
+          />
         </div>
       ) : (
         <p className="muted">Sem sessão ainda.</p>

@@ -16,6 +16,8 @@ const RESOLUTION_LABELS = {
 /** Inline approval card: tool, formatted input (or diff for edits), allow / deny with reason. */
 export function ApprovalCard(props: {
   item: PermissionItem;
+  /** The host announces `rules`: "permitir nesta sessão" and "sempre neste projeto". */
+  alwaysAllow: boolean;
   onRespond(
     requestId: string,
     decision: "allow" | "deny",
@@ -79,12 +81,14 @@ export function ApprovalCard(props: {
           >
             Negar
           </button>
-          <AlwaysAllow
-            toolName={item.toolName}
-            input={item.input}
-            suggestions={item.suggestions}
-            onAllow={(updates) => props.onRespond(item.requestId, "allow", undefined, updates)}
-          />
+          {props.alwaysAllow && (
+            <AlwaysAllow
+              toolName={item.toolName}
+              input={item.input}
+              suggestions={item.suggestions}
+              onAllow={(updates) => props.onRespond(item.requestId, "allow", undefined, updates)}
+            />
+          )}
         </div>
       )}
     </div>

@@ -19,7 +19,12 @@ export interface SessionActions {
   ): Promise<void>;
 }
 
-function TimelineItem(props: { item: ChatItem; session: SessionState; actions: SessionActions }) {
+function TimelineItem(props: {
+  item: ChatItem;
+  session: SessionState;
+  actions: SessionActions;
+  alwaysAllow: boolean;
+}) {
   const { item, session, actions } = props;
   switch (item.kind) {
     case "user":
@@ -43,7 +48,13 @@ function TimelineItem(props: { item: ChatItem; session: SessionState; actions: S
         </div>
       );
     case "permission":
-      return <ApprovalCard item={item} onRespond={(...args) => void actions.respond(...args)} />;
+      return (
+        <ApprovalCard
+          item={item}
+          alwaysAllow={props.alwaysAllow}
+          onRespond={(...args) => void actions.respond(...args)}
+        />
+      );
     case "result": {
       const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
       return (
@@ -63,6 +74,8 @@ export function SessionView(props: {
   session: SessionState;
   actions: SessionActions;
   focusRequestId?: string | null;
+  /** The host announces `rules` (phase 7): approvals offer "permitir sempre". */
+  alwaysAllow?: boolean;
 }) {
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
@@ -114,7 +127,13 @@ export function SessionView(props: {
           <p className="muted">conversa removida pela retenção</p>
         )}
         {session.items.map((item) => (
-          <TimelineItem key={item.seq} item={item} session={session} actions={actions} />
+          <TimelineItem
+            key={item.seq}
+            item={item}
+            session={session}
+            actions={actions}
+            alwaysAllow={props.alwaysAllow === true}
+          />
         ))}
         {session.streaming && (
           <div className="msg msg-assistant streaming">{session.streaming}</div>

@@ -4,6 +4,7 @@ import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
+import { hasFeature } from "../lib/version.ts";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
 import { ExternalView } from "./ExternalView.tsx";
@@ -202,6 +203,7 @@ export function App({ store }: { store: AppStore }) {
         store={store}
         hostId={projectsHostView.id}
         hostName={projectsHostView.name}
+        rules={hasFeature(projectsHostView.hostInfo?.features, "rules", false)}
         onOpenBoard={(projectId) => setBoardOf({ hostId: projectsHostView.id, projectId })}
         onOpenWorkflows={({ id, name }) =>
           setWorkflowsOf({ hostId: projectsHostView.id, projectId: id, name })
@@ -268,6 +270,7 @@ export function App({ store }: { store: AppStore }) {
         session={session}
         actions={store}
         focusRequestId={focusRequest}
+        alwaysAllow={hasFeature(selectedHost.hostInfo?.features, "rules", false)}
       />
     );
   } else if (selectedHost) {

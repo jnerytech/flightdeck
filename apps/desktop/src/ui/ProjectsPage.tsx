@@ -37,6 +37,8 @@ export function ProjectsPage(props: {
   hostName: string;
   onOpenBoard(projectId: string): void;
   onOpenWorkflows(project: { id: string; name: string }): void;
+  /** The host announces `rules`: the project's Regras section. */
+  rules: boolean;
 }) {
   const { store, hostId } = props;
   const [list, setList] = useState<ProjectListResult | null>(null);
@@ -142,7 +144,9 @@ export function ProjectsPage(props: {
           {editing ? "Salvar projeto" : "Cadastrar projeto"}
         </button>
       </div>
-      {editing && <RulesSection key={editing} store={store} hostId={hostId} projectId={editing} />}
+      {editing && props.rules && (
+        <RulesSection key={editing} store={store} hostId={hostId} projectId={editing} />
+      )}
       <h3>Limite do host</h3>
       <div className="row">
         <input

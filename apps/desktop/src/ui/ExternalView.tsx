@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
+import { hasFeature } from "../lib/version.ts";
 import { AlwaysAllow } from "./AlwaysAllow.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
@@ -33,6 +34,8 @@ export function ExternalView(props: {
     .filter(([k, request]) => k.startsWith(`${hostId}/`) && request.claudeSessionId === id)
     .map(([, request]) => request);
   const [text, setText] = useState("");
+  const host = state.hosts.find((h) => h.id === hostId);
+  const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
   // Stable, or the reader would reload on every render.
   const target = useMemo(() => ({ hostId, claudeSessionId: id }), [hostId, id]);
 
@@ -65,12 +68,16 @@ export function ExternalView(props: {
           >
             {`Negar ${request.toolName}`}
           </button>
-          <AlwaysAllow
-            toolName={request.toolName}
-            input={request.input}
-            suggestions={request.suggestions}
-            onAllow={(updates) => void store.respondTo(hostId, request.requestId, "allow", updates)}
-          />
+          {alwaysAllow && (
+            <AlwaysAllow
+              toolName={request.toolName}
+              input={request.input}
+              suggestions={request.suggestions}
+              onAllow={(updates) =>
+                void store.respondTo(hostId, request.requestId, "allow", updates)
+              }
+            />
+          )}
         </div>
       ))}
       {session?.controllable && (
