@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    # bash everywhere (Git Bash on Windows): stops at the first failing command of a step, which
+    # pwsh does not do for native programs.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Claude Code runs command hooks through Git Bash on Windows; `bash` on PATH may be the WSL
+      # launcher in System32, so the hook tests get Git Bash explicitly, as Claude Code does.
+      - name: Git Bash para os hooks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bash = "C:\Program Files\Git\bin\bash.exe"
+          & $bash -c 'echo "git bash: $BASH_VERSION"'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Testes (cobertura 100%)
+        run: bun run test
+
+      - name: Smokes
+        run: |
+          bun run smoke
+          bun run smoke:multi
+          bun run smoke:history
+          bun run smoke:board
+          bun run smoke:central
+          bun run smoke:workflow
+          bun run smoke:ops
+
+      # The Tauri context needs the built frontend (frontendDist) to exist.
+      - name: cargo check do app
+        if: runner.os == 'Windows'
+        run: |
+          bun run build:desktop
+          cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml

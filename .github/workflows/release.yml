@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag a publicar (v<x.y.z>), já empurrada"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: release (windows)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      # Inputs go through the environment, never straight into a script.
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Conferir a tag com a versão do produto
+        run: bun run release:version "$TAG"
+
+      - name: Daemons (Windows, Linux x64 e arm64)
+        run: bun run build:daemon
+
+      - name: Instaladores do app (NSIS e MSI)
+        working-directory: apps/desktop
+        run: bun run tauri build --bundles nsis,msi
+
+      - name: Juntar os arquivos e o SHA256SUMS
+        run: bun run release:assets release
+
+      - name: Publicar a release
+        run: gh release create "$TAG" --title "$TAG" --generate-notes release/*
