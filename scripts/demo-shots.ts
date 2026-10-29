@@ -24,12 +24,25 @@ const ALFA = "demo-alfa";
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
-    { name: "precisa-de-voce", route: { name: "session", host: ALFA, id: ids.waitingSession } },
+    {
+      // The sidebar's queue with the Bash request open: its command, folder, age and buttons.
+      name: "precisa-de-voce",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /Testes do backend: Bash/ }).click();
+        await page.waitForTimeout(500);
+      },
+    },
+    { name: "sessao-aprovacao", route: { name: "session", host: ALFA, id: ids.waitingSession } },
     { name: "sessao", route: { name: "session", host: ALFA, id: ids.idleSession } },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
     {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
+    },
+    {
+      name: "card-gate",
+      route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.gateCard },
     },
     { name: "historico", route: { name: "history", host: ALFA } },
     {

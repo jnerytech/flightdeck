@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
+import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -29,7 +30,19 @@ export interface DemoIds {
   project: string;
   emptyProject: string;
   diffCard: string;
+  /** A card whose workflow run waits at an open gate. */
+  gateCard: string;
 }
+
+/** A workflow with a plan, a gate that asks to review it and the implementation. */
+const WORKFLOW = `steps:
+  - id: plan
+    agent: { prompt: "Escreva o plano da mudança" }
+  - id: approve
+    gate: { message: "Aprovar o plano?", show: "{{steps.plan.output}}" }
+  - id: implement
+    agent: { prompt: "Implemente: {{steps.approve.output}}" }
+`;
 
 export interface DemoSeed {
   hosts: DemoHost[];
@@ -225,7 +238,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "app.ts": "export const versao = 1;\n",
   });
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });
+  commitWorkflow(web, "feature", WORKFLOW);
   const project = await client.call<{ id: string }>("project.add", { path: web });
+  await client.call("workflow.trust", {
+    projectId: project.id,
+    name: "feature",
+    hash: sha256(WORKFLOW),
+  });
   const empty = await client.call<{ id: string }>("project.add", {
     path: join(alfa.projects, "vazio"),
   });
@@ -235,6 +254,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await card(LONG_TITLE, "Planeje a migração.");
   const diff = await card("Somar no total do carrinho", "Corrija a soma. [commit]");
   await client.call("card.start", { cardId: diff.id });
+  // The run stops at its gate: an open request in "Precisa de você", with its steps on the card.
+  const gated = await card("Revisar o fluxo de login", "Faça o plano e peça aprovação.");
+  await client.call("card.start", { cardId: gated.id, workflow: "feature" });
   const review = await card("Revisar mensagens de erro", "Padronize os textos.");
   await client.call("card.move", { cardId: review.id, column: "review" });
   const waiting = await card("Aguardando o time de design", "Espere o layout.");
@@ -285,6 +307,19 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     await hook(id, "SessionStart", { source: "startup" });
     await hook(id, "UserPromptSubmit", { prompt });
   }
+  // Names, so the list tells the terminal sessions apart.
+  await client.call("session.meta.set", {
+    claudeSessionId: "ext-rodando",
+    name: "Servidor de desenvolvimento",
+  });
+  await client.call("session.meta.set", {
+    claudeSessionId: "ext-edit",
+    name: "Corrigir o import quebrado",
+  });
+  await client.call("session.meta.set", {
+    claudeSessionId: "ext-mcp",
+    name: "Issue do bug de login",
+  });
   void hook("ext-edit", "PermissionRequest", {
     tool_name: "Edit",
     tool_input: { file_path: join(web, "app.ts"), old_string: "1", new_string: "2" },
@@ -344,6 +379,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       project: project.id,
       emptyProject: empty.id,
       diffCard: diff.id,
+      gateCard: gated.id,
     },
     stop: async () => {
       old.stop(true);

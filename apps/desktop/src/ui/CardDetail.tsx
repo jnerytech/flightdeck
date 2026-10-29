@@ -91,6 +91,12 @@ export function CardDetail(props: {
     void store.hostCommand(hostId, "card.diff", { cardId }).then(setDiff);
   }, [store, hostId, cardId, tab]);
 
+  // A route straight to a card (a link, a notification) has not loaded its board: ask the host.
+  const missing = card === undefined;
+  useEffect(() => {
+    if (missing) void store.hostCommand(hostId, "card.get", { cardId });
+  }, [store, hostId, cardId, missing]);
+
   if (!card) return <p className="muted welcome">Card não encontrado.</p>;
 
   const askDiscard = async () => {
