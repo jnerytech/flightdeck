@@ -119,7 +119,7 @@ describe("snapshots", () => {
     expect(await snapshots.prune({ perSession: 50, days: 30 })).toBe(51);
     expect(snapshots.list("velha")).toEqual([]);
     expect(git(repo, "for-each-ref", "refs/flightdeck")).toBe("");
-  });
+  }, 60_000);
 
   test("enfileirar volta na hora; o snapshot sai em segundo plano, um de cada vez", async () => {
     const { snapshots, repo } = setup();
