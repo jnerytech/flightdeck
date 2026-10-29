@@ -1,9 +1,11 @@
 import type { Database } from "bun:sqlite";
 import { basename } from "node:path";
+import type { SessionEvent } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
+import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { runSetup } from "./setup.ts";
 import type {
@@ -96,9 +98,18 @@ const script = (value: string | null | undefined) => value?.trim() || null;
  */
 export class Board {
   private readonly db: Database;
+  /** Card id → stops following the session of its active run. */
+  private readonly follows = new Map<string, () => void>();
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
+    // Back from a restart: keep moving cards whose run still has a session.
+    const active = this.db
+      .query<RunRow, []>("SELECT * FROM card_runs WHERE session_id <> '' AND ended_at IS NULL")
+      .all();
+    for (const run of active) {
+      this.follow(run.card_id, run.session_id, opts.manager.get(run.session_id).lastSeq);
+    }
   }
 
   listProjects(): Project[] {
@@ -233,6 +244,8 @@ export class Board {
         "INSERT INTO card_runs (card_id, session_id, queued_at, started_at) VALUES (?, '', ?, ?)",
       )
       .run(id, at, at);
+    this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
+    this.place(id, { type: "started" });
     void this.launch(id).catch((error: unknown) =>
       this.failRun(id, error instanceof Error ? error.message : String(error)),
     );
@@ -241,11 +254,8 @@ export class Board {
 
   /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
   private failRun(id: string, notice: string): void {
-    this.db
-      .query(
-        "UPDATE cards SET board_column = 'waiting', column_locked = 0, notice = ?, updated_at = ? WHERE id = ?",
-      )
-      .run(notice, now(), id);
+    this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+    this.place(id, { type: "failed" });
     this.db
       .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND session_id = ''")
       .run(now(), id);
@@ -272,7 +282,59 @@ export class Board {
     this.db
       .query("UPDATE card_runs SET session_id = ? WHERE card_id = ? AND session_id = ''")
       .run(sessionId, id);
+    this.follow(id, sessionId, 0);
   }
 
-  stop(): void {}
+  /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
+  moveCard(id: string, column: BoardColumn, position?: number): Card {
+    const card = this.getCard(id);
+    const { last } = this.db
+      .query<{ last: number | null }, [string, string, string]>(
+        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = ? AND id <> ?",
+      )
+      .get(card.projectId, column, id) ?? { last: null };
+    this.place(id, { type: "moved", column });
+    this.db
+      .query("UPDATE cards SET position = ? WHERE id = ?")
+      .run(position ?? (last ?? 0) + 1, id);
+    return this.getCard(id);
+  }
+
+  /** Interrupts the turn in progress; the interrupted turn sends the card to Esperando você. */
+  async stopCard(id: string): Promise<Card> {
+    const card = this.getCard(id);
+    if (card.sessionId) await this.opts.manager.interrupt(card.sessionId);
+    return this.getCard(id);
+  }
+
+  stop(): void {
+    for (const unfollow of this.follows.values()) unfollow();
+    this.follows.clear();
+  }
+
+  // -- internals ------------------------------------------------------------
+
+  private place(id: string, event: BoardEvent): void {
+    const card = this.getCard(id);
+    const next = nextColumn({ column: card.column, locked: card.columnLocked }, event);
+    this.db
+      .query("UPDATE cards SET board_column = ?, column_locked = ?, updated_at = ? WHERE id = ?")
+      .run(next.column, next.locked ? 1 : 0, now(), id);
+  }
+
+  /** Session events of the card's active run move the card (replay first, then live). */
+  private follow(cardId: string, sessionId: string, sinceSeq: number): void {
+    this.follows.get(cardId)?.();
+    const sub = this.opts.manager.subscribe(sessionId, sinceSeq, (envelope) =>
+      this.onSessionEvent(cardId, envelope.event),
+    );
+    this.follows.set(cardId, sub.unsubscribe);
+    for (const envelope of sub.replay) this.onSessionEvent(cardId, envelope.event);
+  }
+
+  private onSessionEvent(cardId: string, event: SessionEvent): void {
+    if (event.type === "session.status")
+      this.place(cardId, { type: "session", status: event.status });
+    if (event.type === "turn.result") this.place(cardId, { type: "turn", isError: event.isError });
+  }
 }
