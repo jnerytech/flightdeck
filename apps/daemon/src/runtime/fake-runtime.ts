@@ -1,6 +1,9 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { AssistantBlock } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
+import { whichOnPath } from "../which.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
 
 export interface FakeRuntimeOptions {
@@ -12,8 +15,8 @@ class Interrupted extends Error {}
 
 /**
  * Deterministic runtime with no network. Replies `Echo: <text>` in chunks, asks permission for
- * a `Write` tool when the message contains `[tool]`, fails the run on `[fail]` and honors
- * `interrupt`.
+ * a `Write` tool when the message contains `[tool]`, writes and commits a file in its cwd on
+ * `[commit]`, fails the run on `[fail]` and honors `interrupt`.
  */
 export class FakeRuntime implements AgentRuntime {
   /** Every `start` call, so tests can inspect what the session manager handed over. */
@@ -36,6 +39,7 @@ class FakeRun implements AgentRun {
   private processing = false;
   private initialized = false;
   private turnAbort: AbortController | null = null;
+  private commits = 0;
   private readonly claudeSessionId: string;
 
   constructor(
@@ -110,6 +114,7 @@ class FakeRun implements AgentRun {
       await this.sleep(abort.signal);
       if (text.includes("[fail]")) throw new Error("falha simulada do runtime");
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
+      if (text.includes("[commit]")) this.commit(text);
       const reply = `Echo: ${text}`;
       await this.stream(reply, abort.signal);
       this.emit({ type: "message.assistant", blocks: [{ type: "text", text: reply }] });
@@ -119,6 +124,23 @@ class FakeRun implements AgentRun {
       if (!this.events.isEnded) this.result("error_during_execution", true, started);
     } finally {
       this.turnAbort = null;
+    }
+  }
+
+  /** Writes `fake-<n>.txt` in the cwd and commits it, like an agent working on a card. */
+  private commit(text: string): void {
+    const file = `fake-${++this.commits}.txt`;
+    writeFileSync(join(this.opts.cwd, file), `${text}\n`);
+    for (const args of [
+      ["add", file],
+      ["commit", "-q", "-m", `fake: ${text}`],
+    ]) {
+      const git = Bun.spawnSync([whichOnPath("git") ?? "git", ...args], {
+        cwd: this.opts.cwd,
+        stdout: "ignore",
+        stderr: "pipe",
+      });
+      if (git.exitCode !== 0) throw new Error(`git ${args[0]}: ${git.stderr.toString().trim()}`);
     }
   }
 
