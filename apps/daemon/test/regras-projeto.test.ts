@@ -3,9 +3,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { ruleString } from "../src/board/project-rules.ts";
+import { excludeLocalSettings } from "../src/board/worktree.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { poll } from "./helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
@@ -226,6 +227,19 @@ describe("regras-projeto", () => {
       confirm: true,
     });
     expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
+  });
+
+  test("fora de um repositório git, garantir o exclude falha com a mensagem do git", () => {
+    const outside = tempDir();
+    const failed = (() => {
+      try {
+        excludeLocalSettings(outside);
+        return null;
+      } catch (error) {
+        return (error as { code?: string; message?: string }).code ?? "outro";
+      }
+    })();
+    expect(failed).toBe("invalid_state");
   });
 
   test("formato da regra: Ferramenta(conteúdo) ou só a ferramenta", () => {
