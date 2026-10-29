@@ -410,6 +410,14 @@ describe("update", () => {
     expect(await processPath(child.pid)).toBeNull();
   });
 
+  test("fora do Windows, o executável vem de /proc/<pid>/exe", async () => {
+    expect(await processPath(42, "linux", (path) => `/real${path}`)).toBe("/real/proc/42/exe");
+    const gone = () => {
+      throw new Error("ENOENT");
+    };
+    expect(await processPath(42, "linux", gone)).toBeNull();
+  });
+
   test("CLI sem --config: usa a config do serviço para o /health", async () => {
     const hits: string[] = [];
     const daemon = Bun.serve({
