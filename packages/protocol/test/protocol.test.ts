@@ -53,7 +53,8 @@ const validCommands: Record<CommandType, unknown> = {
   "card.create": { projectId: "p", title: "t", description: "d" },
   "card.update": { cardId: "c", title: "t" },
   "card.move": { cardId: "c", column: "review", position: 1.5 },
-  "card.start": { cardId: "c" },
+  "card.start": { cardId: "c", workflow: "feature", inputs: { task: "somar" } },
+  "card.get": { cardId: "c" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
   "card.message": { cardId: "c", text: "ajuste" },
@@ -67,6 +68,12 @@ const validCommands: Record<CommandType, unknown> = {
   "hooks.status": {},
   "hooks.install": { confirm: true },
   "hooks.uninstall": { confirm: true },
+  "workflow.list": { projectId: "p" },
+  "workflow.validate": { projectId: "p", name: "feature" },
+  "workflow.trust": { projectId: "p", name: "feature", hash: "abc" },
+  "run.get": { runId: "r" },
+  "run.watch": {},
+  "gate.respond": { runId: "r", stepId: "approve", attempt: 1, decision: "reject", note: "não" },
 };
 
 const validEvents: SessionEvent[] = [
