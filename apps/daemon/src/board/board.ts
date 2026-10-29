@@ -472,6 +472,7 @@ export class Board {
       if (run.session_id) await this.opts.manager.close(run.session_id);
       this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
     }
+    this.workflows.abandon(id, "execução encerrada com o card", keep);
     await this.workflows.closeSessions(id, keep);
   }
 
@@ -522,6 +523,7 @@ export class Board {
       this.db
         .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
         .run(now(), id);
+      this.workflows.abandon(id, "card parado antes de começar");
       this.place(id, { type: "moved", column: "backlog" });
     } else if (card.workflowRunId) {
       await this.workflows.interrupt(card.workflowRunId);

@@ -243,6 +243,30 @@ export class WorkflowEngine {
     this.end(runId, "failed", why);
   }
 
+  /**
+   * The board ended the card's run (stopped in the queue, completed, discarded): its workflow
+   * runs still going end too, except `keep` (the one launching). Open steps (a gate included)
+   * close as failed, and a running run gives its slot back.
+   */
+  abandon(cardId: string, why: string, keep = ""): void {
+    const runs = this.db
+      .query<RunRow, [string, string]>(
+        "SELECT * FROM workflow_runs WHERE card_id = ? AND id <> ? AND status IN ('queued', 'running', 'waiting')",
+      )
+      .all(cardId, keep);
+    for (const run of runs) {
+      this.db
+        .query(
+          "UPDATE step_runs SET status = 'failed', ended_at = ? WHERE run_id = ? AND ended_at IS NULL",
+        )
+        .run(now(), run.id);
+      for (const key of [...this.gates.keys()])
+        if (key.startsWith(`${run.id}/`)) this.gates.delete(key);
+      this.end(run.id, "failed", why);
+      if (run.status === "running") this.host.release(cardId);
+    }
+  }
+
   /** "Parar": interrupts the turns going on; the interrupted step fails the run. */
   async interrupt(runId: string): Promise<void> {
     const sessions = this.db
