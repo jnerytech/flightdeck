@@ -344,9 +344,9 @@ describe("aprovacao-ui", () => {
 
   test("o caminho longo é cortado no meio, inteiro no tooltip", () => {
     expect(shortPath("/repo")).toBe("/repo");
-    expect(shortPath("C:UsersdevAppDataLocalTemp\fd-demo-Xalfaprojects\flightdeck-web")).toBe(
-      "C:Users…projects\flightdeck-web",
-    );
+    expect(
+      shortPath("C:\\Users\\dev\\AppData\\Local\\Temp\\fd-demo-X\\alfa\\projects\\flightdeck-web"),
+    ).toBe("C:\\Users\\…\\projects\\flightdeck-web");
     expect(shortPath("/home/dev/work/clients/acme/projects/flightdeck-web")).toBe(
       "/home/dev/…/projects/flightdeck-web",
     );
@@ -357,7 +357,7 @@ describe("aprovacao-ui", () => {
   });
 
   test("o cartão mostra a pasta curta com o caminho inteiro no tooltip e em Copiar pasta", async () => {
-    const full = "C:UsersdevAppDataLocalTemp\fd-demo-Xalfaprojects\flightdeck-web";
+    const full = "C:\\Users\\dev\\AppData\\Local\\Temp\\fd-demo-X\\alfa\\projects\\flightdeck-web";
     const copied: string[] = [];
     render(
       <ApprovalCard
@@ -376,7 +376,7 @@ describe("aprovacao-ui", () => {
     );
     const card = group("Bash");
     const folder = card?.querySelector("[data-folder]");
-    expect(folder?.textContent).toBe("C:Users…projects\flightdeck-web");
+    expect(folder?.textContent).toBe("C:\\Users\\…\\projects\\flightdeck-web");
     expect(folder?.getAttribute("title")).toBe(full);
     await act(async () => {
       fireEvent.click(inGroup(card, "Copiar pasta") as HTMLElement);
