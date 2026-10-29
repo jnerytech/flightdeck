@@ -434,6 +434,31 @@ export class Board {
     return this.getCard(id);
   }
 
+  /**
+   * Throws the card away: sessions closed, worktree removed even with changes, local branch
+   * deleted, card off the board. Returns its last state, marked `discarded`.
+   */
+  async discardCard(id: string, confirm: boolean): Promise<Card> {
+    if (!confirm)
+      throw new FlightdeckError("invalid_state", "confirme o descarte com confirm: true");
+    const card = this.getCard(id);
+    await this.closeRuns(id);
+    this.follows.get(id)?.();
+    this.follows.delete(id);
+    const repo = this.getProject(card.projectId).path;
+    if (card.worktreePath) {
+      must(
+        await git(repo, "worktree", "remove", "--force", card.worktreePath),
+        "git worktree remove",
+      );
+    }
+    if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
+    const last = this.getCard(id);
+    this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
+    this.db.query("DELETE FROM cards WHERE id = ?").run(id);
+    return { ...last, worktreePath: null, branch: null, discarded: true };
+  }
+
   get prPollIntervalMs(): number {
     return this.opts.prPollIntervalMs ?? DEFAULT_PR_POLL_MS;
   }
