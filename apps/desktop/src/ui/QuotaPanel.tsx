@@ -1,5 +1,6 @@
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { quotaBars } from "../lib/quota.ts";
+import { hasFeature } from "../lib/version.ts";
 
 /** The plan quota of each online host: 5 hours and 7 days, red from the host's `pauseAt`. */
 export function QuotaPanel(props: { store: AppStore; state: AppState }) {
@@ -8,7 +9,10 @@ export function QuotaPanel(props: { store: AppStore; state: AppState }) {
   return (
     <div className="quota-panel">
       {state.hosts
-        .filter((host) => host.status === "online")
+        // Only hosts that announce the quota (phase 7 or later).
+        .filter(
+          (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "quota", false),
+        )
         .map((host) => {
           const quota = state.quota[host.id];
           const bars = quotaBars(quota, now, (iso) => store.formatTime(iso));

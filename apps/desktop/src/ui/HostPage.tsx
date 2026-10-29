@@ -59,7 +59,9 @@ export function HostPage(props: {
           </p>
         </div>
       )}
-      <UsagePanel store={store} hostId={host.id} online={host.status === "online"} />
+      {hasFeature(info?.features, "quota", false) && (
+        <UsagePanel store={store} hostId={host.id} online={host.status === "online"} />
+      )}
       {info ? (
         <ul className="host-info">
           <li>{`${info.os} · ${info.arch}`}</li>
