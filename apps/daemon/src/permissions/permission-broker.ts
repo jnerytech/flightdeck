@@ -68,6 +68,11 @@ export class PermissionBroker {
     });
   }
 
+  /** The session of an open request; "" when it is not open. */
+  sessionOf(requestId: string): string {
+    return this.open.get(requestId)?.sessionId ?? "";
+  }
+
   respond(payload: CommandPayload<"permission.respond">): void {
     const pending = this.open.get(payload.requestId);
     if (!pending) {

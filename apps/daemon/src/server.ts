@@ -470,6 +470,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
+      case "rules.list":
+        return ok(command.type, { rules: board().listRules(command.payload.projectId) });
+      case "rules.remove": {
+        const { projectId, rule, confirm } = command.payload;
+        return ok(command.type, { rules: board().removeRule(projectId, rule, confirm === true) });
+      }
       case "usage.summary":
         return ok(command.type, usage().summary(command.payload.days));
       case "quota.get":

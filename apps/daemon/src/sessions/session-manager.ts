@@ -2,6 +2,7 @@ import type {
   CommandPayload,
   EventEnvelope,
   PermissionMode,
+  PermissionUpdate,
   SessionEvent,
   SessionEventOf,
   SessionStatus,
@@ -52,6 +53,9 @@ export class SessionManager {
   private readonly live = new Map<string, LiveSession>();
   private readonly listeners = new Map<string, Set<EventListener>>();
   private readonly summaryListeners = new Set<EventListener>();
+  private readonly updateListeners = new Set<
+    (sessionId: string, updates: PermissionUpdate[]) => void
+  >();
 
   constructor(private readonly opts: SessionManagerOptions) {
     this.store = opts.store;
@@ -198,8 +202,17 @@ export class SessionManager {
     return Promise.resolve();
   }
 
+  /** Accepted `updatedPermissions` also go to these listeners (the board's project rules). */
+  onPermissionUpdates(listener: (sessionId: string, updates: PermissionUpdate[]) => void): void {
+    this.updateListeners.add(listener);
+  }
+
   respondPermission(payload: CommandPayload<"permission.respond">): void {
+    const sessionId = this.broker.sessionOf(payload.requestId);
     this.broker.respond(payload);
+    const updates = payload.decision === "allow" ? (payload.updatedPermissions ?? []) : [];
+    if (updates.length === 0) return;
+    for (const listener of this.updateListeners) listener(sessionId, updates);
   }
 
   /**

@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { type CommandResult, git } from "./command.ts";
+import { LOCAL_SETTINGS } from "./project-rules.ts";
 
 /** Line added to `.git/info/exclude`: worktrees live inside the repo but never show up in it.
  * Only the worktrees: phase 5 keeps versioned workflows in `.flightdeck/workflows`. */
@@ -38,15 +39,31 @@ async function freeSlug(repo: string, base: string): Promise<string> {
   }
 }
 
-/** Adds `.flightdeck/worktrees/` to the repo's local exclude file, once; `.gitignore` is never touched. */
-async function excludeFlightdeck(repo: string): Promise<void> {
+/**
+ * Adds a line to the repo's local exclude file, once; `.gitignore` is never touched. It is the
+ * common git dir, so it holds for every worktree of the repository too.
+ */
+async function exclude(repo: string, line: string): Promise<void> {
   const where = must(await git(repo, "rev-parse", "--git-path", "info/exclude"), "git rev-parse");
   const file = resolve(repo, where.stdout.trim());
   const current = existsSync(file) ? readFileSync(file, "utf8") : "";
-  if (current.split(/\r?\n/).includes(EXCLUDE_LINE)) return;
+  if (current.split(/\r?\n/).includes(line)) return;
   mkdirSync(dirname(file), { recursive: true });
   const separator = current === "" || current.endsWith("\n") ? "" : "\n";
-  writeFileSync(file, `${current}${separator}${EXCLUDE_LINE}\n`);
+  writeFileSync(file, `${current}${separator}${line}\n`);
+}
+
+/**
+ * A new worktree gets the root's settings.local.json (the project rules), unless the repository
+ * versions that file: then the worktree already has the committed one.
+ */
+async function copyLocalSettings(repo: string, worktree: string): Promise<void> {
+  const source = join(repo, LOCAL_SETTINGS);
+  if (!existsSync(source)) return;
+  const tracked = await git(repo, "ls-files", "--error-unmatch", LOCAL_SETTINGS);
+  if (tracked.code === 0) return;
+  mkdirSync(dirname(join(worktree, LOCAL_SETTINGS)), { recursive: true });
+  copyFileSync(source, join(worktree, LOCAL_SETTINGS));
 }
 
 /** `git worktree add <repo>/.flightdeck/worktrees/<slug> -b fd/<slug> <base>`. */
@@ -58,7 +75,10 @@ export async function addWorktree(
   const slug = await freeSlug(repo, slugify(title));
   const branch = `fd/${slug}`;
   const path = worktreeDir(repo, slug);
-  await excludeFlightdeck(repo);
+  await exclude(repo, EXCLUDE_LINE);
+  // The rules file never shows up in a card's diff nor in a commit of the agent.
+  await exclude(repo, LOCAL_SETTINGS);
   must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
+  await copyLocalSettings(repo, path);
   return { slug, branch, path };
 }

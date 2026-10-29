@@ -685,6 +685,12 @@ export const Command = z.discriminatedUnion("type", [
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
   cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
+  /** `permissions.allow` of the project's `.claude/settings.local.json`. */
+  cmd("rules.list", z.object({ projectId: z.string() })),
+  cmd(
+    "rules.remove",
+    z.object({ projectId: z.string(), rule: z.string().min(1), confirm: z.boolean().optional() }),
+  ),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -890,6 +896,8 @@ export interface CommandResults {
   "quota.get": QuotaState;
   "quota.watch": undefined;
   "usage.summary": UsageSummary;
+  "rules.list": { rules: string[] };
+  "rules.remove": { rules: string[] };
 }
 
 // ---------------------------------------------------------------------------

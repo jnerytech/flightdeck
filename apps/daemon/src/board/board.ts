@@ -3,12 +3,14 @@ import { basename } from "node:path";
 import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
+  type PermissionUpdate,
   type SessionEvent,
   type SessionStatus,
   type WorkflowInfo,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
+import { isProjectRule } from "../permissions/permission-updates.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
@@ -18,6 +20,7 @@ import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cardDiff } from "./diff.ts";
 import { prProvider } from "./pr.ts";
+import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -165,6 +168,9 @@ export class Board {
       clock: opts.clock ?? Date.now,
     });
     this.limit = opts.maxParallelRuns ?? 2;
+    opts.manager.onPermissionUpdates((sessionId, updates) =>
+      this.applyProjectRules(sessionId, updates),
+    );
     this.unwatchQuota = opts.quota?.watch(() => this.onQuota()) ?? (() => {});
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
     // Back from a restart: keep moving cards whose run still has a session.
@@ -575,6 +581,42 @@ export class Board {
       await this.opts.manager.interrupt(card.sessionId);
     }
     return this.changed(id);
+  }
+
+  /** The project's rules: `permissions.allow` of its root `.claude/settings.local.json`. */
+  listRules(projectId: string): string[] {
+    return readRules(this.getProject(projectId).path);
+  }
+
+  /** Removes one rule of the project, keeping the rest of the file; only with `confirm`. */
+  removeRule(projectId: string, rule: string, confirm: boolean): string[] {
+    if (!confirm) {
+      throw new FlightdeckError("invalid_state", "confirme a remoção da regra com confirm: true");
+    }
+    return removeRule(this.getProject(projectId).path, rule);
+  }
+
+  /**
+   * Project rules accepted in a card's session (its run or a workflow step) also go to the
+   * repository root's settings.local.json, which every new worktree of the project copies.
+   */
+  private applyProjectRules(sessionId: string, updates: PermissionUpdate[]): void {
+    const rules = updates.filter(isProjectRule).flatMap((update) => update.rules.map(ruleString));
+    const card = this.db
+      .query<{ card_id: string }, [string, string]>(
+        `SELECT card_id FROM card_runs WHERE session_id = ?1
+         UNION SELECT r.card_id FROM step_runs s JOIN workflow_runs r ON r.id = s.run_id
+         WHERE s.session_id = ?2 LIMIT 1`,
+      )
+      .get(sessionId, sessionId);
+    if (rules.length === 0 || !card) return;
+    try {
+      addRules(this.getProject(this.getCard(card.card_id).projectId).path, rules);
+    } catch (error) {
+      const notice = `regra não gravada no ${LOCAL_SETTINGS}: ${(error as Error).message}`;
+      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, card.card_id);
+      this.changed(card.card_id);
+    }
   }
 
   /** Workflows on the project's base branch, with validation and trust. */
