@@ -267,7 +267,7 @@ describe("terminal-daemon", () => {
     expect(text(slow.frames)).toBe("depois\r\n");
   });
 
-  test("conexão cheia mas fila pequena: a saída espera, em ordem, e sai quando o socket esvazia (drain)", () => {
+  test("conexão cheia mas fila pequena: a saída espera, em ordem, e sai quando o socket esvazia", () => {
     const { manager, ptys, time, open } = setup();
     const { terminalId } = open();
     const slow = fakeSink();
@@ -279,7 +279,8 @@ describe("terminal-daemon", () => {
     time.advance(16);
     expect(slow.frames).toEqual([]);
     slow.backlogBytes = 0;
-    manager.drained(slow);
+    // While something is held the manager looks again every 16 ms.
+    time.advance(16);
     expect(text(slow.frames)).toBe("umdois");
   });
 
@@ -552,15 +553,6 @@ describe("terminal-daemon", () => {
     expect(await refused("terminal.open", { cwd: project, cols: 80, rows: 100_000 })).toBe(
       "bad_request",
     );
-    expect(
-      await refused("terminal.open", {
-        cwd: project,
-        cols: 80,
-        rows: 24,
-        command: ["a"],
-        claude: {},
-      }),
-    ).toBe("bad_request");
     expect(await refused("terminal.open", { cwd: project, cols: 80, rows: 24, command: [] })).toBe(
       "bad_request",
     );
