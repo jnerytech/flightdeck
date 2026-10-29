@@ -152,8 +152,9 @@ describe("statusline", () => {
     ] as const) {
       const result = await statusline(["--config", config(tempDir(), port)], stdin);
       expect([result.out, result.codes]).toEqual([[""], [0]]);
-      // 300 ms of deadline, plus the room a loaded machine needs to notice it.
-      expect(result.ms).toBeLessThan(450);
+      // The criterion itself: out in under 300 ms. The command's own deadline is 250 ms, which
+      // leaves the 50 ms that starting the work and printing the line take.
+      expect(result.ms).toBeLessThan(300);
     }
   });
 
