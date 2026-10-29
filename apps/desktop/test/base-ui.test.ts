@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { styleViolations } from "../../../scripts/lib/style-lint.ts";
 import { cn } from "../src/lib/utils.ts";
@@ -104,5 +105,25 @@ describe("base-ui", () => {
       { line: 7, text: 'fill="#fff"', reason: "cor fora dos tokens" },
     ]);
     expect(styleViolations('<div className="flex gap-2" />')).toEqual([]);
+  });
+
+  test("os componentes do shadcn ficam como o CLI gerou: um editado à mão volta para a cobertura", () => {
+    const dir = resolve(DESKTOP, "src/components/ui");
+    const manifestPath = resolve(DESKTOP, "components.lock.json");
+    const manifest = existsSync(manifestPath)
+      ? (JSON.parse(readFileSync(manifestPath, "utf8")) as { files: Record<string, string> })
+      : { files: {} };
+    const actual = Object.fromEntries(
+      readdirSync(dir)
+        .sort()
+        .map((file) => [
+          file,
+          createHash("sha256")
+            .update(readFileSync(resolve(dir, file), "utf8").replaceAll("\r", ""))
+            .digest("hex"),
+        ]),
+    );
+    expect(Object.keys(actual).length).toBeGreaterThan(10);
+    expect(manifest.files).toEqual(actual);
   });
 });
