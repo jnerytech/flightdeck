@@ -2,6 +2,7 @@ import type { Project, ProjectListResult, PrProviderKind } from "@flightdeck/pro
 import { useCallback, useEffect, useState } from "react";
 import type { AppStore } from "../lib/app-store.ts";
 import { RulesSection } from "./RulesSection.tsx";
+import { TerminalButton } from "./TerminalButton.tsx";
 
 interface Draft {
   path: string;
@@ -100,6 +101,12 @@ export function ProjectsPage(props: {
               {`Abrir board de ${project.name}`}
             </button>
             <span className="muted">{`${project.path} · ${project.baseBranch}`}</span>
+            <TerminalButton
+              store={store}
+              hostId={hostId}
+              target={{ cwd: project.path, claudeSessionId: null }}
+              name={project.name}
+            />
             <button type="button" onClick={() => props.onOpenWorkflows(project)}>
               {`Workflows de ${project.name}`}
             </button>

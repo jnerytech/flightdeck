@@ -71,6 +71,12 @@ export function createWebPlatform(
     async showMainWindow() {
       win.focus?.();
     },
+    // A page cannot start programs: "Abrir no terminal" copies the command instead.
+    terminal: {
+      supported: false,
+      probe: async () => ({ windows: false, wt: false }),
+      open: noop,
+    },
     // A page cannot listen to keys while it is not focused.
     globalShortcut: { supported: false, register: noop, unregister: noop },
   };

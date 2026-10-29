@@ -1,5 +1,5 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { ApprovalCard } from "./ApprovalCard.tsx";
 import { Markdown } from "./Markdown.tsx";
@@ -76,6 +76,8 @@ export function SessionView(props: {
   focusRequestId?: string | null;
   /** The host announces `rules` (phase 7): approvals offer "permitir sempre". */
   alwaysAllow?: boolean;
+  /** "Abrir no terminal" (phase 8), when the view belongs to a session of its own. */
+  terminal?: ReactNode;
 }) {
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
@@ -106,6 +108,7 @@ export function SessionView(props: {
         <div className="session-controls">
           {session.status && <StatusBadge status={session.status} />}
           {session.statusReason && <span className="muted">{session.statusReason}</span>}
+          {props.terminal}
           {closed ? (
             <button type="button" onClick={() => void actions.resume()}>
               Retomar

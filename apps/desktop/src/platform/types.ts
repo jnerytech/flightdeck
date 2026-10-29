@@ -40,6 +40,16 @@ export interface Platform {
   copyText(text: string): Promise<void>;
   /** Brings the main window to the front (from the tray, minimized or behind others). */
   showMainWindow(): Promise<void>;
+  /**
+   * Terminals on this machine (phase 8), opened by the Rust shell with the arguments as a list.
+   * Tests inject a fake: the real one is never called from them.
+   */
+  terminal: {
+    supported: boolean;
+    /** Windows, and whether Windows Terminal (`wt.exe`) is installed. */
+    probe(): Promise<{ windows: boolean; wt: boolean }>;
+    open(program: string, args: string[]): Promise<void>;
+  };
   /** System-wide shortcut, active with the app in the background. */
   globalShortcut: {
     supported: boolean;

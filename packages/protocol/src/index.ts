@@ -769,6 +769,10 @@ export const HostInfoResult = z.object({
   features: z.array(z.string()).optional(),
   /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */
   update: UpdateStatus.optional(),
+  /** Phase 8: the stable `flightdeckd` (phase 7) when installed; "Abrir no terminal" runs it. */
+  flightdeckdPath: z.string().nullable().optional(),
+  /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
+  wslDistro: z.string().nullable().optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 

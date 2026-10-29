@@ -33,6 +33,12 @@ import { probeHost } from "./probe-host.ts";
 import { isHot, WINDOW_LABELS } from "./quota.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import {
+  type TerminalEnv,
+  type TerminalLaunch,
+  type TerminalTarget,
+  terminalLaunch,
+} from "./terminal.ts";
 import { trayStatus } from "./tray.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
@@ -86,6 +92,8 @@ export interface AppState {
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
   hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
+  /** This machine's terminals (phase 8), probed at init; `null` where none can be opened. */
+  terminalEnv: TerminalEnv | null;
 }
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
@@ -311,6 +319,7 @@ export class AppStore {
       externalRequests: {},
       meta: {},
       hub: {},
+      terminalEnv: null,
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -359,6 +368,10 @@ export class AppStore {
       });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
+    }
+    // Last: the saved hosts must not wait for it.
+    if (this.platform.terminal.supported) {
+      this.update({ terminalEnv: await this.platform.terminal.probe() });
     }
   }
 
@@ -656,6 +669,24 @@ export class AppStore {
   onHistoryChanged(listener: (hostId: string, change: HistoryChanged) => void): () => void {
     this.historyListeners.add(listener);
     return () => this.historyListeners.delete(listener);
+  }
+
+  /** How "Abrir no terminal" opens `target` on this host; `null` for an unknown host. */
+  terminalLaunch(hostId: string, target: TerminalTarget): TerminalLaunch | null {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return host ? terminalLaunch(host, target, this.state.terminalEnv) : null;
+  }
+
+  /** Opens a terminal on this machine, or copies the command for a host elsewhere. */
+  async openInTerminal(hostId: string, target: TerminalTarget): Promise<void> {
+    const launch = this.terminalLaunch(hostId, target);
+    if (launch?.kind === "copy") await this.copyText(launch.text);
+    if (launch?.kind !== "spawn") return;
+    try {
+      await this.platform.terminal.open(launch.program, launch.args);
+    } catch (error) {
+      this.update({ error: `Terminal não abriu: ${describeError(error)}` });
+    }
   }
 
   async copyText(text: string): Promise<boolean> {

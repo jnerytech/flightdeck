@@ -18,6 +18,7 @@ import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
+import { TerminalButton } from "./TerminalButton.tsx";
 import { type ReaderTarget, TranscriptReader } from "./TranscriptReader.tsx";
 import { WorkflowsPage } from "./WorkflowsPage.tsx";
 
@@ -271,6 +272,19 @@ export function App({ store }: { store: AppStore }) {
         actions={store}
         focusRequestId={focusRequest}
         alwaysAllow={hasFeature(selectedHost.hostInfo?.features, "rules", false)}
+        terminal={
+          // Only once Claude Code named the session: there is nothing to resume before that.
+          session.claudeSessionId && (
+            <TerminalButton
+              store={store}
+              hostId={selectedHost.id}
+              target={{
+                cwd: summary?.cwd ?? session.cwd ?? "",
+                claudeSessionId: session.claudeSessionId,
+              }}
+            />
+          )
+        }
       />
     );
   } else if (selectedHost) {

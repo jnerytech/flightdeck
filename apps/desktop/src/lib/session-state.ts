@@ -37,6 +37,8 @@ export interface SessionState {
   statusReason?: string;
   cwd?: string;
   model?: string;
+  /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */
+  claudeSessionId?: string;
   items: ChatItem[];
   /** Text of the turn being streamed (live `message.delta`, never replayed). */
   streaming: string;
@@ -78,7 +80,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
     case "session.status":
       return { ...next, status: event.status, statusReason: event.reason };
     case "session.init":
-      return { ...next, model: event.model };
+      return { ...next, model: event.model, claudeSessionId: event.claudeSessionId };
     case "message.user":
       return push({ kind: "user", seq, text: event.text });
     case "message.assistant":

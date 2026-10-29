@@ -1,4 +1,4 @@
-import { unwatchFile, watchFile } from "node:fs";
+import { existsSync, unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -25,6 +25,7 @@ import {
   loadConfig,
   RuntimeKind,
   updateConfigFile,
+  userHome,
 } from "./config.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
@@ -285,6 +286,15 @@ async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<Cr
   return { runtime, claude: { path, version: claudeVersionProbe(path, spawnExec) } };
 }
 
+/** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
+function terminalInfo(env: Record<string, string | undefined>) {
+  const stable = stableBinPath(userHome(env), process.platform);
+  return {
+    flightdeckdPath: existsSync(stable) ? stable : null,
+    wslDistro: env.WSL_DISTRO_NAME || null,
+  };
+}
+
 /** Loads the config, opens the store and starts serving. The token is never logged. */
 export async function startDaemon(
   args: CliArgs,
@@ -391,6 +401,7 @@ export async function startDaemon(
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
     ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
+    terminal: terminalInfo(env),
   });
 
   const wsl =

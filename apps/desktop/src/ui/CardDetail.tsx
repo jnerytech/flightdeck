@@ -10,6 +10,7 @@ import { when } from "./GlobalSearch.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
+import { TerminalButton } from "./TerminalButton.tsx";
 
 const UNSENT = "Há alterações não enviadas que serão perdidas.";
 
@@ -123,6 +124,14 @@ export function CardDetail(props: {
         {card.queued && <span className="badge badge-muted">na fila</span>}
         {card.prState && <span className="badge">{PR_LABELS[card.prState]}</span>}
         {card.checksState && <span className="badge">{CHECK_LABELS[card.checksState]}</span>}
+        {/* The worktree, resuming the card's session once Claude Code named it. */}
+        {card.worktreePath && (!session || session.claudeSessionId) && (
+          <TerminalButton
+            store={store}
+            hostId={hostId}
+            target={{ cwd: card.worktreePath, claudeSessionId: session?.claudeSessionId ?? null }}
+          />
+        )}
       </header>
       {card.notice && <p className="notice">{card.notice}</p>}
       <div className="row">

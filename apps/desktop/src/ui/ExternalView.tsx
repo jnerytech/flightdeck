@@ -4,6 +4,7 @@ import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { AlwaysAllow } from "./AlwaysAllow.tsx";
+import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
 const STATES = {
@@ -51,6 +52,13 @@ export function ExternalView(props: {
         <h2>{title}</h2>
         <span className="muted">{`${props.hostName} · terminal · ${STATES[session?.status ?? "unknown"]}`}</span>
         {session?.controllable && <span className="badge">controlável</span>}
+        {session?.cwd && (
+          <TerminalButton
+            store={store}
+            hostId={hostId}
+            target={{ cwd: session.cwd, claudeSessionId: id }}
+          />
+        )}
       </header>
       {requests.map((request) => (
         <div key={request.requestId} className="card approval">

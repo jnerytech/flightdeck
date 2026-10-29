@@ -81,6 +81,8 @@ export interface ServerOptions {
   usage?: UsageLedger;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
+  /** What "Abrir no terminal" needs from `host.info` (phase 8). */
+  terminal?: { flightdeckdPath: string | null; wslDistro: string | null };
 }
 
 export interface RunningServer {
@@ -452,6 +454,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           apiKeySanitized: manager.apiKeySanitized(),
           features: opts.features ?? features,
           ...updateStatus(),
+          ...(opts.terminal ?? {}),
         });
       case "history.list": {
         const page = history().list(command.payload);

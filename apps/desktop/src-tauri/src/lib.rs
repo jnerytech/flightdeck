@@ -1,6 +1,7 @@
 //! Thin Tauri shell: everything else lives in the React frontend and the daemon.
 //! Native pieces: the OS credential store for host tokens, single instance with deep-link
-//! forwarding, and the official plugins (notifications, deep links, opener).
+//! forwarding, the terminal of "Abrir no terminal", and the official plugins (notifications,
+//! deep links, opener).
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -25,7 +26,9 @@ fn token_get(host_id: String) -> Result<Option<String>, String> {
 
 #[tauri::command]
 fn token_set(host_id: String, token: String) -> Result<(), String> {
-    entry(&host_id)?.set_password(&token).map_err(|e| e.to_string())
+    entry(&host_id)?
+        .set_password(&token)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -64,6 +67,61 @@ fn tray_set_status(
 #[tauri::command]
 fn focus_main(app: tauri::AppHandle) {
     bring_to_front(&app);
+}
+
+/// What "Abrir no terminal" can use on this machine.
+#[derive(serde::Serialize)]
+struct TerminalEnv {
+    windows: bool,
+    wt: bool,
+}
+
+#[tauri::command]
+fn terminal_probe() -> TerminalEnv {
+    TerminalEnv {
+        windows: cfg!(windows),
+        wt: cfg!(windows) && on_path("wt.exe"),
+    }
+}
+
+/// `symlink_metadata`: `wt.exe` is an app execution alias, a reparse point `is_file` rejects.
+fn on_path(program: &str) -> bool {
+    std::env::var_os("PATH")
+        .map(|paths| {
+            std::env::split_paths(&paths)
+                .any(|dir| std::fs::symlink_metadata(dir.join(program)).is_ok())
+        })
+        .unwrap_or(false)
+}
+
+/// The only programs the frontend may start: the command is built there (apps/desktop/src/lib/terminal.ts).
+const TERMINAL_PROGRAMS: [&str; 2] = ["wt.exe", "cmd.exe"];
+
+/// Starts the terminal with the arguments as a list; no shell in between, except the `cmd /k` of
+/// the fallback without Windows Terminal.
+#[tauri::command]
+fn terminal_open(program: String, args: Vec<String>) -> Result<(), String> {
+    if !TERMINAL_PROGRAMS
+        .iter()
+        .any(|p| p.eq_ignore_ascii_case(&program))
+    {
+        return Err(format!("programa não permitido: {program}"));
+    }
+    let mut command = std::process::Command::new(&program);
+    command.args(&args);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // `cmd /c start` opens the terminal's own console; the outer cmd needs no window.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        if program.eq_ignore_ascii_case("cmd.exe") {
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+    }
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("{program}: {e}"))
 }
 
 #[tauri::command]
@@ -167,7 +225,9 @@ pub fn run() {
             token_delete,
             tray_set_status,
             set_close_to_tray,
-            focus_main
+            focus_main,
+            terminal_probe,
+            terminal_open
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");

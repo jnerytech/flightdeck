@@ -18,15 +18,16 @@ export interface BrowserWindow {
 
 /**
  * Desktop implementation: tokens in the OS keyring and tray state through the Rust commands in
- * src-tauri, everything else through the official Tauri 2 plugins.
+ * src-tauri, everything else through the official Tauri 2 plugins. `call` stands in for `invoke` in
+ * tests.
  */
-export function tauriPlatform(win: BrowserWindow = window): Platform {
+export function tauriPlatform(win: BrowserWindow = window, call: typeof invoke = invoke): Platform {
   return {
     storage: win.localStorage,
     secrets: {
-      get: (hostId) => invoke<string | null>("token_get", { hostId }),
-      set: (hostId, token) => invoke("token_set", { hostId, token }),
-      delete: (hostId) => invoke("token_delete", { hostId }),
+      get: (hostId) => call<string | null>("token_get", { hostId }),
+      set: (hostId, token) => call("token_set", { hostId, token }),
+      delete: (hostId) => call("token_delete", { hostId }),
     },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
@@ -46,16 +47,22 @@ export function tauriPlatform(win: BrowserWindow = window): Platform {
         void unlisten.then((stop) => stop());
       };
     },
-    setTrayStatus: (status) => invoke("tray_set_status", { ...status }),
+    setTrayStatus: (status) => call("tray_set_status", { ...status }),
     autostart: {
       supported: true,
       isEnabled: () => isEnabled(),
       setEnabled: (enabled) => (enabled ? enable() : disable()),
     },
-    setCloseToTray: (enabled) => invoke("set_close_to_tray", { enabled }),
+    setCloseToTray: (enabled) => call("set_close_to_tray", { enabled }),
     // The webview's Clipboard API works from the click that asks for the copy.
     copyText: (text) => win.navigator.clipboard.writeText(text),
-    showMainWindow: () => invoke("focus_main"),
+    showMainWindow: () => call("focus_main"),
+    // Rust runs the program with the arguments as a list, never through a shell.
+    terminal: {
+      supported: true,
+      probe: () => call<{ windows: boolean; wt: boolean }>("terminal_probe"),
+      open: (program, args) => call("terminal_open", { program, args }),
+    },
     globalShortcut: {
       supported: true,
       register: (accelerator, onPress) =>
