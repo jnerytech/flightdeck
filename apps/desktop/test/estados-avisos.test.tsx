@@ -4,6 +4,10 @@ import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { MIN_LOADING_MS, useMinLoading } from "../src/hooks/use-min-loading.ts";
+import { translator } from "../src/i18n/index.ts";
+import type { HostView } from "../src/lib/app-store.ts";
+import type { ConnectionStatus } from "../src/lib/host-connection.ts";
+import { hostStatusView, hostsBanner } from "../src/lib/host-status.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -13,6 +17,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { HostStatusBadge } = await import("../src/components/hosts/host-status-badge.tsx");
 
 setDefaultTimeout(20_000);
 
@@ -199,5 +204,76 @@ describe("estados-avisos", () => {
       fireEvent.click(novo as HTMLElement);
     });
     expect(document.activeElement).toBe(screen.queryByLabelText("Título do card"));
+  });
+
+  test("cada estado de conexão tem texto e cor próprios: offline e reconectando nunca se parecem", () => {
+    const t = translator("pt-BR");
+    const all: ConnectionStatus[] = [
+      "online",
+      "offline",
+      "connecting",
+      "unauthorized",
+      "incompatible",
+    ];
+    expect(all.map((status) => hostStatusView(status, t))).toEqual([
+      { label: "online", tone: "online" },
+      { label: "offline", tone: "offline" },
+      { label: "reconectando", tone: "reconnecting" },
+      { label: "token recusado", tone: "refused" },
+      { label: "incompatível: atualize o daemon", tone: "incompatible" },
+    ]);
+    render(
+      <>
+        {all.map((status) => (
+          <HostStatusBadge key={status} status={status} t={t} />
+        ))}
+      </>,
+    );
+    const classOf = (label: string) => screen.queryByText(label)?.className ?? "";
+    expect(classOf("offline")).toContain("text-status-error");
+    expect(classOf("reconectando")).toContain("text-status-needs-you");
+    expect(classOf("offline")).not.toBe(classOf("reconectando"));
+    expect(classOf("online")).toContain("text-status-idle");
+  });
+
+  test("a faixa do hub conta os hosts offline e os reconectando, sem esconder as sessões do resto", async () => {
+    const host = (name: string, status: ConnectionStatus) =>
+      ({ id: name, name, status }) as HostView;
+    expect(
+      hostsBanner([
+        host("a", "online"),
+        host("b", "offline"),
+        host("c", "connecting"),
+        host("d", "unauthorized"),
+        host("e", "incompatible"),
+      ]),
+    ).toEqual({
+      down: [host("b", "offline"), host("d", "unauthorized"), host("e", "incompatible")],
+      reconnecting: [host("c", "connecting")],
+    });
+
+    const alfa = makeDaemon(cleanups);
+    const { sessionId } = alfa.manager.create({ cwd: alfa.project, prompt: "oi", name: "Viva" });
+    const closed = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response("") });
+    const deadUrl = `ws://127.0.0.1:${closed.port}/v1/ws`;
+    closed.stop(true);
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
+      await store.addHost({ name: "notebook", url: deadUrl, token: TOKEN });
+      await store.addHost({ name: "servidor", url: deadUrl, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    await act(async () => store.router.push({ name: "hub" }));
+    await settle(() => screen.queryByRole("status", { name: "Hosts com problema" }) !== null);
+    const strip = screen.queryByRole("status", { name: "Hosts com problema" });
+    expect(strip?.textContent ?? "").toContain("2 hosts offline");
+    expect(strip?.textContent ?? "").toContain("notebook");
+    expect(strip?.textContent ?? "").toContain("servidor");
+    // The online host's sessions are still listed.
+    await settle(() => screen.queryByRole("listitem", { name: "Viva" }) !== null);
+    expect(screen.queryByRole("listitem", { name: "Viva" })).not.toBeNull();
+    expect(sessionId).not.toBe("");
   });
 });
