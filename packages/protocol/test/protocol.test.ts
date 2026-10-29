@@ -106,6 +106,18 @@ const validCommands: Record<CommandType, unknown> = {
   "changes.get": { target: "session:abc" },
   "changes.watch": { target: "card:k" },
   "changes.unwatch": { target: "card:k" },
+  "review.list": { target: "card:k" },
+  "review.add": {
+    target: "card:k",
+    path: "a.ts",
+    side: "new",
+    lineStart: 1,
+    lineEnd: 2,
+    body: "x",
+  },
+  "review.update": { id: "r", body: "y" },
+  "review.remove": { id: "r" },
+  "review.send": { target: "session:s" },
 };
 
 const validEvents: SessionEvent[] = [
