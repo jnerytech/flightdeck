@@ -1,0 +1,23 @@
+import { whichOnPath } from "../which.ts";
+
+export interface CommandResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+/** Runs a command in `cwd` and collects its exit code and output. */
+export async function runCommand(cmd: string[], cwd: string): Promise<CommandResult> {
+  const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  return { code, stdout, stderr };
+}
+
+/** `git` from the current PATH, always with an explicit working directory. */
+export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
+  return runCommand([whichOnPath("git") ?? "git", ...args], cwd);
+}
