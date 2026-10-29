@@ -378,4 +378,17 @@ describe("navegacao", () => {
     expect(screen.queryByRole("main")?.textContent ?? "").toContain("Leitura cedo");
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  test("uma rota direta para um card (sem passar pelo board) carrega o card do host", async () => {
+    const { d, store, card } = await setup();
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    expect(store.getState().cards).toEqual({});
+    await act(async () =>
+      store.router.push({ name: "card", host: hostId, projectId: card.projectId, cardId: card.id }),
+    );
+    await settle(() => heading("Ajuste"));
+    expect(heading("Ajuste")).toBe(true);
+    expect(screen.queryByText("Card não encontrado.")).toBeNull();
+    expect(d.board.getCard(card.id).title).toBe("Ajuste");
+  });
 });
