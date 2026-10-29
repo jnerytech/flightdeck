@@ -73,6 +73,7 @@ describe("canal", () => {
     expect(receptor.sendToLaunch("L1", "rode os testes")).toBe(true);
     expect(receptor.sendToLaunch("outro", "x")).toBe(false);
     expect(await poll(() => notifications[0])).toEqual({
+      jsonrpc: "2.0",
       method: "notifications/claude/channel",
       params: { content: "rode os testes", meta: { from: "flightdeck" } },
     });
