@@ -2,6 +2,7 @@ import { unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { Board } from "./board/board.ts";
+import { sendSessionStart } from "./central/hook-command.ts";
 import {
   type HooksStatus,
   type HookTarget,
@@ -42,7 +43,7 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "pair" | "service" | "history" | "hooks";
+  command: "start" | "pair" | "service" | "history" | "hooks" | "hook";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -51,6 +52,9 @@ export interface CliArgs {
   runtime?: RuntimeKind;
   /** `pair --rotate`: generate a new token first. */
   rotate?: true;
+  /** `hook session-start --url <receptor> --token <hooks.token>`, as `hooks install` writes it. */
+  url?: string;
+  token?: string;
 }
 
 const USAGE = [
@@ -59,6 +63,7 @@ const USAGE = [
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
   "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
+  "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
 ].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -89,6 +94,18 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         args.action = action;
         break;
       }
+      case "hook": {
+        args.command = "hook";
+        const event = argv[++i];
+        if (event !== "session-start") throw new Error(`hook inválido: ${event ?? "(nenhum)"}`);
+        break;
+      }
+      case "--url":
+        args.url = value();
+        break;
+      case "--token":
+        args.token = value();
+        break;
       case "hooks": {
         args.command = "hooks";
         const action = argv[++i];
@@ -122,6 +139,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   return args;
 }
+
+/** `hook session-start` gives up on the receptor after this long (the hook's own limit is 5 s). */
+export const HOOK_CONNECT_TIMEOUT_MS = 1_000;
 
 /** Exit code when another daemon already owns the same `dataDir`. */
 export const EXIT_ALREADY_RUNNING = 3;
@@ -409,12 +429,27 @@ export interface CliDeps {
   exec?: Exec;
   /** This daemon's own command line, as hooks call it back; derived from the process if absent. */
   selfCommand?: string[];
+  /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
+  stdin?: ReadableStream<Uint8Array>;
+  /** How long `hook session-start` tries to reach the receptor. */
+  hookConnectTimeoutMs?: number;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
+    if (args.command === "hook") {
+      await sendSessionStart({
+        url: args.url ?? "",
+        token: args.token ?? "",
+        input: await new Response(deps.stdin ?? Bun.stdin.stream()).text(),
+        env: deps.env,
+        timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
+      });
+      deps.exit(0);
+      return null;
+    }
     if (args.command === "hooks") {
       runHooks(args, deps);
       deps.exit(0);
