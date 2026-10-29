@@ -146,9 +146,3 @@ Começa vermelho, roda com as travas ativas, cria um repositório temporário co
 - [ ] `bun run build:daemon` e `bun run build:desktop` saem com código 0, e `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` também, no Windows nativo, se a casca Rust tiver mudado.
 - [ ] README explica cadastro de projeto, provedores de PR e o limite de execuções paralelas.
 - [ ] Divergências registradas em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-4` criada.
-
-**Condição do /goal**
-
-```text
-/goal A Fase 4 de docs/SPEC-fase-4.md está implementada seguindo docs/TDD.md e, nesta conversa, você mostrou a saída real de: (1) para cada área da tabela de testes, o bun --config=bunfig.area.toml test do arquivo da área falhando por asserção antes da implementação e passando depois; (2) bun run tdd:audit -- --since fase-3 imprimindo TDD AUDIT OK; (3) bun run typecheck, bun run lint e bun test saindo com código 0; (4) bun run smoke, bun run smoke:multi, bun run smoke:history e bun run smoke:board imprimindo SMOKE OK, SMOKE MULTI OK, SMOKE HISTORY OK e SMOKE BOARD OK; (5) bun run build:daemon e bun run build:desktop saindo com código 0, e cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml saindo com código 0 no Windows nativo se src-tauri mudou; (6) git status sem alterações pendentes e git tag listando fase-4. Todas as rodadas de bun test e dos smokes rodaram com as travas do claude, de home e de CLIs ativas, e nenhum push foi para remoto que não fosse local.
-```
