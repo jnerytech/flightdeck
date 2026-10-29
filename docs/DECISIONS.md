@@ -1209,4 +1209,15 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
   - o teste do preload de rede tira a própria tentativa;
   - o app roda `init()` sozinho na montagem.
 - **`smoke:update`:** foi escrito depois das áreas, como o `smoke:ops`. O vermelho no passo certo foi mostrado tirando a fiação do atualizador: `invalid_state` no lugar de `update_needs_service`, com exit 1. A fiação foi restaurada depois.
-- **Auditoria:** a spec pede `--since fase-8`, mas a tag `fase-8` ainda não existe neste branch. Rodei `--since fase-7`.
+- **Auditoria:** `tdd:audit -- --since fase-8`, depois do rebase sobre a tag.
+- **Versão 0.9.0:** o teste da versão foi para 0.9.0 num `test(versao)` antes do `chore`. Os dois testes do `update` pela CLI comparam o binário com o `DAEMON_VERSION` real, e o 0.8.0 deles virou rebaixamento. Eles passaram a usar uma versão maior que qualquer versão do produto (999.0.0). O vermelho apareceu na suíte do Linux e no Windows, por asserção.
+
+## Rebase sobre a tag fase-8
+
+- **O que foi reaplicado:** a parte do daemon da Fase 9 (travas, verificação, `daemon.update.apply`, `smoke:update` e CI) já estava na tag, pela integração. Só os commits do app e da documentação foram reaplicados.
+- **Conflitos:** foram resolvidos mantendo os dois lados, com a Fase 8 primeiro.
+  - Na `Platform`, o `terminal` ao lado do `updater`.
+  - Na plataforma Tauri, os imports do `save-file` e dos plugins `process` e `updater`, e a assinatura com `call` e `subscribe` mais a atualização pendente.
+  - No store, o estado e as opções da Fase 8 (terminal, paleta, `timers` e `day`) ao lado da atualização do app e do `daemonUpdateTimeoutMs`.
+  - O `loadHostInfo` lê os orçamentos e também encerra a atualização do daemon quando o host volta na versão nova.
+  - Os imports das Configurações e as decisões.
