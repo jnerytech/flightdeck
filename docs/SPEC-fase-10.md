@@ -39,6 +39,49 @@ Pré-requisito: Fase 8 fechada. As áreas de interface das Fases 11 e 12 usam es
 - **Fontes:** a pilha do sistema (Segoe UI no Windows). Não há fonte externa, por causa da CSP do Tauri.
 - **Cobertura:** `src/components/ui/` é código de fornecedor gerado pelo shadcn e fica fora da conta de 100%, o que vai registrado em `docs/DECISIONS.md`. Todo uso desses componentes é testado pelas telas, e um componente alterado à mão volta para a conta.
 
+## Direção visual: estilo Linear (decidida pelo usuário em 29/10/2026)
+
+O visual de referência é o do Linear: escuro elegante quando o sistema está escuro, claro limpo quando está claro, muito teclado, pouca cor e hierarquia clara. O tema padrão continua sendo o do sistema.
+
+- **Tipografia:**
+  - **Inter** (variável, licença OFL), embutida no app como arquivo woff2 local. Não depende de rede, e a CSP já permite.
+  - Base de 13 px, com a escala 12, 13, 14, 16, 20 e 24, e os pesos 400, 500 e 600.
+  - Números tabulares (`font-variant-numeric: tabular-nums`) em horas, custos e percentuais.
+  - Fonte monoespaçada do sistema (Cascadia Mono ou Consolas) para comandos e código.
+- **Superfícies em camadas:**
+  - o fundo do app é um neutro levemente mais escuro que os painéis (claro: neutral-50 contra branco; escuro: um cinza profundo, nunca preto puro, contra um cinza um tom acima);
+  - borda de 1 px sutil, feita com alfa sobre o fundo;
+  - sombra só em diálogos e menus;
+  - raio de 8 px nos controles e de 12 px nos painéis.
+- **Cor:**
+  - **uma cor de destaque só** (índigo ou violeta, um token `accent`), para o item ativo, o foco e o botão primário;
+  - o resto é neutro;
+  - o status vira **pontinho colorido** de 8 px, e não pílula: rodando em azul, com pulso discreto; precisa de você em âmbar; ociosa em cinza; encerrada esmaecida; erro em vermelho;
+  - pílulas ficam só para rótulos de verdade, como persona ou tag.
+- **Estrutura:**
+  - **três colunas** nas telas de lista: barra lateral (240 px, recolhível para 56 px só com ícones), lista (cerca de 380 px, redimensionável) e detalhe à direita;
+  - vale para Sessões, Precisa de você e Histórico: clicar num item abre o detalhe ao lado, sem trocar de tela, e Esc fecha;
+  - Board, Custos, Configurações e as páginas de host usam a largura toda.
+- **Barra lateral:**
+  - no topo, o logo e o nome;
+  - navegação com ícones Lucide: Sessões, Precisa de você com contador, Board, Workflows, Custos e Histórico;
+  - a seção recolhível "Hosts", com o pontinho de status e um menu por host;
+  - a seção "Fixadas";
+  - no rodapé, a busca com a dica `Ctrl K`, Configurações e o botão de tema.
+- **Linhas das listas:**
+  - altura de 32 px no modo compacto, que é o padrão, ou de 40 px no confortável, escolhido em Configurações;
+  - pontinho, título, metadados em cinza e a hora à direita;
+  - as ações aparecem no hover e no foco.
+- **Teclado:**
+  - J e K movem na lista, Enter abre, Esc fecha o detalhe;
+  - A e N aprovam e negam;
+  - `Ctrl K` abre a paleta;
+  - as dicas aparecem como `<kbd>` nos botões e tooltips.
+- **Movimento:** 120 a 180 ms com ease-out ao abrir painéis, diálogos e menus, sempre respeitando `prefers-reduced-motion`.
+- **Estados vazios:** um ícone Lucide grande e suave, uma frase e uma ação.
+
+Os prints de cada rodada são conferidos contra esta direção.
+
 ## Layout e grid
 
 Todo layout sai de poucos componentes próprios, em `src/components/layout/`, sem margens ou larguras soltas nas telas.
@@ -206,6 +249,7 @@ Esta fase não cria tabelas. Se precisar, segue a regra das Fases 11 a 13: acres
 | Área | O que precisa passar |
 | --- | --- |
 | `base-ui` | Tailwind v4 e shadcn instalados com versões fixas; `cn()`; tokens dos dois temas; `styles.css` antigo removido; lint de estilo |
+| `direcao-visual` | Inter embutida, sem rede; base de 13 px e números tabulares; superfícies em camadas e raio 8/12; um token `accent`; status em pontinho; três colunas com detalhe ao lado em Sessões, Precisa de você e Histórico; barra lateral com ícones e recolhível; densidade compacta e confortável; J e K, Enter e Esc; `prefers-reduced-motion` respeitado |
 | `layout` | `AppShell` com barra recolhível abaixo de 960 px; `Page` com rolagem própria (lista longa rola e o cabeçalho fica); `Grid` por colunas; `Stack` e `Inline` com a escala; os três estados padrão |
 | `tema` | Claro, Escuro e Sistema; segue a mudança do sistema ao vivo; escolha guardada; janela do Tauri acompanha (plataforma falsa); contraste AA dos tokens de estado, calculado no teste |
 | `i18n` | dicionários com as mesmas chaves (typecheck); idioma inicial pelo sistema; troca sem reiniciar; datas e horas locais; durações; plural; erros do daemon traduzidos por `code` com fallback; bandeja e notificações traduzidas; varredura de literais |
