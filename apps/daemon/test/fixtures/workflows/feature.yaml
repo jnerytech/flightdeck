@@ -15,12 +15,20 @@ steps:
       max: 3
       until: { check: "bun test" }
       do:
-        agent: { continue: implement, prompt: "Os testes falharam:\n{{loop.lastCheck.output}}\nCorrija." }
+        agent:
+          {
+            continue: implement,
+            prompt: "Os testes falharam:\n{{loop.lastCheck.output}}\nCorrija.",
+          }
   - id: review
     parallel:
       - agent: { prompt: "Revise o diff com foco em segurança." }
       - agent: { prompt: "Revise o diff com foco em legibilidade." }
   - id: apply-review
-    agent: { continue: implement, prompt: "Aplique o que fizer sentido destas revisões:\n{{steps.review.outputs}}" }
+    agent:
+      {
+        continue: implement,
+        prompt: "Aplique o que fizer sentido destas revisões:\n{{steps.review.outputs}}",
+      }
   - id: pr
     pr: {}
