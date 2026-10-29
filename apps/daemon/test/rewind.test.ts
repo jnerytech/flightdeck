@@ -92,6 +92,17 @@ describe("rewind", () => {
     expect(await code(rewinder.undo("s1", true))).toBe("not_found");
   });
 
+  test("sem snapshot de segurança possível (mudanças acima do limite), não volta nada", async () => {
+    const { store, repo, turn } = await turnInRepo();
+    const tiny = new Snapshots({ db: store.db, maxBytes: 1 });
+    const rewinder = new Rewinder({
+      snapshots: tiny,
+      sessions: { busy: () => false, rewindFiles: async () => null },
+    });
+    expect(await code(rewinder.apply("s1", turn, true))).toBe("invalid_state");
+    expect(existsSync(join(repo, "novo.txt"))).toBe(true);
+  });
+
   test("sessão gerenciada viva: usa o rewindFiles do SDK (prévia e real); sem poder, cai no snapshot", async () => {
     const calls: Array<{ id: string; dryRun: boolean }> = [];
     let canRewind = true;
