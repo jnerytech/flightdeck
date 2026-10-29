@@ -172,6 +172,7 @@ const validCommands: Record<CommandType, unknown> = {
   "terminal.detach": { terminalId: "t" },
   "terminal.close": { terminalId: "t", kill: false },
   "terminal.list": {},
+  "terminal.settings": { enabled: true, confirm: true },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
