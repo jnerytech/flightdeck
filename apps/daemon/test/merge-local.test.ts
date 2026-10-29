@@ -140,8 +140,7 @@ describe("merge-local", () => {
     commit(ctx.worktree, "feito.txt", "feito\n");
     git(ctx.repo, "switch", "-q", "-c", "outro");
     await ctx.board.mergeLocal(ctx.cardId, "merge", true);
-    expect(git(ctx.repo, "ls-tree", "--name-only", "main").split("
-")).toContain("feito.txt");
+    expect(git(ctx.repo, "ls-tree", "--name-only", "main").split(/\r?\n/)).toContain("feito.txt");
     expect(git(ctx.repo, "branch", "--show-current")).toBe("outro");
     expect(clean(ctx.repo)).toBe(true);
     expect(git(ctx.repo, "worktree", "list").split("\n")).toHaveLength(1);
