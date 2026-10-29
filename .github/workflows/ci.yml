@@ -21,10 +21,6 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
-    # Pending area "linux": on Linux, Bun's os.homedir() ignores a HOME changed at runtime, so the
-    # home guard stops the suite (plus a few Linux-only gaps). Until that area lands, the ubuntu
-    # leg reports without blocking.
-    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     # bash everywhere (Git Bash on Windows): stops at the first failing command of a step, which
     # pwsh does not do for native programs.
     defaults:
