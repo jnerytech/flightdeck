@@ -67,6 +67,15 @@ export interface AgentRun {
   close(): Promise<void>;
 }
 
+/** Options of the SDK's `forkSession` (phase 12). */
+export interface ForkOptions {
+  upToMessageId?: string;
+  /** Project folder whose transcripts hold the session. */
+  dir?: string;
+}
+
 export interface AgentRuntime {
   start(opts: StartOptions): AgentRun;
+  /** Phase 12: copies a transcript (up to a message) into a new session, resumable by its id. */
+  forkSession?(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }>;
 }

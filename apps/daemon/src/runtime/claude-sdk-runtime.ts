@@ -4,6 +4,7 @@ import {
   type SDKMessage,
   type SDKUserMessage,
   type PermissionUpdate as SdkPermissionUpdate,
+  forkSession as sdkForkSession,
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AssistantBlock } from "@flightdeck/protocol";
@@ -13,6 +14,7 @@ import { whichOnPath } from "../which.ts";
 import type {
   AgentRun,
   AgentRuntime,
+  ForkOptions,
   RewindFilesResult,
   RuntimeEvent,
   StartOptions,
@@ -35,6 +37,8 @@ export interface ClaudeSdkRuntimeOptions {
   claudePath?: string;
   /** Injected in tests; defaults to the SDK's `query`. */
   query?: QueryFn;
+  /** Injected in tests; defaults to the SDK's `forkSession`. */
+  forkSession?: (id: string, options: ForkOptions) => Promise<{ sessionId: string }>;
 }
 
 const MAX_TOOL_RESULT = 4000;
@@ -159,9 +163,17 @@ export class ClaudeSdkRuntime implements AgentRuntime {
   private readonly query: QueryFn;
   readonly claudePath: string | undefined;
 
+  private readonly fork: NonNullable<ClaudeSdkRuntimeOptions["forkSession"]>;
+
   constructor(options: ClaudeSdkRuntimeOptions = {}) {
     this.query = options.query ?? (sdkQuery as QueryFn);
+    this.fork = options.forkSession ?? sdkForkSession;
     this.claudePath = resolveClaudePath(options.claudePath);
+  }
+
+  /** Phase 12: the SDK's forkSession; it writes the new transcript itself. */
+  forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
+    return this.fork(claudeSessionId, options);
   }
 
   start(opts: StartOptions): AgentRun {

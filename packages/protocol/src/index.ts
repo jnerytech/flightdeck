@@ -962,6 +962,17 @@ export const Command = z.discriminatedUnion("type", [
     "rewind.undo",
     z.object({ claudeSessionId: z.string().min(1), confirm: z.boolean().optional() }),
   ),
+  /** Phase 12: a new Claude session up to a message, opened in the app or in the terminal. */
+  cmd(
+    "session.fork",
+    z.object({
+      claudeSessionId: z.string().min(1),
+      cwd: z.string().min(1),
+      upToMessageId: z.string().optional(),
+      open: z.enum(["flightdeck", "terminal"]),
+      rewindTurn: z.number().int().optional(),
+    }),
+  ),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -1313,6 +1324,7 @@ export interface CommandResults {
   "rewind.preview": RewindPreview;
   "rewind.apply": RewindPreview;
   "rewind.undo": RewindPreview;
+  "session.fork": { claudeSessionId: string; sessionId?: string; command?: string };
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

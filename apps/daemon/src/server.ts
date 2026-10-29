@@ -32,6 +32,7 @@ import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
+import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
 import type { Budgets } from "./costs/budgets.ts";
@@ -80,6 +81,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 12: `session.fork`. */
+  forker?: Forker;
   /** Phase 12: going back to a turn (`rewind.*`). */
   rewinder?: Rewinder;
   /** Phase 12: the git snapshots behind `snapshots.list`. */
@@ -472,6 +475,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, {
           snapshots: opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
         });
+      case "session.fork": {
+        if (!opts.forker) throw new FlightdeckError("invalid_state", "bifurcar indisponível");
+        return ok(command.type, await opts.forker.fork(command.payload));
+      }
       case "rewind.preview": {
         const { claudeSessionId, turn } = command.payload;
         return ok(command.type, await rewinder().preview(claudeSessionId, turn));

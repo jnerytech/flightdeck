@@ -7,6 +7,7 @@ import { whichOnPath } from "../which.ts";
 import type {
   AgentRun,
   AgentRuntime,
+  ForkOptions,
   RewindFilesResult,
   RuntimeEvent,
   StartOptions,
@@ -42,6 +43,14 @@ export class FakeRuntime implements AgentRuntime {
   }
 
   private readonly rewind: FakeRuntimeOptions["rewind"];
+
+  /** Forks asked so far (phase 12). */
+  readonly forks: Array<{ claudeSessionId: string } & ForkOptions> = [];
+
+  async forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
+    this.forks.push({ claudeSessionId, ...options });
+    return { sessionId: `fake-fork-${ulid().toLowerCase()}` };
+  }
 
   start(opts: StartOptions): AgentRun {
     this.starts.push(opts);
