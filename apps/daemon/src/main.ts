@@ -27,6 +27,9 @@ import {
   updateConfigFile,
   userHome,
 } from "./config.ts";
+import { Costs } from "./costs/costs.ts";
+import { resolvePricing } from "./costs/pricing.ts";
+import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
@@ -338,6 +341,24 @@ export async function startDaemon(
     ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
   });
   history.start();
+  // Usage of every session of the host, from the transcripts (phase 8): first the ones that
+  // already exist, in the background, then whatever the history index sees changing.
+  const costs = new Costs({
+    db: store.db,
+    pricing: resolvePricing(config.pricing),
+    loadPricing: () => resolvePricing(loadConfig(configFile).pricing),
+    initialLoad: () => usageIndex.status(),
+  });
+  const usageIndex = new UsageIndexer({
+    db: store.db,
+    roots: config.history.roots,
+    excludeCwds: config.history.excludeCwds,
+    projectKey: (cwd) => keys.keyFor(cwd),
+    cost: (tokens) => costs.cost(tokens),
+    log: (m) => logger.log(m),
+  });
+  history.onChange(() => usageIndex.request());
+  usageIndex.start();
   const board = new Board({
     db: store.db,
     manager,
@@ -389,6 +410,7 @@ export async function startDaemon(
     board,
     quota,
     usage,
+    costs,
     central,
     maintenance,
     ...(updates ? { updates } : {}),
@@ -440,6 +462,7 @@ export async function startDaemon(
         await manager.shutdown();
         await server.stop();
         history.stop();
+        await usageIndex.stop();
         quota.stop();
         store.close();
         lock.release();

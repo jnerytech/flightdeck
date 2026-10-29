@@ -31,8 +31,16 @@ export interface UsageIndexerOptions {
   day?: (ms: number) => string;
   /** Estimated cost of a message; `null` when its model has no price. */
   cost?: (tokens: UsageTokens) => number | null;
-  /** Awaited between files of a pass, so the daemon keeps answering. */
+  /** Awaited between files of a pass, so the daemon keeps answering; a zero timer when absent. */
   pause?: () => Promise<void>;
+  log?: (message: string) => void;
+}
+
+/** The first pass of the process: every transcript that already exists. */
+export interface InitialLoad {
+  state: "running" | "done";
+  filesDone: number;
+  filesTotal: number;
 }
 
 /** One transcript file: a session's own, or one of its subagents' (`<id>/subagents/*.jsonl`). */
@@ -48,6 +56,14 @@ interface Usage {
   tokens: UsageTokens;
 }
 
+const sizeOf = (path: string) => {
+  try {
+    return statSync(path).size;
+  } catch {
+    return null;
+  }
+};
+
 /** Whose session this is: the managed kind and, for cards and workflows, the project folder. */
 interface Owner {
   origin: Exclude<UsageOrigin, "subagent">;
@@ -56,6 +72,8 @@ interface Owner {
 
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const str = (value: unknown) => (typeof value === "string" ? value : null);
+const zeroTimer = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Error replies of the CLI itself: no model ran, nothing was used. */
 const SYNTHETIC_MODEL = "<synthetic>";
@@ -127,6 +145,10 @@ export class UsageIndexer {
   private readonly db: Database;
   private readonly excludes: string[];
   private readonly day: (ms: number) => string;
+  private load: InitialLoad = { state: "running", filesDone: 0, filesTotal: 0 };
+  private running: Promise<void> | null = null;
+  private again = false;
+  private stopped = false;
 
   constructor(readonly opts: UsageIndexerOptions) {
     this.db = opts.db;
@@ -134,19 +156,68 @@ export class UsageIndexer {
     this.day = opts.day ?? localDay;
   }
 
+  /** Progress of the first pass. */
+  status(): InitialLoad {
+    return { ...this.load };
+  }
+
+  /** The first pass (every transcript that already exists), in the background. */
+  start(): void {
+    this.request();
+  }
+
+  /** Another pass after the one running; requests made meanwhile become one. */
+  request(): void {
+    if (this.running) {
+      this.again = true;
+      return;
+    }
+    this.running = (async () => {
+      do {
+        this.again = false;
+        await this.pass().catch((error: unknown) =>
+          this.opts.log?.(`custos: falha na leitura de uso (${describe(error)})`),
+        );
+      } while (this.again && !this.stopped);
+      this.running = null;
+    })();
+  }
+
+  /** Resolves when no pass is running. */
+  async idle(): Promise<void> {
+    await this.running;
+  }
+
+  /** No pass starts after this; resolves when the running one ends. */
+  async stop(): Promise<void> {
+    this.stopped = true;
+    await this.running;
+  }
+
   /** One pass over every transcript and subagent transcript; returns the entries added. */
   async pass(): Promise<number> {
     this.reclassify();
     const owners = new Map<string, Owner>();
+    const files = this.files();
+    const first = this.load.state === "running";
+    if (first) this.load = { state: "running", filesDone: 0, filesTotal: files.length };
     let added = 0;
-    for (const file of this.files()) {
+    for (const file of files) {
+      if (this.stopped) break;
       let owner = owners.get(file.claudeSessionId);
       if (!owner) {
         owner = this.owner(file.claudeSessionId);
         owners.set(file.claudeSessionId, owner);
       }
       added += this.indexFile(file, owner);
-      await this.opts.pause?.();
+      if (first) this.load.filesDone++;
+      await (this.opts.pause ?? zeroTimer)();
+    }
+    if (first) {
+      this.load.state = "done";
+      this.opts.log?.(
+        `custos: carga inicial concluída (${files.length} transcripts, ${added} mensagens)`,
+      );
     }
     return added;
   }
@@ -219,7 +290,9 @@ export class UsageIndexer {
 
   /** Reads what the file gained since the last pass (all of it when it shrank). */
   private indexFile(file: TranscriptFile, owner: Owner): number {
-    const size = statSync(file.path).size;
+    // Gone since the listing (a session deleted meanwhile): nothing to read.
+    const size = sizeOf(file.path);
+    if (size === null) return 0;
     const row = this.db
       .query<{ offset: number; cwd: string | null }, [string]>(
         "SELECT offset, cwd FROM usage_files WHERE path = ?",

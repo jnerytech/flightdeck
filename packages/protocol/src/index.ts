@@ -575,6 +575,12 @@ export const CostsDivergence = z.object({
 export type CostsDivergence = z.infer<typeof CostsDivergence>;
 
 export const CostsStatus = z.object({
+  /** The first pass over the transcripts that already existed. */
+  initialLoad: z.object({
+    state: z.enum(["running", "done"]),
+    filesDone: z.number().int(),
+    filesTotal: z.number().int(),
+  }),
   /** When the default price table was taken (`YYYY-MM-DD`). */
   pricingDate: z.string(),
   /** Models without a price: their tokens count, their cost does not. */

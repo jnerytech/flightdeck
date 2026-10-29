@@ -1,13 +1,15 @@
 import type { Database } from "bun:sqlite";
 import type { CostsDivergence, CostsStatus, UnpricedModel } from "@flightdeck/protocol";
 import { costOf, PRICING_DATE, type Pricing } from "./pricing.ts";
-import type { UsageTokens } from "./usage-indexer.ts";
+import type { InitialLoad, UsageTokens } from "./usage-indexer.ts";
 
 export interface CostsOptions {
   db: Database;
   pricing: Pricing;
   /** The table as it is now (the config file read again); `reprice` uses it when present. */
   loadPricing?: () => Pricing;
+  /** Progress of the usage indexer's first pass; divergences wait for it to end. */
+  initialLoad?: () => InitialLoad;
 }
 
 /** Above both, the computed cost and the SDK's disagree enough to doubt the price table. */
@@ -76,7 +78,10 @@ export class Costs {
          WHERE cost_usd IS NULL GROUP BY model ORDER BY model`,
       )
       .all();
-    return { pricingDate: PRICING_DATE, unpriced, divergences: this.divergences() };
+    const initialLoad = this.opts.initialLoad?.() ?? { state: "done", filesDone: 0, filesTotal: 0 };
+    // Halfway through the load a session's cost is partial: no divergence until it ends.
+    const divergences = initialLoad.state === "done" ? this.divergences() : [];
+    return { initialLoad, pricingDate: PRICING_DATE, unpriced, divergences };
   }
 
   /**
