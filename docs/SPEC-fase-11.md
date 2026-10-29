@@ -1,125 +1,145 @@
-# Flightdeck — Spec da Fase 11 (Checkpoints e configuração do agente)
+# Flightdeck — Spec da Fase 10 (Revisão de mudanças)
 
 ## Objetivo e escopo
 
-- **Voltar no tempo:** desfazer as mudanças de arquivo até um turno, ou bifurcar a conversa a partir dele, nas sessões gerenciadas e nas do terminal.
-- **Configurar o agente pelo app:**
-  - servidores MCP do projeto;
-  - `CLAUDE.md`;
-  - agentes (`.claude/agents`);
-  - skills (`.claude/skills`).
+Todo card, e quase toda sessão, termina num diff que você precisa conferir. A Fase 10 faz do Flightdeck o lugar onde se revisa:
 
-Pré-requisito: Fase 8 fechada. A fase pode ser desenvolvida em paralelo às Fases 9 e 10, num worktree próprio, e é rebaseada sobre a fase anterior integrada antes de fechar.
+- comentar linhas do diff e mandar a revisão para o agente;
+- reverter ou editar arquivos antes do commit;
+- trazer os comentários do PR para o agente;
+- fechar o card com merge local;
+- carregar a worktree com os arquivos ignorados que fazem falta;
+- saber que sessão mexeu em qual arquivo.
 
-As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.md e agentes), do Agent Console (snapshot git por turno) e do agent-deck (MCP e skills por projeto).
+Inclui também um comando de statusline para o terminal.
 
-**Regra de escrita:** a configuração do usuário fica **só para leitura**: `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/agents` e `~/.claude/skills`. O Flightdeck escreve só arquivos do projeto, sempre com confirmação. Em `~/.claude`, o próprio Flightdeck continua escrevendo só os hooks da Fase 5. A exceção é a bifurcação que **você** pede: o `forkSession` do SDK grava o transcript novo em `~/.claude/projects`, escrito pelo próprio SDK, como qualquer sessão do Claude Code.
+Pré-requisito: Fase 8 fechada (tag `fase-8`). A fase pode ser desenvolvida em paralelo às Fases 9 e 11, num worktree próprio, e é rebaseada sobre a fase anterior integrada antes de fechar.
 
-**Fora da Fase 11**
+As ideias vêm de apps do mesmo espaço (vibe-kanban, parallel-code, Paradev, Agent Console, Crystal, ccmanager, Nimbalyst e ccusage), levantados pelo orquestrador em 29/10/2026.
 
-- Editar a configuração global do usuário.
-- Registry ou marketplace público de MCP e plugins.
-- Desfazer comandos externos: banco, rede, `git push`. O rewind cobre arquivos, e o app diz isso.
+**Fora da Fase 10**
 
-## Fatos do Agent SDK 0.3.312 (verificados nos tipos)
-
-- `enableFileCheckpointing: true` nas opções do `query` guarda cópias dos arquivos antes de cada mudança.
-- `Query.rewindFiles(userMessageId, {dryRun})` devolve `{canRewind, error?, filesChanged?, insertions?, deletions?, skippedLinks?}`.
-- `forkSession(sessionId, {upToMessageId?, title?})` copia o transcript até a mensagem e devolve um `sessionId` novo, que se retoma com `resume`. Funciona sobre qualquer transcript do host, inclusive de sessões do terminal.
-- `Query.mcpServerStatus()` e `Query.toggleMcpServer(name, enabled)` existem para a sessão viva.
-- **Limite do checkpoint do SDK:** ele não cobre mudanças feitas por `Bash` nem por subagentes. Por isso a fase soma snapshots git.
+- Postar comentários ou respostas no GitHub ou no Azure DevOps: o Flightdeck só lê os comentários do PR.
+- Editor de código completo, como uma IDE. A edição desta fase é pontual, arquivo a arquivo.
+- Revert por trecho (hunk). O revert é por arquivo.
 
 ## Design
 
-### Snapshots git por turno
+### Aba Mudanças (qualquer sessão)
 
-- **Quando:**
-  - sessão do terminal: o hook `UserPromptSubmit` (Fase 5) e o `Stop`;
-  - sessão gerenciada: o início e o fim de cada turno.
-  - Em ambos os casos, só se o `cwd` está num repositório git.
-- **Como:** o daemon grava um snapshot **sem tocar no índice nem nos arquivos do usuário**:
-  ```
-  GIT_INDEX_FILE=<tmp> git read-tree HEAD
-  GIT_INDEX_FILE=<tmp> git add -A          # inclui não rastreados; respeita .gitignore
-  tree=$(GIT_INDEX_FILE=<tmp> git write-tree)
-  commit=$(git commit-tree $tree -p HEAD -m "flightdeck snapshot <session> <turno>")
-  git update-ref refs/flightdeck/snapshots/<claudeSessionId>/<n> $commit
-  ```
-  Se a árvore for igual à do snapshot anterior, nenhum ref novo é criado.
-- **Tabela:**
+- **Onde aparece:** em toda sessão cujo `cwd` está num repositório git, inclusive as do terminal e as de card.
+- **O que mostra:**
+  - o diff do working tree contra o `HEAD`, com os arquivos não rastreados;
+  - nos cards, o diff contra a base, como na Fase 4.
+- **Por arquivo:** status, inserções e remoções. O diff é lado a lado ou unificado.
+- **Atualização:** ao vivo, por um watcher do `cwd` com debounce de 500 ms, e também pelo botão de atualizar.
+
+### Comentários inline
+
+- **Como se comenta:** selecione uma linha ou um intervalo no diff e escreva o comentário.
+- **Rascunho:** os comentários ficam em rascunho, guardados no daemon:
   ```sql
-  CREATE TABLE snapshots (claude_session_id TEXT, n INTEGER, ref TEXT, tree TEXT, kind TEXT, turn_uuid TEXT,
-                          prompt TEXT, created_at TEXT, PRIMARY KEY (claude_session_id, n));
+  CREATE TABLE review_comments (id TEXT PRIMARY KEY, target TEXT, path TEXT, side TEXT, line_start INTEGER,
+                                line_end INTEGER, quote TEXT, body TEXT, state TEXT, created_at TEXT, sent_at TEXT);
   ```
-  - `kind` é `before` ou `after`.
-  - `turn_uuid` é o uuid da mensagem do usuário, quando o transcript traz.
-- **Limites:**
-  - snapshots de no máximo 200 MB de mudanças; acima disso, pula e registra o motivo;
-  - retenção de 50 por sessão e 30 dias, com limpeza dos refs junto da retenção da Fase 7.
-- **Desempenho:** roda em segundo plano, sem atrasar a resposta do hook. O hook só enfileira.
+  O `target` é `session:<claudeSessionId>` ou `card:<id>`, e o `state` é `draft` ou `sent`.
+- **"Enviar revisão":** monta uma mensagem com cada comentário:
+  ```
+  Revisão das mudanças:
+  1. `src/a.ts` linhas 10–12:
+     > <trecho citado>
+     <comentário>
+  ```
+- **Para onde a revisão vai:**
+  - sessão gerenciada ou de card: `session.send`;
+  - sessão do terminal controlável: `external.message` (Fase 5);
+  - sessão não controlável: "Copiar revisão".
+- **Depois do envio:** os comentários enviados ficam marcados e continuam visíveis como histórico do card.
+- **Diff que mudou depois do comentário:** o comentário fica ancorado no trecho citado. Se o trecho sumir, fica "desatualizado".
 
-### Voltar arquivos
+### Reverter e editar
 
-- **"Voltar arquivos até aqui"** num turno da linha do tempo da sessão. Primeiro mostra a prévia: arquivos que mudam, inserções e remoções.
-  - Na sessão gerenciada viva com checkpoint do SDK, usa `rewindFiles` com `dryRun` e depois o real. Se o SDK não puder (`canRewind: false`), usa o snapshot.
-  - Nos outros casos, usa o snapshot `before` do turno. Os arquivos do snapshot são restaurados no working tree, e os arquivos criados depois dele são removidos. Tudo isso só no escopo do repositório, nunca em ignorados.
-- **Antes de aplicar:** um snapshot de segurança do estado atual (`kind: safety`) permite "Desfazer volta".
-- **Confirmação:** sempre pedida. Sessão viva rodando um turno não pode voltar; pare a sessão primeiro.
+- **"Reverter arquivo":** pede confirmação.
+  - Arquivo rastreado: volta ao `HEAD`, ou à base no card, com `git restore --source`.
+  - Arquivo novo: é removido.
+  - Antes de reverter, o daemon grava uma cópia em `<dataDir>/review-trash/`, com retenção de 7 dias, e oferece "Desfazer" por 30 s.
+- **"Editar":** abre o arquivo num editor de texto simples (CodeMirror 6), dentro da worktree ou do `cwd`.
+  - Salvar só grava se o arquivo não mudou desde que foi aberto, comparando hash. Se mudou, mostra o conflito.
+  - Só vale para arquivos de texto até 1 MB.
 
-### Bifurcar
+### Comentários do PR para o agente
 
-- **"Bifurcar daqui":** cria, com `forkSession(id, {upToMessageId})`, uma conversa nova até aquele turno.
-  - Sessão gerenciada: abre a bifurcação como nova sessão gerenciada, com `resume`.
-  - Sessão do terminal: oferece "Abrir no terminal" (Fase 8) com `flightdeckd claude --resume <novo id>`, ou "Abrir no Flightdeck".
-- **Arquivos:** junto, a opção "voltar também os arquivos" aplica a volta acima antes de abrir a bifurcação.
+- **Busca:** nos cards com PR aberto, o daemon busca os comentários de revisão:
+  - GitHub: `gh api repos/{owner}/{repo}/pulls/{n}/comments` e o review summary;
+  - Azure DevOps: `az repos pr thread list`.
+- **Quando busca:** no mesmo intervalo do `board.prPollIntervalMs`.
+- **Onde aparecem:** na aba Mudanças do card, com arquivo, linha, autor e estado (resolvido ou não).
+- **"Enviar ao agente":** manda os selecionados para a sessão do card, no mesmo formato da revisão inline. Nada é postado de volta no provedor.
 
-### MCP do projeto
+### Merge local e posição da worktree
 
-- **Leitura:** o app mostra os servidores que valem para o projeto, com a origem de cada um:
-  - `.mcp.json` do projeto, editável;
-  - `~/.claude.json`, na parte do usuário e na do projeto, só leitura;
-  - `enabledMcpjsonServers` e `disabledMcpjsonServers` do `.claude/settings.local.json`, editáveis.
-- **Escrita:**
-  - adicionar, editar e remover no `.mcp.json`. Esse arquivo é **versionado**, e o app avisa;
-  - ligar e desligar pela lista do `settings.local.json`.
-  - As duas mesclam e preservam o resto do arquivo.
-- **Segredos:** valores de `env` e `headers` aparecem mascarados. Editar exige digitar o valor de novo.
-- **"Testar":** sobe o servidor com o cliente do `@modelcontextprotocol/sdk` (stdio ou http), lista ferramentas e recursos, e derruba. Timeout de 15 s. Não envolve o Claude.
-  - Um servidor stdio roda um comando que veio do repositório. Por isso, antes de testar, o app mostra o **comando e os argumentos exatos** e pede confirmação, como a confiança de workflows da Fase 6.
-  - Nenhum servidor é iniciado só porque a lista foi aberta.
-- **Sessão gerenciada viva:** mostra o status por `mcpServerStatus()` e liga ou desliga na hora por `toggleMcpServer`.
+- **Indicador no card:** "N à frente, M atrás" da base, por `git rev-list --left-right --count <base>...<branch>`.
+- **"Atualizar com a base":** rebase da branch do card sobre a base. Se houver conflito, aborta o rebase, avisa com a lista de arquivos e deixa a worktree como estava.
+- **"Merge e arquivar":** para cards sem PR. Modos: `merge --no-ff` (padrão) ou `squash`.
+  1. **Se a base está em checkout em alguma worktree** (o caso comum: o `main` aberto no repositório principal), o merge é feito **ali**, com `git merge` ou `git merge --squash` + commit. Isso só acontece se aquela worktree estiver limpa. Com mudanças nela, recusa com a lista de arquivos.
+  2. **Se a base não está em checkout em nenhuma worktree**, o merge é feito numa worktree temporária da base, que é removida em seguida.
+  3. **Nunca mova o ref de uma branch em checkout** (`update-ref` ou `merge-tree`), porque o índice e os arquivos daquela worktree ficariam para trás do HEAD.
+  4. Remove a worktree e a branch do card e leva o card a Concluído.
+- **Merge com conflito:** recusa, avisa e não muda nada.
 
-### CLAUDE.md, agentes e skills
+### `.worktreeinclude`
 
-- **CLAUDE.md:**
-  - lista os do projeto: raiz, `.claude/CLAUDE.md`, `CLAUDE.local.md` e os de subpastas;
-  - o do usuário aparece só para leitura.
-  - Editor markdown com prévia. Salvar compara o hash, como na Fase 10.
-- **Agentes:**
-  - `.claude/agents/*.md` do projeto, editáveis; os do usuário, só leitura.
-  - Formulário para o frontmatter (`name`, `description`, `tools`, `model`), mais o corpo.
-  - O frontmatter é validado antes de salvar.
-- **Skills:**
-  - `.claude/skills/<nome>/SKILL.md` do projeto, editáveis; as do usuário, só leitura.
-  - Criar uma skill gera a pasta e o `SKILL.md` com o frontmatter (`name`, `description`).
-- **Mudanças em arquivos versionados:** aparecem na aba Mudanças (Fase 10) como qualquer outra mudança.
+- **O arquivo:** `.worktreeinclude` na raiz do repositório, com padrões no formato do `.gitignore` (por exemplo `.env`, `.env.local` ou `config/*.secret.json`).
+- **Cópia:** ao criar a worktree de um card, o daemon copia do repositório principal os arquivos **ignorados pelo git** que casam com os padrões.
+  - Arquivos rastreados já vêm com a worktree.
+  - Limite de 50 MB no total. Acima disso, copia até o limite e avisa no card.
+  - Nunca copia nada de `.git/` nem de `.flightdeck/`.
+- **Junção com a Fase 7:** a cópia do `settings.local.json` passa a ser um caso desta, com o padrão embutido `.claude/settings.local.json`.
+
+### Sessão ↔ arquivos
+
+- **Fonte:** o indexador de histórico extrai, dos transcripts, os `tool_use` de `Write`, `Edit`, `MultiEdit` e `NotebookEdit`, com o `file_path`.
+  ```sql
+  CREATE TABLE session_files (claude_session_id TEXT, path TEXT, edits INTEGER, first_at TEXT, last_at TEXT,
+                              PRIMARY KEY (claude_session_id, path));
+  ```
+- **No app:**
+  - a sessão mostra os arquivos que tocou;
+  - na aba Mudanças, cada arquivo tem "Sessões que mexeram aqui", com as sessões e as datas.
+- **Limite:** mudanças feitas por `Bash` não entram, e o app diz isso.
+
+### Statusline (`flightdeckd statusline`)
+
+- **Uso:** comando para usar dentro da statusline do próprio usuário. **O Flightdeck nunca escreve a configuração de statusline.**
+- **Leitura:** lê o JSON que o Claude Code passa no stdin, pega o `session_id` e o `cwd`, e consulta o daemon local com timeout de 300 ms.
+- **Saída:** uma linha, por exemplo `5h 35% · 7d 27% · hoje $4.20 · sessão $0.84`.
+- **Sem daemon:** com o daemon fora do ar ou lento, imprime uma linha vazia e sai com 0.
+- **README:** mostra como somar o comando a uma statusline existente.
 
 ### Protocolo (só adições)
 
 | Item | Tipo | Conteúdo |
 | --- | --- | --- |
-| `snapshots.list` | comando | `claudeSessionId`; snapshots com turno e prompt |
-| `rewind.preview` / `rewind.apply` / `rewind.undo` | comando | `claudeSessionId`, `turn`; `apply` com `confirm` |
-| `session.fork` | comando | `claudeSessionId`, `upToMessageId`, `rewindFiles?`, `open` (`flightdeck` ou `terminal`) |
-| `mcp.list` / `mcp.test` / `mcp.save` / `mcp.remove` / `mcp.toggle` | comando | `projectId`; `save`, `remove` e `toggle` com `confirm` |
-| `agentcfg.list` / `agentcfg.read` / `agentcfg.write` | comando | `projectId`, `kind` (`claudemd`, `agent` ou `skill`), `path`; `write` com `expectedHash` e `confirm` |
+| `changes.get` | comando | `target`; arquivos com status, diff e, no card, à frente e atrás |
+| `changes.watch` / `changes.updated` | comando / frame | diff atualizado depois de mudança no disco |
+| `changes.revert` / `changes.undoRevert` | comando | `target`, `path`, `confirm` |
+| `file.read` / `file.write` | comando | `target`, `path`; `write` com `expectedHash` |
+| `review.list` / `review.add` / `review.update` / `review.remove` / `review.send` | comando | comentários do alvo; `send` manda os rascunhos e devolve para onde foram |
+| `pr.comments` | comando | `cardId`; comentários do PR |
+| `pr.comments.send` | comando | `cardId`, `ids` |
+| `card.updateFromBase` / `card.mergeLocal` | comando | `cardId`; `mergeLocal` com `mode` e `confirm` |
+| `files.sessions` | comando | `path` absoluto; sessões que mexeram no arquivo |
+| `statusline.get` | comando | `claudeSessionId?`; os dados da linha |
 
 ### App
 
-- **Linha do tempo da sessão:**
-  - cada turno com o prompt, a hora e os arquivos que mudaram;
-  - ações "Voltar arquivos até aqui" e "Bifurcar daqui", com prévia e confirmação.
-- **Projeto → Agente:** abas MCP, CLAUDE.md, Agentes e Skills, com a origem e o "só leitura" de cada item.
+- Aba **Mudanças** na sessão e no card:
+  - lista de arquivos, diff com seleção para comentar, rascunhos ao lado e "Enviar revisão";
+  - por arquivo: "Reverter", "Editar" e "Sessões que mexeram aqui".
+- No card:
+  - comentários do PR com "Enviar ao agente";
+  - indicador à frente e atrás, "Atualizar com a base" e "Merge e arquivar".
+- Na configuração do projeto: um aviso quando não existe `.worktreeinclude`, com um exemplo.
 
 ## Migrações com trilhas em paralelo
 
@@ -131,44 +151,47 @@ Várias fases criam tabelas ao mesmo tempo. A regra:
 
 ## Disciplina TDD
 
-Segue [`docs/TDD.md`](TDD.md).
+Segue [`docs/TDD.md`](TDD.md). A auditoria vai desde o commit-base da fase, a tag da fase anterior integrada.
 
 **Travas:**
-- Os snapshots só em repositórios temporários.
-- O `forkSession` e o `rewindFiles` atrás da interface do runtime, com o `FakeRuntime` imitando o resultado.
-- Os servidores MCP de teste são scripts locais. Nada de rede.
-- A trava de home garante que nada é escrito no `~/.claude` nem no `~/.claude.json`, e reprova a suíte se um teste tentar.
+- Os repositórios dos testes são temporários e usam o helper de tempdir com realpath.
+- `gh` e `az` são os falsos da Fase 4.
+- O statusline é testado com o stdin falso e um daemon de teste.
 
 ## Testes e critérios
 
 | Área | O que precisa passar |
 | --- | --- |
-| `snapshots` | snapshot sem mudar índice nem arquivos do usuário (conferido por `git status` e hash); inclui não rastreados e respeita ignorados; árvore igual não cria ref; limites e retenção; hook só enfileira |
-| `rewind` | prévia e aplicação pelo SDK falso e pelo snapshot; arquivos criados depois são removidos; snapshot de segurança e desfazer; recusa com turno em andamento e sem confirmação |
-| `bifurcar` | `forkSession` com `upToMessageId`; abre gerenciada com `resume` ou oferece terminal; opção de voltar arquivos junto |
-| `mcp-projeto` | origens e só leitura certos; mescla preservando o resto; segredos mascarados; `test` exige `confirm` com o comando exato, lista ferramentas de um servidor stdio local e respeita o timeout; abrir a lista não inicia servidor; `toggle` na sessão viva pelo runtime falso |
-| `config-agente` | CLAUDE.md, agentes e skills do projeto listados e editáveis; os do usuário só leitura; frontmatter validado; conflito por hash; nada escrito fora do projeto |
-| `linha-do-tempo-ui` | turnos com arquivos; prévia, confirmação e desfazer; bifurcar com as duas opções |
-| `agente-ui` | abas MCP, CLAUDE.md, Agentes e Skills; avisos de versionado e de só leitura; testar servidor |
+| `mudancas` | diff contra `HEAD` com não rastreados; card contra a base; watcher com debounce; arquivo binário marcado sem diff |
+| `revisao-inline` | comentários em rascunho por alvo; envio monta a mensagem no formato e vai pelo caminho certo (gerenciada, card, terminal controlável ou copiar); comentário fica desatualizado quando o trecho some |
+| `reverter-editar` | revert de rastreado e de novo com cópia e desfazer; edição com `expectedHash`; conflito quando o arquivo mudou; limites de texto e tamanho |
+| `pr-comentarios` | GitHub e Azure pelos falsos; estado resolvido; envio ao agente; nada postado no provedor |
+| `merge-local` | à frente e atrás; atualizar com a base com e sem conflito (aborta e preserva); merge `--no-ff` e `squash` com a base em checkout limpo, conferindo que o `git status` daquela worktree fica limpo depois; base em checkout com mudanças é recusada; base fora de checkout pela worktree temporária; conflito recusa sem mudar nada |
+| `worktreeinclude` | copia só os ignorados que casam; limite de 50 MB; nunca `.git` nem `.flightdeck`; `settings.local.json` como padrão embutido |
+| `sessao-arquivos` | `Write`, `Edit`, `MultiEdit` e `NotebookEdit` extraídos de fixture; deduplicação por mensagem; `files.sessions` |
+| `statusline` | linha com cota e custo; daemon fora do ar dá linha vazia e saída 0 em menos de 300 ms; nada é escrito em settings |
+| `mudancas-ui` | aba com lista, diff, seleção e rascunhos; reverter com confirmação e desfazer; editor com conflito |
+| `card-revisao-ui` | comentários do PR; à frente e atrás; atualizar e merge com confirmação e mensagens de conflito |
 
-**Smoke (`bun run smoke:checkpoints`)**
+**Smoke (`bun run smoke:review`)**
 
-- Daemon `--runtime fake` e um repositório temporário.
-- Uma sessão do terminal pelo claude falso faz dois turnos que editam e criam arquivos. Os snapshots são criados e o `git status` do usuário não muda por causa deles.
-- `rewind.apply` para antes do segundo turno restaura os arquivos e remove o criado; `rewind.undo` volta.
-- `session.fork` gera um id novo.
-- `mcp.test` de um servidor stdio local lista as ferramentas dele.
-- Imprime `SMOKE CHECKPOINTS OK`.
+- Daemon `--runtime fake` e um repositório temporário com remoto local, um `.worktreeinclude` e um `.env` ignorado.
+- O card é criado e o `.env` aparece na worktree.
+- O fake edita dois arquivos.
+- Um comentário inline é enviado e chega à sessão do card no formato certo.
+- Um arquivo é revertido, e o desfazer o recupera.
+- "Merge e arquivar" com `squash` leva o card a Concluído, a base ganha um commit e a worktree some.
+- Imprime `SMOKE REVIEW OK`.
 
 **Critérios de aceite**
 
 - [ ] O vermelho por asserção de cada área mostrado antes da implementação.
 - [ ] `tdd:audit` OK desde o commit-base.
 - [ ] typecheck, lint e test com cobertura de 100%.
-- [ ] Todos os smokes, inclusive o `smoke:checkpoints`.
+- [ ] Todos os smokes, inclusive o `smoke:review`.
 - [ ] Os builds e o `cargo check` passam.
 - [ ] CI verde.
-- [ ] Versões em `0.11.0`.
-- [ ] README atualizado, com os limites do rewind ditos com clareza.
+- [ ] Versões em `0.10.0`.
+- [ ] README atualizado.
 - [ ] `docs/DECISIONS.md` atualizado e git limpo.
-- [ ] Tag `fase-11` criada pelo orquestrador, depois da confirmação com o claude real: rewind e fork numa sessão de verdade.
+- [ ] Tag `fase-10` criada pelo orquestrador.
