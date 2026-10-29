@@ -246,6 +246,8 @@ async function run(work: string): Promise<void> {
     log("Write aprovado pelo app");
 
     step = "mandar mensagem pelo canal";
+    // The fake writes a new transcript line once the message arrives: frames before it are old.
+    const beforeMessage = client.frames.length;
     await client.call("external.message", { claudeSessionId: SESSION, text: "mensagem do app" });
     const delivered = await until(
       () => events(fake.events(), "channel")[0],
@@ -258,15 +260,23 @@ async function run(work: string): Promise<void> {
     step = "history.changed com a linha nova";
     await until(
       () =>
-        client.frames.find((f) => f.type === "history.changed" && f.claudeSessionId === SESSION),
-      "history.changed da sessão externa",
+        client.frames
+          .slice(beforeMessage)
+          .find((f) => f.type === "history.changed" && f.claudeSessionId === SESSION),
+      "history.changed depois da mensagem",
     );
-    const page = await client.call<{ messages: Array<{ text: string }> }>("history.get", {
-      claudeSessionId: SESSION,
-    });
-    const texts = page.messages.map((m) => m.text);
-    if (!texts.some((t) => t.includes("crie a.txt"))) throw new Error(`transcript: ${texts}`);
-    log("history.changed recebido");
+    const NEW_LINE = "linha nova depois da mensagem";
+    const deadline = Date.now() + TIMEOUT_MS;
+    let texts: string[] = [];
+    while (!texts.some((t) => t.includes(NEW_LINE)) && Date.now() < deadline) {
+      const page = await client.call<{ messages: Array<{ text: string }> }>("history.get", {
+        claudeSessionId: SESSION,
+      });
+      texts = page.messages.map((m) => m.text);
+      if (!texts.some((t) => t.includes(NEW_LINE))) await Bun.sleep(50);
+    }
+    if (!texts.some((t) => t.includes(NEW_LINE))) throw new Error(`transcript: ${texts}`);
+    log("history.changed com a linha nova");
 
     step = "esperar SessionEnd";
     await until(
