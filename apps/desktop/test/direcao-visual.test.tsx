@@ -1,6 +1,30 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { poll } from "../../daemon/test/helpers.ts";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
+const { act, cleanup, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+const { StatusDot } = await import("../src/components/status/status-dot.tsx");
+
+setDefaultTimeout(20_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
+}
 
 const DESKTOP = resolve(import.meta.dir, "..");
 const css = readFileSync(resolve(DESKTOP, "src/styles.css"), "utf8");
@@ -92,5 +116,55 @@ describe("direcao-visual", () => {
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*transition-duration:\s*0\.01ms/s,
     );
+  });
+
+  test("o status é um pontinho de 8 px: azul com pulso, âmbar, cinza, esmaecido e vermelho", () => {
+    const tones = ["running", "needs-you", "idle", "ended", "error"] as const;
+    render(
+      <div>
+        {tones.map((tone) => (
+          <StatusDot key={tone} tone={tone} label={`estado ${tone}`} />
+        ))}
+      </div>,
+    );
+    const dot = (tone: string) => screen.queryByRole("img", { name: `estado ${tone}` });
+    for (const tone of tones) {
+      expect(dot(tone)?.className ?? "").toContain("size-2");
+      expect(dot(tone)?.className ?? "").toContain("rounded-full");
+      expect(dot(tone)?.className ?? "").toContain(`bg-status-${tone}`);
+      expect(dot(tone)?.getAttribute("title")).toBe(`estado ${tone}`);
+    }
+    // Only the running one pulses (and only when motion is allowed); the ended one fades.
+    expect(dot("running")?.className ?? "").toContain("motion-safe:animate-pulse");
+    for (const tone of ["needs-you", "idle", "ended", "error"]) {
+      expect(dot(tone)?.className ?? "").not.toContain("animate-pulse");
+    }
+    expect(dot("ended")?.className ?? "").toContain("opacity-50");
+    expect(dot("idle")?.className ?? "").not.toContain("opacity-50");
+  });
+
+  test("na lista, a linha tem o pontinho (sem pílula de estado) e a hora em números tabulares; só o rótulo é pílula", async () => {
+    const d = makeDaemon(cleanups);
+    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+    await poll(() => d.manager.get(sessionId).status === "idle");
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => screen.queryByRole("listitem", { name: "Gerenciada" }) !== null);
+    const row = screen.queryByRole("listitem", { name: "Gerenciada" }) as HTMLElement;
+    const dot = within(row).queryByRole("img", { name: "ociosa" });
+    expect(dot?.className ?? "").toContain("bg-status-idle");
+    // No pill carries the state any more.
+    expect(
+      [...row.querySelectorAll("[data-slot='badge']")].some(
+        (b) => (b.textContent ?? "") === "ociosa",
+      ),
+    ).toBe(false);
+    const time = row.querySelector("time");
+    expect(time).not.toBeNull();
+    expect(time?.className ?? "").toContain("tabular-nums");
+    expect(Number.isNaN(Date.parse(time?.getAttribute("datetime") ?? ""))).toBe(false);
   });
 });
