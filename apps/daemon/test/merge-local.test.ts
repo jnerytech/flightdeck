@@ -149,6 +149,18 @@ describe("merge-local", () => {
     expect(git(ctx.repo, "worktree", "list").split("\n")).toHaveLength(1);
   });
 
+  test("a base é comparada pelo nome inteiro: com develop em checkout, a base dev vai pela worktree temporária", async () => {
+    const ctx = await ready("Em dev", "oi", "dev");
+    commit(ctx.worktree, "feito.txt", "feito\n");
+    const develop = join(ctx.root, "develop-wt");
+    git(ctx.repo, "worktree", "add", "-q", "-b", "develop", develop, "dev");
+    const developTip = sha(develop);
+    await ctx.board.mergeLocal(ctx.cardId, "merge", true);
+    expect(git(ctx.repo, "ls-tree", "--name-only", "dev").split(/\r?\n/)).toContain("feito.txt");
+    expect(sha(develop)).toBe(developTip);
+    expect(clean(develop)).toBe(true);
+  });
+
   test("conflito recusa sem mudar nada", async () => {
     const ctx = await ready();
     commit(ctx.worktree, "README.md", "# do card\n");
