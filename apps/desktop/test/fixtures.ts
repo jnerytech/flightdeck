@@ -8,7 +8,7 @@ import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
-import type { QuotaHistory } from "../../daemon/src/quota/history.ts";
+import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
@@ -107,7 +107,10 @@ export function daemon(
     : undefined;
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   const budgets = options.budgets?.(store.db);
-  const quotaHistory = options.quotaHistory?.(store.db);
+  // Like the real daemon, costs come with the quota's history.
+  const quotaHistory =
+    options.quotaHistory?.(store.db) ??
+    (options.costs ? new QuotaHistory({ db: store.db }) : undefined);
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
