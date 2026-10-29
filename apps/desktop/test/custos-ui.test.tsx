@@ -251,4 +251,30 @@ describe("custos-ui", () => {
     expect(screen.queryByRole("button", { name: "Custos" })).toBeNull();
     expect(screen.queryByText(/Só sessões gerenciadas/)).not.toBeNull();
   });
+
+  test("no app desktop, salvar usa o seletor de arquivos do WebView; sem seletor, o app avisa", async () => {
+    const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
+    const mem = memoryPlatform(false);
+    const writes: string[] = [];
+    const desktop = tauriPlatform({
+      localStorage: mem.win.localStorage,
+      document: { hasFocus: () => false },
+      navigator: { clipboard: { writeText: async () => {} } },
+      showSaveFilePicker: async () => ({
+        createWritable: async () => ({
+          write: async (chunk: string) => {
+            writes.push(chunk);
+          },
+          close: async () => {},
+        }),
+      }),
+    });
+    expect(await desktop.saveFile("a.csv", "x,y").catch(() => false)).toBe(true);
+    expect(writes).toEqual(["x,y"]);
+    const { showSaveFilePicker: _none, ...noPicker } = mem.win;
+    const { createWebPlatform } = await import("../src/platform/web/index.ts");
+    const store = new AppStore(createWebPlatform(noPicker), { now: () => START, day: utcDay });
+    expect(await store.saveFile("a.csv", "x")).toBe(false);
+    expect(store.getState().error).toBe("salvar arquivo indisponível nesta plataforma");
+  });
 });
