@@ -243,6 +243,19 @@ describe("bandeja-aprovacao", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  test("o link de um pedido já respondido só traz o app, sem banner nem formulário de host", async () => {
+    const tray = trayPlatform(false);
+    const store = new AppStore(tray.mem.platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await settle(() => tray.hasHandler());
+    await act(async () => tray.mem.deepLink(requestLink("h1", "respondido")));
+    expect(tray.shown()).toBe(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByText("Este link veio de fora do app. Confira os dados antes de salvar."),
+    ).toBeNull();
+  });
+
   test("a casca Tauri recebe o submenu e repassa os cliques", async () => {
     const calls: Array<[string, unknown]> = [];
     const call = (async (cmd: string, args?: unknown) => {
