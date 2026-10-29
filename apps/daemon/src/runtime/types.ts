@@ -47,11 +47,22 @@ export interface StartOptions {
   canUseTool: CanUseToolFn;
 }
 
+/** What the SDK's `Query.rewindFiles` answers (phase 12). */
+export interface RewindFilesResult {
+  canRewind: boolean;
+  error?: string;
+  filesChanged?: string[];
+  insertions?: number;
+  deletions?: number;
+}
+
 export interface AgentRun {
   /** Normalized events; ends when the run is closed and throws if the runtime fails. */
   events: AsyncIterable<RuntimeEvent>;
-  /** Next user message. */
-  send(text: string): void;
+  /** Next user message; `uuid` names it in the transcript (the turn the SDK rewinds to). */
+  send(text: string, uuid?: string): void;
+  /** Phase 12: the SDK's file checkpoint back to before the message `userMessageId`. */
+  rewindFiles?(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
 }

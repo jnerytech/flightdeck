@@ -948,6 +948,20 @@ export const Command = z.discriminatedUnion("type", [
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
+  /** Phase 12: what going back to before turn `turn` (a `before` snapshot's n) changes. */
+  cmd("rewind.preview", z.object({ claudeSessionId: z.string().min(1), turn: z.number().int() })),
+  cmd(
+    "rewind.apply",
+    z.object({
+      claudeSessionId: z.string().min(1),
+      turn: z.number().int(),
+      confirm: z.boolean().optional(),
+    }),
+  ),
+  cmd(
+    "rewind.undo",
+    z.object({ claudeSessionId: z.string().min(1), confirm: z.boolean().optional() }),
+  ),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -1083,6 +1097,15 @@ export const SnapshotInfo = z.object({
   repo: z.string(),
 });
 export type SnapshotInfo = z.infer<typeof SnapshotInfo>;
+
+/** Phase 12: what a rewind changes, by the SDK's checkpoint or by the snapshot. */
+export const RewindPreview = z.object({
+  via: z.enum(["sdk", "snapshot"]),
+  files: z.array(z.object({ path: z.string(), change: z.string() })),
+  insertions: z.number().int(),
+  deletions: z.number().int(),
+});
+export type RewindPreview = z.infer<typeof RewindPreview>;
 
 /** Phase 9: `daemon-latest.json`, published with each release. */
 export const DaemonManifest = z.object({
@@ -1287,6 +1310,9 @@ export interface CommandResults {
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
   "snapshots.list": { snapshots: SnapshotInfo[] };
+  "rewind.preview": RewindPreview;
+  "rewind.apply": RewindPreview;
+  "rewind.undo": RewindPreview;
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

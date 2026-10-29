@@ -32,6 +32,7 @@ import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
+import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
@@ -79,6 +80,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 12: going back to a turn (`rewind.*`). */
+  rewinder?: Rewinder;
   /** Phase 12: the git snapshots behind `snapshots.list`. */
   snapshots?: Snapshots;
   /** Phase 9: applies the checked update (`daemon.update.apply`). */
@@ -299,6 +302,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function rewinder(): Rewinder {
+    if (!opts.rewinder) throw new FlightdeckError("invalid_state", "voltar arquivos indisponível");
+    return opts.rewinder;
+  }
+
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
     const update = opts.updates?.status();
@@ -464,6 +472,18 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, {
           snapshots: opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
         });
+      case "rewind.preview": {
+        const { claudeSessionId, turn } = command.payload;
+        return ok(command.type, await rewinder().preview(claudeSessionId, turn));
+      }
+      case "rewind.apply": {
+        const { claudeSessionId, turn, confirm } = command.payload;
+        return ok(command.type, await rewinder().apply(claudeSessionId, turn, confirm === true));
+      }
+      case "rewind.undo": {
+        const { claudeSessionId, confirm } = command.payload;
+        return ok(command.type, await rewinder().undo(claudeSessionId, confirm === true));
+      }
       case "daemon.update.apply": {
         if (!opts.updater)
           throw new FlightdeckError("invalid_state", "este daemon não se atualiza");

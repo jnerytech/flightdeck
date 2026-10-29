@@ -131,7 +131,7 @@ export class Snapshots {
     if ((await this.changedBytes(repo)) > limit) {
       return { skipped: `mudanças acima do limite de ${limit} bytes` };
     }
-    const tree = await this.writeTree(repo);
+    const tree = await this.currentTree(repo);
     const last = this.last(input.claudeSessionId);
     const n = (last?.n ?? 0) + 1;
     let ref = last?.ref ?? "";
@@ -250,7 +250,7 @@ export class Snapshots {
   }
 
   /** HEAD plus every change, in a temporary index the user never sees. */
-  private async writeTree(repo: string): Promise<string> {
+  async currentTree(repo: string): Promise<string> {
     const dir = mkdtempSync(join(tmpdir(), "fd-snapshot-"));
     const env = { GIT_INDEX_FILE: join(dir, "index") };
     try {

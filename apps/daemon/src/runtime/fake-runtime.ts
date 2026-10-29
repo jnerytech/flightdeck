@@ -4,11 +4,19 @@ import type { AssistantBlock } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
-import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
+import type {
+  AgentRun,
+  AgentRuntime,
+  RewindFilesResult,
+  RuntimeEvent,
+  StartOptions,
+} from "./types.ts";
 
 export interface FakeRuntimeOptions {
   /** Delay between streamed chunks, in ms. */
   delayMs?: number;
+  /** What `rewindFiles` answers (phase 12); without it, the fake has no checkpoint. */
+  rewind?: (userMessageId: string, dryRun: boolean) => RewindFilesResult;
 }
 
 class Interrupted extends Error {}
@@ -30,11 +38,14 @@ export class FakeRuntime implements AgentRuntime {
 
   constructor(options: FakeRuntimeOptions = {}) {
     this.delayMs = options.delayMs ?? 10;
+    this.rewind = options.rewind;
   }
+
+  private readonly rewind: FakeRuntimeOptions["rewind"];
 
   start(opts: StartOptions): AgentRun {
     this.starts.push(opts);
-    return new FakeRun(opts, this.delayMs, this.costs);
+    return new FakeRun(opts, this.delayMs, this.costs, this.rewind);
   }
 }
 
@@ -51,8 +62,15 @@ class FakeRun implements AgentRun {
     private readonly opts: StartOptions,
     private readonly delayMs: number,
     private readonly costs: Map<string, number>,
+    private readonly rewind?: FakeRuntimeOptions["rewind"],
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
+  }
+
+  async rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {
+    return (
+      this.rewind?.(userMessageId, opts.dryRun) ?? { canRewind: false, error: "sem checkpoint" }
+    );
   }
 
   send(text: string): void {

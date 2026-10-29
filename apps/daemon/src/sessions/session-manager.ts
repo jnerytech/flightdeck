@@ -15,7 +15,13 @@ import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
-import type { AgentRun, AgentRuntime, QuotaReading, RuntimeEvent } from "../runtime/types.ts";
+import type {
+  AgentRun,
+  AgentRuntime,
+  QuotaReading,
+  RewindFilesResult,
+  RuntimeEvent,
+} from "../runtime/types.ts";
 import type { EventStore } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 
@@ -42,6 +48,8 @@ export interface TurnEdge {
   cwd: string;
   kind: "before" | "after";
   prompt?: string;
+  /** The user message's uuid (before edges), which the SDK rewinds to. */
+  turnUuid?: string;
 }
 
 export type EventListener = (envelope: EventEnvelope) => void;
@@ -51,8 +59,8 @@ interface LiveSession {
   /** Messages sent while a turn is in progress, delivered one per turn. */
   queue: string[];
   closing: boolean;
-  /** The first turn's prompt, until session.init names the Claude session. */
-  pendingBefore?: string;
+  /** The first turn's prompt and uuid, until session.init names the Claude session. */
+  pendingBefore?: { text: string; uuid: string };
 }
 
 const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);
@@ -363,8 +371,8 @@ export class SessionManager {
         });
         this.emit(sessionId, event);
         if (this.get(sessionId).status === "starting") this.setStatus(sessionId, "running");
-        if (live.pendingBefore !== undefined) {
-          this.turnEdge(sessionId, "before", live.pendingBefore);
+        if (live.pendingBefore) {
+          this.turnEdge(sessionId, "before", live.pendingBefore.text, live.pendingBefore.uuid);
           live.pendingBefore = undefined;
         }
         return;
@@ -392,12 +400,18 @@ export class SessionManager {
     const status = this.get(sessionId).status;
     if (status !== "starting") this.setStatus(sessionId, "running");
     this.emit(sessionId, { type: "message.user", text });
-    if (this.get(sessionId).claudeSessionId) this.turnEdge(sessionId, "before", text);
-    else live.pendingBefore = text;
-    live.run.send(text);
+    const uuid = crypto.randomUUID();
+    if (this.get(sessionId).claudeSessionId) this.turnEdge(sessionId, "before", text, uuid);
+    else live.pendingBefore = { text, uuid };
+    live.run.send(text, uuid);
   }
 
-  private turnEdge(sessionId: string, kind: "before" | "after", prompt?: string): void {
+  private turnEdge(
+    sessionId: string,
+    kind: "before" | "after",
+    prompt?: string,
+    turnUuid?: string,
+  ): void {
     const { claudeSessionId, cwd } = this.get(sessionId);
     if (!claudeSessionId) return;
     this.opts.onTurnEdge?.({
@@ -406,7 +420,24 @@ export class SessionManager {
       cwd,
       kind,
       ...(prompt !== undefined ? { prompt } : {}),
+      ...(turnUuid !== undefined ? { turnUuid } : {}),
     });
+  }
+
+  /** Phase 12: a turn is running (or waiting for a permission) in this Claude session. */
+  busy(claudeSessionId: string): boolean {
+    return this.list().some((s) => s.claudeSessionId === claudeSessionId && ACTIVE.has(s.status));
+  }
+
+  /** Phase 12: the SDK's rewind of a live managed session; null without one. */
+  async rewindFiles(
+    claudeSessionId: string,
+    userMessageId: string,
+    dryRun: boolean,
+  ): Promise<RewindFilesResult | null> {
+    const session = this.list().find((s) => s.claudeSessionId === claudeSessionId);
+    const run = session ? this.live.get(session.id)?.run : undefined;
+    return run?.rewindFiles ? run.rewindFiles(userMessageId, { dryRun }) : null;
   }
 
   private fail(sessionId: string, live: LiveSession, code: string, message: string): void {

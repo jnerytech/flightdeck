@@ -10,12 +10,19 @@ import type { AssistantBlock } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
-import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
+import type {
+  AgentRun,
+  AgentRuntime,
+  RewindFilesResult,
+  RuntimeEvent,
+  StartOptions,
+} from "./types.ts";
 
 /** The part of the SDK `Query` object this runtime uses. */
 export interface QueryHandle extends AsyncIterable<SDKMessage> {
   interrupt(): Promise<unknown>;
   close(): void;
+  rewindFiles?(userMessageId: string, opts?: { dryRun?: boolean }): Promise<RewindFilesResult>;
 }
 
 export type QueryFn = (params: {
@@ -164,6 +171,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       cwd: opts.cwd,
       permissionMode: opts.permissionMode,
       includePartialMessages: true,
+      // Phase 12: copies of the files before each change, for rewindFiles.
+      enableFileCheckpointing: true,
       // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
       env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
       settingSources: ["user", "project", "local"],
@@ -202,13 +211,16 @@ export class ClaudeSdkRuntime implements AgentRuntime {
 
     return {
       events,
-      send(text) {
+      send(text, uuid) {
         prompt.push({
           type: "user",
           parent_tool_use_id: null,
           message: { role: "user", content: text },
+          ...(uuid ? { uuid: uuid as SDKUserMessage["uuid"] } : {}),
         });
       },
+      rewindFiles: (userMessageId, opts) =>
+        (handle.rewindFiles as NonNullable<QueryHandle["rewindFiles"]>)(userMessageId, opts),
       async interrupt() {
         await handle.interrupt();
       },

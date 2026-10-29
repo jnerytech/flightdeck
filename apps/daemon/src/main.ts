@@ -16,6 +16,7 @@ import {
 } from "./central/hooks-install.ts";
 import { ProjectKeys } from "./central/project-key.ts";
 import { runClaude } from "./central/wrapper.ts";
+import { Rewinder } from "./checkpoints/rewind.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
@@ -355,6 +356,7 @@ export async function startDaemon(
         claudeSessionId: edge.claudeSessionId,
         kind: edge.kind,
         ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
+        ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
       }),
   });
   const history = new HistoryIndexer({
@@ -458,6 +460,7 @@ export async function startDaemon(
     maintenance,
     ...(updates ? { updates } : {}),
     snapshots,
+    rewinder: new Rewinder({ snapshots, sessions: manager }),
     ...(updater ? { updater } : {}),
     hostName: config.hostName,
     bind: config.bind,
