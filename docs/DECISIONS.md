@@ -965,6 +965,7 @@ A primeira execução da CI no GitHub falhou nas duas pernas. Estas são as caus
   - O pedido e a última ferramenta vêm das linhas já indexadas (`history_messages`), na ordem do arquivo. Não há tabela nem migração.
   - O estado vem do que o daemon sabe ao vivo: o status da sessão gerenciada ou externa, e a ferramenta do pedido aberto. Uma sessão do histórico é sempre `ended`.
   - O corte de 80 caracteres conta o "…": 79 caracteres e a reticência.
+  - No app, a linha de uma sessão gerenciada usa o estado, a ferramenta pedida e o `since` do `session.summary` ao vivo. A lista só é recarregada quando sessões entram ou saem, e sem isso a linha discordaria do selo da própria linha. O pedido continua vindo da lista.
   - Uma sessão do terminal recebe outro `external.updated` quando um pedido dela abre ou fecha, porque o frame do hook chega antes de o pedido existir e diria "esperando aprovação" sem a ferramenta.
 - **`PendingPermission.input`:** opcional, com o mesmo corte de 200 caracteres das sessões do terminal (`summarizeInput`). É o que permite o "ferramenta: resumo" da bandeja para as sessões gerenciadas.
 - **`host.info`:** ganhou `flightdeckdPath` (o binário estável da Fase 7 quando existe, pela home do ambiente) e `wslDistro` (`WSL_DISTRO_NAME`). Não é feature: um daemon antigo não manda nada, e o app usa `flightdeckd` do PATH.
