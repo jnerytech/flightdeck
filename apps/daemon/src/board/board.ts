@@ -11,6 +11,7 @@ import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
+import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
@@ -47,6 +48,8 @@ export interface BoardOptions {
   prPollIntervalMs?: number;
   /** Persists host-wide settings changed through `board.settings`. */
   onSettingsChange?: (settings: { maxParallelRuns: number }) => void;
+  /** Runs workflow `check` commands; the real shell runner when absent. */
+  checks?: CheckRunner;
 }
 
 interface ProjectRow {
@@ -141,6 +144,7 @@ export class Board {
         release: (cardId) => this.release(cardId),
         card: (cardId) => this.getCard(cardId),
       },
+      checks: opts.checks ?? shellCheckRunner(),
     });
     this.limit = opts.maxParallelRuns ?? 2;
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);

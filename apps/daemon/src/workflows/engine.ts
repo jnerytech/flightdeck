@@ -13,9 +13,16 @@ import type { BoardEvent } from "../board/columns.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
+import type { CheckResult, CheckRunner } from "./check-runner.ts";
 import { type InterpolationContext, interpolate } from "./interpolate.ts";
-import { type WorkflowSource, workflowSources } from "./repo.ts";
-import { type AgentAction, checkCommands, parseWorkflow, type Workflow } from "./schema.ts";
+import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
+import {
+  type AgentAction,
+  checkCommands,
+  parseWorkflow,
+  type Step,
+  type Workflow,
+} from "./schema.ts";
 
 /** What the engine needs from the board that owns the cards. */
 export interface EngineHost {
@@ -29,6 +36,7 @@ export interface WorkflowEngineOptions {
   db: Database;
   manager: SessionManager;
   host: EngineHost;
+  checks: CheckRunner;
 }
 
 interface RunRow {
@@ -82,11 +90,13 @@ export class WorkflowEngine {
   private readonly db: Database;
   private readonly manager: SessionManager;
   private readonly host: EngineHost;
+  private readonly checks: CheckRunner;
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
     this.manager = opts.manager;
     this.host = opts.host;
+    this.checks = opts.checks;
   }
 
   async list(project: Project): Promise<WorkflowInfo[]> {
@@ -240,14 +250,67 @@ export class WorkflowEngine {
     const context: InterpolationContext = { inputs: JSON.parse(run.inputs), steps: {} };
     try {
       for (const step of workflow.steps) {
-        const { agent } = step as { agent: AgentAction };
-        const output = await this.agentStep(run, worktree, step.id, 1, agent, context);
-        context.steps[step.id] = { output };
+        context.steps[step.id] = { output: await this.runStep(run, worktree, step, context) };
       }
       this.finish(run, "completed", null);
     } catch (error) {
       this.finish(run, "failed", reason(error));
     }
+  }
+
+  private async runStep(
+    run: RunRow,
+    worktree: string,
+    step: Step,
+    context: InterpolationContext,
+  ): Promise<string> {
+    if ("check" in step) {
+      const { exitCode, output } = await this.checkStep(run, worktree, step.id, 1, step.check);
+      if (exitCode !== 0)
+        throw new Error(`etapa ${step.id} falhou: check saiu com código ${exitCode}`);
+      return output;
+    }
+    const { agent } = step as { agent: AgentAction };
+    return this.agentStep(run, worktree, step.id, 1, agent, context);
+  }
+
+  /** Runs a check of the trusted workflow; any other command never reaches the executor. */
+  private async checkStep(
+    run: RunRow,
+    worktree: string,
+    stepId: string,
+    attempt: number,
+    command: string,
+  ): Promise<CheckResult> {
+    this.db
+      .query(
+        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+         VALUES (?, ?, ?, 'check', 'running', ?)`,
+      )
+      .run(run.id, stepId, attempt, now());
+    try {
+      if (!this.allowed(run.id, command)) {
+        throw new Error(`comando fora do workflow confiado: ${command}`);
+      }
+      const result = await this.checks.run(command, worktree);
+      const status = result.exitCode === 0 ? "completed" : "failed";
+      this.endStep(run.id, stepId, attempt, status, result.output, result.exitCode);
+      return result;
+    } catch (error) {
+      this.endStep(run.id, stepId, attempt, "failed", null);
+      throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
+    }
+  }
+
+  /** `command` is literally a check of the run's workflow, whose content is still trusted. */
+  private allowed(runId: string, command: string): boolean {
+    const run = this.row(runId);
+    const { projectId } = this.host.card(run.card_id);
+    const intact =
+      hashOf(run.definition) === run.workflow_hash &&
+      this.trusted(projectId, run.workflow_name, run.workflow_hash);
+    const workflow = intact ? parseWorkflow(run.definition).workflow : null;
+    return workflow !== null && checkCommands(workflow).includes(command);
   }
 
   private async agentStep(
@@ -362,12 +425,14 @@ export class WorkflowEngine {
     attempt: number,
     status: StepStatus,
     output: string | null,
+    exitCode: number | null = null,
   ): void {
     this.db
       .query(
-        "UPDATE step_runs SET status = ?, output = ?, ended_at = ? WHERE run_id = ? AND step_id = ? AND attempt = ?",
+        `UPDATE step_runs SET status = ?, output = ?, exit_code = ?, ended_at = ?
+         WHERE run_id = ? AND step_id = ? AND attempt = ?`,
       )
-      .run(status, output, now(), runId, stepId, attempt);
+      .run(status, output, exitCode, now(), runId, stepId, attempt);
   }
 
   private setStatus(runId: string, status: RunStatus, why: string | null): void {
