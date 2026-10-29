@@ -60,6 +60,7 @@ import {
   stopServiceDaemon,
   waitHealthy,
 } from "./update.ts";
+import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
@@ -355,6 +356,13 @@ export async function startDaemon(
       })
     : undefined;
   void updates?.start();
+  const updater = updates
+    ? new DaemonUpdater({
+        manifest: () => updates.latest(),
+        dataDir: config.dataDir,
+        ctx: osServiceContext(false),
+      })
+    : undefined;
   const central = new Central({
     db: store.db,
     manager,
@@ -374,6 +382,7 @@ export async function startDaemon(
     central,
     maintenance,
     ...(updates ? { updates } : {}),
+    ...(updater ? { updater } : {}),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,

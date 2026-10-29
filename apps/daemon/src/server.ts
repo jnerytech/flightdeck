@@ -32,6 +32,7 @@ import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -60,6 +61,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 9: applies the checked update (`daemon.update.apply`). */
+  updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
   updates?: UpdateChecker;
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
@@ -328,6 +331,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, maintenance().backupNow());
       case "maintenance.prune":
         return ok(command.type, maintenance().prune(command.payload.dryRun === true));
+      case "daemon.update.apply": {
+        if (!opts.updater)
+          throw new FlightdeckError("invalid_state", "este daemon não se atualiza");
+        return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
+      }
       case "daemon.shutdown": {
         const shutdown = opts.onShutdown;
         if (!shutdown)

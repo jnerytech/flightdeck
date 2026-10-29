@@ -21,6 +21,7 @@ export interface UpdateCheckerOptions {
 
 export class UpdateChecker {
   private last: UpdateStatus | null = null;
+  private manifest: DaemonManifest | null = null;
   private timer: unknown = null;
   private stopped = false;
   private readonly now: () => number;
@@ -52,10 +53,16 @@ export class UpdateChecker {
     return this.last;
   }
 
+  /** The manifest of the last successful check (what `daemon.update.apply` applies). */
+  latest(): DaemonManifest | null {
+    return this.manifest;
+  }
+
   private async check(): Promise<void> {
     const checkedAt = new Date(this.now()).toISOString();
     try {
       const manifest = await this.download();
+      this.manifest = manifest;
       const available = compareVersions(manifest.version, this.opts.currentVersion) > 0;
       this.last = { available, version: manifest.version, checkedAt };
     } catch (error) {

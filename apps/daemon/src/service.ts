@@ -148,7 +148,8 @@ export interface ServiceResult {
   instructions: string[];
 }
 
-async function run(ctx: ServiceContext, cmd: string[]): Promise<string> {
+/** Runs a service command; a non-zero exit is an error. */
+export async function runChecked(ctx: ServiceContext, cmd: string[]): Promise<string> {
   const { code, stdout } = await ctx.exec(cmd);
   if (code !== 0) throw new Error(`falhou (${code}): ${cmd.join(" ")}`);
   return stdout;
@@ -186,7 +187,7 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
     };
   }
   ctx.writeFile(path, unit);
-  for (const cmd of SYSTEMD_INSTALL) await run(ctx, cmd);
+  for (const cmd of SYSTEMD_INSTALL) await runChecked(ctx, cmd);
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
     linger.code === 0 && linger.stdout.trim() === "Linger=yes"
@@ -209,7 +210,7 @@ async function installTask(ctx: ServiceContext, config?: string | null): Promise
     return { output: [`# ${xmlPath}`, xml, "# comando:", display(create)], instructions: [] };
   }
   ctx.writeFile(xmlPath, xml);
-  await run(ctx, create);
+  await runChecked(ctx, create);
   return { output: [`tarefa ${TASK_NAME} criada para o logon de ${ctx.user}`], instructions: [] };
 }
 
@@ -228,10 +229,10 @@ export async function uninstallService(ctx: ServiceContext): Promise<ServiceResu
     const remove = linux ? [`rm ${unitPath(ctx)}`] : [];
     return { output: ["# comandos:", ...commands.map(display), ...remove], instructions: [] };
   }
-  await run(ctx, commands[0] as string[]);
+  await runChecked(ctx, commands[0] as string[]);
   if (linux) {
     ctx.removeFile(unitPath(ctx));
-    await run(ctx, commands[1] as string[]);
+    await runChecked(ctx, commands[1] as string[]);
   }
   return { output: ["serviço removido"], instructions: [] };
 }
@@ -340,7 +341,7 @@ export async function stopService(ctx: ServiceContext): Promise<void> {
 }
 
 export async function startService(ctx: ServiceContext): Promise<void> {
-  await run(
+  await runChecked(
     ctx,
     requireSupported(ctx) === "linux"
       ? ["systemctl", "--user", "start", "flightdeckd"]

@@ -664,6 +664,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("maintenance.prune", z.object({ dryRun: z.boolean().optional() })),
   /** Phase 7: the daemon acks, then closes as on SIGTERM and exits with 0. */
   cmd("daemon.shutdown", z.object({}).strict()),
+  /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
+  cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -909,6 +911,7 @@ export interface CommandResults {
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
+  "daemon.update.apply": { started: true };
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
@@ -939,6 +942,8 @@ export const ErrorCode = z.enum([
   "protocol_incompatible",
   "internal",
   "invalid_permission_update",
+  "update_verification_failed",
+  "update_needs_service",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
