@@ -1,5 +1,6 @@
 import type { ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
+import type { RiskClassifier } from "../permissions/risk.ts";
 import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
@@ -31,6 +32,9 @@ interface Held {
 export class ExternalPermissions {
   private readonly held = new Map<string, Held>();
   private readonly watchers = new Set<(frame: ExternalPermissionFrame) => void>();
+
+  /** Stub. */
+  constructor(readonly opts: { risk?: RiskClassifier } = {}) {}
 
   /** Resolves with the hook's JSON answer, or "" (no decision: the terminal's dialog decides). */
   hold(payload: HookPayload, signal: AbortSignal): Promise<string> {

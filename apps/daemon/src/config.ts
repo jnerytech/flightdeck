@@ -113,6 +113,8 @@ export const Config = z.object({
     .default(() => ({ pauseAt: 0.9 })),
   /** API prices (phase 8): overrides of the default table, model by model. */
   pricing: PricingConfig.default(() => ({ models: {}, fastMultiplier: {} })),
+  /** Stub. */
+  risk: z.object({ extraHigh: z.array(z.string()).default([]) }).default(() => ({ extraHigh: [] })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
