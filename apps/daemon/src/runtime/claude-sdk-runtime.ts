@@ -157,7 +157,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       cwd: opts.cwd,
       permissionMode: opts.permissionMode,
       includePartialMessages: true,
-      env: opts.env,
+      // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
+      env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
       settingSources: ["user", "project", "local"],
       systemPrompt: { type: "preset", preset: "claude_code" },
       canUseTool: async (toolName, input, ctx): Promise<PermissionResult> => {
