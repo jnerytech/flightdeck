@@ -61,7 +61,7 @@ describe("pr: GitHub", () => {
       { args: ["pr", "create"], stdout: `Creating pull request\n${GH_URL}\n` },
       ghStatus("OPEN", [{ conclusion: "SUCCESS" }, { status: "IN_PROGRESS", conclusion: null }]),
     ]);
-    const { board, card, branch, remote } = await cardWithWork("github");
+    const { board, card, branch, remote, repo } = await cardWithWork("github");
     expect(branch).toBe("fd/adicionar-arquivo");
     const opened = await board.createPr(card.id);
     expect(opened).toMatchObject({ prUrl: GH_URL, prState: "open", column: "review" });
@@ -83,6 +83,9 @@ describe("pr: GitHub", () => {
     ]);
     expect(await cardWhen(board, card.id, (c) => c.checksState === "pending")).not.toBeNull();
     expect(gh.calls()[2]).toEqual(["pr", "view", GH_URL, "--json", "state,statusCheckRollup"]);
+    // Polls run from the project's repository: a cwd inside the worktree would lock it on Windows
+    // while Concluir or Descartar removes it.
+    expect(gh.cwds()[2]).toBe(repo);
     gh.respond([ghStatus("MERGED", [{ conclusion: "SUCCESS" }])]);
     const merged = await cardWhen(board, card.id, (c) => c.prState === "merged");
     expect(merged).toMatchObject({ column: "done", checksState: "passing" });

@@ -6,6 +6,7 @@ import type { FakeRule } from "./fake-cli.ts";
 
 const [stateDir = "", ...args] = process.argv.slice(2);
 appendFileSync(join(stateDir, "calls.jsonl"), `${JSON.stringify(args)}\n`);
+appendFileSync(join(stateDir, "cwds.jsonl"), `${JSON.stringify(process.cwd())}\n`);
 const rules = JSON.parse(readFileSync(join(stateDir, "rules.json"), "utf8")) as FakeRule[];
 const rule = rules.find((r) => r.args.every((a) => args.includes(a)));
 if (!rule) {

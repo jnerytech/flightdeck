@@ -18,6 +18,8 @@ export interface FakeCli {
   dir: string;
   /** Arguments of every call, in order. */
   calls(): string[][];
+  /** Working directory of every call, in the same order. */
+  cwds(): string[];
   respond(rules: FakeRule[]): void;
   /** Takes the fake off PATH. */
   restore(): void;
@@ -56,6 +58,14 @@ export function installFakeCli(
         .trim()
         .split(/\r?\n/)
         .map((line) => JSON.parse(line) as string[]);
+    },
+    cwds: () => {
+      const log = join(dir, "cwds.jsonl");
+      if (!existsSync(log)) return [];
+      return readFileSync(log, "utf8")
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => JSON.parse(line) as string);
     },
     respond,
     restore: () => {
