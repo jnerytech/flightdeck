@@ -134,7 +134,12 @@ describe("fila", () => {
     await board.startCard(b.id);
     const codes: string[] = [];
     for (const id of [a.id, b.id]) {
-      codes.push(await board.startCard(id).then(() => "aceitou", (e: { code: string }) => e.code));
+      codes.push(
+        await board.startCard(id).then(
+          () => "aceitou",
+          (e: { code: string }) => e.code,
+        ),
+      );
     }
     expect(codes).toEqual(["invalid_state", "invalid_state"]);
   });
