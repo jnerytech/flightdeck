@@ -15,7 +15,7 @@ import { FrameClient } from "./history-helpers.ts";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-10-30T12:00:00.000Z");
-const POLICY = { eventsDays: 90, externalSessionsDays: 30 };
+const POLICY = { eventsDays: 90, externalSessionsDays: 30, usageDays: 400 };
 const TOKEN = "backup-token-0123456789abcdef";
 
 const cleanups: Array<() => unknown> = [];

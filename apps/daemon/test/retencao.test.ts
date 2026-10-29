@@ -11,7 +11,7 @@ import { tempDir } from "./helpers.ts";
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-10-30T12:00:00.000Z");
 const ago = (days: number) => new Date(NOW - days * DAY).toISOString();
-const POLICY = { eventsDays: 90, externalSessionsDays: 30 };
+const POLICY = { eventsDays: 90, externalSessionsDays: 30, usageDays: 400 };
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -127,7 +127,7 @@ describe("retencao", () => {
 
   test("0 apaga assim que encerra", () => {
     const { db, eventsOf, externals } = fixture();
-    prune(db, { eventsDays: 0, externalSessionsDays: 0 }, { now: NOW });
+    prune(db, { eventsDays: 0, externalSessionsDays: 0, usageDays: 400 }, { now: NOW });
     expect(eventsOf("recent")).toBe(0);
     expect(eventsOf("live")).toBe(2);
     expect(externals()).toEqual(["e-live", "e-pinned"]);
