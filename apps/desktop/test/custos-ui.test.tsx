@@ -194,7 +194,8 @@ describe("custos-ui", () => {
     await act(async () => {
       fireEvent.click(region("Top sessões")?.querySelectorAll("button")[1] as HTMLElement);
     });
-    await settle(() => region("Custos") === null);
+    // The reader loads the transcript after it opens.
+    await settle(() => screen.queryAllByText(/Lido do histórico/).length > 0);
     expect(region("Custos")).toBeNull();
     expect(screen.queryAllByText(/Lido do histórico/).length).toBeGreaterThan(0);
   });
