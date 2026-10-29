@@ -115,6 +115,8 @@ export const Config = z.object({
   /** Terminals embedded in the host (phase 14). */
   terminal: z
     .object({
+      /** On when absent and the daemon only listens in loopback; off when it accepts other networks. */
+      enabled: z.boolean().optional(),
       /** Live terminals at most. */
       max: z.number().int().min(1).default(10),
       /** Minutes without anyone attached before a terminal is ended; the timer stays under 2³¹ ms. */

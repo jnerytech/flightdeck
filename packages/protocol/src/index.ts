@@ -644,6 +644,15 @@ export const TerminalAttachResult = z.object({
 });
 export type TerminalAttachResult = z.infer<typeof TerminalAttachResult>;
 
+/** Whether the host's terminals are on, how many at most and which shell they open. */
+export const TerminalSettings = z.object({
+  enabled: z.boolean(),
+  max: z.number().int(),
+  /** The program of the default shell. */
+  shell: z.string(),
+});
+export type TerminalSettings = z.infer<typeof TerminalSettings>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1432,6 +1441,8 @@ export const Command = z.discriminatedUnion("type", [
   /** `kill` ends the process; without it the terminal is only detached (and a dead one removed). */
   cmd("terminal.close", z.object({ terminalId: TerminalId, kill: z.boolean() })),
   cmd("terminal.list", z.object({}).strict()),
+  /** Turns the host's terminals on (asks for `confirm`) or off (ends the live ones). */
+  cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
   cmd("pr.comments", CardIdPayload),
   /** The data of `flightdeckd statusline`: quota windows, today's cost and the session's. */
   cmd("statusline.get", z.object({ claudeSessionId: z.string().optional() })),
@@ -1581,6 +1592,8 @@ export const HostInfoResult = z.object({
   flightdeckdPath: z.string().nullable().optional(),
   /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
   wslDistro: z.string().nullable().optional(),
+  /** Phase 14: the host's terminals: on or off, how many at most, which shell. */
+  terminal: TerminalSettings.optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -1809,6 +1822,7 @@ export interface CommandResults {
   "terminal.detach": undefined;
   "terminal.close": undefined;
   "terminal.list": { terminals: TerminalInfo[] };
+  "terminal.settings": TerminalSettings;
   "statusline.get": {
     windows: Array<{ window: string; utilization: number | null }>;
     todayUsd: number;
@@ -1851,6 +1865,8 @@ export const ErrorCode = z.enum([
   "update_needs_service",
   /** `file.write` of a file that changed since it was read (phase 11). */
   "file_conflict",
+  /** A terminal command on a host that has the terminal off (phase 14). */
+  "terminal_disabled",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

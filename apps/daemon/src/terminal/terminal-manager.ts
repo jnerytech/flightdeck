@@ -41,6 +41,13 @@ export interface AttachResult {
   exitCode: number | null;
 }
 
+export interface TerminalSettings {
+  enabled: boolean;
+  max: number;
+  /** The program of the default shell. */
+  shell: string;
+}
+
 export interface OpenRequest {
   cwd: string;
   /** An argv, never run through a shell; the host's default shell when absent. */
@@ -51,6 +58,8 @@ export interface OpenRequest {
 
 export interface TerminalManagerOptions {
   pty: PtyFactory;
+  /** Whether terminals may be opened now; on when absent. */
+  enabled?: boolean;
   allowedRoots: readonly string[];
   /** Live terminals at most; 10 when absent. */
   max?: number;
@@ -125,10 +134,43 @@ export class TerminalManager {
   private readonly timers: Timers;
   private readonly now: () => number;
   private flushTimer: unknown = null;
+  private on: boolean;
 
   constructor(readonly opts: TerminalManagerOptions) {
     this.timers = opts.timers ?? realTimers;
     this.now = opts.now ?? Date.now;
+    this.on = opts.enabled ?? true;
+  }
+
+  get enabled(): boolean {
+    return this.on;
+  }
+
+  /** Turning it off ends every live terminal, or shells would run where no one can reach them. */
+  setEnabled(on: boolean): void {
+    if (on === this.on) return;
+    this.on = on;
+    if (on) {
+      this.log("terminal ligado");
+      return;
+    }
+    const ended = this.killAll();
+    this.log(`terminal desligado (${ended} encerrado${ended === 1 ? "" : "s"})`);
+  }
+
+  /** What `host.info` says about the terminals. */
+  settings(): TerminalSettings {
+    const shell = defaultShell({
+      platform: this.opts.platform ?? process.platform,
+      env: (this.opts.env ?? (() => process.env))(),
+      which: this.opts.which ?? whichOnPath,
+    });
+    return { enabled: this.on, max: this.opts.max ?? DEFAULT_MAX, shell: programOf(shell) };
+  }
+
+  /** Every terminal command goes through here: a host with the terminal off refuses them. */
+  private assertOn(): void {
+    if (!this.on) throw new FlightdeckError("terminal_disabled", "terminal desligado neste host");
   }
 
   private log(message: string): void {
@@ -168,6 +210,7 @@ export class TerminalManager {
   }
 
   open(req: OpenRequest): TerminalInfo {
+    this.assertOn();
     const cwd = resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
     const max = this.opts.max ?? DEFAULT_MAX;
     if (this.live() >= max) {
@@ -219,10 +262,12 @@ export class TerminalManager {
   }
 
   write(terminalId: string, data: string): void {
+    this.assertOn();
     this.running(terminalId).pty.write(data);
   }
 
   resize(terminalId: string, cols: number, rows: number): void {
+    this.assertOn();
     const entry = this.running(terminalId);
     entry.pty.resize(cols, rows);
     entry.cols = cols;
@@ -234,6 +279,7 @@ export class TerminalManager {
    * the queue over: the scrollback returned is the position to continue from.
    */
   attach(terminalId: string, sink: TerminalSink): AttachResult {
+    this.assertOn();
     const entry = this.get(terminalId);
     const exited = entry.exitCode !== null;
     entry.clients.set(sink, {
@@ -256,6 +302,11 @@ export class TerminalManager {
   }
 
   detach(terminalId: string, sink: TerminalSink): void {
+    this.assertOn();
+    this.release(terminalId, sink);
+  }
+
+  private release(terminalId: string, sink: TerminalSink): void {
     const entry = this.get(terminalId);
     if (!entry.clients.delete(sink)) return;
     this.log(`terminal ${terminalId} desanexado (${entry.clients.size})`);
@@ -265,7 +316,7 @@ export class TerminalManager {
   /** The connection is gone: every terminal it was attached to keeps running. */
   detachAll(sink: TerminalSink): void {
     for (const entry of [...this.entries.values()]) {
-      if (entry.clients.has(sink)) this.detach(entry.id, sink);
+      if (entry.clients.has(sink)) this.release(entry.id, sink);
     }
   }
 
@@ -275,6 +326,7 @@ export class TerminalManager {
    * removed.
    */
   close(terminalId: string, kill: boolean, sink?: TerminalSink): void {
+    this.assertOn();
     const entry = this.get(terminalId);
     if (entry.exitCode !== null) {
       this.remove(entry);
@@ -285,10 +337,12 @@ export class TerminalManager {
       entry.pty.kill();
       return;
     }
-    for (const client of sink ? [sink] : [...entry.clients.keys()]) this.detach(terminalId, client);
+    for (const client of sink ? [sink] : [...entry.clients.keys()])
+      this.release(terminalId, client);
   }
 
   list(): TerminalInfo[] {
+    this.assertOn();
     return [...this.entries.values()].map((entry) => this.info(entry));
   }
 
@@ -296,12 +350,22 @@ export class TerminalManager {
   stop(): void {
     if (this.flushTimer !== null) this.timers.clear(this.flushTimer);
     this.flushTimer = null;
+    this.killAll();
+  }
+
+  /** Ends every live terminal and forgets them all; returns how many were running. */
+  private killAll(): number {
+    let ended = 0;
     for (const entry of [...this.entries.values()]) {
       this.clearIdle(entry);
       entry.closing = true;
-      if (entry.exitCode === null) entry.pty.kill();
+      if (entry.exitCode === null) {
+        entry.pty.kill();
+        ended++;
+      }
     }
     this.entries.clear();
+    return ended;
   }
 
   // -- output -----------------------------------------------------------------

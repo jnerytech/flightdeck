@@ -135,6 +135,8 @@ export interface ServerOptions {
   sessionFiles?: SessionFiles;
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
+  /** Called after `terminal.settings` changes whether terminals are on (the config keeps it). */
+  onTerminalSettings?: (enabled: boolean) => void;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -739,7 +741,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
           activeSessions: manager.activeSessionCount(),
           apiKeySanitized: manager.apiKeySanitized(),
-          features: opts.features ?? features,
+          // The terminal can be turned on and off while the daemon runs: asked each time.
+          features: [
+            ...(opts.features ?? features),
+            ...(opts.terminals?.enabled ? ["terminal"] : []),
+          ],
+          ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });
@@ -925,6 +932,19 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "terminal.list":
         return ok(command.type, { terminals: terminals().list() });
+      case "terminal.settings": {
+        const { enabled, confirm } = command.payload;
+        const manager = terminals();
+        if (enabled && !manager.enabled && confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "ligar o terminal dá um shell completo neste host: confirme com confirm: true",
+          );
+        }
+        manager.setEnabled(enabled);
+        opts.onTerminalSettings?.(enabled);
+        return ok(command.type, manager.settings());
+      }
       case "pr.comments":
         return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
       case "pr.comments.send": {

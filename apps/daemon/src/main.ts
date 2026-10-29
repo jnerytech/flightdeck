@@ -72,6 +72,7 @@ import {
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
+import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 import {
@@ -482,6 +483,7 @@ export async function startDaemon(
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const terminals = new TerminalManager({
     pty: options.pty ?? bunPty(),
+    enabled: terminalEnabled(config.bind, config.terminal.enabled),
     allowedRoots: config.allowedRoots,
     max: config.terminal.max,
     idleMinutes: config.terminal.idleMinutes,
@@ -517,6 +519,12 @@ export async function startDaemon(
     review: new ReviewComments({ db: store.db, changes, manager, board, central }),
     sessionFiles: new SessionFiles({ db: store.db }),
     terminals,
+    // Turned on or off from the app: kept in the config file, like the rest of the host settings.
+    onTerminalSettings: (enabled) =>
+      updateConfigFile(configFile, (raw) => ({
+        ...raw,
+        terminal: { ...(raw.terminal as object | undefined), enabled },
+      })),
     files: new ReviewFiles({
       changes,
       dataDir: config.dataDir,
