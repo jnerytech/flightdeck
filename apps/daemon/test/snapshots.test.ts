@@ -205,7 +205,7 @@ describe("snapshots", () => {
     const maintenance = new Maintenance({
       db: store.db,
       dataDir: tempDir(),
-      retention: { eventsDays: 90, externalSessionsDays: 30 },
+      retention: { eventsDays: 90, externalSessionsDays: 30, usageDays: 400 },
       snapshots: {
         prune: async (policy) => {
           policies.push(policy);
