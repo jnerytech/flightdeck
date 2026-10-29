@@ -10,6 +10,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
+import {
+  assertCheckGuardActive,
+  assertNoRefusedChecks,
+  installCheckGuard,
+} from "./test/check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -19,6 +24,9 @@ const REAL = process.argv.includes("--real");
 const guard = REAL ? null : installClaudeGuard();
 // Same for the real `~/.claude`: the daemon resolves `~` from the HOME it inherits.
 const home = REAL ? null : installHomeGuard();
+// The daemon of these smokes runs no workflow: any check reaching its shell is refused.
+const checks = REAL ? null : installCheckGuard();
+if (checks) assertCheckGuardActive(checks);
 // And for the PR CLIs: nothing here may reach the real `gh` or `az`.
 const clis = REAL ? null : installCliGuard();
 if (clis) assertCliGuardActive(clis);
@@ -250,6 +258,7 @@ try {
   await run();
   if (guard) assertNoClaudeCalls(guard);
   if (home) assertHomeGuard(home);
+  if (checks) assertNoRefusedChecks(checks);
   if (clis) assertNoCliCalls(clis);
   console.log("SMOKE OK");
   process.exit(0);

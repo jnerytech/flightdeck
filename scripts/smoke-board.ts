@@ -9,6 +9,11 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import {
+  assertCheckGuardActive,
+  assertNoRefusedChecks,
+  installCheckGuard,
+} from "./test/check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
@@ -18,6 +23,9 @@ import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 const clis = installCliGuard();
 const guard = installClaudeGuard();
 const home = installHomeGuard();
+// The daemon of this smoke runs no workflow: any check reaching its shell is refused.
+const checks = installCheckGuard();
+assertCheckGuardActive(checks);
 assertCliGuardActive(clis);
 // The home guard hides ~/.gitconfig: the FakeRuntime's commits need an identity.
 Object.assign(process.env, {
@@ -269,6 +277,7 @@ try {
   assertNoClaudeCalls(guard);
   assertNoCliCalls(clis);
   assertHomeGuard(home);
+  assertNoRefusedChecks(checks);
   console.log("SMOKE BOARD OK");
   code = 0;
 } catch (error) {

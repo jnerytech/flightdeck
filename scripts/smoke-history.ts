@@ -8,6 +8,11 @@ import { appendFileSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import {
+  assertCheckGuardActive,
+  assertNoRefusedChecks,
+  installCheckGuard,
+} from "./test/check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -15,6 +20,9 @@ import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 // The daemon inherits PATH and HOME: neither the real `claude` nor `~/.claude` (docs/TDD.md).
 const guard = installClaudeGuard();
 const home = installHomeGuard();
+// The daemon of this smoke runs no workflow: any check reaching its shell is refused.
+const checks = installCheckGuard();
+assertCheckGuardActive(checks);
 const clis = installCliGuard();
 assertCliGuardActive(clis);
 const TIMEOUT_MS = 10_000;
@@ -223,6 +231,7 @@ try {
   step = "travas";
   assertNoClaudeCalls(guard);
   assertHomeGuard(home);
+  assertNoRefusedChecks(checks);
   assertNoCliCalls(clis);
   console.log("SMOKE HISTORY OK");
   code = 0;

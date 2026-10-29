@@ -12,6 +12,11 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import {
+  assertCheckGuardActive,
+  assertNoRefusedChecks,
+  installCheckGuard,
+} from "./test/check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -21,6 +26,9 @@ import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 const clis = installCliGuard();
 const guard = installClaudeGuard();
 const home = installHomeGuard();
+// The daemon of this smoke runs no workflow: any check reaching its shell is refused.
+const checks = installCheckGuard();
+assertCheckGuardActive(checks);
 assertCliGuardActive(clis);
 
 const TIMEOUT_MS = 20_000;
@@ -318,6 +326,7 @@ try {
   assertNoClaudeCalls(guard);
   assertNoCliCalls(clis);
   assertHomeGuard(home);
+  assertNoRefusedChecks(checks);
   console.log("SMOKE CENTRAL OK");
   code = 0;
 } catch (error) {

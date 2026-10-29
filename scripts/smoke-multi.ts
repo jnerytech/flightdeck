@@ -13,6 +13,11 @@ import {
   parseServerMessage,
   type SessionEventOf,
 } from "@flightdeck/protocol";
+import {
+  assertCheckGuardActive,
+  assertNoRefusedChecks,
+  installCheckGuard,
+} from "./test/check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -21,6 +26,9 @@ import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 const guard = installClaudeGuard();
 // Same for the real `~/.claude`: the daemons resolve `~` from the HOME they inherit.
 const home = installHomeGuard();
+// The daemon of this smoke runs no workflow: any check reaching its shell is refused.
+const checks = installCheckGuard();
+assertCheckGuardActive(checks);
 // And for the PR CLIs: nothing here may reach the real `gh` or `az`.
 const clis = installCliGuard();
 assertCliGuardActive(clis);
@@ -228,6 +236,7 @@ try {
   assertNoClaudeCalls(guard);
   step = "trava de home";
   assertHomeGuard(home);
+  assertNoRefusedChecks(checks);
   step = "trava de CLIs";
   assertNoCliCalls(clis);
   console.log("SMOKE MULTI OK");
