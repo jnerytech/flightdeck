@@ -1,6 +1,6 @@
 import { unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
-import { formatPairingLink } from "@flightdeck/protocol";
+import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Board } from "./board/board.ts";
@@ -58,7 +58,8 @@ export interface CliArgs {
     | "hook"
     | "channel"
     | "claude"
-    | "mcp";
+    | "mcp"
+    | "version";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -78,6 +79,7 @@ export interface CliArgs {
 
 const USAGE = [
   "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
+  "     flightdeckd --version",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
@@ -100,6 +102,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       return v;
     };
     switch (flag) {
+      case "--version":
+        args.command = "version";
+        break;
       case "start":
       case "pair":
         args.command = flag;
@@ -489,6 +494,11 @@ export interface CliDeps {
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
+    if (args.command === "version") {
+      deps.log.log(`flightdeckd ${DAEMON_VERSION} (protocolo ${PROTOCOL_VERSION})`);
+      deps.exit(0);
+      return null;
+    }
     if (args.command === "hook") {
       await sendSessionStart({
         url: args.url ?? "",
