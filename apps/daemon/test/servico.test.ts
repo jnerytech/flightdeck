@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
+import { testHome } from "../../../scripts/test/temp-dir.ts";
 import { loadConfig } from "../src/config.ts";
 import { acquireLock } from "../src/lock.ts";
 import { type CliDeps, parseArgs, runCli, startDaemon } from "../src/main.ts";
@@ -482,7 +483,7 @@ describe("servico", () => {
     const ctx = osServiceContext(true);
     expect(ctx.dryRun).toBe(true);
     expect(ctx.platform).toBe(process.platform);
-    expect(ctx.home).toBe(homedir());
+    expect(ctx.home).toBe(testHome());
     expect(ctx.tempDir).toBe(tmpdir());
     expect(ctx.user.length).toBeGreaterThan(0);
     expect(ctx.command[0]).toBe(process.execPath);

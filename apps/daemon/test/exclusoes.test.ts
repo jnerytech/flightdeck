@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { statSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { testHome } from "../../../scripts/test/temp-dir.ts";
 import { loadConfig } from "../src/config.ts";
 import { HistoryIndexer } from "../src/history/indexer.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -94,8 +94,8 @@ describe("exclusoes", () => {
     writeFileSync(file, JSON.stringify({ history: { excludeCwds: ["~/privado", "/abs"] } }));
     const config = loadConfig(file);
     expect(config.history).toEqual({
-      roots: [join(homedir(), ".claude", "projects")],
-      excludeCwds: [join(homedir(), "privado"), "/abs"],
+      roots: [join(testHome(), ".claude", "projects")],
+      excludeCwds: [join(testHome(), "privado"), "/abs"],
     });
     // The test home guard is on: the default root lives in the fake home.
     expect(
