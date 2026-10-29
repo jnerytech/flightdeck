@@ -567,6 +567,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
   cmd("maintenance.prune", z.object({ dryRun: z.boolean().optional() })),
+  /** Phase 7: the daemon acks, then closes as on SIGTERM and exits with 0. */
+  cmd("daemon.shutdown", z.object({}).strict()),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -775,6 +777,7 @@ export interface CommandResults {
   "maintenance.status": MaintenanceStatus;
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;
+  "daemon.shutdown": undefined;
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

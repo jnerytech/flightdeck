@@ -267,7 +267,12 @@ export async function startDaemon(
   args: CliArgs,
   env: Record<string, string | undefined>,
   logger: Logger,
-  options: { configWatchMs?: number; wslCommand?: (item: WslItem) => string[] } = {},
+  options: {
+    configWatchMs?: number;
+    wslCommand?: (item: WslItem) => string[];
+    /** What `daemon.shutdown` triggers; the command is refused without it. */
+    onShutdown?: () => void;
+  } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
   const config = loadConfig(configFile);
@@ -335,6 +340,7 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
+    ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
   });
 
   const wsl =
@@ -709,11 +715,13 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       deps.exit(0);
       return null;
     }
-    const daemon = await startDaemon(args, deps.env, deps.log);
-    const stop = async () => {
-      await daemon.stop();
-      deps.exit(0);
+    let stopping: Promise<void> | null = null;
+    // SIGINT, SIGTERM and `daemon.shutdown` all close the same way, once.
+    const stop = () => {
+      stopping ??= daemon.stop().then(() => deps.exit(0));
+      return stopping;
     };
+    const daemon = await startDaemon(args, deps.env, deps.log, { onShutdown: () => void stop() });
     deps.onSignal("SIGINT", stop);
     deps.onSignal("SIGTERM", stop);
     return daemon;

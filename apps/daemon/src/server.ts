@@ -56,6 +56,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Called after acking `daemon.shutdown`; without it the command is refused. */
+  onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
   features?: string[];
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
@@ -293,6 +295,15 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, maintenance().backupNow());
       case "maintenance.prune":
         return ok(command.type, maintenance().prune(command.payload.dryRun === true));
+      case "daemon.shutdown": {
+        const shutdown = opts.onShutdown;
+        if (!shutdown)
+          throw new FlightdeckError("invalid_state", "desligamento remoto indisponível");
+        ok(command.type);
+        // After the ack is on its way: the client learns the request was taken.
+        setTimeout(shutdown, 0);
+        return;
+      }
       case "hooks.status":
         return ok(command.type, central().hooksStatus());
       case "hooks.install":
