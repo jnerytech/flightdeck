@@ -145,6 +145,13 @@ describe("protocolo-historico", () => {
       origin: "external",
       // Written a moment ago.
       maybeActive: true,
+      // Phase 8: the list's line, from the transcript.
+      summary: {
+        request: "segunda pergunta",
+        state: "ended",
+        tool: null,
+        since: "2026-09-10T10:00:04.000Z",
+      },
     });
     expect(first?.nextCursor).not.toBeNull();
     const second = await client.data<Listed>("history.list", {
