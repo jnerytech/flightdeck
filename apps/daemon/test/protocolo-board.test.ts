@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Command, ServerMessage } from "@flightdeck/protocol";
@@ -9,6 +9,9 @@ import { startServer } from "../src/server.ts";
 import { git, gitRepo, newBoard } from "./board-helpers.ts";
 import { newManager, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
+
+// Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
+setDefaultTimeout(20_000);
 
 const TOKEN = "board-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];
