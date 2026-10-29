@@ -12,9 +12,9 @@ Pré-requisito: Fase 7 fechada (tag `fase-7`). Há duas trilhas independentes, e
 | Trilha | Conteúdo | Onde |
 | --- | --- | --- |
 | A, custos | uso por mensagem, preços, tela Custos, orçamentos, histórico da cota | worktree próprio, branch `fase-8a`, a partir da tag `fase-7` |
-| B, uso diário | bandeja com aprovações, abrir no terminal, resumo na lista, paleta Ctrl+K | checkout principal, a partir da tag `fase-7` |
+| B, uso diário | bandeja com aprovações, abrir no terminal, resumo na lista, paleta Ctrl+K | worktree próprio, branch `fase-8b`, a partir da tag `fase-7` |
 
-A trilha A é rebaseada sobre o fim da trilha B antes de fechar. A tag `fase-8` sai com as duas.
+As duas trilhas são rebaseadas, na ordem, sobre a área "plataforma" do checkout principal (correções de CI para Windows e Linux): primeiro a B, depois a A sobre a B. A tag `fase-8` sai com as duas.
 
 **Divisão do que é compartilhado**
 
