@@ -303,7 +303,11 @@ describe("custos-ui", () => {
         return "";
       }
     })();
-    expect(today).toBe(new Date(START).toLocaleDateString("sv-SE"));
+    const start = new Date(START);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    expect(today).toBe(
+      `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+    );
   });
 
   test("a paleta leva para a tela Custos", async () => {
