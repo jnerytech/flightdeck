@@ -1262,7 +1262,11 @@ export class AppStore {
   private onExternal(hostId: string, frame: ExternalUpdated | ExternalPermissionFrame): void {
     if (frame.type === "external.updated") {
       const key = sessionKey(hostId, frame.session.claudeSessionId);
-      this.update({ externals: { ...this.state.externals, [key]: frame.session } });
+      this.update({
+        externals: { ...this.state.externals, [key]: frame.session },
+        // The name and pin of a terminal session ride on its frames (phase 10).
+        ...(frame.session.meta ? { meta: { ...this.state.meta, [key]: frame.session.meta } } : {}),
+      });
       return;
     }
     const key = sessionKey(hostId, frame.requestId);

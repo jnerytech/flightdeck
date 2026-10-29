@@ -294,7 +294,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     since: s.updatedAt,
   });
 
-  /** An external session as the lists and `external.updated` send it: with its line. */
+  /** An external session as the lists and `external.updated` send it: with its line and name. */
   function externalListed(s: ExternalSession): ExternalSession {
     const waiting = opts.central?.permissions
       .open()
@@ -304,7 +304,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       waitingTool: waiting?.toolName ?? null,
       since: s.lastEventAt,
     });
-    return summary ? { ...s, summary } : s;
+    const meta = opts.central?.meta.get(s.claudeSessionId);
+    return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
   function maintenance(): Maintenance {
