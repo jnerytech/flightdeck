@@ -97,6 +97,10 @@ describe("daemon-update-check", () => {
     await updates.start();
     expect(updates.status()).toMatchObject({ available: false, version: null });
     expect(updates.status()?.error).toStartWith("manifesto inválido");
+    release.state.body = "<html>não é JSON</html>";
+    time.advance(24 * HOUR);
+    await Bun.sleep(20);
+    expect(updates.status()?.error).toStartWith("manifesto inválido");
     release.state.status = 404;
     release.state.body = "não achei";
     time.advance(24 * HOUR);
