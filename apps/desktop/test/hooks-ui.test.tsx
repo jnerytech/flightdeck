@@ -130,6 +130,8 @@ describe("hooks-ui", () => {
       });
     }
     expect(central.external.list().map((s) => s.claudeSessionId)).toEqual(["externa"]);
+    // It is also what delivers external.message to the channels.
+    expect(central.receptor?.sendToLaunch("sem-canal", "oi")).toBe(false);
     await central.stop();
     expect(existsSync(published)).toBe(false);
   });
