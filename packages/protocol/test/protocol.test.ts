@@ -69,6 +69,7 @@ const validCommands: Record<CommandType, unknown> = {
   "maintenance.backup": {},
   "maintenance.prune": { dryRun: true },
   "daemon.shutdown": {},
+  "daemon.update.apply": { confirm: true },
   "hooks.status": {},
   "hooks.install": { confirm: true },
   "hooks.uninstall": { confirm: true },
