@@ -143,6 +143,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.quota ? ["quota"] : []),
   ];
   let pingSeq = 0;
 
