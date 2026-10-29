@@ -34,6 +34,8 @@ export interface UsageIndexerOptions {
   /** Awaited between files of a pass, so the daemon keeps answering; a zero timer when absent. */
   pause?: () => Promise<void>;
   log?: (message: string) => void;
+  /** After each pass, with the entries it added (budgets are checked again). */
+  onPass?: (added: number) => void;
 }
 
 /** The first pass of the process: every transcript that already exists. */
@@ -219,6 +221,7 @@ export class UsageIndexer {
         `custos: carga inicial concluída (${files.length} transcripts, ${added} mensagens)`,
       );
     }
+    this.opts.onPass?.(added);
     return added;
   }
 

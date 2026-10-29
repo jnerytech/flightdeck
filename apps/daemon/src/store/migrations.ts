@@ -227,4 +227,25 @@ export const MIGRATIONS: readonly string[] = [
     cwd    TEXT
   );
   `,
+  // Phase 8 (track A): budgets, and the thresholds each one already crossed per period
+  // (`budget_alerts` goes beyond the spec: a restart never alerts twice).
+  `
+  CREATE TABLE budgets (
+    id          TEXT PRIMARY KEY,
+    scope       TEXT,
+    project_key TEXT,
+    period      TEXT,
+    limit_usd   REAL,
+    action      TEXT,
+    created_at  TEXT
+  );
+
+  CREATE TABLE budget_alerts (
+    budget_id TEXT NOT NULL,
+    period    TEXT NOT NULL,
+    threshold REAL NOT NULL,
+    at        TEXT NOT NULL,
+    PRIMARY KEY (budget_id, period, threshold)
+  );
+  `,
 ];

@@ -58,6 +58,10 @@ export interface BoardOptions {
   clock?: () => number;
   /** The host's plan quota: over `pauseAt`, new cards and workflow turns wait (phase 7). */
   quota?: Quota;
+  /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
+  budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
+  /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
+  projectKeys?: { keyFor(path: string): string };
 }
 
 interface ProjectRow {
@@ -138,6 +142,7 @@ export class Board {
   /** Workflow turns waiting for the plan quota to free up. */
   private quotaWaiters: Array<() => void> = [];
   private readonly unwatchQuota: () => void;
+  private readonly unwatchBudgets: () => void;
   /** Workflow runs back from a gate, waiting for a slot; served before queued cards. */
   private readonly waiters: Array<{ cardId: string; resume(): void }> = [];
   private limit: number;
@@ -171,7 +176,8 @@ export class Board {
     opts.manager.onPermissionUpdates((sessionId, updates) =>
       this.applyProjectRules(sessionId, updates),
     );
-    this.unwatchQuota = opts.quota?.watch(() => this.onQuota()) ?? (() => {});
+    this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
+    this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
@@ -290,6 +296,7 @@ export class Board {
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
       ...this.queueState(
         active !== undefined && active.started_at === null && active.ended_at === null,
+        row.project_id,
       ),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -401,13 +408,17 @@ export class Board {
         waiter.resume();
         continue;
       }
-      const next = this.db
-        .query<RunRow, []>(
-          "SELECT * FROM card_runs WHERE started_at IS NULL AND ended_at IS NULL ORDER BY queued_at, rowid LIMIT 1",
-        )
-        .get();
       // Over the plan quota, queued cards wait for the window to reset (runs going on do not).
-      if (!next || this.opts.quota?.blocked()) return;
+      if (this.opts.quota?.blocked()) return;
+      // The oldest queued card whose budget lets it go: a held project never stalls the others.
+      const next = this.db
+        .query<RunRow & { project_id: string }, []>(
+          `SELECT r.*, c.project_id FROM card_runs r JOIN cards c ON c.id = r.card_id
+           WHERE r.started_at IS NULL AND r.ended_at IS NULL ORDER BY r.queued_at, r.rowid`,
+        )
+        .all()
+        .find((run) => !this.budgetBlocked(run.project_id));
+      if (!next) return;
       this.running.add(next.card_id);
       this.db.query("UPDATE card_runs SET started_at = ? WHERE id = ?").run(now(), next.id);
       this.changed(next.card_id);
@@ -417,12 +428,22 @@ export class Board {
     }
   }
 
-  /** Why a queued card waits, for the card itself. */
-  private queueState(queued: boolean): Pick<Card, "queueReason" | "quotaUntil"> {
+  /** Why a queued card waits, for the card itself: the quota, then a budget, then a slot. */
+  private queueState(queued: boolean, projectId: string): Pick<Card, "queueReason" | "quotaUntil"> {
     const blocked = queued ? this.opts.quota?.blocked() : null;
-    if (!blocked) return { queueReason: queued ? "slot" : null, quotaUntil: null };
-    const until = blocked.until === null ? null : new Date(blocked.until).toISOString();
-    return { queueReason: "quota", quotaUntil: until };
+    if (blocked) {
+      const until = blocked.until === null ? null : new Date(blocked.until).toISOString();
+      return { queueReason: "quota", quotaUntil: until };
+    }
+    if (queued && this.budgetBlocked(projectId)) return { queueReason: "budget", quotaUntil: null };
+    return { queueReason: queued ? "slot" : null, quotaUntil: null };
+  }
+
+  /** A `queue` budget of the host or of the card's project is at 100%. */
+  private budgetBlocked(projectId: string): boolean {
+    if (!this.opts.budgets) return false;
+    const { path } = this.getProject(projectId);
+    return this.opts.budgets.blocked(this.opts.projectKeys?.keyFor(path) ?? path);
   }
 
   /** A workflow turn about to start over the quota waits for it; `null` when it may go. */
@@ -435,8 +456,8 @@ export class Board {
     };
   }
 
-  /** A new reading or a reset: queued cards may go, and show why they still wait. */
-  private onQuota(): void {
+  /** A new quota reading, a reset or a budget change: queued cards may go, or say why not. */
+  private onLimits(): void {
     if (!this.opts.quota?.blocked()) {
       for (const resume of this.quotaWaiters.splice(0)) resume();
     }
@@ -761,6 +782,7 @@ export class Board {
   stop(): void {
     clearInterval(this.pollTimer);
     this.unwatchQuota();
+    this.unwatchBudgets();
     for (const unfollow of this.follows.values()) unfollow();
     this.follows.clear();
   }

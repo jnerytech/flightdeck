@@ -27,6 +27,7 @@ import {
   updateConfigFile,
   userHome,
 } from "./config.ts";
+import { Budgets } from "./costs/budgets.ts";
 import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
@@ -356,7 +357,10 @@ export async function startDaemon(
     projectKey: (cwd) => keys.keyFor(cwd),
     cost: (tokens) => costs.cost(tokens),
     log: (m) => logger.log(m),
+    onPass: () => budgets.evaluate(),
   });
+  const budgets = new Budgets({ db: store.db });
+  budgets.start();
   history.onChange(() => usageIndex.request());
   usageIndex.start();
   const board = new Board({
@@ -365,6 +369,8 @@ export async function startDaemon(
     quota,
     allowedRoots: config.allowedRoots,
     maxParallelRuns: config.maxParallelRuns,
+    budgets,
+    projectKeys: keys,
     ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>
@@ -411,6 +417,7 @@ export async function startDaemon(
     quota,
     usage,
     costs,
+    budgets,
     central,
     maintenance,
     ...(updates ? { updates } : {}),
@@ -463,6 +470,7 @@ export async function startDaemon(
         await server.stop();
         history.stop();
         await usageIndex.stop();
+        budgets.stop();
         quota.stop();
         store.close();
         lock.release();

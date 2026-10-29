@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   type Ack,
+  type BudgetUpdated,
   type CardUpdated,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
@@ -30,6 +31,7 @@ import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
 import type { Central } from "./central/central.ts";
+import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
@@ -82,6 +84,8 @@ export interface ServerOptions {
   usage?: UsageLedger;
   /** Estimated costs behind the `costs.*` commands (phase 8). */
   costs?: Costs;
+  /** Budgets behind the `budget.*` commands (phase 8). */
+  budgets?: Budgets;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -113,6 +117,8 @@ interface Connection {
   unwatchRuns?: () => void;
   /** Stops the `quota.watch` stream, when active. */
   unwatchQuota?: () => void;
+  /** Stops the `budget.watch` stream, when active. */
+  unwatchBudgets?: () => void;
   lastRttMs?: number;
 }
 
@@ -134,7 +140,8 @@ type Outgoing =
   | ExternalUpdated
   | ExternalPermissionFrame
   | RunUpdated
-  | QuotaUpdated;
+  | QuotaUpdated
+  | BudgetUpdated;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -315,6 +322,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function costs(): Costs {
     if (!opts.costs) throw new FlightdeckError("invalid_state", "custos desativados");
     return opts.costs;
+  }
+
+  function budgets(): Budgets {
+    if (!opts.budgets) throw new FlightdeckError("invalid_state", "orçamentos desativados");
+    return opts.budgets;
   }
 
   function board(): Board {
@@ -593,6 +605,21 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { costUsd: costs().run(command.payload.runId) });
       case "costs.export":
         return ok(command.type, costs().export(command.payload));
+      case "budget.list":
+        return ok(command.type, { budgets: budgets().list() });
+      case "budget.set":
+        return ok(command.type, budgets().set(command.payload));
+      case "budget.remove":
+        budgets().remove(command.payload.id);
+        return ok(command.type);
+      case "budget.watch": {
+        const host = budgets();
+        ws.data.unwatchBudgets?.();
+        ws.data.unwatchBudgets = host.watch((update) =>
+          send(ws, { type: "budget.updated", ...update }),
+        );
+        return ok(command.type);
+      }
       case "usage.summary":
         return ok(command.type, usage().summary(command.payload.days));
       case "quota.get":
@@ -702,6 +729,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchExternal?.();
         ws.data.unwatchRuns?.();
         ws.data.unwatchQuota?.();
+        ws.data.unwatchBudgets?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

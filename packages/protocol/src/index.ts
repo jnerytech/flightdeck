@@ -372,7 +372,7 @@ export const Card = z.object({
   /** Workflow run of the active run; `null` for a simple card (phase 4). */
   workflowRunId: z.string().nullable().default(null),
   /** Why a queued card waits: a free slot, or the host's plan quota (phase 7). */
-  queueReason: z.enum(["slot", "quota"]).nullable().default(null),
+  queueReason: z.enum(["slot", "quota", "budget"]).nullable().default(null),
   /** With `queueReason: quota`, when the window resets (ISO); `null` when unknown. */
   quotaUntil: z.string().nullable().default(null),
   createdAt: z.string(),
@@ -652,6 +652,38 @@ export const CostsSession = z.object({
 });
 export type CostsSession = z.infer<typeof CostsSession>;
 
+/** A cost limit of the host or of one project, per day or month (host time zone). */
+export const BudgetInput = z.object({
+  /** Present to change an existing budget. */
+  id: z.string().optional(),
+  scope: z.enum(["host", "project"]),
+  /** Required for `project`, ignored for `host`. */
+  projectKey: z.string().min(1).optional(),
+  period: z.enum(["day", "month"]),
+  limitUsd: z.number().positive(),
+  /** `queue`: at 100%, new cards of the scope wait (sessions are never held). */
+  action: z.enum(["notify", "queue"]),
+});
+export type BudgetInput = z.infer<typeof BudgetInput>;
+
+export const Budget = z.object({
+  id: z.string(),
+  scope: z.enum(["host", "project"]),
+  projectKey: z.string().nullable(),
+  period: z.enum(["day", "month"]),
+  limitUsd: z.number(),
+  action: z.enum(["notify", "queue"]),
+  createdAt: z.string(),
+  /** The current period: `YYYY-MM-DD` or `YYYY-MM`. */
+  periodKey: z.string(),
+  spentUsd: z.number(),
+  /** `spentUsd / limitUsd`. */
+  fraction: z.number(),
+  /** Thresholds (0.5, 0.8, 1) already crossed in this period. */
+  crossed: z.array(z.number()),
+});
+export type Budget = z.infer<typeof Budget>;
+
 export const CostsStatus = z.object({
   /** The first pass over the transcripts that already existed. */
   initialLoad: z.object({
@@ -833,6 +865,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("costs.card", z.object({ cardId: z.string() })),
   cmd("costs.run", z.object({ runId: z.string() })),
   cmd("costs.export", CostsFilter),
+  cmd("budget.list", z.object({}).strict()),
+  cmd("budget.set", BudgetInput),
+  cmd("budget.remove", z.object({ id: z.string() })),
+  /** `budget.updated` after each change, threshold crossed or new period. */
+  cmd("budget.watch", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -1080,6 +1117,10 @@ export interface CommandResults {
   "costs.card": { costUsd: number };
   "costs.run": { costUsd: number };
   "costs.export": { csv: string; filename: string };
+  "budget.list": { budgets: Budget[] };
+  "budget.set": Budget;
+  "budget.remove": undefined;
+  "budget.watch": undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1183,6 +1224,16 @@ export type RunUpdated = z.infer<typeof RunUpdated>;
 export const QuotaUpdated = z.object({ type: z.literal("quota.updated"), ...QuotaState.shape });
 export type QuotaUpdated = z.infer<typeof QuotaUpdated>;
 
+/** Sent after `budget.watch`: a budget changed, crossed a threshold or entered a new period. */
+export const BudgetUpdated = z.object({
+  type: z.literal("budget.updated"),
+  budget: Budget,
+  /** The highest threshold just crossed (0.5, 0.8 or 1); `null` for other changes. */
+  threshold: z.number().nullable(),
+  removed: z.boolean(),
+});
+export type BudgetUpdated = z.infer<typeof BudgetUpdated>;
+
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -1194,6 +1245,7 @@ export const ServerMessage = z.union([
   ExternalPermissionFrame,
   RunUpdated,
   QuotaUpdated,
+  BudgetUpdated,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 
