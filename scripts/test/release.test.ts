@@ -193,6 +193,14 @@ describe("release", () => {
       config = (error as Error).message;
     }
     expect(config).toMatchObject({ plugins: { updater: { pubkey: product.trim() } } });
+    // The app reads the key from tauri.conf.json: the two copies must stay the same.
+    const tauri = JSON.parse(
+      readFileSync(join(ROOT, "apps/desktop/src-tauri/tauri.conf.json"), "utf8"),
+    );
+    expect(tauri.plugins.updater.pubkey).toBe(product.trim());
+    expect(tauri.plugins.updater.endpoints).toEqual([
+      "https://github.com/jnerytech/flightdeck/releases/latest/download/latest.json",
+    ]);
     for (const name of ["test-signing.pub", "tauri-signer.pub"]) {
       const test = readFileSync(join(ROOT, "apps/daemon/test/fixtures/release", name), "utf8");
       expect(test.trim()).not.toBe(product.trim());
