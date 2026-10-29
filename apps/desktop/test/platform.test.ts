@@ -50,6 +50,24 @@ mock.module("@tauri-apps/plugin-autostart", () => ({
   },
 }));
 
+/** What the updater plugin offers (null: up to date) and what the app did with it. */
+let updateOffer: { version: string; body?: string } | null = null;
+const updaterCalls: string[] = [];
+mock.module("@tauri-apps/plugin-updater", () => ({
+  check: async () =>
+    updateOffer && {
+      ...updateOffer,
+      downloadAndInstall: async () => {
+        updaterCalls.push("downloadAndInstall");
+      },
+    },
+}));
+mock.module("@tauri-apps/plugin-process", () => ({
+  relaunch: async () => {
+    updaterCalls.push("relaunch");
+  },
+}));
+
 mock.module("@tauri-apps/plugin-global-shortcut", () => ({
   register: async (accelerator: string, handler: typeof shortcutHandler) => {
     shortcutCalls.push(["register", accelerator]);
@@ -279,6 +297,20 @@ describe("platform", () => {
     expect(invokes.at(-1)).toEqual(["focus_main", undefined]);
     await platform.copyText("claude --resume abc");
     expect(fake.copies).toEqual(["claude --resume abc"]);
+  });
+
+  test("tauri: o updater do plugin consulta, baixa, instala e reinicia; sem consulta não instala", async () => {
+    const platform = tauriPlatform(fakeWindow().win);
+    expect(platform.updater.supported).toBe(true);
+    const early = await platform.updater.install().catch((e: Error) => e.message);
+    expect(early).toBe("nenhuma atualização encontrada para instalar");
+    expect(await platform.updater.check()).toBeNull();
+    updateOffer = { version: "0.9.1", body: "Notas" };
+    expect(await platform.updater.check()).toEqual({ version: "0.9.1", notes: "Notas" });
+    await platform.updater.install();
+    expect(updaterCalls).toEqual(["downloadAndInstall", "relaunch"]);
+    updateOffer = { version: "0.9.2" };
+    expect(await platform.updater.check()).toEqual({ version: "0.9.2", notes: "" });
   });
 
   test("lint barra @tauri-apps/* fora de src/platform/tauri", async () => {
