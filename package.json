@@ -22,6 +22,7 @@
     "smoke:ops": "bun run scripts/smoke-ops.ts",
     "smoke:limits": "bun run scripts/smoke-limits.ts",
     "smoke:update": "bun run scripts/smoke-update.ts",
+    "smoke:costs": "bun run scripts/smoke-costs.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build",
