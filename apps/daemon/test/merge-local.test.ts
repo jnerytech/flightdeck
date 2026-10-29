@@ -40,7 +40,10 @@ async function ready(title = "Integrar", description = "oi", base?: string) {
   const started = await cardWhen(
     ctx.board,
     card.id,
-    (c) => c.worktreePath !== null && c.sessionStatus !== null && c.sessionStatus !== "starting",
+    // The first turn over: idle, or holding an approval (the busy card).
+    (c) =>
+      c.worktreePath !== null &&
+      (c.sessionStatus === "idle" || c.sessionStatus === "awaiting_permission"),
   );
   return {
     ...ctx,
