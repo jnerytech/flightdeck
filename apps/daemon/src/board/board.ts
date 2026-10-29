@@ -8,6 +8,7 @@ import { ulid } from "../ulid.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cardDiff } from "./diff.ts";
+import { prProvider } from "./pr.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -21,7 +22,10 @@ import type {
   PrProviderKind,
   PrState,
 } from "./types.ts";
-import { addWorktree } from "./worktree.ts";
+import { addWorktree, must } from "./worktree.ts";
+
+/** How often cards with an open PR ask the provider for its state and checks. */
+export const DEFAULT_PR_POLL_MS = 60_000;
 
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
@@ -33,6 +37,7 @@ export interface BoardOptions {
   allowedRoots: readonly string[];
   /** 2 when absent. */
   maxParallelRuns?: number;
+  prPollIntervalMs?: number;
 }
 
 interface ProjectRow {
@@ -111,10 +116,13 @@ export class Board {
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
   private limit: number;
+  private readonly pollTimer: ReturnType<typeof setInterval>;
+  private polling = false;
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
     this.limit = opts.maxParallelRuns ?? 2;
+    this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
       .query<RunRow, []>(
@@ -374,6 +382,68 @@ export class Board {
     return cardDiff(card.worktreePath, this.getProject(card.projectId).baseBranch);
   }
 
+  /** Pushes the card's branch to `origin` and opens the PR with the card's title and description. */
+  async createPr(id: string): Promise<Card> {
+    const card = this.getCard(id);
+    const project = this.getProject(card.projectId);
+    const provider = prProvider(project.prProvider);
+    if (!provider) throw new FlightdeckError("invalid_state", "projeto sem provedor de PR");
+    const { worktreePath: cwd, branch } = card;
+    if (!cwd || !branch) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    must(await git(cwd, "push", "-u", "origin", branch), "git push");
+    const url = await provider.create({
+      cwd,
+      base: project.baseBranch,
+      head: branch,
+      title: card.title,
+      body: card.description,
+    });
+    this.db
+      .query(
+        "UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = NULL, notice = NULL WHERE id = ?",
+      )
+      .run(url, id);
+    this.place(id, { type: "pr", state: "open" });
+    return this.getCard(id);
+  }
+
+  get prPollIntervalMs(): number {
+    return this.opts.prPollIntervalMs ?? DEFAULT_PR_POLL_MS;
+  }
+
+  /** Asks the provider about every card with an open PR; one round at a time. */
+  async pollPrs(): Promise<void> {
+    if (this.polling) return;
+    this.polling = true;
+    try {
+      const open = this.db
+        .query<{ id: string }, []>("SELECT id FROM cards WHERE pr_state = 'open'")
+        .all();
+      for (const { id } of open) {
+        await this.pollPr(id).catch((error: unknown) =>
+          this.db
+            .query("UPDATE cards SET notice = ? WHERE id = ?")
+            .run(error instanceof Error ? error.message : String(error), id),
+        );
+      }
+    } finally {
+      this.polling = false;
+    }
+  }
+
+  private async pollPr(id: string): Promise<void> {
+    const card = this.getCard(id);
+    const project = this.getProject(card.projectId);
+    const provider = prProvider(project.prProvider);
+    if (!provider || !card.prUrl) return;
+    const cwd = card.worktreePath ?? project.path;
+    const { state, checks } = await provider.status({ cwd, url: card.prUrl });
+    this.db
+      .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
+      .run(state, checks, id);
+    if (state !== card.prState) this.place(id, { type: "pr", state });
+  }
+
   get maxParallelRuns(): number {
     return this.limit;
   }
@@ -385,6 +455,7 @@ export class Board {
   }
 
   stop(): void {
+    clearInterval(this.pollTimer);
     for (const unfollow of this.follows.values()) unfollow();
     this.follows.clear();
   }

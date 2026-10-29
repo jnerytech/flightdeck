@@ -54,6 +54,12 @@ export const Config = z.object({
       scanIntervalMs: z.number().int().min(10).optional(),
     })
     .default(() => ({ roots: [...DEFAULT_HISTORY_ROOTS], excludeCwds: [] })),
+  board: z
+    .object({
+      /** How often cards with an open PR are checked; 60 s when absent. */
+      prPollIntervalMs: z.number().int().min(10).optional(),
+    })
+    .default(() => ({})),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
