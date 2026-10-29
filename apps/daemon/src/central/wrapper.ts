@@ -4,6 +4,9 @@ import type { Config } from "../config.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
 
+/** The launch id an app terminal asks `flightdeckd claude` to use. */
+export const TERMINAL_LAUNCH_VAR = "FLIGHTDECK_TERMINAL_LAUNCH_ID";
+
 /** Where the daemon publishes its receptor's URL, inside `dataDir`. */
 export const RECEPTOR_FILE = "receptor.json";
 
@@ -61,7 +64,11 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     opts.log.error("flightdeckd: claude não encontrado no PATH (nem em claude.executablePath)");
     return 1;
   }
-  const launchId = ulid();
+  // A terminal of the app ("Claude aqui") names the launch it started: the session it opens is
+  // then the one that terminal shows. A dedicated variable, because FLIGHTDECK_LAUNCH_ID is in the
+  // environment of every claude we start, and a nested `flightdeckd claude` would reuse it.
+  const { [TERMINAL_LAUNCH_VAR]: requested, ...env } = opts.env;
+  const launchId = requested && /^[0-9A-Z]{26}$/.test(requested) ? requested : ulid();
   // Print mode ignores development channels: plain claude, no channel, no warning.
   const print = opts.args.includes("-p") || opts.args.includes("--print");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
@@ -80,7 +87,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     );
   }
   const proc = Bun.spawn(buildClaudeLaunch({ claude, args: opts.args, mcpConfigPath }), {
-    env: { ...opts.env, FLIGHTDECK_LAUNCH_ID: launchId },
+    env: { ...env, FLIGHTDECK_LAUNCH_ID: launchId },
     stdio: ["inherit", "inherit", "inherit"],
   });
   const code = await proc.exited;

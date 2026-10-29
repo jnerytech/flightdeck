@@ -1421,13 +1421,26 @@ export const Command = z.discriminatedUnion("type", [
   cmd("changes.get", z.object({ target: ReviewTarget })),
   cmd(
     "terminal.open",
-    z.object({
-      cwd: z.string().min(1),
-      /** An argv, never run through a shell; the host's default shell when absent. */
-      command: z.array(z.string().min(1)).min(1).max(64).optional(),
-      cols: TerminalCols,
-      rows: TerminalRows,
-    }),
+    z
+      .object({
+        cwd: z.string().min(1),
+        /** An argv, never run through a shell; the host's default shell when absent. */
+        command: z.array(z.string().min(1)).min(1).max(64).optional(),
+        /** "Claude aqui": `flightdeckd claude` in the cwd, with `--resume <id>` when given. */
+        claude: z
+          .object({
+            resume: z
+              .string()
+              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "id de sessão inválido")
+              .optional(),
+          })
+          .optional(),
+        cols: TerminalCols,
+        rows: TerminalRows,
+      })
+      .refine((payload) => !(payload.command && payload.claude), {
+        message: "command e claude não podem ir juntos",
+      }),
   ),
   /** Keyboard input, UTF-8. */
   cmd("terminal.write", z.object({ terminalId: TerminalId, data: z.string().max(262_144) })),

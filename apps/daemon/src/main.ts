@@ -488,6 +488,8 @@ export async function startDaemon(
     max: config.terminal.max,
     idleMinutes: config.terminal.idleMinutes,
     allowApiKey: config.allowApiKey,
+    // "Claude aqui" runs this very daemon's `claude`, with this config.
+    claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
     log: (message) => logger.log(message),
   });
   const central = new Central({

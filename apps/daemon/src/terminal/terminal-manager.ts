@@ -1,4 +1,5 @@
 import type { TerminalData, TerminalExited, TerminalResync } from "@flightdeck/protocol";
+import { TERMINAL_LAUNCH_VAR } from "../central/wrapper.ts";
 import { buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
@@ -52,6 +53,8 @@ export interface OpenRequest {
   cwd: string;
   /** An argv, never run through a shell; the host's default shell when absent. */
   command?: string[];
+  /** "Claude aqui": `flightdeckd claude` in the cwd, optionally `--resume <id>`. */
+  claude?: { resume?: string };
   cols: number;
   rows: number;
 }
@@ -67,6 +70,8 @@ export interface TerminalManagerOptions {
   idleMinutes?: number;
   /** The environment terminals inherit; the process's when absent. */
   env?: () => Record<string, string | undefined>;
+  /** This daemon's own command line and config, which "Claude aqui" runs `claude` through. */
+  claude?: { self: string[]; configFile: string };
   /** Keep the API-key variables (`allowApiKey` of the config); dropped when absent. */
   allowApiKey?: boolean;
   platform?: NodeJS.Platform;
@@ -217,20 +222,38 @@ export class TerminalManager {
       throw new FlightdeckError("invalid_state", `limite de ${max} terminais por host`);
     }
     const env = (this.opts.env ?? (() => process.env))();
-    const argv =
-      req.command ??
-      defaultShell({
-        platform: this.opts.platform ?? process.platform,
-        env,
-        which: this.opts.which ?? whichOnPath,
-      });
     const id = ulid(this.now());
+    let argv: string[];
+    let launchId: string | null = null;
+    let extraEnv: Record<string, string> = {};
+    if (req.claude) {
+      const claude = this.opts.claude;
+      if (!claude) {
+        throw new FlightdeckError("invalid_state", "Claude aqui indisponível neste host");
+      }
+      // The launch that `flightdeckd claude` will register: the session it opens is this one.
+      launchId = ulid(this.now());
+      argv = [
+        ...claude.self,
+        "claude",
+        ...(req.claude.resume ? ["--resume", req.claude.resume] : []),
+      ];
+      extraEnv = { FLIGHTDECK_CONFIG: claude.configFile, [TERMINAL_LAUNCH_VAR]: launchId };
+    } else {
+      argv =
+        req.command ??
+        defaultShell({
+          platform: this.opts.platform ?? process.platform,
+          env,
+          which: this.opts.which ?? whichOnPath,
+        });
+    }
     let pty: Pty;
     try {
       pty = this.opts.pty({
         argv,
         cwd,
-        env: buildChildEnv(env, this.opts.allowApiKey ?? false),
+        env: { ...buildChildEnv(env, this.opts.allowApiKey ?? false), ...extraEnv },
         cols: req.cols,
         rows: req.rows,
         onData: (chunk) => this.onData(id, chunk),
@@ -247,7 +270,7 @@ export class TerminalManager {
       startedAt: new Date(this.now()).toISOString(),
       cols: req.cols,
       rows: req.rows,
-      launchId: null,
+      launchId,
       pty,
       ring: new Ring(SCROLLBACK_BYTES),
       clients: new Map(),

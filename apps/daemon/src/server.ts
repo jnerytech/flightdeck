@@ -910,10 +910,16 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
       }
       case "terminal.open": {
-        const { cwd, command: argv, cols, rows } = command.payload;
+        const { cwd, command: argv, claude, cols, rows } = command.payload;
         return ok(
           command.type,
-          terminals().open({ cwd, ...(argv ? { command: argv } : {}), cols, rows }),
+          terminals().open({
+            cwd,
+            ...(argv ? { command: argv } : {}),
+            ...(claude ? { claude } : {}),
+            cols,
+            rows,
+          }),
         );
       }
       case "terminal.write":
