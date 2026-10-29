@@ -518,7 +518,11 @@ O que a spec da Fase 5 (Central de sessões) deixou aberto, ou o que mudou na im
   - O token não é rotacionado em reinstalações, e com isso reinstalar continua idempotente.
 - **URL do receptor:** o daemon a publica em `<dataDir>/receptor.json`. O `flightdeckd claude` a lê e confere em `/health`, com limite de 1 s.
 - **`idleTimeout: 0`** no `Bun.serve` do receptor: o padrão do Bun (10 s) fecharia um `PermissionRequest` segurado.
-- **O comando do `SessionStart`** leva a URL e o token nos argumentos (`hook session-start --url … --token …`), e não lê a config na hora do hook. Os caminhos só ganham aspas quando têm espaços, e assim a linha vale em sh, cmd e PowerShell. Fica para a confirmação manual com o `claude` real.
+- **O comando do `SessionStart`** leva a URL e o token nos argumentos (`hook session-start --url … --token …`), e não lê a config na hora do hook. Os caminhos só ganham aspas quando têm espaços.
+- **Shell dos hooks no Windows:** a confirmação com o `claude` 2.1.312 mostrou que o Claude Code roda hooks de comando pelo Git Bash (`CLAUDE_CODE_GIT_BASH_PATH`, ou o `bash` do PATH). O bash come as barras invertidas, e o `SessionStart` nunca chegava ao daemon: o launch id e o `source` ficavam nulos e a sessão do `flightdeckd claude` nunca ficava controlável. Agora:
+  - no Windows, o executável e os argumentos do comando são gravados com barras normais (`D:/...`), que o Windows também aceita;
+  - uma entrada antiga com barras invertidas dá `outdated`, e o `install` a substitui;
+  - o `uninstall` reconhece os dois formatos.
 - **Sessões gerenciadas são ignoradas** pelo `claudeSessionId` conhecido ou pelo `managed: true` que o comando do `SessionStart` acrescenta quando vê `FLIGHTDECK_MANAGED=1`. O `ClaudeSdkRuntime` passa essa variável ao `claude`.
 
 ## Sessões externas
@@ -552,6 +556,12 @@ O que a spec da Fase 5 (Central de sessões) deixou aberto, ou o que mudou na im
   - O arquivo fica em `<dataDir>/channels/<launch>.json` e é apagado quando o `claude` sai.
   - Confirmação manual pendente, junto com o registro por `--mcp-config` no lugar do `.mcp.json` da prova de conceito.
 - **Sem daemon:** o `claude` abre sem os argumentos do canal (só com o launch id).
+- **Com `-p` ou `--print`:** o `claude` abre normal, sem canal e sem aviso. O modo print ignora o canal de desenvolvimento, e a sessão ficaria "controlável" sem poder receber mensagem.
+- **Confirmado com o `claude` real (2.1.312, Windows):**
+  - `--mcp-config` antes dos argumentos do usuário sobe o `flightdeckd channel` com `--launch`, `--url` e `--token`, e o canal conecta;
+  - cabeçalho `Authorization` nos hooks http aceito;
+  - allow e deny com `message` (a mensagem chega exata);
+  - resposta 200 vazia entendida como "sem decisão".
 
 ## Ao vivo
 
@@ -569,7 +579,7 @@ O que a spec da Fase 5 (Central de sessões) deixou aberto, ou o que mudou na im
 
 ## TDD e testes
 
-- **`claude` falso por teste** (`apps/daemon/test/fake-claude*.ts`): lê o `settings.json` do HOME temporário e roda os hooks de comando como o Claude Code, por `cmd /d /s /c` com `windowsVerbatimArguments` no Windows. Também faz os POSTs http com os cabeçalhos instalados, escreve o transcript, sobe o servidor do `--mcp-config` e registra o que chega pelo canal.
+- **`claude` falso por teste** (`apps/daemon/test/fake-claude*.ts`): lê o `settings.json` do HOME temporário e roda os hooks de comando como o Claude Code, pelo Git Bash no Windows e por `sh -c` nos demais (`hook-shell.ts`). Antes ele usava `cmd /d /s /c`, que escondeu o defeito das barras invertidas. Também faz os POSTs http com os cabeçalhos instalados, escreve o transcript, sobe o servidor do `--mcp-config` e registra o que chega pelo canal.
 - **Achado do caminho:** o Bun, sem `windowsVerbatimArguments`, quebra comandos com aspas no `cmd /s /c`. O `shellCommand` do script de preparação da Fase 4 tem esse limite para scripts com aspas. Ficou anotado e não foi corrigido.
 - **`fix(pr)`:** a consulta de estado do PR roda no repositório do projeto, e não dentro da worktree. No Windows, o cwd do `gh` travava a pasta enquanto Concluir ou Descartar a removia, e isso aparecia como falha intermitente da suíte.
 - **Smoke:** o `smoke:central` foi commitado vermelho em `test(sessao-meta)`, falhando no passo "renomear a sessão". Além dos passos da spec, ele renomeia a sessão externa.

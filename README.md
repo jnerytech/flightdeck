@@ -369,7 +369,7 @@ flightdeckd hooks uninstall   # remove só as entradas do Flightdeck
   - Antes, guarda uma cópia em `settings.json.flightdeck-backup`.
   - Reinstalar substitui as entradas antigas em vez de duplicar.
 - **Entradas:**
-  - `SessionStart` é um hook de comando: `<flightdeckd> hook session-start --url <receptor> --token <token>`.
+  - `SessionStart` é um hook de comando: `<flightdeckd> hook session-start --url <receptor> --token <token>`. No Windows, o Claude Code roda hooks de comando pelo Git Bash, que trata `\` como escape. Por isso o caminho do executável é gravado com barras normais (`D:/...`). Uma instalação antiga, com barras invertidas, aparece como desatualizada no `hooks status`: rode `hooks install` de novo.
   - `UserPromptSubmit`, `Notification`, `PermissionRequest`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `Stop` e `SessionEnd` são hooks http para o receptor do daemon, em `http://127.0.0.1:<hooks.port>`, com o cabeçalho de token.
 - **Config:** `hooks.port` vale 7421 por padrão. `hooks.token` é gerado no primeiro install. `hooks.permissionTimeoutS` vale 600. `hooks.staleAfterS` vale 900; uma sessão sem eventos e sem mudança no transcript por esse tempo passa a encerrada.
 - **WSL:** o daemon do WSL instala no `~/.claude` do WSL e precisa de um `hooks.port` diferente do Windows.
@@ -400,6 +400,7 @@ Abre o `claude` de verdade no mesmo terminal, com os mesmos argumentos e o mesmo
 - **Config:** como os argumentos são todos do `claude`, a config do daemon vem de `FLIGHTDECK_CONFIG`, ou do caminho padrão.
 - **Sem `claude` no PATH** (nem em `claude.executablePath`): avisa e sai.
 - **Sem o daemon:** avisa e abre o `claude` assim mesmo, sem canal.
+- **Com `-p` ou `--print`:** abre o `claude` normal, sem canal e sem aviso. O modo print ignora o canal de desenvolvimento.
 - **Research preview:** o canal é um recurso de pré-visualização do Claude Code. Cada abertura mostra um aviso de canal de desenvolvimento, que precisa ser aceito.
 
 | | `claude` puro | `flightdeckd claude` |
