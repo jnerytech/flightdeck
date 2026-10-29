@@ -40,6 +40,8 @@ export interface SessionState {
   toolResults: Record<string, { content: string; isError: boolean }>;
   /** Open permission request ids. */
   pending: string[];
+  /** The host's retention removed the events of this (ended) session. */
+  pruned?: boolean;
 }
 
 export const emptySession = (): SessionState => ({

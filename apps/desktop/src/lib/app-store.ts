@@ -18,6 +18,7 @@ import type {
   SessionEventOf,
   SessionMeta,
   SessionStatus,
+  SessionSubscribeResult,
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
@@ -94,6 +95,7 @@ export type HostCommandType = Extract<
   | `workflow.${string}`
   | `run.${string}`
   | `gate.${string}`
+  | `maintenance.${string}`
 >;
 
 const isRun = (value: unknown): value is WorkflowRun =>
@@ -743,7 +745,7 @@ export class AppStore {
       lastSeqFor: (sessionId) =>
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
-      onSubscribed: () => {},
+      onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
       onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
@@ -779,6 +781,23 @@ export class AppStore {
       }
       this.update({ sessions });
     }
+  }
+
+  /**
+   * A session asked from the start that had events (`lastSeq` > 0) but replays none lost them
+   * to the host's retention: the view says so instead of showing an empty conversation.
+   */
+  private onSubscribed(hostId: string, sessionId: string, result: SessionSubscribeResult): void {
+    const key = sessionKey(hostId, sessionId);
+    const current = this.state.sessions[key] ?? emptySession();
+    if (result.replayed > 0 || result.session.lastSeq === 0 || current.lastSeq > 0) return;
+    const pruned = {
+      ...current,
+      pruned: true,
+      status: result.session.status,
+      cwd: result.session.cwd,
+    };
+    this.update({ sessions: { ...this.state.sessions, [key]: pruned } });
   }
 
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */

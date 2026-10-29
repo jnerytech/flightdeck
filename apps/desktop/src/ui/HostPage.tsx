@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { MaintenanceSection } from "./MaintenanceSection.tsx";
 
 const HOOK_LABELS: Record<HooksStatusResult["status"], string> = {
   installed: "instalados",
@@ -90,6 +91,9 @@ export function HostPage(props: {
             Remover hooks
           </button>
         </section>
+      )}
+      {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
+        <MaintenanceSection store={store} hostId={host.id} />
       )}
       {confirming && (
         <ConfirmDialog

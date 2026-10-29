@@ -104,6 +104,9 @@ export function SessionView(props: {
         </div>
       </header>
       <div className="timeline" ref={timeline}>
+        {session.pruned && session.items.length === 0 && (
+          <p className="muted">conversa removida pela retenção</p>
+        )}
         {session.items.map((item) => (
           <TimelineItem key={item.seq} item={item} session={session} actions={actions} />
         ))}
