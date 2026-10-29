@@ -22,7 +22,9 @@ Pré-requisito: Fase 10 (Interface). Independe das Fases 11 a 15.
   - macOS: Keychain.
   - O nome de serviço é `flightdeck-vault` e a conta é o id do segredo.
 - **Metadados:** no armazenamento do app, sem o valor: id, nome, tipo, descrição, tags, criação, último uso, fingerprint público quando houver e para quais hosts o segredo pode ser entregue.
-- **Entrega a um daemon:** o valor sai do cofre só no momento do uso, pelo WebSocket autenticado do host, que é loopback ou Tailscale (WireGuard), numa mensagem `vault.deliver` com prazo de uso.
+- **Entrega a um daemon:** o valor sai do cofre só no momento do uso, pelo WebSocket autenticado do host, numa mensagem `vault.deliver` com prazo de uso.
+  - **O transporte é exigido, não presumido:** o app só entrega se a conexão com o host for loopback ou estiver nas faixas da Tailscale (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`), que são cifradas pelo WireGuard.
+  - Em qualquer outra rede, por exemplo uma LAN em `allowedNetworks` com `ws` sem TLS, a entrega é recusada com o motivo.
   - O daemon guarda o valor só em memória e o descarta depois do uso, ou em no máximo 60 s.
   - O valor nunca vai para disco nem para log, com uma exceção: o arquivo temporário de chave SSH da Fase 15, que é apagado.
 - **Consequência:** sem o app aberto, nenhum segredo do cofre pode ser usado, e o pedido falha dizendo isso. Fica registrado como decisão: o cofre é do usuário, na máquina dele.
@@ -38,6 +40,14 @@ Pré-requisito: Fase 10 (Interface). Independe das Fases 11 a 15.
 
 - **Gerar chave SSH:** cria um par `ed25519` com o `ssh-keygen` do host local, guarda o privado no cofre, apaga o arquivo e mostra a chave pública para copiar.
 - **Importar chave do disco:** "Importar arquivo de chave" lê um arquivo que você escolhe pelo diálogo do sistema e oferece apagar o original. O padrão é não apagar.
+
+## Quem pede
+
+- **O solicitante `you` existe só para os usos que o próprio app iniciou,** por exemplo o "Conectar" da Fase 15 clicado por você.
+- **Um pedido que vem do daemon (`vault.request`) nunca pode dizer que é `you`.** Qualquer processo local que leia o `~/.flightdeck/config.json` fala o protocolo.
+  - Pedidos do daemon são sempre `claude`, `automation` ou `workflow`.
+  - Um solicitante ausente ou desconhecido é tratado como o mais restrito.
+- **Enquanto as Fases 17 e 19 não existem, todo `vault.request` vindo do daemon é negado.** Nesta fase, só entregam os usos iniciados pelo app.
 
 ## Uso e auditoria
 
@@ -80,7 +90,8 @@ Pré-requisito: Fase 10 (Interface). Independe das Fases 11 a 15.
 | `cofre-armazenamento` | valor só no keyring (plataforma falsa); metadados sem valor; remover apaga dos dois |
 | `cofre-tipos` | os quatro tipos; fingerprint e pública de `ssh-key`; prefixo de `token`; nomes de `env` |
 | `cofre-gerar-importar` | `ssh-keygen` falso gera e o arquivo some; importar arquivo com opção de apagar |
-| `cofre-entrega` | `vault.deliver` só para host permitido; o daemon guarda em memória e descarta no uso ou em 60 s; nunca em log (o teste procura o valor nos logs e no banco); sem app, o pedido falha com o motivo |
+| `cofre-entrega` | `vault.deliver` só para host permitido e só por loopback ou Tailscale (LAN recusada com o motivo); o daemon guarda em memória e descarta no uso ou em 60 s; nunca em log (o teste procura o valor nos logs e no banco); sem app, o pedido falha com o motivo |
+| `cofre-solicitante` | `you` só para uso iniciado pelo app; `vault.request` do daemon dizendo `you` é tratado como desconhecido e negado; nesta fase todo `vault.request` do daemon é negado |
 | `cofre-uso` | registro de cada entrega com finalidade e solicitante e sem valor; filtros |
 | `cofre-backup` | exportar e importar com `age` e frase-senha; frase curta recusada; prévia de conflitos; arquivo adulterado recusado |
 | `cofre-ui` | tela, revelar com confirmação e prazo, copiar com limpeza, remover digitando o nome |

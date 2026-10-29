@@ -42,7 +42,14 @@ Uma **ação** é um comando declarado por você, com lugares marcados para segr
   - um segredo só entra em `env` ou como arquivo temporário (`{{secretFile.x}}`, apagado depois), **nunca como argumento**, porque argumento aparece na lista de processos;
   - cada parâmetro precisa casar com o `pattern` dele;
   - `ssh:` roda pelo destino SSH da Fase 15, com `ssh <destino> -- <argv>` e o ambiente enviado por `SendEnv` ou por stdin.
-- **Ações versionadas:** as ações de um `.flightdeck/actions.yaml` versionado só rodam depois de **confiadas**, pelo hash, como os workflows da Fase 6. As ações criadas pelo app ficam no daemon e não precisam disso.
+- **Ações versionadas:** as ações de um `.flightdeck/actions.yaml` versionado só rodam depois de **confiadas**, pelo hash, como os workflows da Fase 6.
+- **A confiança cobre o que a ação executa, não só a declaração.** Vale também para as ações criadas pelo app.
+  - O Claude pode editar os arquivos da worktree. Uma linha nova num `./scripts/deploy.sh` vazaria o segredo sem a máscara ver.
+  - Por isso, o registro de confiança fixa o sha256 do `run[0]` e de cada elemento do argv que é um arquivo existente dentro de um repositório git.
+  - O daemon calcula de novo esses hashes **logo antes de executar** e recusa se algum mudou. Confiar de novo mostra o diff.
+- **Parâmetro nunca é código:** um `{{param.*}}` não pode ocupar a posição de código de um interpretador, ou seja, depois de `-c`, `-e`, `/c`, `-Command`, `-EncodedCommand` ou `eval`.
+  - Isso é erro de validação da ação.
+  - Sem essa regra, um `pattern` frouxo transformaria a ação num `run_with_secret` sem a aprovação obrigatória.
 
 ## Como o Claude chama
 
@@ -53,6 +60,17 @@ Uma **ação** é um comando declarado por você, com lugares marcados para segr
   - registra as mesmas duas ferramentas, falando com o daemon local pelo protocolo;
   - traz uma faixa "ação rodando: deploy-staging" e o comando `/flightdeck-actions`, que lista as ações;
   - fica em `mods/flightdeck-actions` no repositório, instalável com `/plugin install`.
+
+## Limite: o mesmo usuário do sistema
+
+- **A garantia é esta:** o segredo **nunca chega ao transcript nem ao contexto do modelo pelo Flightdeck**.
+- **Não é isolamento contra um processo hostil do mesmo usuário.** Enquanto a ação roda, as variáveis de ambiente e o arquivo temporário (`{{secretFile}}`) podem ser lidos por outro processo do mesmo usuário do sistema operacional:
+  - `/proc/<pid>/environ` no Linux;
+  - o arquivo, qualquer que seja a ACL.
+
+  Uma sessão do Claude com Bash no **mesmo host** consegue ler esses valores.
+- **Recomendação:** segredos de produção ficam em ações `ssh:`, que rodam num host remoto onde o Claude não tem shell.
+- **Documentação:** o README e a tela de ações dizem isso com clareza, e o app mostra um aviso quando uma ação com segredo de tag `prod` roda no mesmo host de uma sessão do Claude com Bash.
 
 ## Máscara
 
@@ -88,7 +106,7 @@ Uma **ação** é um comando declarado por você, com lugares marcados para segr
 | --- | --- |
 | `acoes-schema` | YAML válido carrega; `run` não lista é erro; segredo em argumento é erro; parâmetro sem `pattern` é erro; referência a segredo inexistente é erro |
 | `acoes-execucao` | argv sem shell; segredo só em env ou em arquivo temporário apagado; parâmetro fora do `pattern` recusado; timeout; `ssh:` monta pelo destino |
-| `acoes-confianca` | arquivo versionado não roda sem confiar; hash diferente pede de novo |
+| `acoes-confianca` | arquivo versionado não roda sem confiar; hash diferente pede de novo; script do `run[0]` (e arquivos do argv) alterado depois de confiar é recusado logo antes de executar, também para ações do app; `{{param}}` depois de `-c`, `-e`, `/c`, `-Command`, `-EncodedCommand` ou `eval` é erro |
 | `mascara` | valor literal, de várias linhas, em base64, em URL e em hex mascarado na saída, no terminal e nos registros |
 | `mcp-acoes` | `list_actions` sem segredos; `run_action` com parâmetros válidos e saída mascarada; `run_with_secret` sempre pede aprovação e nunca é auto-aprovado |
 | `mod-acoes` | o mod registra as ferramentas e fala com o daemon (teste do kit de mods); faixa e comando |

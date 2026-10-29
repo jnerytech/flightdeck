@@ -55,13 +55,20 @@ Pré-requisito: Fase 14 (abas e terminal embutido). As chaves e senhas ficam no 
   ```
   Nada passa por shell.
 - **Chave do cofre (`vault-key`):** o app entrega a chave ao daemon do `via_host` só no momento da conexão (Fase 16).
-  - O daemon a grava num arquivo temporário com permissão só do dono (ACL no Windows, 0600 fora dele), passa o caminho em `-i` e **apaga o arquivo assim que a autenticação termina**, ou em 60 s no máximo.
+  - **Preferido:** um **ssh-agent por conexão** mantém a chave fora do disco.
+    1. O daemon sobe `ssh-agent -a <socket>`.
+    2. Entrega a chave por `ssh-add -`, pelo stdin.
+    3. Define `SSH_AUTH_SOCK` só para aquele `ssh`.
+    4. Encerra o agent logo depois da conexão estabelecida.
+
+    Como o comportamento do agent do OpenSSH no Windows (pipe nomeado) precisa de prova, a área começa por uma prova de conceito.
+  - **Alternativa, só se o agent não servir:** um arquivo temporário com permissão só do dono, passado em `-i` e apagado logo depois da conexão ou em 60 s no máximo. A escolha fica registrada no DECISIONS.
   - Se a chave tiver senha, ela é pedida pelo `SSH_ASKPASS` (abaixo).
 - **Senha (`password`):** vai pelo `SSH_ASKPASS`, que aponta para `flightdeckd askpass`.
   - Esse helper pede a senha ao app pelo daemon, e o app a lê do cofre, ou pergunta a você se ela não estiver lá.
   - A senha nunca aparece na linha de comando nem no ambiente do ssh.
 - **Chave do servidor:**
-  - na primeira conexão, o fingerprint (SHA256) aparece no app para você confirmar e fica guardado em `host_key`;
+  - na primeira conexão, o daemon lê a chave do servidor com `ssh-keyscan` (também para cada jump), o fingerprint (SHA256) aparece no app para você confirmar e fica guardado em `host_key`. Só depois o `ssh` roda, já com o known_hosts próprio;
   - nas seguintes, a conexão usa um `known_hosts` próprio do Flightdeck, gerado a partir de `host_key`, com `StrictHostKeyChecking=yes`;
   - um fingerprint diferente bloqueia a conexão e mostra o antigo e o novo.
 - **"Claude aqui" via SSH:** se o destino também tiver o `flightdeckd`, o app oferece pareá-lo como host. Para os outros, o "Claude aqui" roda o `claude` direto pelo terminal SSH. Essa sessão não fica controlável, porque o host remoto não tem daemon, e o app avisa.
@@ -95,7 +102,7 @@ Pré-requisito: Fase 14 (abas e terminal embutido). As chaves e senhas ficam no 
 | --- | --- |
 | `ssh-destinos` | salvar, listar, remover com confirmação; tags; jump aponta para destino existente; nenhum segredo na tabela |
 | `ssh-import` | lê `Host`, `HostName`, `User`, `Port`, `IdentityFile`, `ProxyJump` e `Include` de fixtures; curingas viram padrão; prévia marca os existentes; nada é escrito no config |
-| `ssh-connect` | argv montado em lista para cada `auth` (ssh falso); chave temporária com permissão do dono e apagada depois da autenticação ou em 60 s; `IdentitiesOnly`; known_hosts próprio com `StrictHostKeyChecking=yes` |
+| `ssh-connect` | argv montado em lista para cada `auth` (ssh falso); `vault-key` por ssh-agent por conexão (socket próprio, `ssh-add -` pelo stdin, agent encerrado depois) ou, na alternativa registrada, arquivo temporário do dono apagado; `IdentitiesOnly`; known_hosts próprio com `StrictHostKeyChecking=yes`; primeira conexão por `ssh-keyscan`, inclusive dos jumps |
 | `ssh-hostkey` | primeira conexão pede confirmação; diferente bloqueia mostrando os dois; esquecer limpa |
 | `askpass` | `flightdeckd askpass` pede ao app e devolve a senha pelo stdout; sem app, falha rápido; a senha nunca aparece em argv nem no ambiente |
 | `conexoes-ui` | tela, formulário, teste traduzido, paleta "Conectar a…", borda vermelha em `prod` |

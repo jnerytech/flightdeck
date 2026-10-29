@@ -44,6 +44,10 @@ Pré-requisitos:
   ```
 - **Snippets versionados de comando:** só aparecem para colar. Rodar direto exige confiar no arquivo pelo hash, como os workflows. Os de prompt não precisam disso.
 - **Importar:** de um arquivo YAML ou JSON. "Importar do histórico do shell" oferece os comandos mais usados do `~/.bash_history`, do histórico do PSReadLine no Windows e do `~/.zsh_history`, **só para leitura e com escolha linha a linha**.
+  - **Varredura de segredos:** históricos costumam ter tokens digitados na linha. Cada linha candidata é conferida contra padrões de segredo (tokens `ghp_`, `sk-`, `AKIA`, chaves privadas, `password=`, `token=`, Bearer) e contra os valores do próprio cofre.
+  - Linha marcada fica **oculta e não selecionável**, a menos que você a revele.
+  - O que vem do histórico vai por padrão para o escopo global ou do host, **nunca para o `.flightdeck/snippets.yaml`**.
+  - Salvar no arquivo versionado roda a mesma varredura em todo o conteúdo e recusa ao achar algo, porque o repositório pode ser público.
 
 ## Usar
 
@@ -69,7 +73,7 @@ Pré-requisitos:
 | --- | --- |
 | `snippets-modelo` | os dois tipos; variáveis com padrão e opções; especiais (`cwd`, `branch`, `file`, `selection`); snippet com segredo recusado, com a oferta de virar ação |
 | `snippets-escopos` | global, host e projeto; o versionado carrega e precisa de confiança para rodar; colar sem confiança é permitido |
-| `snippets-historico` | lê históricos de bash, zsh e PSReadLine de fixtures, só para leitura; ordena por frequência; escolha linha a linha |
+| `snippets-historico` | lê históricos de bash, zsh e PSReadLine de fixtures, só para leitura; ordena por frequência; escolha linha a linha; linhas com padrão de segredo ou valor do cofre ocultas e não selecionáveis; importação vai para global ou host; salvar no `snippets.yaml` com segredo é recusado |
 | `snippets-uso` | paleta com variáveis; colar ou rodar no terminal (PTY falso); enviar à sessão ativa; `/` na caixa de mensagem |
 | `snippets-mcp` | `list_snippets` e `get_snippet` pelo MCP e pelo mod; o Flightdeck não executa nada pelo Claude |
 | `snippets-ui` | tela de snippets por escopo; editor com prévia das variáveis; favoritos e recentes |

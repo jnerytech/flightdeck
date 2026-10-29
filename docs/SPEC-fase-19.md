@@ -27,6 +27,7 @@ Pré-requisitos: Fases 16 (cofre) e 17 (ações). Usa o risco e a aprovação da
   - match: { requester: automation }
     decision: deny
   ```
+- **O solicitante nunca vem do daemon:** `you` só vale para usos que o app iniciou. Um pedido vindo do daemon é sempre `claude`, `automation` ou `workflow`, e um ausente ou desconhecido é o mais restrito (Fase 16).
 - **Campos de `match`** (todos opcionais, combinados com E):
   - `requester`: `you`, que é você no app; `claude`, uma sessão pelo MCP ou pelo mod; `automation`, da Fase 13; `workflow`, da Fase 6;
   - `purpose`: `ssh`, `action` ou `run_with_secret`;
