@@ -128,6 +128,39 @@ describe("regras-projeto", () => {
     expect(project.id).not.toBe("");
   });
 
+  test("a linha do exclude volta a cada execução e antes de gravar a regra, mesmo em worktree antiga", async () => {
+    const { repo, board, store, manager, asking, allow } = await setup();
+    const excludeFile = join(repo, ".git", "info", "exclude");
+    const strip = () =>
+      writeFileSync(
+        excludeFile,
+        readFileSync(excludeFile, "utf8")
+          .split(/\r?\n/)
+          .filter((line) => line !== SETTINGS)
+          .join("\n"),
+      );
+    const excluded = () => readFileSync(excludeFile, "utf8").split(/\r?\n/).includes(SETTINGS);
+    const first = await asking("Antiga");
+    manager.respondPermission({ requestId: first.requestId, decision: "allow" });
+    await cardWhen(board, first.card.id, (c) => c.sessionStatus === "idle");
+    // A worktree made before this phase: no line for the rules file.
+    strip();
+    await board.startCard(first.card.id);
+    const again = await cardWhen(
+      board,
+      first.card.id,
+      (c) => c.sessionId !== first.sessionId && c.sessionStatus === "awaiting_permission",
+    );
+    expect(excluded()).toBe(true);
+    strip();
+    const requestId = store.pendingPermissions(again?.sessionId ?? "")[0]?.id ?? "";
+    allow(requestId, [rule("ls:*")]);
+    expect(excluded()).toBe(true);
+    writeSettings(again?.worktreePath ?? "", { permissions: { allow: ["Bash(ls:*)"] } });
+    const diff = await board.diff(first.card.id);
+    expect(diff.files.map((f) => f.path)).not.toContain(SETTINGS);
+  });
+
   test("um settings.local.json versionado no repositório não é sobrescrito na worktree", async () => {
     const { repo, asking } = await setup();
     writeSettings(repo, { permissions: { allow: ["Versionada"] } });
