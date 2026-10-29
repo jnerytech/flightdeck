@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { Central } from "../src/central/central.ts";
 import { Snapshots } from "../src/checkpoints/snapshots.ts";
+import { runCli } from "../src/main.ts";
+import { Maintenance } from "../src/maintenance/maintenance.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { git, gitRepo } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { newManager, poll, tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 const DAY = 86_400_000;
 const sha = (path: string) =>
@@ -137,4 +141,132 @@ describe("snapshots", () => {
     await snapshots.idle();
     expect(snapshots.list("s1")).toHaveLength(3);
   });
+
+  test("hooks do terminal: UserPromptSubmit enfileira o antes, Stop o depois; sessão gerenciada não", async () => {
+    const { snapshots, repo } = setup();
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const { manager } = newManager({ store });
+    const dir = tempDir();
+    const configFile = join(dir, "config.json");
+    writeFileSync(configFile, "{}");
+    const central = new Central({
+      db: store.db,
+      manager,
+      hooks: { port: 0, token: "tok-snapshots", permissionTimeoutS: 600, staleAfterS: 900 },
+      dataDir: join(dir, "data"),
+      hostName: "h",
+      configFile,
+      selfCommand: ["flightdeckd"],
+      settingsPath: () => join(dir, "settings.json"),
+      snapshots,
+    });
+    cleanups.push(() => central.stop());
+    const post = (event: string, payload: object) =>
+      fetch(`${central.receptor?.url}/hooks/${event}`, {
+        method: "POST",
+        headers: { authorization: "Bearer tok-snapshots" },
+        body: JSON.stringify({ hook_event_name: event, ...payload }),
+      });
+    writeFileSync(join(repo, "a.txt"), "1\n");
+    await post("UserPromptSubmit", { session_id: "t1", cwd: repo, prompt: "crie b.txt" });
+    writeFileSync(join(repo, "b.txt"), "novo\n");
+    await post("Stop", { session_id: "t1", cwd: repo });
+    await snapshots.idle();
+    expect(snapshots.list("t1").map((s) => [s.kind, s.prompt])).toEqual([
+      ["before", "crie b.txt"],
+      ["after", null],
+    ]);
+  });
+
+  test("sessão gerenciada: antes de cada turno (o primeiro espera o session.init) e depois dele", async () => {
+    const edges: Array<{ kind: string; prompt?: string; claudeSessionId: string }> = [];
+    const { manager, project } = newManager({
+      onTurnEdge: (edge) =>
+        edges.push({ kind: edge.kind, prompt: edge.prompt, claudeSessionId: edge.claudeSessionId }),
+    });
+    const { sessionId } = manager.create({ cwd: project, prompt: "primeiro" });
+    await poll(() => manager.get(sessionId).status === "idle", 3000);
+    manager.send(sessionId, "segundo");
+    await poll(() => edges.length === 4, 3000);
+    const claude = manager.get(sessionId).claudeSessionId;
+    expect(edges).toEqual([
+      { kind: "before", prompt: "primeiro", claudeSessionId: claude as string },
+      { kind: "after", prompt: undefined, claudeSessionId: claude as string },
+      { kind: "before", prompt: "segundo", claudeSessionId: claude as string },
+      { kind: "after", prompt: undefined, claudeSessionId: claude as string },
+    ]);
+  });
+
+  test("a manutenção diária limpa os snapshots junto com a retenção", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const policies: unknown[] = [];
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir: tempDir(),
+      retention: { eventsDays: 90, externalSessionsDays: 30 },
+      snapshots: {
+        prune: async (policy) => {
+          policies.push(policy);
+          return 0;
+        },
+      },
+    });
+    maintenance.start();
+    maintenance.stop();
+    expect(policies).toEqual([{ perSession: 50, days: 30 }]);
+  });
+
+  test("flightdeckd start: a sessão gerenciada num repositório gera snapshots, listados por snapshots.list", async () => {
+    const { repo } = gitRepo();
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    const token = "snapshots-token-0123456789abc";
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        allowedRoots: [dirname(repo)],
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const client = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => client.close());
+    await client.request("hello", { token, client: "t" });
+    writeFileSync(join(repo, "a.txt"), "antes do turno\n");
+    const created = await client.data<{ sessionId: string }>("session.create", {
+      cwd: repo,
+      prompt: "um turno",
+    });
+    let claudeSessionId: string | null = null;
+    let rows: Array<{ kind: string }> = [];
+    const deadline = Date.now() + 5000;
+    while (rows.length < 2 && Date.now() < deadline) {
+      const { sessions } = (await client.data<{
+        sessions: Array<{ id: string; claudeSessionId: string | null }>;
+      }>("session.list", {})) ?? { sessions: [] };
+      claudeSessionId = sessions.find((s) => s.id === created?.sessionId)?.claudeSessionId ?? null;
+      if (claudeSessionId) {
+        rows =
+          (
+            await client.data<{ snapshots: Array<{ kind: string }> }>("snapshots.list", {
+              claudeSessionId,
+            })
+          )?.snapshots ?? [];
+      }
+      if (rows.length < 2) await Bun.sleep(50);
+    }
+    expect(rows.map((r) => r.kind)).toEqual(["before", "after"]);
+    expect(git(repo, "status", "--porcelain")).toBe("?? a.txt");
+  }, 20_000);
 });
