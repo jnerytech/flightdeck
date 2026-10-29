@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Config, loadConfig } from "../src/config.ts";
-import { runCli } from "../src/main.ts";
+import { parseArgs, runCli } from "../src/main.ts";
 import { Maintenance } from "../src/maintenance/maintenance.ts";
 import { prune } from "../src/maintenance/retention.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -178,6 +178,16 @@ describe("retencao", () => {
   test("retention na config: padrões 90 e 30 dias", () => {
     expect(Config.parse({}).retention).toEqual({ eventsDays: 90, externalSessionsDays: 30 });
     expect(Config.safeParse({ retention: { eventsDays: -1 } }).success).toBe(false);
+  });
+
+  test("ação de db desconhecida é recusada", () => {
+    let message = "aceitou";
+    try {
+      parseArgs(["db", "vacuum"]);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("ação de db inválida: vacuum");
   });
 
   test("flightdeckd db prune [--dry-run] imprime as contagens por tabela", async () => {
