@@ -16,7 +16,12 @@ const log = (entry: Record<string, unknown>) =>
 const env = Object.fromEntries(
   Object.entries(process.env).filter(([key]) => key.startsWith("FLIGHTDECK_")),
 );
-log({ type: "start", args, env });
+const mcpConfigFile = args[args.indexOf("--mcp-config") + 1];
+const mcpConfig =
+  args.includes("--mcp-config") && mcpConfigFile && existsSync(mcpConfigFile)
+    ? JSON.parse(readFileSync(mcpConfigFile, "utf8"))
+    : null;
+log({ type: "start", args, env, mcpConfig });
 
 interface HookEntry {
   type: "command" | "http";
