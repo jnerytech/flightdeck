@@ -1,0 +1,172 @@
+import type { ExternalStatus, SessionMeta, SessionStatus } from "@flightdeck/protocol";
+import type { AppState } from "./app-store.ts";
+import { basename } from "./paths.ts";
+
+export type HubOrigin = "flightdeck" | "terminal" | "history";
+export type HubState = "running" | "needs_you" | "idle" | "ended";
+
+/** One line of the Sessões screen, whatever the session's origin. */
+export interface HubRow {
+  key: string;
+  hostId: string;
+  hostName: string;
+  origin: HubOrigin;
+  claudeSessionId: string | null;
+  /** Managed sessions only: the daemon's session id. */
+  sessionId: string | null;
+  title: string;
+  cwd: string;
+  projectKey: string;
+  state: HubState;
+  controllable: boolean;
+  lastActivity: string;
+  pinned: boolean;
+  archived: boolean;
+}
+
+export interface HubFilter {
+  text: string;
+  /** Host name, or "" for all. */
+  host: string;
+  origin: "" | HubOrigin;
+  state: "" | HubState;
+  pinnedOnly: boolean;
+  showArchived: boolean;
+}
+
+export interface HubGroup {
+  key: string;
+  /** Repository name (or folder) shown on the group. */
+  name: string;
+  rows: HubRow[];
+}
+
+export const ORIGIN_LABELS: Record<HubOrigin, string> = {
+  flightdeck: "Flightdeck",
+  terminal: "terminal",
+  history: "histórico",
+};
+
+export const STATE_LABELS: Record<HubState, string> = {
+  running: "rodando",
+  needs_you: "precisa de você",
+  idle: "ociosa",
+  ended: "encerrada",
+};
+
+const MANAGED: Record<SessionStatus, HubState> = {
+  starting: "running",
+  running: "running",
+  awaiting_permission: "needs_you",
+  idle: "idle",
+  ended: "ended",
+  error: "ended",
+};
+
+const EXTERNAL: Record<ExternalStatus, HubState> = {
+  running: "running",
+  awaiting_permission: "needs_you",
+  idle: "idle",
+  unknown: "idle",
+  ended: "ended",
+};
+
+const NO_META: SessionMeta = { name: null, pinned: false, archived: false };
+
+/**
+ * Every session of every host: managed ones (live status from the summaries), external ones
+ * (from hooks) and the history, each claudeSessionId once (managed, then external, then history).
+ */
+export function hubRows(state: AppState): HubRow[] {
+  return state.hosts.flatMap((host) => {
+    const data = state.hub[host.id] ?? { managed: [], history: [] };
+    const meta = (id: string | null) =>
+      (id ? state.meta[`${host.id}/${id}`] : undefined) ?? NO_META;
+    const seen = new Set<string>();
+    const base = (id: string | null, cwd: string, key: string | null | undefined) => {
+      if (id) seen.add(id);
+      const { name, pinned, archived } = meta(id);
+      return {
+        hostId: host.id,
+        hostName: host.name,
+        claudeSessionId: id,
+        cwd,
+        name,
+        pinned,
+        archived,
+        projectKey: key ?? `host:${host.name}:${cwd}`,
+      };
+    };
+    const managed = data.managed.map((s): HubRow => {
+      const { name, ...common } = base(s.claudeSessionId, s.cwd, s.projectKey);
+      const live = host.sessions.find((x) => x.id === s.id);
+      return {
+        ...common,
+        key: `${host.id}/m/${s.id}`,
+        origin: "flightdeck",
+        sessionId: s.id,
+        title: name ?? s.name ?? basename(s.cwd),
+        state: MANAGED[live?.status ?? s.status],
+        controllable: false,
+        lastActivity: live?.updatedAt ?? s.updatedAt,
+      };
+    });
+    const externals = Object.entries(state.externals)
+      .filter(([key, s]) => key.startsWith(`${host.id}/`) && !seen.has(s.claudeSessionId))
+      .map(([, s]): HubRow => {
+        const { name, ...common } = base(s.claudeSessionId, s.cwd ?? "", s.projectKey);
+        return {
+          ...common,
+          key: `${host.id}/e/${s.claudeSessionId}`,
+          origin: "terminal",
+          sessionId: null,
+          title: name ?? basename(s.cwd ?? s.claudeSessionId),
+          state: EXTERNAL[s.status],
+          controllable: s.controllable,
+          lastActivity: s.lastEventAt,
+        };
+      });
+    const history = data.history
+      .filter((s) => !seen.has(s.claudeSessionId))
+      .map((s): HubRow => {
+        const { name, ...common } = base(s.claudeSessionId, s.cwd, s.projectKey);
+        return {
+          ...common,
+          key: `${host.id}/h/${s.claudeSessionId}`,
+          origin: "history",
+          sessionId: null,
+          title: name ?? s.title ?? basename(s.cwd),
+          state: "ended",
+          controllable: false,
+          lastActivity: s.lastTs ?? "",
+        };
+      });
+    return [...managed, ...externals, ...history];
+  });
+}
+
+const matches = (row: HubRow, filter: HubFilter) =>
+  `${row.title}\n${row.cwd}\n${row.hostName}`
+    .toLowerCase()
+    .includes(filter.text.trim().toLowerCase()) &&
+  (!filter.host || row.hostName === filter.host) &&
+  (!filter.origin || row.origin === filter.origin) &&
+  (!filter.state || row.state === filter.state) &&
+  (!filter.pinnedOnly || row.pinned) &&
+  (filter.showArchived || !row.archived);
+
+/** Repository name of a group: last path segment of the remote or of the folder. */
+const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
+
+/** Filtered rows by project; pinned first, then latest activity; groups by latest activity. */
+export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
+  const byKey = new Map<string, HubRow[]>();
+  for (const row of rows.filter((r) => matches(r, filter))) {
+    byKey.set(row.projectKey, [...(byKey.get(row.projectKey) ?? []), row]);
+  }
+  const order = (a: HubRow, b: HubRow) =>
+    Number(b.pinned) - Number(a.pinned) || b.lastActivity.localeCompare(a.lastActivity);
+  return [...byKey.entries()]
+    .map(([key, list]) => ({ key, name: groupName(key), rows: list.sort(order) }))
+    .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));
+}

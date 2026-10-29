@@ -1,16 +1,19 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
+import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
+import { ExternalView } from "./ExternalView.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { HostPage } from "./HostPage.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { ProjectsPage } from "./ProjectsPage.tsx";
+import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
@@ -38,11 +41,32 @@ export function App({ store }: { store: AppStore }) {
   /** Board open, and the card open on top of it. */
   const [boardOf, setBoardOf] = useState<{ hostId: string; projectId: string } | null>(null);
   const [openCard, setOpenCard] = useState<string | null>(null);
-  /** Leaving for any other screen closes the board ones. */
+  /** The Sessões screen, opened from the sidebar (it is also what shows when nothing else does). */
+  const [hubOpen, setHubOpen] = useState(false);
+  /** A live session opened in the terminal, shown with its requests and message box. */
+  const [external, setExternal] = useState<{ hostId: string; claudeSessionId: string } | null>(
+    null,
+  );
+  const externalHost = state.hosts.find((h) => h.id === external?.hostId);
+  /** Leaving for any other screen closes the board, hub and external ones. */
   const closeBoard = () => {
     setProjectsHost(null);
     setBoardOf(null);
     setOpenCard(null);
+    setHubOpen(false);
+    setExternal(null);
+  };
+  /** From the Sessões screen: the conversation, the live external view or the reader. */
+  const openRow = (row: HubRow) => {
+    closeBoard();
+    setReading(null);
+    setHistoryHost(null);
+    setHostPage(null);
+    const id = row.claudeSessionId as string;
+    if (row.sessionId) store.select(row.hostId, row.sessionId);
+    else if (row.origin === "terminal" && row.state !== "ended") {
+      setExternal({ hostId: row.hostId, claudeSessionId: id });
+    } else setReading({ hostId: row.hostId, claudeSessionId: id });
   };
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
@@ -163,6 +187,20 @@ export function App({ store }: { store: AppStore }) {
         onOpenBoard={(projectId) => setBoardOf({ hostId: projectsHostView.id, projectId })}
       />
     );
+  } else if (external && externalHost) {
+    main = (
+      <ExternalView
+        key={`${external.hostId}/${external.claudeSessionId}`}
+        store={store}
+        state={state}
+        hostId={external.hostId}
+        hostName={externalHost.name}
+        claudeSessionId={external.claudeSessionId}
+        onResumed={closeBoard}
+      />
+    );
+  } else if (hubOpen) {
+    main = <SessionsHub store={store} state={state} onOpen={openRow} />;
   } else if (reading && readingHost) {
     main = (
       <TranscriptReader
@@ -220,7 +258,7 @@ export function App({ store }: { store: AppStore }) {
       />
     );
   } else {
-    main = <p className="muted welcome">Escolha uma sessão ou crie uma nova.</p>;
+    main = <SessionsHub store={store} state={state} onOpen={openRow} />;
   }
 
   return (
@@ -269,8 +307,23 @@ export function App({ store }: { store: AppStore }) {
           setProjectsHost(hostId);
         }}
         onRespond={(item, decision) => void store.respondTo(item.hostId, item.requestId, decision)}
+        onOpenHub={() => {
+          closeBoard();
+          setReading(null);
+          setHistoryHost(null);
+          setAddingHost(false);
+          setSettingsOpen(false);
+          setHostPage(null);
+          setHubOpen(true);
+        }}
         onOpenRequest={(item) => {
           closeBoard();
+          if (item.external) {
+            setReading(null);
+            setHostPage(null);
+            setExternal({ hostId: item.hostId, claudeSessionId: item.sessionId });
+            return;
+          }
           setReading(null);
           setHistoryHost(null);
           setAddingHost(false);

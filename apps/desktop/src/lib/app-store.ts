@@ -4,15 +4,21 @@ import type {
   CommandResults,
   CommandType,
   EventEnvelope,
+  ExternalPermissionFrame,
+  ExternalSession,
+  ExternalUpdated,
   HelloResult,
   HistoryChanged,
   HistoryGetResult,
   HistoryListResult,
   HistorySearchHit,
+  HistorySessionSummary,
   HostInfoResult,
   PendingPermission,
   SessionEventOf,
+  SessionMeta,
   SessionStatus,
+  SessionSummary,
 } from "@flightdeck/protocol";
 import type { Platform, TrayStatus } from "../platform/types.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
@@ -61,6 +67,14 @@ export interface AppState {
   searchOpen: boolean;
   /** Board cards seen so far, keyed by `sessionKey(hostId, cardId)`; kept by `card.updated`. */
   cards: Record<string, Card>;
+  /** Sessions opened outside Flightdeck, by `sessionKey(hostId, claudeSessionId)`. */
+  externals: Record<string, ExternalSession>;
+  /** Open permission requests of external sessions, by `sessionKey(hostId, requestId)`. */
+  externalRequests: Record<string, ExternalPermissionFrame>;
+  /** Name, pinned and archived, by `sessionKey(hostId, claudeSessionId)`. */
+  meta: Record<string, SessionMeta>;
+  /** Managed and history lists of each host for the Sessões screen. */
+  hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
 }
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
@@ -127,13 +141,15 @@ export interface PendingItem {
   requestId: string;
   toolName: string;
   createdAt: string;
+  /** A request of a session opened outside Flightdeck (`sessionId` is its claudeSessionId). */
+  external?: boolean;
 }
 
 /** Every open permission request of every host, oldest first. */
 export function needsYou(state: AppState): PendingItem[] {
   return state.hosts
-    .flatMap((host) =>
-      host.sessions.flatMap((session) =>
+    .flatMap((host) => [
+      ...host.sessions.flatMap((session) =>
         session.pendingPermissions.map((p) => ({
           hostId: host.id,
           hostName: host.name,
@@ -144,7 +160,25 @@ export function needsYou(state: AppState): PendingItem[] {
           createdAt: p.createdAt,
         })),
       ),
-    )
+      // Sessions opened in the terminal: the hook holds the request while the app watches.
+      ...Object.entries(state.externalRequests)
+        .filter(([key]) => key.startsWith(`${host.id}/`))
+        .map(([, request]) => {
+          const id = request.claudeSessionId;
+          const session = state.externals[sessionKey(host.id, id)];
+          const name = state.meta[sessionKey(host.id, id)]?.name;
+          return {
+            hostId: host.id,
+            hostName: host.name,
+            sessionId: id,
+            sessionName: name ?? basename(session?.cwd ?? id),
+            requestId: request.requestId,
+            toolName: request.toolName,
+            createdAt: request.createdAt,
+            external: true,
+          };
+        }),
+    ])
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
@@ -212,6 +246,10 @@ export class AppStore {
       search: null,
       searchOpen: false,
       cards: {},
+      externals: {},
+      externalRequests: {},
+      meta: {},
+      hub: {},
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -489,6 +527,55 @@ export class AppStore {
     }
   }
 
+  /**
+   * Loads what the Sessões screen lists from every online host. Quiet: a host without history or
+   * hub (older daemon) just contributes less.
+   */
+  async refreshHub(): Promise<void> {
+    await Promise.all(
+      this.state.hosts
+        .filter((host) => host.status === "online")
+        .map(async (host) => {
+          const conn = this.connections.get(host.id) as HostConnection;
+          const quiet = <T>(p: Promise<T>) => p.catch(() => null);
+          const [managed, history, external] = await Promise.all([
+            quiet(conn.request("session.list", {})),
+            quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
+            quiet(conn.request("external.list", {})),
+          ]);
+          const meta = { ...this.state.meta };
+          const externals = { ...this.state.externals };
+          for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
+            if (s.claudeSessionId && s.meta) meta[sessionKey(host.id, s.claudeSessionId)] = s.meta;
+          }
+          for (const s of external?.sessions ?? []) {
+            externals[sessionKey(host.id, s.claudeSessionId)] = s;
+            if (s.meta) meta[sessionKey(host.id, s.claudeSessionId)] = s.meta;
+          }
+          const hub = {
+            ...this.state.hub,
+            [host.id]: { managed: managed?.sessions ?? [], history: history?.sessions ?? [] },
+          };
+          this.update({ hub, meta, externals });
+        }),
+    );
+  }
+
+  /** Renames, pins or archives a session (managed or external) of a host. */
+  async setMeta(
+    hostId: string,
+    claudeSessionId: string,
+    patch: Partial<SessionMeta>,
+  ): Promise<void> {
+    const result = await this.hostCommand(hostId, "session.meta.set", {
+      claudeSessionId,
+      ...patch,
+    });
+    if (!result) return;
+    const { claudeSessionId: _id, ...meta } = result;
+    this.update({ meta: { ...this.state.meta, [sessionKey(hostId, claudeSessionId)]: meta } });
+  }
+
   /** Transcripts growing on any host (live reader); returns the function that stops it. */
   onHistoryChanged(listener: (hostId: string, change: HistoryChanged) => void): () => void {
     this.historyListeners.add(listener);
@@ -595,6 +682,7 @@ export class AppStore {
       onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
+      onExternal: (frame) => this.onExternal(config.id, frame),
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
@@ -603,6 +691,7 @@ export class AppStore {
     conn.watch();
     conn.watchBoard();
     conn.watchHistory();
+    conn.watchExternal();
     conn.connect();
   }
 
@@ -656,6 +745,29 @@ export class AppStore {
     const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
     for (const n of summaryNotifications(prev, next, label, this.platform.isFocused())) {
       void this.platform.notify(n);
+    }
+  }
+
+  /** External sessions follow `external.updated`; requests stay in the queue while open. */
+  private onExternal(hostId: string, frame: ExternalUpdated | ExternalPermissionFrame): void {
+    if (frame.type === "external.updated") {
+      const key = sessionKey(hostId, frame.session.claudeSessionId);
+      this.update({ externals: { ...this.state.externals, [key]: frame.session } });
+      return;
+    }
+    const key = sessionKey(hostId, frame.requestId);
+    const { [key]: _closed, ...open } = this.state.externalRequests;
+    if (frame.state === "closed") {
+      this.update({ externalRequests: open });
+      return;
+    }
+    this.update({ externalRequests: { ...open, [key]: frame } });
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!this.platform.isFocused()) {
+      void this.platform.notify({
+        title: "Precisa de você",
+        body: `${host?.name ?? hostId} · ${frame.toolName}`,
+      });
     }
   }
 

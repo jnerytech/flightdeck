@@ -23,11 +23,20 @@ export function Sidebar(props: {
   onOpenSearch(): void;
   onOpenHistory(hostId: string): void;
   onOpenProjects(hostId: string): void;
+  onOpenHub(): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
   return (
     <nav className="sidebar">
+      <button
+        type="button"
+        className="hub-link"
+        aria-label="Abrir Sessões"
+        onClick={props.onOpenHub}
+      >
+        Sessões
+      </button>
       {queue.length > 0 && (
         <section className="needs-you">
           <h3>Precisa de você ({queue.length})</h3>

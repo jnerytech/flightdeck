@@ -5,6 +5,8 @@ import {
   type CommandResults,
   type CommandType,
   type EventEnvelope,
+  type ExternalPermissionFrame,
+  type ExternalUpdated,
   type HelloResult,
   type HistoryChanged,
   parseServerMessage,
@@ -42,6 +44,8 @@ export interface HostConnectionOptions {
   onCardUpdated?(card: Card): void;
   /** A transcript of the host gained lines (after `watchHistory`). */
   onHistoryChanged?(change: HistoryChanged): void;
+  /** An external session or one of its permission requests changed (after `watchExternal`). */
+  onExternal?(frame: ExternalUpdated | ExternalPermissionFrame): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -72,6 +76,7 @@ export class HostConnection {
   private watching = false;
   private watchingBoard = false;
   private watchingHistory = false;
+  private watchingExternal = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -88,6 +93,8 @@ export class HostConnection {
         // Daemons before phase 4 answer with an error: nothing to watch there.
         if (this.watchingBoard) this.send("board.watch", {}).catch(ignore);
         if (this.watchingHistory) this.send("history.watch", {}).catch(ignore);
+        // While it watches, the daemon holds external permission requests for the app.
+        if (this.watchingExternal) this.send("external.watch", {}).catch(ignore);
         for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
       }, ignore);
     });
@@ -96,6 +103,9 @@ export class HostConnection {
       if (message.type === "event") return this.opts.onEvent(message);
       if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
       if (message.type === "history.changed") return this.opts.onHistoryChanged?.(message);
+      if (message.type === "external.updated" || message.type === "external.permission") {
+        return this.opts.onExternal?.(message);
+      }
       if (message.type === "ping") {
         if (message.lastRttMs !== undefined) this.latencyMs = message.lastRttMs;
         ws.send(JSON.stringify({ type: "pong", id: message.id }));
@@ -141,6 +151,11 @@ export class HostConnection {
   /** Streams `history.changed` from the next (re)connect on; call it before `connect`. */
   watchHistory(): void {
     this.watchingHistory = true;
+  }
+
+  /** Streams external sessions and their requests from the next (re)connect on. */
+  watchExternal(): void {
+    this.watchingExternal = true;
   }
 
   unsubscribe(sessionId: string): void {
