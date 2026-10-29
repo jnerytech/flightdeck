@@ -316,8 +316,9 @@ binário novo.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠.
-- **Notificações** trazem o nome do host. **Bandeja:** ícone com Abrir, Precisa de você (N) e
-  Sair; fechar a janela manda o app para a bandeja (desligável em Configurações).
+- **Notificações** trazem o nome do host. **Bandeja:** ícone com Abrir, o submenu Precisa de
+  você (N) (veja [Uso diário](#uso-diário)) e Sair; fechar a janela manda o app para a bandeja
+  (desligável em Configurações).
   **Iniciar com o Windows** fica em Configurações, desligado por padrão.
 - **Instância única:** abrir o app de novo (ou um link `flightdeck://`) foca a janela existente.
 
@@ -376,9 +377,10 @@ código 3.
 - **Histórico por host** (🕘 ao lado do nome do host): sessões indexadas com título, pasta, data
   da última mensagem, origem (`Flightdeck` ou `externa`) e o selo "possivelmente em uso";
   filtros por pasta, período (dias inteiros, em UTC) e origem.
-- **Busca global** (`Ctrl+K` dentro do app, ou "Buscar no histórico"): consulta todos os hosts
-  online em paralelo e junta os acertos por data, com host, pasta e trecho destacado. Host offline,
-  ou que não responde em 5 s, aparece como "sem resposta" sem travar o resto.
+- **Busca global** (`Ctrl+K` dentro do app, ou "Buscar no histórico"): é a última seção da
+  [paleta](#paleta-ctrlk). Enter, sem nada escolhido, consulta todos os hosts online em paralelo e
+  junta os acertos por data, com host, pasta e trecho destacado. Host offline, ou que não responde
+  em 5 s, aparece como "sem resposta" sem travar o resto.
 - **Leitor:** somente leitura, com o visual do chat, carregando páginas conforme a rolagem. Vindo
   da busca, abre no ponto do acerto; "Carregar anteriores" traz o começo.
 - **Continuar no Flightdeck** transforma o transcript numa sessão gerenciada com `resume`. Se a
@@ -591,6 +593,7 @@ Uma sessão aparece uma vez só. A ordem de preferência é gerenciada, depois t
 
 - **Grupo:** é o projeto. Vale o `remote.origin.url` do repositório da pasta da sessão, normalizado, de modo que SSH e HTTPS do mesmo repositório caem juntos. Worktrees contam como o repositório principal. Sem remoto, vale a raiz do repositório; sem repositório, a pasta.
 - **Linha:** mostra host, origem, estado (rodando, precisa de você, ociosa, encerrada), o selo "controlável" e a hora.
+- **Resumo:** abaixo, uma linha tirada do transcript, sem IA: "Pedido: <primeira linha do último prompt, até 80 caracteres>" e o que a sessão faz agora ("rodando Bash", "esperando aprovação de Write", "ociosa há 12 min"). O daemon manda isso no campo `summary` das listas.
 - **Filtros:** texto, host, origem, estado, "Só fixadas" e "Mostrar arquivadas". As arquivadas ficam fora por padrão.
 - **Menu:** renomear, fixar (as fixadas vão para o topo do grupo), arquivar e "Copiar comando" (`flightdeckd claude --resume <id>`).
 - **Abrir uma sessão:**
@@ -730,6 +733,51 @@ Cards rodam em worktrees, e cada worktree tem o próprio `.claude`:
 
 Na tela Projetos, **Editar** mostra a seção **Regras** do projeto, com o botão de remover, que
 pede confirmação e preserva o resto do arquivo.
+
+## Uso diário
+
+### Bandeja: aprovar sem abrir a janela
+
+O submenu **Precisa de você (N)** da bandeja lista até 10 pedidos abertos, de sessões gerenciadas
+e do terminal, do mais antigo ao mais novo, como `host · sessão · ferramenta: resumo da entrada`
+(por exemplo `pc · api · Bash: npm test`).
+
+- Cada pedido abre um submenu com **Aprovar**, **Negar** e **Abrir**. Aprovar e Negar respondem no
+  host do pedido, sem abrir a janela; Abrir traz o app na sessão, com o card de aprovação.
+- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card.
+- Acima de 10, a última linha é **e mais N…**, que abre o app.
+- O submenu é refeito meio segundo depois de a lista parar de mudar.
+- **Notificação de pedido:** leva o link `flightdeck://request?host=…&request=…`, que abre o app
+  focado no pedido. No app desktop, o plugin de notificação do Tauri não informa cliques no
+  Windows nem no Linux: lá, a bandeja é o caminho rápido. Abrir o link por fora (por exemplo,
+  `start flightdeck://request?...`) funciona.
+
+### Abrir no terminal
+
+O botão **Abrir no terminal** aparece na sessão (gerenciada e do terminal), no card (a worktree
+dele) e em cada projeto da tela Projetos. A sessão é retomada com `flightdeckd claude --resume <id>`,
+e o projeto abre um `claude` novo na pasta.
+
+| Host | O que roda |
+| --- | --- |
+| Este Windows (daemon em `127.0.0.1`) | `wt.exe -d <pasta> <flightdeckd> claude --resume <id>`; sem o Windows Terminal, `cmd.exe /c start "" /d <pasta> cmd /k <flightdeckd> claude …` |
+| WSL supervisionado (daemon Linux em `127.0.0.1` dentro de uma distro) | `wt.exe wsl.exe -d <distro> --cd <pasta> -- <flightdeckd> claude …` (sem o Windows Terminal, pelo `cmd /c start`) |
+| Qualquer outro | o botão vira **Copiar comando**: `cd <pasta> && <flightdeckd> claude --resume <id>` |
+
+- `<flightdeckd>` é o binário estável (`~/.flightdeck/bin/flightdeckd`, da [atualização](#atualizar-flightdeckd-update)) quando ele existe no host, senão `flightdeckd` do PATH. O daemon informa os dois, e a distro do WSL, no `host.info`.
+- O comando sai da casca Rust do app, com os argumentos em lista, sem passar por shell, a não ser o `cmd /k` do fallback. Ela só aceita `wt.exe` e `cmd.exe`.
+
+### Paleta (`Ctrl+K`)
+
+`Ctrl+K` (ou "Buscar no histórico", na barra lateral) abre uma paleta com seções nesta ordem:
+**Sessões ao vivo**, **Cards**, **Projetos**, **Hosts**, **Ações** (Nova sessão em…, Ir para
+Configurações) e, depois de Enter, **Histórico**.
+
+- O que é local aparece na hora e filtra enquanto você digita. Enter sem nada escolhido busca no
+  histórico de todos os hosts, que chega depois, sem apagar o resto.
+- **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
+  Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
+- **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
 
 ## Desenvolvimento
 
