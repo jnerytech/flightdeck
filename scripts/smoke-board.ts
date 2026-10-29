@@ -116,6 +116,7 @@ class Client {
 function git(cwd: string, ...args: string[]): string {
   const proc = Bun.spawnSync(["git", "-c", "core.autocrlf=false", ...args], {
     cwd,
+    env: process.env,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -189,7 +190,8 @@ async function run(work: string): Promise<void> {
       "--runtime",
       "fake",
     ],
-    { stdout: "pipe", stderr: "inherit" },
+    // `env` explicitly: without it the daemon would get the environment from before the guards.
+    { env: process.env, stdout: "pipe", stderr: "inherit" },
   );
   try {
     const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");

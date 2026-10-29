@@ -127,7 +127,8 @@ async function startFakeDaemon(name: string): Promise<FakeDaemon> {
       "--runtime",
       "fake",
     ],
-    { stdout: "pipe", stderr: "inherit" },
+    // `env` explicitly: without it the daemon would get the environment from before the guards.
+    { env: process.env, stdout: "pipe", stderr: "inherit" },
   );
   const stop = async () => {
     proc.kill();

@@ -121,7 +121,8 @@ async function run(): Promise<void> {
       "--runtime",
       REAL ? "claude" : "fake",
     ],
-    { stdout: "pipe", stderr: "inherit" },
+    // `env` explicitly: without it the daemon would get the environment from before the guards.
+    { env: process.env, stdout: "pipe", stderr: "inherit" },
   );
 
   try {
