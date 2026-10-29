@@ -141,4 +141,45 @@ export const MIGRATIONS: readonly string[] = [
     archived          INTEGER NOT NULL DEFAULT 0
   );
   `,
+  // Phase 6: workflow runs (same id as the card run), their steps and trusted workflows.
+  // `definition` (the YAML that ran) and `step_runs.note` go beyond the spec (docs/DECISIONS.md).
+  `
+  CREATE TABLE workflow_runs (
+    id            TEXT PRIMARY KEY,
+    card_id       TEXT NOT NULL REFERENCES cards(id),
+    workflow_name TEXT NOT NULL,
+    workflow_hash TEXT NOT NULL,
+    definition    TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    status_reason TEXT,
+    budget        TEXT NOT NULL,
+    usage         TEXT NOT NULL,
+    inputs        TEXT NOT NULL,
+    started_at    TEXT NOT NULL,
+    ended_at      TEXT
+  );
+
+  CREATE TABLE step_runs (
+    run_id     TEXT NOT NULL REFERENCES workflow_runs(id),
+    step_id    TEXT NOT NULL,
+    attempt    INTEGER NOT NULL,
+    type       TEXT NOT NULL,
+    status     TEXT NOT NULL,
+    session_id TEXT,
+    output     TEXT,
+    exit_code  INTEGER,
+    note       TEXT,
+    started_at TEXT NOT NULL,
+    ended_at   TEXT,
+    PRIMARY KEY (run_id, step_id, attempt)
+  );
+
+  CREATE TABLE trusted_workflows (
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    name       TEXT NOT NULL,
+    hash       TEXT NOT NULL,
+    trusted_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, name, hash)
+  );
+  `,
 ];

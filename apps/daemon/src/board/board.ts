@@ -5,11 +5,13 @@ import {
   type BoardResult,
   type SessionEvent,
   type SessionStatus,
+  type WorkflowInfo,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
+import { WorkflowEngine } from "../workflows/engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cardDiff } from "./diff.ts";
@@ -126,9 +128,12 @@ export class Board {
   private readonly pollTimer: ReturnType<typeof setInterval>;
   private polling = false;
   private readonly watchers = new Set<(card: Card) => void>();
+  /** Workflows of the projects and their runs (phase 6). */
+  readonly workflows: WorkflowEngine;
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
+    this.workflows = new WorkflowEngine({ db: opts.db });
     this.limit = opts.maxParallelRuns ?? 2;
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
     // Back from a restart: keep moving cards whose run still has a session.
@@ -215,14 +220,14 @@ export class Board {
   getCard(id: string): Card {
     const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
     if (!row) throw new FlightdeckError("not_found", `card ${id} não existe`);
-    const runs = this.db
+    const rows = this.db
       .query<RunRow, [string]>(
         "SELECT * FROM card_runs WHERE card_id = ? ORDER BY queued_at, rowid",
       )
-      .all(id)
-      .map(toRun);
-    const active = runs.at(-1);
-    const sessionId = active?.sessionId ?? null;
+      .all(id);
+    const runs = rows.map(toRun);
+    const active = rows.at(-1);
+    const sessionId = active?.session_id ?? null;
     return {
       id: row.id,
       projectId: row.project_id,
@@ -237,12 +242,13 @@ export class Board {
       prUrl: row.pr_url,
       prState: row.pr_state,
       checksState: row.checks_state,
-      queued: active !== undefined && active.startedAt === null && active.endedAt === null,
+      queued: active !== undefined && active.started_at === null && active.ended_at === null,
       sessionId,
       sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
       notice: row.notice,
       discarded: false,
       runs,
+      workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -316,14 +322,22 @@ export class Board {
    * Starts a new run of the card. It waits in the queue while every slot is taken; then the
    * worktree (created on the first run), the setup script and a fresh session.
    */
-  async startCard(id: string): Promise<Card> {
+  async startCard(
+    id: string,
+    options: { workflow?: string | undefined; inputs?: Record<string, string> | undefined } = {},
+  ): Promise<Card> {
     const card = this.getCard(id);
     if (card.queued || this.running.has(id)) {
       throw new FlightdeckError("invalid_state", `card ${id} já está na fila ou em execução`);
     }
+    const runId = ulid();
+    if (options.workflow) {
+      const project = this.getProject(card.projectId);
+      await this.workflows.prepare(id, runId, project, options.workflow, options.inputs ?? {});
+    }
     this.db
       .query("INSERT INTO card_runs (id, card_id, queued_at) VALUES (?, ?, ?)")
-      .run(ulid(), id, now());
+      .run(runId, id, now());
     this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
     this.place(id, { type: "started" });
     this.pump();
@@ -453,6 +467,16 @@ export class Board {
       await this.opts.manager.interrupt(card.sessionId);
     }
     return this.changed(id);
+  }
+
+  /** Workflows on the project's base branch, with validation and trust. */
+  listWorkflows(projectId: string): Promise<WorkflowInfo[]> {
+    return this.workflows.list(this.getProject(projectId));
+  }
+
+  /** Trusts the workflow's current content (`hash`), which lets its `check` commands run. */
+  trustWorkflow(projectId: string, name: string, hash: string): Promise<WorkflowInfo> {
+    return this.workflows.trust(this.getProject(projectId), name, hash);
   }
 
   /** Commits since the base plus uncommitted changes, per file. */

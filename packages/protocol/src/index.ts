@@ -299,6 +299,8 @@ export const Card = z.object({
   /** Set only on the last update of a discarded card, which leaves the board. */
   discarded: z.boolean(),
   runs: z.array(CardRun),
+  /** Workflow run of the active run; `null` for a simple card (phase 4). */
+  workflowRunId: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -330,6 +332,21 @@ export type DiffFile = z.infer<typeof DiffFile>;
 
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
+
+// Phase 6: workflows declared in `.flightdeck/workflows/<name>.yaml` on the base branch.
+export const WorkflowInfo = z.object({
+  /** The file name without `.yaml`. */
+  name: z.string(),
+  /** sha256 of the file on the base branch; trust is given to this exact content. */
+  hash: z.string(),
+  trusted: z.boolean(),
+  /** Every `check` command, the only shell commands the workflow can run. */
+  checks: z.array(z.string()),
+  /** Validation errors; a workflow with any can neither be trusted nor run. */
+  errors: z.array(z.string()),
+  inputs: z.array(z.string()),
+});
+export type WorkflowInfo = z.infer<typeof WorkflowInfo>;
 
 const ProjectFields = {
   name: z.string().min(1).optional(),
