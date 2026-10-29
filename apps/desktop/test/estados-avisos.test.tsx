@@ -46,6 +46,11 @@ async function online(language = "pt-BR") {
   return { d, store, copied, hostId: store.getState().hosts[0]?.id ?? "" };
 }
 
+/** The loading hook behind a paragraph, to watch it from outside. */
+function Probe(props: { loading: boolean; timers: Parameters<typeof useMinLoading>[1] }) {
+  return <p>{useMinLoading(props.loading, props.timers) ? "carregando" : "pronto"}</p>;
+}
+
 describe("estados-avisos", () => {
   test("erros viram toasts traduzidos pelo code, com Detalhes, e não se apagam uns aos outros", async () => {
     const { store, hostId } = await online();
@@ -105,14 +110,11 @@ describe("estados-avisos", () => {
       setTimeout: (fn: () => void) => timeouts.push(fn),
       clearTimeout: () => {},
     };
-    function Probe(props: { loading: boolean }) {
-      return <p>{useMinLoading(props.loading, timers) ? "carregando" : "pronto"}</p>;
-    }
     expect(MIN_LOADING_MS).toBe(150);
-    const view = render(<Probe loading={true} />);
+    const view = render(<Probe loading={true} timers={timers} />);
     expect(screen.queryByText("carregando")).not.toBeNull();
     t = 50;
-    view.rerender(<Probe loading={false} />);
+    view.rerender(<Probe loading={false} timers={timers} />);
     // Done after 50 ms: still showing until 150 ms have passed.
     expect(screen.queryByText("carregando")).not.toBeNull();
     t = 150;
@@ -121,9 +123,9 @@ describe("estados-avisos", () => {
     });
     expect(screen.queryByText("pronto")).not.toBeNull();
     t = 200;
-    view.rerender(<Probe loading={true} />);
+    view.rerender(<Probe loading={true} timers={timers} />);
     t = 400;
-    view.rerender(<Probe loading={false} />);
+    view.rerender(<Probe loading={false} timers={timers} />);
     expect(screen.queryByText("pronto")).not.toBeNull();
   });
 
