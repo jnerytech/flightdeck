@@ -5,6 +5,8 @@ import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
+import { Quota } from "../../daemon/src/quota/quota.ts";
+import { UsageLedger } from "../../daemon/src/quota/usage.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
@@ -38,6 +40,8 @@ export function daemon(
     baseEnv?: Record<string, string>;
     /** Turns on maintenance (backups in `<root>/data/backups`) with this retention. */
     retention?: { eventsDays: number; externalSessionsDays: number };
+    /** The host's plan quota (phase 7); pass one on a manual clock to drive it. */
+    quota?: Quota;
   } = {},
 ) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "fd-desk-")));
@@ -48,7 +52,13 @@ export function daemon(
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
   const runtime = new FakeRuntime({ delayMs: 1 });
+  // The host's plan quota and usage (phase 7): pass a quota on a manual clock to drive it.
+  const quota = options.quota ?? new Quota({ pauseAt: 0.9 });
+  cleanups.push(() => quota.stop());
+  const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => cwd });
   const manager = new SessionManager({
+    onQuota: (readings) => quota.record(readings),
+    onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
     runtime,
     allowedRoots: [root],
@@ -56,7 +66,7 @@ export function daemon(
     allowApiKey: options.allowApiKey ?? false,
     baseEnv: options.baseEnv ?? {},
   });
-  const board = new Board({ db: store.db, manager, allowedRoots: [root] });
+  const board = new Board({ db: store.db, manager, allowedRoots: [root], quota });
   cleanups.push(() => board.stop());
   // Hooks go to a settings.json of this daemon only, never the home of the test process.
   const settingsFile = join(root, "claude-home", "settings.json");
@@ -89,6 +99,8 @@ export function daemon(
       manager,
       history,
       board,
+      quota,
+      usage,
       central,
       ...(maintenance ? { maintenance } : {}),
       hostName: "h1",
@@ -101,6 +113,8 @@ export function daemon(
     return server;
   };
   return {
+    quota,
+    usage,
     manager,
     project,
     root,
