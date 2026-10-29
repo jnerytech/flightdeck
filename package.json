@@ -26,7 +26,9 @@
     "build:desktop": "bun run --filter @flightdeck/desktop build",
     "deploy": "bun run scripts/deploy.ts",
     "release:version": "bun run scripts/release-version.ts",
-    "release:assets": "bun run scripts/release-assets.ts"
+    "release:assets": "bun run scripts/release-assets.ts",
+    "release:tauri-config": "bun run scripts/release-tauri-config.ts",
+    "release:sign": "bun run scripts/release-sign.ts"
   },
   "dependencies": {
     "@flightdeck/protocol": "workspace:*"

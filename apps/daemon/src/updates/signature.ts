@@ -18,7 +18,8 @@ function unwrap(text: string): string[] {
   return plain.split(/\r?\n/);
 }
 
-function parseKey(text: string): { keyId: Buffer; key: KeyObject } {
+/** The key id and Ed25519 key of a minisign public key; throws on anything else. */
+export function parsePublicKey(text: string): { keyId: Buffer; key: KeyObject } {
   const lines = unwrap(text);
   const raw = Buffer.from(lines[1] ?? "", "base64");
   if (
@@ -60,7 +61,7 @@ function parseSignature(text: string) {
 
 /** Throws a `SignatureError` saying why `data` is not signed by `publicKey`. */
 export function verifyMinisign(data: Uint8Array, signature: string, publicKey: string): void {
-  const { keyId, key } = parseKey(publicKey);
+  const { keyId, key } = parsePublicKey(publicKey);
   const sig = parseSignature(signature);
   if (!sig.keyId.equals(keyId)) {
     throw new SignatureError("a assinatura é de outra chave, não da chave do Flightdeck");
