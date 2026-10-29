@@ -14,7 +14,7 @@ import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
-import { type InterpolationContext, interpolate } from "./interpolate.ts";
+import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./interpolate.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
 import {
   type Action,
@@ -33,6 +33,8 @@ export interface EngineHost {
   release(cardId: string): void;
   /** Takes a slot for the card again, waiting in the host queue (ahead of queued cards). */
   acquire(cardId: string): Promise<void>;
+  /** Up to `count` free slots of the host right now, without waiting; `release` gives each back. */
+  takeSlots(cardId: string, count: number): string[];
   card(cardId: string): Card;
 }
 
@@ -302,7 +304,7 @@ export class WorkflowEngine {
     const context: InterpolationContext = { inputs: JSON.parse(run.inputs), steps: {} };
     try {
       for (const step of workflow.steps) {
-        context.steps[step.id] = { output: await this.runStep(run, worktree, step, context) };
+        context.steps[step.id] = await this.runStep(run, worktree, step, context);
       }
       this.finish(run, "completed", null);
     } catch (error) {
@@ -316,10 +318,67 @@ export class WorkflowEngine {
     worktree: string,
     step: Step,
     context: InterpolationContext,
-  ): Promise<string> {
-    if ("gate" in step) return this.gateStep(run, step.id, step.gate, context);
-    if ("loop" in step) return this.loopStep(run, worktree, step.id, step.loop, context);
-    return this.innerStep(run, worktree, step.id, 1, step as InnerAction, context);
+  ): Promise<{ output?: string; outputs?: string[] }> {
+    if ("gate" in step) return { output: await this.gateStep(run, step.id, step.gate, context) };
+    if ("loop" in step) {
+      return { output: await this.loopStep(run, worktree, step.id, step.loop, context) };
+    }
+    if ("parallel" in step) {
+      return { outputs: await this.parallelStep(run, worktree, step.id, step.parallel, context) };
+    }
+    const action = step as InnerAction;
+    return { output: await this.innerStep(run, worktree, step.id, 1, action, context) };
+  }
+
+  /**
+   * Runs the items (`<id>.<index>`) with the card's slot plus the host slots free right now, so
+   * `maxParallelRuns` holds; with none free they go one after another. Outputs keep the declared
+   * order; a failed item fails the step once every item has finished.
+   */
+  private async parallelStep(
+    run: RunRow,
+    worktree: string,
+    stepId: string,
+    items: InnerAction[],
+    context: InterpolationContext,
+  ): Promise<string[]> {
+    this.db
+      .query(
+        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+         VALUES (?, ?, 1, 'parallel', 'running', ?)`,
+      )
+      .run(run.id, stepId, now());
+    const extra = this.host.takeSlots(run.card_id, items.length - 1);
+    const outputs: string[] = [];
+    /** By item index: the first declared failure is the one reported. */
+    const failures: Array<{ error: unknown }> = [];
+    let next = 0;
+    const worker = async () => {
+      for (let index = next++; index < items.length; index = next++) {
+        const item = items[index] as InnerAction;
+        try {
+          outputs[index] = await this.innerStep(
+            run,
+            worktree,
+            `${stepId}.${index}`,
+            1,
+            item,
+            context,
+          );
+        } catch (error) {
+          failures[index] = { error };
+        }
+      }
+    };
+    await Promise.all([worker(), ...extra.map(() => worker())]);
+    for (const key of extra) this.host.release(key);
+    const failed = failures.find((failure) => failure !== undefined);
+    if (failed) {
+      this.endStep(run.id, stepId, 1, "failed", null);
+      throw failed.error;
+    }
+    this.endStep(run.id, stepId, 1, "completed", outputs.join(OUTPUTS_SEPARATOR));
+    return outputs;
   }
 
   /** An agent or a check (on its own, or inside a loop or a parallel); a failed check fails. */

@@ -145,6 +145,7 @@ export class Board {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
         acquire: (cardId) => this.acquire(cardId),
+        takeSlots: (cardId, count) => this.takeSlots(cardId, count),
         card: (cardId) => this.getCard(cardId),
       },
       checks: opts.checks ?? shellCheckRunner(),
@@ -395,6 +396,17 @@ export class Board {
       this.waiters.push({ cardId, resume });
       this.pump();
     });
+  }
+
+  /** Free slots taken right away for the items of a parallel step, each under its own key. */
+  private takeSlots(cardId: string, count: number): string[] {
+    const keys: string[] = [];
+    while (keys.length < count && this.running.size < this.limit) {
+      const key = `${cardId}/${ulid()}`;
+      this.running.add(key);
+      keys.push(key);
+    }
+    return keys;
   }
 
   /** The card's run stopped holding a slot: the next one in the queue goes. */
