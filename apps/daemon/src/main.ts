@@ -1,7 +1,10 @@
 import { unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Board } from "./board/board.ts";
+import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
 import {
   type HooksStatus,
@@ -43,7 +46,7 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "pair" | "service" | "history" | "hooks" | "hook";
+  command: "start" | "pair" | "service" | "history" | "hooks" | "hook" | "channel";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -55,6 +58,8 @@ export interface CliArgs {
   /** `hook session-start --url <receptor> --token <hooks.token>`, as `hooks install` writes it. */
   url?: string;
   token?: string;
+  /** `channel --launch <id>`: the `flightdeckd claude` launch this channel serves. */
+  launch?: string;
 }
 
 const USAGE = [
@@ -64,6 +69,7 @@ const USAGE = [
   "     flightdeckd history reindex [--config <arquivo>]",
   "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
   "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
+  "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
 ].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -100,6 +106,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         if (event !== "session-start") throw new Error(`hook inválido: ${event ?? "(nenhum)"}`);
         break;
       }
+      case "channel":
+        args.command = "channel";
+        break;
+      case "--launch":
+        args.launch = value();
+        break;
       case "--url":
         args.url = value();
         break;
@@ -433,6 +445,8 @@ export interface CliDeps {
   stdin?: ReadableStream<Uint8Array>;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
+  /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
+  channelTransport?: Transport;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
@@ -448,6 +462,18 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       });
       deps.exit(0);
+      return null;
+    }
+    if (args.command === "channel") {
+      const channel = await startChannel({
+        launchId: args.launch ?? "",
+        url: args.url ?? "",
+        token: args.token ?? "",
+        transport: deps.channelTransport ?? new StdioServerTransport(),
+      }).catch((error: Error) => {
+        throw new Error(`não consegui abrir o canal do Flightdeck: ${error.message}`);
+      });
+      void channel.closed.then(() => deps.exit(0));
       return null;
     }
     if (args.command === "hooks") {

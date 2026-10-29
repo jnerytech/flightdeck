@@ -1,3 +1,4 @@
+import type { ServerWebSocket } from "bun";
 import type { ExternalSessions, HookPayload } from "./external.ts";
 import type { ExternalPermissions } from "./external-permissions.ts";
 
@@ -16,6 +17,8 @@ export interface ReceptorOptions {
 export interface Receptor {
   url: string;
   port: number;
+  /** Pushes a message to the channel of a launch; false when none is connected. */
+  sendToLaunch(launchId: string, text: string): boolean;
   stop(): Promise<void>;
 }
 
@@ -58,19 +61,53 @@ export function startReceptor(opts: ReceptorOptions): Receptor {
       : empty();
   }
 
-  const server = Bun.serve({
+  /** Channel of each launch of `flightdeckd claude` connected right now. */
+  const channels = new Map<string, ServerWebSocket<{ launch: string }>>();
+
+  const server = Bun.serve<{ launch: string }>({
     hostname: "127.0.0.1",
     port: opts.port,
     // A held PermissionRequest waits for the app; Bun's default would close it after 10 s.
     idleTimeout: 0,
-    fetch(req) {
+    fetch(req, srv) {
       const url = new URL(req.url);
       if (url.pathname === "/health") return Response.json({ ok: true });
+      if (url.pathname === "/channel") {
+        if (!authorized(req)) return new Response("unauthorized", { status: 401 });
+        const launch = url.searchParams.get("launch") ?? "";
+        const upgraded = srv.upgrade(req, { data: { launch } });
+        return upgraded ? undefined : new Response("WebSocket esperado", { status: 426 });
+      }
       const match = /^\/hooks\/([A-Za-z]+)$/.exec(url.pathname);
       if (match?.[1] && req.method === "POST") return hook(match[1], req);
       return new Response("not found", { status: 404 });
     },
+    websocket: {
+      open(ws) {
+        channels.set(ws.data.launch, ws);
+        opts.external.setChannel(ws.data.launch, true);
+      },
+      // One way: a channel that talks back is not ours.
+      message(ws) {
+        ws.close(1008, "canal só de ida");
+      },
+      close(ws) {
+        if (channels.get(ws.data.launch) !== ws) return;
+        channels.delete(ws.data.launch);
+        opts.external.setChannel(ws.data.launch, false);
+      },
+    },
   });
   const port = server.port ?? opts.port;
-  return { url: `http://127.0.0.1:${port}`, port, stop: () => server.stop(true) };
+  return {
+    url: `http://127.0.0.1:${port}`,
+    port,
+    sendToLaunch(launchId, text) {
+      const channel = channels.get(launchId);
+      if (!channel) return false;
+      channel.send(JSON.stringify({ text }));
+      return true;
+    },
+    stop: () => server.stop(true),
+  };
 }
