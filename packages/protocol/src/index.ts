@@ -411,6 +411,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.discard", CardConfirmPayload),
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
+  /** Only for sessions opened with `flightdeckd claude` (`controllable`). */
+  cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -566,6 +568,7 @@ export interface CommandResults {
   "card.discard": Card;
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;
+  "external.message": undefined;
 }
 
 // ---------------------------------------------------------------------------

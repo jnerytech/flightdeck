@@ -23,6 +23,7 @@ import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
 import type { ExternalSessions } from "./central/external.ts";
 import type { ExternalPermissions } from "./central/external-permissions.ts";
+import type { Receptor } from "./central/receptor.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
@@ -49,7 +50,12 @@ export interface ServerOptions {
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
   /** External sessions and their permission requests (phase 5). */
-  central?: { external: ExternalSessions; permissions: ExternalPermissions };
+  central?: {
+    external: ExternalSessions;
+    permissions: ExternalPermissions;
+    /** Delivers `external.message` to the channel of a launch. */
+    receptor?: Pick<Receptor, "sendToLaunch">;
+  };
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -220,6 +226,21 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { requestId, decision, message } = command.payload;
         if (!opts.central?.permissions.respond(requestId, decision, message)) {
           manager.respondPermission(command.payload);
+        }
+        return ok(command.type);
+      }
+      case "external.message": {
+        const { claudeSessionId, text } = command.payload;
+        const { external, receptor } = central();
+        const session = external.get(claudeSessionId);
+        if (!session)
+          throw new FlightdeckError("not_found", `sessão ${claudeSessionId} não existe`);
+        const sent = session.launchId ? receptor?.sendToLaunch(session.launchId, text) : false;
+        if (!sent) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "sessão sem canal: só sessões abertas com flightdeckd claude recebem mensagens",
+          );
         }
         return ok(command.type);
       }
