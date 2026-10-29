@@ -787,15 +787,38 @@ export class Board {
     if (ahead === 0) throw new FlightdeckError("invalid_state", `nada à frente de ${base}`);
     const message = mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`;
     await mergeIntoBase(project.path, base, branch, mode, message);
-    // The worktree first: git does not delete a branch checked out somewhere.
+    // The merge is in the base now and cannot be undone: nothing below may leave the card out of
+    // Concluído. What could not be cleaned up stays on the card as a notice.
     await this.closeRuns(id);
-    must(await git(project.path, "worktree", "remove", worktree), "git worktree remove");
-    must(await git(project.path, "branch", "-D", branch), "git branch -D");
+    const left = await this.removeMerged(project.path, worktree, branch);
     this.db
-      .query("UPDATE cards SET worktree_path = NULL, branch = NULL, notice = NULL WHERE id = ?")
-      .run(id);
+      .query("UPDATE cards SET worktree_path = ?, branch = ?, notice = ? WHERE id = ?")
+      .run(left.worktree ? worktree : null, left.branch ? branch : null, left.notice, id);
     this.place(id, { type: "moved", column: "done" });
     return this.changed(id);
+  }
+
+  /**
+   * Removes a merged card's worktree, then its branch (git does not delete a branch checked out
+   * somewhere). A failure of either is reported, not thrown: on Windows a process may hold the
+   * folder, and the merge is already in the base.
+   */
+  private async removeMerged(
+    repo: string,
+    worktree: string,
+    branch: string,
+  ): Promise<{ worktree: boolean; branch: boolean; notice: string | null }> {
+    const removed = await git(repo, "worktree", "remove", worktree);
+    if (removed.code !== 0) {
+      const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
+      return { worktree: true, branch: true, notice };
+    }
+    const deleted = await git(repo, "branch", "-D", branch);
+    if (deleted.code !== 0) {
+      const notice = `a branch ${branch} ficou (${deleted.stderr.trim()}); apague depois`;
+      return { worktree: false, branch: true, notice };
+    }
+    return { worktree: false, branch: false, notice: null };
   }
 
   /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */
