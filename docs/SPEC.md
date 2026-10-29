@@ -342,5 +342,6 @@ O agente implementa só a Fase 1, em passos pequenos e verificáveis, sem gastar
 | 11 | Revisão: comentários inline para o agente, reverter e editar, comentários do PR, merge local, .worktreeinclude, sessão↔arquivos, statusline | [SPEC-fase-11.md](SPEC-fase-11.md) |
 | 12 | Checkpoints e configuração do agente: snapshots por turno, voltar arquivos, bifurcar, MCP, CLAUDE.md, agentes e skills do projeto | [SPEC-fase-12.md](SPEC-fase-12.md) |
 | 13 | Automação: issues do GitHub e Azure Boards, automações por horário e evento, arena, risco e aprovação automática por IA | [SPEC-fase-13.md](SPEC-fase-13.md) |
+| 14 | Espaço de trabalho: abas e tela dividida, terminal embutido em qualquer host, "Claude aqui" controlável | [SPEC-fase-14.md](SPEC-fase-14.md) |
 
 Cada fase fecha pelos próprios critérios de aceite e é integrada na ordem do roadmap; duas fases independentes podem ser desenvolvidas em paralelo em worktrees separados, com a posterior rebaseada sobre a tag da anterior antes de fechar. O produto é desktop, sem celular.
