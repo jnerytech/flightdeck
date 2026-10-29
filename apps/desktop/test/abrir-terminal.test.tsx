@@ -264,8 +264,14 @@ describe("abrir-terminal", () => {
   });
 
   test("o executor que falha (programa ausente) vira aviso no banner", async () => {
-    const d = makeDaemon(cleanups);
+    // The host announces a WSL distro, so the terminal opens in either OS the suite runs on: this
+    // Windows (win32) or a supervised distro (linux). Never the clipboard.
+    const d = makeDaemon(cleanups, { terminal: { flightdeckdPath: null, wslDistro: "Ubuntu" } });
     const mem = memoryPlatform();
+    const copied: string[] = [];
+    mem.platform.copyText = async (text) => {
+      copied.push(text);
+    };
     mem.platform.terminal = {
       supported: true,
       probe: async () => ({ windows: true, wt: true }),
@@ -282,6 +288,7 @@ describe("abrir-terminal", () => {
     expect(store.getState().error ?? "").toContain(
       "Terminal não abriu: Error: wt.exe não encontrado",
     );
+    expect(copied).toEqual([]);
   });
 
   test("botão na sessão, no card e no projeto abre pelo executor injetado; sem terminal, copia", async () => {
