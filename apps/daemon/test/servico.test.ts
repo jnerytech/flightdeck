@@ -92,7 +92,7 @@ describe("servico", () => {
     await runCli(["service", "install", "--dry-run", "--config", file], deps);
     expect(exits).toEqual([0]);
     const text = out.join("\n");
-    expect(text).toContain(systemdUnit(["/home/dev/.local/bin/flightdeckd"]));
+    expect(text).toContain(systemdUnit(["/home/dev/.local/bin/flightdeckd"], file));
     expect(text).toContain("/home/dev/.config/systemd/user/flightdeckd.service");
     expect(text).toContain("systemctl --user enable --now flightdeckd");
     expect(text).toContain('claude.executablePath = "/home/dev/.local/bin/claude"');
@@ -116,6 +116,7 @@ describe("servico", () => {
       windowsTaskXml(["C:\\Users\\dev\\bin\\flightdeckd.exe"], {
         user: "PC\\dev",
         systemRoot: "C:\\Windows",
+        config: file,
       }),
     );
     expect(text).toContain("claude não encontrado no PATH");
