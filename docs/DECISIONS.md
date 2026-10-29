@@ -1267,3 +1267,117 @@ O que a spec da Fase 9 (distribuição e atualização automática) deixou abert
 
 - O teste do "Copiar comando" do `continuar` esperava o toast de falha no mesmo instante; agora espera o toast montar. O da bandeja (`bandeja-aprovacao`, debounce de 500 ms) falhou uma vez numa suíte carregada e passou na repetição; ele segue sensível ao tempo.
 - O teste do `update` (`peças reais…`, Fase 9) continua com o dono dele e não foi tocado.
+# Decisões e divergências da Fase 11 (revisão de mudanças), áreas de daemon e protocolo
+
+## Alvos e permissões
+
+- **De onde vem a pasta:** do que o daemon registrou, nunca do cliente.
+  - Na ordem: a sessão gerenciada, a sessão do terminal, o histórico e a worktree do card.
+  - O alvo da sessão é o topo do repositório que contém o `cwd`, então uma sessão aberta numa subpasta vê o repositório inteiro.
+- **Leitura e escrita:** a spec quer a aba Mudanças em "toda sessão… inclusive as do terminal", que costumam ficar fora de `allowedRoots`.
+  - `changes.get`, `changes.watch` e `file.read` valem para qualquer alvo resolvido.
+  - Revert, desfazer e `file.write` exigem `allowedRoots` e respondem `forbidden_cwd` fora deles.
+  - O arquivo, com os links resolvidos, precisa continuar dentro do repositório.
+  - O caminho é sempre relativo, sem `..` e fora do `.git`.
+- **`host.info`:** anuncia `review` quando o daemon tem as mudanças.
+
+## Mudanças
+
+- **Watcher:** a janela é de 500 ms contados a partir da primeira mudança, e não reinicia a cada evento.
+  - Eventos em `.git` e `.flightdeck` não contam, porque o próprio `git diff` escreve no `.git/index`.
+  - O watcher é por conexão e por alvo (`changes.unwatch`, ou o fechamento da conexão), e uma falha do diff depois de um evento vai para o log.
+- **Repositório sem commit:** o diff é contra a árvore vazia do git.
+- **Card:** o `changes.get` traz `position` (à frente e atrás da base), em vez de um campo novo no card, porque a contagem custa uma chamada ao git.
+
+## Comentários inline
+
+- **Trecho:** o daemon lê do próprio arquivo: o lado `new` é o arquivo atual, o lado `old` é o `HEAD` ou a base do card.
+- **Âncora:** é refeita a cada `review.list`, na ocorrência do trecho mais próxima da linha original. A nova posição fica gravada.
+  - Sem o trecho, o comentário fica `outdated` e guarda a última posição conhecida.
+  - Um alvo que não resolve mais (card concluído, repositório apagado) deixa os comentários na lista, como histórico desatualizado.
+- **Envio:** o `review.send` marca os rascunhos como `sent` depois da entrega.
+  - No caminho "copiar", o app recebe o texto para entregar à mão, e a revisão conta como enviada também.
+- **Formato:** cada item tem o número, o arquivo e a linha (ou as linhas, com –), o trecho com `> ` e o comentário, com três espaços de recuo.
+- **Terminal:** o `external.message` e a revisão usam a mesma função de entrega pelo canal (`messageExternal`).
+
+## Reverter e editar
+
+- **Fonte:** o `HEAD`, ou a base do card. Um arquivo que a fonte não tem (novo, ou criado num commit do card) é removido e sai do índice.
+- **Desfazer:**
+  - volta o conteúdo da cópia e põe o índice daquele caminho de novo no `HEAD`;
+  - um revert de arquivo apagado é desfeito apagando-o de novo;
+  - mudanças que já estavam staged antes do revert voltam como não staged;
+  - o registro fica em memória por 30 s e não sobrevive a um reinício (a cópia fica na lixeira por 7 dias).
+- **Conflito na edição:** o novo código de erro `file_conflict` (só adição ao `ErrorCode`). O app lê o arquivo de novo com `file.read`.
+
+## `.worktreeinclude`
+
+- **Candidatos:** vêm do `git ls-files --others --ignored` com os padrões do arquivo mais o embutido `/.claude/settings.local.json`. Entre eles, só os que o `git check-ignore` confirma como ignorados.
+- **Ordem e limite:** os arquivos são copiados em ordem de caminho até o limite. Os que passariam dele ficam de fora, com aviso no card. O limite pode ser trocado só nos testes (`worktreeIncludeLimit`).
+- **Fase 7:** a cópia do `settings.local.json` agora é um caso desta, com a mesma regra de nunca copiar um arquivo versionado (ele já vem com a worktree).
+- **Projeto:** ganha `worktreeInclude` (só adição), para o app avisar quando falta.
+
+## Merge local
+
+- **Conflito:** é conferido antes com `git merge-tree --write-tree`, que só lê. Com conflito, nada muda.
+- **Base em checkout:** o merge é feito na worktree que tem a base, e só se ela estiver limpa.
+- **Base fora de checkout:** o merge vai por uma worktree temporária em `.flightdeck/worktrees/`, removida no fim.
+- **Nunca mover ref à mão:** nenhuma ref é movida com `update-ref`.
+- **Recusas além da spec:**
+  - sem `confirm`;
+  - card com PR;
+  - card em execução (fila, starting, running ou aguardando aprovação), também para "Atualizar com a base";
+  - worktree do card com mudanças não commitadas;
+  - nada à frente da base;
+  - base que não é uma branch local.
+- **Mensagem do commit:** no squash, o título do card; no `--no-ff`, `Merge <branch>: <título>`.
+- **Ordem da limpeza:** a worktree sai antes da branch, porque o git não apaga uma branch em checkout.
+- **Atualizar com a base:** `git rebase --autostash`. No conflito, o `rebase --abort` devolve também as mudanças não commitadas.
+
+## Comentários do PR
+
+- **Azure DevOps:** a spec cita `az repos pr thread list`, mas a referência oficial do `az repos pr` (extensão azure-devops) não tem subcomandos de thread.
+  - O daemon usa `az devops invoke --area git --resource pullRequestThreads`, uma leitura (GET).
+  - Organização, projeto, repositório e número vêm da URL do PR.
+  - Thread resolvida: status `fixed`, `closed`, `wontFix` ou `byDesign`. Comentários do sistema e threads apagadas ficam de fora.
+- **GitHub:**
+  - os comentários vêm do REST (`gh api repos/{o}/{r}/pulls/{n}/comments`) e os resumos, do `gh pr view --json reviews`, só os que têm texto;
+  - o estado resolvido vem de uma consulta GraphQL (`reviewThreads.isResolved`), porque o REST não informa;
+  - a consulta vai pelo stdin (`-F query=@-`), porque os caracteres dela não passam por um `.cmd` no Windows, como o `gh` falso dos testes;
+  - o `gh api graphql` faz um POST mesmo para consulta. O teste de "nada postado" confere o conteúdo das chamadas: nenhum `mutation`, `-X`, `--method`, `pr comment` ou `pr review`.
+- **Busca e cache:** a busca acontece na rodada de poll do PR, enquanto ele está aberto. Uma falha guarda os últimos comentários e não mexe no aviso do card. O `pr.comments` busca na hora quando ainda não há nada.
+- **Formato do envio:** "Comentários do PR:", e cada item com o arquivo e a linha (ou "revisão de <autor>") seguido do texto.
+
+## Sessão ↔ arquivos
+
+- **Onde é lido:** pelo indexador de uso da Fase 8, que já lê todos os transcripts, subagentes inclusive (atribuídos à sessão-mãe).
+- **Ferramentas:** `Write`, `Edit` e `MultiEdit` pelo `file_path`, e `NotebookEdit` pelo `notebook_path`.
+- **`edits`:** é o número de chamadas de ferramenta, deduplicadas pelo id do `tool_use`, guardado na `session_file_edits` (além da spec). Uma linha repetida ou um arquivo relido conta uma vez.
+- **Arquivos antigos:** a migração limpa a `usage_files` e o indexador relê tudo no boot, o que traz os arquivos dos transcripts que já existiam.
+  - O uso continua deduplicado por `message_id`.
+  - Entradas de uso mais antigas que `retention.usageDays`, que a limpeza já tinha tirado, voltam até a limpeza seguinte (no boot e a cada 24 h).
+- **Comparação de caminhos:** o `files.sessions` compara os caminhos como as pastas da Fase 3, com barras normalizadas e sem diferenciar maiúsculas no Windows e no macOS.
+- **`session.files`:** comando além da spec, para "a sessão mostra os arquivos que tocou".
+
+## Statusline
+
+- **Config:** é só lida, sem nunca ser criada. Sem config, a linha sai vazia.
+- **Prazo:** 300 ms cobrindo tudo, do stdin à resposta. Com o daemon mudo ou fora do ar, ou um stdin que não termina, a linha sai vazia e o código é 0.
+- **Partes:** as janelas da cota em `5h` e `7d` (outras pelo nome), o custo de hoje no fuso do host e o custo da sessão, este só quando ela tem uso.
+
+## TDD e testes
+
+- **Vermelho do `smoke:review`:**
+  - foi escrito depois das áreas e falhou na primeira execução, no passo do merge, por dois motivos do próprio script: o turno da revisão (que cita o `[commit]` do fake) não tinha terminado, e o `autocrlf` do script divergia do daemon;
+  - o vermelho de recurso veio rodando o script numa cópia da base `c998016`, com `SMOKE REVIEW FAIL no passo "card com .worktreeinclude"` e código 1.
+- **`fix(reverter-editar)`:** o smoke também revelou que o desfazer não devolvia o índice. Isso entrou com um teste vermelho antes.
+- **Commit de teste quebrado:** um commit `test(merge-local)` saiu com uma string partida pelo shell. O commit seguinte corrigiu, com o vermelho por asserção antes do `feat`.
+- **Ramos revelados pela cobertura** seguiram a regra 7: o ramo saiu, o teste ficou vermelho e só então o ramo voltou.
+  - Pasta da sessão que sumiu.
+  - Cancelar o diff pendente com timers reais.
+  - Falha do diff depois de um evento.
+  - Alvo que não resolve mais.
+  - Card sem worktree.
+- **Base que não é branch local:** a checagem vai antes da contagem de commits, para a mensagem ser a do Flightdeck e não a do `git rev-list`.
+- **Link para fora do repositório:** no teste é uma junção de diretório, que o Windows cria sem privilégio. Assim a recusa é conferida nas duas pernas.
+- **Auditoria:** por enquanto vai desde `c998016`, a base da fase. Depois do rebase sobre a tag `fase-8`, vai desde ela.
