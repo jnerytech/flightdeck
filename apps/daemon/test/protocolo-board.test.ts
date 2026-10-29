@@ -235,6 +235,25 @@ describe("protocolo-board", () => {
     expect(board.watcherCount).toBe(0);
   });
 
+  test("um watcher que lança não quebra o board nem os outros watchers", async () => {
+    const { board, repo } = serve();
+    const seen: string[] = [];
+    board.watch(() => {
+      throw new Error("watcher quebrado");
+    });
+    board.watch((card) => seen.push(card.title));
+    const project = await board.addProject({ path: repo });
+    const card = (() => {
+      try {
+        return board.createCard(project.id, { title: "Resiste", description: "d" });
+      } catch {
+        return null;
+      }
+    })();
+    expect(card?.title).toBe("Resiste");
+    expect(seen).toEqual(["Resiste"]);
+  });
+
   test("daemon sem board responde invalid_state", async () => {
     const { manager } = newManager();
     const server = startServer({
