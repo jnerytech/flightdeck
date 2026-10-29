@@ -105,7 +105,7 @@ Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência. A
 
 **Trava desta fase: home real.** O preload de testes aponta `HOME` e `USERPROFILE` para uma pasta temporária, e a resolução de `~` lê a variável de ambiente atual (pelo mesmo motivo do `whichOnPath`: valores guardados na partida do processo escapam da trava). A suíte reprova se algo tocar o `~/.claude` real.
 
-## Testes, critérios e /goal
+## Testes e critérios
 
 Os testes rodam contra uma pasta temporária que imita `~/.claude/projects`, montada a partir dos fixtures, com as travas de `docs/TDD.md` e a trava de home ativas; o `~/.claude` real nunca é lido.
 

@@ -113,7 +113,7 @@ Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência. A
 
 **Trava desta fase: CLIs de PR e remotos.** O preload de testes ganha sentinelas de `gh` e `az`, que reprovam a suíte se forem chamadas sem um falso instalado pelo próprio teste. No Windows, cada falso tem versão `.cmd`. Push só para remotos locais (`git init --bare` em pasta temporária); o teste confere a URL do remoto antes do push.
 
-## Testes, critérios e /goal
+## Testes e critérios
 
 Os testes usam git de verdade em repositórios temporários e substitutos falsos de `gh` e `az` colocados no PATH, que registram os argumentos e devolvem respostas fixas, com as travas de `docs/TDD.md` e a trava de CLIs ativas; nada é enviado a um remoto real.
 

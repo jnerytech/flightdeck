@@ -327,6 +327,14 @@ O agente implementa só a Fase 1, em passos pequenos e verificáveis, sem gastar
 6. Dúvida que bloqueie: escolher a opção mais simples compatível com esta spec, registrar em `docs/DECISIONS.md` e seguir.
 7. Nada da lista "Fora da Fase 1" entra no código, nem como esboço.
 
-&#91;embedded content: roadmap · 5 fases\]
+| Fase | Entrega | Spec |
+| --- | --- | --- |
+| 1 | Núcleo num host: daemon, sessões pelo Agent SDK, permissões, replay e app desktop | este arquivo |
+| 2 | Multi-host: vários daemons, WSL, serviço e pareamento | [SPEC-fase-2.md](SPEC-fase-2.md) |
+| 3 | Histórico: índice dos transcripts, busca global e retomada | [SPEC-fase-3.md](SPEC-fase-3.md) |
+| 4 | Board: projetos, cards em worktrees, colunas automáticas e PR | [SPEC-fase-4.md](SPEC-fase-4.md) |
+| 5 | Central de sessões: lista única, hooks, aprovações e mensagens para sessões do terminal | [SPEC-fase-5.md](SPEC-fase-5.md) |
+| 6 | Workflows: etapas encadeadas, gates, orçamento e MCP local | [SPEC-fase-6.md](SPEC-fase-6.md) |
+| 7 | Operação: atualização e versões entre hosts, retenção e backup, cota por host, "permitir sempre" | a escrever |
 
-Cada fase só começa com a anterior fechada pelos seus critérios de aceite; as fases 2 a 5 ganham spec própria quando chegarem.
+Cada fase fecha pelos próprios critérios de aceite e é integrada na ordem do roadmap; duas fases independentes podem ser desenvolvidas em paralelo em worktrees separados, com a posterior rebaseada sobre a tag da anterior antes de fechar. O produto é desktop, sem celular.

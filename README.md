@@ -5,8 +5,9 @@ Code pelo Agent SDK oficial, guarda cada evento em SQLite e expõe um protocolo 
 desktop (Tauri 2 + React) conecta em um ou mais daemons, mostra o chat em streaming e aprova ou
 nega ferramentas.
 
-Fases entregues: **Fase 1** ([`docs/SPEC.md`](docs/SPEC.md)) e **Fase 2, multi-host**
-([`docs/SPEC-fase-2.md`](docs/SPEC-fase-2.md)). As divergências em relação à spec
+Fases entregues: **Fase 1** ([`docs/SPEC.md`](docs/SPEC.md)), **Fase 2, multi-host**
+([`docs/SPEC-fase-2.md`](docs/SPEC-fase-2.md)), **Fase 3, histórico** ([`docs/SPEC-fase-3.md`](docs/SPEC-fase-3.md)) e
+**Fase 4, board** ([`docs/SPEC-fase-4.md`](docs/SPEC-fase-4.md)). O roadmap está no fim de [`docs/SPEC.md`](docs/SPEC.md). As divergências em relação à spec
 estão em [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ```text

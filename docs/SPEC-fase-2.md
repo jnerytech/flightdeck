@@ -117,7 +117,7 @@ Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência. A
 - Procura `.only(`, `.skip(` e `test.todo(` nos arquivos de teste (as próprias fixtures do teste da auditoria montam essas marcas por concatenação).
 - Tag inexistente sai com 2; sem violações, imprime `TDD AUDIT OK` e sai com 0; com violações, lista commit, escopo e motivo, e sai com 1.
 
-## Testes, critérios e /goal
+## Testes e critérios
 
 Como na Fase 1, tudo é provado com o `FakeRuntime` e com as travas de `docs/TDD.md` ativas; nada aqui instala serviço de verdade nem acessa outra máquina.
 
@@ -160,5 +160,3 @@ Sobe dois daemons `--runtime fake` em portas e `dataDir` diferentes, conecta um 
 - [ ] `flightdeckd service install --dry-run` sai com código 0 e imprime a unit do systemd (no Linux) ou o XML e o comando da tarefa (no Windows); numa chamada separada, o estado mostra que nada mudou.
 - [ ] README cobre instalação como serviço, Tailscale, pareamento, deploy e a integração com o Windows.
 - [ ] Divergências registradas em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-2` criada.
-
-**Condição do /goal**

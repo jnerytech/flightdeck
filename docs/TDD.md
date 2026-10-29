@@ -58,6 +58,10 @@ em vez de depender de cuidado.
   - Teste que sobe o daemon com runtime `claude` aponta `claude.executablePath` para um
     caminho inexistente.
   - Todo smoke, exceto o `smoke:real`, instala a mesma trava e confere antes de imprimir o OK.
+- **Home real.** O preload aponta `HOME` e `USERPROFILE` para uma pasta temporária, e a
+  resolução de `~` lê a variável de ambiente atual. Processos filhos (daemon dos smokes,
+  CLIs falsos) recebem esse ambiente explicitamente, nunca o da partida do processo. Nada
+  lê nem grava o `~/.claude` real.
 - **Outros executáveis falsos** (`gh`, `az`, comandos de `check`): entram no PATH de teste e
   são resolvidos com `whichOnPath`. No Windows, precisam de versão `.cmd`.
 - **Serviços e sistema.** Instalação de serviço, `systemctl`, `schtasks` e afins passam por um
