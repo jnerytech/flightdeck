@@ -9,6 +9,8 @@ import {
   type CommandResults,
   type CommandType,
   type EventEnvelope,
+  type ExternalPermissionFrame,
+  type ExternalUpdated,
   type HistoryChanged,
   type Ping,
   Pong,
@@ -19,6 +21,8 @@ import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
+import type { ExternalSessions } from "./central/external.ts";
+import type { ExternalPermissions } from "./central/external-permissions.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
@@ -44,6 +48,8 @@ export interface ServerOptions {
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
+  /** External sessions and their permission requests (phase 5). */
+  central?: { external: ExternalSessions; permissions: ExternalPermissions };
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -67,6 +73,8 @@ interface Connection {
   unwatchHistory?: () => void;
   /** Stops the `board.watch` stream, when active. */
   unwatchBoard?: () => void;
+  /** Stops the `external.watch` stream, when active. */
+  unwatchExternal?: () => void;
   lastRttMs?: number;
 }
 
@@ -79,10 +87,16 @@ export function tokenMatches(expected: string, given: string): boolean {
   return timingSafeEqual(digest(expected), digest(given));
 }
 
-function send(
-  ws: Socket,
-  message: Ack | EventEnvelope | Ping | HistoryChanged | CardUpdated,
-): void {
+type Outgoing =
+  | Ack
+  | EventEnvelope
+  | Ping
+  | HistoryChanged
+  | CardUpdated
+  | ExternalUpdated
+  | ExternalPermissionFrame;
+
+function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
 }
 
@@ -151,6 +165,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.history;
   }
 
+  function central() {
+    if (!opts.central) throw new FlightdeckError("invalid_state", "central de sessões desativada");
+    return opts.central;
+  }
+
   function board(): Board {
     if (!opts.board) throw new FlightdeckError("invalid_state", "board desativado");
     return opts.board;
@@ -196,9 +215,33 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.subscriptions.get(command.payload.sessionId)?.();
         ws.data.subscriptions.delete(command.payload.sessionId);
         return ok(command.type);
-      case "permission.respond":
-        manager.respondPermission(command.payload);
+      case "permission.respond": {
+        // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
+        const { requestId, decision, message } = command.payload;
+        if (!opts.central?.permissions.respond(requestId, decision, message)) {
+          manager.respondPermission(command.payload);
+        }
         return ok(command.type);
+      }
+      case "external.list":
+        return ok(command.type, { sessions: central().external.list() });
+      case "external.watch": {
+        // Ack, then the live sessions and the open requests, then every change: no gap.
+        const { external, permissions } = central();
+        ws.data.unwatchExternal?.();
+        const offSessions = external.onChange((session) =>
+          send(ws, { type: "external.updated", session }),
+        );
+        const offPermissions = permissions.watch((frame) => send(ws, frame));
+        ws.data.unwatchExternal = () => {
+          offSessions();
+          offPermissions();
+        };
+        ok(command.type);
+        for (const session of external.list()) send(ws, { type: "external.updated", session });
+        for (const frame of permissions.open()) send(ws, frame);
+        return;
+      }
       case "host.info":
         return ok(command.type, {
           hostName: opts.hostName,
@@ -376,6 +419,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatch?.();
         ws.data.unwatchHistory?.();
         ws.data.unwatchBoard?.();
+        ws.data.unwatchExternal?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

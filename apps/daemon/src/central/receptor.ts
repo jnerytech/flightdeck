@@ -1,4 +1,5 @@
 import type { ExternalSessions, HookPayload } from "./external.ts";
+import type { ExternalPermissions } from "./external-permissions.ts";
 
 export interface ReceptorOptions {
   /** `hooks.port`; 0 picks a free one (tests and smokes). */
@@ -6,6 +7,8 @@ export interface ReceptorOptions {
   /** `hooks.token`, read on every request so a new install takes effect without a restart. */
   token: () => string | null | undefined;
   external: ExternalSessions;
+  /** Holds PermissionRequest for the app; without it every request is answered empty. */
+  permissions?: ExternalPermissions;
   /** Sessions the daemon itself runs: their hooks (from the user's settings) are ignored. */
   isManaged: (claudeSessionId: string) => boolean;
 }
@@ -43,8 +46,16 @@ export function startReceptor(opts: ReceptorOptions): Receptor {
     const id = typeof payload.session_id === "string" ? payload.session_id : "";
     if (payload.managed === true) managed.add(id);
     if (managed.has(id) || opts.isManaged(id)) return empty();
+    // Any later event of the session means a held request was answered in the terminal; the
+    // permission_prompt notification is the terminal dialog itself, shown while the hook holds.
+    const prompt = event === "Notification" && payload.notification_type === "permission_prompt";
+    if (!prompt) opts.permissions?.closeSession(id);
     opts.external.apply(event, payload);
-    return empty();
+    if (event !== "PermissionRequest" || !opts.permissions) return empty();
+    const answer = await opts.permissions.hold(payload, req.signal);
+    return answer
+      ? new Response(answer, { headers: { "content-type": "application/json" } })
+      : empty();
   }
 
   const server = Bun.serve({

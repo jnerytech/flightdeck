@@ -1,25 +1,10 @@
 import type { Database } from "bun:sqlite";
 import { statSync } from "node:fs";
 
-export type ExternalStatus = "idle" | "running" | "awaiting_permission" | "ended" | "unknown";
+import type { ExternalSession, ExternalStatus } from "@flightdeck/protocol";
 
-export interface ExternalSession {
-  claudeSessionId: string;
-  cwd: string | null;
-  transcriptPath: string | null;
-  /** `startup`, `resume`, `clear` or `compact`, from SessionStart. */
-  source: string | null;
-  status: ExternalStatus;
-  statusReason: string | null;
-  /** Set by `flightdeckd claude`; the channel of that launch follows its current session. */
-  launchId: string | null;
-  /** A channel is connected for it: the app can send it messages. */
-  controllable: boolean;
-  projectKey: string | null;
-  startedAt: string;
-  lastEventAt: string;
-  endedAt: string | null;
-}
+// What the daemon keeps is what goes on the wire.
+export type { ExternalSession, ExternalStatus };
 
 export type HookPayload = Record<string, unknown>;
 

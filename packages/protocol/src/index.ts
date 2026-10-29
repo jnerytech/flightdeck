@@ -331,6 +331,33 @@ export const CardIdPayload = z.object({ cardId: z.string() });
 /** Completion and discard only happen with `confirm: true`; the daemon refuses anything else. */
 export const CardConfirmPayload = z.object({ cardId: z.string(), confirm: z.boolean().optional() });
 
+// Phase 5: sessions started outside Flightdeck (terminal), seen through Claude Code hooks.
+export const ExternalStatus = z.enum([
+  "idle",
+  "running",
+  "awaiting_permission",
+  "ended",
+  "unknown",
+]);
+export type ExternalStatus = z.infer<typeof ExternalStatus>;
+
+export const ExternalSession = z.object({
+  claudeSessionId: z.string(),
+  cwd: z.string().nullable(),
+  transcriptPath: z.string().nullable(),
+  source: z.string().nullable(),
+  status: ExternalStatus,
+  statusReason: z.string().nullable(),
+  launchId: z.string().nullable(),
+  /** A channel of `flightdeckd claude` is connected: it takes `external.message`. */
+  controllable: z.boolean(),
+  projectKey: z.string().nullable(),
+  startedAt: z.string(),
+  lastEventAt: z.string(),
+  endedAt: z.string().nullable(),
+});
+export type ExternalSession = z.infer<typeof ExternalSession>;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -382,6 +409,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.pr.create", CardIdPayload),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
+  cmd("external.list", z.object({}).strict()),
+  cmd("external.watch", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -535,6 +564,8 @@ export interface CommandResults {
   "card.pr.create": Card;
   "card.complete": Card;
   "card.discard": Card;
+  "external.list": { sessions: ExternalSession[] };
+  "external.watch": undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -601,6 +632,29 @@ export type HistoryChanged = z.infer<typeof HistoryChanged>;
 export const CardUpdated = z.object({ type: z.literal("card.updated"), card: Card });
 export type CardUpdated = z.infer<typeof CardUpdated>;
 
+/** Sent after `external.watch` with the whole external session after each change. */
+export const ExternalUpdated = z.object({
+  type: z.literal("external.updated"),
+  session: ExternalSession,
+});
+export type ExternalUpdated = z.infer<typeof ExternalUpdated>;
+
+/** A permission request of an external session opened or closed (after `external.watch`). */
+export const ExternalPermissionFrame = z.object({
+  type: z.literal("external.permission"),
+  /** Starts with `ext-`, so it never collides with a managed session's; answer with `permission.respond`. */
+  requestId: z.string(),
+  claudeSessionId: z.string(),
+  toolName: z.string(),
+  /** Tool input with long strings cut. */
+  input: z.record(z.string(), z.unknown()),
+  state: z.enum(["open", "closed"]),
+  /** Why it closed: answered here, the hook connection dropped, or answered in the terminal. */
+  resolution: z.enum(["allow", "deny", "dropped", "answered_elsewhere"]).optional(),
+  createdAt: z.string(),
+});
+export type ExternalPermissionFrame = z.infer<typeof ExternalPermissionFrame>;
+
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -608,6 +662,8 @@ export const ServerMessage = z.union([
   Ping,
   HistoryChanged,
   CardUpdated,
+  ExternalUpdated,
+  ExternalPermissionFrame,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 
