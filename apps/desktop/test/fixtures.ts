@@ -1,6 +1,6 @@
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
@@ -44,7 +44,7 @@ export function daemon(
     quota?: Quota;
   } = {},
 ) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "fd-desk-")));
+  const root = realTempDir("fd-desk-");
   const project = join(root, "p");
   mkdirSync(project);
   const store = new EventStore(":memory:");

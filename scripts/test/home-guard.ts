@@ -3,10 +3,11 @@
  * and private paths). Points every home variable at a throwaway folder with an empty
  * `.claude/projects`, so `~` (resolved from the current environment) never reaches the real one.
  */
-import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { isAbsolute, join, parse, relative } from "node:path";
 import { expandHome } from "../../apps/daemon/src/config.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 export interface HomeGuard {
   /** Fake home, now in HOME/USERPROFILE. */
@@ -22,7 +23,7 @@ const inside = (root: string, path: string) => {
 
 export function installHomeGuard(env: Record<string, string | undefined> = process.env): HomeGuard {
   const realClaude = join(homedir(), ".claude");
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), "fd-home-guard-")));
+  const dir = realTempDir("fd-home-guard-");
   mkdirSync(join(dir, ".claude", "projects"), { recursive: true });
   env.HOME = dir;
   env.USERPROFILE = dir;

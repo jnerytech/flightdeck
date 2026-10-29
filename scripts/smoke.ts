@@ -6,8 +6,7 @@
  * `--real` runs the same script against `--runtime claude` in a throwaway folder (manual only;
  * it spends quota and is not part of the acceptance criteria).
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import {
@@ -18,6 +17,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 const REAL = process.argv.includes("--real");
 // The daemon inherits this PATH: with the fake runtime, `claude` must never run (docs/TDD.md).
@@ -99,7 +99,7 @@ const count = (events: EventEnvelope[], type: string) =>
   events.filter((e) => e.event.type === type).length;
 
 async function run(): Promise<void> {
-  const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-"));
+  const work = realTempDir("flightdeck-smoke-");
   const projectRoot = join(work, "projects");
   const project = join(projectRoot, "demo");
   mkdirSync(project, { recursive: true });

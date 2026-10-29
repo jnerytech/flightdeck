@@ -5,8 +5,7 @@
  * commits it, Em revisão, its diff, the PR, a merge simulated in the fake `gh` and Concluído with
  * the worktree removed.
  */
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import {
@@ -18,6 +17,7 @@ import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts"
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon inherits PATH and HOME: neither the real `claude`, `gh` and `az` nor `~/.claude`.
 const clis = installCliGuard();
@@ -269,7 +269,7 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-board-"));
+const work = realTempDir("flightdeck-smoke-board-");
 let code = 1;
 try {
   await run(work);

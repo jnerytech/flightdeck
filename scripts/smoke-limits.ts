@@ -8,8 +8,7 @@
  * claude of phase 5 sends a `PermissionRequest` with `permission_suggestions`, answered with one
  * of them: the hook's answer carries `updatedPermissions`.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
@@ -21,6 +20,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon gets this environment: neither the real `claude`, `gh` and `az` nor `~/.claude`.
 const clis = installCliGuard();
@@ -352,7 +352,7 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-limits-"));
+const work = realTempDir("flightdeck-smoke-limits-");
 let code = 1;
 try {
   await run(work);

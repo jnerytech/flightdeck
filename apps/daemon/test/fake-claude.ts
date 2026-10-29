@@ -5,9 +5,9 @@
  * Code's shell, see hook-shell.ts), transcript lines and channel
  * messages. Payloads follow the proof of concept (docs/SPEC-fase-5.md).
  */
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 
 export type FakeClaudeStep =
   | { do: "session-start"; sessionId: string; source?: string }
@@ -36,7 +36,7 @@ export function installFakeClaude(
   steps: FakeClaudeStep[],
   env: Record<string, string | undefined> = process.env,
 ): FakeClaude {
-  const dir = mkdtempSync(join(tmpdir(), "fd-fake-claude-"));
+  const dir = realTempDir("fd-fake-claude-");
   const bun = process.execPath;
   writeFileSync(join(dir, "script.json"), JSON.stringify(steps));
   writeFileSync(join(dir, "claude"), `#!/bin/sh\nexec "${bun}" "${MAIN}" "${dir}" "$@"\n`);

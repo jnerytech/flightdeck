@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { testHome } from "../../../scripts/test/temp-dir.ts";
 import { loadConfig } from "../src/config.ts";
 import { parseArgs, runCli, startDaemon } from "../src/main.ts";
 import { ClaudeSdkRuntime } from "../src/runtime/claude-sdk-runtime.ts";
@@ -28,7 +29,7 @@ describe("config", () => {
     writeFileSync(file, JSON.stringify({ token: "x".repeat(32), dataDir: "~/fd", port: 9000 }));
     const config = loadConfig(file);
     expect(config.port).toBe(9000);
-    expect(config.dataDir).not.toContain("~");
+    expect(config.dataDir).toBe(join(testHome(), "fd"));
     writeFileSync(file, JSON.stringify({ token: "x".repeat(32), port: "nope" }));
     expect(() => loadConfig(file)).toThrow();
   });

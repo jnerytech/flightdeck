@@ -25,6 +25,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon inherits PATH and HOME: neither the real `claude` nor `~/.claude` (docs/TDD.md).
 const guard = installClaudeGuard();
@@ -291,7 +292,7 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-ops-"));
+const work = realTempDir("flightdeck-smoke-ops-");
 let code = 1;
 try {
   await run(work);

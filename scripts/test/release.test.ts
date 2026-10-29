@@ -1,15 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { collectReleaseAssets, readProductVersions, tagProblems } from "../lib/release.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const SAME = { "packages/protocol": "0.7.0", "apps/daemon": "0.7.0", "apps/desktop": "0.7.0" };
@@ -18,7 +12,7 @@ const sha256 = (data: string) => new Bun.CryptoHasher("sha256").update(data).dig
 
 /** A checkout after `build:daemon` and `tauri build --bundles nsis,msi`, with `files` in it. */
 function built(files: Record<string, string>) {
-  const root = mkdtempSync(join(tmpdir(), "fd-release-"));
+  const root = realTempDir("fd-release-");
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), content);

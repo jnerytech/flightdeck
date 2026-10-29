@@ -7,8 +7,8 @@
  * sends a message through the channel, sees history.changed, waits for SessionEnd and finally
  * uninstalls the hooks, leaving settings.json as it was.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
@@ -20,6 +20,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon, the wrapper and the fake claude inherit PATH and HOME: none of the real claude,
 // gh, az or ~/.claude is reachable.
@@ -318,7 +319,7 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-central-"));
+const work = realTempDir("flightdeck-smoke-central-");
 let code = 1;
 try {
   await run(work);

@@ -4,8 +4,7 @@
  * connected to both. A permission request on the second host must show up through
  * `session.summary`; after approving it, both sessions finish their turn.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   type Ack,
@@ -21,6 +20,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemons inherit this PATH: with the fake runtime, `claude` must never run (docs/TDD.md).
 const guard = installClaudeGuard();
@@ -107,7 +107,7 @@ interface FakeDaemon {
 }
 
 async function startFakeDaemon(name: string): Promise<FakeDaemon> {
-  const work = mkdtempSync(join(tmpdir(), `flightdeck-smoke-${name}-`));
+  const work = realTempDir(`flightdeck-smoke-${name}-`);
   const projectRoot = join(work, "projects");
   const project = join(projectRoot, "demo");
   mkdirSync(project, { recursive: true });

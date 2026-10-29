@@ -1,13 +1,13 @@
-import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EventEnvelope, SessionEvent } from "@flightdeck/protocol";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { SessionManager, type SessionManagerOptions } from "../src/sessions/session-manager.ts";
 import { EventStore } from "../src/store/event-store.ts";
 
 export function tempDir(prefix = "fd-test-"): string {
-  return realpathSync(mkdtempSync(join(tmpdir(), prefix)));
+  return realTempDir(prefix);
 }
 
 /** Allowed root with a `project` directory inside it. */

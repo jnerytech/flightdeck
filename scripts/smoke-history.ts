@@ -4,8 +4,7 @@
  * indexing it, a search for a term only the second one has, `history.resume` of that session
  * (the FakeRuntime must get `resume` with its id) and `history.changed` when the first grows.
  */
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { appendFileSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import {
@@ -16,6 +15,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon inherits PATH and HOME: neither the real `claude` nor `~/.claude` (docs/TDD.md).
 const guard = installClaudeGuard();
@@ -224,7 +224,7 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-history-"));
+const work = realTempDir("flightdeck-smoke-history-");
 let code = 1;
 try {
   await run(work);

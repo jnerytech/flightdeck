@@ -7,8 +7,7 @@
  * with `[commit]`, a check that fails once and passes the second time, parallel review, PR on
  * the fake `gh`, merge simulated and the card in Concluído.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import {
@@ -21,6 +20,7 @@ import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts"
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon gets this environment: neither the real `claude`, `gh` and `az` nor `~/.claude`,
 // and its real CheckRunner only reaches the shell for the fake check installed below.
@@ -374,7 +374,7 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-workflow-"));
+const work = realTempDir("flightdeck-smoke-workflow-");
 let code = 1;
 try {
   await run(work);
