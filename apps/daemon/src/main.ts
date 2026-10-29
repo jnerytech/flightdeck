@@ -39,9 +39,11 @@ import {
   daemonCommand,
   installService,
   resolveServiceClaude,
+  type ServiceCommand,
   type ServiceContext,
   serviceCommand,
   serviceStatus,
+  startService,
   uninstallService,
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
@@ -57,7 +59,7 @@ import {
 } from "./update.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
-export type ServiceAction = "install" | "uninstall" | "status";
+export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
 export interface CliArgs {
   command:
@@ -107,7 +109,7 @@ const USAGE = [
   "     flightdeckd restore <arquivo> [--config <arquivo>]   (com o daemon parado)",
   "     flightdeckd update --from <binário> [--allow-downgrade] [--config <arquivo>]",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
-  "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
+  "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
   "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
   "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
@@ -115,6 +117,14 @@ const USAGE = [
   "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
   "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
 ].join("\n");
+
+const SERVICE_ACTIONS: readonly ServiceAction[] = [
+  "install",
+  "uninstall",
+  "status",
+  "stop",
+  "start",
+];
 
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
@@ -168,8 +178,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         break;
       case "service": {
         args.command = "service";
-        const action = argv[++i];
-        if (action !== "install" && action !== "uninstall" && action !== "status") {
+        const action = argv[++i] as ServiceAction | undefined;
+        if (!action || !SERVICE_ACTIONS.includes(action)) {
           throw new Error(`ação de serviço inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
         }
         args.action = action;
@@ -427,34 +437,66 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
  * `flightdeckd service install|uninstall|status`. With `--dry-run` nothing is written, not even
  * the config, so `loadConfig` (which creates a missing file) is never called in that mode.
  */
+/** The config of the installed service: `--config` on the CLI, else the service's own one. */
+const serviceConfig = (args: CliArgs, installed: ServiceCommand) =>
+  loadConfig(args.config ? configPath(args) : (installed.config ?? configPath(args)));
+
+/** Where a daemon of `config` answers `GET /health`. */
+const healthUrl = (config: Config) =>
+  new URL("/health", daemonUrl(config).replace(/^ws:/, "http:")).href;
+
 /**
- * Before the service goes, its daemon goes too (removing the task or unit alone would leave it
- * running). A daemon that does not stop only gets a warning; the service is removed anyway.
+ * Stops the daemon of the installed service (`daemon.shutdown`, the task or unit, the lock).
+ * Null without a service; false when the daemon is still there.
  */
 async function stopInstalledDaemon(
   args: CliArgs,
   ctx: ServiceContext,
   deps: CliDeps,
-): Promise<void> {
+): Promise<boolean | null> {
   const installed = await serviceCommand(ctx);
-  if (!installed) return;
-  const config = loadConfig(
-    args.config ? configPath(args) : (installed.config ?? configPath(args)),
-  );
+  if (!installed) return null;
   const stop = {
     ...serviceStopDeps(ctx, deps.log),
     ...(deps.serviceStopTimeoutMs ? { stopTimeoutMs: deps.serviceStopTimeoutMs } : {}),
   };
-  if (!(await stopServiceDaemon(stop, config, installed.command[0] as string))) {
-    deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
+  return stopServiceDaemon(stop, serviceConfig(args, installed), installed.command[0] as string);
+}
+
+/** `service stop`: the daemon goes, the task or unit stays installed. */
+async function stopService(args: CliArgs, ctx: ServiceContext, deps: CliDeps): Promise<void> {
+  const stopped = await stopInstalledDaemon(args, ctx, deps);
+  if (stopped === null) throw new Error("nenhum serviço instalado");
+  if (!stopped) throw new Error("o daemon do serviço não parou: pare-o à mão");
+  deps.log.log("daemon do serviço parado (o serviço continua instalado)");
+}
+
+/** `service start`: runs the task or unit and waits for `/health` of the service's config. */
+async function startInstalledService(
+  args: CliArgs,
+  ctx: ServiceContext,
+  deps: CliDeps,
+): Promise<void> {
+  const installed = await serviceCommand(ctx);
+  if (!installed) throw new Error("nenhum serviço instalado");
+  const url = healthUrl(serviceConfig(args, installed));
+  await startService(ctx);
+  if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
+    throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
   }
+  deps.log.log(`daemon do serviço respondendo em ${url}`);
 }
 
 async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   const ctx = (deps.serviceContext ?? osServiceContext)(args.dryRun === true);
   if (args.action === "status") return printResult(deps, await serviceStatus(ctx));
+  if (args.action === "stop") return stopService(args, ctx, deps);
+  if (args.action === "start") return startInstalledService(args, ctx, deps);
   if (args.action === "uninstall") {
-    if (!ctx.dryRun) await stopInstalledDaemon(args, ctx, deps);
+    // Removing the task or unit alone would leave the daemon running: it goes first.
+    if (!ctx.dryRun && (await stopInstalledDaemon(args, ctx, deps)) === false) {
+      deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
+    }
     return printResult(deps, await uninstallService(ctx));
   }
   const file = configPath(args);
@@ -613,12 +655,7 @@ async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
       currentVersion: DAEMON_VERSION,
       settingsPath: claudeSettingsPath(),
       stableBin: stableBinPath(ctx.home, ctx.platform),
-      healthy: (_port, config) =>
-        waitHealthy(
-          new URL("/health", daemonUrl(config).replace(/^ws:/, "http:")).href,
-          30_000,
-          250,
-        ),
+      healthy: (_port, config) => waitHealthy(healthUrl(config), 30_000, 250),
     },
   );
 }
@@ -671,6 +708,8 @@ export interface CliDeps {
   hookConnectTimeoutMs?: number;
   /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */
   serviceStopTimeoutMs?: number;
+  /** How long `service start` waits for `/health` (30 s when absent). */
+  serviceHealthTimeoutMs?: number;
   /** Clock of `db prune`, `backup` and `restore`; `Date.now` when absent. */
   now?: () => number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
