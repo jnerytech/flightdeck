@@ -1,11 +1,13 @@
 /**
  * Guard against running the real PR CLIs (`gh`, `az`) from tests and smokes. Same idea as the
  * claude guard: a sentinel per name first on PATH (it records the call and exits 99) and every
- * PATH entry holding a real one dropped. A test that needs one installs its own fake in front.
+ * PATH folder holding a real one taken off (see guard-path.ts). A test that needs one installs
+ * its own fake in front.
  */
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
+import { guardPath } from "./guard-path.ts";
 
 export const GUARDED_CLIS = ["gh", "az"] as const;
 
@@ -36,13 +38,7 @@ export function installCliGuard(
   // Windows spells it "Path"; rewrite every casing so children inherit the guarded value.
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");
   const current = keys.map((k) => env[k] ?? "").find(Boolean) ?? "";
-  const clean = current
-    .split(delimiter)
-    .filter(
-      (entry) =>
-        entry && !names.some((name) => variants(name).some((v) => existsSync(join(entry, v)))),
-    );
-  const guarded = [dir, ...clean].join(delimiter);
+  const guarded = guardPath(current, names.flatMap(variants), dir);
   for (const key of keys.length > 0 ? keys : ["PATH"]) env[key] = guarded;
   return { dir, log, names };
 }

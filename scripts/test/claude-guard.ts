@@ -1,11 +1,13 @@
 /**
  * Guard against running the real `claude` from tests and smokes. Puts a sentinel `claude` first
- * on PATH (it records the call and exits 99) and drops every PATH entry that holds a real one,
- * so any code path that falls back to "claude on PATH" is caught instead of executed.
+ * on PATH (it records the call and exits 99) and takes off PATH every folder that holds a real
+ * one (see guard-path.ts), so any code path that falls back to "claude on PATH" is caught
+ * instead of executed.
  */
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
+import { guardPath } from "./guard-path.ts";
 
 const CLAUDE_NAMES = ["claude", "claude.exe", "claude.cmd", "claude.bat", "claude.ps1"];
 
@@ -31,10 +33,7 @@ export function installClaudeGuard(
   // Windows spells it "Path"; rewrite every casing so children inherit the guarded value.
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");
   const current = keys.map((k) => env[k] ?? "").find(Boolean) ?? "";
-  const clean = current
-    .split(delimiter)
-    .filter((entry) => entry && !CLAUDE_NAMES.some((name) => existsSync(join(entry, name))));
-  const guarded = [dir, ...clean].join(delimiter);
+  const guarded = guardPath(current, CLAUDE_NAMES, dir);
   for (const key of keys.length > 0 ? keys : ["PATH"]) env[key] = guarded;
   return { dir, log };
 }
