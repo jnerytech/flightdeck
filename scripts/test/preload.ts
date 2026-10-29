@@ -9,6 +9,7 @@ import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from
 import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
+import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
 const clis = installCliGuard();
@@ -20,6 +21,8 @@ const binary = installBinaryGuard(dirname(home.realClaude));
 const serviceGuard = join(mkdtempSync(join(tmpdir(), "fd-service-guard-")), "calls.log");
 process.env.FLIGHTDECK_SERVICE_GUARD = serviceGuard;
 const checks = installCheckGuard();
+// No test reaches the internet: only 127.0.0.1 and localhost (phase 9).
+const network = installNetworkGuard();
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the
 // current one. Make sure that lookup now lands on the sentinel, or stop before any test runs.
@@ -40,6 +43,7 @@ afterAll(() => {
   // A test that put the real home back would have let the indexer reach the real transcripts.
   assertHomeGuard(home);
   assertBinaryUntouched(binary);
+  assertNoNetwork(network);
   if (existsSync(serviceGuard)) {
     throw new Error(`controlador de serviço real chamado: ${readFileSync(serviceGuard, "utf8")}`);
   }
