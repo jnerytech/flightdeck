@@ -501,8 +501,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!shutdown)
           throw new FlightdeckError("invalid_state", "desligamento remoto indisponível");
         ok(command.type);
-        // After the ack is on its way: the client learns the request was taken.
-        setTimeout(shutdown, 0);
+        // Right after the ack is written (a microtask, not a timer tick that may come late).
+        queueMicrotask(shutdown);
         return;
       }
       case "hooks.status":
