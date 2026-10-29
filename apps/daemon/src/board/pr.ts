@@ -117,7 +117,7 @@ export interface PrProvider {
 }
 
 /** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
-async function cli(
+export async function cli(
   name: string,
   args: string[],
   cwd: string,
@@ -129,7 +129,7 @@ async function cli(
 }
 
 /** Stdout of a CLI call that must succeed; the error names the subcommand (`gh pr view`). */
-async function cliOk(name: string, args: string[], cwd: string, input?: string): Promise<string> {
+export async function cliOk(name: string, args: string[], cwd: string, input?: string): Promise<string> {
   const result = await cli(name, args, cwd, input);
   if (result.code !== 0) {
     const what = [name, ...args.slice(0, name === "az" ? 3 : 2)].join(" ");
@@ -155,7 +155,7 @@ function urlName(what: string, value: string): string {
   return value;
 }
 
-const cliJson = async <T>(name: string, args: string[], cwd: string, input?: string): Promise<T> =>
+export const cliJson = async <T>(name: string, args: string[], cwd: string, input?: string): Promise<T> =>
   JSON.parse(await cliOk(name, args, cwd, input)) as T;
 
 /** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */

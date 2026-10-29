@@ -39,6 +39,7 @@ import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
+import { Issues } from "./issues/issues.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
@@ -361,7 +362,7 @@ export async function startDaemon(
       return {
         projectId: project.id,
         settings: project.autoApprove,
-        ...(card ? { description: card.description } : {}),
+        ...(card ? { description: card.description, cardId: card.id } : {}),
       };
     },
     usage: { record: (entry) => usageIndex.record(entry) },
@@ -475,6 +476,7 @@ export async function startDaemon(
   const server = startServer({
     manager,
     autoApprove,
+    issues: new Issues({ board, autoApprove }),
     history,
     board,
     quota,

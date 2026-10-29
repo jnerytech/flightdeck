@@ -17,6 +17,11 @@ const runGit: GitRunner = (args) => {
  * all become `github.com/acme/repo`: no scheme, user, port, trailing `.git`, in lowercase.
  */
 export function normalizeRemote(url: string): string {
+  return stripRemote(url).toLowerCase();
+}
+
+/** The remote as `host/path`: no scheme, user, port or trailing `.git`, case kept. */
+export function stripRemote(url: string): string {
   const trimmed = url.trim();
   const scp = /^[^/@]+@([^:/]+):(.+)$/.exec(trimmed);
   const path =
@@ -26,10 +31,7 @@ export function normalizeRemote(url: string): string {
           .replace(/^[a-z+]+:\/\//i, "")
           .replace(/^[^@/]+@/, "")
           .replace(/^([^/:]+):\d+\//, "$1/");
-  return path
-    .replace(/\/+$/, "")
-    .replace(/\.git$/i, "")
-    .toLowerCase();
+  return path.replace(/\/+$/, "").replace(/\.git$/i, "");
 }
 
 /**

@@ -343,4 +343,10 @@ export const MIGRATIONS: readonly string[] = [
     at          TEXT NOT NULL
   );
   `,
+  // Phase 13: a project's issue integration (JSON) and the issue a card came from.
+  `
+  ALTER TABLE projects ADD COLUMN issues TEXT;
+  ALTER TABLE cards ADD COLUMN issue_ref TEXT;
+  ALTER TABLE cards ADD COLUMN issue_external INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

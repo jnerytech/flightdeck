@@ -321,6 +321,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function issues(): Issues {
+    if (!opts.issues) throw new FlightdeckError("invalid_state", "issues indisponíveis");
+    return opts.issues;
+  }
+
   function autoApprove(): AutoApprover {
     if (!opts.autoApprove) {
       throw new FlightdeckError("invalid_state", "aprovação automática indisponível");
@@ -544,10 +549,17 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
-      case "issues.list":
+      case "issues.list": {
+        const { projectId, query } = command.payload;
+        return ok(command.type, { issues: await issues().list(projectId, query) });
+      }
       case "issues.get":
+        return ok(command.type, await issues().get(command.payload.projectId, command.payload.id));
       case "issues.createCard":
-        throw new FlightdeckError("invalid_state", "stub");
+        return ok(
+          command.type,
+          await issues().createCard(command.payload.projectId, command.payload.issueRef),
+        );
       case "autoapprove.list": {
         const { projectId, sessionKey, limit } = command.payload;
         return ok(command.type, {

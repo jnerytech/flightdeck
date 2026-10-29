@@ -5,12 +5,14 @@ import {
   AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
+  IssuesConfig,
   type PermissionUpdate,
   type SessionEvent,
   type SessionStatus,
   type WorkflowInfo,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
 import type { Quota } from "../quota/quota.ts";
@@ -92,6 +94,7 @@ interface ProjectRow {
   setup_script: string | null;
   prompt_template: string;
   auto_approve: string | null;
+  issues: string | null;
 }
 
 function toProject(row: ProjectRow): Project {
@@ -105,8 +108,7 @@ function toProject(row: ProjectRow): Project {
     promptTemplate: row.prompt_template,
     worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
-    /** Stub. */
-    issues: null,
+    issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
   };
 }
 
@@ -125,6 +127,8 @@ interface CardRow {
   pr_state: PrState | null;
   checks_state: ChecksState | null;
   notice: string | null;
+  issue_ref: string | null;
+  issue_external: number;
   created_at: string;
   updated_at: string;
 }
@@ -255,14 +259,13 @@ export class Board {
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
       autoApprove: AutoApproveSettings.parse(input.autoApprove ?? {}),
-      /** Stub. */
-      issues: null,
+      issues: input.issues ?? null,
     };
     this.db
       .query(
         `INSERT INTO projects (id, path, name, base_branch, pr_provider, setup_script, prompt_template,
-           auto_approve)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           auto_approve, issues)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         project.id,
@@ -273,6 +276,7 @@ export class Board {
         project.setupScript,
         project.promptTemplate,
         JSON.stringify(project.autoApprove),
+        project.issues ? JSON.stringify(project.issues) : null,
       );
     return this.getProject(project.id);
   }
@@ -287,11 +291,12 @@ export class Board {
       ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
       autoApprove: { ...current.autoApprove, ...patch.autoApprove },
+      ...(patch.issues !== undefined ? { issues: patch.issues } : {}),
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
-         prompt_template = ?, auto_approve = ? WHERE id = ?`,
+         prompt_template = ?, auto_approve = ?, issues = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -300,6 +305,7 @@ export class Board {
         next.setupScript,
         next.promptTemplate,
         JSON.stringify(next.autoApprove),
+        next.issues ? JSON.stringify(next.issues) : null,
         id,
       );
     return next;
@@ -356,9 +362,8 @@ export class Board {
       discarded: false,
       runs,
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
-      /** Stub. */
-      issueRef: null,
-      issueExternal: false,
+      issueRef: row.issue_ref,
+      issueExternal: row.issue_external === 1,
       ...this.queueState(
         active !== undefined && active.started_at === null && active.ended_at === null,
         row.project_id,
@@ -383,11 +388,32 @@ export class Board {
     const at = now();
     this.db
       .query(
-        `INSERT INTO cards (id, project_id, title, description, board_column, position, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?)`,
+        `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
+           issue_external, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?)`,
       )
-      .run(id, projectId, input.title, input.description, (last ?? 0) + 1, at, at);
+      .run(
+        id,
+        projectId,
+        input.title,
+        input.description,
+        (last ?? 0) + 1,
+        input.issueRef ?? null,
+        input.issueExternal ? 1 : 0,
+        at,
+        at,
+      );
     return this.changed(id);
+  }
+
+  /** The card already made from an issue of the project, if any. */
+  cardForIssue(projectId: string, issueRef: string): string | null {
+    const row = this.db
+      .query<{ id: string }, [string, string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND lower(issue_ref) = lower(?)",
+      )
+      .get(projectId, issueRef);
+    return row?.id ?? null;
   }
 
   /** Edits the title or the description. */
@@ -753,7 +779,10 @@ export class Board {
       base: project.baseBranch,
       head: branch,
       title: card.title,
-      body: card.description,
+      // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
+      body: [card.description, card.issueRef ? closingLine(card.issueRef) : null]
+        .filter((part) => part?.trim())
+        .join("\n\n"),
     });
     this.db
       .query(
@@ -761,6 +790,9 @@ export class Board {
       )
       .run(url, id);
     this.place(id, { type: "pr", state: "open" });
+    if (project.issues?.commentOnPr && card.issueRef) {
+      await this.commentOnIssue(id, project.path, card.issueRef, url);
+    }
     return this.getCard(id);
   }
 
@@ -865,6 +897,22 @@ export class Board {
       return { worktree: false, branch: true, notice };
     }
     return { worktree: false, branch: false, notice: null };
+  }
+
+  /** A comment with the PR's link on the card's issue; a failure only notices the card. */
+  private async commentOnIssue(id: string, cwd: string, ref: string, url: string): Promise<void> {
+    try {
+      const parsed = parseIssueRef(ref) as NonNullable<ReturnType<typeof parseIssueRef>>;
+      await (providerOfRef(ref) as NonNullable<ReturnType<typeof providerOfRef>>).comment(
+        cwd,
+        parsed.id,
+        `PR aberto: ${url}`,
+      );
+    } catch (error) {
+      const notice = `PR aberto, mas não comentou na issue: ${(error as Error).message}`;
+      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+      this.changed(id);
+    }
   }
 
   /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */
