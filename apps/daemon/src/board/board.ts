@@ -324,23 +324,41 @@ export class Board {
     const prompt = [card.description, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
-    await this.endPreviousRuns(id, runId);
+    // The newest run is the active one: older sessions of the card are closed.
+    await this.closeRuns(id, runId);
     const { sessionId } = this.opts.manager.create({ cwd: worktree, prompt, name: card.title });
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.follow(id, sessionId, 0);
   }
 
-  /** The newest run is the active one: older sessions of the card are closed. */
-  private async endPreviousRuns(id: string, runId: string): Promise<void> {
-    const old = this.db
+  /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */
+  private async closeRuns(id: string, keep = ""): Promise<void> {
+    const open = this.db
       .query<RunRow, [string, string]>(
-        "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL AND ended_at IS NULL",
+        "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND ended_at IS NULL",
       )
-      .all(id, runId);
-    for (const run of old) {
-      await this.opts.manager.close(run.session_id as string);
+      .all(id, keep);
+    for (const run of open) {
+      if (run.session_id) await this.opts.manager.close(run.session_id);
       this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
     }
+  }
+
+  /** The card is done: sessions closed, worktree removed unless something is still pending. */
+  private async finish(id: string): Promise<void> {
+    await this.closeRuns(id);
+    const card = this.getCard(id);
+    if (!card.worktreePath) return;
+    const pending = must(await git(card.worktreePath, "status", "--porcelain"), "git status");
+    if (pending.stdout.trim()) {
+      this.db
+        .query("UPDATE cards SET notice = ? WHERE id = ?")
+        .run("worktree com alterações pendentes: não foi removida", id);
+      return;
+    }
+    const repo = this.getProject(card.projectId).path;
+    must(await git(repo, "worktree", "remove", card.worktreePath), "git worktree remove");
+    this.db.query("UPDATE cards SET worktree_path = NULL, notice = NULL WHERE id = ?").run(id);
   }
 
   /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
@@ -407,6 +425,15 @@ export class Board {
     return this.getCard(id);
   }
 
+  /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */
+  async completeCard(id: string, confirm: boolean): Promise<Card> {
+    if (!confirm)
+      throw new FlightdeckError("invalid_state", "confirme a conclusão com confirm: true");
+    this.place(id, { type: "moved", column: "done" });
+    await this.finish(id);
+    return this.getCard(id);
+  }
+
   get prPollIntervalMs(): number {
     return this.opts.prPollIntervalMs ?? DEFAULT_PR_POLL_MS;
   }
@@ -442,6 +469,7 @@ export class Board {
       .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
       .run(state, checks, id);
     if (state !== card.prState) this.place(id, { type: "pr", state });
+    if (state === "merged") await this.finish(id);
   }
 
   get maxParallelRuns(): number {
