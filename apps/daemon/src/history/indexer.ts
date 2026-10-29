@@ -144,7 +144,7 @@ function fts5Available(db: Database): boolean {
 const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
 
 /** Comparable form of a folder: forward slashes, no trailing slash, case folded where the OS does. */
-function normalizeCwd(path: string): string {
+export function normalizeCwd(path: string): string {
   const slashes = path.replaceAll("\\", "/").replace(/\/+$/, "");
   return caseInsensitive ? slashes.toLowerCase() : slashes;
 }

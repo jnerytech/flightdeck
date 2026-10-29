@@ -197,4 +197,34 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (day, project_key)
   );
   `,
+  // Phase 8 (track A): the usage of every assistant message of the transcripts, deduplicated by
+  // message id. `usage_files` (each transcript's own read offset) goes beyond the spec.
+  `
+  CREATE TABLE usage_entries (
+    message_id        TEXT PRIMARY KEY,
+    claude_session_id TEXT,
+    at                TEXT,
+    day               TEXT,
+    project_key       TEXT,
+    model             TEXT,
+    origin            TEXT,
+    speed             TEXT,
+    input             INTEGER,
+    output            INTEGER,
+    cache_read        INTEGER,
+    cache_write_5m    INTEGER,
+    cache_write_1h    INTEGER,
+    cost_usd          REAL
+  );
+
+  CREATE INDEX usage_entries_day ON usage_entries (day);
+  CREATE INDEX usage_entries_session ON usage_entries (claude_session_id);
+
+  CREATE TABLE usage_files (
+    path   TEXT PRIMARY KEY,
+    size   INTEGER NOT NULL,
+    offset INTEGER NOT NULL,
+    cwd    TEXT
+  );
+  `,
 ];
