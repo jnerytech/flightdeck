@@ -278,4 +278,27 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX review_comments_target ON review_comments (target, created_at);
   `,
+  // Phase 11: the files each session wrote, from its transcripts. `session_file_edits` (one row
+  // per tool call, for deduplication) goes beyond the spec. Clearing `usage_files` makes the
+  // usage indexer read every transcript again: usage stays deduplicated by message id, and the
+  // files of the transcripts that already existed come in.
+  `
+  CREATE TABLE session_file_edits (
+    tool_use_id       TEXT PRIMARY KEY,
+    claude_session_id TEXT NOT NULL,
+    path              TEXT NOT NULL,
+    at                TEXT NOT NULL
+  );
+
+  CREATE TABLE session_files (
+    claude_session_id TEXT,
+    path              TEXT,
+    edits             INTEGER,
+    first_at          TEXT,
+    last_at           TEXT,
+    PRIMARY KEY (claude_session_id, path)
+  );
+
+  DELETE FROM usage_files;
+  `,
 ];

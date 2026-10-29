@@ -45,6 +45,7 @@ import type { UsageLedger } from "./quota/usage.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
+import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
@@ -99,6 +100,8 @@ export interface ServerOptions {
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
   files?: ReviewFiles;
+  /** Which session wrote which file, behind `files.sessions` and `session.files` (phase 11). */
+  sessionFiles?: SessionFiles;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -365,6 +368,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function files(): ReviewFiles {
     if (!opts.files) throw new FlightdeckError("invalid_state", "edição de arquivos desativada");
     return opts.files;
+  }
+
+  function sessionFiles(): SessionFiles {
+    if (!opts.sessionFiles) throw new FlightdeckError("invalid_state", "sem arquivos das sessões");
+    return opts.sessionFiles;
   }
 
   function board(): Board {
@@ -656,6 +664,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "files.sessions":
+        return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
+      case "session.files":
+        return ok(command.type, { files: sessionFiles().list(command.payload.claudeSessionId) });
       case "pr.comments":
         return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
       case "pr.comments.send": {

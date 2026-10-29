@@ -80,13 +80,46 @@ const describe = (error: unknown) => (error instanceof Error ? error.message : S
 /** Error replies of the CLI itself: no model ran, nothing was used. */
 const SYNTHETIC_MODEL = "<synthetic>";
 
-/** The `cwd` of a transcript line and the usage of an assistant message, when it has one. */
-function readLine(line: string): { cwd: string | null; usage: Usage | null } {
+/** Tools that write a file, and where their input names it (phase 11). */
+const FILE_TOOLS: Record<string, string> = {
+  Write: "file_path",
+  Edit: "file_path",
+  MultiEdit: "file_path",
+  NotebookEdit: "notebook_path",
+};
+
+/** A tool call that wrote a file: its id (unique per call) and the path as written. */
+interface FileEdit {
+  toolUseId: string;
+  path: string;
+}
+
+/** The file writes among a message's content blocks. */
+function editsOf(content: unknown): FileEdit[] {
+  if (!Array.isArray(content)) return [];
+  return content.flatMap((block: Record<string, unknown>) => {
+    const field = block?.type === "tool_use" ? FILE_TOOLS[String(block.name)] : undefined;
+    const input = block?.input as Record<string, unknown> | undefined;
+    const toolUseId = str(block?.id);
+    const path = field ? str(input?.[field]) : null;
+    return toolUseId && path ? [{ toolUseId, path }] : [];
+  });
+}
+
+interface ReadLine {
+  cwd: string | null;
+  at: string | null;
+  usage: Usage | null;
+  edits: FileEdit[];
+}
+
+/** The `cwd` of a transcript line, the usage of an assistant message and its file writes. */
+function readLine(line: string): ReadLine {
   let value: Record<string, unknown>;
   try {
     value = JSON.parse(line);
   } catch {
-    return { cwd: null, usage: null };
+    return { cwd: null, at: null, usage: null, edits: [] };
   }
   const cwd = str(value?.cwd);
   const message = value?.type === "assistant" ? (value.message as Record<string, unknown>) : null;
@@ -94,12 +127,15 @@ function readLine(line: string): { cwd: string | null; usage: Usage | null } {
   const model = str(message?.model);
   const at = str(value.timestamp);
   const usage = message?.usage as Record<string, unknown> | undefined;
+  const edits = editsOf(message?.content);
   if (!messageId || !model || model === SYNTHETIC_MODEL || !at || !usage) {
-    return { cwd, usage: null };
+    return { cwd, at, usage: null, edits };
   }
   const split = usage.cache_creation as Record<string, unknown> | undefined;
   return {
     cwd,
+    at,
+    edits,
     usage: {
       messageId,
       at,
@@ -291,6 +327,25 @@ export class UsageIndexer {
     return this.excludes.some((ex) => path === ex || path.startsWith(`${ex}/`));
   }
 
+  /** One more write of a file by a session; a tool call read again counts once. */
+  private recordEdit(claudeSessionId: string, edit: FileEdit, at: string): void {
+    const inserted = this.db
+      .query(
+        `INSERT OR IGNORE INTO session_file_edits (tool_use_id, claude_session_id, path, at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run(edit.toolUseId, claudeSessionId, edit.path, at);
+    if (inserted.changes === 0) return;
+    this.db
+      .query(
+        `INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at)
+         VALUES ($id, $path, 1, $at, $at)
+         ON CONFLICT (claude_session_id, path) DO UPDATE SET edits = edits + 1,
+           first_at = MIN(first_at, $at), last_at = MAX(last_at, $at)`,
+      )
+      .run({ id: claudeSessionId, path: edit.path, at });
+  }
+
   /** Reads what the file gained since the last pass (all of it when it shrank). */
   private indexFile(file: TranscriptFile, owner: Owner): number {
     // Gone since the listing (a session deleted meanwhile): nothing to read.
@@ -325,7 +380,11 @@ export class UsageIndexer {
       for (const line of chunk.subarray(0, end).toString("utf8").split("\n")) {
         const read = readLine(line);
         cwd = read.cwd ?? cwd;
-        if (!read.usage || this.isExcluded(cwd)) continue;
+        if (this.isExcluded(cwd)) continue;
+        for (const edit of read.at ? read.edits : []) {
+          this.recordEdit(file.claudeSessionId, edit, read.at as string);
+        }
+        if (!read.usage) continue;
         const { messageId, at, tokens } = read.usage;
         const keyOf = owner.projectPath ?? cwd ?? "";
         added += insert.run({

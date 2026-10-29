@@ -429,6 +429,24 @@ export type ChangesResult = z.infer<typeof ChangesResult>;
 
 const ReviewSide = z.enum(["new", "old"]);
 
+/** A file a session wrote (Write, Edit, MultiEdit, NotebookEdit; Bash does not count). */
+export const SessionFile = z.object({
+  path: z.string(),
+  edits: z.number().int(),
+  firstAt: z.string(),
+  lastAt: z.string(),
+});
+export type SessionFile = z.infer<typeof SessionFile>;
+
+export const FileSession = z.object({
+  claudeSessionId: z.string(),
+  edits: z.number().int(),
+  firstAt: z.string(),
+  lastAt: z.string(),
+  title: z.string().nullable(),
+});
+export type FileSession = z.infer<typeof FileSession>;
+
 /** A review comment of a card's PR, read from GitHub or Azure DevOps; nothing is posted back. */
 export const PrComment = z.object({
   id: z.string(),
@@ -968,6 +986,9 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("changes.get", z.object({ target: ReviewTarget })),
   cmd("pr.comments", CardIdPayload),
+  /** The sessions that wrote a file, by its absolute path. */
+  cmd("files.sessions", z.object({ path: z.string().min(1) })),
+  cmd("session.files", z.object({ claudeSessionId: z.string() })),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
@@ -1271,6 +1292,8 @@ export interface CommandResults {
   "quota.history": QuotaHistory;
   "changes.get": ChangesResult;
   "pr.comments": { comments: PrComment[] };
+  "files.sessions": { sessions: FileSession[] };
+  "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };
   "card.updateFromBase": Card;
   "card.mergeLocal": Card;
