@@ -48,8 +48,11 @@ function setup(
 async function start(mem: ReturnType<typeof setup>) {
   const store = new AppStore(mem.platform);
   cleanups.push(() => store.dispose());
+  // The App runs init() itself on mount.
   render(<App store={store} />);
-  await act(() => store.init());
+  await act(async () => {
+    await Bun.sleep(0);
+  });
   return store;
 }
 
