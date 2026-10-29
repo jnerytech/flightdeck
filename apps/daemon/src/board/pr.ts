@@ -185,11 +185,19 @@ export class GithubCli implements PrProvider {
     const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
     if (!match) throw new FlightdeckError("invalid_state", `URL de PR do GitHub inválida: ${url}`);
     const [, owner, repo, number] = match as unknown as [string, string, string, string];
-    const inline = await cliJson<GhComment[]>(
+    // Every page, 100 at a time (the REST default is 30): `--slurp` wraps the pages in an array.
+    // A plain GET: no -f/-F field, which would make `gh api` a POST.
+    const pages = await cliJson<GhComment[][]>(
       "gh",
-      ["api", `repos/${owner}/${repo}/pulls/${number}/comments`],
+      [
+        "api",
+        "--paginate",
+        "--slurp",
+        `repos/${owner}/${repo}/pulls/${number}/comments?per_page=100`,
+      ],
       cwd,
     );
+    const inline = pages.flat();
     const { reviews } = await cliJson<{ reviews: GhReview[] }>(
       "gh",
       ["pr", "view", url, "--json", "reviews"],
