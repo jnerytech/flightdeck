@@ -102,7 +102,13 @@ describe("retencao", () => {
   test("apaga só o que passou do prazo e nunca sessão viva, fixada ou de card aberto", () => {
     const { db, eventsOf, externals } = fixture();
     const counts = prune(db, POLICY, { now: NOW });
-    expect(counts).toEqual({ events: 6, permission_requests: 3, external_sessions: 1 });
+    expect(counts).toEqual({
+      events: 6,
+      permission_requests: 3,
+      external_sessions: 1,
+      usage_entries: 0,
+      quota_samples: 0,
+    });
     for (const gone of ["old", "old-error", "card-done"]) expect(eventsOf(gone)).toBe(0);
     for (const kept of ["recent", "live", "pinned", "card-open", "step-open"]) {
       expect(eventsOf(kept)).toBe(2);
@@ -114,6 +120,8 @@ describe("retencao", () => {
       events: 0,
       permission_requests: 0,
       external_sessions: 0,
+      usage_entries: 0,
+      quota_samples: 0,
     });
   });
 
@@ -131,6 +139,8 @@ describe("retencao", () => {
       events: 6,
       permission_requests: 3,
       external_sessions: 1,
+      usage_entries: 0,
+      quota_samples: 0,
     });
     expect(eventsOf("old")).toBe(2);
   });
@@ -171,12 +181,19 @@ describe("retencao", () => {
       events: 0,
       permission_requests: 0,
       external_sessions: 0,
+      usage_entries: 0,
+      quota_samples: 0,
     });
     expect(maintenance.lastPrune()?.dryRun).toBe(true);
   });
 
-  test("retention na config: padrões 90 e 30 dias", () => {
-    expect(Config.parse({}).retention).toEqual({ eventsDays: 90, externalSessionsDays: 30 });
+  test("retention na config: padrões 90, 30 e 400 dias", () => {
+    expect(Config.parse({}).retention).toEqual({
+      eventsDays: 90,
+      externalSessionsDays: 30,
+      usageDays: 400,
+    });
+    expect(Config.parse({ retention: { eventsDays: 1 } }).retention.usageDays).toBe(400);
     expect(Config.safeParse({ retention: { eventsDays: -1 } }).success).toBe(false);
   });
 

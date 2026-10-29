@@ -239,6 +239,8 @@ describe("backup", () => {
       events: 0,
       permission_requests: 0,
       external_sessions: 0,
+      usage_entries: 0,
+      quota_samples: 0,
     });
     const status = await client.data<{ backups: unknown[]; lastPrune: { dryRun: boolean } }>(
       "maintenance.status",
