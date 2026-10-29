@@ -180,6 +180,9 @@ describe("config-agente", () => {
     expect(await refused("---\nname: x\ndescription: d\ntools: 3\n---\n")).toBe("bad_request");
     expect(await refused("---\nname: x\ndescription: d\nmodel: [a]\n---\n")).toBe("bad_request");
     expect(await refused("---\nname: [x\n---\n")).toBe("bad_request");
+    // Valid YAML that is not a mapping: empty, or a list.
+    expect(await refused("---\n \n---\n")).toBe("bad_request");
+    expect(await refused("---\n- a\n- b\n---\n")).toBe("bad_request");
     expect(await refused("---\ndescription: d\n---\n", "skill")).toBe("bad_request");
     expect(await refused("---\nname: x\ndescription: d\ntools: [Read, Grep]\n---\n")).toBe("ok");
     expect(await refused("---\r\nname: y\r\ndescription: d\r\n---\r\n", "skill")).toBe("ok");
