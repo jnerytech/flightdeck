@@ -151,14 +151,17 @@ describe("revisao-inline", () => {
 
   test("terminal controlável recebe pelo canal; não controlável vira Copiar revisão", async () => {
     const sent: Array<[string, string]> = [];
+    // A terminal session opened with flightdeckd claude (e-1) has a channel; e-2 has none.
     const ctx = await session({
       central: {
-        messageExternal: (id, text) => {
-          if (id !== "e-1") return false;
-          sent.push([id, text]);
-          return true;
+        external: { get: (id: string) => ({ launchId: id === "e-1" ? "launch-1" : null }) },
+        receptor: {
+          sendToLaunch: (launchId: string, text: string) => {
+            sent.push([launchId, text]);
+            return true;
+          },
         },
-      },
+      } as unknown as ReviewCommentsOptions["central"],
     });
     for (const id of ["e-1", "e-2"]) {
       ctx.store.db
@@ -173,7 +176,7 @@ describe("revisao-inline", () => {
     await ctx.review.add({ target: "session:e-2", ...one });
     const text = ["Revisão das mudanças:", "1. `b.txt` linha 1:", "   > bê", "   ok?"].join("\n");
     expect(await ctx.review.send("session:e-1")).toEqual({ via: "terminal", text, comments: 1 });
-    expect(sent).toEqual([["e-1", text]]);
+    expect(sent).toEqual([["launch-1", text]]);
     expect(await ctx.review.send("session:e-2")).toEqual({ via: "copy", text, comments: 1 });
   });
 
