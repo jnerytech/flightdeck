@@ -138,6 +138,23 @@ async function cliOk(name: string, args: string[], cwd: string, input?: string):
   return result.stdout;
 }
 
+/**
+ * A name taken from a PR URL, before it goes into a CLI argument. `az` replaces an argument that
+ * starts with @ (and every `name=@file`) by the content of that file, and `gh api -F name=@file`
+ * does the same: a repository or project called "@..." would make the CLI read a local file and
+ * send it away. A line break has no place in a name either.
+ */
+function urlName(what: string, value: string): string {
+  const control = [...value].some((char) => char.charCodeAt(0) < 32);
+  if (value === "" || value.startsWith("@") || control) {
+    throw new FlightdeckError(
+      "invalid_state",
+      `${what} inválido na URL do PR: ${JSON.stringify(value)}`,
+    );
+  }
+  return value;
+}
+
 const cliJson = async <T>(name: string, args: string[], cwd: string, input?: string): Promise<T> =>
   JSON.parse(await cliOk(name, args, cwd, input)) as T;
 
@@ -190,7 +207,11 @@ export class GithubCli implements PrProvider {
   async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
     const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
     if (!match) throw new FlightdeckError("invalid_state", `URL de PR do GitHub inválida: ${url}`);
-    const [, owner, repo, number] = match as unknown as [string, string, string, string];
+    const [, rawOwner, rawRepo, number] = match as unknown as [string, string, string, string];
+    const owner = urlName("dono", rawOwner);
+    const repo = urlName("repositório", rawRepo);
+    // Rebuilt: the stored URL may carry anything around the part that matched.
+    const prUrl = `https://github.com/${owner}/${repo}/pull/${number}`;
     // Every page, 100 at a time (the REST default is 30): `--slurp` wraps the pages in an array.
     // A plain GET: no -f/-F field, which would make `gh api` a POST.
     const pages = await cliJson<GhComment[][]>(
@@ -206,7 +227,7 @@ export class GithubCli implements PrProvider {
     const inline = pages.flat();
     const { reviews } = await cliJson<{ reviews: GhReview[] }>(
       "gh",
-      ["pr", "view", url, "--json", "reviews"],
+      ["pr", "view", prUrl, "--json", "reviews"],
       cwd,
     );
     const threads = await cliJson<GhThreads>(
@@ -217,9 +238,12 @@ export class GithubCli implements PrProvider {
         // From stdin: the query's characters do not survive a .cmd wrapper on Windows.
         "-F",
         "query=@-",
+        // -f sends the value as it is; -F would read a file for a value starting with @.
+        "-f",
         `owner=${owner}`,
-        "-F",
+        "-f",
         `name=${repo}`,
+        // The number is digits only (the URL pattern), typed as the Int the query declares.
         "-F",
         `number=${number}`,
       ],
@@ -360,8 +384,9 @@ export class AzureDevOpsCli implements PrProvider {
       string,
     ];
     // The URL has the names encoded; the API wants them as they are ("Meu%20Projeto" → "Meu Projeto").
-    const project = decodeURIComponent(encodedProject);
-    const repo = decodeURIComponent(encodedRepo);
+    // A %40 decodes to @, which az would take for a file: the names are checked after decoding.
+    const project = urlName("projeto", decodeURIComponent(encodedProject));
+    const repo = urlName("repositório", decodeURIComponent(encodedRepo));
     const { value } = await cliJson<{ value: AzThread[] }>(
       "az",
       [
