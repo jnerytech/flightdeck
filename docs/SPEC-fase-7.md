@@ -14,9 +14,15 @@ Pré-requisito: Fase 6 fechada (tag `fase-6`). A fase tem duas trilhas independe
 | Trilha | Conteúdo | Onde |
 | --- | --- | --- |
 | A, operação do host | versões e compatibilidade, atualização, retenção, backup | checkout principal, branch `fase-2-v2` |
-| B, limites e regras | cota do plano por host, uso, "permitir sempre" | worktree próprio, branch `fase-7b` criada a partir da tag `fase-6` |
+| B, limites e regras | cota do plano por host, uso, "permitir sempre" | worktree próprio, branch `fase-7b` criada a partir do commit desta spec (depois da tag `fase-6`) |
 
 A trilha B é rebaseada sobre o fim da trilha A antes de fechar. A tag `fase-7` sai com as duas.
+
+**Divisão do que é compartilhado**
+
+- `config.ts` e `packages/protocol/src/index.ts`: cada trilha acrescenta só as próprias chaves e itens.
+- Migrações: só a trilha B acrescenta uma (`usage_daily`). Se a trilha A precisar de uma, avisa o orquestrador antes.
+- `features` do `host.info`: a trilha A cria o campo, com `central`, `workflows` e `maintenance`. A trilha B acrescenta `quota` e `rules` no rebase final sobre a trilha A, não antes.
 
 **Dentro da Fase 7**
 
@@ -153,7 +159,7 @@ flightdeckd update --from <caminho do binário novo> [--allow-downgrade] [--conf
 - **Origem:** o `rate_limit_event` das sessões gerenciadas. Todas as sessões de um host usam o mesmo login, então a cota é do host.
   - O runtime normaliza o evento num evento interno de cota.
   - O daemon guarda a última leitura de cada janela (`five_hour`, `seven_day` e as outras que vierem): utilização (fração), `resetsAt`, `status` e quando foi lida.
-- **Sessões do terminal:** os hooks não trazem cota. A leitura vale para o host todo, e o app mostra a idade dela ("lida há 12 min").
+- **Sessões do terminal:** os hooks não trazem cota. A leitura vale para o host todo, e o app mostra a idade dela ("lida há 12 min"). Quem usa só o terminal vê barras vazias ou antigas até rodar um card ou uma sessão gerenciada; o README diz isso. O `rate_limits` do SDK só existe no relatório de uso (`SDKUsageReport`, experimental) e fica fora desta fase.
 - **Leitura vencida:** depois do `resetsAt`, a leitura daquela janela deixa de valer até chegar uma nova.
 - **Fila por cota:** config `{ "quota": { "pauseAt": 0.9 } }` (`null` desliga). Enquanto alguma janela válida tem utilização ≥ `pauseAt` ou `status` `rejected`:
   - um card novo entra na fila com o motivo `quota` e sai sozinho quando a janela reinicia;
@@ -177,7 +183,7 @@ flightdeckd update --from <caminho do binário novo> [--allow-downgrade] [--conf
 
 - **Pedido:** passa a levar as sugestões. Na sessão gerenciada, vêm de `suggestions` no `permission.requested`; na do terminal, de `permission_suggestions` no `external.permission`. Mesmo formato do `PermissionUpdate` do SDK, validado com zod.
 - **Resposta:** o `permission.respond` ganha `updatedPermissions?`. O daemon aceita cada item só se for:
-  1. **uma das sugestões do próprio pedido**, igual campo a campo. Duas exceções são recusadas sempre: destino `userSettings` e `setMode` para `bypassPermissions` ou `auto`;
+  1. **uma das sugestões do próprio pedido**, igual campo a campo, e só com destino `session` ou `localSettings`. Os destinos `userSettings`, `projectSettings` (o `.claude/settings.json` versionado) e `cliArg` são recusados, assim como `setMode` para `bypassPermissions` ou `auto`;
   2. **ou uma regra do projeto**: `{type: "addRules", behavior: "allow", destination: "localSettings", rules: [{toolName, ruleContent?}]}`, com `toolName` igual ao da ferramenta do pedido e `ruleContent` não vazio, sem quebra de linha, com até 500 caracteres.
 
   Qualquer outra coisa recebe o erro `invalid_permission_update`, nada é aplicado e o pedido continua aberto.
@@ -187,6 +193,7 @@ flightdeckd update --from <caminho do binário novo> [--allow-downgrade] [--conf
 - **Sessões de card:** rodam numa worktree, que tem o próprio `.claude`.
   - Ao aceitar uma regra do projeto para uma sessão de card, o daemon também a grava no `.claude/settings.local.json` da raiz do repositório. A gravação mescla em `permissions.allow`, sem duplicar e sem tocar nas outras chaves.
   - Toda worktree nova recebe uma cópia do `settings.local.json` da raiz.
+  - O daemon garante `.claude/settings.local.json` no `.git/info/exclude` do repositório. É o diretório git comum, então vale para todas as worktrees, e o arquivo nunca entra no diff do card nem num commit. Não dá para contar com o ignore global que o Claude Code configura, porque ele é de cada máquina.
 - **Regras do projeto:**
   - `rules.list` lê `permissions.allow` do `.claude/settings.local.json` da raiz de um projeto cadastrado.
   - `rules.remove` remove uma regra, com `confirm: true`, preservando o resto do arquivo.
@@ -243,9 +250,9 @@ Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência.
 | B | `cota` | `rate_limit_event` com e sem `unifiedWindows` vira as janelas do host; leitura vencida no `resetsAt` deixa de valer; `quota.updated` chega a quem fez `quota.watch` |
 | B | `cota-fila` | acima do `pauseAt`, card novo fica na fila com motivo `quota` e sai no reinício; workflow espera antes do próximo turno de agente; sessão manual não é bloqueada; `pauseAt: null` desliga |
 | B | `uso` | `usage_daily` soma por dia (fuso injetado) e projeto, com custo pela diferença do total da sessão; `usage.summary` responde |
-| B | `permitir-sempre` | sugestões chegam no pedido gerenciado; resposta com sugestão ou regra válida é aplicada; `userSettings`, `bypassPermissions` e regra de outra ferramenta dão `invalid_permission_update` e o pedido segue aberto |
+| B | `permitir-sempre` | sugestões chegam no pedido gerenciado; resposta com sugestão ou regra válida é aplicada; `userSettings`, `projectSettings`, `cliArg`, `bypassPermissions`, `auto` e regra de outra ferramenta dão `invalid_permission_update` e o pedido segue aberto |
 | B | `permitir-externo` | `permission_suggestions` chegam no `external.permission`; a decisão do hook leva `updatedPermissions` validado |
-| B | `regras-projeto` | regra aceita numa sessão de card também vai para o `settings.local.json` da raiz sem duplicar nem perder chaves; worktree nova recebe a cópia; `rules.list` e `rules.remove` com confirmação |
+| B | `regras-projeto` | regra aceita numa sessão de card também vai para o `settings.local.json` da raiz sem duplicar nem perder chaves; worktree nova recebe a cópia; `.claude/settings.local.json` está no `.git/info/exclude` e a cópia nunca aparece no diff do card; `rules.list` e `rules.remove` com confirmação |
 | B | `cota-ui` | barras por host com porcentagem, reinício e idade; vermelho a partir de `pauseAt`; notificação uma vez por janela; painel de uso; card "aguardando cota" |
 | B | `permitir-ui` | "Permitir nesta sessão" só com sugestão de sessão; "Sempre neste projeto" edita a regra (Bash com o comando exato por padrão); seção Regras remove com confirmação |
 
