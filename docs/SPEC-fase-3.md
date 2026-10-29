@@ -140,5 +140,3 @@ Começa vermelho, roda com as travas ativas e cria a pasta temporária com dois 
 - [ ] `bun run build:daemon`, `bun run build:desktop` e `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` saem com código 0 (o último no Windows nativo).
 - [ ] README explica o que é indexado, como excluir pastas, como reconstruir o índice e como mudar o atalho global.
 - [ ] Divergências registradas em `docs/DECISIONS.md`, `git status` limpo e a tag `fase-3` criada.
-
-**Condição do /goal**
