@@ -179,6 +179,92 @@ confirma.
 Compila o alvo, copia com `scp` para `<path>.new`, troca o binário, reinicia com
 `systemctl --user restart flightdeckd` via `ssh` e confere `systemctl --user is-active`.
 
+Depois do primeiro `flightdeckd update` (abaixo), o serviço passa a rodar
+`~/.flightdeck/bin/flightdeckd`: ajuste o `path` do `deploy.hosts.json` para esse caminho.
+
+## Operação do host
+
+### Versões e compatibilidade
+
+- **Uma versão só:** o app, o daemon e o protocolo saem com a mesma versão (`0.7.0` nesta fase).
+  `flightdeckd --version` imprime `flightdeckd 0.7.0 (protocolo 1)`.
+- **No app:** a página do host mostra a versão do daemon, a do app e a do `claude`. Um daemon de
+  outra versão ganha o selo **≠** ("versão diferente") na barra lateral: funciona, mas atualize
+  quando puder.
+- **Protocolo:** o app manda a versão de protocolo dele no `hello`. Se o daemon não a aceita, o
+  host fica **incompatível: atualize o daemon**, com o comando na página do host. Ele não tenta
+  reconectar e sai das listas (sessões, busca) até ser atualizado e reconectado.
+- **Recursos:** o `host.info` anuncia o que o daemon tem (`central`, `workflows`,
+  `maintenance`…), e o app esconde o que o host não anuncia. Um daemon anterior à Fase 7 não
+  anuncia nada e continua aparecendo como antes, sem a seção Manutenção.
+
+### Atualizar (`flightdeckd update`)
+
+```sh
+flightdeckd update --from <binário novo> [--allow-downgrade] [--config <arquivo>]
+```
+
+O `update` instala sempre em `~/.flightdeck/bin/flightdeckd` (`flightdeckd.exe` no Windows):
+
+1. Roda `<binário novo> --version` e recusa o que não responder como um `flightdeckd`. Uma versão
+   menor que a de quem roda o `update` só passa com `--allow-downgrade`.
+2. Com o daemon rodando fora do serviço, recusa: "pare o daemon e rode de novo". Com serviço, para
+   o serviço e espera o daemon soltar o `dataDir`.
+3. Guarda o binário atual como `flightdeckd.old` (`.exe.old`) e põe o novo no lugar.
+4. Se o serviço apontava para outro caminho (por exemplo `dist/` ou `~/.local/bin`), reinstala o
+   serviço no caminho estável. Os hooks do Claude Code são reescritos só se já estavam
+   instalados e apontam para outro lugar. A saída diz o que foi reescrito.
+5. Sobe o serviço e espera `GET /health` responder por até 30 s. Se o daemon novo não sobe, o
+   `.old` volta, o serviço sobe de novo e o comando sai com 1. O `.old` de um update bem
+   sucedido é apagado no próximo.
+
+Sem serviço instalado, o `update` só instala o binário e diz como subir. Use o binário instalado
+para rodar o `update` (ele compara a versão nova com a dele); na primeira vez, rode o próprio
+binário novo.
+
+- **Windows:** `bun run build:daemon`, depois
+  `~\.flightdeck\bin\flightdeckd.exe update --from dist\flightdeckd-windows-x64.exe` (na primeira
+  vez, `dist\flightdeckd-windows-x64.exe update --from dist\flightdeckd-windows-x64.exe`).
+- **WSL:** copie o binário Linux para dentro da distro e rode o `update` lá:
+  `cp /mnt/<drive>/<repo>/dist/flightdeckd-linux-x64 ~/` e
+  `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-x64`.
+- **Linux remoto (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` e, no host,
+  `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
+
+### Retenção
+
+```json
+{ "retention": { "eventsDays": 90, "externalSessionsDays": 30 } }
+```
+
+- **Apaga:** eventos e pedidos de permissão de sessões gerenciadas encerradas há mais de
+  `eventsDays` dias, e sessões externas encerradas há mais de `externalSessionsDays` dias. `0`
+  apaga assim que a sessão encerra.
+- **Nunca apaga:** sessões vivas, sessões fixadas, sessões de cards fora de Concluído (inclusive
+  as etapas de workflow desses cards), os cards, as execuções de workflow e os nomes e
+  marcações das sessões. O índice do histórico segue os transcripts e fica de fora.
+- **Quando:** no boot do daemon e a cada 24 h. À mão, `flightdeckd db prune [--dry-run]` mostra
+  a contagem por tabela; no app, a seção **Manutenção** da página do host tem **Simular** e
+  **Limpar** (que pede confirmação).
+- Uma conversa limpa aparece como "conversa removida pela retenção".
+
+### Backup e restauração
+
+```json
+{ "backup": { "enabled": true, "keep": 7 } }
+```
+
+- **Automático:** uma vez por dia, `VACUUM INTO <dataDir>/backups/flightdeck-<AAAAMMDD-HHmmss>.db`
+  (horário UTC), mantendo os últimos `keep`. Funciona com o daemon rodando.
+- **À mão:** `flightdeckd backup [--out <arquivo>]`, ou **Fazer backup agora** na seção
+  Manutenção. Os arquivos ficam só para o dono (0600 fora do Windows).
+- **Restaurar:** com o daemon parado (`systemctl --user stop flightdeckd`, ou
+  `schtasks /End /TN Flightdeck\flightdeckd` no Windows), rode `flightdeckd restore <arquivo>` e
+  suba de novo. O comando recusa com o daemon rodando, confere a integridade e se o backup não
+  veio de uma versão mais nova, e guarda o banco atual em `flightdeck.db.before-restore`. As
+  migrações que faltarem rodam no boot seguinte.
+- **A `config.json` fica fora do backup**, porque tem os tokens: guarde uma cópia à parte.
+
 ## App desktop: frota e Windows
 
 - **Precisa de você:** no topo da barra lateral, todos os pedidos de permissão abertos em todos os
@@ -517,6 +603,7 @@ Abre o `claude` de verdade no mesmo terminal, com os mesmos argumentos e o mesmo
 - **Sem o daemon:** avisa e abre o `claude` assim mesmo, sem canal.
 - **Com `-p` ou `--print`:** abre o `claude` normal, sem canal e sem aviso. O modo print ignora o canal de desenvolvimento.
 - **Research preview:** o canal é um recurso de pré-visualização do Claude Code. Cada abertura mostra um aviso de canal de desenvolvimento, que precisa ser aceito.
+- **Aviso conhecido:** na abertura, o Claude Code mostra `server:flightdeck · no MCP server configured with that name`, mesmo com o canal funcionando. O aviso é avaliado antes dos servidores do `--mcp-config` e pode ser ignorado.
 
 | | `claude` puro | `flightdeckd claude` |
 | --- | --- | --- |

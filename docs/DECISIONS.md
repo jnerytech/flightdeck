@@ -743,3 +743,60 @@ O que a spec da Fase 6 (Workflows) deixou aberto, ou o que mudou na implementaç
   - Restaurar falsos em ordem inversa.
   - Esperar a remoção da worktree depois do merge.
   - No paralelo, mandar as saídas a um gate, e não a um agent que repetiria `[tool]`.
+
+# Decisões e divergências da Fase 7, trilha A
+
+O que a spec da Fase 7 (operação do host) deixou aberto, ou o que mudou na implementação.
+
+## Versões
+
+- **`Cargo.toml` fica em `0.1.0`:** a versão do crate Rust não está entre as quatro da spec (protocolo, daemon, desktop e `tauri.conf.json`). O `tauri.conf.json` lê a versão do `package.json` do desktop (`"version": "../package.json"`), e o `cargo check` passa.
+- **Versão de referência do `update`:** é a do binário que roda o comando (`DAEMON_VERSION`), não a do binário instalado. O README diz para rodar o `update` com o binário instalado e, na primeira vez, com o próprio binário novo.
+
+## Protocolo
+
+- **Ordem no `hello`:** o token é conferido antes da versão. Token errado continua fechando a conexão como `unauthorized`. Versão fora do intervalo recebe o ack `protocol_incompatible`, e a conexão fica aberta sem autenticar: outro `hello` pode vir, e qualquer outro comando a fecha como `unauthorized` (o `smoke:ops` confere).
+- **`features` ausente:** daemons anteriores à Fase 7 não mandam o campo. O app trata ausência como legado: mostra o que já existia (hooks da central, Projetos) e esconde o que nasceu na Fase 7 (Manutenção). Com o campo presente, só aparece o que está nele.
+- **Host incompatível no app:** o status `incompatible` não tenta reconectar sozinho. O botão Reconectar da página do host tenta de novo.
+- **Opções do servidor para testes:** `protocolRange` e `features` em `startServer` existem para os testes simularem daemons de outros intervalos e recursos.
+
+## Retenção
+
+- **Sem migração:** a última limpeza fica em `<dataDir>/maintenance.json`. A única migração da fase continua sendo a da trilha B.
+- **Etapas de workflow:** a regra "sessões de cards fora de Concluído" também protege as sessões das etapas de workflow desses cards (`step_runs` → `workflow_runs` → card).
+- **Conversa removida no app:** detectada no cliente, sem campo novo no protocolo. Um `session.subscribe` desde o começo que replica 0 eventos de uma sessão com `lastSeq` > 0 marca a sessão. A mensagem aparece na `SessionView`, que o detalhe do card usa.
+- **Boot com `eventsDays: 0`:** a limpeza do boot apaga de novo a conversa de um banco restaurado. O `smoke:ops` confere o conteúdo restaurado no arquivo, antes de subir o daemon, e depois só que a sessão existe.
+
+## Backup
+
+- **Nome em UTC:** `flightdeck-AAAAMMDD-HHmmss.db` usa UTC, para os nomes seguirem a ordem do tempo em qualquer fuso.
+- **`--out`:** um backup com destino explícito não entra na rotação de `keep`.
+- **Backup do boot:** só é feito se o último tiver 24 h ou mais, para reinícios seguidos não gerarem cópias.
+
+## Atualização
+
+- **`.old` em todos os sistemas:** a spec pede rename para `.old` no Windows e cópia para um temporário com rename por cima nos outros. Aqui todos fazem as duas coisas: o atual vira `.old`, o novo é copiado para `.new` e renomeado por cima. Assim o Linux também tem para onde voltar.
+- **Espera pelo lock:** depois de parar o serviço, o `update` espera até 10 s o daemon soltar o lock do `dataDir`. Se ele não soltar, recusa sem trocar nada. Isso protege o caso em que `schtasks /End` encerra o `conhost.exe` e não o daemon, que não foi verificado com uma tarefa real.
+- **Caminho do serviço:** lido de volta do sistema, pelo `ExecStart` de `systemctl --user cat flightdeckd` e pelo `<Arguments>` de `schtasks /Query /XML` (depois de `--headless`). Pelo pipe, o `schtasks` escreve na página de código ANSI. Um caminho com acentos pode não bater, e o serviço é reinstalado sem necessidade, o que não causa dano.
+- **Hooks:** reinstalados quando o `hooks.status` para o caminho estável dá `outdated`, isto é, há hooks do Flightdeck que diferem dos que seriam escritos. Ausentes continuam ausentes.
+- **Falha sem versão anterior:** se não havia binário no caminho estável, não há `.old`. O comando sai com 1, diz isso e deixa o serviço parado.
+- **`/health`:** o endereço vem do `bind` e da `port` da config (`0.0.0.0` e `::` viram `127.0.0.1`), como no `flightdeckd mcp`.
+- **`bun run deploy`:** continua trocando o `path` do `deploy.hosts.json`. O README pede para apontá-lo para `~/.flightdeck/bin/flightdeckd` depois do primeiro `update`.
+
+## Travas novas
+
+- **Serviço real:** `osServiceContext` executa por um `exec` vigiado. Com `FLIGHTDECK_SERVICE_GUARD` definido, `systemctl`, `schtasks` e `loginctl` (com caminho ou `.exe`) não rodam: a linha vai para o arquivo da variável, e o resultado é o código 99. O preload define a variável para a suíte, e o `afterAll` reprova se o arquivo existir. O `smoke:ops` faz o mesmo.
+- **Binário real:** o preload e o `smoke:ops` tiram um retrato de `~/.flightdeck/bin/flightdeckd(.exe)` e dos seus `.old` e `.new` no home real, antes da trava de home, e reprovam se algo mudar.
+- **Escopos:** a trava do serviço tem o próprio escopo (`trava-servico`). A do binário veio no ciclo do `update`, que é quem mexe no binário.
+
+## TDD e testes
+
+- **Ramos revelados pela cobertura (regra 7):**
+  - `db` com ação desconhecida;
+  - o `healthy` do CLI do `update`, que confere `GET /health` no endereço da config;
+  - o ramo MB do `formatBytes`.
+- **Correções de teste antes do `feat` (regra 8):**
+  - o ack do daemon falso do `versoes-ui` não devolve valor, como pede o tipo do websocket do Bun;
+  - no `manutencao-ui`, a espera pela limpeza real aguarda a mensagem da simulação sumir, porque "seriam apagados: …" também contém "apagados: …".
+- **`central-ui`:** o teste de ordem esperava a sessão gerenciada ficar ociosa antes de seguir. Sob a carga da suíte inteira, a ordem às vezes falhava, e isso foi corrigido num `test(central-ui)`.
+- **`smoke:ops` sem vermelho de recurso:** o script foi escrito depois das áreas que ele cobre. As primeiras execuções falharam com saída controlada, mas por expectativas do próprio script: um comando numa conexão incompatível fecha como `unauthorized` em vez de receber ack, e a limpeza do boot apaga de novo o banco restaurado. Nenhuma falha veio de recurso faltando. O script foi commitado verde no `test(smoke-ops)`.
