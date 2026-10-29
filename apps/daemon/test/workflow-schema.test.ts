@@ -125,7 +125,9 @@ describe("workflow-schema", () => {
       ),
     ).toEqual(["steps.0 (a): referência desconhecida: {{steps.b.output}}"]);
     expect(
-      errorsOf("  - id: a\n    agent: { prompt: x }\n  - id: b\n    gate: { message: '{{steps.a.outputs}}' }"),
+      errorsOf(
+        "  - id: a\n    agent: { prompt: x }\n  - id: b\n    gate: { message: '{{steps.a.outputs}}' }",
+      ),
     ).toEqual(["steps.1 (b): referência desconhecida: {{steps.a.outputs}}"]);
     expect(
       errorsOf(
@@ -163,13 +165,17 @@ describe("workflow-schema", () => {
   });
 
   test("tipos errados e valores fora do intervalo são erros", () => {
-    expect(errorsOf("  - id: a\n    loop: { max: 0, until: { check: t }, do: { check: x } }")).toEqual([
-      "steps.0.loop.max: precisa ser um inteiro maior que zero",
-    ]);
+    expect(
+      errorsOf("  - id: a\n    loop: { max: 0, until: { check: t }, do: { check: x } }"),
+    ).toEqual(["steps.0.loop.max: precisa ser um inteiro maior que zero"]);
     expect(parseWorkflow("budget: { maxTurns: -1 }\nsteps: []").errors).toEqual([
       "budget.maxTurns: precisa ser maior que zero",
     ]);
     expect(errorsOf("  - id: a\n    check: ''")).toEqual(["steps.0.check: não pode ser vazio"]);
     expect(parseWorkflow("- a\n- b\n").errors).toEqual(["(raiz): precisa ser um objeto"]);
+    expect(errorsOf("  - id: a\n    check: 3")).toEqual(["steps.0.check: tipo inválido"]);
+    expect(errorsOf("  - id: a\n    agent: { prompt: x, permissionMode: nope }")).toEqual([
+      "steps.0.agent.permissionMode: valor inválido",
+    ]);
   });
 });
