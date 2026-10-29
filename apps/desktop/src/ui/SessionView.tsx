@@ -1,3 +1,4 @@
+import type { PermissionUpdate } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { ApprovalCard } from "./ApprovalCard.tsx";
@@ -10,7 +11,12 @@ export interface SessionActions {
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
-  respond(requestId: string, decision: "allow" | "deny", message?: string): Promise<void>;
+  respond(
+    requestId: string,
+    decision: "allow" | "deny",
+    message?: string,
+    updatedPermissions?: PermissionUpdate[],
+  ): Promise<void>;
 }
 
 function TimelineItem(props: { item: ChatItem; session: SessionState; actions: SessionActions }) {

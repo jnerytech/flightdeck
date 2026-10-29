@@ -2,6 +2,7 @@ import type {
   AssistantBlock,
   EventEnvelope,
   PermissionResolution,
+  PermissionUpdate,
   SessionStatus,
   ToolInput,
 } from "@flightdeck/protocol";
@@ -15,6 +16,8 @@ export type ChatItem =
       requestId: string;
       toolName: string;
       input: ToolInput;
+      /** What the CLI offers to stop asking (phase 7). */
+      suggestions?: PermissionUpdate[];
       resolution?: { decision: PermissionResolution; message?: string };
     }
   | {
@@ -96,6 +99,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
           requestId: event.requestId,
           toolName: event.toolName,
           input: event.input,
+          ...(event.suggestions ? { suggestions: event.suggestions } : {}),
         }),
         pending: [...state.pending, event.requestId],
       };

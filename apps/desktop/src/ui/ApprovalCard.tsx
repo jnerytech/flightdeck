@@ -1,6 +1,8 @@
+import type { PermissionUpdate } from "@flightdeck/protocol";
 import { useState } from "react";
 import { toolDiff } from "../lib/diff.ts";
 import type { ChatItem } from "../lib/session-state.ts";
+import { AlwaysAllow } from "./AlwaysAllow.tsx";
 
 type PermissionItem = Extract<ChatItem, { kind: "permission" }>;
 
@@ -14,7 +16,12 @@ const RESOLUTION_LABELS = {
 /** Inline approval card: tool, formatted input (or diff for edits), allow / deny with reason. */
 export function ApprovalCard(props: {
   item: PermissionItem;
-  onRespond(requestId: string, decision: "allow" | "deny", message?: string): void;
+  onRespond(
+    requestId: string,
+    decision: "allow" | "deny",
+    message?: string,
+    updatedPermissions?: PermissionUpdate[],
+  ): void;
 }) {
   const { item } = props;
   const [reason, setReason] = useState("");
@@ -72,6 +79,12 @@ export function ApprovalCard(props: {
           >
             Negar
           </button>
+          <AlwaysAllow
+            toolName={item.toolName}
+            input={item.input}
+            suggestions={item.suggestions}
+            onAllow={(updates) => props.onRespond(item.requestId, "allow", undefined, updates)}
+          />
         </div>
       )}
     </div>

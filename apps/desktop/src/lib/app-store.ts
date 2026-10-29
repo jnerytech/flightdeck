@@ -15,6 +15,7 @@ import type {
   HistorySessionSummary,
   HostInfoResult,
   PendingPermission,
+  PermissionUpdate,
   QuotaState,
   SessionEventOf,
   SessionMeta,
@@ -711,9 +712,18 @@ export class AppStore {
   }
 
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
-  async respondTo(hostId: string, requestId: string, decision: "allow" | "deny"): Promise<void> {
+  async respondTo(
+    hostId: string,
+    requestId: string,
+    decision: "allow" | "deny",
+    updatedPermissions?: PermissionUpdate[],
+  ): Promise<void> {
     try {
-      await this.connections.get(hostId)?.request("permission.respond", { requestId, decision });
+      await this.connections.get(hostId)?.request("permission.respond", {
+        requestId,
+        decision,
+        ...(updatedPermissions ? { updatedPermissions } : {}),
+      });
     } catch (error) {
       this.update({ error: describeError(error) });
     }
@@ -736,9 +746,19 @@ export class AppStore {
     });
   }
 
-  respond(requestId: string, decision: "allow" | "deny", message?: string): Promise<void> {
+  respond(
+    requestId: string,
+    decision: "allow" | "deny",
+    message?: string,
+    updatedPermissions?: PermissionUpdate[],
+  ): Promise<void> {
     return this.onSelected((conn) =>
-      conn.request("permission.respond", { requestId, decision, ...(message ? { message } : {}) }),
+      conn.request("permission.respond", {
+        requestId,
+        decision,
+        ...(message ? { message } : {}),
+        ...(updatedPermissions ? { updatedPermissions } : {}),
+      }),
     );
   }
 

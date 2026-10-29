@@ -1,6 +1,7 @@
 import type { Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import type { AppStore } from "../lib/app-store.ts";
+import { RulesSection } from "./RulesSection.tsx";
 
 interface Draft {
   path: string;
@@ -141,6 +142,7 @@ export function ProjectsPage(props: {
           {editing ? "Salvar projeto" : "Cadastrar projeto"}
         </button>
       </div>
+      {editing && <RulesSection key={editing} store={store} hostId={hostId} projectId={editing} />}
       <h3>Limite do host</h3>
       <div className="row">
         <input

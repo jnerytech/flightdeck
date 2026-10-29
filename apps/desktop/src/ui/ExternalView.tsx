@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
+import { AlwaysAllow } from "./AlwaysAllow.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
 const STATES = {
@@ -64,6 +65,12 @@ export function ExternalView(props: {
           >
             {`Negar ${request.toolName}`}
           </button>
+          <AlwaysAllow
+            toolName={request.toolName}
+            input={request.input}
+            suggestions={request.suggestions}
+            onAllow={(updates) => void store.respondTo(hostId, request.requestId, "allow", updates)}
+          />
         </div>
       ))}
       {session?.controllable && (
