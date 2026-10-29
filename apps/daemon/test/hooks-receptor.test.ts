@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { networkInterfaces } from "node:os";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
-import { ExternalSessions } from "../src/central/external.ts";
+import { ExternalSessions, type ExternalStatus } from "../src/central/external.ts";
 import { type Receptor, startReceptor } from "../src/central/receptor.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -76,7 +76,7 @@ describe("hooks-receptor", () => {
 
   test("cada evento da tabela muda o estado da sessão externa, com resposta vazia", async () => {
     const { receptor, external } = setup();
-    const steps: Array<[string, Record<string, unknown>, string]> = [
+    const steps: Array<[string, Record<string, unknown>, ExternalStatus]> = [
       ["SessionStart", { cwd: "/p", transcript_path: "/p/s1.jsonl", source: "startup" }, "idle"],
       ["UserPromptSubmit", { prompt: "oi" }, "running"],
       ["PermissionRequest", { tool_name: "Write", tool_input: {} }, "awaiting_permission"],
