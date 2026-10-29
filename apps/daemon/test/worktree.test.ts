@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { addWorktree } from "../src/board/worktree.ts";
 import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
@@ -54,11 +54,16 @@ describe("worktree", () => {
     expect(existsSync(join(expectedPath, "README.md"))).toBe(true);
     expect(git(expectedPath, "rev-parse", "--abbrev-ref", "HEAD")).toBe("fd/acao-corrigir-o-login");
     expect(git(expectedPath, "rev-parse", "HEAD")).toBe(git(repo, "rev-parse", "main"));
-    // `.flightdeck/` is excluded locally; the project's .gitignore is not touched.
+    // Only the worktrees are excluded locally (phase 5 versions .flightdeck/workflows); the
+    // project's .gitignore is not touched.
     const exclude = readFileSync(join(repo, ".git", "info", "exclude"), "utf8");
-    expect(exclude.split(/\r?\n/)).toContain(".flightdeck/");
+    expect(exclude.split(/\r?\n/)).toContain(".flightdeck/worktrees/");
+    expect(exclude.split(/\r?\n/)).not.toContain(".flightdeck/");
     expect(readFileSync(join(repo, ".gitignore"), "utf8")).toBe(gitignore);
     expect(git(repo, "status", "--porcelain")).toBe("");
+    mkdirSync(join(repo, ".flightdeck", "workflows"));
+    writeFileSync(join(repo, ".flightdeck", "workflows", "fluxo.yaml"), "etapas: []\n");
+    expect(git(repo, "status", "--porcelain", "-uall")).toBe("?? .flightdeck/workflows/fluxo.yaml");
     // The session runs in the worktree with the description plus the project template.
     const session = manager.get(started?.sessionId ?? "");
     expect(session.cwd).toBe(expectedPath);
@@ -100,7 +105,7 @@ describe("worktree", () => {
     expect(board.getCard(b.id).branch).toBe("fd/mesmo-titulo-2");
     expect(board.getCard(c.id).branch).toBe("fd/card");
     const exclude = readFileSync(join(repo, ".git", "info", "exclude"), "utf8");
-    expect(exclude.split(/\r?\n/).filter((l) => l === ".flightdeck/")).toHaveLength(1);
+    expect(exclude.split(/\r?\n/).filter((l) => l === ".flightdeck/worktrees/")).toHaveLength(1);
   });
 
   test("card ou projeto inexistente é not_found", async () => {
