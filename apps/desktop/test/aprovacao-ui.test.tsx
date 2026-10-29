@@ -176,6 +176,35 @@ describe("aprovacao-ui", () => {
     expect(document.activeElement).not.toBe(focused);
   });
 
+  test("Cancelar fecha o motivo e devolve Aprovar e Negar, sem responder", async () => {
+    const calls: unknown[][] = [];
+    render(
+      <ApprovalCard
+        request={{
+          requestId: "r4",
+          toolName: "Bash",
+          input: { command: "ls" },
+          cwd: null,
+          createdAt: AT,
+        }}
+        t={t}
+        nowMs={NOW}
+        onRespond={(...args) => calls.push(args)}
+      />,
+    );
+    const card = group("Bash");
+    await act(async () => {
+      fireEvent.click(inGroup(card, "Negar") as HTMLElement);
+    });
+    expect(screen.queryByLabelText("Motivo (opcional)")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(inGroup(card, "Cancelar") as HTMLElement);
+    });
+    expect(screen.queryByLabelText("Motivo (opcional)")).toBeNull();
+    expect(inGroup(card, "Aprovar")).not.toBeNull();
+    expect(calls).toEqual([]);
+  });
+
   test("ferramenta MCP em chave e valor, nunca JSON cru; pedido respondido diz como terminou", () => {
     render(
       <>
