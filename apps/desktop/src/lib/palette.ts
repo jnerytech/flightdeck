@@ -14,6 +14,7 @@ export type PaletteTarget =
   | { kind: "new-session"; hostId: string }
   | { kind: "terminal"; hostId: string; target: TerminalTarget }
   | { kind: "settings" }
+  | { kind: "toggle-theme" }
   | { kind: "costs" };
 
 export interface PaletteAction {
@@ -169,6 +170,7 @@ export function paletteSections(
         hostId: host.id,
       }),
     ),
+    action("theme", "Alternar tema", { kind: "toggle-theme" }),
     ...(options.costs ? [action("costs", "Ir para Custos", { kind: "costs" })] : []),
     action("settings", "Ir para Configurações", { kind: "settings" }),
   ];

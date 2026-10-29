@@ -80,6 +80,8 @@ export function createWebPlatform(
     onTrayAction: () => () => {},
     autostart: { supported: false, isEnabled: async () => false, setEnabled: noop },
     setCloseToTray: noop,
+    // A page's chrome belongs to the browser.
+    setWindowTheme: noop,
     async copyText(text) {
       const clipboard = win.navigator?.clipboard;
       if (!clipboard) throw new Error("área de transferência indisponível");

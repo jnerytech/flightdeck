@@ -5,6 +5,7 @@ import type {
   AppUpdateState,
   Settings as SettingsState,
 } from "../lib/app-store.ts";
+import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
 
@@ -22,6 +23,9 @@ export function Settings(props: {
   appUpdate: AppUpdateState;
   onCheckUpdate(): void;
   onNotifyUpdates(enabled: boolean): void;
+  /** Light, dark or the system's (phase 10). */
+  theme: ThemeMode;
+  onTheme(mode: ThemeMode): void;
 }) {
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
@@ -29,6 +33,15 @@ export function Settings(props: {
   return (
     <section className="card form">
       <h2>Configurações</h2>
+      <select
+        aria-label="Tema"
+        value={props.theme}
+        onChange={(e) => props.onTheme(e.target.value as ThemeMode)}
+      >
+        <option value="system">Sistema</option>
+        <option value="light">Claro</option>
+        <option value="dark">Escuro</option>
+      </select>
       <label className="check">
         <input
           type="checkbox"

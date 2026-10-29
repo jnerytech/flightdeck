@@ -46,6 +46,7 @@ import {
   type TerminalTarget,
   terminalLaunch,
 } from "./terminal.ts";
+import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { hasFeature } from "./version.ts";
 
@@ -369,6 +370,7 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
+    this.theme = new ThemeController(platform);
     this.state = {
       hosts: [],
       sessions: {},
@@ -402,6 +404,9 @@ export class AppStore {
     };
   }
 
+  /** Light, dark or the system's (phase 10). */
+  readonly theme: ThemeController;
+
   getState = (): AppState => this.state;
 
   /** Milliseconds now (injected in tests). */
@@ -428,6 +433,7 @@ export class AppStore {
   async init(): Promise<void> {
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
+    this.theme.start();
     this.update({ hosts: [], sessions: {}, selected: null, cards: {}, runs: {}, quota: {} });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -953,6 +959,7 @@ export class AppStore {
     this.offTrayAction = null;
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
+    this.theme.stop();
   }
 
   /** Asks the updater for a newer app version. */

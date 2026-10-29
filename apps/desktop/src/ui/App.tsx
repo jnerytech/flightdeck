@@ -27,6 +27,7 @@ import { WorkflowsPage } from "./WorkflowsPage.tsx";
 
 export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
+  const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const [addingHost, setAddingHost] = useState(false);
   const [hostError, setHostError] = useState<string | null>(null);
   /** Request clicked in the "Precisa de você" queue: the session view scrolls to its card. */
@@ -181,6 +182,10 @@ export function App({ store }: { store: AppStore }) {
       void store.openInTerminal(target.hostId, target.target);
       return;
     }
+    if (target.kind === "toggle-theme") {
+      store.theme.toggle();
+      return;
+    }
     closeBoard();
     setReading(null);
     setHistoryHost(null);
@@ -254,6 +259,8 @@ export function App({ store }: { store: AppStore }) {
         appUpdate={state.appUpdate}
         onCheckUpdate={() => void store.checkAppUpdate()}
         onNotifyUpdates={(enabled) => store.setNotifyUpdates(enabled)}
+        theme={themeMode}
+        onTheme={(mode) => store.theme.setMode(mode)}
       />
     );
   } else if (addingHost || state.hosts.length === 0) {

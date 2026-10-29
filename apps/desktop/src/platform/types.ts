@@ -75,6 +75,8 @@ export interface Platform {
   copyText(text: string): Promise<void>;
   /** Saves `text` through the system's save dialog; `false` when the user cancels. */
   saveFile(name: string, text: string): Promise<boolean>;
+  /** The window's own theme (title bar), `null` to follow the system (phase 10). */
+  setWindowTheme(theme: "light" | "dark" | null): Promise<void>;
   /** Brings the main window to the front (from the tray, minimized or behind others). */
   showMainWindow(): Promise<void>;
   /**
