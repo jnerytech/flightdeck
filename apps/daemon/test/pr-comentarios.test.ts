@@ -238,6 +238,21 @@ describe("pr-comentarios", () => {
       "--slurp",
       "repos/acme/repo/pulls/7/comments?per_page=100",
     ]);
+    // The threads' query: ours from stdin, the names as they are (-f), the number typed (-F).
+    // Checked against the real gh: a stray argument there is "accepts 1 arg(s), received 2".
+    const graphql = gh.calls().find((args) => args.includes("graphql")) ?? [];
+    expect(graphql).toEqual([
+      "api",
+      "graphql",
+      "-F",
+      "query=@-",
+      "-f",
+      "owner=acme",
+      "-f",
+      "name=repo",
+      "-F",
+      "number=7",
+    ]);
   });
 
   test("Azure DevOps: threads pelo az devops invoke, resolvidas pelo status, sem as do sistema nem as apagadas", async () => {
