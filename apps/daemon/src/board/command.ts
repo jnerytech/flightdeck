@@ -8,7 +8,14 @@ export interface CommandResult {
 
 /** Runs a command in `cwd` and collects its exit code and output. */
 export async function runCommand(cmd: string[], cwd: string): Promise<CommandResult> {
-  const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+  // `env` explicitly: without it Bun passes the environment the process started with.
+  const proc = Bun.spawn(cmd, {
+    cwd,
+    env: process.env,
+    stdout: "pipe",
+    stderr: "pipe",
+    stdin: "ignore",
+  });
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
