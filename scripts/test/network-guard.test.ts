@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
+import { activeNetworkGuard, assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 
 /** A target whose fetch only says which URL it got. */
 function target() {
@@ -43,5 +43,9 @@ describe("trava-rede", () => {
       (error: Error) => error.message,
     );
     expect(refused).toStartWith("trava de rede");
+    // This attempt was on purpose: take it off, so the suite does not fail for it.
+    const guard = activeNetworkGuard();
+    expect(guard?.attempts).toContain("https://github.com/");
+    guard?.attempts.splice(guard.attempts.indexOf("https://github.com/"), 1);
   });
 });
