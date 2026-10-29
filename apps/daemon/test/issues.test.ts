@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
@@ -7,6 +7,9 @@ import { azureCoords, githubCoords } from "../src/issues/remote.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
+
+// Real git, worktrees and fake CLIs (a Bun process each): more than the default 5 s.
+setDefaultTimeout(20_000);
 
 const TOKEN = "issues-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];
@@ -383,6 +386,71 @@ describe("issues", () => {
     });
     expect(cleared?.issues).toBeNull();
     writeFileSync(join(repo, "x"), "");
+  });
+
+  test("o id da issue é só dígitos: um valor que vira opção ou arquivo do CLI nunca chega a ele", async () => {
+    const gh = fake("gh", GH_RULES([ghIssue(7)]));
+    const az = fake("az", [{ args: ["work-item", "show"], stdout: "{}" }]);
+    const github = await setup(GH_REMOTE, { provider: "github" });
+    const azure = await setup(AZ_REMOTE, { provider: "azure" });
+    const codeOf = (p: Promise<unknown>) =>
+      p.then(
+        () => "ok",
+        (e: { code?: string }) => e.code,
+      );
+    for (const id of ["-R evil/repo", "@/etc/passwd", "7 --web", "--repo=x/y", "", "7a"]) {
+      expect(await codeOf(github.service.get(github.project.id, id))).toBe("invalid_state");
+      expect(await codeOf(azure.service.get(azure.project.id, id))).toBe("invalid_state");
+    }
+    for (const ref of [
+      "github:Acme/App#@/etc/passwd",
+      "github:Acme/App#-R",
+      "azure:acme/proj#1 --org",
+    ]) {
+      expect(await codeOf(github.service.createCard(github.project.id, ref))).toBe("invalid_state");
+      expect(await codeOf(azure.service.createCard(azure.project.id, ref))).toBe("invalid_state");
+    }
+    expect(gh.calls().some((c) => c.includes("view"))).toBe(false);
+    expect(az.calls().some((c) => c.includes("work-item"))).toBe(false);
+  });
+
+  test("título de issue de terceiros como @/etc/passwd vai ao gh só como valor de --title, nunca por gh api -F", async () => {
+    const gh = fake("gh", [
+      ...GH_RULES([ghIssue(7)]),
+      { args: ["view", "url"], code: 1 },
+      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/3\n" },
+    ]);
+    const ctx = newBoard({ prPollIntervalMs: 1_000_000 });
+    cleanups.push(() => ctx.board.stop());
+    git(ctx.root, "init", "-q", "--bare", "remote.git");
+    git(ctx.repo, "remote", "add", "origin", join(ctx.root, "remote.git"));
+    git(ctx.repo, "push", "-q", "origin", "main");
+    const project = await ctx.board.addProject({
+      path: ctx.repo,
+      prProvider: "github",
+      promptTemplate: "",
+    });
+    // An issue from a stranger: its title and body are what a PR will carry.
+    const card = ctx.board.createCard(project.id, {
+      title: "@/etc/passwd",
+      description: "-rf --force",
+    });
+    await ctx.board.startCard(card.id);
+    const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review");
+    const worktree = started?.worktreePath ?? "";
+    writeFileSync(join(worktree, "novo.txt"), "novo\n");
+    git(worktree, "add", "novo.txt");
+    git(worktree, "commit", "-q", "-m", "arquivo novo");
+    await ctx.board.createPr(card.id);
+    const create = gh.calls().find((c) => c.includes("create"));
+    expect(argAfter(create, "--title")).toBe("@/etc/passwd");
+    expect(argAfter(create, "--body")).toContain("-rf --force");
+    // Text from others never goes through what makes gh read a file: -F, --field, --body-file.
+    const args = gh.calls().flat();
+    expect(
+      args.filter((a) => ["-F", "--field", "--body-file", "-f", "--raw-field"].includes(a)),
+    ).toEqual([]);
+    expect(gh.calls().filter((c) => c[0] === "api")).toEqual([]);
   });
 
   test("protocolo: daemon sem as issues responde invalid_state", async () => {
