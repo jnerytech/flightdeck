@@ -52,7 +52,7 @@ const group = (name: string) =>
 const item = (title: string) => screen.queryByRole("listitem", { name: title });
 /** The badge of a row: its first text with `label` (the summary line may repeat the word). */
 const badge = (title: string, label: string) =>
-  within(item(title) as HTMLElement).queryAllByText(label)[0];
+  within(item(title) as HTMLElement).queryByRole("img", { name: label });
 
 /** A row's menu, opened (Radix opens on pointer down). */
 async function openMenu(title: string) {
@@ -203,21 +203,21 @@ describe("hub-ui", () => {
     expect(loadHubFilter(storage)).toEqual(DEFAULT_HUB_FILTER);
   });
 
-  test("a linha: título, selo colorido e host; origem e hora local na segunda linha; precisa de você ganha fundo e ícone", async () => {
+  test("a linha: título, pontinho de estado e host; origem e hora local na segunda linha; precisa de você ganha fundo e ícone", async () => {
     await setup();
     expect(group("central")).toEqual(["repo-ask", "repo-run", "Gerenciada", "Do histórico"]);
     const ask = item("repo-ask") as HTMLElement;
     expect(ask.className).toContain("bg-status-needs-you/10");
     expect(ask.querySelector("svg[data-icon='needs-you']")).not.toBeNull();
-    expect(badge("repo-ask", "precisa de você")?.className).toContain("text-status-needs-you");
+    expect(badge("repo-ask", "precisa de você")?.className).toContain("bg-status-needs-you");
     expect(within(ask).queryByText("alfa")).not.toBeNull();
     expect(item("repo-run")?.className).not.toContain("bg-status-needs-you/10");
-    expect(badge("repo-run", "rodando")?.className).toContain("text-status-running");
-    expect(badge("Gerenciada", "ociosa")?.className).toContain("text-status-idle");
+    expect(badge("repo-run", "rodando")?.className).toContain("bg-status-running");
+    expect(badge("Gerenciada", "ociosa")?.className).toContain("bg-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
     expect(item("Do histórico")?.textContent ?? "").toContain("histórico · 01/09/2026, 07:00");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
-    expect(badge("Do histórico", "encerrada")?.className).toContain("text-status-ended");
+    expect(badge("Do histórico", "encerrada")?.className).toContain("bg-status-ended");
   });
 
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {

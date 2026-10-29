@@ -29,7 +29,12 @@ async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
   while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
 }
 
-const row = (title: string) => screen.queryByRole("listitem", { name: title })?.textContent ?? "";
+const row = (title: string) => {
+  const li = screen.queryByRole("listitem", { name: title });
+  // The state is a dot: its label is part of what the row says.
+  const states = [...(li?.querySelectorAll("[role='img']") ?? [])].map((i) => i.getAttribute("aria-label"));
+  return `${li?.textContent ?? ""} ${states.join(" ")}`;
+};
 
 /** An assistant line that calls `tool`, as Claude Code writes it. */
 const toolLine = (uuid: string, tool: string, cwd: string, ts: string) =>

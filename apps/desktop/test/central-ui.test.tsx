@@ -68,7 +68,12 @@ const group = (name: string) =>
   [
     ...(screen.queryByRole("region", { name: `Projeto ${name}` })?.querySelectorAll("li") ?? []),
   ].map((li) => li.getAttribute("aria-label") ?? "");
-const row = (title: string) => screen.queryByRole("listitem", { name: title })?.textContent ?? "";
+const row = (title: string) => {
+  const li = screen.queryByRole("listitem", { name: title });
+  // The state is a dot: its label is part of what the row says.
+  const states = [...(li?.querySelectorAll("[role='img']") ?? [])].map((i) => i.getAttribute("aria-label"));
+  return `${li?.textContent ?? ""} ${states.join(" ")}`;
+};
 
 /** A clone of the same GitHub repository inside a daemon's allowed root. */
 function clone(root: string) {
