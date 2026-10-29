@@ -1,4 +1,4 @@
-import type { CardDiff, StepRun } from "@flightdeck/protocol";
+import type { CardDiff, StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { CHECK_LABELS, PR_LABELS } from "../lib/board.ts";
@@ -37,9 +37,21 @@ export function CardDetail(props: {
   const run = runId ? props.state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
   const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
+  /** Workflows the card can start with: trusted and valid on the project's base branch. */
+  const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
+  const [workflow, setWorkflow] = useState("");
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const projectId = card?.projectId ?? "";
+  const chosen = workflows.find((w) => w.name === workflow);
   const openedStep = run?.steps.find(
     (s) => s.stepId === opened?.stepId && s.attempt === opened.attempt,
   );
+
+  useEffect(() => {
+    void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
+      setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
+    });
+  }, [store, hostId, projectId]);
 
   // The run follows run.updated; this fetch covers a run that changed before the app watched.
   useEffect(() => {
@@ -123,11 +135,42 @@ export function CardDetail(props: {
           Salvar descrição
         </button>
       </div>
+      <div className="row">
+        <select
+          aria-label="Workflow"
+          value={workflow}
+          onChange={(e) => {
+            setWorkflow(e.target.value);
+            setInputs({});
+          }}
+        >
+          <option value="">Nenhum (card simples)</option>
+          {workflows.map((w) => (
+            <option key={w.name} value={w.name}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+        {chosen?.inputs.map((name) => (
+          <input
+            key={name}
+            aria-label={`Input ${name}`}
+            placeholder={name}
+            value={inputs[name] ?? ""}
+            onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+          />
+        ))}
+      </div>
       <div className="row actions">
         <button
           type="button"
           className="primary"
-          onClick={() => void store.hostCommand(hostId, "card.start", { cardId })}
+          onClick={() =>
+            void store.hostCommand(hostId, "card.start", {
+              cardId,
+              ...(chosen ? { workflow: chosen.name, inputs } : {}),
+            })
+          }
         >
           Iniciar
         </button>

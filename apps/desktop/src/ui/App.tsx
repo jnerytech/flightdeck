@@ -18,6 +18,7 @@ import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { type ReaderTarget, TranscriptReader } from "./TranscriptReader.tsx";
+import { WorkflowsPage } from "./WorkflowsPage.tsx";
 
 export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
@@ -41,6 +42,12 @@ export function App({ store }: { store: AppStore }) {
   /** Board open, and the card open on top of it. */
   const [boardOf, setBoardOf] = useState<{ hostId: string; projectId: string } | null>(null);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  /** Project whose Workflows screen is open, if any. */
+  const [workflowsOf, setWorkflowsOf] = useState<{
+    hostId: string;
+    projectId: string;
+    name: string;
+  } | null>(null);
   /** The Sessões screen, opened from the sidebar (it is also what shows when nothing else does). */
   const [hubOpen, setHubOpen] = useState(false);
   /** A live session opened in the terminal, shown with its requests and message box. */
@@ -53,6 +60,7 @@ export function App({ store }: { store: AppStore }) {
     setProjectsHost(null);
     setBoardOf(null);
     setOpenCard(null);
+    setWorkflowsOf(null);
     setHubOpen(false);
     setExternal(null);
   };
@@ -177,6 +185,16 @@ export function App({ store }: { store: AppStore }) {
         onOpenCard={setOpenCard}
       />
     );
+  } else if (workflowsOf) {
+    main = (
+      <WorkflowsPage
+        key={`${workflowsOf.hostId}/${workflowsOf.projectId}`}
+        store={store}
+        hostId={workflowsOf.hostId}
+        projectId={workflowsOf.projectId}
+        projectName={workflowsOf.name}
+      />
+    );
   } else if (projectsHostView) {
     main = (
       <ProjectsPage
@@ -185,6 +203,9 @@ export function App({ store }: { store: AppStore }) {
         hostId={projectsHostView.id}
         hostName={projectsHostView.name}
         onOpenBoard={(projectId) => setBoardOf({ hostId: projectsHostView.id, projectId })}
+        onOpenWorkflows={({ id, name }) =>
+          setWorkflowsOf({ hostId: projectsHostView.id, projectId: id, name })
+        }
       />
     );
   } else if (external && externalHost) {

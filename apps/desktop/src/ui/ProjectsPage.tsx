@@ -35,6 +35,7 @@ export function ProjectsPage(props: {
   hostId: string;
   hostName: string;
   onOpenBoard(projectId: string): void;
+  onOpenWorkflows(project: { id: string; name: string }): void;
 }) {
   const { store, hostId } = props;
   const [list, setList] = useState<ProjectListResult | null>(null);
@@ -96,6 +97,9 @@ export function ProjectsPage(props: {
               {`Abrir board de ${project.name}`}
             </button>
             <span className="muted">{`${project.path} · ${project.baseBranch}`}</span>
+            <button type="button" onClick={() => props.onOpenWorkflows(project)}>
+              {`Workflows de ${project.name}`}
+            </button>
             <button
               type="button"
               onClick={() => {
