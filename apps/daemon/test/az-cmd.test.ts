@@ -232,6 +232,38 @@ describe("az-cmd", () => {
     expect(refused).toBe("invalid_state");
   });
 
+  test("identificadores nunca são limpos: organização, projeto, id e branch seguem como são", async () => {
+    const ids = [
+      "--org",
+      "https://dev.azure.com/Acme & Co",
+      "--project",
+      "R&D 100% | x",
+      "--id",
+      "12",
+    ];
+    expect(
+      sanitizeAzArgs(["boards", "work-item", "show", ...ids, "--source-branch", "fd/a-b"]),
+    ).toEqual(["boards", "work-item", "show", ...ids, "--source-branch", "fd/a-b"]);
+    // A project with a space reaches az whole, not squeezed or changed.
+    const az = fake("az", [
+      {
+        args: ["work-item", "show"],
+        stdout: JSON.stringify({ id: 1, fields: { "System.Title": "t" } }),
+      },
+      { args: ["account", "show"], stdout: "eu@acme.com\n" },
+    ]);
+    await new AzureIssues({ org: "acme", project: "Meu Projeto" }).get(tempDir(), "1");
+    const call = az.calls().find((c) => c.includes("show") && c.includes("work-item"));
+    expect(argAfter(call, "--project")).toBe("Meu Projeto");
+    // The .cmd cannot take an & in a name: refusing says so, where changing it would pick the wrong project.
+    const refused = await new AzureIssues({ org: "acme", project: "R&D" }).get(tempDir(), "1").then(
+      () => "aceitou",
+      (error: { code?: string }) => error.code,
+    );
+    expect(refused).toBe("invalid_state");
+    expect(az.calls().some((c) => c.includes("R&D") || c.includes("ReD"))).toBe(false);
+  });
+
   test("o gh continua com o texto completo, sem corte nem troca", async () => {
     const gh = fake("gh", [
       { args: ["view", "url"], code: 1 },
