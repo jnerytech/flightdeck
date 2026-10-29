@@ -18,7 +18,33 @@ apps/desktop        app Tauri 2 + React
 scripts/            smoke, build dos binários e verificação de cobertura
 ```
 
-## Instalar
+## Instalação
+
+Cada versão sai na página de [Releases](https://github.com/jnerytech/flightdeck/releases) com:
+
+| Arquivo | O que é |
+| --- | --- |
+| `Flightdeck_<versão>_x64-setup.exe` | instalador do app desktop para Windows (NSIS) |
+| `Flightdeck_<versão>_x64_en-US.msi` | o mesmo app, em MSI |
+| `flightdeckd-windows-x64.exe` | daemon para Windows |
+| `flightdeckd-linux-x64` | daemon para Linux e WSL (x64) |
+| `flightdeckd-linux-arm64` | daemon para Linux arm64 (Orange Pi, Raspberry Pi) |
+| `SHA256SUMS` | o SHA-256 de cada arquivo |
+
+1. **Confira o download** antes de executar:
+   - Linux: `sha256sum -c SHA256SUMS --ignore-missing`.
+   - Windows (PowerShell): `(Get-FileHash .\<arquivo>).Hash.ToLower()`, e compare com a linha do
+     arquivo no `SHA256SUMS`.
+2. **App:** rode o instalador. Ele **não é assinado**, então o SmartScreen mostra "O Windows
+   protegeu o computador". Com o hash conferido, clique em **Mais informações** e depois em
+   **Executar assim mesmo**.
+3. **Daemon:** em cada host, com o Claude Code instalado e logado:
+   - no Linux, `chmod +x` no binário antes de usar;
+   - rode `<binário> update --from <binário>`, que instala em `~/.flightdeck/bin`;
+   - depois, `~/.flightdeck/bin/flightdeckd service install` (veja
+     [Instalar como serviço](#instalar-como-serviço)).
+
+## Instalar a partir do código
 
 Pré-requisitos:
 
@@ -664,6 +690,26 @@ transcript ficam em `apps/daemon/test/fixtures/history/` e são escritos à mão
 
 Testes e smoke usam só o `FakeRuntime`. `bun run smoke:real` repete o roteiro com o Claude de
 verdade numa pasta descartável. Ele é manual, gasta cota e não faz parte dos critérios de aceite.
+
+## Releases
+
+- **Integração contínua** (`.github/workflows/ci.yml`): todo push no `main` e todo pull request
+  rodam, no Ubuntu e no Windows:
+  - typecheck, lint e os testes com cobertura de 100%;
+  - todos os smokes;
+  - no Windows, também o `cargo check` do app.
+- **Versão:** `packages/protocol`, `apps/daemon` e `apps/desktop` sobem juntos, e o
+  `tauri.conf.json` lê a versão do desktop. Um teste falha se as versões divergirem.
+- **Publicar:** só o orquestrador empurra a tag `v<versão>`, depois que a versão está no `main`.
+  O `.github/workflows/release.yml` roda no Windows:
+  1. `bun run release:version <tag>`, que recusa uma tag que não bate com a versão do produto;
+  2. `bun run build:daemon`, que gera os três daemons;
+  3. `bun run tauri build --bundles nsis,msi` em `apps/desktop`, que gera os instaladores;
+  4. `bun run release:assets`, que junta os arquivos em `release/` com o `SHA256SUMS`;
+  5. `gh release create <tag> --generate-notes`, com esses arquivos.
+- **Repetir uma publicação:** pelo `workflow_dispatch`, informando a tag, que já precisa existir.
+- **Ambiente:** o job usa só o `GITHUB_TOKEN`, com `contents: write`, sem outros segredos. Os
+  instaladores saem sem assinatura.
 
 ## Licença
 
