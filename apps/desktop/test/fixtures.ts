@@ -91,7 +91,7 @@ export function daemon(
     ? new Maintenance({
         db: store.db,
         dataDir: join(root, "data"),
-        retention: options.retention,
+        retention: { usageDays: 400, ...options.retention },
         backup: { enabled: true, keep: 7 },
       })
     : undefined;
