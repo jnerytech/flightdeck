@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { shellCommand } from "../src/board/setup.ts";
 import type { StartOptions } from "../src/runtime/types.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
 
@@ -75,5 +76,25 @@ describe("preparacao", () => {
     expect(failed?.notice ?? "").toContain("git worktree add");
     expect(failed?.worktreePath).toBeNull();
     expect(manager.list()).toEqual([]);
+  });
+});
+
+describe("preparacao: shell", () => {
+  test("cmd.exe /d /s /c no Windows, sh -c nos demais", () => {
+    const comspec = process.env.ComSpec;
+    process.env.ComSpec = "C:WindowsSystem32cmd.exe";
+    try {
+      expect(shellCommand("bun install", "win32")).toEqual([
+        "C:WindowsSystem32cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        "bun install",
+      ]);
+    } finally {
+      process.env.ComSpec = comspec;
+    }
+    expect(shellCommand("bun install", "linux")).toEqual(["sh", "-c", "bun install"]);
+    expect(shellCommand("bun install", "darwin")).toEqual(["sh", "-c", "bun install"]);
   });
 });
