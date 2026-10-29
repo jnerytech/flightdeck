@@ -283,8 +283,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "permission.respond": {
         // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-        const { requestId, decision, message } = command.payload;
-        if (!opts.central?.permissions.respond(requestId, decision, message)) {
+        const { requestId, decision, message, updatedPermissions } = command.payload;
+        const external = opts.central?.permissions;
+        if (!external?.respond(requestId, decision, message, updatedPermissions)) {
           manager.respondPermission(command.payload);
         }
         return ok(command.type);

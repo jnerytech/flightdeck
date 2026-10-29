@@ -1,4 +1,5 @@
-import type { ExternalPermissionFrame } from "@flightdeck/protocol";
+import type { ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
+import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
@@ -34,12 +35,14 @@ export class ExternalPermissions {
   /** Resolves with the hook's JSON answer, or "" (no decision: the terminal's dialog decides). */
   hold(payload: HookPayload, signal: AbortSignal): Promise<string> {
     if (this.watchers.size === 0) return Promise.resolve("");
+    const suggestions = parseSuggestions(payload.permission_suggestions);
     const frame: ExternalPermissionFrame = {
       type: "external.permission",
       requestId: `ext-${ulid()}`,
       claudeSessionId: String(payload.session_id ?? ""),
       toolName: String(payload.tool_name ?? ""),
       input: summarizeInput(payload.tool_input),
+      ...(suggestions.length > 0 ? { suggestions } : {}),
       state: "open",
       createdAt: new Date().toISOString(),
     };
@@ -53,10 +56,26 @@ export class ExternalPermissions {
     });
   }
 
-  /** Answers an external request; false when `requestId` is not one (a managed session's). */
-  respond(requestId: string, decision: "allow" | "deny", message?: string): boolean {
-    if (!this.held.has(requestId)) return false;
-    const answer = decision === "allow" ? { behavior: "allow" } : { behavior: "deny", message };
+  /**
+   * Answers an external request; false when `requestId` is not one (a managed session's). Allowed
+   * with `updatedPermissions`, the hook's decision carries them (Claude Code applies them).
+   */
+  respond(
+    requestId: string,
+    decision: "allow" | "deny",
+    message?: string,
+    updatedPermissions: PermissionUpdate[] = [],
+  ): boolean {
+    const held = this.held.get(requestId);
+    if (!held) return false;
+    if (decision === "allow") {
+      // Refused updates leave the hook held, before anything is answered.
+      const { toolName, suggestions = [] } = held.frame;
+      checkUpdates(updatedPermissions, { toolName, suggestions });
+    }
+    const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};
+    const answer =
+      decision === "allow" ? { behavior: "allow", ...updates } : { behavior: "deny", message };
     const body = JSON.stringify({
       hookSpecificOutput: { hookEventName: "PermissionRequest", decision: answer },
     });

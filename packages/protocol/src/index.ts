@@ -974,6 +974,8 @@ export const ExternalPermissionFrame = z.object({
   toolName: z.string(),
   /** Tool input with long strings cut. */
   input: z.record(z.string(), z.unknown()),
+  /** The hook's `permission_suggestions` this daemon understands (phase 7). */
+  suggestions: z.array(PermissionUpdate).optional(),
   state: z.enum(["open", "closed"]),
   /** Why it closed: answered here, the hook connection dropped, or answered in the terminal. */
   resolution: z.enum(["allow", "deny", "dropped", "answered_elsewhere"]).optional(),
