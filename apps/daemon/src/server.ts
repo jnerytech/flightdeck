@@ -12,6 +12,7 @@ import {
   type ExternalPermissionFrame,
   type ExternalUpdated,
   type HistoryChanged,
+  MIN_PROTOCOL_VERSION,
   type Ping,
   Pong,
   PROTOCOL_VERSION,
@@ -50,6 +51,10 @@ export interface ServerOptions {
   board?: Board;
   /** External sessions and their permission requests (phase 5). */
   central?: Central;
+  /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
+  protocolRange?: readonly [number, number];
+  /** What `host.info` announces; derived from what this daemon has when absent. */
+  features?: string[];
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -118,6 +123,8 @@ export function startServer(opts: ServerOptions): RunningServer {
   const authed = new Set<Socket>();
   let currentToken = opts.token;
   const startedAt = Date.now();
+  /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
+  const features = [...(opts.central ? ["central"] : []), ...(opts.board ? ["workflows"] : [])];
   let pingSeq = 0;
 
   const heartbeat = setInterval(() => {
@@ -150,6 +157,15 @@ export function startServer(opts: ServerOptions): RunningServer {
     }
     if (!tokenMatches(currentToken, parsed.data.payload.token)) {
       unauthorized(ws);
+      return;
+    }
+    // Clients before phase 7 send no version: they speak protocol 1.
+    const version = parsed.data.payload.protocolVersion ?? 1;
+    const [min, max] = opts.protocolRange ?? [MIN_PROTOCOL_VERSION, PROTOCOL_VERSION];
+    if (version < min || version > max) {
+      // The connection stays open and unauthenticated: a compatible hello may follow.
+      const message = `protocolo ${version} do cliente fora do intervalo do daemon [${min}, ${max}]`;
+      ackError(ws, parsed.data.id, "protocol_incompatible", message);
       return;
     }
     ws.data.authed = true;
@@ -298,6 +314,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
           activeSessions: manager.activeSessionCount(),
           apiKeySanitized: manager.apiKeySanitized(),
+          features: opts.features ?? features,
         });
       case "history.list": {
         const page = history().list(command.payload);

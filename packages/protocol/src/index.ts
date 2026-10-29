@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const PROTOCOL_VERSION = 1;
+/** Oldest client protocol this daemon still serves. */
+export const MIN_PROTOCOL_VERSION = 1;
 export const WS_PATH = "/v1/ws";
 
 /** Close code used when authentication fails or a frame arrives before `hello`. */
@@ -175,6 +177,8 @@ export const EPHEMERAL_EVENTS: ReadonlySet<SessionEventType> = new Set([
 export const HelloPayload = z.object({
   token: z.string().min(1),
   client: z.string().min(1),
+  /** Protocol the client speaks; 1 when absent (clients before phase 7). */
+  protocolVersion: z.number().int().optional(),
 });
 
 export const SessionListPayload = z.object({}).strict();
@@ -607,6 +611,8 @@ export const HostInfoResult = z.object({
   uptimeSec: z.number().int().nonnegative(),
   activeSessions: z.number().int().nonnegative(),
   apiKeySanitized: z.boolean(),
+  /** What the daemon offers (`central`, `workflows`, `maintenance`…); absent before phase 7. */
+  features: z.array(z.string()).optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -765,6 +771,7 @@ export const ErrorCode = z.enum([
   "not_found",
   "invalid_state",
   "forbidden_cwd",
+  "protocol_incompatible",
   "internal",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
