@@ -7,7 +7,7 @@ export interface WebWindow extends FilePickerWindow {
   location: { hash: string };
   open(url: string, target: string, features: string): unknown;
   addEventListener(type: "hashchange", listener: () => void): void;
-  navigator?: { clipboard?: { writeText(text: string): Promise<void> } };
+  navigator?: { language?: string; clipboard?: { writeText(text: string): Promise<void> } };
   focus?(): void;
   removeEventListener(type: "hashchange", listener: () => void): void;
   Notification?: {
@@ -80,6 +80,7 @@ export function createWebPlatform(
     onTrayAction: () => () => {},
     autostart: { supported: false, isEnabled: async () => false, setEnabled: noop },
     setCloseToTray: noop,
+    systemLanguage: () => win.navigator?.language ?? "",
     // A page's chrome belongs to the browser.
     setWindowTheme: noop,
     async copyText(text) {

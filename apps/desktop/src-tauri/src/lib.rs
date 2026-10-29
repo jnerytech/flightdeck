@@ -39,9 +39,12 @@ fn token_delete(host_id: String) -> Result<(), String> {
     }
 }
 
-/// The tray's "Precisa de você (N)" submenu, and whether closing hides to the tray.
+/// The tray's "Abrir" and "Sair" items, its "Precisa de você (N)" submenu, and whether closing
+/// hides to the tray. Their texts come translated from the frontend (phase 10).
 struct TrayState {
+    show: MenuItem<Wry>,
     needs_you: Submenu<Wry>,
+    quit: MenuItem<Wry>,
     close_to_tray: AtomicBool,
 }
 
@@ -53,6 +56,18 @@ struct TrayEntry {
     actions: Vec<String>,
 }
 
+/// The submenu's own texts, already translated by the frontend.
+#[derive(serde::Deserialize)]
+struct TrayLabels {
+    approve: String,
+    deny: String,
+    open: String,
+    more: String,
+    empty: String,
+    show: String,
+    quit: String,
+}
+
 /// A click in the submenu, sent to the frontend as `tray-action`.
 #[derive(Clone, serde::Serialize)]
 struct TrayAction {
@@ -62,7 +77,6 @@ struct TrayAction {
 
 /// Menu ids of the submenu's actions: `act:<action>:<key>` (the key may hold colons too).
 const ACTION_PREFIX: &str = "act:";
-const ACTIONS: [(&str, &str); 3] = [("approve", "Aprovar"), ("deny", "Negar"), ("open", "Abrir")];
 
 /// Windows menus read `&` as a mnemonic marker; a command like `a && b` must show as typed.
 fn menu_text(text: &str) -> String {
@@ -73,8 +87,9 @@ fn menu_text(text: &str) -> String {
     }
 }
 
-fn nothing_waiting(app: &tauri::AppHandle) -> tauri::Result<MenuItem<Wry>> {
-    MenuItem::new(app, "Nada esperando você", false, None::<&str>)
+/// The submenu's only line while nothing waits; at start-up it has no translation yet.
+fn nothing_waiting(app: &tauri::AppHandle, text: &str) -> tauri::Result<MenuItem<Wry>> {
+    MenuItem::new(app, menu_text(text), false, None::<&str>)
 }
 
 /// Rebuilds the submenu: one entry per request with its actions, then "e mais N…".
@@ -84,21 +99,29 @@ fn tray_set_menu(
     state: State<TrayState>,
     items: Vec<TrayEntry>,
     more: u32,
+    labels: TrayLabels,
 ) -> Result<(), String> {
     let err = |e: tauri::Error| e.to_string();
+    state.show.set_text(menu_text(&labels.show)).map_err(err)?;
+    state.quit.set_text(menu_text(&labels.quit)).map_err(err)?;
     let needs_you = &state.needs_you;
     while needs_you.remove_at(0).map_err(err)?.is_some() {}
     if items.is_empty() && more == 0 {
-        needs_you
-            .append(&nothing_waiting(&app).map_err(err)?)
-            .map_err(err)?;
+        let empty = nothing_waiting(&app, &labels.empty).map_err(err)?;
+        needs_you.append(&empty).map_err(err)?;
     }
+    let actions = [
+        ("approve", &labels.approve),
+        ("deny", &labels.deny),
+        ("open", &labels.open),
+    ];
     for item in &items {
         let entry = Submenu::new(&app, menu_text(&item.label), true).map_err(err)?;
-        for (action, label) in ACTIONS {
+        for (action, label) in actions {
             if item.actions.iter().any(|a| a == action) {
                 let id = format!("{ACTION_PREFIX}{action}:{}", item.key);
-                let button = MenuItem::with_id(&app, id, label, true, None::<&str>).map_err(err)?;
+                let button = MenuItem::with_id(&app, id, menu_text(label), true, None::<&str>)
+                    .map_err(err)?;
                 entry.append(&button).map_err(err)?;
             }
         }
@@ -106,8 +129,8 @@ fn tray_set_menu(
     }
     if more > 0 {
         let id = format!("{ACTION_PREFIX}open:more");
-        let label = format!("e mais {more}…");
-        let rest = MenuItem::with_id(&app, id, label, true, None::<&str>).map_err(err)?;
+        let rest = MenuItem::with_id(&app, id, menu_text(&labels.more), true, None::<&str>)
+            .map_err(err)?;
         needs_you.append(&rest).map_err(err)?;
     }
     Ok(())
@@ -131,17 +154,17 @@ fn on_tray_action(app: &tauri::AppHandle, id: &str) {
     let _ = app.emit("tray-action", payload);
 }
 
-/// Updates the tray tooltip and the "Precisa de você (N)" entry (computed by the frontend).
+/// Updates the tray tooltip and the "Precisa de você (N)" entry (both translated by the frontend).
 #[tauri::command]
 fn tray_set_status(
     app: tauri::AppHandle,
     state: State<TrayState>,
-    count: u32,
+    label: String,
     tooltip: String,
 ) -> Result<(), String> {
     state
         .needs_you
-        .set_text(format!("Precisa de você ({count})"))
+        .set_text(menu_text(&label))
         .map_err(|e| e.to_string())?;
     if let Some(tray) = app.tray_by_id("main") {
         tray.set_tooltip(Some(tooltip)).map_err(|e| e.to_string())?;
@@ -218,7 +241,7 @@ fn set_close_to_tray(state: State<TrayState>, enabled: bool) {
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     let open = MenuItem::with_id(app, "open", "Abrir", true, None::<&str>)?;
     let needs_you = Submenu::with_id(app, "needs-you", "Precisa de você (0)", true)?;
-    needs_you.append(&nothing_waiting(app.handle())?)?;
+    needs_you.append(&nothing_waiting(app.handle(), "Nada esperando você")?)?;
     let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &needs_you, &quit])?;
     let mut tray = TrayIconBuilder::with_id("main")
@@ -245,7 +268,9 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
     }
     tray.build(app)?;
     Ok(TrayState {
+        show: open,
         needs_you,
+        quit,
         close_to_tray: AtomicBool::new(true),
     })
 }

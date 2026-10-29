@@ -1,4 +1,5 @@
 import type { PendingPermission } from "@flightdeck/protocol";
+import { type T, translator } from "../i18n/index.ts";
 import type { TrayMenu, TrayStatus } from "../platform/types.ts";
 import type { PendingItem } from "./app-store.ts";
 import { inputSummary } from "./tool-input.ts";
@@ -9,8 +10,12 @@ export const TRAY_MENU_MAX = 10;
 /** How long the submenu waits for the list to settle before it is rebuilt. */
 export const TRAY_MENU_DELAY_MS = 500;
 
-/** The "Precisa de você" submenu for the open requests, oldest first. */
-export function trayMenu(items: PendingItem[]): TrayMenu {
+/** The suite's (and the source dictionary's) language when a caller passes none. */
+const PT = translator("pt-BR");
+
+/** The "Precisa de você" submenu for the open requests, oldest first, in `t`'s language. */
+export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
+  const more = Math.max(0, items.length - TRAY_MENU_MAX);
   return {
     items: items.slice(0, TRAY_MENU_MAX).map((item) => {
       const summary = inputSummary(item.input);
@@ -21,7 +26,17 @@ export function trayMenu(items: PendingItem[]): TrayMenu {
         actions: item.gate ? ["open"] : ["approve", "deny", "open"],
       };
     }),
-    more: Math.max(0, items.length - TRAY_MENU_MAX),
+    more,
+    // The Rust shell shows these as they come (phase 10: from the dictionary).
+    labels: {
+      approve: t("tray.approve"),
+      deny: t("tray.deny"),
+      open: t("tray.open"),
+      more: t("tray.more", { n: more }),
+      empty: t("tray.empty"),
+      show: t("tray.show"),
+      quit: t("tray.quit"),
+    },
   };
 }
 
@@ -31,7 +46,7 @@ export interface TrayHost {
 }
 
 /** Tray badge for the whole fleet: total open requests and a per-host breakdown. */
-export function trayStatus(hosts: TrayHost[]): TrayStatus {
+export function trayStatus(hosts: TrayHost[], t: T = PT): TrayStatus {
   const perHost = hosts
     .map((h) => ({
       name: h.name,
@@ -40,8 +55,8 @@ export function trayStatus(hosts: TrayHost[]): TrayStatus {
     .filter((h) => h.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const count = perHost.reduce((n, h) => n + h.count, 0);
-  if (count === 0) return { count, tooltip: "Flightdeck: nada esperando você" };
-  const noun = count === 1 ? "pedido" : "pedidos";
+  const label = t("tray.needsYou", { n: count });
+  if (count === 0) return { count, label, tooltip: t("tray.idle") };
   const breakdown = perHost.map((h) => `${h.name}: ${h.count}`).join(", ");
-  return { count, tooltip: `Flightdeck: ${count} ${noun} esperando você (${breakdown})` };
+  return { count, label, tooltip: t("tray.waiting", { n: count, hosts: breakdown }) };
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LANGS, type Lang, type T } from "../i18n/index.ts";
 import type {
   AppState,
   AppStore,
@@ -26,7 +27,12 @@ export function Settings(props: {
   /** Light, dark or the system's (phase 10). */
   theme: ThemeMode;
   onTheme(mode: ThemeMode): void;
+  /** pt-BR or English (phase 10). */
+  lang: Lang;
+  onLang(lang: Lang): void;
+  t: T;
 }) {
+  const { t } = props;
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
@@ -34,13 +40,24 @@ export function Settings(props: {
     <section className="card form">
       <h2>Configurações</h2>
       <select
-        aria-label="Tema"
+        aria-label={t("settings.theme")}
         value={props.theme}
         onChange={(e) => props.onTheme(e.target.value as ThemeMode)}
       >
-        <option value="system">Sistema</option>
-        <option value="light">Claro</option>
-        <option value="dark">Escuro</option>
+        <option value="system">{t("settings.themes.system")}</option>
+        <option value="light">{t("settings.themes.light")}</option>
+        <option value="dark">{t("settings.themes.dark")}</option>
+      </select>
+      <select
+        aria-label={t("settings.language")}
+        value={props.lang}
+        onChange={(e) => props.onLang(e.target.value as Lang)}
+      >
+        {LANGS.map((lang) => (
+          <option key={lang} value={lang}>
+            {t(`languages.${lang}`)}
+          </option>
+        ))}
       </select>
       <label className="check">
         <input

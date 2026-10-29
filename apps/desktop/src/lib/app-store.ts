@@ -28,6 +28,7 @@ import type {
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
+import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
@@ -36,7 +37,7 @@ import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
-import { isHot, WINDOW_LABELS } from "./quota.ts";
+import { isHot } from "./quota.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
@@ -371,6 +372,8 @@ export class AppStore {
     private readonly options: AppStoreOptions = {},
   ) {
     this.theme = new ThemeController(platform);
+    this.i18n = new I18n(platform);
+    this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
       sessions: {},
@@ -406,6 +409,8 @@ export class AppStore {
 
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
+  /** pt-BR or English, and the translator (phase 10). */
+  readonly i18n: I18n;
 
   getState = (): AppState => this.state;
 
@@ -434,6 +439,7 @@ export class AppStore {
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.theme.start();
+    this.i18n.start();
     this.update({ hosts: [], sessions: {}, selected: null, cards: {}, runs: {}, quota: {} });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -1157,7 +1163,9 @@ export class AppStore {
     }));
     const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
-    for (const n of summaryNotifications(prev, next, label, this.platform.isFocused(), linkFor)) {
+    const focused = this.platform.isFocused();
+    const t = this.i18n.t;
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
       void this.platform.notify(n);
     }
   }
@@ -1179,7 +1187,7 @@ export class AppStore {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (!this.platform.isFocused()) {
       void this.platform.notify({
-        title: "Precisa de você",
+        title: this.i18n.t("notify.externalTitle"),
         body: `${host?.name ?? hostId} · ${frame.toolName}`,
         link: requestLink(hostId, frame.requestId),
       });
@@ -1195,11 +1203,13 @@ export class AppStore {
       const key = `${hostId}/${window.window}/${window.resetsAt}`;
       if (!host || !isHot(window, state.pauseAt) || this.quotaNotified.has(key)) continue;
       this.quotaNotified.add(key);
-      const label = WINDOW_LABELS[window.window] ?? window.window;
+      const { t } = this.i18n;
+      const known = window.window === "five_hour" || window.window === "seven_day";
+      const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
       const percent = Math.round((window.utilization ?? 0) * 100);
       void this.platform.notify({
-        title: "Cota do plano",
-        body: `${host.name}: ${label} em ${percent}%`,
+        title: t("notify.quotaTitle"),
+        body: t("notify.quotaBody", { host: host.name, window: label, percent }),
       });
     }
   }
@@ -1272,19 +1282,31 @@ export class AppStore {
     const timers = this.options.timers ?? REAL_TIMERS;
     if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
     this.trayMenuTimer = null;
-    if (JSON.stringify(trayMenu(needsYou(this.state))) === this.trayMenuSent) return;
+    if (JSON.stringify(trayMenu(needsYou(this.state), this.i18n.t)) === this.trayMenuSent) return;
     this.trayMenuTimer = timers.setTimeout(() => {
       this.trayMenuTimer = null;
-      const menu = trayMenu(needsYou(this.state));
+      const menu = trayMenu(needsYou(this.state), this.i18n.t);
       this.trayMenuSent = JSON.stringify(menu);
       void this.platform.setTrayMenu(menu);
     }, TRAY_MENU_DELAY_MS);
   }
 
+  /**
+   * A new language: the tray's texts change at once (no debounce, the list did not change) and
+   * every screen renders again.
+   */
+  private onLanguage(): void {
+    this.syncTray();
+    const menu = trayMenu(needsYou(this.state), this.i18n.t);
+    this.trayMenuSent = JSON.stringify(menu);
+    void this.platform.setTrayMenu(menu);
+    for (const listener of this.listeners) listener();
+  }
+
   /** Pushes the fleet-wide badge to the tray whenever it changes. */
   private syncTray(): void {
-    const status = trayStatus(this.state.hosts);
-    if (this.tray?.count === status.count && this.tray.tooltip === status.tooltip) return;
+    const status = trayStatus(this.state.hosts, this.i18n.t);
+    if (this.tray?.label === status.label && this.tray.tooltip === status.tooltip) return;
     this.tray = status;
     void this.platform.setTrayStatus(status);
   }

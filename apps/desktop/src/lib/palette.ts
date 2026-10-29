@@ -1,3 +1,4 @@
+import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
 import { basename } from "./paths.ts";
 import type { TerminalTarget } from "./terminal.ts";
@@ -15,6 +16,7 @@ export type PaletteTarget =
   | { kind: "terminal"; hostId: string; target: TerminalTarget }
   | { kind: "settings" }
   | { kind: "toggle-theme" }
+  | { kind: "switch-language" }
   | { kind: "costs" };
 
 export interface PaletteAction {
@@ -48,8 +50,9 @@ const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_perm
 export function paletteSections(
   state: AppState,
   query: string,
-  options: { costs: boolean },
+  options: { costs: boolean; t: T },
 ): PaletteSection[] {
+  const { t } = options;
   const online = state.hosts.filter((h) => h.status === "online");
   const terminal = (hostId: string, target: TerminalTarget): PaletteAction => ({
     label: "Abrir no terminal",
@@ -170,7 +173,8 @@ export function paletteSections(
         hostId: host.id,
       }),
     ),
-    action("theme", "Alternar tema", { kind: "toggle-theme" }),
+    action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
+    action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
     ...(options.costs ? [action("costs", "Ir para Custos", { kind: "costs" })] : []),
     action("settings", "Ir para Configurações", { kind: "settings" }),
   ];

@@ -17,7 +17,7 @@ import type { Platform, TrayAction } from "../types.ts";
 export interface BrowserWindow extends FilePickerWindow {
   localStorage: Platform["storage"];
   document: { hasFocus(): boolean };
-  navigator: { clipboard: { writeText(text: string): Promise<void> } };
+  navigator: { language?: string; clipboard: { writeText(text: string): Promise<void> } };
 }
 
 /**
@@ -76,6 +76,7 @@ export function tauriPlatform(
     // The webview's Clipboard API works from the click that asks for the copy.
     copyText: (text) => win.navigator.clipboard.writeText(text),
     showMainWindow: () => call("focus_main"),
+    systemLanguage: () => win.navigator.language ?? "",
     // What getCurrentWindow().setTheme() sends; needs core:window:allow-set-theme.
     setWindowTheme: (theme) => call("plugin:window|set_theme", { label: "main", value: theme }),
     // Rust runs the program with the arguments as a list, never through a shell.

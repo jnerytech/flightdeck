@@ -23,10 +23,24 @@ export interface TrayMenuEntry {
 
 export type TrayActionKind = "approve" | "deny" | "open";
 
+/** The submenu's own texts, already translated (phase 10). */
+export interface TrayLabels {
+  approve: string;
+  deny: string;
+  open: string;
+  /** "e mais N…", with N filled in. */
+  more: string;
+  empty: string;
+  /** The tray's "Abrir" (the window) and "Sair". */
+  show: string;
+  quit: string;
+}
+
 /** The submenu: up to 10 requests, then "e mais N…" (which opens the app). */
 export interface TrayMenu {
   items: TrayMenuEntry[];
   more: number;
+  labels: TrayLabels;
 }
 
 /** A click in the submenu; `key` is "more" for "e mais N…". */
@@ -38,6 +52,8 @@ export interface TrayAction {
 /** What the tray icon shows: the number of open requests and the tooltip text. */
 export interface TrayStatus {
   count: number;
+  /** "Precisa de você (N)", translated. */
+  label: string;
   tooltip: string;
 }
 
@@ -75,6 +91,8 @@ export interface Platform {
   copyText(text: string): Promise<void>;
   /** Saves `text` through the system's save dialog; `false` when the user cancels. */
   saveFile(name: string, text: string): Promise<boolean>;
+  /** The system's language (`navigator.language`), for the app's first language (phase 10). */
+  systemLanguage(): string;
   /** The window's own theme (title bar), `null` to follow the system (phase 10). */
   setWindowTheme(theme: "light" | "dark" | null): Promise<void>;
   /** Brings the main window to the front (from the tray, minimized or behind others). */

@@ -28,6 +28,7 @@ import { WorkflowsPage } from "./WorkflowsPage.tsx";
 export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
+  const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const [addingHost, setAddingHost] = useState(false);
   const [hostError, setHostError] = useState<string | null>(null);
   /** Request clicked in the "Precisa de você" queue: the session view scrolls to its card. */
@@ -186,6 +187,10 @@ export function App({ store }: { store: AppStore }) {
       store.theme.toggle();
       return;
     }
+    if (target.kind === "switch-language") {
+      store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
+      return;
+    }
     closeBoard();
     setReading(null);
     setHistoryHost(null);
@@ -261,6 +266,9 @@ export function App({ store }: { store: AppStore }) {
         onNotifyUpdates={(enabled) => store.setNotifyUpdates(enabled)}
         theme={themeMode}
         onTheme={(mode) => store.theme.setMode(mode)}
+        lang={lang}
+        onLang={(next) => store.i18n.setLang(next)}
+        t={store.i18n.t}
       />
     );
   } else if (addingHost || state.hosts.length === 0) {

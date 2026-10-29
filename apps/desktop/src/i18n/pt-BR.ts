@@ -1,0 +1,66 @@
+/**
+ * The source dictionary (pt-BR): every other language has exactly these keys (en.ts is typed from
+ * it). Leaves are strings with `{name}` placeholders, or `{ one, other }` for plurals.
+ * Terms follow docs/GLOSSARY.md.
+ */
+export const ptBR = {
+  shell: {
+    sidebar: "Barra lateral",
+    collapse: "Recolher barra lateral",
+    expand: "Mostrar barra lateral",
+  },
+  settings: {
+    language: "Idioma",
+    theme: "Tema",
+    themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
+  },
+  languages: { "pt-BR": "Português (Brasil)", en: "English" },
+  palette: { toggleTheme: "Alternar tema", switchLanguage: "Trocar idioma" },
+  time: {
+    now: "agora",
+    ago: "há {d}",
+    hours: "{n} h",
+    minutes: "{n} min",
+    seconds: "{n} s",
+    hoursMinutes: "{h} h {m} min",
+  },
+  tray: {
+    needsYou: "Precisa de você ({n})",
+    empty: "Nada esperando você",
+    approve: "Aprovar",
+    deny: "Negar",
+    open: "Abrir",
+    more: "e mais {n}…",
+    show: "Abrir",
+    quit: "Sair",
+    idle: "Flightdeck: nada esperando você",
+    waiting: {
+      one: "Flightdeck: {n} pedido esperando você ({hosts})",
+      other: "Flightdeck: {n} pedidos esperando você ({hosts})",
+    },
+  },
+  notify: {
+    waiting: "{label}: esperando você",
+    allow: "Permitir {tool}?",
+    turnDone: "{label}: turno concluído",
+    turnDoneBody: "ociosa",
+    externalTitle: "Precisa de você",
+    quotaTitle: "Cota do plano",
+    quotaBody: "{host}: {window} em {percent}%",
+  },
+  quota: { windows: { five_hour: "5 horas", seven_day: "7 dias" } },
+  errors: {
+    bad_request: "O host recusou o pedido.",
+    unauthorized: "O host recusou o token.",
+    not_found: "Não encontrado no host.",
+    invalid_state: "Não dá para fazer isso agora.",
+    forbidden_cwd: "A pasta está fora das pastas permitidas do host.",
+    protocol_incompatible: "Versão do host incompatível com este app.",
+    internal: "Erro interno no host.",
+    invalid_permission_update: "Essa regra de permissão não é aceita.",
+    update_verification_failed: "A atualização não passou na verificação.",
+    update_needs_service: "Para atualizar, o host precisa rodar como serviço.",
+    offline: "O host está offline.",
+    timeout: "O host não respondeu a tempo.",
+  },
+} as const;

@@ -68,7 +68,7 @@ export function GlobalSearch(props: {
           })),
         },
       ]
-    : paletteSections(props.state, query, { costs });
+    : paletteSections(props.state, query, { costs, t: store.i18n.t });
   const visible = sections.flatMap((section) => section.items);
   const back = () => {
     setActionsOf(null);
