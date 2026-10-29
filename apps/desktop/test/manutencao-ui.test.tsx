@@ -17,6 +17,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { formatBytes } = await import("../src/ui/MaintenanceSection.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -77,6 +78,12 @@ const eventCount = (d: Awaited<ReturnType<typeof setup>>, sessionId: string) =>
   ).n;
 
 describe("manutencao-ui", () => {
+  test("tamanhos em B, KB ou MB", () => {
+    expect(formatBytes(512)).toBe("512 B");
+    expect(formatBytes(2048)).toBe("2.0 KB");
+    expect(formatBytes(3 * 1024 * 1024)).toBe("3.0 MB");
+  });
+
   test("seção Manutenção mostra o banco, o último backup e a última limpeza", async () => {
     await setup();
     await openMaintenance();
