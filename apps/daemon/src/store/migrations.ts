@@ -114,4 +114,31 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX card_runs_card ON card_runs (card_id);
   `,
+  // Phase 5: sessions started outside Flightdeck, seen through Claude Code hooks, and the meta
+  // (name, pinned, archived) of any session. `source` goes beyond the spec.
+  `
+  CREATE TABLE external_sessions (
+    claude_session_id TEXT PRIMARY KEY,
+    cwd               TEXT,
+    transcript_path   TEXT,
+    source            TEXT,
+    status            TEXT NOT NULL,
+    status_reason     TEXT,
+    launch_id         TEXT,
+    channel_connected INTEGER NOT NULL DEFAULT 0,
+    project_key       TEXT,
+    started_at        TEXT NOT NULL,
+    last_event_at     TEXT NOT NULL,
+    ended_at          TEXT
+  );
+
+  CREATE INDEX external_sessions_launch ON external_sessions (launch_id);
+
+  CREATE TABLE session_meta (
+    claude_session_id TEXT PRIMARY KEY,
+    name              TEXT,
+    pinned            INTEGER NOT NULL DEFAULT 0,
+    archived          INTEGER NOT NULL DEFAULT 0
+  );
+  `,
 ];
