@@ -118,6 +118,27 @@ describe("app-updater", () => {
     expect(mem.calls).toEqual([]);
   });
 
+  test("falha ao procurar aparece na faixa, sem derrubar o app", async () => {
+    const mem = setup();
+    mem.platform.updater.check = async () => {
+      throw new Error("sem rede");
+    };
+    await start(mem);
+    await waitFor(() => expect(text()).toContain("não consegui procurar atualização: sem rede"));
+  });
+
+  test("procura de novo a cada intervalo enquanto o aviso estiver ligado", async () => {
+    const mem = setup({ available: null });
+    const store = new AppStore(mem.platform, { appUpdateIntervalMs: 20 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    await waitFor(() => expect(mem.calls.length).toBeGreaterThanOrEqual(3));
+    act(() => store.setNotifyUpdates(false));
+    const count = mem.calls.length;
+    await Bun.sleep(80);
+    expect(mem.calls.length).toBe(count);
+  });
+
   test("na plataforma web o updater não existe e nada é consultado", async () => {
     const mem = memoryPlatform();
     await start({ ...mem, calls: [] });
