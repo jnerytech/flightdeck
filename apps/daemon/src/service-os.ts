@@ -7,7 +7,7 @@ import { daemonCommand, type ServiceContext } from "./service.ts";
 import { whichOnPath } from "./which.ts";
 
 /** The OS programs that install, start or stop services. */
-const CONTROLLERS = new Set(["systemctl", "schtasks", "loginctl"]);
+const CONTROLLERS = new Set(["systemctl", "schtasks", "loginctl", "systemd-run"]);
 
 /** True for a command that would talk to the real service manager. */
 export function isServiceController(cmd: string[]): boolean {
