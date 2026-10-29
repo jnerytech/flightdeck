@@ -127,6 +127,8 @@ export class Board {
   private readonly follows = new Map<string, () => void>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
+  /** Workflow runs back from a gate, waiting for a slot; served before queued cards. */
+  private readonly waiters: Array<{ cardId: string; resume(): void }> = [];
   private limit: number;
   private readonly pollTimer: ReturnType<typeof setInterval>;
   private polling = false;
@@ -142,6 +144,7 @@ export class Board {
       host: {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
+        acquire: (cardId) => this.acquire(cardId),
         card: (cardId) => this.getCard(cardId),
       },
       checks: opts.checks ?? shellCheckRunner(),
@@ -342,6 +345,12 @@ export class Board {
     if (card.queued || this.running.has(id)) {
       throw new FlightdeckError("invalid_state", `card ${id} já está na fila ou em execução`);
     }
+    if (card.workflowRunId && this.workflows.active(card.workflowRunId)) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "o card tem uma execução de workflow em andamento",
+      );
+    }
     const runId = ulid();
     if (options.workflow) {
       const project = this.getProject(card.projectId);
@@ -359,6 +368,12 @@ export class Board {
   /** Starts queued runs, oldest first, while there are free slots. */
   private pump(): void {
     while (this.running.size < this.limit) {
+      const waiter = this.waiters.shift();
+      if (waiter) {
+        this.running.add(waiter.cardId);
+        waiter.resume();
+        continue;
+      }
       const next = this.db
         .query<RunRow, []>(
           "SELECT * FROM card_runs WHERE started_at IS NULL AND ended_at IS NULL ORDER BY queued_at, rowid LIMIT 1",
@@ -372,6 +387,14 @@ export class Board {
         this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error)),
       );
     }
+  }
+
+  /** A slot for a card whose workflow run goes on after a gate. */
+  private acquire(cardId: string): Promise<void> {
+    return new Promise((resume) => {
+      this.waiters.push({ cardId, resume });
+      this.pump();
+    });
   }
 
   /** The card's run stopped holding a slot: the next one in the queue goes. */

@@ -29,6 +29,8 @@ export interface EngineHost {
   place(cardId: string, event: BoardEvent): void;
   /** The run stopped holding the card's slot in the host queue. */
   release(cardId: string): void;
+  /** Takes a slot for the card again, waiting in the host queue (ahead of queued cards). */
+  acquire(cardId: string): Promise<void>;
   card(cardId: string): Card;
 }
 
@@ -64,6 +66,7 @@ interface StepRow {
   output: string | null;
   exit_code: number | null;
   note: string | null;
+  message: string | null;
   started_at: string;
   ended_at: string | null;
 }
@@ -77,6 +80,7 @@ const toStep = (row: StepRow): StepRun => ({
   output: row.output,
   exitCode: row.exit_code,
   note: row.note,
+  message: row.message,
   startedAt: row.started_at,
   endedAt: row.ended_at,
 });
@@ -85,12 +89,26 @@ const now = () => new Date().toISOString();
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/** Ends the run with a status of its own (not `failed`), such as a rejected gate. */
+class Stop extends Error {
+  constructor(
+    readonly status: RunStatus,
+    why: string,
+  ) {
+    super(why);
+  }
+}
+
+const ACTIVE: ReadonlySet<RunStatus> = new Set(["queued", "running", "waiting"]);
+
 /** Workflows of the projects: catalog read from the base branch, trust and runs. */
 export class WorkflowEngine {
   private readonly db: Database;
   private readonly manager: SessionManager;
   private readonly host: EngineHost;
   private readonly checks: CheckRunner;
+  /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
+  private readonly gates = new Map<string, () => void>();
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
@@ -209,6 +227,38 @@ export class WorkflowEngine {
     for (const { session_id } of sessions) await this.manager.close(session_id);
   }
 
+  /** Answers an open gate: approved, the run goes on; rejected, it ends as `rejected`. */
+  respond(
+    runId: string,
+    stepId: string,
+    attempt: number,
+    decision: "approve" | "reject",
+    note?: string,
+  ): void {
+    this.row(runId);
+    const step = this.stepRow(runId, stepId, attempt);
+    if (step?.type !== "gate" || step.status !== "waiting") {
+      throw new FlightdeckError(
+        "invalid_state",
+        `gate ${stepId} (tentativa ${attempt}) não está aberto`,
+      );
+    }
+    const status = decision === "approve" ? "approved" : "rejected";
+    this.db
+      .query(
+        "UPDATE step_runs SET status = ?, note = ?, ended_at = ? WHERE run_id = ? AND step_id = ? AND attempt = ?",
+      )
+      .run(status, note ?? null, now(), runId, stepId, attempt);
+    const key = `${runId}/${stepId}/${attempt}`;
+    this.gates.get(key)?.();
+    this.gates.delete(key);
+  }
+
+  /** Whether the run is still going (queued, running or at a gate). */
+  active(runId: string): boolean {
+    return ACTIVE.has(this.row(runId).status);
+  }
+
   /** A discarded card takes its runs along. */
   forget(cardId: string): void {
     this.db
@@ -254,7 +304,8 @@ export class WorkflowEngine {
       }
       this.finish(run, "completed", null);
     } catch (error) {
-      this.finish(run, "failed", reason(error));
+      if (error instanceof Stop) this.finish(run, error.status, error.message);
+      else this.finish(run, "failed", reason(error));
     }
   }
 
@@ -264,6 +315,7 @@ export class WorkflowEngine {
     step: Step,
     context: InterpolationContext,
   ): Promise<string> {
+    if ("gate" in step) return this.gateStep(run, step.id, step.gate, context);
     if ("check" in step) {
       const { exitCode, output } = await this.checkStep(run, worktree, step.id, 1, step.check);
       if (exitCode !== 0)
@@ -272,6 +324,38 @@ export class WorkflowEngine {
     }
     const { agent } = step as { agent: AgentAction };
     return this.agentStep(run, worktree, step.id, 1, agent, context);
+  }
+
+  /**
+   * Waits for your answer: the card goes to Esperando você and its slot is freed meanwhile.
+   * Approved, the run takes a slot again and goes on with the note as the gate's output.
+   */
+  private async gateStep(
+    run: RunRow,
+    stepId: string,
+    gate: { message: string; show?: string },
+    context: InterpolationContext,
+  ): Promise<string> {
+    const show = gate.show === undefined ? null : interpolate(gate.show, context);
+    this.db
+      .query(
+        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, output, message, started_at)
+         VALUES (?, ?, 1, 'gate', 'waiting', ?, ?, ?)`,
+      )
+      .run(run.id, stepId, show, interpolate(gate.message, context), now());
+    this.setStatus(run.id, "waiting", null);
+    this.host.place(run.card_id, { type: "workflow", state: "waiting" });
+    this.host.release(run.card_id);
+    await new Promise<void>((resolve) => this.gates.set(`${run.id}/${stepId}/1`, resolve));
+    const answer = this.stepRow(run.id, stepId, 1) as StepRow;
+    if (answer.status === "rejected") {
+      const note = answer.note ? `: ${answer.note}` : "";
+      throw new Stop("rejected", `gate ${stepId} recusado${note}`);
+    }
+    await this.host.acquire(run.card_id);
+    this.setStatus(run.id, "running", null);
+    this.host.place(run.card_id, { type: "workflow", state: "running" });
+    return answer.note ?? "";
   }
 
   /** Runs a check of the trusted workflow; any other command never reaches the executor. */

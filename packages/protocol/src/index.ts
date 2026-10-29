@@ -392,6 +392,8 @@ export const StepRun = z.object({
   exitCode: z.number().int().nullable(),
   /** The note given when answering a gate. */
   note: z.string().nullable(),
+  /** The question of a gate. */
+  message: z.string().nullable(),
   startedAt: z.string(),
   endedAt: z.string().nullable(),
 });
