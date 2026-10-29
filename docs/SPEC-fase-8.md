@@ -79,6 +79,7 @@ A trilha A é rebaseada sobre o fim da trilha B antes de fechar. A tag `fase-8` 
 - **`day`:** é contado no fuso do host, por função injetada. O projeto é a `projectKey` da Fase 5.
 - **Carga inicial:** o primeiro boot da fase preenche o uso de todos os transcripts que já existem, em segundo plano, sem travar o daemon. O andamento aparece no `costs.status`.
 - **Uso do SDK:** o `usage_daily` da Fase 7 deixa de alimentar o painel de uso, que passa a ler daqui. O orçamento por execução da Fase 6 continua com o custo do SDK, em tempo real.
+- **Conferência com o SDK:** nas sessões gerenciadas, o daemon compara o custo calculado com o último `total_cost_usd` do SDK da mesma sessão (Fase 6), que é a estimativa do próprio Claude Code. Divergência acima de 10% (e de US$ 0,05) aparece no `costs.status` com o modelo e os dois valores, e o app mostra o aviso "tabela de preços pode estar desatualizada" em Custos.
 - **Retenção:** `retention.usageDays`, padrão 400. Entra na limpeza da Fase 7.
 
 ### Preços
@@ -220,7 +221,7 @@ Segue [`docs/TDD.md`](TDD.md): ciclo por área, travas e regras de evidência.
 | Trilha | Área | O que precisa passar |
 | --- | --- | --- |
 | A | `uso-mensagens` | uma mensagem em várias linhas conta uma vez; subagentes entram com a sessão-mãe; reler o arquivo não duplica; `origin` certo para terminal, app, card, workflow e subagente; dia no fuso injetado |
-| A | `precos` | custo por modelo com input, output, cache read, cache write de 5 minutos e de 1 hora; tier acima de 100 mil tokens; fast mode; modelo sem preço com custo nulo; config sobrescreve; `costs.reprice` recalcula |
+| A | `precos` | custo por modelo com input, output, cache read, cache write de 5 minutos e de 1 hora; tier acima de 100 mil tokens; fast mode; modelo sem preço com custo nulo; config sobrescreve; `costs.reprice` recalcula; divergência com o `total_cost_usd` do SDK acima do limite aparece no `costs.status` |
 | A | `carga-inicial` | o primeiro boot preenche de transcripts existentes em segundo plano; `costs.status` mostra o progresso; o daemon responde durante a carga |
 | A | `custos-resumo` | `costs.summary` com filtros e quebras; top sessões; economia do cache; `costs.session` soma as subagentes; `costs.export` gera CSV estável |
 | A | `orcamentos` | limiares de 50%, 80% e 100% uma vez por período; `queue` segura card novo com motivo `budget` e solta no período seguinte ou com limite maior; sessão manual e do terminal não bloqueadas; `budget.updated` |
