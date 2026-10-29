@@ -1,7 +1,8 @@
 import type { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import {
+  AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type PermissionUpdate,
@@ -10,7 +11,7 @@ import {
   type WorkflowInfo,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { resolveAllowedCwd } from "../paths.ts";
+import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -88,6 +89,7 @@ interface ProjectRow {
   pr_provider: PrProviderKind;
   setup_script: string | null;
   prompt_template: string;
+  auto_approve: string | null;
 }
 
 function toProject(row: ProjectRow): Project {
@@ -100,8 +102,7 @@ function toProject(row: ProjectRow): Project {
     setupScript: row.setup_script,
     promptTemplate: row.prompt_template,
     worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
-    /** Stub. */
-    autoApprove: { enabled: false, model: "claude-haiku-5-5", lowWithoutAi: true },
+    autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
   };
 }
 
@@ -249,13 +250,13 @@ export class Board {
       prProvider: input.prProvider ?? "none",
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
-      /** Stub. */
-      autoApprove: { enabled: false, model: "claude-haiku-5-5", lowWithoutAi: true },
+      autoApprove: AutoApproveSettings.parse(input.autoApprove ?? {}),
     };
     this.db
       .query(
-        `INSERT INTO projects (id, path, name, base_branch, pr_provider, setup_script, prompt_template)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO projects (id, path, name, base_branch, pr_provider, setup_script, prompt_template,
+           auto_approve)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         project.id,
@@ -265,6 +266,7 @@ export class Board {
         project.prProvider,
         project.setupScript,
         project.promptTemplate,
+        JSON.stringify(project.autoApprove),
       );
     return this.getProject(project.id);
   }
@@ -278,14 +280,42 @@ export class Board {
       ...(patch.prProvider ? { prProvider: patch.prProvider } : {}),
       ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
+      autoApprove: { ...current.autoApprove, ...patch.autoApprove },
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
-         prompt_template = ? WHERE id = ?`,
+         prompt_template = ?, auto_approve = ? WHERE id = ?`,
       )
-      .run(next.name, next.baseBranch, next.prProvider, next.setupScript, next.promptTemplate, id);
+      .run(
+        next.name,
+        next.baseBranch,
+        next.prProvider,
+        next.setupScript,
+        next.promptTemplate,
+        JSON.stringify(next.autoApprove),
+        id,
+      );
     return next;
+  }
+
+  /**
+   * Phase 13: the project a folder belongs to (its repository or a card's worktree), with the
+   * card when it is one; null outside every project.
+   */
+  projectForCwd(cwd: string): { project: Project; card: Card | null } | null {
+    const card = this.db
+      .query<{ id: string; worktree_path: string }, []>(
+        "SELECT id, worktree_path FROM cards WHERE worktree_path IS NOT NULL",
+      )
+      .all()
+      .find((row) => isInside(resolve(row.worktree_path), resolve(cwd)));
+    if (card) {
+      const found = this.getCard(card.id);
+      return { project: this.getProject(found.projectId), card: found };
+    }
+    const project = this.listProjects().find((p) => isInside(resolve(p.path), resolve(cwd)));
+    return project ? { project, card: null } : null;
   }
 
   getCard(id: string): Card {

@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import {
   type McpServerStatus,
   type Options,
@@ -47,6 +48,24 @@ export interface ClaudeSdkRuntimeOptions {
 }
 
 const MAX_TOOL_RESULT = 4000;
+
+/** What the automatic approval's query must answer (phase 13). */
+const JUDGE_SCHEMA = {
+  type: "object",
+  properties: {
+    decision: { type: "string", enum: ["allow", "ask"] },
+    reason: { type: "string" },
+  },
+  required: ["decision", "reason"],
+  additionalProperties: false,
+};
+
+/** An AbortController that follows a signal. */
+function abortFrom(signal: AbortSignal): AbortController {
+  const controller = new AbortController();
+  signal.addEventListener("abort", () => controller.abort(), { once: true });
+  return controller;
+}
 
 export interface ProcessInfo {
   main: string;
@@ -176,9 +195,53 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     this.claudePath = resolveClaudePath(options.claudePath);
   }
 
-  /** Stub. */
-  async judgePermission(_opts: JudgeOptions): Promise<JudgeResult> {
-    return { decision: "ask", reason: "" };
+  /**
+   * Phase 13: one short query, isolated: no settings (so no hooks), no session written, no tools,
+   * one turn and a structured answer. Anything but a clear answer is a question for the user.
+   */
+  async judgePermission(opts: JudgeOptions): Promise<JudgeResult> {
+    mkdirSync(opts.cwd, { recursive: true });
+    const prompt = new AsyncQueue<SDKUserMessage>();
+    prompt.push({
+      type: "user",
+      parent_tool_use_id: null,
+      message: { role: "user", content: opts.prompt },
+    });
+    prompt.end();
+    const handle = this.query({
+      prompt,
+      options: {
+        model: opts.model,
+        cwd: opts.cwd,
+        maxTurns: 1,
+        settingSources: [],
+        persistSession: false,
+        tools: [],
+        env: { ...process.env, FLIGHTDECK_MANAGED: "1" },
+        outputFormat: { type: "json_schema", schema: JUDGE_SCHEMA },
+        ...(opts.signal ? { abortController: abortFrom(opts.signal) } : {}),
+        ...(this.claudePath ? { pathToClaudeCodeExecutable: this.claudePath } : {}),
+      },
+    });
+    for await (const message of handle) {
+      if (message.type !== "result") continue;
+      const usage = message.usage;
+      const tokens = {
+        model: opts.model,
+        speed: "standard",
+        input: usage.input_tokens,
+        output: usage.output_tokens,
+        cacheRead: usage.cache_read_input_tokens ?? 0,
+        cacheWrite5m: usage.cache_creation_input_tokens ?? 0,
+        cacheWrite1h: 0,
+      };
+      const answer = message.subtype === "success" ? message.structured_output : undefined;
+      const { decision, reason } = (answer ?? {}) as { decision?: unknown; reason?: unknown };
+      return decision === "allow" || decision === "ask" || decision === "deny"
+        ? { decision, reason: String(reason ?? ""), tokens }
+        : { decision: "ask", reason: `resposta sem decisão (${message.subtype})`, tokens };
+    }
+    return { decision: "ask", reason: "a consulta terminou sem resultado" };
   }
 
   /** Phase 12: the SDK's forkSession; it writes the new transcript itself. */

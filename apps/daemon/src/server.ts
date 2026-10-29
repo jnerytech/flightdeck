@@ -85,7 +85,7 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
-  /** Stub. */
+  /** Phase 13: the projects' automatic approval (`autoapprove.*`). */
   autoApprove?: AutoApprover;
   /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
   agentcfg?: AgentConfig;
@@ -318,6 +318,13 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function autoApprove(): AutoApprover {
+    if (!opts.autoApprove) {
+      throw new FlightdeckError("invalid_state", "aprovação automática indisponível");
+    }
+    return opts.autoApprove;
+  }
+
   function agentcfg(): AgentConfig {
     if (!opts.agentcfg) throw new FlightdeckError("invalid_state", "config de agente indisponível");
     return opts.agentcfg;
@@ -534,6 +541,27 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
+      case "autoapprove.list": {
+        const { projectId, sessionKey, limit } = command.payload;
+        return ok(command.type, {
+          decisions: autoApprove().list({
+            ...(projectId ? { projectId } : {}),
+            ...(sessionKey ? { sessionKey } : {}),
+            ...(limit ? { limit } : {}),
+          }),
+          suspended: autoApprove().suspended(),
+        });
+      }
+      case "autoapprove.resume": {
+        if (command.payload.confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "reativar a aprovação automática pede confirm: true",
+          );
+        }
+        autoApprove().resume(command.payload.sessionKey);
+        return ok(command.type, { suspended: autoApprove().suspended() });
+      }
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
         return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });

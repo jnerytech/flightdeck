@@ -15,7 +15,7 @@ import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
-import type { AutoApprover } from "../permissions/auto-approve.ts";
+import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
@@ -46,7 +46,7 @@ export interface SessionManagerOptions {
   onTurnEdge?: (edge: TurnEdge) => void;
   /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
   risk?: RiskClassifier;
-  /** Stub. */
+  /** Phase 13: the projects' automatic approval. */
   autoApprove?: Pick<AutoApprover, "decide">;
 }
 
@@ -96,6 +96,15 @@ export class SessionManager {
       emit: (sessionId, event) => this.emit(sessionId, event),
       onPendingChange: (sessionId, pending) => this.onPendingChange(sessionId, pending),
       classify: (sessionId, toolName, input) => this.classify(sessionId, toolName, input),
+      ...(opts.autoApprove
+        ? {
+            autoDecide: (request: AutoApproveRequest) =>
+              (opts.autoApprove as Pick<AutoApprover, "decide">).decide({
+                ...request,
+                cwd: this.get(request.sessionKey).cwd,
+              }),
+          }
+        : {}),
     });
     this.recover();
   }

@@ -47,10 +47,12 @@ export class FakeRuntime implements AgentRuntime {
     this.delayMs = options.delayMs ?? 10;
     this.rewind = options.rewind;
     this.mcpServers = options.mcpServers ?? [];
+    this.judge = options.judge;
   }
 
   private readonly rewind: FakeRuntimeOptions["rewind"];
   private readonly mcpServers: string[];
+  private readonly judge: FakeRuntimeOptions["judge"];
 
   /** MCP servers turned on or off in live runs (phase 12). */
   readonly mcpToggles: Array<{ name: string; enabled: boolean }> = [];
@@ -58,9 +60,17 @@ export class FakeRuntime implements AgentRuntime {
   /** Judge queries so far (phase 13). */
   readonly judgeCalls: JudgeOptions[] = [];
 
-  /** Stub. */
-  async judgePermission(_opts: JudgeOptions): Promise<JudgeResult> {
-    return { decision: "ask", reason: "" };
+  /** Answers with `judge`; without it, the fake AI approves (smoke:automation's Write). */
+  async judgePermission(opts: JudgeOptions): Promise<JudgeResult> {
+    this.judgeCalls.push(opts);
+    if (this.judge) return this.judge(opts);
+    // A small query's usage, so the costs see it (origin auto-approve).
+    const tokens = { model: opts.model, speed: "standard", input: 200, output: 20 };
+    return {
+      decision: "allow",
+      reason: "IA falsa: permitido",
+      tokens: { ...tokens, cacheRead: 0, cacheWrite5m: 0, cacheWrite1h: 0 },
+    };
   }
 
   /** Forks asked so far (phase 12). */

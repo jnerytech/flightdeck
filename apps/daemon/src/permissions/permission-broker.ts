@@ -1,4 +1,5 @@
 import type {
+  AutoApproval,
   CommandPayload,
   PermissionUpdate,
   SessionEvent,
@@ -8,6 +9,7 @@ import { FlightdeckError } from "../errors.ts";
 import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
+import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { checkUpdates } from "./permission-updates.ts";
 import type { Risk } from "./risk.ts";
 
@@ -17,6 +19,8 @@ export interface BrokerHooks {
   onPendingChange(sessionId: string, pending: number): void;
   /** Phase 13: the request's risk, sent with it. */
   classify(sessionId: string, toolName: string, input: ToolInput): Risk;
+  /** Phase 13: the automatic approval's decision; null without it. */
+  autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
 }
 
 interface Pending {
@@ -71,6 +75,14 @@ export class PermissionBroker {
         riskReason: risk.reason,
       });
       this.hooks.onPendingChange(sessionId, this.pendingCount(sessionId));
+      // Asked like any other request: an automatic "allow" answers it, unless you did first.
+      void this.hooks
+        .autoDecide?.({ sessionKey: sessionId, requestId: id, toolName, input, cwd: "", risk })
+        .then((auto) => {
+          if (auto?.decision !== "allow") return;
+          const { by, reason, model } = auto;
+          this.finish(id, "allow", undefined, { behavior: "allow" }, { by, reason, model });
+        });
     });
   }
 
@@ -133,6 +145,7 @@ export class PermissionBroker {
     decision: "allow" | "deny" | "cancelled",
     message?: string,
     result: PermissionDecision = { behavior: "deny", message: "cancelado" },
+    auto?: AutoApproval,
   ): void {
     const pending = this.open.get(id);
     if (!pending) return;
@@ -145,6 +158,7 @@ export class PermissionBroker {
       requestId: id,
       decision,
       ...(message !== undefined ? { message } : {}),
+      ...(auto ? { auto } : {}),
     });
     this.hooks.onPendingChange(pending.sessionId, this.pendingCount(pending.sessionId));
     pending.resolve(result);

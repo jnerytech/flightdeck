@@ -3,9 +3,10 @@ import { closeSync, openSync, readdirSync, readSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { normalizeCwd } from "../history/indexer.ts";
 import { localDay } from "../quota/usage.ts";
+import { ulid } from "../ulid.ts";
 
 /** Where the usage of a message came from. */
-export type UsageOrigin = "terminal" | "app" | "card" | "workflow" | "subagent";
+export type UsageOrigin = "terminal" | "app" | "card" | "workflow" | "subagent" | "auto-approve";
 
 /** What a message used, as the price table reads it. */
 export interface UsageTokens {
@@ -180,9 +181,6 @@ const OWNER = `SELECT
  * `message.id` and usage, so the id is the key: a message counts once, also when read again.
  */
 export class UsageIndexer {
-  /** Stub. */
-  record(_entry: { at: string; model: string; tokens: UsageTokens; projectPath: string }): void {}
-
   private readonly db: Database;
   private readonly excludes: string[];
   private readonly day: (ms: number) => string;
@@ -195,6 +193,34 @@ export class UsageIndexer {
     this.db = opts.db;
     this.excludes = (opts.excludeCwds ?? []).map(normalizeCwd);
     this.day = opts.day ?? localDay;
+  }
+
+  /**
+   * Phase 13: usage the daemon spends itself, with no transcript (the automatic approval's
+   * queries run with persistSession false): origin `auto-approve`.
+   */
+  record(entry: { at: string; model: string; tokens: UsageTokens; projectPath: string }): void {
+    const { tokens } = entry;
+    this.db
+      .query(
+        `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model,
+           origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
+         VALUES (?, NULL, ?, ?, ?, ?, 'auto-approve', ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        `auto-approve-${ulid()}`,
+        entry.at,
+        this.day(Date.parse(entry.at)),
+        this.opts.projectKey(entry.projectPath),
+        entry.model,
+        tokens.speed,
+        tokens.input,
+        tokens.output,
+        tokens.cacheRead,
+        tokens.cacheWrite5m,
+        tokens.cacheWrite1h,
+        this.opts.cost?.(tokens) ?? null,
+      );
   }
 
   /** Progress of the first pass. */

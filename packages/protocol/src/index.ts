@@ -113,6 +113,38 @@ export type Usage = z.infer<typeof Usage>;
 export const RiskLevel = z.enum(["low", "medium", "high"]);
 export type RiskLevel = z.infer<typeof RiskLevel>;
 
+/** Phase 13: how a request was approved automatically: by rule (low risk) or by the AI. */
+export const AutoApproval = z.object({
+  by: z.enum(["rule", "ai"]),
+  reason: z.string(),
+  model: z.string().nullable(),
+});
+export type AutoApproval = z.infer<typeof AutoApproval>;
+
+/** Phase 13: one decision of the automatic approval. */
+export const AutoApprovalRecord = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  /** The managed session's id, or the terminal session's Claude id. */
+  sessionKey: z.string(),
+  requestId: z.string(),
+  toolName: z.string(),
+  risk: z.string(),
+  decision: z.enum(["allow", "ask"]),
+  reason: z.string(),
+  by: z.enum(["rule", "ai"]),
+  model: z.string().nullable(),
+  at: z.string(),
+});
+export type AutoApprovalRecord = z.infer<typeof AutoApprovalRecord>;
+
+export const AutoApproveSuspension = z.object({
+  sessionKey: z.string(),
+  reason: z.string(),
+  at: z.string(),
+});
+export type AutoApproveSuspension = z.infer<typeof AutoApproveSuspension>;
+
 /** An open permission request, as listed in `session.summary`. */
 export const PendingPermission = z.object({
   requestId: z.string(),
@@ -213,6 +245,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     requestId: z.string(),
     decision: PermissionResolution,
     message: z.string().optional(),
+    /** Phase 13: approved automatically, and why. */
+    auto: AutoApproval.optional(),
   }),
   z.object({
     type: z.literal("turn.result"),
@@ -684,7 +718,15 @@ export const CostsDivergence = z.object({
 export type CostsDivergence = z.infer<typeof CostsDivergence>;
 
 /** Where the usage of a message came from; `subagent` keeps the parent session's id. */
-export const UsageOrigin = z.enum(["terminal", "app", "card", "workflow", "subagent"]);
+/** `auto-approve` (phase 13): the automatic approval's own queries. */
+export const UsageOrigin = z.enum([
+  "terminal",
+  "app",
+  "card",
+  "workflow",
+  "subagent",
+  "auto-approve",
+]);
 export type UsageOrigin = z.infer<typeof UsageOrigin>;
 
 const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "dia em AAAA-MM-DD");
@@ -845,6 +887,8 @@ const ProjectFields = {
   /** `null` or blank removes the script. */
   setupScript: z.string().nullable().optional(),
   promptTemplate: z.string().optional(),
+  /** Phase 13: fields left out keep their value. */
+  autoApprove: AutoApproveSettings.partial().optional(),
 };
 
 export const ProjectAddPayload = z.object({ path: z.string().min(1), ...ProjectFields });
@@ -1072,6 +1116,17 @@ export const Command = z.discriminatedUnion("type", [
   cmd("mcp.status", z.object({ sessionId: z.string() })),
   /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
   cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
+  /** Phase 13: the automatic approvals' decisions (newest first) and the suspended sessions. */
+  cmd(
+    "autoapprove.list",
+    z.object({
+      projectId: z.string().optional(),
+      sessionKey: z.string().optional(),
+      limit: z.number().int().min(1).max(1000).optional(),
+    }),
+  ),
+  /** Turns the automatic approval back on in a session that got third-party content. */
+  cmd("autoapprove.resume", z.object({ sessionKey: z.string(), confirm: z.boolean().optional() })),
   cmd(
     "agentcfg.read",
     z.object({
@@ -1464,6 +1519,8 @@ export interface CommandResults {
   "mcp.toggle": { servers: McpServerView[] };
   "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
+  "autoapprove.list": { decisions: AutoApprovalRecord[]; suspended: AutoApproveSuspension[] };
+  "autoapprove.resume": { suspended: AutoApproveSuspension[] };
   "agentcfg.read": AgentCfgItem & { content: string };
   "agentcfg.write": { hash: string };
   "hooks.status": HooksStatusResult;
@@ -1616,6 +1673,8 @@ export const ExternalPermissionFrame = z.object({
   state: z.enum(["open", "closed"]),
   /** Why it closed: answered here, the hook connection dropped, or answered in the terminal. */
   resolution: z.enum(["allow", "deny", "dropped", "answered_elsewhere"]).optional(),
+  /** Phase 13: approved automatically, and why. */
+  auto: AutoApproval.optional(),
   createdAt: z.string(),
 });
 export type ExternalPermissionFrame = z.infer<typeof ExternalPermissionFrame>;

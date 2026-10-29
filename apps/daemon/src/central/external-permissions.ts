@@ -1,4 +1,4 @@
-import type { ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
+import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
@@ -7,6 +7,11 @@ import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
 export type { ExternalPermissionFrame };
+
+/** The hook's answer to an automatic approval. */
+const ALLOW = JSON.stringify({
+  hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow" } },
+});
 
 /** Longer strings are cut here: the queue shows what is asked, not whole files. */
 const MAX_TEXT = 200;
@@ -36,27 +41,41 @@ export class ExternalPermissions {
   private readonly watchers = new Set<(frame: ExternalPermissionFrame) => void>();
 
   private readonly risk: RiskClassifier;
+  private readonly auto: Pick<AutoApprover, "decide"> | undefined;
 
-  /** `risk`: the classifier of the daemon's config; built-in rules alone when absent. */
+  /**
+   * `risk`: the classifier of the daemon's config, built-in rules alone when absent. `auto`:
+   * the projects' automatic approval (phase 13).
+   */
   constructor(opts: { risk?: RiskClassifier; auto?: Pick<AutoApprover, "decide"> } = {}) {
     this.risk = opts.risk ?? new RiskClassifier({ allowedRoots: [], home: userHome() });
+    this.auto = opts.auto;
   }
 
-  /** Resolves with the hook's JSON answer, or "" (no decision: the terminal's dialog decides). */
+  /**
+   * Resolves with the hook's JSON answer, or "" (no decision: the terminal's dialog decides).
+   * An automatic "allow" answers too, even with no app watching.
+   */
   hold(payload: HookPayload, signal: AbortSignal): Promise<string> {
-    if (this.watchers.size === 0) return Promise.resolve("");
-    const suggestions = parseSuggestions(payload.permission_suggestions);
+    const toolName = String(payload.tool_name ?? "");
+    const input = { ...(payload.tool_input as Record<string, unknown> | undefined) };
+    const cwd = String(payload.cwd ?? "");
     // From the whole input: the cut one could hide what comes after 200 characters.
-    const risk = this.risk.classify(
-      String(payload.tool_name ?? ""),
-      { ...(payload.tool_input as Record<string, unknown> | undefined) },
-      String(payload.cwd ?? ""),
-    );
+    const risk = this.risk.classify(toolName, input, cwd);
+    const requestId = `ext-${ulid()}`;
+    const claudeSessionId = String(payload.session_id ?? "");
+    const auto =
+      this.auto?.decide({ sessionKey: claudeSessionId, requestId, toolName, input, cwd, risk }) ??
+      Promise.resolve(null);
+    if (this.watchers.size === 0) {
+      return auto.then((decision) => (decision?.decision === "allow" ? ALLOW : ""));
+    }
+    const suggestions = parseSuggestions(payload.permission_suggestions);
     const frame: ExternalPermissionFrame = {
       type: "external.permission",
-      requestId: `ext-${ulid()}`,
-      claudeSessionId: String(payload.session_id ?? ""),
-      toolName: String(payload.tool_name ?? ""),
+      requestId,
+      claudeSessionId,
+      toolName,
       input: summarizeInput(payload.tool_input),
       ...(suggestions.length > 0 ? { suggestions } : {}),
       risk: risk.level,
@@ -71,6 +90,11 @@ export class ExternalPermissions {
         once: true,
       });
       this.publish(frame);
+      void auto.then((decision) => {
+        if (decision?.decision !== "allow") return;
+        const { by, reason, model } = decision;
+        this.close(requestId, "allow", ALLOW, { by, reason, model });
+      });
     });
   }
 
@@ -129,12 +153,13 @@ export class ExternalPermissions {
     requestId: string,
     resolution: NonNullable<ExternalPermissionFrame["resolution"]>,
     body: string,
+    auto?: AutoApproval,
   ): void {
     const held = this.held.get(requestId);
     if (!held) return;
     this.held.delete(requestId);
     held.resolve(body);
-    this.publish({ ...held.frame, state: "closed", resolution });
+    this.publish({ ...held.frame, state: "closed", resolution, ...(auto ? { auto } : {}) });
   }
 
   private publish(frame: ExternalPermissionFrame): void {

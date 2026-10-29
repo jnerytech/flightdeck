@@ -316,4 +316,31 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (claude_session_id, n)
   );
   `,
+  // Phase 13: each project's automatic approval (JSON), its decisions, and the sessions where
+  // it is suspended because third-party content reached them.
+  `
+  ALTER TABLE projects ADD COLUMN auto_approve TEXT;
+
+  CREATE TABLE auto_approvals (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT NOT NULL,
+    session_key TEXT NOT NULL,
+    request_id  TEXT NOT NULL,
+    tool_name   TEXT NOT NULL,
+    risk        TEXT NOT NULL,
+    decision    TEXT NOT NULL,
+    reason      TEXT NOT NULL,
+    decided_by  TEXT NOT NULL,
+    model       TEXT,
+    at          TEXT NOT NULL
+  );
+
+  CREATE INDEX auto_approvals_at ON auto_approvals (at);
+
+  CREATE TABLE auto_approve_suspended (
+    session_key TEXT PRIMARY KEY,
+    reason      TEXT NOT NULL,
+    at          TEXT NOT NULL
+  );
+  `,
 ];

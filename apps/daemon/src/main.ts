@@ -44,6 +44,7 @@ import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
@@ -348,10 +349,28 @@ export async function startDaemon(
     home: userHome(env),
     extraHigh: config.risk.extraHigh,
   });
+  // Phase 13: the projects' automatic approval, through the board (defined below) and the costs.
+  const autoApprove = new AutoApprover({
+    db: store.db,
+    runtime,
+    dataDir: config.dataDir,
+    context: (cwd) => {
+      const found = board.projectForCwd(cwd);
+      if (!found) return null;
+      const { project, card } = found;
+      return {
+        projectId: project.id,
+        settings: project.autoApprove,
+        ...(card ? { description: card.description } : {}),
+      };
+    },
+    usage: { record: (entry) => usageIndex.record(entry) },
+  });
   const manager = new SessionManager({
     store,
     runtime,
     risk,
+    autoApprove,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
@@ -374,7 +393,7 @@ export async function startDaemon(
   const history = new HistoryIndexer({
     db: store.db,
     roots: config.history.roots,
-    excludeCwds: config.history.excludeCwds,
+    excludeCwds: historyExcludes(config),
     log: (m) => logger.log(m),
     ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
   });
@@ -390,7 +409,7 @@ export async function startDaemon(
   const usageIndex = new UsageIndexer({
     db: store.db,
     roots: config.history.roots,
-    excludeCwds: config.history.excludeCwds,
+    excludeCwds: historyExcludes(config),
     projectKey: (cwd) => keys.keyFor(cwd),
     cost: (tokens) => costs.cost(tokens),
     log: (m) => logger.log(m),
@@ -442,6 +461,7 @@ export async function startDaemon(
     : undefined;
   const central = new Central({
     risk,
+    autoApprove,
     snapshots,
     db: store.db,
     manager,
@@ -454,6 +474,7 @@ export async function startDaemon(
   });
   const server = startServer({
     manager,
+    autoApprove,
     history,
     board,
     quota,
@@ -667,7 +688,7 @@ function runReindex(args: CliArgs, deps: CliDeps): void {
     const history = new HistoryIndexer({
       db: store.db,
       roots: config.history.roots,
-      excludeCwds: config.history.excludeCwds,
+      excludeCwds: historyExcludes(config),
     });
     const { sessions, messages } = history.rebuild();
     deps.log.log(`histórico reconstruído: ${sessions} sessões, ${messages} mensagens`);
