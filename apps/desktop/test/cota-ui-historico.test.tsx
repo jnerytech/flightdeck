@@ -188,4 +188,28 @@ describe("cota-ui-historico", () => {
     expect(cost("Custo do card")).toBe("US$ 2.00");
     expect(cost("Custo da execução")).toBe("US$ 2.00");
   });
+  test("o custo aparece na sessão criada pelo + sem passar pela tela Sessões", async () => {
+    const d = makeDaemon(cleanups, { costs: true });
+    const server = d.listen();
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.hostInfo !== null);
+    // "+" leaves the Sessões screen, whose list never sees the new session.
+    await click("Nova sessão em alfa");
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    let sessionId = "";
+    await act(async () => {
+      sessionId = (await store.createSession(hostId, { cwd: d.project, prompt: "oi" })) ?? "";
+    });
+    await settle(() => d.manager.get(sessionId).status === "idle");
+    spend(d, "kA", T0, 0.75, d.manager.get(sessionId).claudeSessionId as string);
+    // The next turn ends with the entry already there.
+    d.manager.send(sessionId, "mais");
+    const cost = () => screen.queryByLabelText("Custo da sessão")?.textContent ?? "";
+    await settle(() => cost() !== "");
+    expect(cost()).toBe("US$ 0.75");
+  });
 });
