@@ -30,6 +30,7 @@ import {
 import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
@@ -82,6 +83,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
+  agentcfg?: AgentConfig;
   /** Phase 12: the project's MCP servers (`mcp.*`). */
   mcp?: McpConfig;
   /** Phase 12: `session.fork`. */
