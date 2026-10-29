@@ -9,7 +9,7 @@ setDefaultTimeout(30_000);
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {
-  for (const fn of cleanups.splice(0)) fn();
+  for (const fn of cleanups.splice(0).reverse()) fn();
 });
 
 async function run(yaml: string, rules: FakeRule[]) {
