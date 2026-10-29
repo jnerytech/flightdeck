@@ -291,12 +291,18 @@ export const HelloPayload = z.object({
 
 export const SessionListPayload = z.object({}).strict();
 
+/** How hard the model works (the SDK's effort levels). */
+export const EffortLevel = z.enum(["low", "medium", "high", "xhigh", "max"]);
+export type EffortLevel = z.infer<typeof EffortLevel>;
+
 export const SessionCreatePayload = z.object({
   cwd: z.string().min(1),
   prompt: z.string().min(1),
   name: z.string().min(1).optional(),
   permissionMode: PermissionMode.optional(),
   model: z.string().min(1).optional(),
+  /** Phase 13: for a session that is not resumed later (arena variants). */
+  effort: EffortLevel.optional(),
 });
 
 export const SessionSendPayload = z.object({ sessionId: z.string(), text: z.string().min(1) });
@@ -509,6 +515,19 @@ export const Card = z.object({
   queueReason: z.enum(["slot", "quota", "budget"]).nullable().default(null),
   /** With `queueReason: quota`, when the window resets (ISO); `null` when unknown. */
   quotaUntil: z.string().nullable().default(null),
+  /** Phase 13: an arena variant's parent card; variants are not on the board. */
+  arenaOf: z.string().nullable().default(null),
+  /** Phase 13: what makes an arena variant different from its siblings. */
+  variant: z
+    .object({
+      label: z.string(),
+      model: z.string().nullable(),
+      effort: EffortLevel.nullable(),
+    })
+    .nullable()
+    .default(null),
+  /** Phase 13: how many arena variants the card has (0 when it is not in an arena). */
+  arenaVariants: z.number().int().nonnegative().default(0),
   /** Phase 13: the issue this card came from (`github:owner/repo#n`, `azure:org/project#id`). */
   issueRef: z.string().nullable().default(null),
   /** Phase 13: the issue's author is third party, so the card's content is untrusted. */
@@ -517,6 +536,40 @@ export const Card = z.object({
   updatedAt: z.string(),
 });
 export type Card = z.infer<typeof Card>;
+
+/** Phase 13: one variant of an arena, as the comparison shows it. */
+export const ArenaVariant = z.object({
+  /** The variant's own card id; `card.chooseVariant` takes it. */
+  id: z.string(),
+  label: z.string(),
+  model: z.string().nullable(),
+  effort: EffortLevel.nullable(),
+  branch: z.string().nullable(),
+  worktreePath: z.string().nullable(),
+  /** Started and waiting for a free slot. */
+  queued: z.boolean(),
+  sessionStatus: SessionStatus.nullable(),
+  column: BoardColumn,
+  startedAt: z.string().nullable(),
+  endedAt: z.string().nullable(),
+  durationMs: z.number().nonnegative().nullable(),
+  /** The estimated cost of its sessions; `null` when the host does not price them. */
+  costUsd: z.number().nonnegative().nullable(),
+  files: z.array(
+    z.object({
+      path: z.string(),
+      additions: z.number().int().nonnegative(),
+      deletions: z.number().int().nonnegative(),
+    }),
+  ),
+  /** The `check` steps of its workflow run, if it ran one. */
+  checks: z.array(z.object({ stepId: z.string(), status: z.string() })),
+  notice: z.string().nullable(),
+});
+export type ArenaVariant = z.infer<typeof ArenaVariant>;
+
+export const Arena = z.object({ cardId: z.string(), variants: z.array(ArenaVariant) });
+export type Arena = z.infer<typeof Arena>;
 
 export const DiffLine = z.object({ op: z.enum(["+", "-", " "]), text: z.string() });
 export type DiffLine = z.infer<typeof DiffLine>;
@@ -1199,6 +1252,25 @@ export const Command = z.discriminatedUnion("type", [
   cmd("mcp.status", z.object({ sessionId: z.string() })),
   /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
   cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
+  /** Phase 13: the same request in 2 to 4 variants, each in its own worktree. */
+  cmd(
+    "card.startArena",
+    z.object({
+      cardId: z.string(),
+      variants: z
+        .array(z.object({ model: z.string().min(1).optional(), effort: EffortLevel.optional() }))
+        .min(2)
+        .max(4),
+      workflow: z.string().min(1).optional(),
+      inputs: z.record(z.string(), z.string()).optional(),
+    }),
+  ),
+  cmd("card.arena", z.object({ cardId: z.string() })),
+  /** The variant becomes the card's worktree; the others are stopped and removed (`confirm`). */
+  cmd(
+    "card.chooseVariant",
+    z.object({ cardId: z.string(), variantId: z.string(), confirm: z.boolean().optional() }),
+  ),
   /** Phase 13: a project's automations; `save` always leaves them off. */
   cmd("automation.list", z.object({ projectId: z.string() })),
   cmd(
@@ -1630,6 +1702,9 @@ export interface CommandResults {
   "mcp.toggle": { servers: McpServerView[] };
   "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
+  "card.startArena": Arena;
+  "card.arena": Arena;
+  "card.chooseVariant": Card;
   "automation.list": { automations: Automation[] };
   "automation.save": Automation;
   "automation.remove": { automations: Automation[] };

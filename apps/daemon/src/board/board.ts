@@ -2,9 +2,11 @@ import type { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import {
+  type Arena,
   AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
+  type EffortLevel,
   IssuesConfig,
   type PermissionUpdate,
   type SessionEvent,
@@ -77,6 +79,8 @@ export interface BoardOptions {
   quota?: Quota;
   /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
+  /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
+  cardCost?: (cardId: string) => number | null;
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
@@ -363,6 +367,10 @@ export class Board {
       discarded: false,
       runs,
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
+      /** Stub. */
+      arenaOf: null,
+      variant: null,
+      arenaVariants: 0,
       issueRef: row.issue_ref,
       issueExternal: row.issue_external === 1,
       ...this.queueState(
@@ -405,6 +413,28 @@ export class Board {
         at,
       );
     return this.changed(id);
+  }
+
+  /** Stub. */
+  async startArena(
+    cardId: string,
+    _input: {
+      variants: Array<{ model?: string | undefined; effort?: EffortLevel | undefined }>;
+      workflow?: string | undefined;
+      inputs?: Record<string, string> | undefined;
+    },
+  ): Promise<Arena> {
+    return { cardId, variants: [] };
+  }
+
+  /** Stub. */
+  async arena(cardId: string): Promise<Arena> {
+    return { cardId, variants: [] };
+  }
+
+  /** Stub. */
+  async chooseVariant(cardId: string, _variantId: string, _confirm: boolean): Promise<Card> {
+    return this.getCard(cardId);
   }
 
   /** The card already made from an issue of the project, if any. */

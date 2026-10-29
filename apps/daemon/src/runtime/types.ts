@@ -1,4 +1,5 @@
 import type {
+  EffortLevel,
   McpLiveStatus,
   PermissionMode,
   PermissionUpdate,
@@ -44,6 +45,8 @@ export interface StartOptions {
   resume?: string;
   permissionMode: PermissionMode;
   model?: string;
+  /** Phase 13: how hard the model works (arena variants). */
+  effort?: EffortLevel;
   /** Already sanitized environment for the agent process. */
   env: Record<string, string>;
   canUseTool: CanUseToolFn;

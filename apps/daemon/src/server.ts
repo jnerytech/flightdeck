@@ -557,6 +557,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
+      case "card.startArena": {
+        const { cardId, ...input } = command.payload;
+        return ok(command.type, await board().startArena(cardId, input));
+      }
+      case "card.arena":
+        return ok(command.type, await board().arena(command.payload.cardId));
+      case "card.chooseVariant": {
+        const { cardId, variantId, confirm } = command.payload;
+        return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
+      }
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":

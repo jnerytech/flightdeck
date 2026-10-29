@@ -97,6 +97,14 @@ const validCommands: Record<CommandType, unknown> = {
     expectedHash: null,
     confirm: true,
   },
+  "card.startArena": {
+    cardId: "c1",
+    variants: [{ model: "claude-sonnet-5-5", effort: "high" }, {}],
+    workflow: "feature",
+    inputs: { tema: "x" },
+  },
+  "card.arena": { cardId: "c1" },
+  "card.chooseVariant": { cardId: "c1", variantId: "v2", confirm: true },
   "automation.list": { projectId: "p1" },
   "automation.save": {
     projectId: "p1",
