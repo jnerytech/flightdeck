@@ -31,7 +31,7 @@ const REVIEW = `steps:
       - agent: { prompt: "[tool] segurança" }
       - agent: { prompt: "[tool] legibilidade" }
   - id: apply
-    agent: { prompt: "{{steps.review.outputs}}" }
+    gate: { message: "Aplicar?", show: "{{steps.review.outputs}}" }
 `;
 
 const reply = (text: string) => `Vou criar um arquivo.\n\nEcho: ${text}`;
@@ -45,7 +45,7 @@ describe("engine-parallel", () => {
     allow(both?.find((s) => s.stepId === "review.1")?.sessionId);
     await Bun.sleep(50);
     allow(both?.find((s) => s.stepId === "review.0")?.sessionId);
-    const run = await runWhen((r) => r.status === "completed", 10_000);
+    const run = await runWhen((r) => r.status === "waiting", 10_000);
     const outputs = [reply("[tool] segurança"), reply("[tool] legibilidade")];
     expect(run?.steps.find((s) => s.stepId === "review")).toMatchObject({
       type: "parallel",
@@ -53,7 +53,7 @@ describe("engine-parallel", () => {
       output: outputs.join(OUTPUTS_SEPARATOR),
     });
     expect(run?.steps.find((s) => s.stepId === "apply")?.output).toBe(
-      `Echo: ${outputs.join(OUTPUTS_SEPARATOR)}`,
+      outputs.join(OUTPUTS_SEPARATOR),
     );
   });
 
@@ -67,9 +67,9 @@ describe("engine-parallel", () => {
     const second = await poll(() => asking().find((s) => s.stepId === "review.1") ?? null, 5000);
     expect(second?.stepId).toBe("review.1");
     allow(second?.sessionId);
-    const done = await runWhen((r) => r.status === "completed", 10_000);
+    const done = await runWhen((r) => r.status === "waiting", 10_000);
     expect(done?.steps.find((s) => s.stepId === "apply")?.output).toBe(
-      `Echo: ${[reply("[tool] segurança"), reply("[tool] legibilidade")].join(OUTPUTS_SEPARATOR)}`,
+      [reply("[tool] segurança"), reply("[tool] legibilidade")].join(OUTPUTS_SEPARATOR),
     );
   });
 
