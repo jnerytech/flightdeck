@@ -185,6 +185,8 @@ const validCommands: Record<CommandType, unknown> = {
     tags: ["prod"],
   },
   "ssh.remove": { id: "t", confirm: true },
+  "ssh.import.preview": {},
+  "ssh.import.apply": { aliases: ["vps", "db"] },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",

@@ -162,6 +162,19 @@ describe("ssh-import", () => {
     expect(none.preview()).toEqual({ entries: [] });
   });
 
+  test("valores entre aspas perdem as aspas", () => {
+    const { importer, config } = fixture();
+    writeFileSync(
+      config,
+      ["Host quoted", '  HostName "q.example.com"', '  IdentityFile "~/.ssh/with space"', ""].join(
+        "\n",
+      ),
+    );
+    expect(importer.preview().entries).toMatchObject([
+      { alias: "quoted", host: "q.example.com", identityFile: "~/.ssh/with space" },
+    ]);
+  });
+
   test("a prévia marca os destinos que já existem, pelo nome ou pelo mesmo host, porta e usuário", () => {
     const { importer, targets } = fixture();
     targets.save({ name: "vps", host: "outro.example.com", user: "x" });
