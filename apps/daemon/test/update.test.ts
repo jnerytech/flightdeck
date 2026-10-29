@@ -389,6 +389,9 @@ describe("update", () => {
     });
     cleanups.push(() => server.stop());
     expect(await requestShutdown(server.url, token, 2000)).toBe(true);
+    // The daemon starts closing as soon as the ack is on its way, not on a later timer tick:
+    // a timer could fire only after the next requests had already finished.
+    expect(asked).toBe(1);
     expect(await requestShutdown(server.url, "x".repeat(32), 2000)).toBe(false);
     const closed = Bun.serve({ port: 0, fetch: () => new Response("") });
     const port = closed.port;
