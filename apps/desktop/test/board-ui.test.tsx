@@ -208,7 +208,7 @@ describe("board-ui", () => {
     expect(board.getCard(id).column).toBe("review");
     await click("Concluir");
     await click("Confirmar");
-    await settle(() => board.getCard(id).column === "done");
+    await settle(() => board.getCard(id).worktreePath === null);
     expect(board.getCard(id)).toMatchObject({ column: "done", worktreePath: null });
     await click("Voltar ao board");
     await settle(() => column("Concluído").includes("Terminar"));
