@@ -349,4 +349,24 @@ describe("ClaudeSdkRuntime", () => {
     });
     expect(calls).toEqual([["orig", { upToMessageId: "u2", dir: "/proj" }]]);
   });
+  test("toggleMcpServer da sessão viva vai ao query do SDK", async () => {
+    const toggles: unknown[] = [];
+    const queryFn: QueryFn = () => ({
+      async *[Symbol.asyncIterator]() {},
+      interrupt: async () => {},
+      close: () => {},
+      toggleMcpServer: async (name: string, enabled: boolean) => {
+        toggles.push([name, enabled]);
+      },
+    });
+    const run = new ClaudeSdkRuntime({ query: queryFn }).start({
+      cwd: "/proj",
+      permissionMode: "default",
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+    });
+    await run.toggleMcpServer?.("eco", false);
+    expect(toggles).toEqual([["eco", false]]);
+    await run.close();
+  });
 });
