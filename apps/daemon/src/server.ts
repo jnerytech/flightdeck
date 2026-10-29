@@ -26,6 +26,7 @@ import type { Board } from "./board/board.ts";
 import type { Central } from "./central/central.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
+import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 
@@ -51,6 +52,8 @@ export interface ServerOptions {
   board?: Board;
   /** External sessions and their permission requests (phase 5). */
   central?: Central;
+  /** Retention and backups behind the `maintenance.*` commands (phase 7). */
+  maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
   /** What `host.info` announces; derived from what this daemon has when absent. */
@@ -124,7 +127,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   let currentToken = opts.token;
   const startedAt = Date.now();
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
-  const features = [...(opts.central ? ["central"] : []), ...(opts.board ? ["workflows"] : [])];
+  const features = [
+    ...(opts.central ? ["central"] : []),
+    ...(opts.board ? ["workflows"] : []),
+    ...(opts.maintenance ? ["maintenance"] : []),
+  ];
   let pingSeq = 0;
 
   const heartbeat = setInterval(() => {
@@ -198,6 +205,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       projectKey: hub.projectKey(session.cwd),
       meta: hub.meta.get(claudeSessionId ?? ""),
     };
+  }
+
+  function maintenance(): Maintenance {
+    if (!opts.maintenance) throw new FlightdeckError("invalid_state", "manutenção indisponível");
+    return opts.maintenance;
   }
 
   function board(): Board {
@@ -275,6 +287,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         const meta = central().meta.set(claudeSessionId, patch);
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "maintenance.status":
+        return ok(command.type, maintenance().status());
+      case "maintenance.backup":
+        return ok(command.type, maintenance().backupNow());
+      case "maintenance.prune":
+        return ok(command.type, maintenance().prune(command.payload.dryRun === true));
       case "hooks.status":
         return ok(command.type, central().hooksStatus());
       case "hooks.install":

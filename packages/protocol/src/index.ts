@@ -563,6 +563,10 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  cmd("maintenance.status", z.object({}).strict()),
+  cmd("maintenance.backup", z.object({}).strict()),
+  /** Applies the retention policy now; `dryRun` only counts. */
+  cmd("maintenance.prune", z.object({ dryRun: z.boolean().optional() })),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -711,6 +715,25 @@ export const HooksStatusResult = z.object({
 });
 export type HooksStatusResult = z.infer<typeof HooksStatusResult>;
 
+/** Phase 7: one backup file of the host's database. */
+export const BackupInfo = z.object({ path: z.string(), at: z.string(), bytes: z.number() });
+export type BackupInfo = z.infer<typeof BackupInfo>;
+
+/** Rows removed (or that would be, with `dryRun`) per table. */
+export const PruneCounts = z.record(z.string(), z.number());
+export type PruneCounts = z.infer<typeof PruneCounts>;
+
+export const MaintenanceStatus = z.object({
+  /** Size of the database (pages × page size). */
+  dbBytes: z.number(),
+  lastBackup: BackupInfo.nullable(),
+  /** Automatic backups, newest first. */
+  backups: z.array(BackupInfo),
+  lastPrune: z.object({ at: z.string(), dryRun: z.boolean(), counts: PruneCounts }).nullable(),
+  counts: z.object({ sessions: z.number(), events: z.number(), externalSessions: z.number() }),
+});
+export type MaintenanceStatus = z.infer<typeof MaintenanceStatus>;
+
 export interface CommandResults {
   hello: HelloResult;
   "session.list": SessionListResult;
@@ -749,6 +772,9 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "maintenance.status": MaintenanceStatus;
+  "maintenance.backup": BackupInfo;
+  "maintenance.prune": PruneCounts;
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { type BackupInfo, backupNow, keepLast, listBackups } from "./backup.ts";
 import { type PruneCounts, prune, type RetentionPolicy } from "./retention.ts";
 
 export interface MaintenanceTimers {
@@ -14,15 +15,25 @@ export interface LastPrune {
   counts: PruneCounts;
 }
 
+export interface MaintenanceStatus {
+  dbBytes: number;
+  lastBackup: BackupInfo | null;
+  backups: BackupInfo[];
+  lastPrune: LastPrune | null;
+  counts: { sessions: number; events: number; externalSessions: number };
+}
+
 export interface MaintenanceOptions {
   db: Database;
   dataDir: string;
   retention: RetentionPolicy;
+  backup?: { enabled: boolean; keep: number };
   now?: () => number;
   timers?: MaintenanceTimers;
 }
 
 const DAY_MS = 86_400_000;
+const DEFAULT_KEEP = 7;
 
 /** Bookkeeping kept next to the database (not in it: no migration for a timestamp). */
 const STATE_FILE = "maintenance.json";
@@ -31,7 +42,7 @@ interface State {
   lastPrune?: LastPrune;
 }
 
-/** Daily upkeep of a host's database: retention at boot and every 24 h. */
+/** Daily upkeep of a host's database: retention and backup at boot and every 24 h. */
 export class Maintenance {
   private readonly now: () => number;
   private readonly timers: MaintenanceTimers;
@@ -60,12 +71,47 @@ export class Maintenance {
     return counts;
   }
 
+  /** A backup now (into `out`, or the backups folder keeping the last `backup.keep`). */
+  backupNow(out?: string): BackupInfo {
+    const info = backupNow(this.opts.db, this.backupsDir, this.now(), out);
+    if (!out) keepLast(this.backupsDir, this.opts.backup?.keep ?? DEFAULT_KEEP);
+    return info;
+  }
+
+  status(): MaintenanceStatus {
+    const db = this.opts.db;
+    const count = (table: string) =>
+      (db.query(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
+    const { page_count } = db.query("PRAGMA page_count").get() as { page_count: number };
+    const { page_size } = db.query("PRAGMA page_size").get() as { page_size: number };
+    const backups = listBackups(this.backupsDir);
+    return {
+      dbBytes: page_count * page_size,
+      lastBackup: backups[0] ?? null,
+      backups,
+      lastPrune: this.lastPrune(),
+      counts: {
+        sessions: count("sessions"),
+        events: count("events"),
+        externalSessions: count("external_sessions"),
+      },
+    };
+  }
+
   lastPrune(): LastPrune | null {
     return this.state().lastPrune ?? null;
   }
 
+  /** Retention, then a backup when enabled and the last one is a day old (or missing). */
   private daily(): void {
     this.prune(false);
+    const last = listBackups(this.backupsDir)[0];
+    const due = !last || this.now() - Date.parse(last.at) >= DAY_MS;
+    if (this.opts.backup?.enabled && due) this.backupNow();
+  }
+
+  private get backupsDir(): string {
+    return join(this.opts.dataDir, "backups");
   }
 
   private get file(): string {

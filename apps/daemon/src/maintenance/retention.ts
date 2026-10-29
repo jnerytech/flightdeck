@@ -7,11 +7,11 @@ export interface RetentionPolicy {
   externalSessionsDays: number;
 }
 
-export interface PruneCounts {
+export type PruneCounts = {
   events: number;
   permission_requests: number;
   external_sessions: number;
-}
+};
 
 const DAY_MS = 86_400_000;
 

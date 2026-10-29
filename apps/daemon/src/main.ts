@@ -28,6 +28,7 @@ import {
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { acquireLock } from "./lock.ts";
+import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
@@ -61,7 +62,9 @@ export interface CliArgs {
     | "claude"
     | "mcp"
     | "version"
-    | "db";
+    | "db"
+    | "backup"
+    | "restore";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -75,6 +78,10 @@ export interface CliArgs {
   token?: string;
   /** `channel --launch <id>`: the `flightdeckd claude` launch this channel serves. */
   launch?: string;
+  /** `backup --out <file>`. */
+  out?: string;
+  /** `restore <file>`. */
+  file?: string;
   /** `claude [args]`: everything after `claude` belongs to the real claude. */
   claudeArgs?: string[];
 }
@@ -83,6 +90,8 @@ const USAGE = [
   "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
   "     flightdeckd --version",
   "     flightdeckd db prune [--dry-run] [--config <arquivo>]",
+  "     flightdeckd backup [--out <arquivo>] [--config <arquivo>]",
+  "     flightdeckd restore <arquivo> [--config <arquivo>]   (com o daemon parado)",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
@@ -110,6 +119,18 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         const action = argv[++i];
         if (action !== "prune")
           throw new Error(`ação de db inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        break;
+      }
+      case "backup":
+        args.command = "backup";
+        break;
+      case "--out":
+        args.out = value();
+        break;
+      case "restore": {
+        args.command = "restore";
+        const next = argv[i + 1];
+        if (next && !next.startsWith("--")) args.file = argv[++i];
         break;
       }
       case "--version":
@@ -273,6 +294,7 @@ export async function startDaemon(
     db: store.db,
     dataDir: config.dataDir,
     retention: config.retention,
+    backup: config.backup,
   });
   maintenance.start();
   const central = new Central({
@@ -290,6 +312,7 @@ export async function startDaemon(
     history,
     board,
     central,
+    maintenance,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -483,6 +506,32 @@ function runHooks(args: CliArgs, deps: CliDeps): void {
   );
 }
 
+/** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
+function runBackup(args: CliArgs, deps: CliDeps): void {
+  const config = loadConfig(configPath(args));
+  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  try {
+    const info = new Maintenance({
+      db: store.db,
+      dataDir: config.dataDir,
+      retention: config.retention,
+      backup: config.backup,
+      ...(deps.now ? { now: deps.now } : {}),
+    }).backupNow(args.out);
+    deps.log.log(`backup criado: ${info.path} (${info.bytes} bytes)`);
+  } finally {
+    store.close();
+  }
+}
+
+/** `flightdeckd restore <file>`: only with the daemon stopped. */
+function runRestore(args: CliArgs, deps: CliDeps): void {
+  if (!args.file) throw new Error("restore precisa do arquivo: flightdeckd restore <arquivo>");
+  const config = loadConfig(configPath(args));
+  const { beforeRestore } = restoreBackup({ file: args.file, dataDir: config.dataDir });
+  deps.log.log(`banco restaurado de ${args.file}; o anterior ficou em ${beforeRestore}`);
+}
+
 /** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
 function runPrune(args: CliArgs, deps: CliDeps): void {
   const config = loadConfig(configPath(args));
@@ -533,6 +582,16 @@ export interface CliDeps {
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
+    if (args.command === "backup") {
+      runBackup(args, deps);
+      deps.exit(0);
+      return null;
+    }
+    if (args.command === "restore") {
+      runRestore(args, deps);
+      deps.exit(0);
+      return null;
+    }
     if (args.command === "db") {
       runPrune(args, deps);
       deps.exit(0);

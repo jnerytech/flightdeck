@@ -76,6 +76,13 @@ export const Config = z.object({
       externalSessionsDays: z.number().int().min(0).default(30),
     })
     .default(() => ({ eventsDays: 90, externalSessionsDays: 30 })),
+  /** Daily `VACUUM INTO <dataDir>/backups`, keeping the newest `keep`. */
+  backup: z
+    .object({
+      enabled: z.boolean().default(true),
+      keep: z.number().int().min(1).default(7),
+    })
+    .default(() => ({ enabled: true, keep: 7 })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
