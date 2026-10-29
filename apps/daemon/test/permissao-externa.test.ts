@@ -161,10 +161,13 @@ describe("permissao-externa", () => {
     const { receptor, server } = setup();
     const first = await app(server.url);
     await post(receptor, "SessionStart", { cwd: "/p" });
-    void post(receptor, "PermissionRequest", REQUEST);
+    // Answered at the end; a failure before that must not leave a rejection behind.
+    const held = post(receptor, "PermissionRequest", REQUEST).catch(() => null);
     const open = await openFrame(first);
     const late = await app(server.url);
-    expect(late.frames.find((f) => f.type === "external.updated")).toMatchObject({
+    // The snapshot follows the ack.
+    await poll(() => permissionFrames(late).length > 0);
+    expect(late.frames.find((f) => f.type === "external.updated") ?? {}).toMatchObject({
       session: { claudeSessionId: "s1", status: "awaiting_permission" },
     });
     expect(permissionFrames(late)).toEqual([open as Frame]);
@@ -174,6 +177,7 @@ describe("permissao-externa", () => {
     );
     expect(listed?.sessions.map((s) => s.claudeSessionId)).toEqual(["s1"]);
     await first.request("permission.respond", { requestId: open?.requestId, decision: "allow" });
+    await held;
   });
 
   test("permission.respond com id que não é externo segue para as sessões gerenciadas", async () => {

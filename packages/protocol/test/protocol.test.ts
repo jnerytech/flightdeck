@@ -60,6 +60,8 @@ const validCommands: Record<CommandType, unknown> = {
   "card.pr.create": { cardId: "c" },
   "card.complete": { cardId: "c", confirm: true },
   "card.discard": { cardId: "c", confirm: true },
+  "external.list": {},
+  "external.watch": {},
 };
 
 const validEvents: SessionEvent[] = [
