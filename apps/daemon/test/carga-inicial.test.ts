@@ -163,10 +163,11 @@ describe("carga-inicial", () => {
       history: { roots: [projects], scanIntervalMs: 50 },
     };
     writeFileSync(file, JSON.stringify(config));
+    const logs: string[] = [];
     const daemon = await startDaemon(
       { command: "start", config: file, runtime: "fake" },
       {},
-      { log: () => {}, error: () => {} },
+      { log: (m) => logs.push(m), error: () => {} },
     );
     cleanups.push(() => daemon.stop());
     const client = new FrameClient(daemon.url);
@@ -181,6 +182,7 @@ describe("carga-inicial", () => {
     }
     expect(loaded?.initialLoad).toEqual({ state: "done", filesDone: 2, filesTotal: 2 });
     expect(await models()).toEqual(["claude-mystery-9"]);
+    expect(logs).toContain("custos: carga inicial concluída (2 transcripts, 5 mensagens)");
     const line = readFileSync(main, "utf8").split("\n")[5] as string;
     appendFileSync(
       main,
