@@ -712,6 +712,30 @@ export const HelloResult = z.object({
 });
 export type HelloResult = z.infer<typeof HelloResult>;
 
+/** Phase 9: `daemon-latest.json`, published with each release. */
+export const DaemonManifest = z.object({
+  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  protocol: z.number().int(),
+  assets: z.record(
+    z.string(),
+    z.object({
+      url: z.string().url(),
+      sha256: z.string().regex(/^[0-9a-f]{64}$/),
+      signature: z.string(),
+    }),
+  ),
+});
+export type DaemonManifest = z.infer<typeof DaemonManifest>;
+
+/** What the daemon found the last time it checked its manifest. */
+export const UpdateStatus = z.object({
+  available: z.boolean(),
+  version: z.string().nullable(),
+  checkedAt: z.string(),
+  error: z.string().optional(),
+});
+export type UpdateStatus = z.infer<typeof UpdateStatus>;
+
 export const HostInfoResult = z.object({
   hostName: z.string(),
   os: z.string(),
@@ -724,6 +748,8 @@ export const HostInfoResult = z.object({
   apiKeySanitized: z.boolean(),
   /** What the daemon offers (`central`, `workflows`, `maintenance`…); absent before phase 7. */
   features: z.array(z.string()).optional(),
+  /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */
+  update: UpdateStatus.optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 

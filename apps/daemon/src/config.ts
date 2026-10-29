@@ -6,6 +6,13 @@ import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 
+/** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
+const COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
+
+/** Where each release publishes the daemons' manifest. */
+export const MANIFEST_URL =
+  "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json";
+
 export const DEFAULT_HISTORY_ROOTS = ["~/.claude/projects"] as const;
 
 export const RuntimeKind = z.enum(["claude", "fake"]);
@@ -83,6 +90,20 @@ export const Config = z.object({
       keep: z.number().int().min(1).default(7),
     })
     .default(() => ({ enabled: true, keep: 7 })),
+  /**
+   * Phase 9: the release manifest the daemon checks. Only a compiled flightdeckd checks GitHub by
+   * default: from the source tree there is no binary to update (and the tests stay offline).
+   */
+  updates: z
+    .object({
+      manifestUrl: z
+        .string()
+        .url()
+        .nullable()
+        .default(COMPILED ? MANIFEST_URL : null),
+      checkIntervalH: z.number().int().min(1).default(24),
+    })
+    .default(() => ({ manifestUrl: COMPILED ? MANIFEST_URL : null, checkIntervalH: 24 })),
   /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })

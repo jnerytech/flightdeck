@@ -60,6 +60,7 @@ import {
   stopServiceDaemon,
   waitHealthy,
 } from "./update.ts";
+import { UpdateChecker } from "./updates/check.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
@@ -345,6 +346,15 @@ export async function startDaemon(
     backup: config.backup,
   });
   maintenance.start();
+  // Checked in the background: a slow or unreachable release server never delays the boot.
+  const updates = config.updates.manifestUrl
+    ? new UpdateChecker({
+        manifestUrl: config.updates.manifestUrl,
+        checkIntervalH: config.updates.checkIntervalH,
+        currentVersion: DAEMON_VERSION,
+      })
+    : undefined;
+  void updates?.start();
   const central = new Central({
     db: store.db,
     manager,
@@ -363,6 +373,7 @@ export async function startDaemon(
     usage,
     central,
     maintenance,
+    ...(updates ? { updates } : {}),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -405,6 +416,7 @@ export async function startDaemon(
         board.stop();
         await central.stop();
         maintenance.stop();
+        updates?.stop();
         await manager.shutdown();
         await server.stop();
         history.stop();

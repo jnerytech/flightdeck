@@ -32,6 +32,7 @@ import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { UpdateChecker } from "./updates/check.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
@@ -59,6 +60,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 9: the release manifest check behind `host.info.update`. */
+  updates?: UpdateChecker;
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
@@ -222,6 +225,12 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  /** `host.info.update` once the daemon has checked its manifest. */
+  function updateStatus() {
+    const update = opts.updates?.status();
+    return update ? { update } : {};
+  }
+
   function maintenance(): Maintenance {
     if (!opts.maintenance) throw new FlightdeckError("invalid_state", "manutenção indisponível");
     return opts.maintenance;
@@ -368,6 +377,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           activeSessions: manager.activeSessionCount(),
           apiKeySanitized: manager.apiKeySanitized(),
           features: opts.features ?? features,
+          ...updateStatus(),
         });
       case "history.list": {
         const page = history().list(command.payload);
