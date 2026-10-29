@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import type { Budget } from "@flightdeck/protocol";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { Budgets, type BudgetUpdate } from "../src/costs/budgets.ts";
@@ -44,6 +45,16 @@ function setup(db = new EventStore(":memory:").db) {
 }
 
 const HOST_DAY = { scope: "host", period: "day", limitUsd: 10, action: "notify" } as const;
+
+/** What `budget.set` takes to change `budget` to a new limit. */
+const raised = (budget: Budget, limitUsd: number) => ({
+  id: budget.id,
+  scope: budget.scope,
+  period: budget.period,
+  action: budget.action,
+  limitUsd,
+  ...(budget.projectKey ? { projectKey: budget.projectKey } : {}),
+});
 
 describe("orcamentos", () => {
   test("limiares de 50%, 80% e 100% disparam uma vez por período, também depois de reiniciar", () => {
@@ -152,7 +163,7 @@ describe("orcamentos", () => {
       action: "queue",
     });
     expect([budgets.blocked("kA"), budgets.blocked("kB")]).toEqual([true, false]);
-    budgets.set({ ...project, limitUsd: 10 });
+    budgets.set(raised(project, 10));
     expect(budgets.blocked("kA")).toBe(false);
     expect(frames.at(-1)).toMatchObject({ threshold: null, budget: { limitUsd: 10 } });
     const host = budgets.set({ ...HOST_DAY, limitUsd: 5, action: "queue" });
@@ -196,7 +207,7 @@ describe("orcamentos", () => {
     const manual = ctx.manager.create({ cwd: ctx.repo, prompt: "oi" });
     expect(await poll(() => ctx.manager.get(manual.sessionId).status === "idle")).toBe(true);
     expect(ctx.board.getCard(held.id)).toMatchObject({ queued: true, queueReason: "budget" });
-    budgets.set({ ...budget, limitUsd: 10 });
+    budgets.set(raised(budget, 10));
     const started = await cardWhen(ctx.board, held.id, (c) => c.sessionId !== null);
     expect(started).toMatchObject({ queued: false, queueReason: null });
   });
@@ -241,7 +252,7 @@ describe("orcamentos", () => {
       (await client.data<{ budgets: Array<{ id: string }> }>("budget.list", {}))?.budgets.map(
         (b) => b.id,
       ),
-    ).toEqual([made?.id]);
+    ).toEqual([made?.id ?? ""]);
     await client.request("budget.remove", { id: made?.id });
     expect(await client.data("budget.list", {})).toEqual({ budgets: [] });
     const updates = () => client.frames.filter((f) => f.type === "budget.updated");
