@@ -986,6 +986,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("changes.get", z.object({ target: ReviewTarget })),
   cmd("pr.comments", CardIdPayload),
+  /** The data of `flightdeckd statusline`: quota windows, today's cost and the session's. */
+  cmd("statusline.get", z.object({ claudeSessionId: z.string().optional() })),
   /** The sessions that wrote a file, by its absolute path. */
   cmd("files.sessions", z.object({ path: z.string().min(1) })),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
@@ -1292,6 +1294,11 @@ export interface CommandResults {
   "quota.history": QuotaHistory;
   "changes.get": ChangesResult;
   "pr.comments": { comments: PrComment[] };
+  "statusline.get": {
+    windows: Array<{ window: string; utilization: number | null }>;
+    todayUsd: number;
+    sessionUsd: number | null;
+  };
   "files.sessions": { sessions: FileSession[] };
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };

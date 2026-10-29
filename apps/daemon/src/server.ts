@@ -34,6 +34,7 @@ import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
+import { statuslineData } from "./costs/statusline.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
@@ -42,6 +43,7 @@ import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
+import { localDay } from "./quota/usage.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
@@ -668,6 +670,18 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
       case "session.files":
         return ok(command.type, { files: sessionFiles().list(command.payload.claudeSessionId) });
+      case "statusline.get": {
+        const { claudeSessionId } = command.payload;
+        return ok(
+          command.type,
+          statuslineData({
+            ...(opts.quota ? { quota: opts.quota } : {}),
+            ...(opts.costs ? { costs: opts.costs } : {}),
+            today: localDay(Date.now()),
+            ...(claudeSessionId ? { claudeSessionId } : {}),
+          }),
+        );
+      }
       case "pr.comments":
         return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
       case "pr.comments.send": {

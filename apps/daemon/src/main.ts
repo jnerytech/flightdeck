@@ -30,6 +30,7 @@ import {
 import { Budgets } from "./costs/budgets.ts";
 import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
+import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
@@ -87,6 +88,7 @@ export interface CliArgs {
     | "channel"
     | "claude"
     | "mcp"
+    | "statusline"
     | "version"
     | "db"
     | "backup"
@@ -131,6 +133,7 @@ const USAGE = [
   "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
   "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
   "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
+  "     flightdeckd statusline [--config <arquivo>]   (uma linha para a statusline do Claude Code)",
 ].join("\n");
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
@@ -208,6 +211,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       }
       case "channel":
       case "mcp":
+      case "statusline":
         args.command = flag;
         break;
       case "claude":
@@ -877,6 +881,16 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         throw new Error(`não consegui abrir o canal do Flightdeck: ${error.message}`);
       });
       void channel.closed.then(() => deps.exit(0));
+      return null;
+    }
+    if (args.command === "statusline") {
+      // Never creates the config: a statusline runs where there may be no daemon at all.
+      const line = await runStatusline({
+        configFile: configPath(args),
+        stdin: deps.stdin ?? Bun.stdin.stream(),
+      });
+      deps.log.log(line);
+      deps.exit(0);
       return null;
     }
     if (args.command === "mcp") {
