@@ -625,6 +625,7 @@ O que a spec da Fase 6 (Workflows) deixou aberto, ou o que mudou na implementaç
   - Qualquer outro comando é registrado e recusado com código 99, sem chegar ao shell, e o preload reprova a suíte se houver registro.
   - Os comandos falsos (`installFakeCheck`, em `scripts/test/check-guard.ts`) são os falsos de CLI da Fase 4 (sh e `.cmd`), com a pasta acrescentada à lista.
   - O `smoke:workflow` instala a mesma trava e passa o ambiente explicitamente ao daemon, onde o executor real roda.
+  - Os outros smokes também a instalam e a conferem antes do OK, embora os seus daemons não rodem workflows.
 - **Falsos de CLI por número da chamada:** as regras dos falsos ganharam `call` (a n-ésima chamada), para um check falhar uma vez e passar na seguinte sem corrida contra o FakeRuntime.
 
 ## Motor
@@ -638,7 +639,7 @@ O que a spec da Fase 6 (Workflows) deixou aberto, ou o que mudou na implementaç
   - Loop: `<id>.check` e `<id>.do`, com a iteração como tentativa.
   - Parallel: `<id>.<índice>`.
   - O `gate.respond` usa esses mesmos ids.
-- **`step_runs`:** ganhou `note` (a nota do gate) e `message` (a pergunta do gate), colunas além da spec.
+- **`step_runs`:** ganhou `note` (a nota do gate), `message` (a pergunta do gate) e `usage` (o que os turnos da etapa gastaram), colunas além da spec.
 - **Status da execução:**
   - `queued` e `running`.
   - `waiting`: gate aberto.
@@ -664,6 +665,11 @@ O que a spec da Fase 6 (Workflows) deixou aberto, ou o que mudou na implementaç
   - Um `parallel` usa a vaga do card mais as vagas livres do host no início da etapa, sem esperar por elas, e as devolve no fim. Sem vagas livres, os itens rodam um depois do outro.
 - **Card com execução em andamento** (na fila, rodando ou num gate): não pode ser iniciado de novo.
 - **Conclusão (manual ou merge):** fecha as sessões das etapas. O descarte apaga as execuções do card.
+- **Quando o board encerra a execução do card**, a execução do workflow também acaba, como `failed`:
+  - Parar com o card na fila: "card parado antes de começar".
+  - Concluir ou Descartar no meio: "execução encerrada com o card".
+  - As etapas abertas (um gate incluído) fecham como `failed`, e a execução que segurava a vaga a devolve.
+  - Limitação conhecida: as vagas extras de um `parallel` em andamento nessa hora só voltam com o reinício do daemon.
 - **Etapa `pr`:**
   - Fora da tabela de áreas, com escopo próprio (`engine-pr`). Usa o `createPr` do board.
   - A URL do PR é a saída da etapa.
@@ -684,7 +690,7 @@ O que a spec da Fase 6 (Workflows) deixou aberto, ou o que mudou na implementaç
   - O `usage` da execução guarda o último total visto de cada sessão. Cada turno soma `max(0, total − último)`.
   - Um total menor que o último não subtrai nada.
 - **Mensagens de pausa:** "orçamento estourado: 2 de 2 turnos", "… 12.3 de 12 minutos", "… US$ 1.75 de US$ 1.50".
-- **Uso por etapa:** não é guardado. O app mostra o uso da execução no medidor e a duração de cada etapa.
+- **Uso por etapa:** cada etapa `agent` guarda a sua parte (turnos, minutos e a diferença de custo que os seus turnos somaram), e a linha do tempo a mostra ao lado da duração.
 - **FakeRuntime:** guarda o custo cumulativo por Claude session id (`[cost:x]`). Uma sessão retomada com `resume` no mesmo runtime começa do total anterior, como o SDK.
 
 ## Protocolo

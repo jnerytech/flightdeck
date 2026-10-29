@@ -399,8 +399,8 @@ validação e os comandos `check`. **Confiar** mostra esses comandos e pede conf
 No detalhe do card, escolha o workflow (ou **Nenhum**, para o card simples da Fase 4),
 preencha os `inputs` e clique em Iniciar.
 
-- **Linha do tempo:** o detalhe mostra cada etapa com status, tentativa e duração. Clicar abre a
-  conversa da etapa ou a saída do `check`.
+- **Linha do tempo:** o detalhe mostra cada etapa com status, tentativa, duração e, num `agent`,
+  os turnos e o custo estimado. Clicar abre a conversa da etapa ou a saída do `check`.
 - **Gate aberto:** leva o card a Esperando você e libera a vaga do host. Ele aparece no próprio
   card e em **Precisa de você**, com Aprovar, Recusar e nota.
   - Aprovado, a execução volta à fila do host e segue.
