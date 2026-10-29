@@ -110,6 +110,8 @@ const validCommands: Record<CommandType, unknown> = {
   "card.mergeLocal": { cardId: "k", mode: "squash", confirm: true },
   "pr.comments": { cardId: "k" },
   "pr.comments.send": { cardId: "k", ids: ["1"] },
+  "files.sessions": { path: "/work/a.ts" },
+  "session.files": { claudeSessionId: "s" },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
