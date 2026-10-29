@@ -1,6 +1,7 @@
 import { unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
+import { Board } from "./board/board.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
   defaultConfigPath,
@@ -168,9 +169,20 @@ export async function startDaemon(
     ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
   });
   history.start();
+  const board = new Board({
+    db: store.db,
+    manager,
+    allowedRoots: config.allowedRoots,
+    maxParallelRuns: config.maxParallelRuns,
+    ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
+    // Changed from the app: kept in the config file, like the rest of the host settings.
+    onSettingsChange: ({ maxParallelRuns }) =>
+      updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
+  });
   const server = startServer({
     manager,
     history,
+    board,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -209,6 +221,7 @@ export async function startDaemon(
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
+        board.stop();
         await manager.shutdown();
         await server.stop();
         history.stop();

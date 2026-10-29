@@ -1,6 +1,11 @@
 import type { Database } from "bun:sqlite";
 import { basename } from "node:path";
-import type { SessionEvent, SessionStatus } from "@flightdeck/protocol";
+import {
+  BoardColumn as BoardColumnSchema,
+  type BoardResult,
+  type SessionEvent,
+  type SessionStatus,
+} from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -38,6 +43,8 @@ export interface BoardOptions {
   /** 2 when absent. */
   maxParallelRuns?: number;
   prPollIntervalMs?: number;
+  /** Persists host-wide settings changed through `board.settings`. */
+  onSettingsChange?: (settings: { maxParallelRuns: number }) => void;
 }
 
 interface ProjectRow {
@@ -118,6 +125,7 @@ export class Board {
   private limit: number;
   private readonly pollTimer: ReturnType<typeof setInterval>;
   private polling = false;
+  private readonly watchers = new Set<(card: Card) => void>();
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
@@ -256,7 +264,52 @@ export class Board {
          VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?)`,
       )
       .run(id, projectId, input.title, input.description, (last ?? 0) + 1, at, at);
-    return this.getCard(id);
+    return this.changed(id);
+  }
+
+  /** Edits the title or the description. */
+  updateCard(
+    id: string,
+    patch: { title?: string | undefined; description?: string | undefined },
+  ): Card {
+    const card = this.getCard(id);
+    this.db
+      .query("UPDATE cards SET title = ?, description = ?, updated_at = ? WHERE id = ?")
+      .run(patch.title ?? card.title, patch.description ?? card.description, now(), id);
+    return this.changed(id);
+  }
+
+  /** The project with its five columns, each with its cards by position. */
+  getBoard(projectId: string): BoardResult {
+    const project = this.getProject(projectId);
+    const cards = this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? ORDER BY position, created_at",
+      )
+      .all(projectId)
+      .map(({ id }) => this.getCard(id));
+    const columns = BoardColumnSchema.options.map((column) => ({
+      column,
+      cards: cards.filter((card) => card.column === column),
+    }));
+    return { project, columns };
+  }
+
+  /** "Pedir ajuste": a message to the session of the active run. */
+  message(id: string, text: string): { queued: boolean } {
+    const { sessionId } = this.getCard(id);
+    if (!sessionId) throw new FlightdeckError("invalid_state", "card sem sessão; inicie o card");
+    return this.opts.manager.send(sessionId, text);
+  }
+
+  /** Gets every card after each change; returns the function that stops it. */
+  watch(listener: (card: Card) => void): () => void {
+    this.watchers.add(listener);
+    return () => this.watchers.delete(listener);
+  }
+
+  get watcherCount(): number {
+    return this.watchers.size;
   }
 
   /**
@@ -274,7 +327,7 @@ export class Board {
     this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
     this.place(id, { type: "started" });
     this.pump();
-    return this.getCard(id);
+    return this.changed(id);
   }
 
   /** Starts queued runs, oldest first, while there are free slots. */
@@ -288,6 +341,7 @@ export class Board {
       if (!next) return;
       this.running.add(next.card_id);
       this.db.query("UPDATE card_runs SET started_at = ? WHERE id = ?").run(now(), next.id);
+      this.changed(next.card_id);
       void this.launch(next.card_id, next.id).catch((error: unknown) =>
         this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error)),
       );
@@ -304,6 +358,7 @@ export class Board {
     this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
     this.place(id, { type: "failed" });
     this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
+    this.changed(id);
     this.release(id);
   }
 
@@ -319,6 +374,7 @@ export class Board {
           "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, updated_at = ? WHERE id = ?",
         )
         .run(added.slug, added.branch, added.path, now(), id);
+      this.changed(id);
     }
     if (project.setupScript) await runSetup(project.setupScript, worktree);
     const prompt = [card.description, project.promptTemplate]
@@ -328,6 +384,7 @@ export class Board {
     await this.closeRuns(id, runId);
     const { sessionId } = this.opts.manager.create({ cwd: worktree, prompt, name: card.title });
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
+    this.changed(id);
     this.follow(id, sessionId, 0);
   }
 
@@ -347,6 +404,11 @@ export class Board {
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
   private async finish(id: string): Promise<void> {
     await this.closeRuns(id);
+    await this.removeCleanWorktree(id);
+    this.changed(id);
+  }
+
+  private async removeCleanWorktree(id: string): Promise<void> {
     const card = this.getCard(id);
     if (!card.worktreePath) return;
     const pending = must(await git(card.worktreePath, "status", "--porcelain"), "git status");
@@ -373,7 +435,7 @@ export class Board {
     this.db
       .query("UPDATE cards SET position = ? WHERE id = ?")
       .run(position ?? (last ?? 0) + 1, id);
-    return this.getCard(id);
+    return this.changed(id);
   }
 
   /**
@@ -390,7 +452,7 @@ export class Board {
     } else if (card.sessionId) {
       await this.opts.manager.interrupt(card.sessionId);
     }
-    return this.getCard(id);
+    return this.changed(id);
   }
 
   /** Commits since the base plus uncommitted changes, per file. */
@@ -456,7 +518,9 @@ export class Board {
     const last = this.getCard(id);
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
-    return { ...last, worktreePath: null, branch: null, discarded: true };
+    const discarded = { ...last, worktreePath: null, branch: null, discarded: true };
+    this.emit(discarded);
+    return discarded;
   }
 
   get prPollIntervalMs(): number {
@@ -472,11 +536,12 @@ export class Board {
         .query<{ id: string }, []>("SELECT id FROM cards WHERE pr_state = 'open'")
         .all();
       for (const { id } of open) {
-        await this.pollPr(id).catch((error: unknown) =>
-          this.db
-            .query("UPDATE cards SET notice = ? WHERE id = ?")
-            .run(error instanceof Error ? error.message : String(error), id),
-        );
+        await this.pollPr(id).catch((error: unknown) => {
+          const notice = error instanceof Error ? error.message : String(error);
+          this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+          // The card may have been discarded while the provider was answering.
+          if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
+        });
       }
     } finally {
       this.polling = false;
@@ -493,6 +558,7 @@ export class Board {
     this.db
       .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
       .run(state, checks, id);
+    this.changed(id);
     if (state !== card.prState) this.place(id, { type: "pr", state });
     if (state === "merged") await this.finish(id);
   }
@@ -504,6 +570,7 @@ export class Board {
   /** A higher limit starts queued cards right away; a lower one lets running ones finish. */
   setMaxParallelRuns(value: number): void {
     this.limit = value;
+    this.opts.onSettingsChange?.({ maxParallelRuns: value });
     this.pump();
   }
 
@@ -521,6 +588,24 @@ export class Board {
     this.db
       .query("UPDATE cards SET board_column = ?, column_locked = ?, updated_at = ? WHERE id = ?")
       .run(next.column, next.locked ? 1 : 0, now(), id);
+    this.changed(id);
+  }
+
+  /** Sends the card as it is now to every watcher, and returns it. */
+  private changed(id: string): Card {
+    const card = this.getCard(id);
+    this.emit(card);
+    return card;
+  }
+
+  private emit(card: Card): void {
+    for (const watcher of this.watchers) {
+      try {
+        watcher(card);
+      } catch {
+        // A broken watcher must not break the board.
+      }
+    }
   }
 
   /** Session events of the card's active run move the card (replay first, then live). */

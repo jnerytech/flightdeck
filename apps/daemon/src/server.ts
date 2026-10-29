@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   type Ack,
+  type CardUpdated,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
   Command,
@@ -17,6 +18,7 @@ import {
 import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import type { Board } from "./board/board.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
@@ -40,6 +42,8 @@ export interface ServerOptions {
   pingIntervalMs?: number;
   /** Transcript index behind the `history.*` commands. */
   history?: HistoryIndexer;
+  /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
+  board?: Board;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -61,6 +65,8 @@ interface Connection {
   unwatch?: () => void;
   /** Stops the `history.watch` stream, when active. */
   unwatchHistory?: () => void;
+  /** Stops the `board.watch` stream, when active. */
+  unwatchBoard?: () => void;
   lastRttMs?: number;
 }
 
@@ -73,7 +79,10 @@ export function tokenMatches(expected: string, given: string): boolean {
   return timingSafeEqual(digest(expected), digest(given));
 }
 
-function send(ws: Socket, message: Ack | EventEnvelope | Ping | HistoryChanged): void {
+function send(
+  ws: Socket,
+  message: Ack | EventEnvelope | Ping | HistoryChanged | CardUpdated,
+): void {
   ws.send(JSON.stringify(message));
 }
 
@@ -140,6 +149,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function history(): HistoryIndexer {
     if (!opts.history) throw new FlightdeckError("invalid_state", "histórico desativado");
     return opts.history;
+  }
+
+  function board(): Board {
+    if (!opts.board) throw new FlightdeckError("invalid_state", "board desativado");
+    return opts.board;
   }
 
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
@@ -241,6 +255,60 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "project.list":
+        return ok(command.type, {
+          projects: board().listProjects(),
+          maxParallelRuns: board().maxParallelRuns,
+        });
+      case "project.add":
+        return ok(command.type, await board().addProject(command.payload));
+      case "project.update": {
+        const { projectId, ...patch } = command.payload;
+        return ok(command.type, board().updateProject(projectId, patch));
+      }
+      case "board.get":
+        return ok(command.type, board().getBoard(command.payload.projectId));
+      case "board.settings": {
+        const { maxParallelRuns } = command.payload;
+        if (maxParallelRuns !== undefined) board().setMaxParallelRuns(maxParallelRuns);
+        return ok(command.type, { maxParallelRuns: board().maxParallelRuns });
+      }
+      case "board.watch": {
+        const cards = board();
+        ws.data.unwatchBoard?.();
+        ws.data.unwatchBoard = cards.watch((card) => send(ws, { type: "card.updated", card }));
+        return ok(command.type);
+      }
+      case "card.create": {
+        const { projectId, title, description } = command.payload;
+        return ok(command.type, board().createCard(projectId, { title, description }));
+      }
+      case "card.update": {
+        const { cardId, ...patch } = command.payload;
+        return ok(command.type, board().updateCard(cardId, patch));
+      }
+      case "card.move": {
+        const { cardId, column, position } = command.payload;
+        return ok(command.type, board().moveCard(cardId, column, position));
+      }
+      case "card.start":
+        return ok(command.type, await board().startCard(command.payload.cardId));
+      case "card.stop":
+        return ok(command.type, await board().stopCard(command.payload.cardId));
+      case "card.diff":
+        return ok(command.type, await board().diff(command.payload.cardId));
+      case "card.message":
+        return ok(command.type, board().message(command.payload.cardId, command.payload.text));
+      case "card.pr.create":
+        return ok(command.type, await board().createPr(command.payload.cardId));
+      case "card.complete": {
+        const { cardId, confirm } = command.payload;
+        return ok(command.type, await board().completeCard(cardId, confirm === true));
+      }
+      case "card.discard": {
+        const { cardId, confirm } = command.payload;
+        return ok(command.type, await board().discardCard(cardId, confirm === true));
+      }
       case "sessions.watch": {
         // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.
         ws.data.unwatch?.();
@@ -307,6 +375,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         authed.delete(ws);
         ws.data.unwatch?.();
         ws.data.unwatchHistory?.();
+        ws.data.unwatchBoard?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

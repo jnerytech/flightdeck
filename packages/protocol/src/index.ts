@@ -224,6 +224,113 @@ export const HistoryResumePayload = z.object({
   force: z.boolean().optional(),
 });
 
+// Phase 4: projects (git repositories of the host) and their boards of cards.
+export const PrProviderKind = z.enum(["github", "azure-devops", "none"]);
+export type PrProviderKind = z.infer<typeof PrProviderKind>;
+
+export const BoardColumn = z.enum(["backlog", "in_progress", "waiting", "review", "done"]);
+export type BoardColumn = z.infer<typeof BoardColumn>;
+
+export const PrState = z.enum(["open", "merged", "closed"]);
+export type PrState = z.infer<typeof PrState>;
+
+export const ChecksState = z.enum(["pending", "passing", "failing"]);
+export type ChecksState = z.infer<typeof ChecksState>;
+
+export const Project = z.object({
+  id: z.string(),
+  path: z.string(),
+  name: z.string(),
+  baseBranch: z.string(),
+  prProvider: PrProviderKind,
+  /** The only shell command Flightdeck runs on its own, and only when registered. */
+  setupScript: z.string().nullable(),
+  /** Appended to the prompt of every card. */
+  promptTemplate: z.string(),
+});
+export type Project = z.infer<typeof Project>;
+
+export const CardRun = z.object({
+  /** `null` while queued or preparing the worktree. */
+  sessionId: z.string().nullable(),
+  queuedAt: z.string(),
+  startedAt: z.string().nullable(),
+  endedAt: z.string().nullable(),
+});
+export type CardRun = z.infer<typeof CardRun>;
+
+export const Card = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  title: z.string(),
+  description: z.string(),
+  column: BoardColumn,
+  /** Moved by hand to Backlog or Concluído: events leave it there until the next start. */
+  columnLocked: z.boolean(),
+  position: z.number(),
+  slug: z.string().nullable(),
+  branch: z.string().nullable(),
+  worktreePath: z.string().nullable(),
+  prUrl: z.string().nullable(),
+  prState: PrState.nullable(),
+  checksState: ChecksState.nullable(),
+  /** Started and waiting for a free slot. */
+  queued: z.boolean(),
+  /** Session of the active (latest) run. */
+  sessionId: z.string().nullable(),
+  sessionStatus: SessionStatus.nullable(),
+  /** Last problem worth showing on the card (failed setup, worktree kept on completion). */
+  notice: z.string().nullable(),
+  /** Set only on the last update of a discarded card, which leaves the board. */
+  discarded: z.boolean(),
+  runs: z.array(CardRun),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Card = z.infer<typeof Card>;
+
+export const DiffLine = z.object({ op: z.enum(["+", "-", " "]), text: z.string() });
+export type DiffLine = z.infer<typeof DiffLine>;
+
+export const DiffHunk = z.object({
+  /** The `@@ -a,b +c,d @@` line. */
+  header: z.string(),
+  lines: z.array(DiffLine),
+});
+export type DiffHunk = z.infer<typeof DiffHunk>;
+
+export const DiffFile = z.object({
+  path: z.string(),
+  /** Previous path of a renamed file. */
+  oldPath: z.string().nullable(),
+  status: z.enum(["added", "modified", "deleted", "renamed"]),
+  additions: z.number().int().nonnegative(),
+  deletions: z.number().int().nonnegative(),
+  /** Not committed yet (tracked change or new file). */
+  uncommitted: z.boolean(),
+  binary: z.boolean(),
+  hunks: z.array(DiffHunk),
+});
+export type DiffFile = z.infer<typeof DiffFile>;
+
+export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
+export type CardDiff = z.infer<typeof CardDiff>;
+
+const ProjectFields = {
+  name: z.string().min(1).optional(),
+  baseBranch: z.string().min(1).optional(),
+  prProvider: PrProviderKind.optional(),
+  /** `null` or blank removes the script. */
+  setupScript: z.string().nullable().optional(),
+  promptTemplate: z.string().optional(),
+};
+
+export const ProjectAddPayload = z.object({ path: z.string().min(1), ...ProjectFields });
+export const ProjectUpdatePayload = z.object({ projectId: z.string(), ...ProjectFields });
+export const CardIdPayload = z.object({ cardId: z.string() });
+/** Completion and discard only happen with `confirm: true`; the daemon refuses anything else. */
+export const CardConfirmPayload = z.object({ cardId: z.string(), confirm: z.boolean().optional() });
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -245,6 +352,36 @@ export const Command = z.discriminatedUnion("type", [
   cmd("history.search", HistorySearchPayload),
   cmd("history.resume", HistoryResumePayload),
   cmd("history.watch", z.object({}).strict()),
+  cmd("project.list", z.object({}).strict()),
+  cmd("project.add", ProjectAddPayload),
+  cmd("project.update", ProjectUpdatePayload),
+  cmd("board.get", z.object({ projectId: z.string() })),
+  /** Host-wide board settings; without fields it only reads them. */
+  cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
+  cmd("board.watch", z.object({}).strict()),
+  cmd(
+    "card.create",
+    z.object({ projectId: z.string(), title: z.string().min(1), description: z.string() }),
+  ),
+  cmd(
+    "card.update",
+    z.object({
+      cardId: z.string(),
+      title: z.string().min(1).optional(),
+      description: z.string().optional(),
+    }),
+  ),
+  cmd(
+    "card.move",
+    z.object({ cardId: z.string(), column: BoardColumn, position: z.number().optional() }),
+  ),
+  cmd("card.start", CardIdPayload),
+  cmd("card.stop", CardIdPayload),
+  cmd("card.diff", CardIdPayload),
+  cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
+  cmd("card.pr.create", CardIdPayload),
+  cmd("card.complete", CardConfirmPayload),
+  cmd("card.discard", CardConfirmPayload),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -347,6 +484,23 @@ export type HistorySearchHit = z.infer<typeof HistorySearchHit>;
 export const HistorySearchResult = z.object({ hits: z.array(HistorySearchHit) });
 export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 
+export const BoardSettings = z.object({ maxParallelRuns: z.number().int().min(1) });
+export type BoardSettings = z.infer<typeof BoardSettings>;
+
+export const ProjectListResult = z.object({
+  projects: z.array(Project),
+  /** Host-wide limit of cards running at the same time. */
+  maxParallelRuns: z.number().int().min(1),
+});
+export type ProjectListResult = z.infer<typeof ProjectListResult>;
+
+export const BoardResult = z.object({
+  project: Project,
+  /** The five columns, in board order, each with its cards by position. */
+  columns: z.array(z.object({ column: BoardColumn, cards: z.array(Card) })),
+});
+export type BoardResult = z.infer<typeof BoardResult>;
+
 export interface CommandResults {
   hello: HelloResult;
   "session.list": SessionListResult;
@@ -365,6 +519,22 @@ export interface CommandResults {
   "history.search": HistorySearchResult;
   "history.resume": SessionCreateResult;
   "history.watch": undefined;
+  "project.list": ProjectListResult;
+  "project.add": Project;
+  "project.update": Project;
+  "board.get": BoardResult;
+  "board.settings": BoardSettings;
+  "board.watch": undefined;
+  "card.create": Card;
+  "card.update": Card;
+  "card.move": Card;
+  "card.start": Card;
+  "card.stop": Card;
+  "card.diff": CardDiff;
+  "card.message": SessionSendResult;
+  "card.pr.create": Card;
+  "card.complete": Card;
+  "card.discard": Card;
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +597,18 @@ export const HistoryChanged = z.object({
 });
 export type HistoryChanged = z.infer<typeof HistoryChanged>;
 
-export const ServerMessage = z.union([AckOk, AckError, EventEnvelope, Ping, HistoryChanged]);
+/** Sent after `board.watch` with the whole card after each change. Not a session event. */
+export const CardUpdated = z.object({ type: z.literal("card.updated"), card: Card });
+export type CardUpdated = z.infer<typeof CardUpdated>;
+
+export const ServerMessage = z.union([
+  AckOk,
+  AckError,
+  EventEnvelope,
+  Ping,
+  HistoryChanged,
+  CardUpdated,
+]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 
 /** Parses a raw JSON frame into a `ServerMessage`, throwing on invalid input. */
