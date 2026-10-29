@@ -108,6 +108,8 @@ const validCommands: Record<CommandType, unknown> = {
   "changes.unwatch": { target: "card:k" },
   "card.updateFromBase": { cardId: "k" },
   "card.mergeLocal": { cardId: "k", mode: "squash", confirm: true },
+  "pr.comments": { cardId: "k" },
+  "pr.comments.send": { cardId: "k", ids: ["1"] },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
