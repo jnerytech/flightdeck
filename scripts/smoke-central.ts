@@ -193,7 +193,8 @@ async function run(work: string): Promise<void> {
     log(`hooks instalados, receptor em ${installed.receptorUrl}`);
 
     step = "abrir flightdeckd claude";
-    wrapper = Bun.spawn([process.execPath, "run", BIN, "claude", "-p", "crie a.txt"], {
+    // Interactive (no -p): print mode ignores the channel.
+    wrapper = Bun.spawn([process.execPath, "run", BIN, "claude", "crie a.txt"], {
       cwd: project,
       env: { ...process.env, FLIGHTDECK_CONFIG: configPath },
       stdout: "inherit",
