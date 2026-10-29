@@ -205,6 +205,8 @@ export function Screen(props: {
   switch (route.name) {
     case "hub":
       return hub;
+    case "needs-you":
+      return null;
     case "costs":
       return (
         <CostsPage

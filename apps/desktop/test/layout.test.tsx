@@ -36,7 +36,11 @@ const LABELS = {
 
 function shell() {
   render(
-    <AppShell header={<span>Flightdeck</span>} sidebar={<p>hosts</p>} labels={LABELS}>
+    <AppShell
+      header={<span>Flightdeck</span>}
+      sidebar={(collapsed: boolean) => <p>{collapsed ? "ícones" : "hosts"}</p>}
+      labels={LABELS}
+    >
       <p>conteúdo</p>
     </AppShell>,
   );
@@ -48,37 +52,42 @@ const toggle = () =>
   screen.queryByRole("button", { name: "Mostrar barra lateral" });
 
 describe("layout", () => {
-  test("AppShell: cabeçalho fixo, barra lateral recolhível e conteúdo", async () => {
+  test("AppShell: cabeçalho fixo, barra de 240 px que recolhe para 56 px só com ícones, e conteúdo", async () => {
     shell();
     expect(screen.queryByRole("banner")?.textContent ?? "").toContain("Flightdeck");
     expect(screen.queryByRole("main")?.textContent).toBe("conteúdo");
     expect(sidebar()?.textContent).toBe("hosts");
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
+    expect(sidebar()?.parentElement?.className ?? "").toContain("grid-cols-[240px_minmax(0,1fr)]");
     expect(toggle()?.getAttribute("aria-label")).toBe("Recolher barra lateral");
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
-    expect(sidebar()).toBeNull();
+    // The rail stays: only the icons.
+    expect(sidebar()?.textContent).toBe("ícones");
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("true");
+    expect(sidebar()?.parentElement?.className ?? "").toContain("grid-cols-[56px_minmax(0,1fr)]");
     expect(toggle()?.getAttribute("aria-label")).toBe("Mostrar barra lateral");
     expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
-    expect(sidebar()).not.toBeNull();
+    expect(sidebar()?.textContent).toBe("hosts");
   });
 
-  test("abaixo de 960 px a barra recolhe sozinha e volta ao alargar", async () => {
+  test("abaixo de 960 px a barra vira trilho sozinha e volta ao alargar", async () => {
     shell();
-    expect(sidebar()).not.toBeNull();
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
     await viewport(800);
-    expect(sidebar()).toBeNull();
-    // Still reachable by hand in a narrow window.
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("true");
+    // Still expandable by hand in a narrow window.
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
-    expect(sidebar()).not.toBeNull();
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
     await viewport(1200);
-    expect(sidebar()).not.toBeNull();
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
   });
 

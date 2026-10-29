@@ -19,7 +19,7 @@ export interface AppShellLabels {
  */
 export function AppShell(props: {
   header: ReactNode;
-  sidebar: ReactNode;
+  sidebar: ReactNode | ((collapsed: boolean) => ReactNode);
   labels: AppShellLabels;
   children: ReactNode;
 }) {
@@ -54,7 +54,7 @@ export function AppShell(props: {
             aria-label={labels.sidebar}
             className="min-h-0 overflow-y-auto border-r bg-sidebar text-sidebar-foreground"
           >
-            {props.sidebar}
+            {typeof props.sidebar === "function" ? props.sidebar(!open) : props.sidebar}
           </aside>
         )}
         <main className="min-h-0 min-w-0 overflow-hidden">{props.children}</main>

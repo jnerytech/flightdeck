@@ -6,6 +6,8 @@ export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
   | { name: "hub" }
+  /** The requests waiting for the user (phase 10). */
+  | { name: "needs-you" }
   | { name: "session"; host: string; id: string; focus?: string }
   | { name: "new-session"; host: string }
   | { name: "external"; host: string; claudeSessionId: string }
