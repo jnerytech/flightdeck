@@ -24,6 +24,8 @@
     "smoke:update": "bun run scripts/smoke-update.ts",
     "smoke:costs": "bun run scripts/smoke-costs.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
+    "demo": "bun run scripts/demo.ts",
+    "demo:shots": "bun run scripts/demo.ts --shots",
     "ui:lock": "bun run scripts/ui-lock.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build",
@@ -39,6 +41,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
     "@types/bun": "1.4.4",
+    "playwright-core": "1.64.1",
     "typescript": "7.0.2"
   }
 }

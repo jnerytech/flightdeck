@@ -12,3 +12,6 @@ apps/desktop/src-tauri/gen/
 coverage/
 release-assets/
 deploy.hosts.json
+
+# Prints of the demo (phase 10)
+apps/desktop/screenshots/
