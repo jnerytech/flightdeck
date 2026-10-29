@@ -65,6 +65,11 @@ describe("budget", () => {
     const paused = await runWhen((r) => r.status === "paused");
     expect(paused?.usage).toEqual({ turns: 2, minutes: 6, costUsd: 0 });
     expect(paused?.statusReason).toBe("orçamento estourado: 6 de 6 minutos");
+    // Each agent step keeps its own share: the timeline shows it.
+    expect(paused?.steps.map((s) => s.usage)).toEqual([
+      { turns: 1, minutes: 3, costUsd: 0 },
+      { turns: 1, minutes: 3, costUsd: 0 },
+    ]);
   });
 
   test("o custo usa o último total de cada sessão, nunca a soma turno a turno", async () => {
@@ -86,6 +91,8 @@ describe("budget", () => {
     expect(paused?.usage.costUsd).toBe(1.75);
     expect(paused?.statusReason).toBe("orçamento estourado: US$ 1.75 de US$ 1.50");
     expect(paused?.steps.map((s) => s.stepId)).toEqual(["a", "b", "c"]);
+    // Per step, the difference its turn added to the session's total.
+    expect(paused?.steps.map((s) => s.usage?.costUsd)).toEqual([0.25, 0.5, 1]);
   });
 
   test("sem orçamento, nada pausa", async () => {
