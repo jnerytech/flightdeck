@@ -144,6 +144,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.board ? ["workflows"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
     ...(opts.quota ? ["quota"] : []),
+    // Project rules live in the board's projects.
+    ...(opts.board ? ["rules"] : []),
   ];
   let pingSeq = 0;
 
