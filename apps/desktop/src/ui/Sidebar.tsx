@@ -22,6 +22,7 @@ export function Sidebar(props: {
   onOpenSettings(): void;
   onOpenSearch(): void;
   onOpenHistory(hostId: string): void;
+  onOpenProjects(hostId: string): void;
 }) {
   const { state } = props;
   const queue = needsYou(state);
@@ -92,6 +93,14 @@ export function Sidebar(props: {
               onClick={() => props.onOpenHistory(host.id)}
             >
               🕘
+            </button>
+            <button
+              type="button"
+              className="icon"
+              aria-label={`Projetos de ${host.name}`}
+              onClick={() => props.onOpenProjects(host.id)}
+            >
+              ▦
             </button>
             <button
               type="button"

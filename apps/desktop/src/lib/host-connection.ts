@@ -1,4 +1,5 @@
 import {
+  type Card,
   CLOSE_UNAUTHORIZED,
   type CommandPayload,
   type CommandResults,
@@ -36,6 +37,8 @@ export interface HostConnectionOptions {
   onSubscribed(sessionId: string, result: SessionSubscribeResult): void;
   /** A heartbeat arrived; `latencyMs` may have changed. */
   onPing?(): void;
+  /** A card changed on the host's board (after `watchBoard`). */
+  onCardUpdated?(card: Card): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -64,6 +67,7 @@ export class HostConnection {
   private readonly pending = new Map<string, Pending>();
   private readonly subscriptions = new Set<string>();
   private watching = false;
+  private watchingBoard = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -77,12 +81,15 @@ export class HostConnection {
         this.attempt = 0;
         this.setStatus("online");
         if (this.watching) this.send("sessions.watch", {}).catch(ignore);
+        // Daemons before phase 4 answer with an error: nothing to watch there.
+        if (this.watchingBoard) this.send("board.watch", {}).catch(ignore);
         for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
       }, ignore);
     });
     ws.addEventListener("message", (msg) => {
       const message = parseServerMessage(String(msg.data));
       if (message.type === "event") return this.opts.onEvent(message);
+      if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
       if (message.type === "ping") {
         if (message.lastRttMs !== undefined) this.latencyMs = message.lastRttMs;
         ws.send(JSON.stringify({ type: "pong", id: message.id }));
@@ -118,6 +125,11 @@ export class HostConnection {
     if (this.watching) return;
     this.watching = true;
     if (this.status === "online") this.send("sessions.watch", {}).catch(ignore);
+  }
+
+  /** Streams `card.updated` for every card of the host from the next (re)connect on; call it before `connect`. */
+  watchBoard(): void {
+    this.watchingBoard = true;
   }
 
   unsubscribe(sessionId: string): void {

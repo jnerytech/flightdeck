@@ -3,11 +3,14 @@ import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { emptySession } from "../lib/session-state.ts";
+import { BoardView } from "./BoardView.tsx";
+import { CardDetail } from "./CardDetail.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftFromLink, draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { HostPage } from "./HostPage.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
+import { ProjectsPage } from "./ProjectsPage.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { Sidebar } from "./Sidebar.tsx";
@@ -29,6 +32,18 @@ export function App({ store }: { store: AppStore }) {
   /** Host whose history list is open, if any. */
   const [historyHost, setHistoryHost] = useState<string | null>(null);
   const historyHostView = state.hosts.find((h) => h.id === historyHost);
+  /** Host whose Projects screen is open, if any. */
+  const [projectsHost, setProjectsHost] = useState<string | null>(null);
+  const projectsHostView = state.hosts.find((h) => h.id === projectsHost);
+  /** Board open, and the card open on top of it. */
+  const [boardOf, setBoardOf] = useState<{ hostId: string; projectId: string } | null>(null);
+  const [openCard, setOpenCard] = useState<string | null>(null);
+  /** Leaving for any other screen closes the board ones. */
+  const closeBoard = () => {
+    setProjectsHost(null);
+    setBoardOf(null);
+    setOpenCard(null);
+  };
   /** Form prefilled by a deep link; the key remounts the form with the new values. */
   const [linked, setLinked] = useState<{ draft: HostDraft; key: number } | null>(null);
 
@@ -116,6 +131,38 @@ export function App({ store }: { store: AppStore }) {
         />
       </div>
     );
+  } else if (boardOf && openCard) {
+    main = (
+      <CardDetail
+        key={openCard}
+        store={store}
+        state={state}
+        hostId={boardOf.hostId}
+        cardId={openCard}
+        onBack={() => setOpenCard(null)}
+      />
+    );
+  } else if (boardOf) {
+    main = (
+      <BoardView
+        key={`${boardOf.hostId}/${boardOf.projectId}`}
+        store={store}
+        state={state}
+        hostId={boardOf.hostId}
+        projectId={boardOf.projectId}
+        onOpenCard={setOpenCard}
+      />
+    );
+  } else if (projectsHostView) {
+    main = (
+      <ProjectsPage
+        key={projectsHostView.id}
+        store={store}
+        hostId={projectsHostView.id}
+        hostName={projectsHostView.name}
+        onOpenBoard={(projectId) => setBoardOf({ hostId: projectsHostView.id, projectId })}
+      />
+    );
   } else if (reading && readingHost) {
     main = (
       <TranscriptReader
@@ -180,6 +227,7 @@ export function App({ store }: { store: AppStore }) {
       <Sidebar
         state={state}
         onSelect={(hostId, id) => {
+          closeBoard();
           setReading(null);
           setHistoryHost(null);
           setAddingHost(false);
@@ -195,6 +243,7 @@ export function App({ store }: { store: AppStore }) {
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenSearch={() => store.openSearch()}
         onOpenHistory={(hostId) => {
+          closeBoard();
           setReading(null);
           setAddingHost(false);
           setSettingsOpen(false);
@@ -202,14 +251,25 @@ export function App({ store }: { store: AppStore }) {
           setHistoryHost(hostId);
         }}
         onOpenHost={(hostId) => {
+          closeBoard();
           setReading(null);
           setHistoryHost(null);
           setAddingHost(false);
           setSettingsOpen(false);
           setHostPage(hostId);
         }}
+        onOpenProjects={(hostId) => {
+          closeBoard();
+          setReading(null);
+          setHistoryHost(null);
+          setAddingHost(false);
+          setSettingsOpen(false);
+          setHostPage(null);
+          setProjectsHost(hostId);
+        }}
         onRespond={(item, decision) => void store.respondTo(item.hostId, item.requestId, decision)}
         onOpenRequest={(item) => {
+          closeBoard();
           setReading(null);
           setHistoryHost(null);
           setAddingHost(false);
@@ -237,6 +297,7 @@ export function App({ store }: { store: AppStore }) {
           onClose={() => store.closeSearch()}
           onOpenHit={(hit) => {
             store.closeSearch();
+            closeBoard();
             setHistoryHost(null);
             setSettingsOpen(false);
             setAddingHost(false);

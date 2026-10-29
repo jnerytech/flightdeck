@@ -1,5 +1,8 @@
 import type {
+  Card,
   CommandPayload,
+  CommandResults,
+  CommandType,
   EventEnvelope,
   HelloResult,
   HistoryGetResult,
@@ -55,6 +58,24 @@ export interface AppState {
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
+  /** Board cards seen so far, keyed by `sessionKey(hostId, cardId)`; kept by `card.updated`. */
+  cards: Record<string, Card>;
+}
+
+/** Commands of the board (phase 4), all sent through `boardCommand`. */
+export type BoardCommandType = Extract<
+  CommandType,
+  `project.${string}` | `board.${string}` | `card.${string}`
+>;
+
+const isCard = (value: unknown): value is Card =>
+  typeof value === "object" && value !== null && "column" in value && "projectId" in value;
+
+/** Cards inside a command result: a card, a whole board or none. */
+function cardsIn(result: unknown): Card[] {
+  if (isCard(result)) return [result];
+  const columns = (result as { columns?: Array<{ cards: Card[] }> } | undefined)?.columns ?? [];
+  return columns.flatMap((column) => column.cards);
 }
 
 export interface GlobalHit extends HistorySearchHit {
@@ -183,6 +204,7 @@ export class AppStore {
       error: null,
       search: null,
       searchOpen: false,
+      cards: {},
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -206,7 +228,7 @@ export class AppStore {
   async init(): Promise<void> {
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
-    this.update({ hosts: [], sessions: {}, selected: null });
+    this.update({ hosts: [], sessions: {}, selected: null, cards: {} });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
     const autostart =
@@ -252,9 +274,13 @@ export class AppStore {
     const sessions = Object.fromEntries(
       Object.entries(this.state.sessions).filter(([key]) => !key.startsWith(`${hostId}/`)),
     );
+    const cards = Object.fromEntries(
+      Object.entries(this.state.cards).filter(([key]) => !key.startsWith(`${hostId}/`)),
+    );
     this.update({
       hosts: this.state.hosts.filter((h) => h.id !== hostId),
       sessions,
+      cards,
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
     });
     this.persistHosts();
@@ -435,6 +461,27 @@ export class AppStore {
     }
   }
 
+  /**
+   * Sends a project, board or card command to a host. Cards in the answer go to `cards`; errors
+   * go to the banner and give `null`.
+   */
+  async boardCommand<T extends BoardCommandType>(
+    hostId: string,
+    type: T,
+    payload: CommandPayload<T>,
+  ): Promise<CommandResults[T] | null> {
+    try {
+      const conn = this.connections.get(hostId);
+      if (!conn) throw new RequestError("offline", "host desconhecido");
+      const result = await conn.request(type, payload);
+      for (const card of cardsIn(result)) this.onCard(hostId, card);
+      return result;
+    } catch (error) {
+      this.update({ error: describeError(error) });
+      return null;
+    }
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);
@@ -534,9 +581,11 @@ export class AppStore {
       onSubscribed: () => {},
       onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
+      onCardUpdated: (card) => this.onCard(config.id, card),
     });
     this.connections.set(config.id, conn);
     conn.watch();
+    conn.watchBoard();
     conn.connect();
   }
 
@@ -591,6 +640,13 @@ export class AppStore {
     for (const n of summaryNotifications(prev, next, label, this.platform.isFocused())) {
       void this.platform.notify(n);
     }
+  }
+
+  /** A discarded card leaves; any other replaces what the app had. */
+  private onCard(hostId: string, card: Card): void {
+    const { [sessionKey(hostId, card.id)]: _previous, ...others } = this.state.cards;
+    const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
+    this.update({ cards });
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {

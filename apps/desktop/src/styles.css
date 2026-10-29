@@ -429,3 +429,58 @@ textarea {
 .history .filters {
   flex-wrap: wrap;
 }
+
+/* Phase 4: projects, board, card detail */
+.board .columns {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: start;
+  overflow-x: auto;
+}
+.board .column {
+  background: var(--panel, rgba(127, 127, 127, 0.08));
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 120px;
+}
+.board .column ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.board-card {
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: grab;
+}
+.board-card .badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.notice,
+.warning {
+  color: #b45309;
+}
+.dialog {
+  position: fixed;
+  inset: 30% 25% auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--bg, #fff);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.diff pre {
+  overflow-x: auto;
+}
+.diff table {
+  width: 100%;
+  table-layout: fixed;
+  font-family: monospace;
+}
