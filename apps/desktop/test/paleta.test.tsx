@@ -143,6 +143,7 @@ describe("paleta", () => {
       "flamingo",
       "alfa",
       "Nova sessão em alfa",
+      "Alternar tema",
       "Ir para Configurações",
     ]);
     // No screen for it on this host: no "Ir para Custos".
