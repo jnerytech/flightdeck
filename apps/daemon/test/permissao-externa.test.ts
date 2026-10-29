@@ -3,6 +3,7 @@ import type { Central } from "../src/central/central.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { ExternalPermissions, summarizeInput } from "../src/central/external-permissions.ts";
 import { type Receptor, startReceptor } from "../src/central/receptor.ts";
+import { SessionMetaStore } from "../src/central/session-meta.ts";
 import { startServer } from "../src/server.ts";
 import { newManager, poll } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -29,7 +30,7 @@ function setup() {
   const server = startServer({
     manager,
     // Only what these commands use; the hooks commands are tested with a real Central.
-    central: { external, permissions } as unknown as Central,
+    central: { external, permissions, meta: new SessionMetaStore(store.db) } as unknown as Central,
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
