@@ -319,6 +319,8 @@ describe("auto-aprovacao", () => {
       auto: { by: "ai", reason: "teste dentro do pedido", model: "claude-haiku-5-5" },
     });
     expect(await poll(() => events.find("tool.result")[0], 3000)).toBeDefined();
+    // The turn ends before the store closes: a run still streaming would write to a closed one.
+    expect(await poll(() => manager.get(sessionId).status === "idle", 3000)).toBe(true);
   });
 
   test("sessão do terminal: low aprovado mesmo sem app olhando; high fica com o terminal", async () => {
