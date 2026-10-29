@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { basename, dirname } from "node:path";
 import { spawnExec } from "./exec.ts";
@@ -56,4 +56,35 @@ export function osServiceContext(
     removeFile: (path) => rmSync(path, { force: true }),
     which: whichOnPath,
   };
+}
+
+/**
+ * The executable of a running process, or null when it is gone or cannot be read: PowerShell
+ * on Windows, `/proc/<pid>/exe` elsewhere.
+ */
+export async function processPath(
+  pid: number,
+  platform: string = process.platform,
+  readlink: (path: string) => string = readlinkSync,
+): Promise<string | null> {
+  if (platform === "win32") {
+    const command = `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Path`;
+    const { stdout } = await spawnExec([
+      "powershell.exe",
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      command,
+    ]);
+    return stdout.trim() || null;
+  }
+  try {
+    return readlink(`/proc/${pid}/exe`);
+  } catch {
+    return null;
+  }
+}
+
+export function killProcess(pid: number): void {
+  process.kill(pid);
 }

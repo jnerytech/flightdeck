@@ -1,32 +1,55 @@
-import { chmodSync, copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
+import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { type HookTarget, hooksStatus, installHooks } from "./central/hooks-install.ts";
 import type { Config } from "./config.ts";
 import {
   installService,
   type ServiceContext,
-  serviceCommandPath,
+  serviceCommand,
   startService,
   stopService,
 } from "./service.ts";
 
-export interface UpdateDeps {
-  config: Config;
+/** What stopping the daemon of a service needs; the CLI gives the real pieces. */
+export interface StopDeps {
   ctx: ServiceContext;
+  /** True while a daemon holds the lock of `config.dataDir`. */
+  daemonRunning(config: Config): boolean;
+  /** Sends `daemon.shutdown`; true when the daemon took it. */
+  shutdown?(config: Config): Promise<boolean>;
+  /** The pid written in the lock of a `dataDir`. */
+  lockPid?(dataDir: string): number | null;
+  /** The executable a process runs, or null when it cannot be told. */
+  processPath?(pid: number): Promise<string | null>;
+  kill?(pid: number): void;
+  /** How long the daemon may take to free the lock (10 s by default). */
+  stopTimeoutMs?: number;
+  log: { log(message: string): void; error(message: string): void };
+}
+
+export interface UpdateDeps extends StopDeps {
+  /** The config given to the CLI (or the default one). */
+  config: Config;
+  /** Loads the service's own `--config`; absent when the CLI was given one. */
+  configFromService?(path: string): Config;
   /** Version of this flightdeckd, the one being replaced. */
   currentVersion: string;
   /** Claude Code's settings, where `hooks install` writes. */
   settingsPath: string;
   stableBin: string;
-  /** True once the daemon on `port` answers `GET /health`. */
-  healthy(port: number): Promise<boolean>;
-  /** True while a daemon holds the lock of `config.dataDir`. */
-  daemonRunning(): boolean;
-  /** How long a stopped service may take to free the lock (10 s by default). */
-  stopTimeoutMs?: number;
+  /** True once the daemon of `config` (on `port`) answers `GET /health`. */
+  healthy(port: number, config: Config): Promise<boolean>;
   /** How long the new binary may take to answer `--version` (10 s by default). */
   versionTimeoutMs?: number;
-  log: { log(message: string): void; error(message: string): void };
 }
 
 /** Where `update` installs the daemon: `~/.flightdeck/bin/flightdeckd(.exe)`. */
@@ -92,22 +115,56 @@ const samePath = (a: string, b: string, platform: string) =>
     ? a.replaceAll("/", "\\").toLowerCase() === b.replaceAll("/", "\\").toLowerCase()
     : a === b;
 
-async function waitStopped(deps: UpdateDeps): Promise<boolean> {
+/** The file a path ends up at once links are followed; the path itself when it does not exist. */
+function resolved(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
+async function waitStopped(deps: StopDeps, config: Config): Promise<boolean> {
   const deadline = Date.now() + (deps.stopTimeoutMs ?? 10_000);
-  while (deps.daemonRunning()) {
+  while (deps.daemonRunning(config)) {
     if (Date.now() >= deadline) return false;
     await Bun.sleep(100);
   }
   return true;
 }
 
+/**
+ * Stops the daemon of an installed service: `daemon.shutdown` first (Task Scheduler's `/End`
+ * only ends `conhost.exe`), then the service, then waits for the lock. A lock still held is
+ * killed only when its process runs `serviceExe`. False when the daemon is still there.
+ */
+export async function stopServiceDaemon(
+  deps: StopDeps,
+  config: Config,
+  serviceExe: string,
+): Promise<boolean> {
+  if (await deps.shutdown?.(config)) deps.log.log("o daemon aceitou o pedido de desligamento");
+  await stopService(deps.ctx);
+  if (await waitStopped(deps, config)) return true;
+  const pid = deps.lockPid?.(config.dataDir) ?? null;
+  const path = pid !== null && deps.processPath ? await deps.processPath(pid) : null;
+  // A package manager may put the executable behind a link: compare where both lead.
+  const same = path !== null && samePath(resolved(path), resolved(serviceExe), deps.ctx.platform);
+  if (pid === null || !same) {
+    return false;
+  }
+  deps.kill?.(pid);
+  deps.log.log(`processo ${pid} (${path}) do serviço encerrado à força`);
+  return waitStopped(deps, config);
+}
+
 /** Hooks pointing somewhere else than the stable binary are written again; absent ones stay so. */
-function updateHooks(deps: UpdateDeps): void {
+function updateHooks(deps: UpdateDeps, config: Config): void {
   const target: HookTarget = {
     command: [deps.stableBin],
-    url: `http://127.0.0.1:${deps.config.hooks.port}`,
-    token: deps.config.hooks.token ?? "",
-    permissionTimeoutS: deps.config.hooks.permissionTimeoutS,
+    url: `http://127.0.0.1:${config.hooks.port}`,
+    token: config.hooks.token ?? "",
+    permissionTimeoutS: config.hooks.permissionTimeoutS,
     platform: deps.ctx.platform as NodeJS.Platform,
   };
   if (hooksStatus(deps.settingsPath, target) !== "outdated") return;
@@ -136,17 +193,20 @@ export async function runUpdate(
     );
     return 1;
   }
-  const installed = await serviceCommandPath(ctx);
-  if (installed === null && deps.daemonRunning()) {
+  const installed = await serviceCommand(ctx);
+  // Without --config on the CLI, the service's own config says where its daemon lives.
+  const config =
+    installed?.config && deps.configFromService
+      ? deps.configFromService(installed.config)
+      : deps.config;
+  if (installed === null && deps.daemonRunning(config)) {
     log.error("há um daemon rodando fora do serviço: pare o daemon e rode de novo");
     return 1;
   }
-  if (installed !== null) {
-    await stopService(ctx);
-    if (!(await waitStopped(deps))) {
-      log.error("o daemon não parou depois de parar o serviço: pare-o e rode de novo");
-      return 1;
-    }
+  const serviceExe = installed?.command[0] ?? stableBin;
+  if (installed !== null && !(await stopServiceDaemon(deps, config, serviceExe))) {
+    log.error("o daemon não parou depois de parar o serviço: pare-o e rode de novo");
+    return 1;
   }
 
   const old = `${stableBin}.old`;
@@ -159,12 +219,14 @@ export async function runUpdate(
   chmodSync(incoming, 0o755);
   renameSync(incoming, stableBin);
 
-  if (installed !== null && !samePath(installed, stableBin, ctx.platform)) {
-    const result = await installService({ ...ctx, command: [stableBin] });
+  const reinstalled = installed !== null && !samePath(serviceExe, stableBin, ctx.platform);
+  if (reinstalled) {
+    // The service keeps the config it had.
+    const result = await installService({ ...ctx, command: [stableBin] }, installed.config);
     log.log(`serviço reinstalado apontando para ${stableBin}`);
     for (const line of result.instructions) log.error(line);
   }
-  updateHooks(deps);
+  updateHooks(deps, config);
 
   if (installed === null) {
     log.log(`flightdeckd ${deps.currentVersion} → ${version} instalado em ${stableBin}`);
@@ -174,20 +236,52 @@ export async function runUpdate(
     return 0;
   }
   await startService(ctx);
-  if (await deps.healthy(deps.config.port)) {
+  if (await deps.healthy(config.port, config)) {
     log.log(`flightdeckd ${deps.currentVersion} → ${version} em ${stableBin}, respondendo`);
     return 0;
   }
-  await stopService(ctx);
-  if (!hadPrevious) {
-    log.error(
-      `o daemon novo não respondeu em /health e não havia versão anterior em ${stableBin} para restaurar`,
-    );
-    return 1;
-  }
+  // Back to how it was: the previous binary (if any) and the service as it was installed.
+  await stopServiceDaemon(deps, config, stableBin);
   rmSync(stableBin, { force: true });
-  renameSync(old, stableBin);
+  if (hadPrevious) renameSync(old, stableBin);
+  if (reinstalled) {
+    await installService({ ...ctx, command: installed.command }, installed.config);
+    log.error(`serviço reinstalado de volta em ${serviceExe}`);
+  }
   await startService(ctx);
-  log.error(`o daemon ${version} não respondeu em /health: a versão anterior foi restaurada`);
+  log.error(
+    hadPrevious
+      ? `o daemon ${version} não respondeu em /health: a versão anterior foi restaurada`
+      : `o daemon ${version} não respondeu em /health; não havia versão anterior em ${stableBin}`,
+  );
   return 1;
+}
+
+/**
+ * Asks the daemon at `url` to shut down (`hello`, then `daemon.shutdown`). False when it is
+ * not there, refuses the token, does not know the command or does not answer in `timeoutMs`.
+ */
+export function requestShutdown(url: string, token: string, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const ws = new WebSocket(url);
+    const done = (ok: boolean) => {
+      clearTimeout(timer);
+      ws.close();
+      resolve(ok);
+    };
+    const timer = setTimeout(done, timeoutMs, false);
+    const send = (id: string, type: string, payload: object) =>
+      ws.send(JSON.stringify({ id, type, payload }));
+    ws.addEventListener("open", () =>
+      send("1", "hello", { token, client: "flightdeckd", protocolVersion: PROTOCOL_VERSION }),
+    );
+    ws.addEventListener("message", (msg) => {
+      const frame = JSON.parse(String(msg.data)) as { type: string; id?: string; ok?: boolean };
+      if (frame.type !== "ack") return;
+      if (frame.ok && frame.id === "1") send("2", "daemon.shutdown", {});
+      else done(frame.ok === true);
+    });
+    ws.addEventListener("close", () => done(false));
+    ws.addEventListener("error", () => done(false));
+  });
 }

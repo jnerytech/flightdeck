@@ -27,7 +27,7 @@ import {
 } from "./config.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
-import { acquireLock } from "./lock.ts";
+import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
@@ -43,10 +43,10 @@ import {
   serviceStatus,
   uninstallService,
 } from "./service.ts";
-import { osServiceContext } from "./service-os.ts";
+import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { EventStore } from "./store/event-store.ts";
-import { runUpdate, stableBinPath, waitHealthy } from "./update.ts";
+import { requestShutdown, runUpdate, type StopDeps, stableBinPath, waitHealthy } from "./update.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status";
@@ -547,26 +547,44 @@ function runBackup(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
+/** The real pieces that stop the daemon of a service: shutdown request, lock and process. */
+function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
+  return {
+    ctx,
+    log,
+    daemonRunning: (config) => {
+      const lock = acquireLock(config.dataDir);
+      lock?.release();
+      return lock === null;
+    },
+    shutdown: (config) => requestShutdown(daemonUrl(config), config.token, 3_000),
+    lockPid: readLockPid,
+    processPath,
+    kill: killProcess,
+  };
+}
+
 async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   if (!args.from) throw new Error("update precisa de --from <binário novo>");
-  const config = loadConfig(configPath(args));
   const ctx = (deps.serviceContext ?? osServiceContext)(false);
-  const health = new URL("/health", daemonUrl(config).replace(/^ws:/, "http:")).href;
   return runUpdate(
     { from: args.from, allowDowngrade: args.allowDowngrade === true },
     {
-      config,
-      ctx,
+      ...serviceStopDeps(ctx, deps.log),
+      // Read only when used: a service with its own --config never loads the default one.
+      get config() {
+        return loadConfig(configPath(args));
+      },
+      ...(args.config ? {} : { configFromService: (path: string) => loadConfig(path) }),
       currentVersion: DAEMON_VERSION,
       settingsPath: claudeSettingsPath(),
       stableBin: stableBinPath(ctx.home, ctx.platform),
-      healthy: () => waitHealthy(health, 30_000, 250),
-      daemonRunning: () => {
-        const lock = acquireLock(config.dataDir);
-        lock?.release();
-        return lock === null;
-      },
-      log: deps.log,
+      healthy: (_port, config) =>
+        waitHealthy(
+          new URL("/health", daemonUrl(config).replace(/^ws:/, "http:")).href,
+          30_000,
+          250,
+        ),
     },
   );
 }

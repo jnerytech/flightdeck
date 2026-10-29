@@ -39,3 +39,13 @@ export function acquireLock(dataDir: string): Lock | null {
     },
   };
 }
+
+/** The pid written in the lock of `dataDir`, or null without a readable one. */
+export function readLockPid(dataDir: string): number | null {
+  try {
+    const pid = Number.parseInt(readFileSync(join(dataDir, LOCK_FILE), "utf8"), 10);
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}

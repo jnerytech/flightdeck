@@ -330,11 +330,6 @@ export async function serviceCommand(ctx: ServiceContext): Promise<ServiceComman
   return parseCommand(splitArgs(xmlUnescape(args), false).slice(1));
 }
 
-/** The executable the installed service runs, or null without a service. */
-export async function serviceCommandPath(ctx: ServiceContext): Promise<string | null> {
-  return (await serviceCommand(ctx))?.command[0] ?? null;
-}
-
 /** Stops the service; one that is not running is not an error (the caller waits for the lock). */
 export async function stopService(ctx: ServiceContext): Promise<void> {
   await ctx.exec(
