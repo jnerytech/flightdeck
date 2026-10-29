@@ -177,4 +177,14 @@ describe("uso-mensagens", () => {
     await indexer.pass();
     expect([...new Set(usageEntries(db).map((e) => e.claude_session_id))]).toEqual(["s-2"]);
   });
+
+  test("raiz inexistente e pasta de sessão sem subagents/ não interrompem a passada", async () => {
+    const { db, root, indexer } = setup();
+    const missing = join(root, "..", "nao-existe");
+    const other = new UsageIndexer({ ...indexer.opts, roots: [missing, root] });
+    writeUsageTranscript(root, "proj", "/work/app", { subagent: false });
+    mkdirSync(join(root, "proj", "outra-sessao", "tool-results"), { recursive: true });
+    expect(await other.pass().catch(() => -1)).toBe(4);
+    expect(usageEntries(db)).toHaveLength(4);
+  });
 });
