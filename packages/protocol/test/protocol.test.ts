@@ -84,6 +84,8 @@ const validCommands: Record<CommandType, unknown> = {
   "usage.summary": { days: 7 },
   "rules.list": { projectId: "p" },
   "rules.remove": { projectId: "p", rule: "Bash(npm test:*)", confirm: true },
+  "costs.status": {},
+  "costs.reprice": {},
 };
 
 const validEvents: SessionEvent[] = [
