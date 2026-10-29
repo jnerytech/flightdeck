@@ -44,7 +44,13 @@ const RESET = T0 + 300 * MIN;
 
 type Daemon = ReturnType<typeof makeDaemon>;
 let seq = 0;
-function spend(d: Daemon, key: string, at: number, cost: number, session = "s") {
+function spend(
+  d: Pick<Daemon, "eventStore">,
+  key: string,
+  at: number,
+  cost: number,
+  session = "s",
+) {
   d.eventStore.db
     .query(
       `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model, origin,
