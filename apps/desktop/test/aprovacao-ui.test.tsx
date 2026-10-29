@@ -5,7 +5,8 @@ import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { translator } from "../src/i18n/index.ts";
-import { approvalView } from "../src/lib/approval.ts";
+import { approvalView, shortPath } from "../src/lib/approval.ts";
+import { inputSummary } from "../src/lib/tool-input.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -326,5 +327,95 @@ describe("aprovacao-ui", () => {
       .query("SELECT status FROM permission_requests WHERE id = ?")
       .get(requestId) as { status: string } | null;
     expect(status?.status).toBe("allowed");
+  });
+
+  test("o resumo de uma ferramenta sem campo conhecido é chave e valor, nunca JSON", () => {
+    expect(inputSummary({ command: "npm test" })).toBe("npm test");
+    expect(
+      inputSummary({ repo: "acme/flightdeck-web", title: "Login falha", labels: ["bug", "p1"] }),
+    ).toBe("repo: acme/flightdeck-web · title: Login falha · labels: bug, p1");
+    expect(inputSummary({ opts: { deep: 1 } })).toBe("opts.deep: 1");
+    const long = inputSummary({ title: "x".repeat(200) });
+    expect(long.length).toBe(81);
+    expect(long.endsWith("…")).toBe(true);
+    expect(inputSummary({})).toBe("");
+    expect(inputSummary(null)).toBe("");
+  });
+
+  test("o caminho longo é cortado no meio, inteiro no tooltip", () => {
+    expect(shortPath("/repo")).toBe("/repo");
+    expect(shortPath("C:UsersdevAppDataLocalTemp\fd-demo-Xalfaprojects\flightdeck-web")).toBe(
+      "C:Users…projects\flightdeck-web",
+    );
+    expect(shortPath("/home/dev/work/clients/acme/projects/flightdeck-web")).toBe(
+      "/home/dev/…/projects/flightdeck-web",
+    );
+    // Too few segments to drop: cut by characters, still in the middle.
+    const odd = shortPath(`/${"a".repeat(80)}`, 20);
+    expect(odd.length).toBeLessThanOrEqual(20);
+    expect(odd).toContain("…");
+  });
+
+  test("o cartão mostra a pasta curta com o caminho inteiro no tooltip e em Copiar pasta", async () => {
+    const full = "C:UsersdevAppDataLocalTemp\fd-demo-Xalfaprojects\flightdeck-web";
+    const copied: string[] = [];
+    render(
+      <ApprovalCard
+        request={{
+          requestId: "r5",
+          toolName: "Bash",
+          input: { command: "ls" },
+          cwd: full,
+          createdAt: AT,
+        }}
+        t={t}
+        nowMs={NOW}
+        onCopyPath={(path) => copied.push(path)}
+        onRespond={() => {}}
+      />,
+    );
+    const card = group("Bash");
+    const folder = card?.querySelector("[data-folder]");
+    expect(folder?.textContent).toBe("C:Users…projects\flightdeck-web");
+    expect(folder?.getAttribute("title")).toBe(full);
+    await act(async () => {
+      fireEvent.click(inGroup(card, "Copiar pasta") as HTMLElement);
+    });
+    expect(copied).toEqual([full]);
+  });
+
+  test("a fila mostra o resumo de uma ferramenta MCP em chave e valor", async () => {
+    const d = makeDaemon(cleanups);
+    d.central.hooksInstall(true);
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const hook = (event: string, body: object) =>
+      fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        body: JSON.stringify({
+          session_id: "ext-m",
+          hook_event_name: event,
+          cwd: d.project,
+          ...body,
+        }),
+      }).catch(() => undefined);
+    await hook("SessionStart", {});
+    void hook("PermissionRequest", {
+      tool_name: "mcp__github__create_issue",
+      tool_input: { repo: "acme/flightdeck-web", title: "Login falha" },
+    });
+    await settle(() => Object.keys(store.getState().externalRequests).length === 1);
+    const sidebar = screen.queryByRole("complementary", { name: "Barra lateral" });
+    const item = sidebar
+      ? within(sidebar).queryByRole("button", { name: /mcp__github__create_issue/ })
+      : null;
+    expect(item).not.toBeNull();
+    expect(item?.textContent ?? "").toContain("repo: acme/flightdeck-web · title: Login falha");
+    expect(item?.textContent ?? "").not.toContain("{");
   });
 });
