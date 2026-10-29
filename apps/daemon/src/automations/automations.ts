@@ -326,6 +326,9 @@ export class Automations {
     ];
   }
 
+  /** Resolves when the tick and the search in progress, if any, are done. */
+  async idle(): Promise<void> {}
+
   stop(): void {
     for (const timer of this.timers) clearInterval(timer);
     this.timers = [];

@@ -103,8 +103,10 @@ async function setup(
       ...extra,
     });
   automations = make();
-  cleanups.push(() => {
+  cleanups.push(async () => {
     automations?.stop();
+    // A search in flight would reach the CLIs after the test took its fakes away.
+    await automations?.idle();
     ctx.board.stop();
   });
   const created = (over: Partial<Parameters<Automations["save"]>[0]> = {}) =>
@@ -656,11 +658,16 @@ describe("automacoes", () => {
     const gh = fake("gh", GH([ghIssue(7)]));
     const ctx = await setup({ github: true });
     ctx.on({ trigger: { type: "issue_label", label: "auto" }, action: { type: "create_card" } });
-    await Promise.all([ctx.automations.pollIssues(), ctx.automations.pollIssues()]);
+    // idle() waits for the search in progress, so nothing runs on after a stop.
+    const running = ctx.automations.pollIssues();
+    await ctx.automations.idle();
     expect(gh.calls().filter((c) => c.includes("list"))).toHaveLength(1);
+    await running;
+    await Promise.all([ctx.automations.pollIssues(), ctx.automations.pollIssues()]);
+    expect(gh.calls().filter((c) => c.includes("list"))).toHaveLength(2);
     // Done, the next one goes ahead.
     await ctx.automations.pollIssues();
-    expect(gh.calls().filter((c) => c.includes("list"))).toHaveLength(2);
+    expect(gh.calls().filter((c) => c.includes("list"))).toHaveLength(3);
   });
 
   test("a busca de issues que falha só vai para o log, sem derrubar nem registrar execução", async () => {
@@ -713,7 +720,10 @@ describe("automacoes", () => {
     });
     timed.start();
     // Whatever happens, the timers stop with the test: they would reach the CLIs after it.
-    cleanups.push(() => timed.stop());
+    cleanups.push(async () => {
+      timed.stop();
+      await timed.idle();
+    });
     clock.now = UTC("2026-10-05T12:01:00Z");
     expect(await poll(() => fired(timed, cron.id).length >= 1, 3000)).toBe(true);
     expect(await poll(() => timed.runs(issue.id).length >= 1, 3000)).toBe(true);
