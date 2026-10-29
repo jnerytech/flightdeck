@@ -16,6 +16,7 @@ import {
   type Ping,
   Pong,
   PROTOCOL_VERSION,
+  type QuotaUpdated,
   type RunUpdated,
   WS_PATH,
 } from "@flightdeck/protocol";
@@ -28,6 +29,7 @@ import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
+import type { Quota } from "./quota/quota.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -60,6 +62,8 @@ export interface ServerOptions {
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
   features?: string[];
+  /** The host's plan quota behind `quota.*` (phase 7). */
+  quota?: Quota;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
 }
@@ -87,6 +91,8 @@ interface Connection {
   unwatchExternal?: () => void;
   /** Stops the `run.watch` stream, when active. */
   unwatchRuns?: () => void;
+  /** Stops the `quota.watch` stream, when active. */
+  unwatchQuota?: () => void;
   lastRttMs?: number;
 }
 
@@ -107,7 +113,8 @@ type Outgoing =
   | CardUpdated
   | ExternalUpdated
   | ExternalPermissionFrame
-  | RunUpdated;
+  | RunUpdated
+  | QuotaUpdated;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -212,6 +219,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function maintenance(): Maintenance {
     if (!opts.maintenance) throw new FlightdeckError("invalid_state", "manutenção indisponível");
     return opts.maintenance;
+  }
+
+  function quota(): Quota {
+    if (!opts.quota) throw new FlightdeckError("invalid_state", "cota desativada");
+    return opts.quota;
   }
 
   function board(): Board {
@@ -449,6 +461,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
+      case "quota.get":
+        return ok(command.type, quota().state());
+      case "quota.watch": {
+        const host = quota();
+        ws.data.unwatchQuota?.();
+        ws.data.unwatchQuota = host.watch((state) => send(ws, { type: "quota.updated", ...state }));
+        return ok(command.type);
+      }
       case "run.watch": {
         // Ack, the runs still going, then every change: the app sees open gates right away.
         const runs = board().workflows;
@@ -547,6 +567,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchBoard?.();
         ws.data.unwatchExternal?.();
         ws.data.unwatchRuns?.();
+        ws.data.unwatchQuota?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

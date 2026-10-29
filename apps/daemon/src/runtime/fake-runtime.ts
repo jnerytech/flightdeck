@@ -18,6 +18,7 @@ class Interrupted extends Error {}
  * a `Write` tool when the message contains `[tool]`, writes and commits a file in its cwd on
  * `[commit]`, fails the run on `[fail]` and honors `interrupt`. `[cost:x]` adds `x` to the
  * session's cumulative cost, which every `turn.result` reports (like `total_cost_usd`).
+ * `[ratelimit:<window>=<fraction>@<epoch seconds>]` reports a plan quota reading.
  */
 export class FakeRuntime implements AgentRuntime {
   /** Every `start` call, so tests can inspect what the session manager handed over. */
@@ -114,6 +115,15 @@ class FakeRun implements AgentRun {
         tools: ["Read", "Write", "Bash"],
       });
     }
+    const windows = [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(
+      ([, window = "", utilization, resetsAt]) => ({
+        window,
+        utilization: Number(utilization),
+        status: Number(utilization) >= 1 ? ("rejected" as const) : ("allowed" as const),
+        resetsAt: Number(resetsAt) * 1000,
+      }),
+    );
+    if (windows.length > 0) this.emit({ type: "quota", windows });
     try {
       await this.sleep(abort.signal);
       if (text.includes("[fail]")) throw new Error("falha simulada do runtime");

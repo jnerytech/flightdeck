@@ -10,7 +10,7 @@ import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
-import type { AgentRun, AgentRuntime, RuntimeEvent } from "../runtime/types.ts";
+import type { AgentRun, AgentRuntime, QuotaReading, RuntimeEvent } from "../runtime/types.ts";
 import type { EventStore } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 
@@ -23,6 +23,8 @@ export interface SessionManagerOptions {
   defaultPermissionMode: PermissionMode;
   allowApiKey: boolean;
   baseEnv: Record<string, string | undefined>;
+  /** Plan quota readings of any session go to the host's quota (phase 7). */
+  onQuota?: (readings: QuotaReading[]) => void;
 }
 
 export type EventListener = (envelope: EventEnvelope) => void;
@@ -316,6 +318,9 @@ export class SessionManager {
         });
         this.emit(sessionId, event);
         if (this.get(sessionId).status === "starting") this.setStatus(sessionId, "running");
+        return;
+      case "quota":
+        this.opts.onQuota?.(event.windows);
         return;
       case "turn.result": {
         this.emit(sessionId, event);

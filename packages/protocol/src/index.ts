@@ -443,6 +443,27 @@ export const WorkflowRun = z.object({
 });
 export type WorkflowRun = z.infer<typeof WorkflowRun>;
 
+// Phase 7 (track B): the plan quota of a host, read from its managed sessions.
+export const QuotaWindow = z.object({
+  /** `five_hour`, `seven_day` or any other window the CLI reports. */
+  window: z.string(),
+  /** Fraction from 0 to 1; `null` when the CLI did not say. */
+  utilization: z.number().nullable(),
+  status: z.enum(["allowed", "allowed_warning", "rejected"]),
+  resetsAt: z.string().nullable(),
+  /** When this reading arrived: the app shows its age. */
+  readAt: z.string(),
+});
+export type QuotaWindow = z.infer<typeof QuotaWindow>;
+
+export const QuotaState = z.object({
+  /** Valid readings only: one past its `resetsAt` is dropped until a new one comes. */
+  windows: z.array(QuotaWindow),
+  /** From this utilization new cards wait for the window to reset; `null` when off. */
+  pauseAt: z.number().nullable(),
+});
+export type QuotaState = z.infer<typeof QuotaState>;
+
 const ProjectFields = {
   name: z.string().min(1).optional(),
   baseBranch: z.string().min(1).optional(),
@@ -586,6 +607,9 @@ export const Command = z.discriminatedUnion("type", [
   cmd("run.watch", z.object({}).strict()),
   /** Only the user answers gates: there is no MCP tool for it. */
   cmd("gate.respond", GateRespondPayload),
+  // Phase 7 (track B).
+  cmd("quota.get", z.object({}).strict()),
+  cmd("quota.watch", z.object({}).strict()),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -788,6 +812,8 @@ export interface CommandResults {
   "run.get": WorkflowRun;
   "run.watch": undefined;
   "gate.respond": WorkflowRun;
+  "quota.get": QuotaState;
+  "quota.watch": undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -882,6 +908,10 @@ export type ExternalPermissionFrame = z.infer<typeof ExternalPermissionFrame>;
 export const RunUpdated = z.object({ type: z.literal("run.updated"), run: WorkflowRun });
 export type RunUpdated = z.infer<typeof RunUpdated>;
 
+/** Sent after `quota.watch` with the host's windows after each new reading or expiry. */
+export const QuotaUpdated = z.object({ type: z.literal("quota.updated"), ...QuotaState.shape });
+export type QuotaUpdated = z.infer<typeof QuotaUpdated>;
+
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -892,6 +922,7 @@ export const ServerMessage = z.union([
   ExternalUpdated,
   ExternalPermissionFrame,
   RunUpdated,
+  QuotaUpdated,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 

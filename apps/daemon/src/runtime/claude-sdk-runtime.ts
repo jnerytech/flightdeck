@@ -7,6 +7,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AssistantBlock } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
+import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
 
@@ -115,6 +116,11 @@ export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
         });
       }
       return events;
+    }
+    case "rate_limit_event": {
+      // The host's plan quota, read defensively (see quotaReadings).
+      const windows = quotaReadings((message as { rate_limit_info?: unknown }).rate_limit_info);
+      return windows.length > 0 ? [{ type: "quota", windows }] : [];
     }
     case "result":
       return [

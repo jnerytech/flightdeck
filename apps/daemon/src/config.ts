@@ -83,6 +83,10 @@ export const Config = z.object({
       keep: z.number().int().min(1).default(7),
     })
     .default(() => ({ enabled: true, keep: 7 })),
+  /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
+  quota: z
+    .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
+    .default(() => ({ pauseAt: 0.9 })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
