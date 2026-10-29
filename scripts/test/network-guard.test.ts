@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { networkInterfaces } from "node:os";
 import { activeNetworkGuard, assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 
 /** A target whose fetch only says which URL it got. */
@@ -30,6 +31,17 @@ describe("trava-rede", () => {
     ]);
     expect(guard.attempts).toEqual(["https://github.com/jnerytech/flightdeck"]);
     expect(() => assertNoNetwork(guard)).toThrow("acesso à rede nos testes: https://github.com");
+  });
+
+  test("os endereços da própria máquina também passam (testes de rede fora do loopback)", async () => {
+    const own = Object.values(networkInterfaces())
+      .flat()
+      .find((i) => i && i.family === "IPv4" && !i.internal)?.address;
+    const { holder, seen } = target();
+    const guard = installNetworkGuard(holder);
+    if (own) await holder.fetch(`http://${own}:1/health`).catch(() => {});
+    expect(guard.attempts).toEqual([]);
+    expect(seen).toEqual(own ? [`http://${own}:1/health`] : []);
   });
 
   test("sem tentativas, a trava não reclama", () => {
