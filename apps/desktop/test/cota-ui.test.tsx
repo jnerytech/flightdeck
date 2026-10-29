@@ -169,4 +169,32 @@ describe("cota-ui", () => {
     );
     expect(store.getState().cards).toBeDefined();
   });
+
+  test("sem reinício conhecido, o card só diz que aguarda a cota; a hora padrão é HH:MM local", async () => {
+    const { quota, board, root } = await online();
+    const repo = join(root, "repo");
+    mkdirSync(repo);
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "commit.gpgsign", "false");
+    writeFileSync(join(repo, "README.md"), "# repo\n");
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "inicial");
+    const project = await board.addProject({ path: repo, promptTemplate: "" });
+    quota.record([{ window: "five_hour", utilization: 1, status: "rejected", resetsAt: null }]);
+    const card = board.createCard(project.id, { title: "Sem hora", description: "oi" });
+    await board.startCard(card.id);
+    await click("Projetos de alfa");
+    await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
+    await click("Abrir board de repo");
+    await settle(() =>
+      (screen.queryByLabelText("Card Sem hora")?.textContent ?? "").includes("cota"),
+    );
+    expect(screen.queryByLabelText("Card Sem hora")?.textContent ?? "").toContain(
+      "aguardando cota",
+    );
+    expect(screen.queryByLabelText("Card Sem hora")?.textContent ?? "").not.toContain("até");
+    const plain = new AppStore(memoryPlatform().platform);
+    const at = new Date(2026, 9, 1, 9, 5);
+    expect(plain.formatTime(at.toISOString())).toBe("09:05");
+  });
 });
