@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
+import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
@@ -32,7 +33,12 @@ export async function waitFor<T>(
  */
 export function daemon(
   cleanups: Array<() => unknown>,
-  options: { allowApiKey?: boolean; baseEnv?: Record<string, string> } = {},
+  options: {
+    allowApiKey?: boolean;
+    baseEnv?: Record<string, string>;
+    /** Turns on maintenance (backups in `<root>/data/backups`) with this retention. */
+    retention?: { eventsDays: number; externalSessionsDays: number };
+  } = {},
 ) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "fd-desk-")));
   const project = join(root, "p");
@@ -67,6 +73,16 @@ export function daemon(
     settingsPath: () => settingsFile,
   });
   cleanups.push(() => central.stop());
+  // The daemon's database lives in its dataDir, so the folder always exists there.
+  if (options.retention) mkdirSync(join(root, "data"), { recursive: true });
+  const maintenance = options.retention
+    ? new Maintenance({
+        db: store.db,
+        dataDir: join(root, "data"),
+        retention: options.retention,
+        backup: { enabled: true, keep: 7 },
+      })
+    : undefined;
   const listen = (port = 0, pingIntervalMs?: number): RunningServer => {
     const server = startServer({
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
@@ -74,6 +90,7 @@ export function daemon(
       history,
       board,
       central,
+      ...(maintenance ? { maintenance } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -93,6 +110,7 @@ export function daemon(
     runtime,
     board,
     central,
+    maintenance,
     settingsFile,
     configFile,
     eventStore: store,
