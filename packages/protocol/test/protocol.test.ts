@@ -118,6 +118,10 @@ const validCommands: Record<CommandType, unknown> = {
   "review.update": { id: "r", body: "y" },
   "review.remove": { id: "r" },
   "review.send": { target: "session:s" },
+  "changes.revert": { target: "card:k", path: "a.ts", confirm: true },
+  "changes.undoRevert": { target: "card:k", path: "a.ts", confirm: true },
+  "file.read": { target: "session:s", path: "a.ts" },
+  "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
 
 const validEvents: SessionEvent[] = [
