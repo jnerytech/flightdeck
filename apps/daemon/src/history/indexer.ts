@@ -1,7 +1,6 @@
 import type { Database } from "bun:sqlite";
 import {
   closeSync,
-  type FSWatcher,
   openSync,
   readdirSync,
   readSync,
