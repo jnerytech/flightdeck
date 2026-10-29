@@ -8,7 +8,7 @@ import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { runChecked, type ServiceContext, serviceCommand } from "../service.ts";
-import { PUBLIC_KEY } from "./public-key.ts";
+import { updatePublicKey } from "./public-key.ts";
 import { verifyMinisign } from "./signature.ts";
 
 /** The one-shot task that runs the update on Windows; it deletes itself at the end. */
@@ -80,7 +80,7 @@ export class DaemonUpdater {
       if (sha256(bytes) !== asset.sha256) {
         throw new Error("o sha256 do arquivo baixado não confere com o manifesto");
       }
-      verifyMinisign(bytes, asset.signature, this.opts.publicKey ?? PUBLIC_KEY);
+      verifyMinisign(bytes, asset.signature, this.opts.publicKey ?? updatePublicKey());
       writeFileSync(file, bytes);
       chmodSync(file, 0o755);
     } catch (error) {

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
-const COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
+export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
 
 /** Where each release publishes the daemons' manifest. */
 export const MANIFEST_URL =
@@ -100,10 +100,10 @@ export const Config = z.object({
         .string()
         .url()
         .nullable()
-        .default(COMPILED ? MANIFEST_URL : null),
+        .default(RUNNING_COMPILED ? MANIFEST_URL : null),
       checkIntervalH: z.number().int().min(1).default(24),
     })
-    .default(() => ({ manifestUrl: COMPILED ? MANIFEST_URL : null, checkIntervalH: 24 })),
+    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 24 })),
   /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
