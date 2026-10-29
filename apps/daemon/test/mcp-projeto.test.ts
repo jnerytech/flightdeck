@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { MASK, McpConfig } from "../src/agentcfg/mcp.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { startServer } from "../src/server.ts";
@@ -59,6 +61,49 @@ function setup(timeoutMs?: number) {
   );
   const config = new McpConfig({ userConfigPath, ...(timeoutMs ? { timeoutMs } : {}) });
   return { project, marker, userConfigPath, config };
+}
+
+/** A local HTTP MCP server with one tool and no resources; records the Authorization it got. */
+function httpServer() {
+  const seen: string[] = [];
+  const server = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    async fetch(request) {
+      seen.push(request.headers.get("authorization") ?? "");
+      const mcp = new McpServer({ name: "remota", version: "1.0.0" });
+      mcp.registerTool("remota", { description: "nada" }, async () => ({ content: [] }));
+      const transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+      await mcp.connect(transport);
+      return transport.handleRequest(request);
+    },
+  });
+  cleanups.push(() => server.stop(true));
+  return { url: `http://127.0.0.1:${server.port}/mcp`, seen };
+}
+
+/** A daemon on the board's manager, with or without the project's MCP config. */
+async function daemon(mcp?: McpConfig) {
+  const { board, manager, repo } = newBoard();
+  const { id: projectId } = await board.addProject({ path: repo });
+  const server = startServer({
+    manager,
+    board,
+    ...(mcp ? { mcp } : {}),
+    hostName: "h",
+    bind: "127.0.0.1",
+    port: 0,
+    token: TOKEN,
+    allowedRoots: [],
+  });
+  cleanups.push(() => server.stop());
+  const client = new FrameClient(server.url);
+  cleanups.push(() => client.close());
+  await client.request("hello", { token: TOKEN, client: "t" });
+  return { client, projectId, repo };
 }
 
 async function code(promise: Promise<unknown> | (() => unknown)): Promise<string> {
@@ -159,6 +204,22 @@ describe("mcp-projeto", () => {
     expect(timedOut).toBe("o servidor mudo não respondeu em 0.3 s");
   });
 
+  test("testar um servidor http: manda os headers reais e lista as ferramentas; sem recursos, lista vazia", async () => {
+    const { config, project } = setup();
+    const { url, seen } = httpServer();
+    const web = {
+      name: "web",
+      type: "http" as const,
+      url,
+      headers: { Authorization: "Bearer real" },
+    };
+    config.save(project, web, true);
+    expect(await config.test(project, "web", false)).toEqual({ preview: { url } });
+    const tested = await config.test(project, "web", true).catch((error: Error) => error.message);
+    expect(tested).toEqual({ tools: ["remota"], resources: [] });
+    expect(seen).toContain("Bearer real");
+  });
+
   test("sessão gerenciada viva: liga e desliga na hora pelo runtime", async () => {
     const runtime = new FakeRuntime({ delayMs: 1 });
     const { manager, project } = newManager({ runtime });
@@ -166,6 +227,7 @@ describe("mcp-projeto", () => {
     await poll(() => manager.get(sessionId).status === "idle", 3000);
     await manager.toggleMcpServer(sessionId, "eco", false);
     expect(runtime.mcpToggles).toEqual([{ name: "eco", enabled: false }]);
+    expect(await code(manager.toggleMcpServer("nao-existe", "eco", true))).toBe("invalid_state");
   });
 
   test("protocolo: mcp.list e mcp.test (prévia) por projeto", async () => {
@@ -195,6 +257,38 @@ describe("mcp-projeto", () => {
     expect(listed?.servers.map((s) => s.name)).toEqual(["eco"]);
     expect(await client.data("mcp.test", { projectId: projectId.id, name: "eco" })).toEqual({
       preview: { command: process.execPath, args: [ECO] },
+    });
+  });
+
+  test("protocolo: salvar, ligar e remover pedem confirm; sessão que não está viva é recusada", async () => {
+    const userConfigPath = join(tempDir(), ".claude.json");
+    const { client, projectId, repo } = await daemon(new McpConfig({ userConfigPath }));
+    const names = (data: { servers: Array<{ name: string; enabled: boolean }> } | null) =>
+      data?.servers.map((s) => [s.name, s.enabled]);
+    const server = { name: "novo", command: "bun", args: ["x"] };
+    expect(await client.request("mcp.save", { projectId, server })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+    expect(names(await client.data("mcp.save", { projectId, server, confirm: true }))).toEqual([
+      ["novo", true],
+    ]);
+    const off = { projectId, name: "novo", enabled: false, confirm: true };
+    expect(names(await client.data("mcp.toggle", off))).toEqual([["novo", false]]);
+    expect(
+      await client.request("mcp.toggle", { ...off, enabled: true, sessionId: "nao-existe" }),
+    ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+    expect(
+      names(await client.data("mcp.remove", { projectId, name: "novo", confirm: true })),
+    ).toEqual([]);
+    expect(json(join(repo, ".mcp.json")).mcpServers).toEqual({});
+  });
+
+  test("protocolo: daemon sem a config de MCP responde invalid_state", async () => {
+    const { client, projectId } = await daemon();
+    expect(await client.request("mcp.list", { projectId })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
     });
   });
 });
