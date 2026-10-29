@@ -197,7 +197,7 @@ describe("issues", () => {
     ]);
     const call = az.calls().find((c) => c.includes("query"));
     expect(argAfter(call, "--wiql")).toBe("SELECT [System.Id] FROM WorkItems");
-    expect(az.calls().filter((c) => c.includes("show"))).toHaveLength(1);
+    expect(az.calls().filter((c) => c.includes("work-item"))).toHaveLength(1);
   });
 
   test("Azure: sem a identidade do az, todo autor é de fora", async () => {
@@ -265,89 +265,46 @@ describe("issues", () => {
     expect(suspended).toEqual([[`card:${card.id}`, expect.any(String)]]);
   });
 
-  test("PR do card de uma issue do GitHub leva Fixes #n; do Azure Boards, AB#id", async () => {
-    const gh = fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/3\n" },
+  test("PR do card de uma issue do GitHub leva Fixes #n; do Azure Boards, AB#id; sem issue, só a descrição", async () => {
+    const github = await withWork({ provider: "github" });
+    await openPr(github, "github:Acme/App#7");
+    const azure = await withWork({ provider: "azure" });
+    await openPr(azure, "azure:acme/proj#12");
+    const plain = await withWork({ provider: "github" });
+    await openPr(plain, null);
+    expect([github, azure, plain].map((w) => w.prs.bodies)).toEqual([
+      ["Cria o arquivo novo\n\nFixes #7"],
+      ["Cria o arquivo novo\n\nAB#12"],
+      ["Cria o arquivo novo"],
     ]);
-    const { board, project, repo, root } = await withWork("github:Acme/App#7", {
-      provider: "github",
-    });
-    const card = await openPr(board, project.id, repo, root, "github:Acme/App#7");
-    const body = argAfter(
-      gh.calls().find((c) => c.includes("create")),
-      "--body",
-    );
-    expect(body).toBe("Cria o arquivo novo\n\nFixes #7");
-    expect(card.prUrl).toBe("https://github.com/acme/app/pull/3");
-
-    const gh2 = fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/4\n" },
-    ]);
-    const azure = await withWork("azure:acme/proj#12", { provider: "azure" });
-    await openPr(azure.board, azure.project.id, azure.repo, azure.root, "azure:acme/proj#12");
-    const azBody = argAfter(
-      gh2.calls().find((c) => c.includes("create")),
-      "--body",
-    );
-    expect(azBody).toBe("Cria o arquivo novo\n\nAB#12");
-
-    const plain = fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/5\n" },
-    ]);
-    const bare = await withWork(null, { provider: "github" });
-    await openPr(bare.board, bare.project.id, bare.repo, bare.root, null);
-    expect(
-      argAfter(
-        plain.calls().find((c) => c.includes("create")),
-        "--body",
-      ),
-    ).toBe("Cria o arquivo novo");
   });
 
   test("comentar na issue só com a opção commentOnPr; se o comentário falhar o PR segue e o card avisa", async () => {
-    const off = fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/3\n" },
-    ]);
-    const a = await withWork("github:Acme/App#7", { provider: "github" });
-    await openPr(a.board, a.project.id, a.repo, a.root, "github:Acme/App#7");
-    expect(off.calls().some((c) => c.includes("comment"))).toBe(false);
+    const gh = fake("gh", [{ args: ["issue", "comment"], stdout: "" }]);
+    const off = await withWork({ provider: "github" });
+    await openPr(off, "github:Acme/App#7");
+    expect(gh.calls()).toEqual([]);
 
-    const on = fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/4\n" },
-      { args: ["issue", "comment"], stdout: "" },
-    ]);
-    const b = await withWork("github:Acme/App#7", { provider: "github", commentOnPr: true });
-    await openPr(b.board, b.project.id, b.repo, b.root, "github:Acme/App#7");
-    const comment = on.calls().find((c) => c.includes("comment"));
+    const on = await withWork({ provider: "github", commentOnPr: true });
+    await openPr(on, "github:Acme/App#7");
+    const comment = gh.calls().find((c) => c.includes("comment"));
     expect(comment?.slice(0, 3)).toEqual(["issue", "comment", "7"]);
-    expect(argAfter(comment, "--body")).toContain("https://github.com/acme/app/pull/4");
+    expect(argAfter(comment, "--body")).toBe(`PR aberto: ${on.prs.url}`);
 
     const az = fake("az", [{ args: ["work-item", "update"], stdout: "{}" }]);
-    fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/5\n" },
-    ]);
-    const c = await withWork("azure:acme/proj#12", { provider: "azure", commentOnPr: true });
-    await openPr(c.board, c.project.id, c.repo, c.root, "azure:acme/proj#12");
+    const azure = await withWork({ provider: "azure", commentOnPr: true });
+    await openPr(azure, "azure:acme/proj#12");
     const update = az.calls().find((x) => x.includes("update"));
     expect(argAfter(update, "--id")).toBe("12");
     expect(argAfter(update, "--org")).toBe("https://dev.azure.com/acme");
     expect(argAfter(update, "--project")).toBe("proj");
-    expect(argAfter(update, "--discussion")).toContain("https://github.com/acme/app/pull/5");
+    expect(argAfter(update, "--discussion")).toBe(`PR aberto: ${azure.prs.url}`);
 
-    fake("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/app/pull/6\n" },
-      { args: ["issue", "comment"], code: 1 },
-    ]);
-    const d = await withWork("github:Acme/App#7", { provider: "github", commentOnPr: true });
-    const card = await openPr(d.board, d.project.id, d.repo, d.root, "github:Acme/App#7");
-    expect(card.prUrl).toBe("https://github.com/acme/app/pull/6");
+    const failing = fake("gh", [{ args: ["issue", "comment"], code: 1 }]);
+    const broken = await withWork({ provider: "github", commentOnPr: true });
+    const card = await openPr(broken, "github:Acme/App#7");
+    expect(failing.calls()).toHaveLength(1);
+    expect(card.prUrl).toBe(broken.prs.url);
     expect(card.notice).toContain("não comentou na issue");
   });
 
@@ -426,12 +383,25 @@ describe("issues", () => {
   });
 });
 
+/** A PR provider that records what it is asked to open, without a CLI. */
+function recordingPrs() {
+  const bodies: string[] = [];
+  const url = "https://github.com/acme/app/pull/3";
+  const provider = {
+    create: async (opts: { body: string }) => {
+      bodies.push(opts.body);
+      return url;
+    },
+    status: async () => ({ state: "open" as const, checks: null }),
+    url: async () => null,
+  };
+  return { bodies, url, provider };
+}
+
 /** A project whose origin is a local bare repo (the push is real), with the issue integration. */
-async function withWork(
-  _ref: string | null,
-  issues: { provider: "github" | "azure"; commentOnPr?: boolean },
-) {
-  const ctx = newBoard({ prPollIntervalMs: 1_000_000 });
+async function withWork(issues: { provider: "github" | "azure"; commentOnPr?: boolean }) {
+  const prs = recordingPrs();
+  const ctx = newBoard({ prPollIntervalMs: 1_000_000, prProvider: () => prs.provider });
   cleanups.push(() => ctx.board.stop());
   git(ctx.root, "init", "-q", "--bare", "remote.git");
   git(ctx.repo, "remote", "add", "origin", join(ctx.root, "remote.git"));
@@ -442,18 +412,13 @@ async function withWork(
     promptTemplate: "",
     issues: { commentOnPr: false, ...issues },
   });
-  return { ...ctx, project };
+  return { ...ctx, project, prs };
 }
 
 /** A started card with a commit, made from `issueRef`, whose PR is opened. */
-async function openPr(
-  board: Awaited<ReturnType<typeof withWork>>["board"],
-  projectId: string,
-  _repo: string,
-  _root: string,
-  issueRef: string | null,
-) {
-  const card = board.createCard(projectId, {
+async function openPr(work: Awaited<ReturnType<typeof withWork>>, issueRef: string | null) {
+  const { board, project } = work;
+  const card = board.createCard(project.id, {
     title: "Adicionar arquivo",
     description: "Cria o arquivo novo",
     ...(issueRef ? { issueRef } : {}),

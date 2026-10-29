@@ -28,7 +28,7 @@ import {
   pendingFiles,
   rebaseOnto,
 } from "./merge.ts";
-import { type PrComment, prMessage, prProvider } from "./pr.ts";
+import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { runSetup } from "./setup.ts";
 import type {
@@ -75,6 +75,8 @@ export interface BoardOptions {
   quota?: Quota;
   /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
+  /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
+  prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
   projectKeys?: { keyFor(path: string): string };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
@@ -741,7 +743,7 @@ export class Board {
   async createPr(id: string): Promise<Card> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
-    const provider = prProvider(project.prProvider);
+    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
     if (!provider) throw new FlightdeckError("invalid_state", "projeto sem provedor de PR");
     const { worktreePath: cwd, branch } = card;
     if (!cwd || !branch) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
@@ -930,7 +932,7 @@ export class Board {
   private async pollPr(id: string): Promise<void> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
-    const provider = prProvider(project.prProvider);
+    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
     if (!provider || !card.prUrl) return;
     // From the main repository: a cwd inside the worktree would lock it while it is removed.
     const cwd = project.path;
