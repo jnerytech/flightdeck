@@ -23,6 +23,7 @@
     "smoke:limits": "bun run scripts/smoke-limits.ts",
     "smoke:update": "bun run scripts/smoke-update.ts",
     "smoke:costs": "bun run scripts/smoke-costs.ts",
+    "smoke:review": "bun run scripts/smoke-review.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
