@@ -36,6 +36,20 @@ export type PermissionMode = z.infer<typeof PermissionMode>;
 export const ToolInput = z.record(z.string(), z.unknown());
 export type ToolInput = z.infer<typeof ToolInput>;
 
+/** Name, pinned and archived of a session (phase 5), set with `session.meta.set`. */
+export const SessionMeta = z.object({
+  name: z.string().nullable(),
+  pinned: z.boolean(),
+  archived: z.boolean(),
+});
+export type SessionMeta = z.infer<typeof SessionMeta>;
+
+/** Phase 5 additions to every session list: the project group and the meta. */
+const ListExtras = {
+  projectKey: z.string().nullable().optional(),
+  meta: SessionMeta.optional(),
+};
+
 export const SessionSummary = z.object({
   id: z.string(),
   name: z.string().nullable(),
@@ -47,6 +61,7 @@ export const SessionSummary = z.object({
   lastSeq: z.number().int().nonnegative(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
 
@@ -355,6 +370,7 @@ export const ExternalSession = z.object({
   startedAt: z.string(),
   lastEventAt: z.string(),
   endedAt: z.string().nullable(),
+  meta: SessionMeta.optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 
@@ -412,6 +428,15 @@ export const Command = z.discriminatedUnion("type", [
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
   /** Only for sessions opened with `flightdeckd claude` (`controllable`). */
+  cmd(
+    "session.meta.set",
+    z.object({
+      claudeSessionId: z.string().min(1),
+      name: z.string().nullable().optional(),
+      pinned: z.boolean().optional(),
+      archived: z.boolean().optional(),
+    }),
+  ),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -476,6 +501,7 @@ export const HistorySessionSummary = z.object({
   origin: HistoryOrigin,
   /** The file changed in the last 2 minutes: another process may still be writing it. */
   maybeActive: z.boolean(),
+  ...ListExtras,
 });
 export type HistorySessionSummary = z.infer<typeof HistorySessionSummary>;
 
@@ -582,6 +608,7 @@ export interface CommandResults {
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;
   "external.message": undefined;
+  "session.meta.set": SessionMeta & { claudeSessionId: string };
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

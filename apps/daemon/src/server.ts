@@ -169,6 +169,17 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.central;
   }
 
+  /** Phase 5: every session list carries its project group and meta (with the hub on). */
+  function listed<T extends { cwd: string }>(session: T, claudeSessionId: string | null): T {
+    const hub = opts.central;
+    if (!hub) return session;
+    return {
+      ...session,
+      projectKey: hub.projectKey(session.cwd),
+      meta: hub.meta.get(claudeSessionId ?? ""),
+    };
+  }
+
   function board(): Board {
     if (!opts.board) throw new FlightdeckError("invalid_state", "board desativado");
     return opts.board;
@@ -189,7 +200,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "hello":
         return onHello(ws, command);
       case "session.list":
-        return ok(command.type, { sessions: manager.list() });
+        return ok(command.type, {
+          sessions: manager.list().map((s) => listed(s, s.claudeSessionId)),
+        });
       case "session.create":
         return ok(command.type, manager.create(command.payload));
       case "session.send":
@@ -237,14 +250,22 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type);
       }
+      case "session.meta.set": {
+        const { claudeSessionId, ...patch } = command.payload;
+        const meta = central().meta.set(claudeSessionId, patch);
+        return ok(command.type, { claudeSessionId, ...meta });
+      }
       case "hooks.status":
         return ok(command.type, central().hooksStatus());
       case "hooks.install":
         return ok(command.type, central().hooksInstall(command.payload.confirm === true));
       case "hooks.uninstall":
         return ok(command.type, central().hooksUninstall(command.payload.confirm === true));
-      case "external.list":
-        return ok(command.type, { sessions: central().external.list() });
+      case "external.list": {
+        const { external, meta } = central();
+        const sessions = external.list().map((s) => ({ ...s, meta: meta.get(s.claudeSessionId) }));
+        return ok(command.type, { sessions });
+      }
       case "external.watch": {
         // Ack, then the live sessions and the open requests, then every change: no gap.
         const { external, permissions } = central();
@@ -274,8 +295,11 @@ export function startServer(opts: ServerOptions): RunningServer {
           activeSessions: manager.activeSessionCount(),
           apiKeySanitized: manager.apiKeySanitized(),
         });
-      case "history.list":
-        return ok(command.type, history().list(command.payload));
+      case "history.list": {
+        const page = history().list(command.payload);
+        const sessions = page.sessions.map((s) => listed(s, s.claudeSessionId));
+        return ok(command.type, { ...page, sessions });
+      }
       case "history.get": {
         const { claudeSessionId, cursor, limit } = command.payload;
         return ok(command.type, history().get(claudeSessionId, cursor, limit));

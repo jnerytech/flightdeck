@@ -10,6 +10,7 @@ import { ExternalPermissions } from "./external-permissions.ts";
 import { type HookTarget, hooksStatus, installHooks, uninstallHooks } from "./hooks-install.ts";
 import { ProjectKeys } from "./project-key.ts";
 import { type Receptor, startReceptor } from "./receptor.ts";
+import { SessionMetaStore } from "./session-meta.ts";
 import { RECEPTOR_FILE } from "./wrapper.ts";
 
 /** How often quiet external sessions are checked for `stale`. */
@@ -37,15 +38,18 @@ export interface CentralOptions {
 export class Central {
   readonly external: ExternalSessions;
   readonly permissions = new ExternalPermissions();
+  readonly meta: SessionMetaStore;
+  private readonly keys: ProjectKeys;
   private server: Receptor | null = null;
   private token: string | undefined;
 
   constructor(private readonly opts: CentralOptions) {
-    const keys = new ProjectKeys(opts.hostName);
+    this.keys = new ProjectKeys(opts.hostName);
+    this.meta = new SessionMetaStore(opts.db);
     this.external = new ExternalSessions({
       db: opts.db,
       staleAfterS: opts.hooks.staleAfterS,
-      projectKey: (cwd) => keys.keyFor(cwd),
+      projectKey: (cwd) => this.projectKey(cwd),
     });
     this.external.start(SWEEP_MS);
     this.token = opts.hooks.token;
@@ -55,6 +59,11 @@ export class Central {
   /** Delivers `external.message` to channels; absent while the receptor is not listening. */
   get receptor(): Receptor | undefined {
     return this.server ?? undefined;
+  }
+
+  /** Group of the session in the app's list; see project-key.ts. */
+  projectKey(cwd: string): string {
+    return this.keys.keyFor(cwd);
   }
 
   receptorUrl(): string | null {
