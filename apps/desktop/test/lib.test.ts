@@ -189,11 +189,11 @@ describe("desktop: notificações e status", () => {
   test("rótulos e tons de status", () => {
     expect(STATUS_LABELS.awaiting_permission).toBe("esperando você");
     expect(STATUS_LABELS.running).toBe("rodando");
-    expect(statusTone("awaiting_permission")).toBe("warn");
-    expect(statusTone("running")).toBe("active");
-    expect(statusTone("starting")).toBe("active");
-    expect(statusTone("error")).toBe("danger");
-    expect(statusTone("idle")).toBe("muted");
-    expect(statusTone("ended")).toBe("muted");
+    expect(statusTone("awaiting_permission")).toBe("needs-you");
+    expect(statusTone("running")).toBe("running");
+    expect(statusTone("starting")).toBe("running");
+    expect(statusTone("error")).toBe("error");
+    expect(statusTone("idle")).toBe("idle");
+    expect(statusTone("ended")).toBe("ended");
   });
 });
