@@ -14,6 +14,30 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
+
+/** The confirmation's button with `name` (the dialog is an alertdialog), clicked. */
+async function confirmWith(name: string) {
+  const dialog = screen.queryByRole("alertdialog");
+  expect(dialog).not.toBeNull();
+  const button = within(dialog as HTMLElement).queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+}
+
+/** A host's menu in the sidebar, opened (Radix opens on pointer down). */
+async function openHostMenu(host: string) {
+  const trigger = screen.queryByRole("button", { name: `Menu de ${host}` });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+}
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -87,6 +111,8 @@ describe("pagina-host", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Remover host" }));
     });
+    // The page asks first; the confirming button carries the same verb.
+    await confirmWith("Remover host");
     expect(store.getState().hosts).toEqual([]);
   });
 

@@ -35,7 +35,7 @@ const click = async (name: string) => {
 };
 
 const hooksState = () => screen.queryByLabelText("Hooks do Claude Code")?.textContent ?? "";
-const dialog = () => screen.queryByRole("dialog")?.textContent ?? "";
+const dialog = () => screen.queryByRole("alertdialog")?.textContent ?? "";
 
 async function setup() {
   const d = makeDaemon(cleanups);
@@ -61,7 +61,7 @@ describe("hooks-ui", () => {
     await click("Cancelar");
     expect(existsSync(settingsFile)).toBe(false);
     await click("Instalar hooks");
-    await click("Confirmar");
+    await click("Instalar hooks");
     await settle(() => hooksState().includes("instalados"));
     expect(hooksState()).toContain("instalados");
     const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
@@ -75,7 +75,7 @@ describe("hooks-ui", () => {
   test("Remover pede confirmação e tira só as entradas do Flightdeck", async () => {
     const { settingsFile } = await setup();
     await click("Instalar hooks");
-    await click("Confirmar");
+    await click("Instalar hooks");
     await settle(() => hooksState().includes("instalados"));
     const before = JSON.parse(readFileSync(settingsFile, "utf8"));
     writeFileSync(settingsFile, JSON.stringify({ ...before, model: "opus" }));
@@ -84,7 +84,7 @@ describe("hooks-ui", () => {
     await click("Cancelar");
     expect(hooksState()).toContain("instalados");
     await click("Remover hooks");
-    await click("Confirmar");
+    await click("Remover hooks");
     await settle(() => hooksState().includes("ausentes"));
     expect(JSON.parse(readFileSync(settingsFile, "utf8"))).toEqual({ model: "opus" });
   });

@@ -108,7 +108,7 @@ async function openCard(title: string) {
   await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
 }
 
-const dialog = () => screen.queryByRole("dialog");
+const dialog = () => screen.queryByRole("alertdialog");
 
 describe("board-ui", () => {
   test("Projetos: cadastra o repositório, edita o projeto e ajusta o limite do host", async () => {
@@ -207,7 +207,7 @@ describe("board-ui", () => {
     const id = board.getBoard(board.listProjects()[0]?.id ?? "").columns[3]?.cards[0]?.id ?? "";
     expect(board.getCard(id).column).toBe("review");
     await click("Concluir");
-    await click("Confirmar");
+    await click("Concluir card");
     await settle(() => board.getCard(id).worktreePath === null);
     expect(board.getCard(id)).toMatchObject({ column: "done", worktreePath: null });
     await click("Voltar ao board");
@@ -231,7 +231,7 @@ describe("board-ui", () => {
     expect(board.getCard(discardId ?? "").id).toBe(discardId ?? "");
     await click("Descartar");
     await settle(() => dialog() !== null);
-    await click("Confirmar");
+    await click("Descartar card");
     await settle(
       () =>
         cardItem("Jogar fora") === null &&

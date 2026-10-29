@@ -13,6 +13,30 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
+
+/** The confirmation's button with `name` (the dialog is an alertdialog), clicked. */
+async function confirmWith(name: string) {
+  const dialog = screen.queryByRole("alertdialog");
+  expect(dialog).not.toBeNull();
+  const button = within(dialog as HTMLElement).queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+}
+
+/** A host's menu in the sidebar, opened (Radix opens on pointer down). */
+async function openHostMenu(host: string) {
+  const trigger = screen.queryByRole("button", { name: `Menu de ${host}` });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+}
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySession } = await import("../src/lib/session-state.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -122,6 +146,8 @@ describe("desktop: interface", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Encerrar" }));
     });
+    // Ending a session asks first (phase 10).
+    await confirmWith("Encerrar sessão");
     await waitFor(() => expect(screen.getByRole("button", { name: "Retomar" })).toBeTruthy());
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Retomar" }));
@@ -149,9 +175,13 @@ describe("desktop: interface", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Adicionar outro host" }));
     expect(screen.getByRole("button", { name: "Testar e adicionar" })).toBeTruthy();
+    await openHostMenu("meu pc");
+    const remove = screen.queryByRole("menuitem", { name: "Remover host" });
+    expect(remove).not.toBeNull();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Remover meu pc" }));
+      fireEvent.click(remove as HTMLElement);
     });
+    await confirmWith("Remover host");
     await waitFor(() => expect(screen.queryByLabelText("meu pc: online")).toBeNull());
   });
 

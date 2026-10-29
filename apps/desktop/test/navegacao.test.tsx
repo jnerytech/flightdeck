@@ -15,6 +15,30 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+
+/** The confirmation's button with `name` (the dialog is an alertdialog), clicked. */
+async function confirmWith(name: string) {
+  const dialog = screen.queryByRole("alertdialog");
+  expect(dialog).not.toBeNull();
+  const button = within(dialog as HTMLElement).queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+}
+
+/** A host's menu in the sidebar, opened (Radix opens on pointer down). */
+async function openHostMenu(host: string) {
+  const trigger = screen.queryByRole("button", { name: `Menu de ${host}` });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+  });
+}
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -236,7 +260,9 @@ describe("navegacao", () => {
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     await click("Nova sessão em beta");
     expect(heading("Nova sessão em beta")).toBe(true);
-    await click("Remover beta");
+    await openHostMenu("beta");
+    await click("Remover host");
+    await confirmWith("Remover host");
     expect(store.getState().hosts.map((h) => h.name)).toEqual(["alfa"]);
     expect(heading("Sessões")).toBe(true);
   });

@@ -81,11 +81,11 @@ describe("workflows-ui", () => {
     await click("Workflows de repo");
     await settle(() => screen.queryByRole("button", { name: "Confiar em feature" }) !== null);
     await click("Confiar em feature");
-    expect(screen.queryByRole("dialog")?.textContent ?? "").toContain("fd-test --all");
+    expect(screen.queryByRole("alertdialog")?.textContent ?? "").toContain("fd-test --all");
     await click("Cancelar");
     expect((await board.listWorkflows(project.id))[0]?.trusted).toBe(false);
     await click("Confiar em feature");
-    await click("Confirmar");
+    await click("Confiar");
     await settle(() => screen.queryByRole("button", { name: "Confiar em feature" }) === null);
     expect((await board.listWorkflows(project.id))[0]?.trusted).toBe(true);
     const feature = screen.queryByRole("listitem", { name: "Workflow feature" });

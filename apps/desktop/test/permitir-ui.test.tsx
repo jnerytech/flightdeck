@@ -188,11 +188,11 @@ describe("permitir-ui", () => {
     await settle(() => rules().length === 2);
     expect(rules()).toEqual(["Read", "Bash(npm test:*)"]);
     await click("Remover Read");
-    expect(screen.queryByRole("dialog")?.textContent ?? "").toContain("Read");
+    expect(screen.queryByRole("alertdialog")?.textContent ?? "").toContain("Read");
     await click("Cancelar");
     expect(rules()).toHaveLength(2);
     await click("Remover Read");
-    await click("Confirmar");
+    await click("Remover regra");
     await settle(() => rules().length === 1);
     expect(rules()).toEqual(["Bash(npm test:*)"]);
     expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({

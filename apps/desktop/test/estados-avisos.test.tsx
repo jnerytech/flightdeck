@@ -18,6 +18,8 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { HostStatusBadge } = await import("../src/components/hosts/host-status-badge.tsx");
+const { AsyncButton } = await import("../src/components/feedback/busy.tsx");
+const { ConfirmDialog } = await import("../src/ui/ConfirmDialog.tsx");
 
 setDefaultTimeout(20_000);
 
@@ -30,6 +32,13 @@ afterEach(async () => {
 async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
+}
+
+/** A button of the open confirmation (an alertdialog); the dialog itself is asserted. */
+function inDialog(name: string): HTMLElement | null {
+  const dialog = screen.queryByRole("alertdialog");
+  expect(dialog).not.toBeNull();
+  return within(dialog as HTMLElement).queryByRole("button", { name });
 }
 
 const alerts = () => screen.queryAllByRole("alert");
@@ -275,5 +284,161 @@ describe("estados-avisos", () => {
     await settle(() => screen.queryByRole("listitem", { name: "Viva" }) !== null);
     expect(screen.queryByRole("listitem", { name: "Viva" })).not.toBeNull();
     expect(sessionId).not.toBe("");
+  });
+
+  test("um botão em ação fica desabilitado, com spinner, e não aceita duplo clique", async () => {
+    let release: () => void = () => {};
+    const calls: number[] = [];
+    render(
+      <AsyncButton
+        onClick={() => {
+          calls.push(1);
+          return new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        }}
+      >
+        Salvar
+      </AsyncButton>,
+    );
+    const button = screen.queryByRole("button", { name: "Salvar" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.querySelector("svg.animate-spin")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(calls).toEqual([1]);
+    await act(async () => release());
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("aria-busy")).toBeNull();
+    expect(button.querySelector("svg.animate-spin")).toBeNull();
+  });
+
+  test("o formulário de host fica ocupado enquanto testa a conexão e adiciona uma vez só", async () => {
+    const d = makeDaemon(cleanups);
+    const url = new URL(d.listen().url.replace("ws://", "http://"));
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await settle(() => screen.queryByLabelText("Nome") !== null);
+    for (const [label, value] of [
+      ["Nome", "pc"],
+      ["Endereço", url.hostname],
+      ["Porta", url.port],
+      ["Token", TOKEN],
+    ] as const) {
+      await act(async () => {
+        fireEvent.change(screen.queryByLabelText(label) as HTMLElement, { target: { value } });
+      });
+    }
+    const form = screen.queryByLabelText("Nome")?.closest("form") as HTMLFormElement;
+    const submit = screen.queryByRole("button", {
+      name: "Testar e adicionar",
+    }) as HTMLButtonElement;
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+    expect(submit.disabled).toBe(true);
+    expect(submit.getAttribute("aria-busy")).toBe("true");
+    await settle(() => store.getState().hosts.length > 0);
+    await act(async () => Bun.sleep(100));
+    expect(store.getState().hosts.map((h) => h.name)).toEqual(["pc"]);
+  });
+
+  test("confirmação em AlertDialog: foco preso, Esc cancela e o botão destrutivo é vermelho, com o verbo certo", async () => {
+    const calls: string[] = [];
+    render(
+      <ConfirmDialog
+        message="Remover o host alfa?"
+        warning="As sessões dele somem da lista."
+        confirmLabel="Remover host"
+        destructive
+        onConfirm={() => calls.push("confirm")}
+        onCancel={() => calls.push("cancel")}
+      />,
+    );
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent ?? "").toContain("Remover o host alfa?");
+    expect(dialog?.textContent ?? "").toContain("As sessões dele somem da lista.");
+    await settle(() => dialog?.contains(document.activeElement) === true);
+    expect(dialog?.contains(document.activeElement)).toBe(true);
+    const confirm = within(dialog as HTMLElement).queryByRole("button", { name: "Remover host" });
+    expect(confirm?.className ?? "").toContain("bg-destructive");
+    expect(
+      within(dialog as HTMLElement).queryByRole("button", { name: "Cancelar" }),
+    ).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(dialog as HTMLElement, { key: "Escape" });
+    });
+    expect(calls).toEqual(["cancel"]);
+    await act(async () => {
+      fireEvent.click(confirm as HTMLElement);
+    });
+    expect(calls).toEqual(["cancel", "confirm"]);
+  });
+
+  test("encerrar a sessão e remover o host pedem confirmação com o verbo certo; cancelar não faz nada", async () => {
+    const { d, store, hostId } = await online();
+    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
+    await settle(() => d.manager.get(sessionId).status === "idle");
+    await act(async () => store.router.push({ name: "session", host: hostId, id: sessionId }));
+    await settle(() => screen.queryByRole("button", { name: "Encerrar" }) !== null);
+
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Encerrar" }) as HTMLElement);
+    });
+    let dialog = screen.queryByRole("alertdialog") as HTMLElement;
+    expect(dialog?.textContent ?? "").toContain("Encerrar esta sessão?");
+    expect(dialog).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(inDialog("Cancelar") as HTMLElement);
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(d.manager.get(sessionId).status).toBe("idle");
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Encerrar" }) as HTMLElement);
+    });
+    dialog = screen.queryByRole("alertdialog") as HTMLElement;
+    await act(async () => {
+      fireEvent.click(inDialog("Encerrar sessão") as HTMLElement);
+    });
+    await settle(() => d.manager.get(sessionId).status === "ended");
+    expect(d.manager.get(sessionId).status).toBe("ended");
+
+    // The host: from its menu in the sidebar, no icon beside "+".
+    expect(screen.queryByRole("button", { name: "Remover alfa" })).toBeNull();
+    const menu = screen.queryByRole("button", { name: "Menu de alfa" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.pointerDown(menu, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("menuitem", { name: "Remover host" }) as HTMLElement);
+    });
+    dialog = screen.queryByRole("alertdialog") as HTMLElement;
+    expect(dialog?.textContent ?? "").toContain("alfa");
+    await act(async () => {
+      fireEvent.click(inDialog("Cancelar") as HTMLElement);
+    });
+    expect(store.getState().hosts).toHaveLength(1);
+    await act(async () => {
+      fireEvent.pointerDown(menu, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("menuitem", { name: "Remover host" }) as HTMLElement);
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.queryByRole("alertdialog") as HTMLElement).queryByRole("button", {
+          name: "Remover host",
+        }) as HTMLElement,
+      );
+    });
+    expect(store.getState().hosts).toEqual([]);
   });
 });

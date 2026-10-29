@@ -134,7 +134,7 @@ describe("hosts-update-ui", () => {
     await click("Cancelar");
     expect(daemon.state.applies).toBe(0);
     await click("Atualizar daemon para 9.9.9");
-    await click("Confirmar");
+    await click("Atualizar daemon");
     await waitFor(() => expect(text()).toContain("flightdeckd 9.9.9"));
     expect(daemon.state.applies).toBe(1);
     expect(text()).not.toContain("atualizando…");
@@ -149,7 +149,7 @@ describe("hosts-update-ui", () => {
       expect(screen.queryByRole("button", { name: "Atualizar daemon para 9.9.9" })).not.toBeNull(),
     );
     await click("Atualizar daemon para 9.9.9");
-    await click("Confirmar");
+    await click("Atualizar daemon");
     await waitFor(() => expect(text()).toContain("atualizando…"));
     await waitFor(() => expect(text()).toContain("o daemon não voltou na versão 9.9.9"));
     expect(text()).toContain("flightdeckd update --from");
@@ -163,7 +163,7 @@ describe("hosts-update-ui", () => {
       expect(screen.queryByRole("button", { name: "Atualizar daemon para 9.9.9" })).not.toBeNull(),
     );
     await click("Atualizar daemon para 9.9.9");
-    await click("Confirmar");
+    await click("Atualizar daemon");
     await waitFor(() => expect(text()).toContain("o daemon não roda como serviço"));
     expect(text()).toContain("flightdeckd update --from");
   });
