@@ -80,6 +80,7 @@ const validCommands: Record<CommandType, unknown> = {
   "gate.respond": { runId: "r", stepId: "approve", attempt: 1, decision: "reject", note: "não" },
   "quota.get": {},
   "quota.watch": {},
+  "usage.summary": { days: 7 },
 };
 
 const validEvents: SessionEvent[] = [
