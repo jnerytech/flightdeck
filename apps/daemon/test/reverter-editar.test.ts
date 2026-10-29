@@ -181,18 +181,11 @@ describe("reverter-editar", () => {
     expect(await code(files.write("session:s-2", "README.md", "x", sha("# repo\n")))).toBe(
       "forbidden_cwd",
     );
-    // A link inside the repository that points out of it is refused too (where links work).
-    let linked = true;
-    try {
-      symlinkSync(join(outside, "README.md"), join(repo, "link.md"));
-    } catch {
-      linked = false;
-    }
-    if (linked) {
-      expect(await code(files.write("session:s-1", "link.md", "x", sha("# repo\n")))).toBe(
-        "forbidden_cwd",
-      );
-    }
+    // A link inside the repository that points out of it is refused too. A directory junction:
+    // on Windows it needs no privilege, elsewhere it is a plain directory link.
+    symlinkSync(outside, join(repo, "link"), "junction");
+    const linked = files.write("session:s-1", "link/README.md", "x", sha(`# repo${"\n"}`));
+    expect(await code(linked)).toBe("forbidden_cwd");
   });
 
   test("changes.revert, changes.undoRevert, file.read e file.write pelo protocolo, com o erro file_conflict", async () => {
