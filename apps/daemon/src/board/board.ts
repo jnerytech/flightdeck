@@ -148,6 +148,7 @@ export class Board {
         release: (cardId) => this.release(cardId),
         acquire: (cardId) => this.acquire(cardId),
         takeSlots: (cardId, count) => this.takeSlots(cardId, count),
+        createPr: async (cardId) => (await this.createPr(cardId)).prUrl as string,
         card: (cardId) => this.getCard(cardId),
       },
       checks: opts.checks ?? shellCheckRunner(),

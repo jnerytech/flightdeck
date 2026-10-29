@@ -36,6 +36,8 @@ export interface EngineHost {
   acquire(cardId: string): Promise<void>;
   /** Up to `count` free slots of the host right now, without waiting; `release` gives each back. */
   takeSlots(cardId: string, count: number): string[];
+  /** Pushes the card's branch and opens its PR (phase 4); the PR's URL. */
+  createPr(cardId: string): Promise<string>;
   card(cardId: string): Card;
 }
 
@@ -330,6 +332,7 @@ export class WorkflowEngine {
     if ("loop" in step) {
       return { output: await this.loopStep(run, worktree, step.id, step.loop, context) };
     }
+    if ("pr" in step) return { output: await this.prStep(run, step.id) };
     if ("parallel" in step) {
       return { outputs: await this.parallelStep(run, worktree, step.id, step.parallel, context) };
     }
@@ -386,6 +389,24 @@ export class WorkflowEngine {
     }
     this.endStep(run.id, stepId, 1, "completed", outputs.join(OUTPUTS_SEPARATOR));
     return outputs;
+  }
+
+  /** Push and PR through the project's provider; the card goes to Em revisão. */
+  private async prStep(run: RunRow, stepId: string): Promise<string> {
+    this.db
+      .query(
+        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+         VALUES (?, ?, 1, 'pr', 'running', ?)`,
+      )
+      .run(run.id, stepId, now());
+    try {
+      const url = await this.host.createPr(run.card_id);
+      this.endStep(run.id, stepId, 1, "completed", url);
+      return url;
+    } catch (error) {
+      this.endStep(run.id, stepId, 1, "failed", null);
+      throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
+    }
   }
 
   /** An agent or a check (on its own, or inside a loop or a parallel); a failed check fails. */
