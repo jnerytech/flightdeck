@@ -1,6 +1,7 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
@@ -221,16 +222,9 @@ export function App({ store }: { store: AppStore }) {
     >
       <div className="flex h-full min-h-0 flex-col overflow-y-auto">
         <UpdateBanner store={store} state={state} />
-        {state.error && (
-          <div role="alert" className="error-banner">
-            <span>{state.error}</span>
-            <button type="button" onClick={() => store.clearError()}>
-              Fechar
-            </button>
-          </div>
-        )}
         <Screen route={route} store={store} state={state} theme={themeMode} go={go} />
       </div>
+      <Notices store={store} state={state} />
       {state.searchOpen && (
         <GlobalSearch
           state={state}

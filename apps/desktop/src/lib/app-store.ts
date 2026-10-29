@@ -109,6 +109,8 @@ export interface AppState {
   hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
   /** This machine's terminals (phase 8), probed at init; `null` where none can be opened. */
   terminalEnv: TerminalEnv | null;
+  /** Toasts still to show or still open (phase 10). */
+  notices: Notice[];
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
   /** The saved hosts are in `hosts` (init done with them); routes wait for it (phase 10). */
@@ -213,6 +215,15 @@ export interface AppStoreOptions {
   daemonUpdateTimeoutMs?: number;
   /** How often the app looks for its own update while open (6 h when absent). */
   appUpdateIntervalMs?: number;
+}
+
+/** A toast: a host's error (by code, the daemon's message as detail) or a short success. */
+export interface Notice {
+  id: number;
+  kind: "error" | "success";
+  /** The daemon's error code; "" for an app-side error or a success. */
+  code: string;
+  text: string;
 }
 
 export interface PendingItem {
@@ -363,6 +374,7 @@ export class AppStore {
   private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
+  private noticeSeq = 0;
   /** Quota windows already notified, by host, window and reset. */
   private readonly quotaNotified = new Set<string>();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -398,6 +410,7 @@ export class AppStore {
       hub: {},
       terminalEnv: null,
       projects: {},
+      notices: [],
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
@@ -720,7 +733,7 @@ export class AppStore {
       if (!conn) throw new RequestError("offline", "host desconhecido");
       return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
       return null;
     }
   }
@@ -740,7 +753,7 @@ export class AppStore {
         ...(cursor ? { cursor } : {}),
       });
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
       return null;
     }
   }
@@ -764,7 +777,7 @@ export class AppStore {
       this.select(hostId, sessionId);
       return sessionId;
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
       return null;
     }
   }
@@ -786,7 +799,7 @@ export class AppStore {
       if (isRun(result)) this.onRun(hostId, result);
       return result;
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
       return null;
     }
   }
@@ -859,7 +872,7 @@ export class AppStore {
     try {
       await this.platform.terminal.open(launch.program, launch.args);
     } catch (error) {
-      this.update({ error: `Terminal não abriu: ${describeError(error)}` });
+      this.fail(error, `Terminal não abriu: ${describeError(error)}`);
     }
   }
 
@@ -868,7 +881,7 @@ export class AppStore {
     try {
       return await this.platform.saveFile(name, text);
     } catch (error) {
-      this.update({ error: (error as Error).message });
+      this.fail(error, (error as Error).message);
       return false;
     }
   }
@@ -876,19 +889,46 @@ export class AppStore {
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);
+      this.success(this.i18n.t("toast.copied"));
       return true;
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
       return false;
     }
   }
 
   reportError(message: string): void {
-    this.update({ error: message });
+    this.fail(new Error(message));
   }
 
   clearError(): void {
     this.update({ error: null });
+  }
+
+  /** A short success toast (copied, saved, started…), already translated. */
+  success(text: string): void {
+    this.update({
+      notices: [...this.state.notices, { id: ++this.noticeSeq, kind: "success", code: "", text }],
+    });
+  }
+
+  /** A toast closed (or shown, for successes): it leaves the list. */
+  dismissNotice(id: number): void {
+    this.update({ notices: this.state.notices.filter((n) => n.id !== id) });
+  }
+
+  /**
+   * A host's error: a toast titled by its code, with the daemon's message as the detail. `text`
+   * replaces the old one-line form kept in `error` (and the detail of a codeless one).
+   */
+  private fail(error: unknown, text?: string): void {
+    const code = error instanceof RequestError ? error.code : "";
+    const message = error instanceof Error ? error.message : String(error);
+    const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
+    this.update({
+      error: text ?? describeError(error),
+      notices: [...this.state.notices, notice],
+    });
   }
 
   async createSession(
@@ -897,7 +937,7 @@ export class AppStore {
   ): Promise<string | null> {
     const conn = this.connections.get(hostId);
     if (!conn) {
-      this.update({ error: "host desconhecido ou sem token" });
+      this.fail(new RequestError("offline", "host desconhecido ou sem token"));
       return null;
     }
     try {
@@ -908,7 +948,7 @@ export class AppStore {
       this.router.push({ name: "session", host: hostId, id: sessionId });
       return sessionId;
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
       return null;
     }
   }
@@ -946,7 +986,7 @@ export class AppStore {
         ...(message ? { message } : {}),
       });
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
     }
   }
 
@@ -1039,7 +1079,7 @@ export class AppStore {
     try {
       await action(conn, selected.sessionId);
     } catch (error) {
-      this.update({ error: describeError(error) });
+      this.fail(error);
     }
   }
 

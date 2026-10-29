@@ -5,6 +5,7 @@
  */
 export const ptBR = {
   nav: { back: "Voltar", forward: "Avançar" },
+  toast: { copied: "Copiado", details: "Detalhes", close: "Fechar" },
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",
