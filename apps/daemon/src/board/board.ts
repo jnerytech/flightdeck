@@ -9,6 +9,7 @@ import {
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
+import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
@@ -52,6 +53,8 @@ export interface BoardOptions {
   checks?: CheckRunner;
   /** Milliseconds now, for the workflow budget's minutes; `Date.now` when absent. */
   clock?: () => number;
+  /** The host's plan quota: over `pauseAt`, new cards and workflow turns wait (phase 7). */
+  quota?: Quota;
 }
 
 interface ProjectRow {
@@ -129,6 +132,9 @@ export class Board {
   private readonly follows = new Map<string, () => void>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
+  /** Workflow turns waiting for the plan quota to free up. */
+  private quotaWaiters: Array<() => void> = [];
+  private readonly unwatchQuota: () => void;
   /** Workflow runs back from a gate, waiting for a slot; served before queued cards. */
   private readonly waiters: Array<{ cardId: string; resume(): void }> = [];
   private limit: number;
@@ -151,6 +157,7 @@ export class Board {
         },
         acquire: (cardId) => this.acquire(cardId),
         takeSlots: (cardId, count) => this.takeSlots(cardId, count),
+        waitQuota: () => this.waitQuota(),
         createPr: async (cardId) => (await this.createPr(cardId)).prUrl as string,
         card: (cardId) => this.getCard(cardId),
       },
@@ -158,6 +165,7 @@ export class Board {
       clock: opts.clock ?? Date.now,
     });
     this.limit = opts.maxParallelRuns ?? 2;
+    this.unwatchQuota = opts.quota?.watch(() => this.onQuota()) ?? (() => {});
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
@@ -274,6 +282,9 @@ export class Board {
       discarded: false,
       runs,
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
+      ...this.queueState(
+        active !== undefined && active.started_at === null && active.ended_at === null,
+      ),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -389,7 +400,8 @@ export class Board {
           "SELECT * FROM card_runs WHERE started_at IS NULL AND ended_at IS NULL ORDER BY queued_at, rowid LIMIT 1",
         )
         .get();
-      if (!next) return;
+      // Over the plan quota, queued cards wait for the window to reset (runs going on do not).
+      if (!next || this.opts.quota?.blocked()) return;
       this.running.add(next.card_id);
       this.db.query("UPDATE card_runs SET started_at = ? WHERE id = ?").run(now(), next.id);
       this.changed(next.card_id);
@@ -397,6 +409,38 @@ export class Board {
         this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error)),
       );
     }
+  }
+
+  /** Why a queued card waits, for the card itself. */
+  private queueState(queued: boolean): Pick<Card, "queueReason" | "quotaUntil"> {
+    const blocked = queued ? this.opts.quota?.blocked() : null;
+    if (!blocked) return { queueReason: queued ? "slot" : null, quotaUntil: null };
+    const until = blocked.until === null ? null : new Date(blocked.until).toISOString();
+    return { queueReason: "quota", quotaUntil: until };
+  }
+
+  /** A workflow turn about to start over the quota waits for it; `null` when it may go. */
+  private waitQuota(): { until: number | null; done: Promise<void> } | null {
+    const blocked = this.opts.quota?.blocked();
+    if (!blocked) return null;
+    return {
+      until: blocked.until,
+      done: new Promise((resolve) => this.quotaWaiters.push(resolve)),
+    };
+  }
+
+  /** A new reading or a reset: queued cards may go, and show why they still wait. */
+  private onQuota(): void {
+    if (!this.opts.quota?.blocked()) {
+      for (const resume of this.quotaWaiters.splice(0)) resume();
+    }
+    this.pump();
+    const queued = this.db
+      .query<{ card_id: string }, []>(
+        "SELECT DISTINCT card_id FROM card_runs WHERE started_at IS NULL AND ended_at IS NULL",
+      )
+      .all();
+    for (const { card_id } of queued) this.changed(card_id);
   }
 
   /** A slot for a card whose workflow run goes on after a gate. */
@@ -671,6 +715,7 @@ export class Board {
 
   stop(): void {
     clearInterval(this.pollTimer);
+    this.unwatchQuota();
     for (const unfollow of this.follows.values()) unfollow();
     this.follows.clear();
   }

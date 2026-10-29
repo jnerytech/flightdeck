@@ -86,6 +86,23 @@ export class Quota {
     }));
   }
 
+  /** Why new cards must wait now (`until` in ms, `null` when unknown), or `null`. */
+  blocked(): { window: string; until: number | null } | null {
+    const { pauseAt } = this.opts;
+    if (pauseAt === null) return null;
+    const over = [...this.readings.values()]
+      .map(({ reading }) => reading)
+      .filter((r) => r.status === "rejected" || (r.utilization ?? 0) >= pauseAt);
+    const [first] = over;
+    if (!first) return null;
+    // Free again once every window over the limit has reset.
+    const resets = over.flatMap((r) => r.resetsAt ?? []);
+    return {
+      window: first.window,
+      until: resets.length === over.length ? Math.max(...resets) : null,
+    };
+  }
+
   state(): QuotaState {
     return { windows: this.windows(), pauseAt: this.opts.pauseAt };
   }

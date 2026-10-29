@@ -305,6 +305,10 @@ export const Card = z.object({
   runs: z.array(CardRun),
   /** Workflow run of the active run; `null` for a simple card (phase 4). */
   workflowRunId: z.string().nullable().default(null),
+  /** Why a queued card waits: a free slot, or the host's plan quota (phase 7). */
+  queueReason: z.enum(["slot", "quota"]).nullable().default(null),
+  /** With `queueReason: quota`, when the window resets (ISO); `null` when unknown. */
+  quotaUntil: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -440,6 +444,8 @@ export const WorkflowRun = z.object({
   endedAt: z.string().nullable(),
   /** In the order they started. */
   steps: z.array(StepRun),
+  /** Waiting for the plan quota before the next agent turn: until when (ISO) (phase 7). */
+  quotaUntil: z.string().nullable().default(null),
 });
 export type WorkflowRun = z.infer<typeof WorkflowRun>;
 

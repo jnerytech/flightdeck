@@ -35,6 +35,8 @@ export interface EngineHost {
   release(cardId: string): void;
   /** Back from a restart: the card's run holds its slot again, without waiting. */
   hold(cardId: string): void;
+  /** Over the plan quota: when it frees (`until` in ms, if known); `null` when a turn may go. */
+  waitQuota(): { until: number | null; done: Promise<void> } | null;
   /** Takes a slot for the card again, waiting in the host queue (ahead of queued cards). */
   acquire(cardId: string): Promise<void>;
   /** Up to `count` free slots of the host right now, without waiting; `release` gives each back. */
@@ -103,6 +105,9 @@ const now = () => new Date().toISOString();
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/** The run was ended by the board while it waited: nothing more to do. */
+class Abandoned extends Error {}
+
 /** Ends the run with a status of its own (not `failed`), such as a rejected gate. */
 class Stop extends Error {
   constructor(
@@ -130,6 +135,8 @@ export class WorkflowEngine {
   /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
   private readonly gates = new Map<string, () => void>();
   private readonly watchers = new Set<(run: WorkflowRun) => void>();
+  /** Runs waiting for the plan quota before an agent turn: until when (ms), if known. */
+  private readonly quotaWaits = new Map<string, number | null>();
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
@@ -264,6 +271,7 @@ export class WorkflowEngine {
         .run(now(), run.id);
       for (const key of [...this.gates.keys()])
         if (key.startsWith(`${run.id}/`)) this.gates.delete(key);
+      this.quotaWaits.delete(run.id);
       this.end(run.id, "failed", why);
       if (run.status === "running") this.host.release(cardId);
     }
@@ -375,6 +383,9 @@ export class WorkflowEngine {
       startedAt: row.started_at,
       endedAt: row.ended_at,
       steps,
+      quotaUntil: ((until) => (until ? new Date(until).toISOString() : null))(
+        this.quotaWaits.get(id),
+      ),
     };
   }
 
@@ -391,6 +402,7 @@ export class WorkflowEngine {
       }
       this.finish(run, "completed", null);
     } catch (error) {
+      if (error instanceof Abandoned) return;
       if (error instanceof Stop) this.finish(run, error.status, error.message);
       else this.finish(run, "failed", reason(error));
     }
@@ -660,6 +672,16 @@ export class WorkflowEngine {
     // Checked before every turn: a run over its budget pauses instead of spending more.
     const over = overBudget(JSON.parse(run.budget), JSON.parse(this.row(run.id).usage));
     if (over) throw new Stop("paused", over);
+    // At the same point: over the plan quota, the turn waits for the window to reset.
+    const quota = this.host.waitQuota();
+    if (quota) {
+      this.quotaWaits.set(run.id, quota.until);
+      this.setStatus(run.id, "running", "aguardando cota");
+      await quota.done;
+      this.quotaWaits.delete(run.id);
+      if (!this.active(run.id)) throw new Abandoned();
+      this.setStatus(run.id, "running", null);
+    }
     const prompt = interpolate(action.prompt, context);
     let target = action.continue
       ? (this.stepRow(run.id, action.continue, 1)?.session_id ?? null)
