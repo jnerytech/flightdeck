@@ -44,6 +44,7 @@ import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
+import type { ReviewFiles } from "./review/files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
@@ -96,6 +97,8 @@ export interface ServerOptions {
   changes?: Changes;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
+  /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
+  files?: ReviewFiles;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -357,6 +360,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function review(): ReviewComments {
     if (!opts.review) throw new FlightdeckError("invalid_state", "revisão desativada");
     return opts.review;
+  }
+
+  function files(): ReviewFiles {
+    if (!opts.files) throw new FlightdeckError("invalid_state", "edição de arquivos desativada");
+    return opts.files;
   }
 
   function board(): Board {
@@ -674,6 +682,20 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "review.send":
         return ok(command.type, await review().send(command.payload.target));
+      case "changes.revert": {
+        const { target, path, confirm } = command.payload;
+        return ok(command.type, await files().revert(target, path, confirm === true));
+      }
+      case "changes.undoRevert": {
+        const { target, path, confirm } = command.payload;
+        return ok(command.type, await files().undoRevert(target, path, confirm === true));
+      }
+      case "file.read":
+        return ok(command.type, await files().read(command.payload.target, command.payload.path));
+      case "file.write": {
+        const { target, path, text, expectedHash } = command.payload;
+        return ok(command.type, await files().write(target, path, text, expectedHash));
+      }
       case "quota.history":
         return ok(
           command.type,

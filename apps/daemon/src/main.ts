@@ -43,6 +43,7 @@ import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
+import { ReviewFiles } from "./review/files.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -430,6 +431,11 @@ export async function startDaemon(
     quotaHistory,
     changes,
     review: new ReviewComments({ db: store.db, changes, manager, board, central }),
+    files: new ReviewFiles({
+      changes,
+      dataDir: config.dataDir,
+      allowedRoots: config.allowedRoots,
+    }),
     central,
     maintenance,
     ...(updates ? { updates } : {}),

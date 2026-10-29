@@ -968,6 +968,25 @@ export const Command = z.discriminatedUnion("type", [
   cmd("review.update", z.object({ id: z.string(), body: z.string().min(1) })),
   cmd("review.remove", z.object({ id: z.string() })),
   cmd("review.send", z.object({ target: ReviewTarget })),
+  cmd(
+    "changes.revert",
+    z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
+  ),
+  cmd(
+    "changes.undoRevert",
+    z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
+  ),
+  cmd("file.read", z.object({ target: ReviewTarget, path: z.string().min(1) })),
+  /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
+  cmd(
+    "file.write",
+    z.object({
+      target: ReviewTarget,
+      path: z.string().min(1),
+      text: z.string(),
+      expectedHash: z.string(),
+    }),
+  ),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -1228,6 +1247,12 @@ export interface CommandResults {
   "review.update": ReviewComment | null;
   "review.remove": undefined;
   "review.send": ReviewSent;
+  /** Undo with `changes.undoRevert` until `undoUntil`. */
+  "changes.revert": { path: string; undoUntil: string };
+  "changes.undoRevert": { path: string };
+  /** `hash`: sha256 of the bytes, hex, for `file.write`. */
+  "file.read": { path: string; text: string; hash: string; size: number };
+  "file.write": { path: string; hash: string; size: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -1245,6 +1270,8 @@ export const ErrorCode = z.enum([
   "invalid_permission_update",
   "update_verification_failed",
   "update_needs_service",
+  /** `file.write` of a file that changed since it was read (phase 11). */
+  "file_conflict",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
