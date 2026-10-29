@@ -664,3 +664,7 @@ transcript ficam em `apps/daemon/test/fixtures/history/` e são escritos à mão
 
 Testes e smoke usam só o `FakeRuntime`. `bun run smoke:real` repete o roteiro com o Claude de
 verdade numa pasta descartável. Ele é manual, gasta cota e não faz parte dos critérios de aceite.
+
+## Licença
+
+[MIT](LICENSE).
