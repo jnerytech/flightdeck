@@ -5,6 +5,7 @@
  */
 export const ptBR = {
   nav: { back: "Voltar", forward: "Avançar" },
+  states: { connecting: "Conectando a {host}…", loading: "Carregando…" },
   board: { cardActions: "Ações de {title}", startCard: "Iniciar card" },
   shell: {
     sidebar: "Barra lateral",

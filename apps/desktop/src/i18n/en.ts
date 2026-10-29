@@ -3,6 +3,7 @@ import type { Dictionary } from "./index.ts";
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
   nav: { back: "Back", forward: "Forward" },
+  states: { connecting: "Connecting to {host}…", loading: "Loading…" },
   board: { cardActions: "Actions for {title}", startCard: "Start card" },
   shell: {
     sidebar: "Sidebar",

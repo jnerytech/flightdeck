@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LoadingState } from "@/components/layout/states";
 import { type AppState, type AppStore, type HostView, sessionKey } from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
@@ -21,6 +22,22 @@ import { Settings } from "./Settings.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 import { WorkflowsPage } from "./WorkflowsPage.tsx";
+
+/** The host a route's screen loads from when it opens, if any. */
+function hostToWait(route: Route): string | null {
+  switch (route.name) {
+    case "reader":
+      return route.target.hostId;
+    case "history":
+    case "projects":
+    case "board":
+    case "card":
+    case "workflows":
+      return route.host;
+    default:
+      return null;
+  }
+}
 
 /** From the Sessões screen: the conversation, the live terminal view or the reader. */
 export function rowRoute(row: HubRow): Route {
@@ -135,6 +152,21 @@ export function Screen(props: {
   const { route, store, state, go } = props;
   const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
   const hub = <SessionsHub store={store} state={state} onOpen={(row) => go(rowRoute(row))} />;
+  // Screens that ask their host for data on opening wait for it to be online: a route can come
+  // before the connection (a deep link at start-up).
+  const waiting = hostToWait(route);
+  const waitHost = waiting ? hostOf(waiting) : undefined;
+  // A host removed while its screen was open: back to the hub.
+  if (waiting && state.hostsLoaded && !waitHost) return hub;
+  if (waiting && waitHost?.status !== "online") {
+    const { t } = store.i18n;
+    const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
+    return (
+      <div className="p-6">
+        <LoadingState label={label} />
+      </div>
+    );
+  }
 
   if (route.name === "settings") {
     return (

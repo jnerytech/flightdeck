@@ -111,6 +111,8 @@ export interface AppState {
   terminalEnv: TerminalEnv | null;
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
+  /** The saved hosts are in `hosts` (init done with them); routes wait for it (phase 10). */
+  hostsLoaded: boolean;
   /** Phase 9: the app's own update. */
   appUpdate: AppUpdateState;
 }
@@ -392,6 +394,7 @@ export class AppStore {
       hub: {},
       terminalEnv: null,
       projects: {},
+      hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
       settings: {
@@ -443,7 +446,15 @@ export class AppStore {
     this.dispose();
     this.theme.start();
     this.i18n.start();
-    this.update({ hosts: [], sessions: {}, selected: null, cards: {}, runs: {}, quota: {} });
+    this.update({
+      hosts: [],
+      hostsLoaded: false,
+      sessions: {},
+      selected: null,
+      cards: {},
+      runs: {},
+      quota: {},
+    });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
     const autostart =
@@ -469,6 +480,7 @@ export class AppStore {
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
     }
+    this.update({ hostsLoaded: true });
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
       this.update({ terminalEnv: await this.platform.terminal.probe() });
@@ -1047,6 +1059,9 @@ export class AppStore {
       },
     });
     this.connections.set(config.id, conn);
+    // A session selected before its host had a connection (a route opened at start-up).
+    const selected = this.state.selected;
+    if (selected?.hostId === config.id && selected.sessionId) conn.subscribe(selected.sessionId);
     conn.watch();
     conn.watchBoard();
     conn.watchHistory();
