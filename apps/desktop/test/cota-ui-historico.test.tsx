@@ -209,7 +209,8 @@ describe("cota-ui-historico", () => {
     // The next turn ends with the entry already there.
     d.manager.send(sessionId, "mais");
     const cost = () => screen.queryByLabelText("Custo da sessão")?.textContent ?? "";
-    await settle(() => cost() !== "");
+    // The first reading may come before the entry: the next turn reads it again.
+    await settle(() => cost() === "US$ 0.75");
     expect(cost()).toBe("US$ 0.75");
   });
 });
