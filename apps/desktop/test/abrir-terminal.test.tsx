@@ -256,6 +256,13 @@ describe("abrir-terminal", () => {
     });
   });
 
+  test("a versão web não abre terminal: só copia, e a sondagem diz que não há Windows nem wt", async () => {
+    const { platform } = memoryPlatform();
+    expect(platform.terminal.supported).toBe(false);
+    expect(await platform.terminal.probe()).toEqual({ windows: false, wt: false });
+    await platform.terminal.open("wt.exe", []);
+  });
+
   test("o executor que falha (programa ausente) vira aviso no banner", async () => {
     const d = makeDaemon(cleanups);
     const mem = memoryPlatform();
