@@ -6,8 +6,7 @@
  * computed by hand; a project budget with `queue` already over its limit holds a new card with
  * reason `budget`, and raising the limit lets it start. Then the CSV export.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import {
@@ -18,6 +17,7 @@ import {
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
+import { realTempDir } from "./test/temp-dir.ts";
 
 // The daemon gets this environment: neither the real `claude`, `gh` and `az` nor `~/.claude`.
 const clis = installCliGuard();
@@ -265,7 +265,8 @@ async function run(work: string): Promise<void> {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), "flightdeck-smoke-costs-"));
+// The real path: on the GitHub runner TEMP is an 8.3 name that the daemon resolves.
+const work = realTempDir("flightdeck-smoke-costs-");
 let code = 1;
 try {
   await run(work);
