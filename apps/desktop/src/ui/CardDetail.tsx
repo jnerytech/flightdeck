@@ -237,6 +237,8 @@ export function CardDetail(props: {
               : "Descartar este card? A worktree e a branch local são apagadas."
           }
           warning={confirming.warning}
+          confirmLabel={confirming.kind === "complete" ? "Concluir card" : "Descartar card"}
+          destructive={confirming.kind === "discard"}
           onConfirm={() => void confirm()}
           onCancel={() => setConfirming(null)}
         />

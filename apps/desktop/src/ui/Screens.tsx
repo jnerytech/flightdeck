@@ -137,7 +137,7 @@ function AddHost(props: {
             }
           : {})}
         error={error}
-        onSubmit={(draft) => void submit(draft)}
+        onSubmit={(draft) => submit(draft)}
       />
     </div>
   );

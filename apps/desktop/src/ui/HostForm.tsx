@@ -1,5 +1,7 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { useState } from "react";
+import { Spinner, useBusy } from "@/components/feedback/busy";
+import { Button } from "@/components/ui/button";
 
 export interface HostDraft {
   name: string;
@@ -30,8 +32,10 @@ export function HostForm(props: {
   initial?: HostDraft;
   notice?: string;
   error?: string | null;
-  onSubmit(draft: HostDraft): void;
+  /** May return a promise: the form is busy until it settles (the connection is tested). */
+  onSubmit(draft: HostDraft): unknown;
 }) {
+  const [busy, run] = useBusy();
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -55,7 +59,9 @@ export function HostForm(props: {
           return;
         }
         setProblem(null);
-        props.onSubmit({ ...draft, name: draft.name.trim(), address: draft.address.trim() });
+        run(() =>
+          props.onSubmit({ ...draft, name: draft.name.trim(), address: draft.address.trim() }),
+        );
       }}
     >
       {props.notice && <p className="notice">{props.notice}</p>}
@@ -96,9 +102,10 @@ export function HostForm(props: {
           {error}
         </p>
       )}
-      <button type="submit" className="primary">
+      <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
+        {busy && <Spinner />}
         Testar e adicionar
-      </button>
+      </Button>
     </form>
   );
 }

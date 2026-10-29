@@ -30,6 +30,7 @@ export function HostPage(props: {
   const { store } = props;
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
+  const [removing, setRemoving] = useState(false);
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
@@ -114,6 +115,8 @@ export function HostPage(props: {
               ? `Gravar os hooks do Flightdeck em ${settingsPath}? As outras chaves e hooks continuam, e uma cópia vai para settings.json.flightdeck-backup.`
               : `Remover os hooks do Flightdeck de ${settingsPath}? As outras entradas continuam.`
           }
+          confirmLabel={confirming === "install" ? "Instalar hooks" : "Remover hooks"}
+          destructive={confirming === "uninstall"}
           onConfirm={() => void apply()}
           onCancel={() => setConfirming(null)}
         />
@@ -131,9 +134,21 @@ export function HostPage(props: {
         <button type="button" onClick={props.onReconnect}>
           Reconectar
         </button>
-        <button type="button" className="danger" onClick={props.onRemove}>
+        <button type="button" className="danger" onClick={() => setRemoving(true)}>
           Remover host
         </button>
+        {removing && (
+          <ConfirmDialog
+            message={`Remover o host ${host.name}? As sessões dele saem da lista; o daemon continua rodando.`}
+            confirmLabel="Remover host"
+            destructive
+            onConfirm={() => {
+              setRemoving(false);
+              props.onRemove();
+            }}
+            onCancel={() => setRemoving(false)}
+          />
+        )}
       </div>
     </section>
   );

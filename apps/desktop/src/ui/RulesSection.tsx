@@ -41,6 +41,8 @@ export function RulesSection(props: { store: AppStore; hostId: string; projectId
       {removing && (
         <ConfirmDialog
           message={`Remover a regra ${removing} do .claude/settings.local.json do projeto?`}
+          confirmLabel="Remover regra"
+          destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
         />

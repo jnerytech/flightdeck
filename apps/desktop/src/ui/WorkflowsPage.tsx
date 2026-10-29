@@ -73,6 +73,7 @@ export function WorkflowsPage(props: {
       {trusting && (
         <ConfirmDialog
           message={trustMessage(trusting)}
+          confirmLabel="Confiar"
           onConfirm={() => void trust(trusting)}
           onCancel={() => setTrusting(null)}
         />

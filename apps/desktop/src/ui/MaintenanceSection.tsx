@@ -95,6 +95,8 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
       {confirming && (
         <ConfirmDialog
           message="Apagar os dados antigos deste host conforme a retenção configurada? Eventos de conversas encerradas e sessões externas antigas não voltam (a não ser por um backup)."
+          confirmLabel="Limpar"
+          destructive
           onConfirm={() => void prune(false)}
           onCancel={() => setConfirming(false)}
         />

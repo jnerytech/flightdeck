@@ -30,6 +30,7 @@ export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
       {confirming && (
         <ConfirmDialog
           message={`Atualizar o daemon de ${host.name} para ${version}? Ele reinicia, e o app reconecta sozinho.`}
+          confirmLabel="Atualizar daemon"
           onConfirm={() => {
             setConfirming(false);
             void store.updateDaemon(host.id);

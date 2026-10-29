@@ -4,6 +4,7 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { type T, translator } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
@@ -112,6 +113,7 @@ export function SessionView(props: {
   }, [focusRequestId, cards]);
   const { session, actions } = props;
   const [text, setText] = useState("");
+  const [closing, setClosing] = useState(false);
   const closed = session.status === "ended" || session.status === "error";
 
   const submit = () => {
@@ -146,9 +148,21 @@ export function SessionView(props: {
               <button type="button" onClick={() => void actions.interrupt()}>
                 Interromper
               </button>
-              <button type="button" onClick={() => void actions.close()}>
+              <button type="button" onClick={() => setClosing(true)}>
                 Encerrar
               </button>
+              {closing && (
+                <ConfirmDialog
+                  message="Encerrar esta sessão? O Claude Code para; dá para retomá-la depois."
+                  confirmLabel="Encerrar sessão"
+                  destructive
+                  onConfirm={() => {
+                    setClosing(false);
+                    void actions.close();
+                  }}
+                  onCancel={() => setClosing(false)}
+                />
+              )}
             </>
           )}
         </div>

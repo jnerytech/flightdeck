@@ -1,14 +1,22 @@
+import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatAgo } from "../i18n/format.ts";
 import type { T } from "../i18n/index.ts";
-import { type AppState, needsYou, type PendingItem } from "../lib/app-store.ts";
+import { type AppState, type HostView, needsYou, type PendingItem } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import type { ConnectionStatus } from "../lib/host-connection.ts";
 import { basename } from "../lib/paths.ts";
 import { inputSummary } from "../lib/tool-input.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 
 const CONNECTION_LABELS: Record<ConnectionStatus, string> = {
@@ -44,6 +52,8 @@ export function Sidebar(props: {
   const queue = needsYou(state);
   /** The queue's request whose card is open (one at a time). */
   const [expanded, setExpanded] = useState<string | null>(null);
+  /** The host whose removal is being confirmed. */
+  const [removing, setRemoving] = useState<HostView | null>(null);
   const alerts = budgetAlerts(state);
   return (
     <nav className="sidebar">
@@ -192,14 +202,16 @@ export function Sidebar(props: {
                 </button>
               </>
             )}
-            <button
-              type="button"
-              className="icon"
-              aria-label={`Remover ${host.name}`}
-              onClick={() => props.onRemoveHost(host.id)}
-            >
-              ×
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label={`Menu de ${host.name}`}>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onSelect={() => setRemoving(host)}>Remover host</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <ul>
             {host.sessions.map((s) => {
@@ -231,6 +243,18 @@ export function Sidebar(props: {
       <button type="button" className="add-host" onClick={props.onOpenSettings}>
         Configurações
       </button>
+      {removing && (
+        <ConfirmDialog
+          message={`Remover o host ${removing.name}? As sessões dele saem da lista; o daemon continua rodando.`}
+          confirmLabel="Remover host"
+          destructive
+          onConfirm={() => {
+            props.onRemoveHost(removing.id);
+            setRemoving(null);
+          }}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
     </nav>
   );
 }
