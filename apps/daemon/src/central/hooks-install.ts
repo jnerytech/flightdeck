@@ -23,6 +23,8 @@ export interface HookTarget {
   url: string;
   token: string;
   permissionTimeoutS: number;
+  /** Where Claude Code runs (decides how paths are written); this process's when absent. */
+  platform?: NodeJS.Platform;
 }
 
 export interface HookEntry {
@@ -42,13 +44,20 @@ export type HooksStatus = "installed" | "absent" | "outdated";
 
 type Settings = Record<string, unknown> & { hooks?: Record<string, HookGroup[]> };
 
-/** Quotes only what needs it, so the line reads the same in sh, cmd and PowerShell. */
+/** Quotes only what needs it, so the line reads the same in sh, bash, cmd and PowerShell. */
 const quote = (arg: string) => (/\s/.test(arg) ? `"${arg}"` : arg);
+
+/**
+ * Claude Code runs command hooks through Git Bash on Windows, where `\` is an escape: paths go
+ * with forward slashes, which Windows accepts as well.
+ */
+const forShell = (arg: string, platform: NodeJS.Platform) =>
+  platform === "win32" ? arg.replaceAll("\\", "/") : arg;
 
 /** The entries `install` writes, by event. */
 export function hookEntries(target: HookTarget): Record<string, HookGroup[]> {
   const sessionStart = [
-    ...target.command.map(quote),
+    ...target.command.map((arg) => quote(forShell(arg, target.platform ?? process.platform))),
     "hook",
     "session-start",
     "--url",
