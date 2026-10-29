@@ -184,7 +184,12 @@ describe("custos-ui", () => {
     spend(d, { day: "2026-10-15", key: "kA", cost: 5, session: "s-hist" });
     spend(d, { day: "2026-10-15", key: "kA", model: "claude-mystery-9", cost: null });
     await click("Custos");
-    await settle(() => region("Top sessões")?.querySelector("button") !== null);
+    // The summary and costs.status arrive separately.
+    await settle(
+      () =>
+        region("Top sessões")?.querySelector("button") != null &&
+        screen.queryByText(/tabela de preços pode estar desatualizada/) !== null,
+    );
     expect(screen.queryByText("sem preço: claude-mystery-9")).not.toBeNull();
     expect(screen.queryByText(/tabela de preços pode estar desatualizada/)).not.toBeNull();
     const top = [...(region("Top sessões")?.querySelectorAll("button") ?? [])].map(
