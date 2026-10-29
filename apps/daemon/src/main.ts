@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { McpConfig } from "./agentcfg/mcp.ts";
 import { Board } from "./board/board.ts";
 import { Central } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
@@ -464,6 +465,7 @@ export async function startDaemon(
     snapshots,
     rewinder,
     forker: new Forker({ runtime, manager, rewinder }),
+    mcp: new McpConfig(),
     ...(updater ? { updater } : {}),
     hostName: config.hostName,
     bind: config.bind,

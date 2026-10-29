@@ -63,6 +63,8 @@ export interface AgentRun {
   send(text: string, uuid?: string): void;
   /** Phase 12: the SDK's file checkpoint back to before the message `userMessageId`. */
   rewindFiles?(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult>;
+  /** Phase 12: turns an MCP server of the live session on or off. */
+  toggleMcpServer?(name: string, enabled: boolean): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
 }

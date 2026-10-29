@@ -424,6 +424,18 @@ export class SessionManager {
     });
   }
 
+  /** Phase 12: turns an MCP server of a live managed session on or off right away. */
+  async toggleMcpServer(sessionId: string, name: string, enabled: boolean): Promise<void> {
+    const run = this.live.get(sessionId)?.run;
+    if (!run?.toggleMcpServer) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "a sessão não está viva para mudar os servidores MCP",
+      );
+    }
+    await run.toggleMcpServer(name, enabled);
+  }
+
   /** Phase 12: a turn is running (or waiting for a permission) in this Claude session. */
   busy(claudeSessionId: string): boolean {
     return this.list().some((s) => s.claudeSessionId === claudeSessionId && ACTIVE.has(s.status));

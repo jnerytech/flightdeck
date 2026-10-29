@@ -25,6 +25,7 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   interrupt(): Promise<unknown>;
   close(): void;
   rewindFiles?(userMessageId: string, opts?: { dryRun?: boolean }): Promise<RewindFilesResult>;
+  toggleMcpServer?(name: string, enabled: boolean): Promise<void>;
 }
 
 export type QueryFn = (params: {
@@ -231,6 +232,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
           ...(uuid ? { uuid: uuid as SDKUserMessage["uuid"] } : {}),
         });
       },
+      toggleMcpServer: (name, enabled) =>
+        (handle.toggleMcpServer as NonNullable<QueryHandle["toggleMcpServer"]>)(name, enabled),
       rewindFiles: (userMessageId, opts) =>
         (handle.rewindFiles as NonNullable<QueryHandle["rewindFiles"]>)(userMessageId, opts),
       async interrupt() {

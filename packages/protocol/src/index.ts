@@ -874,6 +874,26 @@ export const ExternalSession = z.object({
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 
+/** Phase 12: an MCP server as `.mcp.json` holds it. */
+export const McpServerInput = z.object({
+  name: z.string().min(1),
+  type: z.enum(["stdio", "http", "sse"]).optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  url: z.string().optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+
+/** An MCP server that applies to a project, secrets masked. */
+export const McpServerView = McpServerInput.extend({
+  origin: z.enum(["project", "user", "user-project"]),
+  readOnly: z.boolean(),
+  transport: z.enum(["stdio", "http", "sse"]),
+  enabled: z.boolean(),
+});
+export type McpServerView = z.infer<typeof McpServerView>;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -971,6 +991,32 @@ export const Command = z.discriminatedUnion("type", [
       upToMessageId: z.string().optional(),
       open: z.enum(["flightdeck", "terminal"]),
       rewindTurn: z.number().int().optional(),
+    }),
+  ),
+  /** Phase 12: the project's MCP servers; writes only to its .mcp.json and settings.local.json. */
+  cmd("mcp.list", z.object({ projectId: z.string() })),
+  /** Without confirm, only the exact command (or URL) that would run. */
+  cmd(
+    "mcp.test",
+    z.object({ projectId: z.string(), name: z.string(), confirm: z.boolean().optional() }),
+  ),
+  cmd(
+    "mcp.save",
+    z.object({ projectId: z.string(), server: McpServerInput, confirm: z.boolean().optional() }),
+  ),
+  cmd(
+    "mcp.remove",
+    z.object({ projectId: z.string(), name: z.string(), confirm: z.boolean().optional() }),
+  ),
+  cmd(
+    "mcp.toggle",
+    z.object({
+      projectId: z.string(),
+      name: z.string(),
+      enabled: z.boolean(),
+      confirm: z.boolean().optional(),
+      /** A live managed session to switch right away too. */
+      sessionId: z.string().optional(),
     }),
   ),
   cmd("hooks.status", z.object({}).strict()),
@@ -1325,6 +1371,13 @@ export interface CommandResults {
   "rewind.apply": RewindPreview;
   "rewind.undo": RewindPreview;
   "session.fork": { claudeSessionId: string; sessionId?: string; command?: string };
+  "mcp.list": { servers: McpServerView[] };
+  "mcp.test":
+    | { preview: { command?: string; args?: string[]; url?: string } }
+    | { tools: string[]; resources: string[] };
+  "mcp.save": { servers: McpServerView[] };
+  "mcp.remove": { servers: McpServerView[] };
+  "mcp.toggle": { servers: McpServerView[] };
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

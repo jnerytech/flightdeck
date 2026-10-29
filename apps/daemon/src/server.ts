@@ -30,6 +30,7 @@ import {
 import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import type { McpConfig } from "./agentcfg/mcp.ts";
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
@@ -81,6 +82,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 12: the project's MCP servers (`mcp.*`). */
+  mcp?: McpConfig;
   /** Phase 12: `session.fork`. */
   forker?: Forker;
   /** Phase 12: going back to a turn (`rewind.*`). */
@@ -305,6 +308,13 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function mcp(): McpConfig {
+    if (!opts.mcp) throw new FlightdeckError("invalid_state", "MCP do projeto indisponível");
+    return opts.mcp;
+  }
+
+  const projectPath = (projectId: string) => board().getProject(projectId).path;
+
   function rewinder(): Rewinder {
     if (!opts.rewinder) throw new FlightdeckError("invalid_state", "voltar arquivos indisponível");
     return opts.rewinder;
@@ -475,6 +485,29 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, {
           snapshots: opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
         });
+      case "mcp.list":
+        return ok(command.type, { servers: mcp().list(projectPath(command.payload.projectId)) });
+      case "mcp.test": {
+        const { projectId, name, confirm } = command.payload;
+        return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
+      }
+      case "mcp.save": {
+        const path = projectPath(command.payload.projectId);
+        mcp().save(path, command.payload.server, command.payload.confirm === true);
+        return ok(command.type, { servers: mcp().list(path) });
+      }
+      case "mcp.remove": {
+        const path = projectPath(command.payload.projectId);
+        mcp().remove(path, command.payload.name, command.payload.confirm === true);
+        return ok(command.type, { servers: mcp().list(path) });
+      }
+      case "mcp.toggle": {
+        const { projectId, name, enabled, confirm, sessionId } = command.payload;
+        const path = projectPath(projectId);
+        mcp().toggle(path, name, enabled, confirm === true);
+        if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
+        return ok(command.type, { servers: mcp().list(path) });
+      }
       case "session.fork": {
         if (!opts.forker) throw new FlightdeckError("invalid_state", "bifurcar indisponível");
         return ok(command.type, await opts.forker.fork(command.payload));

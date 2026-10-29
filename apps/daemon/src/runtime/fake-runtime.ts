@@ -44,6 +44,9 @@ export class FakeRuntime implements AgentRuntime {
 
   private readonly rewind: FakeRuntimeOptions["rewind"];
 
+  /** MCP servers turned on or off in live runs (phase 12). */
+  readonly mcpToggles: Array<{ name: string; enabled: boolean }> = [];
+
   /** Forks asked so far (phase 12). */
   readonly forks: Array<{ claudeSessionId: string } & ForkOptions> = [];
 
@@ -54,7 +57,7 @@ export class FakeRuntime implements AgentRuntime {
 
   start(opts: StartOptions): AgentRun {
     this.starts.push(opts);
-    return new FakeRun(opts, this.delayMs, this.costs, this.rewind);
+    return new FakeRun(opts, this.delayMs, this.costs, this.rewind, this.mcpToggles);
   }
 }
 
@@ -72,8 +75,13 @@ class FakeRun implements AgentRun {
     private readonly delayMs: number,
     private readonly costs: Map<string, number>,
     private readonly rewind?: FakeRuntimeOptions["rewind"],
+    private readonly toggles: Array<{ name: string; enabled: boolean }> = [],
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
+  }
+
+  async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
+    this.toggles.push({ name, enabled });
   }
 
   async rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {

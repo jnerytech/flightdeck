@@ -21,6 +21,12 @@ export function isInside(root: string, child: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
+/** Whether two paths name the same place, case blind where the file system is. */
+export function samePath(a: string, b: string): boolean {
+  const norm = (p: string) => (caseInsensitive ? resolve(p).toLowerCase() : resolve(p));
+  return norm(a) === norm(b);
+}
+
 /** Resolves `cwd` with realpath and refuses it unless it lives inside one of `allowedRoots`. */
 export function resolveAllowedCwd(cwd: string, allowedRoots: readonly string[]): string {
   const real = realDir(cwd);
