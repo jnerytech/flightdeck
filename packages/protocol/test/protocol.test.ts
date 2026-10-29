@@ -74,6 +74,7 @@ const validCommands: Record<CommandType, unknown> = {
   "rewind.preview": { claudeSessionId: "c1", turn: 1 },
   "rewind.apply": { claudeSessionId: "c1", turn: 1, confirm: true },
   "rewind.undo": { claudeSessionId: "c1", confirm: true },
+  "session.fork": { claudeSessionId: "c1", cwd: "/p", upToMessageId: "u1", open: "terminal" },
   "hooks.status": {},
   "hooks.install": { confirm: true },
   "hooks.uninstall": { confirm: true },

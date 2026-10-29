@@ -336,4 +336,17 @@ describe("ClaudeSdkRuntime", () => {
     expect(rewinds).toEqual([["uuid-1", { dryRun: true }]]);
     await run.close();
   });
+  test("forkSession vai à função do SDK, com a mensagem de corte e a pasta do projeto", async () => {
+    const calls: unknown[] = [];
+    const runtime = new ClaudeSdkRuntime({
+      forkSession: async (id, options) => {
+        calls.push([id, options]);
+        return { sessionId: "novo-1" };
+      },
+    });
+    expect(await runtime.forkSession?.("orig", { upToMessageId: "u2", dir: "/proj" })).toEqual({
+      sessionId: "novo-1",
+    });
+    expect(calls).toEqual([["orig", { upToMessageId: "u2", dir: "/proj" }]]);
+  });
 });
