@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type ExternalSession, ExternalSessions } from "../src/central/external.ts";
+import {
+  type ExternalSession,
+  ExternalSessions,
+  type ExternalStatus,
+} from "../src/central/external.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -67,7 +71,7 @@ describe("sessoes-externas", () => {
   test("cada evento da tabela leva ao estado certo", () => {
     const { registry, start } = setup();
     start();
-    const steps: Array<[string, Record<string, unknown>, string]> = [
+    const steps: Array<[string, Record<string, unknown>, ExternalStatus]> = [
       ["UserPromptSubmit", {}, "running"],
       ["PermissionRequest", { tool_name: "Write" }, "awaiting_permission"],
       ["PostToolUse", {}, "running"],
