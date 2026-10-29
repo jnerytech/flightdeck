@@ -27,7 +27,7 @@ function setup() {
 async function claude() {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "claude-de-teste", version: "0.0.0" });
-  const notifications: Array<{ method: string; params?: unknown }> = [];
+  const notifications: Array<Record<string, unknown>> = [];
   client.fallbackNotificationHandler = async (notification) => {
     notifications.push(notification);
   };
