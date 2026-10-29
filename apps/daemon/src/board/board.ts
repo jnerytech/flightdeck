@@ -5,6 +5,7 @@ import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
+import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
   Card,
@@ -232,8 +233,22 @@ export class Board {
         "INSERT INTO card_runs (card_id, session_id, queued_at, started_at) VALUES (?, '', ?, ?)",
       )
       .run(id, at, at);
-    void this.launch(id);
+    void this.launch(id).catch((error: unknown) =>
+      this.failRun(id, error instanceof Error ? error.message : String(error)),
+    );
     return this.getCard(id);
+  }
+
+  /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
+  private failRun(id: string, notice: string): void {
+    this.db
+      .query(
+        "UPDATE cards SET board_column = 'waiting', column_locked = 0, notice = ?, updated_at = ? WHERE id = ?",
+      )
+      .run(notice, now(), id);
+    this.db
+      .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND session_id = ''")
+      .run(now(), id);
   }
 
   private async launch(id: string): Promise<void> {
@@ -249,6 +264,7 @@ export class Board {
         )
         .run(added.slug, added.branch, added.path, now(), id);
     }
+    if (project.setupScript) await runSetup(project.setupScript, worktree);
     const prompt = [card.description, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
