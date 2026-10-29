@@ -5,7 +5,18 @@ import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
-import type { NewProject, Project, ProjectPatch, PrProviderKind } from "./types.ts";
+import type {
+  BoardColumn,
+  Card,
+  CardRun,
+  ChecksState,
+  NewProject,
+  Project,
+  ProjectPatch,
+  PrProviderKind,
+  PrState,
+} from "./types.ts";
+import { addWorktree } from "./worktree.ts";
 
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
@@ -38,6 +49,42 @@ function toProject(row: ProjectRow): Project {
     promptTemplate: row.prompt_template,
   };
 }
+
+interface CardRow {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  board_column: BoardColumn;
+  column_locked: number;
+  position: number;
+  slug: string | null;
+  branch: string | null;
+  worktree_path: string | null;
+  pr_url: string | null;
+  pr_state: PrState | null;
+  checks_state: ChecksState | null;
+  notice: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface RunRow {
+  card_id: string;
+  session_id: string;
+  queued_at: string;
+  started_at: string | null;
+  ended_at: string | null;
+}
+
+const now = () => new Date().toISOString();
+
+const toRun = (row: RunRow): CardRun => ({
+  sessionId: row.session_id || null,
+  queuedAt: row.queued_at,
+  startedAt: row.started_at,
+  endedAt: row.ended_at,
+});
 
 /** A blank script means "no script": nothing is ever run unless the user registered one. */
 const script = (value: string | null | undefined) => value?.trim() || null;
@@ -119,6 +166,96 @@ export class Board {
       )
       .run(next.name, next.baseBranch, next.prProvider, next.setupScript, next.promptTemplate, id);
     return next;
+  }
+
+  getCard(id: string): Card {
+    const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
+    if (!row) throw new FlightdeckError("not_found", `card ${id} não existe`);
+    const runs = this.db
+      .query<RunRow, [string]>(
+        "SELECT * FROM card_runs WHERE card_id = ? ORDER BY queued_at, rowid",
+      )
+      .all(id)
+      .map(toRun);
+    const active = runs.at(-1);
+    const sessionId = active?.sessionId ?? null;
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      title: row.title,
+      description: row.description,
+      column: row.board_column,
+      columnLocked: row.column_locked === 1,
+      position: row.position,
+      slug: row.slug,
+      branch: row.branch,
+      worktreePath: row.worktree_path,
+      prUrl: row.pr_url,
+      prState: row.pr_state,
+      checksState: row.checks_state,
+      queued: active !== undefined && active.startedAt === null,
+      sessionId,
+      sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
+      notice: row.notice,
+      discarded: false,
+      runs,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  /** A new card goes to the end of the Backlog. */
+  createCard(projectId: string, input: { title: string; description: string }): Card {
+    this.getProject(projectId);
+    const { last } = this.db
+      .query<{ last: number | null }, [string]>(
+        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = 'backlog'",
+      )
+      .get(projectId) ?? { last: null };
+    const id = ulid();
+    const at = now();
+    this.db
+      .query(
+        `INSERT INTO cards (id, project_id, title, description, board_column, position, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?)`,
+      )
+      .run(id, projectId, input.title, input.description, (last ?? 0) + 1, at, at);
+    return this.getCard(id);
+  }
+
+  /** Starts a new run of the card: worktree (created on the first run) and a fresh session. */
+  async startCard(id: string): Promise<Card> {
+    this.getCard(id);
+    const at = now();
+    this.db
+      .query(
+        "INSERT INTO card_runs (card_id, session_id, queued_at, started_at) VALUES (?, '', ?, ?)",
+      )
+      .run(id, at, at);
+    void this.launch(id);
+    return this.getCard(id);
+  }
+
+  private async launch(id: string): Promise<void> {
+    const card = this.getCard(id);
+    const project = this.getProject(card.projectId);
+    let worktree = card.worktreePath;
+    if (!worktree) {
+      const added = await addWorktree(project.path, card.title, project.baseBranch);
+      worktree = added.path;
+      this.db
+        .query(
+          "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, updated_at = ? WHERE id = ?",
+        )
+        .run(added.slug, added.branch, added.path, now(), id);
+    }
+    const prompt = [card.description, project.promptTemplate]
+      .filter((part) => part.trim())
+      .join("\n\n");
+    const { sessionId } = this.opts.manager.create({ cwd: worktree, prompt, name: card.title });
+    this.db
+      .query("UPDATE card_runs SET session_id = ? WHERE card_id = ? AND session_id = ''")
+      .run(sessionId, id);
   }
 
   stop(): void {}
