@@ -1,6 +1,7 @@
 import type { ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
+import { userHome } from "../config.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
-import type { RiskClassifier } from "../permissions/risk.ts";
+import { RiskClassifier } from "../permissions/risk.ts";
 import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
@@ -33,13 +34,23 @@ export class ExternalPermissions {
   private readonly held = new Map<string, Held>();
   private readonly watchers = new Set<(frame: ExternalPermissionFrame) => void>();
 
-  /** Stub. */
-  constructor(readonly opts: { risk?: RiskClassifier } = {}) {}
+  private readonly risk: RiskClassifier;
+
+  /** `risk`: the classifier of the daemon's config; built-in rules alone when absent. */
+  constructor(opts: { risk?: RiskClassifier } = {}) {
+    this.risk = opts.risk ?? new RiskClassifier({ allowedRoots: [], home: userHome() });
+  }
 
   /** Resolves with the hook's JSON answer, or "" (no decision: the terminal's dialog decides). */
   hold(payload: HookPayload, signal: AbortSignal): Promise<string> {
     if (this.watchers.size === 0) return Promise.resolve("");
     const suggestions = parseSuggestions(payload.permission_suggestions);
+    // From the whole input: the cut one could hide what comes after 200 characters.
+    const risk = this.risk.classify(
+      String(payload.tool_name ?? ""),
+      { ...(payload.tool_input as Record<string, unknown> | undefined) },
+      String(payload.cwd ?? ""),
+    );
     const frame: ExternalPermissionFrame = {
       type: "external.permission",
       requestId: `ext-${ulid()}`,
@@ -47,6 +58,8 @@ export class ExternalPermissions {
       toolName: String(payload.tool_name ?? ""),
       input: summarizeInput(payload.tool_input),
       ...(suggestions.length > 0 ? { suggestions } : {}),
+      risk: risk.level,
+      riskReason: risk.reason,
       state: "open",
       createdAt: new Date().toISOString(),
     };

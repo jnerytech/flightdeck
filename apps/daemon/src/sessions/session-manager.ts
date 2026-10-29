@@ -11,11 +11,13 @@ import type {
   SessionSummary,
 } from "@flightdeck/protocol";
 import { summarizeInput } from "../central/external-permissions.ts";
+import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
+import { type Risk, RiskClassifier } from "../permissions/risk.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -41,6 +43,8 @@ export interface SessionManagerOptions {
   onTurn?: (sessionId: string, cwd: string, turn: SessionEventOf<"turn.result">) => void;
   /** Start and end of every turn (phase 12's snapshots); the first start waits for session.init. */
   onTurnEdge?: (edge: TurnEdge) => void;
+  /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
+  risk?: RiskClassifier;
 }
 
 export interface TurnEdge {
@@ -73,6 +77,7 @@ const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awai
 export class SessionManager {
   private readonly store: EventStore;
   private readonly broker: PermissionBroker;
+  private readonly risk: RiskClassifier;
   private readonly live = new Map<string, LiveSession>();
   private readonly listeners = new Map<string, Set<EventListener>>();
   private readonly summaryListeners = new Set<EventListener>();
@@ -82,9 +87,12 @@ export class SessionManager {
 
   constructor(private readonly opts: SessionManagerOptions) {
     this.store = opts.store;
+    this.risk =
+      opts.risk ?? new RiskClassifier({ allowedRoots: opts.allowedRoots, home: userHome() });
     this.broker = new PermissionBroker(this.store, {
       emit: (sessionId, event) => this.emit(sessionId, event),
       onPendingChange: (sessionId, pending) => this.onPendingChange(sessionId, pending),
+      classify: (sessionId, toolName, input) => this.classify(sessionId, toolName, input),
     });
     this.recover();
   }
@@ -116,12 +124,22 @@ export class SessionManager {
 
   /** Open permission requests of a session, oldest first, as its summaries list them. */
   pendingPermissions(sessionId: string): PendingPermission[] {
-    return this.store.pendingPermissions(sessionId).map((p) => ({
-      requestId: p.id,
-      toolName: p.toolName,
-      createdAt: p.createdAt,
-      input: summarizeInput(p.input),
-    }));
+    return this.store.pendingPermissions(sessionId).map((p) => {
+      const risk = this.classify(sessionId, p.toolName, p.input);
+      return {
+        requestId: p.id,
+        toolName: p.toolName,
+        createdAt: p.createdAt,
+        input: summarizeInput(p.input),
+        risk: risk.level,
+        riskReason: risk.reason,
+      };
+    });
+  }
+
+  /** A request's risk, against the session's cwd. */
+  classify(sessionId: string, toolName: string, input: Record<string, unknown>): Risk {
+    return this.risk.classify(toolName, input, this.get(sessionId).cwd);
   }
 
   get(sessionId: string): SessionSummary {

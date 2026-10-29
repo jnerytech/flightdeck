@@ -109,6 +109,10 @@ export const Usage = z.object({
 });
 export type Usage = z.infer<typeof Usage>;
 
+/** Phase 13: the risk of a permission request, from declared rules (never from AI). */
+export const RiskLevel = z.enum(["low", "medium", "high"]);
+export type RiskLevel = z.infer<typeof RiskLevel>;
+
 /** An open permission request, as listed in `session.summary`. */
 export const PendingPermission = z.object({
   requestId: z.string(),
@@ -116,6 +120,9 @@ export const PendingPermission = z.object({
   createdAt: z.string(),
   /** Phase 8: the tool input with long strings cut, for the tray's "ferramenta: resumo". */
   input: z.record(z.string(), z.unknown()).optional(),
+  /** Phase 13; optional only because older daemons do not send it. */
+  risk: RiskLevel.optional(),
+  riskReason: z.string().optional(),
 });
 export type PendingPermission = z.infer<typeof PendingPermission>;
 
@@ -197,6 +204,9 @@ export const SessionEvent = z.discriminatedUnion("type", [
     input: ToolInput,
     /** What the CLI offers to stop asking (phase 7). */
     suggestions: z.array(PermissionUpdate).optional(),
+    /** Phase 13; optional only because events stored before it do not have it. */
+    risk: RiskLevel.optional(),
+    riskReason: z.string().optional(),
   }),
   z.object({
     type: z.literal("permission.resolved"),
@@ -1589,6 +1599,9 @@ export const ExternalPermissionFrame = z.object({
   input: z.record(z.string(), z.unknown()),
   /** The hook's `permission_suggestions` this daemon understands (phase 7). */
   suggestions: z.array(PermissionUpdate).optional(),
+  /** Phase 13: from the whole input, before it is cut. */
+  risk: RiskLevel.optional(),
+  riskReason: z.string().optional(),
   state: z.enum(["open", "closed"]),
   /** Why it closed: answered here, the hook connection dropped, or answered in the terminal. */
   resolution: z.enum(["allow", "deny", "dropped", "answered_elsewhere"]).optional(),

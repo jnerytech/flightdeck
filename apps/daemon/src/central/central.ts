@@ -5,6 +5,7 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { type SnapshotInput, snapshotForHook } from "../checkpoints/snapshots.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
+import type { RiskClassifier } from "../permissions/risk.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ExternalSessions } from "./external.ts";
 import { ExternalPermissions } from "./external-permissions.ts";
@@ -18,6 +19,8 @@ import { RECEPTOR_FILE } from "./wrapper.ts";
 const SWEEP_MS = 60_000;
 
 export interface CentralOptions {
+  /** Phase 13: the risk of the terminal sessions' permission requests. */
+  risk?: RiskClassifier;
   /** Phase 12: terminal sessions' turns become git snapshots. */
   snapshots?: { enqueue(input: SnapshotInput): void };
   db: Database;
@@ -50,13 +53,14 @@ export function messageExternal(
 
 export class Central {
   readonly external: ExternalSessions;
-  readonly permissions = new ExternalPermissions();
+  readonly permissions: ExternalPermissions;
   readonly meta: SessionMetaStore;
   private readonly keys: ProjectKeys;
   private server: Receptor | null = null;
   private token: string | undefined;
 
   constructor(private readonly opts: CentralOptions) {
+    this.permissions = new ExternalPermissions({ risk: opts.risk });
     this.keys = new ProjectKeys(opts.hostName);
     this.meta = new SessionMetaStore(opts.db);
     this.external = new ExternalSessions({

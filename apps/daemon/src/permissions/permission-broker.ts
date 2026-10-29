@@ -9,11 +9,14 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import { checkUpdates } from "./permission-updates.ts";
+import type { Risk } from "./risk.ts";
 
 export interface BrokerHooks {
   emit(sessionId: string, event: SessionEvent): void;
   /** Called whenever the number of open requests of a session changes. */
   onPendingChange(sessionId: string, pending: number): void;
+  /** Phase 13: the request's risk, sent with it. */
+  classify(sessionId: string, toolName: string, input: ToolInput): Risk;
 }
 
 interface Pending {
@@ -57,12 +60,15 @@ export class PermissionBroker {
         resolve,
         detach: () => signal.removeEventListener("abort", onAbort),
       });
+      const risk = this.hooks.classify(sessionId, toolName, input);
       this.hooks.emit(sessionId, {
         type: "permission.requested",
         requestId: id,
         toolName,
         input,
         ...(suggestions.length > 0 ? { suggestions } : {}),
+        risk: risk.level,
+        riskReason: risk.reason,
       });
       this.hooks.onPendingChange(sessionId, this.pendingCount(sessionId));
     });

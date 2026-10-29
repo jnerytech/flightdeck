@@ -44,6 +44,7 @@ import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+import { RiskClassifier } from "./permissions/risk.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -341,9 +342,16 @@ export async function startDaemon(
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.keyFor(cwd) });
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
   const snapshots = new Snapshots({ db: store.db });
+  // Phase 13: one classifier for managed and terminal sessions, with the config's extra rules.
+  const risk = new RiskClassifier({
+    allowedRoots: config.allowedRoots,
+    home: userHome(env),
+    extraHigh: config.risk.extraHigh,
+  });
   const manager = new SessionManager({
     store,
     runtime,
+    risk,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
@@ -433,6 +441,7 @@ export async function startDaemon(
       })
     : undefined;
   const central = new Central({
+    risk,
     snapshots,
     db: store.db,
     manager,

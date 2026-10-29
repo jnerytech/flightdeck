@@ -6,6 +6,7 @@ import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { PricingConfig } from "./costs/pricing.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
+import { validRegex } from "./permissions/risk.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
 export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
@@ -113,8 +114,12 @@ export const Config = z.object({
     .default(() => ({ pauseAt: 0.9 })),
   /** API prices (phase 8): overrides of the default table, model by model. */
   pricing: PricingConfig.default(() => ({ models: {}, fastMultiplier: {} })),
-  /** Stub. */
-  risk: z.object({ extraHigh: z.array(z.string()).default([]) }).default(() => ({ extraHigh: [] })),
+  /** Phase 13: shell command regexes that are high risk on top of the built-in rules. */
+  risk: z
+    .object({
+      extraHigh: z.array(z.string().refine(validRegex, "regex inválida")).default([]),
+    })
+    .default(() => ({ extraHigh: [] })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
