@@ -44,8 +44,12 @@ describe("engine-pr", () => {
     gh.respond([
       { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
     ]);
-    const done = await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "done");
-    expect(done?.worktreePath).toBeNull();
+    const done = await cardWhen(
+      ctx.board,
+      ctx.card.id,
+      (c) => c.column === "done" && c.worktreePath === null,
+    );
+    expect(done?.column).toBe("done");
     const work = run?.steps.find((s) => s.stepId === "work");
     expect(ctx.manager.get(work?.sessionId ?? "").status).toBe("ended");
   });
