@@ -894,6 +894,24 @@ export const McpServerView = McpServerInput.extend({
 });
 export type McpServerView = z.infer<typeof McpServerView>;
 
+/** Phase 12: what `agentcfg.*` edits. */
+export const AgentCfgKind = z.enum(["claudemd", "agent", "skill"]);
+const AgentCfgOrigin = z.enum(["project", "user"]);
+
+/** A CLAUDE.md, agent or skill; the user's (~/.claude) are read-only. */
+export const AgentCfgItem = z.object({
+  kind: AgentCfgKind,
+  /** Relative to the project, or to ~/.claude for the user's. */
+  path: z.string(),
+  origin: AgentCfgOrigin,
+  readOnly: z.boolean(),
+  /** sha256 of the file's bytes, to send back as `expectedHash`. */
+  hash: z.string(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+});
+export type AgentCfgItem = z.infer<typeof AgentCfgItem>;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -1017,6 +1035,30 @@ export const Command = z.discriminatedUnion("type", [
       confirm: z.boolean().optional(),
       /** A live managed session to switch right away too. */
       sessionId: z.string().optional(),
+    }),
+  ),
+  /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
+  cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
+  cmd(
+    "agentcfg.read",
+    z.object({
+      projectId: z.string(),
+      kind: AgentCfgKind,
+      path: z.string().min(1),
+      origin: AgentCfgOrigin.optional(),
+    }),
+  ),
+  /** `expectedHash` is the hash read when the file was opened; null creates a new file. */
+  cmd(
+    "agentcfg.write",
+    z.object({
+      projectId: z.string(),
+      kind: AgentCfgKind,
+      path: z.string().min(1),
+      content: z.string(),
+      expectedHash: z.string().nullable(),
+      confirm: z.boolean().optional(),
+      origin: AgentCfgOrigin.optional(),
     }),
   ),
   cmd("hooks.status", z.object({}).strict()),
@@ -1378,6 +1420,9 @@ export interface CommandResults {
   "mcp.save": { servers: McpServerView[] };
   "mcp.remove": { servers: McpServerView[] };
   "mcp.toggle": { servers: McpServerView[] };
+  "agentcfg.list": { items: AgentCfgItem[] };
+  "agentcfg.read": AgentCfgItem & { content: string };
+  "agentcfg.write": { hash: string };
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

@@ -311,6 +311,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function agentcfg(): AgentConfig {
+    if (!opts.agentcfg) throw new FlightdeckError("invalid_state", "config de agente indisponível");
+    return opts.agentcfg;
+  }
+
   function mcp(): McpConfig {
     if (!opts.mcp) throw new FlightdeckError("invalid_state", "MCP do projeto indisponível");
     return opts.mcp;
@@ -510,6 +515,22 @@ export function startServer(opts: ServerOptions): RunningServer {
         mcp().toggle(path, name, enabled, confirm === true);
         if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
         return ok(command.type, { servers: mcp().list(path) });
+      }
+      case "agentcfg.list": {
+        const { projectId, kind } = command.payload;
+        return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });
+      }
+      case "agentcfg.read": {
+        const { projectId, kind, path, origin } = command.payload;
+        return ok(command.type, agentcfg().read(projectPath(projectId), kind, path, origin));
+      }
+      case "agentcfg.write": {
+        const { projectId, confirm, ...input } = command.payload;
+        const written = agentcfg().write(projectPath(projectId), {
+          ...input,
+          confirm: confirm === true,
+        });
+        return ok(command.type, written);
       }
       case "session.fork": {
         if (!opts.forker) throw new FlightdeckError("invalid_state", "bifurcar indisponível");
