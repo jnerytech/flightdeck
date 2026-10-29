@@ -28,6 +28,7 @@ import {
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { acquireLock } from "./lock.ts";
+import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
@@ -59,7 +60,8 @@ export interface CliArgs {
     | "channel"
     | "claude"
     | "mcp"
-    | "version";
+    | "version"
+    | "db";
   /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
@@ -80,6 +82,7 @@ export interface CliArgs {
 const USAGE = [
   "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
   "     flightdeckd --version",
+  "     flightdeckd db prune [--dry-run] [--config <arquivo>]",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
@@ -102,6 +105,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       return v;
     };
     switch (flag) {
+      case "db": {
+        args.command = "db";
+        const action = argv[++i];
+        if (action !== "prune")
+          throw new Error(`ação de db inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        break;
+      }
       case "--version":
         args.command = "version";
         break;
@@ -258,6 +268,13 @@ export async function startDaemon(
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
+  // Retention at boot and every 24 h (backups join it in the same daily pass).
+  const maintenance = new Maintenance({
+    db: store.db,
+    dataDir: config.dataDir,
+    retention: config.retention,
+  });
+  maintenance.start();
   const central = new Central({
     db: store.db,
     manager,
@@ -313,6 +330,7 @@ export async function startDaemon(
         await wsl?.stop();
         board.stop();
         await central.stop();
+        maintenance.stop();
         await manager.shutdown();
         await server.stop();
         history.stop();
@@ -465,6 +483,25 @@ function runHooks(args: CliArgs, deps: CliDeps): void {
   );
 }
 
+/** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
+function runPrune(args: CliArgs, deps: CliDeps): void {
+  const config = loadConfig(configPath(args));
+  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  try {
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir: config.dataDir,
+      retention: config.retention,
+      ...(deps.now ? { now: deps.now } : {}),
+    });
+    const counts = maintenance.prune(args.dryRun === true);
+    deps.log.log(args.dryRun ? "simulação da limpeza (nada foi apagado):" : "limpeza feita:");
+    for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
+  } finally {
+    store.close();
+  }
+}
+
 function printResult(deps: CliDeps, result: { output: string[]; instructions: string[] }): void {
   for (const line of result.output) deps.log.log(line);
   for (const line of result.instructions) deps.log.error(line);
@@ -484,6 +521,8 @@ export interface CliDeps {
   stdin?: ReadableStream<Uint8Array>;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
+  /** Clock of `db prune`, `backup` and `restore`; `Date.now` when absent. */
+  now?: () => number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
   channelTransport?: Transport;
   /** Where `flightdeckd mcp` speaks MCP; stdio when absent. */
@@ -494,6 +533,11 @@ export interface CliDeps {
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
+    if (args.command === "db") {
+      runPrune(args, deps);
+      deps.exit(0);
+      return null;
+    }
     if (args.command === "version") {
       deps.log.log(`flightdeckd ${DAEMON_VERSION} (protocolo ${PROTOCOL_VERSION})`);
       deps.exit(0);

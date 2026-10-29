@@ -69,6 +69,13 @@ export const Config = z.object({
       staleAfterS: z.number().int().min(1).default(900),
     })
     .default(() => ({ port: 7421, permissionTimeoutS: 600, staleAfterS: 900 })),
+  /** Retention (phase 7): data of sessions ended this many days ago is pruned; 0 = on end. */
+  retention: z
+    .object({
+      eventsDays: z.number().int().min(0).default(90),
+      externalSessionsDays: z.number().int().min(0).default(30),
+    })
+    .default(() => ({ eventsDays: 90, externalSessionsDays: 30 })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });
