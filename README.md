@@ -6,8 +6,9 @@ desktop (Tauri 2 + React) conecta em um ou mais daemons, mostra o chat em stream
 nega ferramentas.
 
 Fases entregues: **Fase 1** ([`docs/SPEC.md`](docs/SPEC.md)), **Fase 2, multi-host**
-([`docs/SPEC-fase-2.md`](docs/SPEC-fase-2.md)), **Fase 3, histórico** ([`docs/SPEC-fase-3.md`](docs/SPEC-fase-3.md)) e
-**Fase 4, board** ([`docs/SPEC-fase-4.md`](docs/SPEC-fase-4.md)). O roadmap está no fim de [`docs/SPEC.md`](docs/SPEC.md). As divergências em relação à spec
+([`docs/SPEC-fase-2.md`](docs/SPEC-fase-2.md)), **Fase 3, histórico** ([`docs/SPEC-fase-3.md`](docs/SPEC-fase-3.md)),
+**Fase 4, board** ([`docs/SPEC-fase-4.md`](docs/SPEC-fase-4.md)), **Fase 5, central de sessões**
+([`docs/SPEC-fase-5.md`](docs/SPEC-fase-5.md)) e **Fase 6, workflows** ([`docs/SPEC-fase-6.md`](docs/SPEC-fase-6.md)). O roadmap está no fim de [`docs/SPEC.md`](docs/SPEC.md). As divergências em relação à spec
 estão em [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ```text

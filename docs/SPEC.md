@@ -335,6 +335,6 @@ O agente implementa só a Fase 1, em passos pequenos e verificáveis, sem gastar
 | 4 | Board: projetos, cards em worktrees, colunas automáticas e PR | [SPEC-fase-4.md](SPEC-fase-4.md) |
 | 5 | Central de sessões: lista única, hooks, aprovações e mensagens para sessões do terminal | [SPEC-fase-5.md](SPEC-fase-5.md) |
 | 6 | Workflows: etapas encadeadas, gates, orçamento e MCP local | [SPEC-fase-6.md](SPEC-fase-6.md) |
-| 7 | Operação: atualização e versões entre hosts, retenção e backup, cota por host, "permitir sempre" | a escrever |
+| 7 | Operação: versões e atualização, retenção e backup, cota do plano por host, "permitir sempre" | [SPEC-fase-7.md](SPEC-fase-7.md) |
 
 Cada fase fecha pelos próprios critérios de aceite e é integrada na ordem do roadmap; duas fases independentes podem ser desenvolvidas em paralelo em worktrees separados, com a posterior rebaseada sobre a tag da anterior antes de fechar. O produto é desktop, sem celular.
