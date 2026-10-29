@@ -4,6 +4,7 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { cli, cliJson, cliOk } from "../board/pr.ts";
+import { FlightdeckError } from "../errors.ts";
 
 /** Search of the issues assigned to you and still open. */
 export const GITHUB_DEFAULT_SEARCH = "assignee:@me is:open";
@@ -14,6 +15,15 @@ export const AZURE_DEFAULT_WIQL =
   "AND [System.State] NOT IN ('Closed','Done','Removed') AND [System.TeamProject] = @project " +
   "ORDER BY [System.ChangedDate] DESC";
 const LIMIT = 50;
+
+/**
+ * An issue id goes to the CLI as an argument of its own, so it is digits and nothing else: a
+ * value like `-R other/repo` or `@file` must never reach gh or az as an option or a file.
+ */
+function checkedId(id: string): string {
+  if (!/^\d+$/.test(id)) throw new FlightdeckError("invalid_state", `id de issue inválido: ${id}`);
+  return id;
+}
 
 export interface IssueProvider {
   /** `github:owner/repo#id` or `azure:org/project#id`. */
@@ -65,12 +75,16 @@ export class GithubIssues implements IssueProvider {
   }
 
   async get(cwd: string, id: string): Promise<Issue> {
-    const issue = await cliJson<GhIssue>("gh", ["issue", "view", id, "--json", GH_FIELDS], cwd);
+    const issue = await cliJson<GhIssue>(
+      "gh",
+      ["issue", "view", checkedId(id), "--json", GH_FIELDS],
+      cwd,
+    );
     return this.toIssue(issue, await this.me(cwd));
   }
 
   async comment(cwd: string, id: string, text: string): Promise<void> {
-    await cliOk("gh", ["issue", "comment", id, "--body", text], cwd);
+    await cliOk("gh", ["issue", "comment", checkedId(id), "--body", text], cwd);
   }
 
   /** Your login, when `gh` can tell. */
@@ -159,7 +173,7 @@ export class AzureIssues implements IssueProvider {
         "work-item",
         "update",
         "--id",
-        id,
+        checkedId(id),
         "--discussion",
         text,
         ...this.scope,
@@ -173,7 +187,7 @@ export class AzureIssues implements IssueProvider {
   private show(cwd: string, id: string): Promise<AzWorkItem> {
     return cliJson<AzWorkItem>(
       "az",
-      ["boards", "work-item", "show", "--id", id, ...this.scope, "--output", "json"],
+      ["boards", "work-item", "show", "--id", checkedId(id), ...this.scope, "--output", "json"],
       cwd,
     );
   }
@@ -217,7 +231,7 @@ export class AzureIssues implements IssueProvider {
 export function parseIssueRef(
   ref: string,
 ): { provider: "github" | "azure"; scope: string; id: string } | null {
-  const match = /^(github|azure):(.+)#([^#]+)$/.exec(ref);
+  const match = /^(github|azure):(.+)#(\d+)$/.exec(ref);
   return match
     ? {
         provider: match[1] as "github" | "azure",

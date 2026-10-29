@@ -70,7 +70,7 @@ export function mapSpawnError(error: unknown): never {
   if ((error as { code?: string }).code === "ERR_INVALID_ARG_VALUE") {
     throw new FlightdeckError(
       "invalid_state",
-      `o az do Windows (um .cmd) recusou um argumento: ${(error as Error).message}. ` +
+      `o CLI (um .cmd no Windows, como o az) recusou um argumento: ${(error as Error).message}. ` +
         'Tire dele as quebras de linha e < > & | ^ " % (numa WIQL, NOT IN no lugar de <>).',
     );
   }
