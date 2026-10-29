@@ -104,7 +104,8 @@ class Client {
   card(id: string, check: (card: Card) => boolean): Card | undefined {
     return this.frames
       .flatMap((f) => (f.type === "card.updated" && f.card.id === id ? [f.card as Card] : []))
-      .findLast(check);
+      .filter(check)
+      .at(-1);
   }
 
   close(): void {
