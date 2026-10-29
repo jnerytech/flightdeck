@@ -553,7 +553,8 @@ export class Board {
     const project = this.getProject(card.projectId);
     const provider = prProvider(project.prProvider);
     if (!provider || !card.prUrl) return;
-    const cwd = card.worktreePath ?? project.path;
+    // From the main repository: a cwd inside the worktree would lock it while it is removed.
+    const cwd = project.path;
     const { state, checks } = await provider.status({ cwd, url: card.prUrl });
     this.db
       .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
