@@ -13,8 +13,8 @@ export interface StatuslineData {
   sessionUsd: number | null;
 }
 
-/** How long `flightdeckd statusline` waits for everything, stdin included. */
-export const STATUSLINE_TIMEOUT_MS = 300;
+/** How long `flightdeckd statusline` waits for everything, stdin included: 250 ms, so the line is out in under the 300 ms of the spec. */
+export const STATUSLINE_TIMEOUT_MS = 250;
 
 const LABELS: Record<string, string> = { five_hour: "5h", seven_day: "7d" };
 
@@ -83,7 +83,7 @@ function ask(url: string, token: string, claudeSessionId: string | undefined) {
 
 /**
  * `flightdeckd statusline`: Claude Code's JSON on stdin, one line on stdout. The config is only
- * read (never created), and anything that fails or takes longer than `timeoutMs` (300 ms when
+ * read (never created), and anything that fails or takes longer than `timeoutMs` (250 ms when
  * absent, stdin included) gives an empty line.
  */
 export async function runStatusline(opts: {
