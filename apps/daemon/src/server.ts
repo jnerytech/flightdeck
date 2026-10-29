@@ -581,6 +581,18 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, costs().status());
       case "costs.reprice":
         return ok(command.type, costs().reprice());
+      case "costs.summary":
+        return ok(command.type, costs().summary(command.payload));
+      case "costs.session":
+        return ok(command.type, costs().session(command.payload.claudeSessionId));
+      case "costs.sessions":
+        return ok(command.type, { costs: costs().sessions(command.payload.claudeSessionIds) });
+      case "costs.card":
+        return ok(command.type, { costUsd: costs().card(command.payload.cardId) });
+      case "costs.run":
+        return ok(command.type, { costUsd: costs().run(command.payload.runId) });
+      case "costs.export":
+        return ok(command.type, costs().export(command.payload));
       case "usage.summary":
         return ok(command.type, usage().summary(command.payload.days));
       case "quota.get":

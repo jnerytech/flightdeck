@@ -574,6 +574,84 @@ export const CostsDivergence = z.object({
 });
 export type CostsDivergence = z.infer<typeof CostsDivergence>;
 
+/** Where the usage of a message came from; `subagent` keeps the parent session's id. */
+export const UsageOrigin = z.enum(["terminal", "app", "card", "workflow", "subagent"]);
+export type UsageOrigin = z.infer<typeof UsageOrigin>;
+
+const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "dia em AAAA-MM-DD");
+
+/** Days `from`..`to` (inclusive, host time zone) and optional filters. */
+export const CostsFilter = z.object({
+  from: Day,
+  to: Day,
+  projectKey: z.string().optional(),
+  model: z.string().optional(),
+  origin: UsageOrigin.optional(),
+});
+export type CostsFilter = z.infer<typeof CostsFilter>;
+
+export const TokenCounts = z.object({
+  input: z.number().int(),
+  output: z.number().int(),
+  cacheRead: z.number().int(),
+  cacheWrite5m: z.number().int(),
+  cacheWrite1h: z.number().int(),
+});
+export type TokenCounts = z.infer<typeof TokenCounts>;
+
+export const CostsSummary = z.object({
+  from: z.string(),
+  to: z.string(),
+  totals: z.object({
+    /** Estimated, in API prices; messages of a model without a price count 0. */
+    costUsd: z.number(),
+    tokens: TokenCounts,
+    /** What the cache reads cost less than the same tokens as plain input. */
+    cacheSavingsUsd: z.number(),
+    messages: z.number().int(),
+    unpricedMessages: z.number().int(),
+  }),
+  /** By day, then project: the chart stacks the projects of each day. */
+  byDay: z.array(
+    z.object({ day: z.string(), projectKey: z.string(), costUsd: z.number(), tokens: z.number() }),
+  ),
+  byProject: z.array(z.object({ projectKey: z.string(), costUsd: z.number(), tokens: z.number() })),
+  byModel: z.array(
+    z.object({
+      model: z.string(),
+      costUsd: z.number(),
+      tokens: z.number(),
+      /** `false` for a model without a price: its tokens count, its cost does not. */
+      priced: z.boolean(),
+    }),
+  ),
+  byOrigin: z.array(z.object({ origin: UsageOrigin, costUsd: z.number(), tokens: z.number() })),
+  /** The 20 most expensive sessions, subagents included. */
+  topSessions: z.array(
+    z.object({
+      claudeSessionId: z.string(),
+      /** The managed session, when the app or a card ran it (opens it live). */
+      sessionId: z.string().nullable(),
+      projectKey: z.string(),
+      title: z.string().nullable(),
+      cwd: z.string().nullable(),
+      costUsd: z.number(),
+      tokens: z.number(),
+    }),
+  ),
+});
+export type CostsSummary = z.infer<typeof CostsSummary>;
+
+export const CostsSession = z.object({
+  claudeSessionId: z.string(),
+  costUsd: z.number(),
+  tokens: z.number(),
+  /** The part of `costUsd` spent by the session's subagents. */
+  subagentCostUsd: z.number(),
+  byModel: z.array(z.object({ model: z.string(), costUsd: z.number(), tokens: z.number() })),
+});
+export type CostsSession = z.infer<typeof CostsSession>;
+
 export const CostsStatus = z.object({
   /** The first pass over the transcripts that already existed. */
   initialLoad: z.object({
@@ -749,6 +827,12 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 8 (track A).
   cmd("costs.status", z.object({}).strict()),
   cmd("costs.reprice", z.object({}).strict()),
+  cmd("costs.summary", CostsFilter),
+  cmd("costs.session", z.object({ claudeSessionId: z.string() })),
+  cmd("costs.sessions", z.object({ claudeSessionIds: z.array(z.string()).max(500) })),
+  cmd("costs.card", z.object({ cardId: z.string() })),
+  cmd("costs.run", z.object({ runId: z.string() })),
+  cmd("costs.export", CostsFilter),
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -989,6 +1073,13 @@ export interface CommandResults {
   "rules.remove": { rules: string[] };
   "costs.status": CostsStatus;
   "costs.reprice": { entries: number };
+  "costs.summary": CostsSummary;
+  "costs.session": CostsSession;
+  /** Only the sessions that have entries. */
+  "costs.sessions": { costs: Record<string, number> };
+  "costs.card": { costUsd: number };
+  "costs.run": { costUsd: number };
+  "costs.export": { csv: string; filename: string };
 }
 
 // ---------------------------------------------------------------------------
