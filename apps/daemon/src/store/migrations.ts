@@ -101,15 +101,18 @@ export const MIGRATIONS: readonly string[] = [
     updated_at    TEXT NOT NULL
   );
 
-  -- A queued or preparing run has session_id = '' until its session exists.
+  -- Own id instead of (card_id, session_id): a queued or preparing run has no session yet,
+  -- and one that failed before the session never gets one.
   CREATE TABLE card_runs (
+    id         TEXT PRIMARY KEY,
     card_id    TEXT NOT NULL REFERENCES cards(id),
-    session_id TEXT NOT NULL,
+    session_id TEXT,
     queued_at  TEXT NOT NULL,
     started_at TEXT,
-    ended_at   TEXT,
-    PRIMARY KEY (card_id, session_id)
+    ended_at   TEXT
   );
+
+  CREATE INDEX card_runs_card ON card_runs (card_id);
 
   CREATE TABLE board_settings (
     key   TEXT PRIMARY KEY,

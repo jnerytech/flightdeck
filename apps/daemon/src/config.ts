@@ -31,6 +31,8 @@ export const Config = z.object({
   runtime: RuntimeKind.default("claude"),
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),
+  /** Cards running at the same time; the rest wait in start order (protects the quota). */
+  maxParallelRuns: z.number().int().min(1).default(2),
   /** Legacy (phase 1) path to the `claude` executable; `claude.executablePath` wins. */
   claudePath: z.string().min(1).optional(),
   /** WSL distros whose daemon this (Windows) daemon supervises. */

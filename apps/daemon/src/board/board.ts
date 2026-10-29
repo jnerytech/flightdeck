@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { basename } from "node:path";
-import type { SessionEvent } from "@flightdeck/protocol";
+import type { SessionEvent, SessionStatus } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -29,6 +29,8 @@ export interface BoardOptions {
   db: Database;
   manager: SessionManager;
   allowedRoots: readonly string[];
+  /** 2 when absent. */
+  maxParallelRuns?: number;
 }
 
 interface ProjectRow {
@@ -73,8 +75,9 @@ interface CardRow {
 }
 
 interface RunRow {
+  id: string;
   card_id: string;
-  session_id: string;
+  session_id: string | null;
   queued_at: string;
   started_at: string | null;
   ended_at: string | null;
@@ -82,8 +85,11 @@ interface RunRow {
 
 const now = () => new Date().toISOString();
 
+/** A run stops holding its slot when its session goes idle, fails or ends. */
+const FREES_SLOT: ReadonlySet<SessionStatus> = new Set(["idle", "error", "ended"]);
+
 const toRun = (row: RunRow): CardRun => ({
-  sessionId: row.session_id || null,
+  sessionId: row.session_id,
   queuedAt: row.queued_at,
   startedAt: row.started_at,
   endedAt: row.ended_at,
@@ -100,16 +106,24 @@ export class Board {
   private readonly db: Database;
   /** Card id → stops following the session of its active run. */
   private readonly follows = new Map<string, () => void>();
+  /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
+  private readonly running = new Set<string>();
+  private limit: number;
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
+    this.limit = opts.maxParallelRuns ?? 2;
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
-      .query<RunRow, []>("SELECT * FROM card_runs WHERE session_id <> '' AND ended_at IS NULL")
+      .query<RunRow, []>(
+        "SELECT * FROM card_runs WHERE session_id IS NOT NULL AND ended_at IS NULL",
+      )
       .all();
     for (const run of active) {
-      this.follow(run.card_id, run.session_id, opts.manager.get(run.session_id).lastSeq);
+      const sessionId = run.session_id as string;
+      this.follow(run.card_id, sessionId, opts.manager.get(sessionId).lastSeq);
     }
+    this.pump();
   }
 
   listProjects(): Project[] {
@@ -205,7 +219,7 @@ export class Board {
       prUrl: row.pr_url,
       prState: row.pr_state,
       checksState: row.checks_state,
-      queued: active !== undefined && active.startedAt === null,
+      queued: active !== undefined && active.startedAt === null && active.endedAt === null,
       sessionId,
       sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
       notice: row.notice,
@@ -235,33 +249,55 @@ export class Board {
     return this.getCard(id);
   }
 
-  /** Starts a new run of the card: worktree (created on the first run) and a fresh session. */
+  /**
+   * Starts a new run of the card. It waits in the queue while every slot is taken; then the
+   * worktree (created on the first run), the setup script and a fresh session.
+   */
   async startCard(id: string): Promise<Card> {
-    this.getCard(id);
-    const at = now();
+    const card = this.getCard(id);
+    if (card.queued || this.running.has(id)) {
+      throw new FlightdeckError("invalid_state", `card ${id} já está na fila ou em execução`);
+    }
     this.db
-      .query(
-        "INSERT INTO card_runs (card_id, session_id, queued_at, started_at) VALUES (?, '', ?, ?)",
-      )
-      .run(id, at, at);
+      .query("INSERT INTO card_runs (id, card_id, queued_at) VALUES (?, ?, ?)")
+      .run(ulid(), id, now());
     this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
     this.place(id, { type: "started" });
-    void this.launch(id).catch((error: unknown) =>
-      this.failRun(id, error instanceof Error ? error.message : String(error)),
-    );
+    this.pump();
     return this.getCard(id);
   }
 
-  /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
-  private failRun(id: string, notice: string): void {
-    this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
-    this.place(id, { type: "failed" });
-    this.db
-      .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND session_id = ''")
-      .run(now(), id);
+  /** Starts queued runs, oldest first, while there are free slots. */
+  private pump(): void {
+    while (this.running.size < this.limit) {
+      const next = this.db
+        .query<RunRow, []>(
+          "SELECT * FROM card_runs WHERE started_at IS NULL AND ended_at IS NULL ORDER BY queued_at, rowid LIMIT 1",
+        )
+        .get();
+      if (!next) return;
+      this.running.add(next.card_id);
+      this.db.query("UPDATE card_runs SET started_at = ? WHERE id = ?").run(now(), next.id);
+      void this.launch(next.card_id, next.id).catch((error: unknown) =>
+        this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error)),
+      );
+    }
   }
 
-  private async launch(id: string): Promise<void> {
+  /** The card's run stopped holding a slot: the next one in the queue goes. */
+  private release(cardId: string): void {
+    if (this.running.delete(cardId)) this.pump();
+  }
+
+  /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
+  private failRun(id: string, runId: string, notice: string): void {
+    this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+    this.place(id, { type: "failed" });
+    this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
+    this.release(id);
+  }
+
+  private async launch(id: string, runId: string): Promise<void> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     let worktree = card.worktreePath;
@@ -278,11 +314,23 @@ export class Board {
     const prompt = [card.description, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
+    await this.endPreviousRuns(id, runId);
     const { sessionId } = this.opts.manager.create({ cwd: worktree, prompt, name: card.title });
-    this.db
-      .query("UPDATE card_runs SET session_id = ? WHERE card_id = ? AND session_id = ''")
-      .run(sessionId, id);
+    this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.follow(id, sessionId, 0);
+  }
+
+  /** The newest run is the active one: older sessions of the card are closed. */
+  private async endPreviousRuns(id: string, runId: string): Promise<void> {
+    const old = this.db
+      .query<RunRow, [string, string]>(
+        "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL AND ended_at IS NULL",
+      )
+      .all(id, runId);
+    for (const run of old) {
+      await this.opts.manager.close(run.session_id as string);
+      this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
+    }
   }
 
   /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
@@ -300,11 +348,31 @@ export class Board {
     return this.getCard(id);
   }
 
-  /** Interrupts the turn in progress; the interrupted turn sends the card to Esperando você. */
+  /**
+   * A queued card leaves the queue and goes back to the Backlog. A running one has its turn
+   * interrupted, and the interrupted turn sends it to Esperando você.
+   */
   async stopCard(id: string): Promise<Card> {
     const card = this.getCard(id);
-    if (card.sessionId) await this.opts.manager.interrupt(card.sessionId);
+    if (card.queued) {
+      this.db
+        .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
+        .run(now(), id);
+      this.place(id, { type: "moved", column: "backlog" });
+    } else if (card.sessionId) {
+      await this.opts.manager.interrupt(card.sessionId);
+    }
     return this.getCard(id);
+  }
+
+  get maxParallelRuns(): number {
+    return this.limit;
+  }
+
+  /** A higher limit starts queued cards right away; a lower one lets running ones finish. */
+  setMaxParallelRuns(value: number): void {
+    this.limit = value;
+    this.pump();
   }
 
   stop(): void {
@@ -336,5 +404,6 @@ export class Board {
     if (event.type === "session.status")
       this.place(cardId, { type: "session", status: event.status });
     if (event.type === "turn.result") this.place(cardId, { type: "turn", isError: event.isError });
+    if (event.type === "session.status" && FREES_SLOT.has(event.status)) this.release(cardId);
   }
 }
