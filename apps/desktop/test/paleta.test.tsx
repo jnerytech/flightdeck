@@ -207,6 +207,17 @@ describe("paleta", () => {
     await settle(() => screen.queryByRole("heading", { name: "Board de flamingo" }) !== null);
     expect(screen.queryByRole("heading", { name: "Board de flamingo" })).not.toBeNull();
 
+    // A click opens an entry too.
+    await openPalette();
+    await type("Configurações");
+    const option = dialog()?.querySelector('[aria-label="Ir para Configurações"]') ?? null;
+    expect(option).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(option as HTMLElement);
+    });
+    expect(screen.queryByRole("heading", { name: "Configurações" })).not.toBeNull();
+    expect(dialog()).toBeNull();
+
     await choose("Ajuste", "Enter");
     await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
     expect(screen.queryByRole("button", { name: "Voltar ao board" })).not.toBeNull();
