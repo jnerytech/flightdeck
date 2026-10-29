@@ -60,6 +60,15 @@ export const Config = z.object({
       prPollIntervalMs: z.number().int().min(10).optional(),
     })
     .default(() => ({})),
+  /** Claude Code hooks (phase 5): receptor on 127.0.0.1 and the token written by install. */
+  hooks: z
+    .object({
+      port: z.number().int().min(0).max(65535).default(7421),
+      token: z.string().min(16).optional(),
+      permissionTimeoutS: z.number().int().min(1).default(600),
+      staleAfterS: z.number().int().min(1).default(900),
+    })
+    .default(() => ({ port: 7421, permissionTimeoutS: 600, staleAfterS: 900 })),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });

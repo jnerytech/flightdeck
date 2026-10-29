@@ -2,10 +2,19 @@ import { unwatchFile, watchFile } from "node:fs";
 import { join, resolve } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { Board } from "./board/board.ts";
+import {
+  type HooksStatus,
+  type HookTarget,
+  hooksStatus,
+  installHooks,
+  uninstallHooks,
+} from "./central/hooks-install.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
+  type Config,
   defaultConfigPath,
   expandHome,
+  generateToken,
   loadConfig,
   RuntimeKind,
   updateConfigFile,
@@ -18,6 +27,7 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
+  daemonCommand,
   installService,
   resolveServiceClaude,
   type ServiceContext,
@@ -32,8 +42,8 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 export type ServiceAction = "install" | "uninstall" | "status";
 
 export interface CliArgs {
-  command: "start" | "pair" | "service" | "history";
-  /** `service <action>` or `history reindex`. */
+  command: "start" | "pair" | "service" | "history" | "hooks";
+  /** `service <action>`, `hooks <action>` or `history reindex`. */
   action?: ServiceAction | "reindex";
   /** `service ... --dry-run`: print, change nothing. */
   dryRun?: true;
@@ -48,6 +58,7 @@ const USAGE = [
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
+  "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
 ].join("\n");
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -74,6 +85,15 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         const action = argv[++i];
         if (action !== "install" && action !== "uninstall" && action !== "status") {
           throw new Error(`ação de serviço inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        break;
+      }
+      case "hooks": {
+        args.command = "hooks";
+        const action = argv[++i];
+        if (action !== "install" && action !== "uninstall" && action !== "status") {
+          throw new Error(`ação de hooks inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
         }
         args.action = action;
         break;
@@ -315,6 +335,65 @@ function runReindex(args: CliArgs, deps: CliDeps): void {
   }
 }
 
+const HOOKS_LABELS: Record<HooksStatus, string> = {
+  installed: "instalados",
+  absent: "ausentes",
+  outdated: "desatualizados (rode hooks install de novo)",
+};
+
+/** Where Claude Code reads the user's hooks; resolved at call time (tests swap HOME). */
+export const claudeSettingsPath = () => expandHome("~/.claude/settings.json");
+
+/** What `hooks install` writes for this config: this executable, the receptor and its token. */
+export function hookTarget(
+  config: Config,
+  selfCommand: string[],
+  port = config.hooks.port,
+): HookTarget {
+  return {
+    command: selfCommand,
+    url: `http://127.0.0.1:${port}`,
+    token: config.hooks.token ?? "",
+    permissionTimeoutS: config.hooks.permissionTimeoutS,
+  };
+}
+
+/**
+ * `flightdeckd hooks install|uninstall|status`: the only write of Flightdeck in ~/.claude, always
+ * by an explicit command. Install generates `hooks.token` once and keeps it afterwards.
+ */
+function runHooks(args: CliArgs, deps: CliDeps): void {
+  const file = configPath(args);
+  let config = loadConfig(file);
+  const settings = claudeSettingsPath();
+  const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
+  if (args.action === "status") {
+    deps.log.log(`hooks: ${HOOKS_LABELS[hooksStatus(settings, hookTarget(config, self))]}`);
+    return;
+  }
+  if (args.action === "uninstall") {
+    const removed = uninstallHooks(settings);
+    deps.log.log(
+      removed ? `hooks removidos de ${settings}` : "nenhum hook do Flightdeck instalado",
+    );
+    return;
+  }
+  if (config.hooks.port === 0) {
+    throw new Error(
+      "hooks.port 0 não serve para hooks instalados: defina uma porta fixa na config",
+    );
+  }
+  if (!config.hooks.token) {
+    const token = generateToken();
+    updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
+    config = loadConfig(file);
+  }
+  installHooks(settings, hookTarget(config, self));
+  deps.log.log(
+    `hooks instalados em ${settings} (cópia anterior em settings.json.flightdeck-backup)`,
+  );
+}
+
 function printResult(deps: CliDeps, result: { output: string[]; instructions: string[] }): void {
   for (const line of result.output) deps.log.log(line);
   for (const line of result.instructions) deps.log.error(line);
@@ -328,12 +407,19 @@ export interface CliDeps {
   serviceContext?: (dryRun: boolean) => ServiceContext;
   /** Runs external commands (`tailscale ip -4`); injected in tests. */
   exec?: Exec;
+  /** This daemon's own command line, as hooks call it back; derived from the process if absent. */
+  selfCommand?: string[];
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
   try {
     const args = parseArgs(argv);
+    if (args.command === "hooks") {
+      runHooks(args, deps);
+      deps.exit(0);
+      return null;
+    }
     if (args.command === "history") {
       runReindex(args, deps);
       deps.exit(0);
