@@ -48,6 +48,8 @@ export interface HostView extends HostConfig {
   hostInfo: HostInfoResult | null;
   /** Round trip of the last heartbeat. */
   latencyMs: number | null;
+  /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
+  incompatibility: string | null;
   sessions: SidebarSession[];
 }
 
@@ -242,6 +244,7 @@ const newHostView = (config: HostConfig): HostView => ({
   info: null,
   hostInfo: null,
   latencyMs: null,
+  incompatibility: null,
   sessions: [],
 });
 
@@ -467,7 +470,10 @@ export class AppStore {
     if (!query.trim()) return;
     const token = ++this.searchSeq;
     const online = this.state.hosts.filter((h) => h.status === "online");
-    const offline = this.state.hosts.filter((h) => h.status !== "online").map((h) => h.id);
+    // An incompatible host is out of every list, so it is not reported as silent either.
+    const offline = this.state.hosts
+      .filter((h) => h.status !== "online" && h.status !== "incompatible")
+      .map((h) => h.id);
     this.update({ search: { query, hits: [], waiting: online.map((h) => h.id), silent: offline } });
     const timeoutMs = this.options.searchTimeoutMs ?? 5000;
     await Promise.all(
@@ -757,7 +763,12 @@ export class AppStore {
   }
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
-    this.updateHost(hostId, (h) => ({ ...h, status, info: conn.info }));
+    this.updateHost(hostId, (h) => ({
+      ...h,
+      status,
+      info: conn.info,
+      incompatibility: conn.incompatibility,
+    }));
     if (status === "online") void this.loadHostInfo(hostId, conn);
     if (status === "connecting") {
       // Partial text from before the drop will never be completed by a delta; drop it.

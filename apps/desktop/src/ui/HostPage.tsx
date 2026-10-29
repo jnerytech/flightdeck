@@ -1,6 +1,7 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 const HOOK_LABELS: Record<HooksStatusResult["status"], string> = {
@@ -31,6 +32,8 @@ export function HostPage(props: {
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
   }, [store, host.id, host.status]);
   const settingsPath = hooks?.settingsPath ?? "~/.claude/settings.json";
+  // Hooks came with the central (phase 5): shown for older daemons, hidden when not announced.
+  const showHooks = host.status !== "incompatible" && hasFeature(info?.features, "central", true);
   const apply = async () => {
     const kind = confirming;
     setConfirming(null);
@@ -44,10 +47,24 @@ export function HostPage(props: {
     <section className="host-page card">
       <h2>{host.name}</h2>
       <p className="muted">{host.url}</p>
+      {host.status === "incompatible" && (
+        <div className="warning">
+          <p>incompatível: atualize o daemon</p>
+          <p>{host.incompatibility}</p>
+          <p>
+            No host, com o binário desta versão do app ({APP_VERSION}):{" "}
+            <code>flightdeckd update --from &lt;binário novo&gt;</code>
+          </p>
+        </div>
+      )}
       {info ? (
         <ul className="host-info">
           <li>{`${info.os} · ${info.arch}`}</li>
           <li>{`flightdeckd ${info.daemonVersion}`}</li>
+          <li>{`app ${APP_VERSION}`}</li>
+          {info.daemonVersion !== APP_VERSION && (
+            <li className="warning">versão diferente da do app</li>
+          )}
           <li>{`claude: ${info.claudeVersion ?? "não informado"}`}</li>
           <li>{`sessões ativas: ${info.activeSessions}`}</li>
           <li>{`no ar há ${info.uptimeSec} s`}</li>
@@ -62,16 +79,18 @@ export function HostPage(props: {
           Claude (allowApiKey).
         </p>
       )}
-      <section aria-label="Hooks do Claude Code" className="hooks">
-        <h3>Hooks do Claude Code</h3>
-        <p>{hooks ? HOOK_LABELS[hooks.status] : "consultando…"}</p>
-        <button type="button" onClick={() => setConfirming("install")}>
-          Instalar hooks
-        </button>
-        <button type="button" onClick={() => setConfirming("uninstall")}>
-          Remover hooks
-        </button>
-      </section>
+      {showHooks && (
+        <section aria-label="Hooks do Claude Code" className="hooks">
+          <h3>Hooks do Claude Code</h3>
+          <p>{hooks ? HOOK_LABELS[hooks.status] : "consultando…"}</p>
+          <button type="button" onClick={() => setConfirming("install")}>
+            Instalar hooks
+          </button>
+          <button type="button" onClick={() => setConfirming("uninstall")}>
+            Remover hooks
+          </button>
+        </section>
+      )}
       {confirming && (
         <ConfirmDialog
           message={

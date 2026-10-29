@@ -1,6 +1,7 @@
 import { type AppState, needsYou, type PendingItem } from "../lib/app-store.ts";
 import type { ConnectionStatus } from "../lib/host-connection.ts";
 import { basename } from "../lib/paths.ts";
+import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { StatusBadge } from "./StatusBadge.tsx";
 
 const CONNECTION_LABELS: Record<ConnectionStatus, string> = {
@@ -8,6 +9,7 @@ const CONNECTION_LABELS: Record<ConnectionStatus, string> = {
   offline: "offline",
   connecting: "reconectando",
   unauthorized: "token recusado",
+  incompatible: "incompatível: atualize o daemon",
 };
 
 /** Hosts with their connection state and, inside each, the sessions with a status badge. */
@@ -95,30 +97,47 @@ export function Sidebar(props: {
                 ⚠
               </span>
             )}
-            <button
-              type="button"
-              className="icon"
-              aria-label={`Histórico de ${host.name}`}
-              onClick={() => props.onOpenHistory(host.id)}
-            >
-              🕘
-            </button>
-            <button
-              type="button"
-              className="icon"
-              aria-label={`Projetos de ${host.name}`}
-              onClick={() => props.onOpenProjects(host.id)}
-            >
-              ▦
-            </button>
-            <button
-              type="button"
-              className="icon"
-              aria-label={`Nova sessão em ${host.name}`}
-              onClick={() => props.onSelect(host.id, null)}
-            >
-              +
-            </button>
+            {host.hostInfo && host.hostInfo.daemonVersion !== APP_VERSION && (
+              <span
+                className="badge badge-warn"
+                role="img"
+                aria-label={`${host.name}: versão diferente`}
+                title={`flightdeckd ${host.hostInfo.daemonVersion}, app ${APP_VERSION}`}
+              >
+                ≠
+              </span>
+            )}
+            {/* An incompatible host offers nothing but its page and removal. */}
+            {host.status !== "incompatible" && (
+              <>
+                <button
+                  type="button"
+                  className="icon"
+                  aria-label={`Histórico de ${host.name}`}
+                  onClick={() => props.onOpenHistory(host.id)}
+                >
+                  🕘
+                </button>
+                {hasFeature(host.hostInfo?.features, "workflows", true) && (
+                  <button
+                    type="button"
+                    className="icon"
+                    aria-label={`Projetos de ${host.name}`}
+                    onClick={() => props.onOpenProjects(host.id)}
+                  >
+                    ▦
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="icon"
+                  aria-label={`Nova sessão em ${host.name}`}
+                  onClick={() => props.onSelect(host.id, null)}
+                >
+                  +
+                </button>
+              </>
+            )}
             <button
               type="button"
               className="icon"

@@ -60,11 +60,13 @@ export function SessionsHub(props: {
           onChange={(e) => set({ host: e.target.value })}
         >
           <option value="">Todos os hosts</option>
-          {state.hosts.map((h) => (
-            <option key={h.id} value={h.name}>
-              {h.name}
-            </option>
-          ))}
+          {state.hosts
+            .filter((h) => h.status !== "incompatible")
+            .map((h) => (
+              <option key={h.id} value={h.name}>
+                {h.name}
+              </option>
+            ))}
         </select>
         <select
           aria-label="Origem"

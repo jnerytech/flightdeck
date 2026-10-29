@@ -9,6 +9,7 @@ import {
   type ExternalUpdated,
   type HelloResult,
   type HistoryChanged,
+  PROTOCOL_VERSION,
   parseServerMessage,
   type SessionSubscribeResult,
   type WorkflowRun,
@@ -18,7 +19,13 @@ import { backoffDelay } from "./backoff.ts";
 /** Fire-and-forget commands: failures surface through the connection status instead. */
 const ignore = () => {};
 
-export type ConnectionStatus = "connecting" | "online" | "offline" | "unauthorized";
+export type ConnectionStatus =
+  | "connecting"
+  | "online"
+  | "offline"
+  | "unauthorized"
+  /** The daemon does not speak this app's protocol: no retries until it is updated. */
+  | "incompatible";
 
 export class RequestError extends Error {
   constructor(
@@ -67,6 +74,8 @@ interface Pending {
 export class HostConnection {
   status: ConnectionStatus = "offline";
   info: HelloResult | null = null;
+  /** The daemon's explanation when the status is `incompatible`. */
+  incompatibility: string | null = null;
   /** Round trip of the last heartbeat, as measured by the daemon. */
   latencyMs: number | null = null;
   private ws: WebSocket | null = null;
@@ -89,20 +98,34 @@ export class HostConnection {
     const ws = new WebSocket(this.opts.url);
     this.ws = ws;
     ws.addEventListener("open", () => {
-      this.send("hello", { token: this.opts.token, client: this.opts.clientName }).then((info) => {
-        this.info = info;
-        this.attempt = 0;
-        this.setStatus("online");
-        if (this.watching) this.send("sessions.watch", {}).catch(ignore);
-        // Daemons before phase 4 answer with an error: nothing to watch there.
-        if (this.watchingBoard) this.send("board.watch", {}).catch(ignore);
-        if (this.watchingHistory) this.send("history.watch", {}).catch(ignore);
-        // While it watches, the daemon holds external permission requests for the app.
-        if (this.watchingExternal) this.send("external.watch", {}).catch(ignore);
-        // The runs still going come first, so open gates show up right away.
-        if (this.watchingRuns) this.send("run.watch", {}).catch(ignore);
-        for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
-      }, ignore);
+      const hello = {
+        token: this.opts.token,
+        client: this.opts.clientName,
+        protocolVersion: PROTOCOL_VERSION,
+      };
+      this.send("hello", hello).then(
+        (info) => {
+          this.info = info;
+          this.attempt = 0;
+          this.setStatus("online");
+          if (this.watching) this.send("sessions.watch", {}).catch(ignore);
+          // Daemons before phase 4 answer with an error: nothing to watch there.
+          if (this.watchingBoard) this.send("board.watch", {}).catch(ignore);
+          if (this.watchingHistory) this.send("history.watch", {}).catch(ignore);
+          // While it watches, the daemon holds external permission requests for the app.
+          if (this.watchingExternal) this.send("external.watch", {}).catch(ignore);
+          // The runs still going come first, so open gates show up right away.
+          if (this.watchingRuns) this.send("run.watch", {}).catch(ignore);
+          for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
+        },
+        (error: RequestError) => {
+          if (error.code !== "protocol_incompatible") return;
+          this.incompatibility = error.message;
+          this.setStatus("incompatible");
+          this.ws = null;
+          ws.close();
+        },
+      );
     });
     ws.addEventListener("message", (msg) => {
       const message = parseServerMessage(String(msg.data));

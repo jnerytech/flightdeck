@@ -126,7 +126,8 @@ textarea {
   background: var(--ok);
 }
 
-.dot-unauthorized {
+.dot-unauthorized,
+.dot-incompatible {
   background: var(--danger);
 }
 
