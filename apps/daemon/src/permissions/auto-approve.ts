@@ -55,6 +55,8 @@ export interface AutoApproveContext {
   settings: AutoApproveSettings;
   /** The card's description, when the cwd is a card's worktree. */
   description?: string;
+  /** The card, when the cwd is its worktree: `card:<id>` can suspend its sessions. */
+  cardId?: string;
 }
 
 export interface AutoApproverOptions {

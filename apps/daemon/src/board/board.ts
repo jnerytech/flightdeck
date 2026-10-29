@@ -103,6 +103,8 @@ function toProject(row: ProjectRow): Project {
     promptTemplate: row.prompt_template,
     worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
+    /** Stub. */
+    issues: null,
   };
 }
 
@@ -251,6 +253,8 @@ export class Board {
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
       autoApprove: AutoApproveSettings.parse(input.autoApprove ?? {}),
+      /** Stub. */
+      issues: null,
     };
     this.db
       .query(
@@ -350,6 +354,9 @@ export class Board {
       discarded: false,
       runs,
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
+      /** Stub. */
+      issueRef: null,
+      issueExternal: false,
       ...this.queueState(
         active !== undefined && active.started_at === null && active.ended_at === null,
         row.project_id,
@@ -360,7 +367,10 @@ export class Board {
   }
 
   /** A new card goes to the end of the Backlog. */
-  createCard(projectId: string, input: { title: string; description: string }): Card {
+  createCard(
+    projectId: string,
+    input: { title: string; description: string; issueRef?: string; issueExternal?: boolean },
+  ): Card {
     this.getProject(projectId);
     const { last } = this.db
       .query<{ last: number | null }, [string]>(

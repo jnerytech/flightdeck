@@ -44,6 +44,7 @@ import { statuslineData } from "./costs/statusline.ts";
 import { FlightdeckError } from "./errors.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
+import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
@@ -85,6 +86,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 13: issues of the projects (`issues.*`). */
+  issues?: Issues;
   /** Phase 13: the projects' automatic approval (`autoapprove.*`). */
   autoApprove?: AutoApprover;
   /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
@@ -541,6 +544,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
+      case "issues.list":
+      case "issues.get":
+      case "issues.createCard":
+        throw new FlightdeckError("invalid_state", "stub");
       case "autoapprove.list": {
         const { projectId, sessionKey, limit } = command.payload;
         return ok(command.type, {

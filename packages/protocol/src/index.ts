@@ -375,6 +375,32 @@ export const AutoApproveSettings = z.object({
 });
 export type AutoApproveSettings = z.infer<typeof AutoApproveSettings>;
 
+/** Phase 13: where a project's issues come from, and whether a PR comments on its issue. */
+export const IssuesConfig = z.object({
+  provider: z.enum(["github", "azure"]),
+  /** GitHub search or Azure WIQL; the default is "assigned to me, open". */
+  query: z.string().min(1).optional(),
+  /** Off by default: a comment on the issue is a write to the provider. */
+  commentOnPr: z.boolean().default(false),
+});
+export type IssuesConfig = z.infer<typeof IssuesConfig>;
+
+/** Phase 13: an issue (GitHub) or work item (Azure Boards). */
+export const Issue = z.object({
+  /** `github:owner/repo#n` or `azure:org/project#id`. */
+  ref: z.string(),
+  id: z.string(),
+  title: z.string(),
+  body: z.string(),
+  url: z.string(),
+  author: z.string(),
+  labels: z.array(z.string()),
+  /** Not you, nor (GitHub) an owner, member or collaborator: third-party content. */
+  external: z.boolean(),
+  createdAt: z.string(),
+});
+export type Issue = z.infer<typeof Issue>;
+
 export const Project = z.object({
   id: z.string(),
   path: z.string(),
@@ -389,6 +415,8 @@ export const Project = z.object({
   worktreeInclude: z.boolean().default(false),
   /** Phase 13; filled in when an older daemon does not send it. */
   autoApprove: AutoApproveSettings.default(() => AutoApproveSettings.parse({})),
+  /** Phase 13: `null` when the project has no issue integration. */
+  issues: IssuesConfig.nullable().default(null),
 });
 export type Project = z.infer<typeof Project>;
 
@@ -432,6 +460,10 @@ export const Card = z.object({
   queueReason: z.enum(["slot", "quota", "budget"]).nullable().default(null),
   /** With `queueReason: quota`, when the window resets (ISO); `null` when unknown. */
   quotaUntil: z.string().nullable().default(null),
+  /** Phase 13: the issue this card came from (`github:owner/repo#n`, `azure:org/project#id`). */
+  issueRef: z.string().nullable().default(null),
+  /** Phase 13: the issue's author is third party, so the card's content is untrusted. */
+  issueExternal: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -889,6 +921,8 @@ const ProjectFields = {
   promptTemplate: z.string().optional(),
   /** Phase 13: fields left out keep their value. */
   autoApprove: AutoApproveSettings.partial().optional(),
+  /** `null` removes the integration. */
+  issues: IssuesConfig.nullable().optional(),
 };
 
 export const ProjectAddPayload = z.object({ path: z.string().min(1), ...ProjectFields });
@@ -1116,6 +1150,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("mcp.status", z.object({ sessionId: z.string() })),
   /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
   cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
+  /** Phase 13: the project's issues (GitHub or Azure Boards) and cards made from them. */
+  cmd("issues.list", z.object({ projectId: z.string(), query: z.string().min(1).optional() })),
+  cmd("issues.get", z.object({ projectId: z.string(), id: z.string().min(1) })),
+  cmd("issues.createCard", z.object({ projectId: z.string(), issueRef: z.string().min(1) })),
   /** Phase 13: the automatic approvals' decisions (newest first) and the suspended sessions. */
   cmd(
     "autoapprove.list",
@@ -1519,6 +1557,9 @@ export interface CommandResults {
   "mcp.toggle": { servers: McpServerView[] };
   "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
+  "issues.list": { issues: Issue[] };
+  "issues.get": Issue;
+  "issues.createCard": Card;
   "autoapprove.list": { decisions: AutoApprovalRecord[]; suspended: AutoApproveSuspension[] };
   "autoapprove.resume": { suspended: AutoApproveSuspension[] };
   "agentcfg.read": AgentCfgItem & { content: string };

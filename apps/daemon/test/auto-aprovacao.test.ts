@@ -316,6 +316,40 @@ describe("auto-aprovacao", () => {
     expect(auto.suspended()).toEqual([]);
   });
 
+  test("suspensa num card (issue de terceiro): vale para as sessões dele, não para as de outros cards", async () => {
+    const cwd = tempDir("fd-auto-");
+    const other = tempDir("fd-auto-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const runtime = new FakeRuntime();
+    const auto = new AutoApprover({
+      db: store.db,
+      runtime,
+      dataDir: tempDir(),
+      context: (dir) => ({
+        projectId: "p1",
+        settings: ON,
+        cardId: dir === cwd ? "c1" : "c2",
+      }),
+    });
+    auto.suspend("card:c1", "issue de autor de fora");
+    const ask = (dir: string, sessionKey: string): AutoApproveRequest => ({
+      sessionKey,
+      requestId: "r",
+      toolName: "Write",
+      input: {},
+      cwd: dir,
+      risk: { level: "medium", reason: "x", network: false },
+    });
+    expect(await auto.decide(ask(cwd, "qualquer-sessao"))).toMatchObject({
+      decision: "ask",
+      reason: expect.stringContaining("issue de autor de fora"),
+    });
+    expect(await auto.decide(ask(other, "qualquer-sessao"))).toMatchObject({ decision: "allow" });
+    auto.resume("card:c1");
+    expect(await auto.decide(ask(cwd, "qualquer-sessao"))).toMatchObject({ decision: "allow" });
+  });
+
   test("registro: cada decisão em auto_approvals, com filtros; a consulta entra no uso com origem auto-approve", async () => {
     const { auto, request, store } = setup({
       judge: () => ({ decision: "allow", reason: "seguro", tokens: TOKENS }),
