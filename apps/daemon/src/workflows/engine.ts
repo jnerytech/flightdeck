@@ -17,8 +17,10 @@ import type { CheckResult, CheckRunner } from "./check-runner.ts";
 import { type InterpolationContext, interpolate } from "./interpolate.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
 import {
+  type Action,
   type AgentAction,
   checkCommands,
+  type InnerAction,
   parseWorkflow,
   type Step,
   type Workflow,
@@ -316,14 +318,76 @@ export class WorkflowEngine {
     context: InterpolationContext,
   ): Promise<string> {
     if ("gate" in step) return this.gateStep(run, step.id, step.gate, context);
-    if ("check" in step) {
-      const { exitCode, output } = await this.checkStep(run, worktree, step.id, 1, step.check);
+    if ("loop" in step) return this.loopStep(run, worktree, step.id, step.loop, context);
+    return this.innerStep(run, worktree, step.id, 1, step as InnerAction, context);
+  }
+
+  /** An agent or a check (on its own, or inside a loop or a parallel); a failed check fails. */
+  private async innerStep(
+    run: RunRow,
+    worktree: string,
+    stepId: string,
+    attempt: number,
+    action: InnerAction,
+    context: InterpolationContext,
+  ): Promise<string> {
+    if ("check" in action) {
+      const { exitCode, output } = await this.checkStep(
+        run,
+        worktree,
+        stepId,
+        attempt,
+        action.check,
+      );
       if (exitCode !== 0)
-        throw new Error(`etapa ${step.id} falhou: check saiu com código ${exitCode}`);
+        throw new Error(`etapa ${stepId} falhou: check saiu com código ${exitCode}`);
       return output;
     }
-    const { agent } = step as { agent: AgentAction };
-    return this.agentStep(run, worktree, step.id, 1, agent, context);
+    return this.agentStep(run, worktree, stepId, attempt, action.agent, context);
+  }
+
+  /**
+   * Checks `until`; while it fails, runs `do` (iteration n is attempt n of `<id>.check` and
+   * `<id>.do`) with the last check in `{{loop.lastCheck.*}}`. After `max` runs of `do` with the
+   * check still failing, the run pauses. The loop's output is the passing check's.
+   */
+  private async loopStep(
+    run: RunRow,
+    worktree: string,
+    stepId: string,
+    loop: Extract<Action, { loop: unknown }>["loop"],
+    context: InterpolationContext,
+  ): Promise<string> {
+    this.db
+      .query(
+        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, started_at)
+         VALUES (?, ?, 1, 'loop', 'running', ?)`,
+      )
+      .run(run.id, stepId, now());
+    try {
+      for (let attempt = 1; ; attempt++) {
+        const check = await this.checkStep(
+          run,
+          worktree,
+          `${stepId}.check`,
+          attempt,
+          loop.until.check,
+        );
+        if (check.exitCode === 0) {
+          this.endStep(run.id, stepId, 1, "completed", check.output);
+          return check.output;
+        }
+        if (attempt > loop.max) {
+          const why = `loop ${stepId}: o check ainda falha depois de ${loop.max} repetições`;
+          throw new Stop("paused", why);
+        }
+        const inner = { ...context, loop: { lastCheck: check } };
+        await this.innerStep(run, worktree, `${stepId}.do`, attempt, loop.do, inner);
+      }
+    } catch (error) {
+      this.endStep(run.id, stepId, 1, "failed", null);
+      throw error;
+    }
   }
 
   /**
