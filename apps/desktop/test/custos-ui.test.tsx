@@ -305,4 +305,18 @@ describe("custos-ui", () => {
     })();
     expect(today).toBe(new Date(START).toLocaleDateString("sv-SE"));
   });
+
+  test("a paleta leva para a tela Custos", async () => {
+    const { store } = await online();
+    await act(async () => store.openSearch());
+    const dialog = () => screen.queryByRole("dialog", { name: "Busca global" });
+    const option = dialog()?.querySelector('[aria-label="Ir para Custos"]') ?? null;
+    expect(option).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(option as HTMLElement);
+    });
+    await settle(() => region("Custos") !== null);
+    expect(region("Custos")).not.toBeNull();
+    expect(dialog()).toBeNull();
+  });
 });
