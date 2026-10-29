@@ -3,7 +3,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import type { PendingItem } from "../src/lib/app-store.ts";
 import { parseRequestLink, requestLink } from "../src/lib/request-link.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu } from "../src/lib/tray.ts";
-import type { TrayAction, TrayMenu } from "../src/platform/types.ts";
+import type { TrayAction, TrayActionKind, TrayMenu } from "../src/platform/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -68,7 +68,7 @@ const item = (n: number, patch: Partial<PendingItem> = {}): PendingItem => ({
   ...patch,
 });
 
-const BOTH = ["approve", "deny", "open"];
+const BOTH: TrayActionKind[] = ["approve", "deny", "open"];
 
 /** The platform's tray as the store drives it: menus pushed, the action handler, window shown. */
 function trayPlatform(focused = false) {
