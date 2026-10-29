@@ -2,8 +2,10 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
+import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
+import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { Router } from "../src/lib/router.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -234,5 +236,41 @@ describe("navegacao", () => {
     await click("Remover beta");
     expect(store.getState().hosts.map((h) => h.name)).toEqual(["alfa"]);
     expect(heading("Sessões")).toBe(true);
+  });
+
+  test("continuar no Flightdeck uma sessão do terminal abre a conversa gerenciada", async () => {
+    const d = makeDaemon(cleanups);
+    d.central.hooksInstall(true);
+    await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+      body: JSON.stringify({
+        session_id: "ext-1",
+        hook_event_name: "SessionStart",
+        cwd: d.project,
+      }),
+    });
+    writeTranscript(d.historyRoot, "-p", "ext-1", [
+      userLine({ uuid: "u1", text: "Do terminal", cwd: d.project, ts: "2026-09-01T10:00:00.000Z" }),
+    ]);
+    d.history.scan();
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => Object.keys(store.getState().externals).length === 1);
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await act(async () =>
+      store.router.push({ name: "external", host: hostId, claudeSessionId: "ext-1" }),
+    );
+    await settle(() => screen.queryByRole("button", { name: "Continuar no Flightdeck" }) !== null);
+    await click("Continuar no Flightdeck");
+    // The transcript was just written: the app asks before resuming it.
+    await settle(() => screen.queryByRole("button", { name: "Continuar mesmo assim" }) !== null);
+    await click("Continuar mesmo assim");
+    await settle(() => store.router.current.name === "home");
+    expect(store.router.current).toEqual({ name: "home" });
+    expect(screen.queryByRole("button", { name: "Encerrar" })).not.toBeNull();
   });
 });
