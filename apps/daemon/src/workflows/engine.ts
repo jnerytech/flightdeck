@@ -1,22 +1,92 @@
 import type { Database } from "bun:sqlite";
-import type { WorkflowInfo } from "@flightdeck/protocol";
-import type { Project } from "../board/types.ts";
+import type {
+  PermissionMode,
+  RunStatus,
+  SessionEvent,
+  StepRun,
+  StepStatus,
+  StepType,
+  WorkflowInfo,
+  WorkflowRun,
+} from "@flightdeck/protocol";
+import type { BoardEvent } from "../board/columns.ts";
+import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
+import type { SessionManager } from "../sessions/session-manager.ts";
+import { type InterpolationContext, interpolate } from "./interpolate.ts";
 import { type WorkflowSource, workflowSources } from "./repo.ts";
-import { checkCommands, parseWorkflow } from "./schema.ts";
+import { type AgentAction, checkCommands, parseWorkflow, type Workflow } from "./schema.ts";
+
+/** What the engine needs from the board that owns the cards. */
+export interface EngineHost {
+  place(cardId: string, event: BoardEvent): void;
+  /** The run stopped holding the card's slot in the host queue. */
+  release(cardId: string): void;
+  card(cardId: string): Card;
+}
 
 export interface WorkflowEngineOptions {
   db: Database;
+  manager: SessionManager;
+  host: EngineHost;
 }
 
+interface RunRow {
+  id: string;
+  card_id: string;
+  workflow_name: string;
+  workflow_hash: string;
+  definition: string;
+  status: RunStatus;
+  status_reason: string | null;
+  budget: string;
+  usage: string;
+  inputs: string;
+  started_at: string;
+  ended_at: string | null;
+}
+
+interface StepRow {
+  run_id: string;
+  step_id: string;
+  attempt: number;
+  type: StepType;
+  status: StepStatus;
+  session_id: string | null;
+  output: string | null;
+  exit_code: number | null;
+  note: string | null;
+  started_at: string;
+  ended_at: string | null;
+}
+
+const toStep = (row: StepRow): StepRun => ({
+  stepId: row.step_id,
+  attempt: row.attempt,
+  type: row.type,
+  status: row.status,
+  sessionId: row.session_id,
+  output: row.output,
+  exitCode: row.exit_code,
+  note: row.note,
+  startedAt: row.started_at,
+  endedAt: row.ended_at,
+});
+
 const now = () => new Date().toISOString();
+
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Workflows of the projects: catalog read from the base branch, trust and runs. */
 export class WorkflowEngine {
   private readonly db: Database;
+  private readonly manager: SessionManager;
+  private readonly host: EngineHost;
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
+    this.manager = opts.manager;
+    this.host = opts.host;
   }
 
   async list(project: Project): Promise<WorkflowInfo[]> {
@@ -46,7 +116,8 @@ export class WorkflowEngine {
 
   /**
    * Creates the run of a card about to start (same id as the card's run). Refuses a workflow
-   * that is not on the base branch, has validation errors or whose content is not trusted.
+   * that is not on the base branch, has validation errors or whose content is not trusted, and
+   * inputs missing or not declared.
    */
   async prepare(
     cardId: string,
@@ -69,6 +140,10 @@ export class WorkflowEngine {
         `workflow ${name} não confiado; confie nele na tela de workflows`,
       );
     }
+    const missing = workflow.inputs.find((input) => !inputs[input]?.trim());
+    if (missing) throw new FlightdeckError("invalid_state", `input obrigatório: ${missing}`);
+    const unknown = Object.keys(inputs).find((input) => !workflow.inputs.includes(input));
+    if (unknown) throw new FlightdeckError("invalid_state", `input desconhecido: ${unknown}`);
     this.db
       .query(
         `INSERT INTO workflow_runs (id, card_id, workflow_name, workflow_hash, definition, status,
@@ -91,6 +166,232 @@ export class WorkflowEngine {
   has(runId: string): boolean {
     return this.db.query("SELECT 1 FROM workflow_runs WHERE id = ?").get(runId) !== null;
   }
+
+  /** The card's worktree is ready and its slot taken: the run executes its steps. */
+  begin(runId: string, worktree: string): void {
+    this.setStatus(runId, "running", null);
+    void this.execute(runId, worktree);
+  }
+
+  /** Nothing reached an agent (worktree or setup failed); the board moves the card itself. */
+  fail(runId: string, why: string): void {
+    this.end(runId, "failed", why);
+  }
+
+  /** "Parar": interrupts the turns going on; the interrupted step fails the run. */
+  async interrupt(runId: string): Promise<void> {
+    const sessions = this.db
+      .query<{ session_id: string }, [string]>(
+        "SELECT DISTINCT session_id FROM step_runs WHERE run_id = ? AND status = 'running' AND session_id IS NOT NULL",
+      )
+      .all(runId);
+    for (const { session_id } of sessions) await this.manager.interrupt(session_id);
+  }
+
+  /** Closes the sessions of the card's runs, except those of `keep` (the run launching). */
+  async closeSessions(cardId: string, keep = ""): Promise<void> {
+    const sessions = this.db
+      .query<{ session_id: string }, [string, string]>(
+        `SELECT DISTINCT s.session_id FROM step_runs s JOIN workflow_runs r ON r.id = s.run_id
+         WHERE r.card_id = ? AND r.id <> ? AND s.session_id IS NOT NULL`,
+      )
+      .all(cardId, keep);
+    for (const { session_id } of sessions) await this.manager.close(session_id);
+  }
+
+  /** A discarded card takes its runs along. */
+  forget(cardId: string): void {
+    this.db
+      .query(
+        "DELETE FROM step_runs WHERE run_id IN (SELECT id FROM workflow_runs WHERE card_id = ?)",
+      )
+      .run(cardId);
+    this.db.query("DELETE FROM workflow_runs WHERE card_id = ?").run(cardId);
+  }
+
+  getRun(id: string): WorkflowRun {
+    const row = this.row(id);
+    const steps = this.db
+      .query<StepRow, [string]>("SELECT * FROM step_runs WHERE run_id = ? ORDER BY rowid")
+      .all(id)
+      .map(toStep);
+    return {
+      id: row.id,
+      cardId: row.card_id,
+      workflowName: row.workflow_name,
+      workflowHash: row.workflow_hash,
+      status: row.status,
+      statusReason: row.status_reason,
+      budget: JSON.parse(row.budget),
+      usage: JSON.parse(row.usage),
+      inputs: JSON.parse(row.inputs),
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      steps,
+    };
+  }
+
+  // -- execution ------------------------------------------------------------
+
+  private async execute(runId: string, worktree: string): Promise<void> {
+    const run = this.row(runId);
+    // Validated when the run was prepared.
+    const workflow = parseWorkflow(run.definition).workflow as Workflow;
+    const context: InterpolationContext = { inputs: JSON.parse(run.inputs), steps: {} };
+    try {
+      for (const step of workflow.steps) {
+        const { agent } = step as { agent: AgentAction };
+        const output = await this.agentStep(run, worktree, step.id, 1, agent, context);
+        context.steps[step.id] = { output };
+      }
+      this.finish(run, "completed", null);
+    } catch (error) {
+      this.finish(run, "failed", reason(error));
+    }
+  }
+
+  private async agentStep(
+    run: RunRow,
+    worktree: string,
+    stepId: string,
+    attempt: number,
+    action: AgentAction,
+    context: InterpolationContext,
+  ): Promise<string> {
+    const prompt = interpolate(action.prompt, context);
+    const target = action.continue
+      ? (this.stepRow(run.id, action.continue, 1)?.session_id ?? null)
+      : null;
+    this.db
+      .query(
+        `INSERT INTO step_runs (run_id, step_id, attempt, type, status, session_id, started_at)
+         VALUES (?, ?, ?, 'agent', 'running', ?, ?)`,
+      )
+      .run(run.id, stepId, attempt, target, now());
+    try {
+      const output = await this.turn(run, worktree, stepId, attempt, target, prompt, action);
+      this.endStep(run.id, stepId, attempt, "completed", output);
+      return output;
+    } catch (error) {
+      this.endStep(run.id, stepId, attempt, "failed", null);
+      throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
+    }
+  }
+
+  /** One turn: a new session in the worktree, or a message to the `continue` step's session. */
+  private async turn(
+    run: RunRow,
+    worktree: string,
+    stepId: string,
+    attempt: number,
+    target: string | null,
+    prompt: string,
+    action: { permissionMode?: PermissionMode },
+  ): Promise<string> {
+    if (target) {
+      const done = this.awaitTurn(run.card_id, target, this.manager.get(target).lastSeq);
+      this.manager.send(target, prompt);
+      return done;
+    }
+    const { title } = this.host.card(run.card_id);
+    const { sessionId } = this.manager.create({
+      cwd: worktree,
+      prompt,
+      name: `${title} · ${stepId}`,
+      ...(action.permissionMode ? { permissionMode: action.permissionMode } : {}),
+    });
+    this.db
+      .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
+      .run(sessionId, run.id, stepId, attempt);
+    return this.awaitTurn(run.card_id, sessionId, 0);
+  }
+
+  /**
+   * Resolves with the assistant text of the next turn of `sessionId` (events after `since`):
+   * the text blocks of every message of the turn, in order. Session statuses move the card.
+   */
+  private awaitTurn(cardId: string, sessionId: string, since: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const texts: string[] = [];
+      let settled = false;
+      const settle = (done: () => void) => {
+        settled = true;
+        sub.unsubscribe();
+        done();
+      };
+      const onEvent = (event: SessionEvent) => {
+        if (settled) return;
+        if (event.type === "session.status") {
+          this.host.place(cardId, { type: "session", status: event.status });
+        } else if (event.type === "message.assistant") {
+          for (const block of event.blocks) if (block.type === "text") texts.push(block.text);
+        } else if (event.type === "turn.result") {
+          settle(() =>
+            event.isError
+              ? reject(new Error(`turno terminou com erro (${event.subtype})`))
+              : resolve(texts.join("\n\n")),
+          );
+        } else if (event.type === "session.error") {
+          settle(() => reject(new Error(event.message)));
+        }
+      };
+      const sub = this.manager.subscribe(sessionId, since, (envelope) => onEvent(envelope.event));
+      for (const envelope of sub.replay) onEvent(envelope.event);
+    });
+  }
+
+  // -- state ----------------------------------------------------------------
+
+  private row(id: string): RunRow {
+    const row = this.db.query<RunRow, [string]>("SELECT * FROM workflow_runs WHERE id = ?").get(id);
+    if (!row) throw new FlightdeckError("not_found", `execução ${id} não existe`);
+    return row;
+  }
+
+  private stepRow(runId: string, stepId: string, attempt: number): StepRow | null {
+    return this.db
+      .query<StepRow, [string, string, number]>(
+        "SELECT * FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?",
+      )
+      .get(runId, stepId, attempt);
+  }
+
+  private endStep(
+    runId: string,
+    stepId: string,
+    attempt: number,
+    status: StepStatus,
+    output: string | null,
+  ): void {
+    this.db
+      .query(
+        "UPDATE step_runs SET status = ?, output = ?, ended_at = ? WHERE run_id = ? AND step_id = ? AND attempt = ?",
+      )
+      .run(status, output, now(), runId, stepId, attempt);
+  }
+
+  private setStatus(runId: string, status: RunStatus, why: string | null): void {
+    this.db
+      .query("UPDATE workflow_runs SET status = ?, status_reason = ? WHERE id = ?")
+      .run(status, why, runId);
+  }
+
+  private end(runId: string, status: RunStatus, why: string | null): void {
+    this.setStatus(runId, status, why);
+    this.db.query("UPDATE workflow_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
+  }
+
+  /** The run is over: the card goes to Em revisão (completed) or Esperando você. */
+  private finish(run: RunRow, status: RunStatus, why: string | null): void {
+    this.end(run.id, status, why);
+    this.host.place(run.card_id, {
+      type: "workflow",
+      state: status === "completed" ? "done" : "waiting",
+    });
+    this.host.release(run.card_id);
+  }
+
+  // -- catalog --------------------------------------------------------------
 
   private async source(project: Project, name: string): Promise<WorkflowSource> {
     const sources = await workflowSources(project.path, project.baseBranch);

@@ -348,6 +348,87 @@ export const WorkflowInfo = z.object({
 });
 export type WorkflowInfo = z.infer<typeof WorkflowInfo>;
 
+/**
+ * `waiting`: a gate is open. `paused`: budget or loop limit reached. `failed`: a step (or the
+ * card's preparation) failed. The last four are final.
+ */
+export const RunStatus = z.enum([
+  "queued",
+  "running",
+  "waiting",
+  "paused",
+  "failed",
+  "rejected",
+  "completed",
+]);
+export type RunStatus = z.infer<typeof RunStatus>;
+
+export const StepType = z.enum(["agent", "check", "gate", "loop", "parallel", "pr"]);
+export type StepType = z.infer<typeof StepType>;
+
+export const StepStatus = z.enum([
+  "running",
+  "waiting",
+  "completed",
+  "failed",
+  "approved",
+  "rejected",
+]);
+export type StepStatus = z.infer<typeof StepStatus>;
+
+/**
+ * One attempt of one step. Inside a loop the check is `<id>.check` and the action `<id>.do`,
+ * with the iteration as attempt; parallel items are `<id>.<index>`.
+ */
+export const StepRun = z.object({
+  stepId: z.string(),
+  attempt: z.number().int().min(1),
+  type: StepType,
+  status: StepStatus,
+  /** Session of an `agent` step: its conversation. */
+  sessionId: z.string().nullable(),
+  /** Assistant text of the turn, the last 8 KB of a check, the text shown by a gate. */
+  output: z.string().nullable(),
+  exitCode: z.number().int().nullable(),
+  /** The note given when answering a gate. */
+  note: z.string().nullable(),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+});
+export type StepRun = z.infer<typeof StepRun>;
+
+export const RunBudget = z.object({
+  maxTurns: z.number().optional(),
+  maxMinutes: z.number().optional(),
+  maxCostUsd: z.number().optional(),
+});
+export type RunBudget = z.infer<typeof RunBudget>;
+
+/** Summed over every session of the run; the cost is what the SDK reports (an estimate). */
+export const RunUsage = z.object({
+  turns: z.number().int().nonnegative(),
+  minutes: z.number().nonnegative(),
+  costUsd: z.number().nonnegative(),
+});
+export type RunUsage = z.infer<typeof RunUsage>;
+
+export const WorkflowRun = z.object({
+  id: z.string(),
+  cardId: z.string(),
+  workflowName: z.string(),
+  workflowHash: z.string(),
+  status: RunStatus,
+  statusReason: z.string().nullable(),
+  budget: RunBudget,
+  usage: RunUsage,
+  inputs: z.record(z.string(), z.string()),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+  /** In the order they started. */
+  steps: z.array(StepRun),
+});
+export type WorkflowRun = z.infer<typeof WorkflowRun>;
+
 const ProjectFields = {
   name: z.string().min(1).optional(),
   baseBranch: z.string().min(1).optional(),

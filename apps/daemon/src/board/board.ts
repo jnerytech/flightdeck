@@ -133,7 +133,15 @@ export class Board {
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
-    this.workflows = new WorkflowEngine({ db: opts.db });
+    this.workflows = new WorkflowEngine({
+      db: opts.db,
+      manager: opts.manager,
+      host: {
+        place: (cardId, event) => this.place(cardId, event),
+        release: (cardId) => this.release(cardId),
+        card: (cardId) => this.getCard(cardId),
+      },
+    });
     this.limit = opts.maxParallelRuns ?? 2;
     this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
     // Back from a restart: keep moving cards whose run still has a session.
@@ -369,6 +377,7 @@ export class Board {
 
   /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
   private failRun(id: string, runId: string, notice: string): void {
+    this.workflows.fail(runId, notice);
     this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
     this.place(id, { type: "failed" });
     this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
@@ -391,11 +400,13 @@ export class Board {
       this.changed(id);
     }
     if (project.setupScript) await runSetup(project.setupScript, worktree);
+    // The newest run is the active one: older sessions of the card are closed.
+    await this.closeRuns(id, runId);
+    // A workflow run executes its steps instead of sending the description to one session.
+    if (this.workflows.has(runId)) return this.workflows.begin(runId, worktree);
     const prompt = [card.description, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");
-    // The newest run is the active one: older sessions of the card are closed.
-    await this.closeRuns(id, runId);
     const { sessionId } = this.opts.manager.create({ cwd: worktree, prompt, name: card.title });
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);
@@ -413,6 +424,7 @@ export class Board {
       if (run.session_id) await this.opts.manager.close(run.session_id);
       this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
     }
+    await this.workflows.closeSessions(id, keep);
   }
 
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
@@ -463,6 +475,8 @@ export class Board {
         .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
         .run(now(), id);
       this.place(id, { type: "moved", column: "backlog" });
+    } else if (card.workflowRunId) {
+      await this.workflows.interrupt(card.workflowRunId);
     } else if (card.sessionId) {
       await this.opts.manager.interrupt(card.sessionId);
     }
@@ -540,6 +554,7 @@ export class Board {
     }
     if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
     const last = this.getCard(id);
+    this.workflows.forget(id);
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
     const discarded = { ...last, worktreePath: null, branch: null, discarded: true };

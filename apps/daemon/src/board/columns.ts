@@ -11,7 +11,9 @@ export type BoardEvent =
   | { type: "pr"; state: PrState }
   /** Setup script or worktree failed before the session. */
   | { type: "failed" }
-  | { type: "moved"; column: BoardColumn };
+  | { type: "moved"; column: BoardColumn }
+  /** A workflow run (phase 6): steps going, waiting for you (gate, pause, failure) or done. */
+  | { type: "workflow"; state: "running" | "waiting" | "done" };
 
 export interface Placement {
   column: BoardColumn;
@@ -29,6 +31,12 @@ const PR_COLUMNS: Record<PrState, BoardColumn> = {
   open: "review",
   merged: "done",
   closed: "waiting",
+};
+
+const WORKFLOW_COLUMNS: Record<"running" | "waiting" | "done", BoardColumn> = {
+  running: "in_progress",
+  waiting: "waiting",
+  done: "review",
 };
 
 /** Moved by hand to these, a card stays put until the next start. */
@@ -58,5 +66,7 @@ function target(
       return PR_COLUMNS[event.state];
     case "failed":
       return "waiting";
+    case "workflow":
+      return WORKFLOW_COLUMNS[event.state];
   }
 }
