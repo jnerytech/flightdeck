@@ -1,11 +1,13 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { testHome } from "../../../scripts/test/temp-dir.ts";
-import { defaultConfigPath, expandHome, userHome } from "../src/config.ts";
+import { realTempDir, testHome } from "../../../scripts/test/temp-dir.ts";
+import { Config, defaultConfigPath, expandHome, userHome } from "../src/config.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { RuntimeEvent } from "../src/runtime/types.ts";
 import { osServiceContext } from "../src/service-os.ts";
+import { stopServiceDaemon } from "../src/update.ts";
 
 describe("plataforma", () => {
   test("o home vem do ambiente na hora da chamada: HOME, ou USERPROFILE no Windows", () => {
@@ -54,6 +56,47 @@ describe("plataforma", () => {
       clock.mockRestore();
     }
   });
+
+  test.skipIf(process.platform !== "win32")(
+    "parar o daemon: o caminho 8.3 do serviço e o longo do processo são o mesmo executável",
+    async () => {
+      const dir = join(realTempDir("fd-plataforma-"), "executavel-com-nome-bem-longo");
+      mkdirSync(dir);
+      const exe = join(dir, "flightdeckd.exe");
+      writeFileSync(exe, "");
+      // How a task registered from an 8.3 TEMP names the daemon (C:\Users\RUNNER~1\...).
+      const short = Bun.spawnSync(
+        [
+          "powershell.exe",
+          "-NoProfile",
+          "-Command",
+          "(New-Object -ComObject Scripting.FileSystemObject).GetFile($env:FD_EXE).ShortPath",
+        ],
+        { env: { ...process.env, FD_EXE: exe } },
+      )
+        .stdout.toString()
+        .trim();
+      expect(short).not.toBe(exe);
+      const killed: number[] = [];
+      const stopped = await stopServiceDaemon(
+        {
+          ctx: { ...osServiceContext(false), exec: async () => ({ code: 0, stdout: "" }) },
+          daemonRunning: () => killed.length === 0,
+          lockPid: () => 4242,
+          processPath: async () => exe,
+          kill: (pid) => {
+            killed.push(pid);
+          },
+          stopTimeoutMs: 10,
+          log: { log: () => {}, error: () => {} },
+        },
+        Config.parse({ token: "t".repeat(32), dataDir: realTempDir("fd-plataforma-") }),
+        short,
+      );
+      expect(killed).toEqual([4242]);
+      expect(stopped).toBe(true);
+    },
+  );
 
   test("um ~ fora do começo do caminho não é o home", () => {
     for (const path of ["C:\\Users\\RUNNER~1\\x", "/tmp/a~b", "a~", "~user/x"]) {
