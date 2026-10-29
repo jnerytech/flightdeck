@@ -10,6 +10,8 @@ import { delimiter, join } from "node:path";
 export interface FakeRule {
   /** Every one of these must appear among the arguments. */
   args: string[];
+  /** Only answers the n-th call of the fake (1-based), to fail once and then pass. */
+  call?: number;
   stdout?: string;
   code?: number;
 }
