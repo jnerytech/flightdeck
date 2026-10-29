@@ -62,6 +62,7 @@ const validCommands: Record<CommandType, unknown> = {
   "card.discard": { cardId: "c", confirm: true },
   "external.list": {},
   "external.watch": {},
+  "external.message": { claudeSessionId: "c", text: "oi" },
 };
 
 const validEvents: SessionEvent[] = [
