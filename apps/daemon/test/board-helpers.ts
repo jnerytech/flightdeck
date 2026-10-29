@@ -19,8 +19,10 @@ Object.assign(process.env, {
 /** Runs git synchronously, failing the test on a non-zero exit. */
 export function git(cwd: string, ...args: string[]): string {
   const bin = whichOnPath("git") ?? "git";
+  // `env` explicitly: without it Bun passes the environment the process started with (real HOME).
   const proc = Bun.spawnSync([bin, "-c", "core.autocrlf=false", ...args], {
     cwd,
+    env: process.env,
     stdout: "pipe",
     stderr: "pipe",
   });

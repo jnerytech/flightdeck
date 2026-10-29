@@ -126,6 +126,10 @@ describe("FakeRuntime: [commit]", () => {
     expect(first.at(-1)).toMatchObject({ type: "turn.result", isError: false });
     expect(git(repo, "status", "--porcelain")).toBe("");
     expect(git(repo, "log", "-1", "--format=%s")).toBe("fake: crie o arquivo [commit]");
+    // The identity comes from the current environment (board-helpers), not the real ~/.gitconfig.
+    expect(git(repo, "log", "-1", "--format=%an <%ae>")).toBe(
+      "Flightdeck Teste <teste@flightdeck.invalid>",
+    );
     expect(git(repo, "show", "--name-only", "--format=", "HEAD")).toBe("fake-1.txt");
     const file = join(repo, "fake-1.txt");
     expect(existsSync(file) ? readFileSync(file, "utf8") : "").toBe("crie o arquivo [commit]\n");
