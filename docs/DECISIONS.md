@@ -839,6 +839,8 @@ O que a spec da Fase 7 deixou aberto para a trilha B, ou o que mudou na implemen
   - A única migração da trilha é a `usage_daily`.
   - `quota.get` e `quota.watch` não têm histórico.
 - **Vencimento:** um timer injetável (relógio e agendador) é armado para o próximo `resetsAt`. Quando dispara, remove a janela e avisa quem faz `quota.watch`. Uma leitura que já chega vencida é descartada.
+  - O atraso do timer é limitado a 2³¹ − 1 ms (cerca de 24,8 dias). Acima disso o timer dispararia na hora, num laço; ao disparar antes, ele é armado de novo.
+  - A leitura também é filtrada pelo relógio ao ser lida, então um timer atrasado (host que dormiu) nunca mostra nem bloqueia por uma janela vencida.
 - **O app:** pede `quota.get` ao conectar, além do `quota.watch`, porque o `quota.watch` não manda o estado atual.
 
 ## Fila por cota
@@ -852,6 +854,7 @@ O que a spec da Fase 7 deixou aberto para a trilha B, ou o que mudou na implemen
 - **Workflow:**
   - Antes de cada turno de agente (logo depois do orçamento), se a cota bloqueia, a execução continua `running` com `statusReason: "aguardando cota"`, e a execução expõe `quotaUntil` (só em memória).
   - Se o card for concluído ou descartado durante a espera, a execução para ali, sem seguir.
+  - A linha do tempo do card mostra "aguardando cota até HH:MM".
 - **HH:MM:** o daemon manda o instante em ISO, e o app formata com uma função injetável (o fuso da máquina quando ausente).
 
 ## Uso
@@ -885,6 +888,7 @@ O que a spec da Fase 7 deixou aberto para a trilha B, ou o que mudou na implemen
   - Se o arquivo da raiz não é um objeto JSON válido, ele não é reescrito, e o card recebe o aviso "regra não gravada no .claude/settings.local.json: …".
 - **Worktree nova:**
   - O `.git/info/exclude` recebe `.claude/settings.local.json` (junto com `.flightdeck/worktrees/`) antes do `git worktree add`, e o arquivo da raiz é copiado para a worktree.
+  - A linha do exclude também é garantida a cada execução do card e logo antes de gravar uma regra na raiz. Assim valem as worktrees criadas antes desta fase.
   - Se o repositório versiona o arquivo, a cópia é pulada: a worktree já tem o que está commitado, e sobrescrever mostraria uma alteração no diff.
 - **`rules.remove`:** sem `confirm: true` dá `invalid_state`; uma regra que não existe dá `not_found`.
 - **Mais de um projeto no mesmo repositório:** não acontece, porque o caminho de um projeto é único.
