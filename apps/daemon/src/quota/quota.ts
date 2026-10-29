@@ -19,6 +19,9 @@ export interface QuotaOptions {
   timers?: Timers;
 }
 
+/** The longest delay a timer takes (2³¹ − 1 ms, about 24.8 days); longer ones fire at once. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 const STATUSES: ReadonlySet<string> = new Set(["allowed", "allowed_warning", "rejected"]);
 
 /** One window of a `rate_limit_info` (or the info itself); `null` when it makes no sense. */
@@ -77,7 +80,7 @@ export class Quota {
 
   /** Valid readings: one past its `resetsAt` no longer counts until a new one arrives. */
   windows(): QuotaWindow[] {
-    return [...this.readings.values()].map(({ reading, readAt }) => ({
+    return this.valid().map(({ reading, readAt }) => ({
       window: reading.window,
       utilization: reading.utilization,
       status: reading.status,
@@ -90,7 +93,7 @@ export class Quota {
   blocked(): { window: string; until: number | null } | null {
     const { pauseAt } = this.opts;
     if (pauseAt === null) return null;
-    const over = [...this.readings.values()]
+    const over = this.valid()
       .map(({ reading }) => reading)
       .filter((r) => r.status === "rejected" || (r.utilization ?? 0) >= pauseAt);
     const [first] = over;
@@ -119,6 +122,14 @@ export class Quota {
   }
 
   /** Drops what expired, arms the timer for the next reset and tells the watchers. */
+  /** Readings not past their reset, even when the timer fires late (a host that slept). */
+  private valid() {
+    const now = this.now();
+    return [...this.readings.values()].filter(
+      ({ reading }) => reading.resetsAt === null || reading.resetsAt > now,
+    );
+  }
+
   private changed(): void {
     const now = this.now();
     for (const [window, { reading }] of this.readings) {
@@ -127,7 +138,9 @@ export class Quota {
     this.stop();
     const resets = [...this.readings.values()].flatMap(({ reading }) => reading.resetsAt ?? []);
     if (resets.length > 0) {
-      this.timer = this.timers.set(() => this.changed(), Math.min(...resets) - now);
+      // Timers take 32-bit delays: a later reset re-arms on the way, since this recomputes.
+      const delay = Math.min(Math.min(...resets) - now, MAX_TIMER_MS);
+      this.timer = this.timers.set(() => this.changed(), delay);
     }
     const state = this.state();
     for (const watcher of this.watchers) {
