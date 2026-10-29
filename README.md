@@ -695,8 +695,9 @@ Enquanto alguma janela válida está em `pauseAt` ou acima (ou foi recusada pelo
 
 ### Uso
 
-A tela do host mostra os últimos 7 dias de uso das sessões gerenciadas, por dia (no fuso do host)
-e por projeto: custo estimado, tokens e turnos.
+A tela do host mostra os últimos 7 dias de uso, por dia (no fuso do host) e por projeto. Num
+host da Fase 8 em diante, o painel lê os custos de todas as sessões (veja Custos, abaixo). Num
+host da Fase 7, mostra o uso das sessões gerenciadas: custo estimado, tokens e turnos.
 
 - **Custo:** é a diferença do total que o SDK informa para cada sessão, nunca a soma turno a
   turno.
@@ -778,6 +779,105 @@ Configurações) e, depois de Enter, **Histórico**.
 - **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
   Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
 - **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
+## Custos, orçamentos e histórico da cota
+
+### Custos
+
+A tela **Custos**, no menu lateral, mostra o custo de todas as sessões de um host: do terminal,
+do app, dos cards e dos workflows, subagentes incluídos.
+
+> **Estimativa:** o valor é o equivalente em preços de API, estimado. Numa assinatura do Claude,
+> nada disso é cobrado.
+
+- **Fonte:** os transcripts do Claude Code em `~/.claude/projects`, os mesmos do histórico.
+  - Cada mensagem conta uma vez, mesmo quando o transcript a repete em várias linhas.
+  - No primeiro boot desta versão, o daemon lê em segundo plano os transcripts que já existem e
+    continua respondendo enquanto isso.
+- **Período:** hoje, 7 dias, 30 dias, mês atual ou um intervalo, sempre no fuso do host.
+- **Filtros:** host, projeto, modelo e origem (terminal, app, card, workflow, subagent).
+- **O que aparece:**
+  - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
+    o mesmo volume como input normal);
+  - um gráfico por dia, empilhado por projeto, e as quebras por projeto, modelo e origem;
+  - as sessões mais caras, e clicar numa abre a sessão;
+  - o custo estimado também aparece na lista de sessões, na sessão aberta, no card e na execução
+    de workflow.
+- **Exportar CSV:** salva, pelo diálogo do sistema, uma linha por dia, projeto, modelo e origem.
+- **Avisos:**
+  - modelos sem preço aparecem como "sem preço", com o nome;
+  - nas sessões gerenciadas, o daemon compara o custo calculado com o que o próprio Claude Code
+    informa, e se a diferença passa de 10% (e de US$ 0,05), a tela avisa que a tabela de preços
+    pode estar desatualizada.
+- **Retenção:** o uso fica `retention.usageDays` dias (padrão 400).
+
+### Preços
+
+A tabela padrão é a de preços de API de 06/10/2026, em US$ por milhão de tokens:
+
+| Modelo | Input | Output | Cache read |
+| --- | --- | --- | --- |
+| `claude-fable-5-1` | 10,00 | 50,00 | 0,25 |
+| `claude-opus-5-5` | 4,00 | 20,00 | 0,20 |
+| `claude-sonnet-5-5` | 2,00 | 10,00 | 0,20 |
+| `claude-haiku-5-5` | 0,10 | 0,50 | 0,01 |
+
+- **Escrita de cache:** 1,25× o input no cache de 5 minutos e 2× no de 1 hora, que é o que o
+  Claude Code usa.
+- **Haiku 5.5:** passa a 0,50 e 2,50 acima de 100 mil tokens de prompt.
+- **Fast mode:** o do Opus 5.5 custa 2×.
+
+Para sobrescrever, use `pricing` na config, modelo a modelo:
+
+```json
+{
+  "pricing": {
+    "models": {
+      "claude-opus-5-5": { "input": 4, "output": 20, "cacheRead": 0.2 },
+      "claude-haiku-5-5": {
+        "input": 0.1, "output": 0.5, "cacheRead": 0.01,
+        "tiers": [{ "abovePromptTokens": 100000, "input": 0.5, "output": 2.5 }]
+      }
+    },
+    "cacheWrite5mMultiplier": 1.25,
+    "cacheWrite1hMultiplier": 2,
+    "fastMultiplier": { "claude-opus-5-5": 2 }
+  }
+}
+```
+
+- **O que muda:** um modelo na config substitui o padrão daquele modelo. Os modelos que não
+  aparecem ficam com o padrão.
+- **Recalcular:** o comando `costs.reprice` relê a config e recalcula o custo de todas as
+  entradas. Não precisa reiniciar o daemon.
+
+### Orçamentos
+
+Em **Configurações**, cada host com custos tem a seção **Orçamentos**:
+
+- **Configuração:** cada orçamento é do host ou de um projeto (a chave de projeto da tela
+  Sessões), por dia ou por mês, no fuso do host, com um limite em US$.
+- **O que conta:** o custo estimado de todas as origens. A lista mostra quanto já foi gasto no
+  período e o percentual.
+- **Alertas:** em 50%, 80% e 100%, uma vez por período cada, como notificação do sistema e na
+  faixa "Precisa de você".
+- **Ação:**
+  - **notificar:** só os alertas;
+  - **segurar cards novos:** em 100%, os cards novos daquele escopo esperam na fila com o
+    motivo `budget`. Eles saem sozinhos no período seguinte ou quando o limite sobe.
+  - Sessões do terminal e sessões manuais nunca são seguradas.
+
+### Histórico da cota
+
+Toda leitura da cota de uma sessão gerenciada fica guardada por 30 dias. Leituras iguais em menos
+de 5 minutos viram uma só.
+
+- **Na tela Custos:** a seção **Cota** mostra as janelas de 5 horas e de 7 dias ao longo do tempo.
+- **Projeção:** com pelo menos 3 leituras da janela atual:
+  - "no ritmo atual, a janela de 5 h esgota às HH:MM";
+  - ou "não esgota antes de HH:MM", quando o ritmo não chega a 100% antes do reinício.
+- **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
+- **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
+  de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
 
 ## Desenvolvimento
 
