@@ -173,6 +173,18 @@ const validCommands: Record<CommandType, unknown> = {
   "terminal.close": { terminalId: "t", kill: false },
   "terminal.list": {},
   "terminal.settings": { enabled: true, confirm: true },
+  "ssh.list": {},
+  "ssh.save": {
+    name: "vps",
+    host: "vps.example.com",
+    user: "deploy",
+    port: 2222,
+    auth: "key-file",
+    secretRef: "~/.ssh/id_ed25519",
+    options: { serverAliveInterval: 30, compression: true, localForward: ["8080:localhost:80"] },
+    tags: ["prod"],
+  },
+  "ssh.remove": { id: "t", confirm: true },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
