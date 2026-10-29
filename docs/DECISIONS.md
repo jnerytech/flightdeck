@@ -1130,3 +1130,83 @@ A primeira execução da CI no GitHub falhou nas duas pernas. Estas são as caus
   - O `smoke:update` e o `smoke:costs` no `package.json` e na CI.
   - O README e as decisões.
 - **Migrações:** a trilha B não acrescentou nenhuma. As da trilha A continuam no fim, na ordem: uso e offsets, orçamentos e alertas, amostras da cota.
+
+# Decisões e divergências da Fase 9
+
+O que a spec da Fase 9 (distribuição e atualização automática) deixou aberto, ou o que mudou na implementação.
+
+## Chave e assinatura
+
+- **Formato:** o do `tauri signer`, isto é, minisign com Ed25519 sobre o BLAKE2b-512 do arquivo (algoritmo `ED`), mais a assinatura global sobre o comentário confiável.
+  - O daemon confere com `node:crypto`, e o `blake2b512` existe no Bun.
+  - Também aceita `Ed`, sem pré-hash.
+  - A chave e a assinatura podem vir em base64, como o `tauri signer` escreve, ou em texto puro.
+- **Chave do projeto:** `release/flightdeck.pub` (key id `7E50283A91DFDAA7`).
+  - O daemon a embute por `import ... with { type: "text" }`, que o `bun build --compile` inclui.
+  - O `build:daemon` recusa compilar sem uma chave válida, e o `release:tauri-config` faz o mesmo.
+  - O `tauri.conf.json` traz uma cópia em `plugins.updater.pubkey`, e um teste confere que as duas são iguais.
+- **Chaves de teste:** ficam em `apps/daemon/test/fixtures/release/`, e um teste confere que nenhuma é a do produto.
+  - `tauri-signer.pub`, mais `sample.bin` e `sample.bin.sig` feitos pelo `tauri signer` de verdade, provam a compatibilidade. A privada dessa chave não foi guardada.
+  - `test-signing.key.pem` e `.pub` assinam nos testes e no smoke (`scripts/test/minisign.ts`).
+- **Chave de teste no daemon:** só um daemon rodando do código-fonte aceita a chave de `FLIGHTDECK_TEST_PUBLIC_KEY`, para o `smoke:update`. O `flightdeckd` compilado usa sempre a embutida.
+
+## Release
+
+- **Saída:** o `release:assets` grava em `release-assets/`, porque `release/` agora guarda a chave versionada.
+- **Assinatura dos artefatos:**
+  - o instalador NSIS ganha o `.sig` pelo `createUpdaterArtifacts`, ligado só no build da release (`--config` gerado pelo `release:tauri-config`);
+  - os daemons são assinados pelo `release:sign` (`tauri signer sign`);
+  - a chave vem dos segredos `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+- **Manifestos:**
+  - as notas do `latest.json` são "Flightdeck X: <link da release>";
+  - o `protocol` do `daemon-latest.json` é o `PROTOCOL_VERSION` do build;
+  - o `SHA256SUMS` cobre os `.sig` e os dois manifestos.
+- **Tag da Fase 7:** a `v0.7.0` saiu pelo `release.yml` anterior, sem assinatura, porque o novo exige a chave real.
+
+## Daemon
+
+- **Sem verificação do código-fonte:** o `updates.manifestUrl` padrão é a URL do GitHub só no binário compilado. Rodando do código-fonte, é `null`.
+  - Nesse modo não há binário para atualizar.
+  - Assim, nenhum teste nem smoke sobe um daemon que busca a internet.
+- **Boot:** a verificação roda em segundo plano, e um servidor lento nunca atrasa a subida.
+- **Erros:** manifesto inválido (JSON ou schema), HTTP de erro e servidor fora do ar viram `host.info.update.error`, e o daemon continua.
+- **`daemon.update.apply`:**
+  - **Ordem:** download e conferência primeiro. Falhou, `update_verification_failed`, inclusive para HTTP de erro no download.
+  - **Arquivo:** só é gravado depois de conferido, então nada fica em `updates/`.
+  - **Sem serviço:** `update_needs_service`, e o arquivo já conferido é apagado.
+  - **Quem roda a troca:** o próprio binário novo (`<novo> update --from <novo>`), e a config vem do serviço, como no `update` da Fase 7.
+  - **Windows:** a tarefa única `Flightdeck\update` roda `cmd /c "<novo> update --from <novo> & schtasks /Delete ..."`, que a apaga ao fim.
+  - **Linux:** `systemd-run --user --collect --unit flightdeckd-update`.
+- **Compatibilidade de protocolo:** o manifesto traz `protocol`, mas o `host.info.update` não o repassa ao app. O app não avisa de protocolo novo antes de atualizar; o `protocol_incompatible` da Fase 7 continua sendo o aviso.
+- **WSL supervisionado:** não houve mudança. O daemon da distro se atualiza pelo próprio comando e pelo manifesto, como qualquer Linux.
+
+## Travas novas
+
+- **Rede (`scripts/test/network-guard.ts`):** o preload embrulha o `fetch`.
+  - Passam `127.0.0.1`, `localhost`, `[::1]` e os endereços das interfaces da própria máquina. Os testes de `allowedNetworks` falam com o daemon fora do loopback, mas sem sair dela.
+  - O resto é registrado e recusado, e a suíte reprova.
+  - O `smoke:update` liga a mesma trava.
+- **Serviço:** o `systemd-run` entrou na lista de controladores da trava de serviço.
+  - O `smoke:update` aceita só consultas de leitura ao serviço (`/Query` e `cat`), que respondem "sem serviço" sob a trava.
+
+## App
+
+- **Telas simples:** a faixa de atualização e o botão por host foram feitos de forma simples, porque vão para a base nova da Fase 10.
+- **Plugins:** o `tauri-plugin-updater` e o `tauri-plugin-process` (para reiniciar) ficam atrás de `Platform.updater`. A plataforma web não tem updater.
+- **Tempo limite da atualização de host:** 2 minutos (`daemonUpdateTimeoutMs`, injetável).
+
+## TDD e testes
+
+- **Ramos revelados pela cobertura (regra 7):**
+  - manifesto que nem é JSON;
+  - manifesto sem o binário do host;
+  - download com HTTP de erro;
+  - a fiação do `start` com a chave do projeto;
+  - falha ao procurar atualização do app;
+  - o intervalo de 6 h.
+- **Correções de teste antes do `feat` (regra 8):**
+  - a pasta fixa no `tmpdir()` do teste da release;
+  - o teste do preload de rede tira a própria tentativa;
+  - o app roda `init()` sozinho na montagem.
+- **`smoke:update`:** foi escrito depois das áreas, como o `smoke:ops`. O vermelho no passo certo foi mostrado tirando a fiação do atualizador: `invalid_state` no lugar de `update_needs_service`, com exit 1. A fiação foi restaurada depois.
+- **Auditoria:** a spec pede `--since fase-8`, mas a tag `fase-8` ainda não existe neste branch. Rodei `--since fase-7`.

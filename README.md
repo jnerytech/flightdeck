@@ -275,6 +275,48 @@ binário novo.
 - **Linux remoto (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` e, no host,
   `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
 
+### Atualização automática (assinada)
+
+Cada release traz os instaladores e os daemons assinados com a chave do projeto (minisign, gerada
+pelo `tauri signer`). A chave pública está em `release/flightdeck.pub`, e o app e o daemon só
+aceitam o que ela assinou.
+
+- **O app:**
+  - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
+  - com uma versão nova, mostra a faixa "Flightdeck X disponível", com as notas, **Instalar e
+    reiniciar** e **Depois**;
+  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado;
+  - em **Configurações**: **Procurar atualização agora** e **Avisar sobre atualizações** (ligado
+    por padrão).
+- **O daemon:**
+  - verifica o `daemon-latest.json` ao subir e a cada `updates.checkIntervalH` (24 h);
+  - na página do host, o app mostra **Atualizar daemon para X** quando há versão nova, e pede
+    confirmação;
+  - o daemon baixa o binário do próprio sistema para `<dataDir>/updates/`, confere o sha256 e a
+    assinatura, e roda o `flightdeckd update --from` fora do serviço, para sobreviver à própria
+    parada: uma tarefa única `Flightdeck\update` no Windows e `systemd-run --user` no Linux;
+  - o host mostra "atualizando…" até reconectar na versão nova.
+- **Ordem:** com o app e os daemons atrasados, a faixa sugere atualizar primeiro o app.
+
+```json
+{ "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
+               "checkIntervalH": 24 } }
+```
+
+Só o `flightdeckd` compilado verifica o GitHub por padrão. Rodando do código-fonte não há binário
+para atualizar, e o `manifestUrl` padrão é `null`.
+
+**Quando falha:**
+
+- **"o daemon não roda como serviço":** a atualização pelo app precisa do serviço. Instale com
+  `flightdeckd service install`, ou atualize à mão com `flightdeckd update --from`.
+- **Verificação recusada** (sha256 ou assinatura): o arquivo baixado é apagado e nada muda. Baixe
+  de novo da página de Releases e confira o `SHA256SUMS`.
+- **O host não volta em 2 minutos:** a página do host mostra o comando manual. No host, rode
+  `~/.flightdeck/bin/flightdeckd service status` e, se preciso, `flightdeckd update --from` com o
+  binário da release. A volta automática do `update` restaura a versão anterior quando a nova
+  não sobe.
+
 ### Retenção
 
 ```json
