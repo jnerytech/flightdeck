@@ -13,7 +13,7 @@ Pré-requisito: Fase 8 fechada. A fase pode ser desenvolvida em paralelo às Fas
 
 As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.md e agentes), do Agent Console (snapshot git por turno) e do agent-deck (MCP e skills por projeto).
 
-**Regra de escrita:** a configuração do usuário fica **só para leitura**: `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/agents` e `~/.claude/skills`. O Flightdeck escreve só arquivos do projeto, sempre com confirmação. A única escrita em `~/.claude` continua sendo os hooks da Fase 5.
+**Regra de escrita:** a configuração do usuário fica **só para leitura**: `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/agents` e `~/.claude/skills`. O Flightdeck escreve só arquivos do projeto, sempre com confirmação. Em `~/.claude`, o próprio Flightdeck continua escrevendo só os hooks da Fase 5. A exceção é a bifurcação que **você** pede: o `forkSession` do SDK grava o transcript novo em `~/.claude/projects`, escrito pelo próprio SDK, como qualquer sessão do Claude Code.
 
 **Fora da Fase 11**
 
@@ -84,7 +84,9 @@ As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.m
   - ligar e desligar pela lista do `settings.local.json`.
   - As duas mesclam e preservam o resto do arquivo.
 - **Segredos:** valores de `env` e `headers` aparecem mascarados. Editar exige digitar o valor de novo.
-- **"Testar":** o daemon sobe o servidor com o cliente do `@modelcontextprotocol/sdk` (stdio ou http), lista ferramentas e recursos, e derruba. Timeout de 15 s. Não envolve o Claude.
+- **"Testar":** sobe o servidor com o cliente do `@modelcontextprotocol/sdk` (stdio ou http), lista ferramentas e recursos, e derruba. Timeout de 15 s. Não envolve o Claude.
+  - Um servidor stdio roda um comando que veio do repositório. Por isso, antes de testar, o app mostra o **comando e os argumentos exatos** e pede confirmação, como a confiança de workflows da Fase 6.
+  - Nenhum servidor é iniciado só porque a lista foi aberta.
 - **Sessão gerenciada viva:** mostra o status por `mcpServerStatus()` e liga ou desliga na hora por `toggleMcpServer`.
 
 ### CLAUDE.md, agentes e skills
@@ -119,6 +121,14 @@ As ideias vêm do opcode (timeline, checkpoints, MCP manager, editor de CLAUDE.m
   - ações "Voltar arquivos até aqui" e "Bifurcar daqui", com prévia e confirmação.
 - **Projeto → Agente:** abas MCP, CLAUDE.md, Agentes e Skills, com a origem e o "só leitura" de cada item.
 
+## Migrações com trilhas em paralelo
+
+Várias fases criam tabelas ao mesmo tempo. A regra:
+
+- cada uma acrescenta as próprias migrações no fim do array;
+- no rebase sobre a fase integrada anterior, renumera as suas para depois das que já entraram;
+- nenhum teste fixa o índice de uma migração.
+
 ## Disciplina TDD
 
 Segue [`docs/TDD.md`](TDD.md).
@@ -136,7 +146,7 @@ Segue [`docs/TDD.md`](TDD.md).
 | `snapshots` | snapshot sem mudar índice nem arquivos do usuário (conferido por `git status` e hash); inclui não rastreados e respeita ignorados; árvore igual não cria ref; limites e retenção; hook só enfileira |
 | `rewind` | prévia e aplicação pelo SDK falso e pelo snapshot; arquivos criados depois são removidos; snapshot de segurança e desfazer; recusa com turno em andamento e sem confirmação |
 | `bifurcar` | `forkSession` com `upToMessageId`; abre gerenciada com `resume` ou oferece terminal; opção de voltar arquivos junto |
-| `mcp-projeto` | origens e só leitura certos; mescla preservando o resto; segredos mascarados; `test` lista ferramentas de um servidor stdio local e respeita o timeout; `toggle` na sessão viva pelo runtime falso |
+| `mcp-projeto` | origens e só leitura certos; mescla preservando o resto; segredos mascarados; `test` exige `confirm` com o comando exato, lista ferramentas de um servidor stdio local e respeita o timeout; abrir a lista não inicia servidor; `toggle` na sessão viva pelo runtime falso |
 | `config-agente` | CLAUDE.md, agentes e skills do projeto listados e editáveis; os do usuário só leitura; frontmatter validado; conflito por hash; nada escrito fora do projeto |
 | `linha-do-tempo-ui` | turnos com arquivos; prévia, confirmação e desfazer; bifurcar com as duas opções |
 | `agente-ui` | abas MCP, CLAUDE.md, Agentes e Skills; avisos de versionado e de só leitura; testar servidor |

@@ -81,9 +81,10 @@ As ideias vêm de apps do mesmo espaço (vibe-kanban, parallel-code, Paradev, Ag
 - **Indicador no card:** "N à frente, M atrás" da base, por `git rev-list --left-right --count <base>...<branch>`.
 - **"Atualizar com a base":** rebase da branch do card sobre a base. Se houver conflito, aborta o rebase, avisa com a lista de arquivos e deixa a worktree como estava.
 - **"Merge e arquivar":** para cards sem PR. Modos: `merge --no-ff` (padrão) ou `squash`.
-  1. Faz o merge na base, no repositório principal, sem trocar a branch atual. Usa uma worktree temporária da base, ou `git merge-tree` + `commit-tree` + `update-ref`.
-  2. Remove a worktree e a branch do card.
-  3. Leva o card a Concluído.
+  1. **Se a base está em checkout em alguma worktree** (o caso comum: o `main` aberto no repositório principal), o merge é feito **ali**, com `git merge` ou `git merge --squash` + commit. Isso só acontece se aquela worktree estiver limpa. Com mudanças nela, recusa com a lista de arquivos.
+  2. **Se a base não está em checkout em nenhuma worktree**, o merge é feito numa worktree temporária da base, que é removida em seguida.
+  3. **Nunca mova o ref de uma branch em checkout** (`update-ref` ou `merge-tree`), porque o índice e os arquivos daquela worktree ficariam para trás do HEAD.
+  4. Remove a worktree e a branch do card e leva o card a Concluído.
 - **Merge com conflito:** recusa, avisa e não muda nada.
 
 ### `.worktreeinclude`
@@ -140,6 +141,14 @@ As ideias vêm de apps do mesmo espaço (vibe-kanban, parallel-code, Paradev, Ag
   - indicador à frente e atrás, "Atualizar com a base" e "Merge e arquivar".
 - Na configuração do projeto: um aviso quando não existe `.worktreeinclude`, com um exemplo.
 
+## Migrações com trilhas em paralelo
+
+Várias fases criam tabelas ao mesmo tempo. A regra:
+
+- cada uma acrescenta as próprias migrações no fim do array;
+- no rebase sobre a fase integrada anterior, renumera as suas para depois das que já entraram;
+- nenhum teste fixa o índice de uma migração.
+
 ## Disciplina TDD
 
 Segue [`docs/TDD.md`](TDD.md). A auditoria vai desde o commit-base da fase, a tag da fase anterior integrada.
@@ -157,7 +166,7 @@ Segue [`docs/TDD.md`](TDD.md). A auditoria vai desde o commit-base da fase, a ta
 | `revisao-inline` | comentários em rascunho por alvo; envio monta a mensagem no formato e vai pelo caminho certo (gerenciada, card, terminal controlável ou copiar); comentário fica desatualizado quando o trecho some |
 | `reverter-editar` | revert de rastreado e de novo com cópia e desfazer; edição com `expectedHash`; conflito quando o arquivo mudou; limites de texto e tamanho |
 | `pr-comentarios` | GitHub e Azure pelos falsos; estado resolvido; envio ao agente; nada postado no provedor |
-| `merge-local` | à frente e atrás; atualizar com a base com e sem conflito (aborta e preserva); merge `--no-ff` e `squash` sem trocar a branch do repositório; conflito recusa sem mudar nada |
+| `merge-local` | à frente e atrás; atualizar com a base com e sem conflito (aborta e preserva); merge `--no-ff` e `squash` com a base em checkout limpo, conferindo que o `git status` daquela worktree fica limpo depois; base em checkout com mudanças é recusada; base fora de checkout pela worktree temporária; conflito recusa sem mudar nada |
 | `worktreeinclude` | copia só os ignorados que casam; limite de 50 MB; nunca `.git` nem `.flightdeck`; `settings.local.json` como padrão embutido |
 | `sessao-arquivos` | `Write`, `Edit`, `MultiEdit` e `NotebookEdit` extraídos de fixture; deduplicação por mensagem; `files.sessions` |
 | `statusline` | linha com cota e custo; daemon fora do ar dá linha vazia e saída 0 em menos de 300 ms; nada é escrito em settings |
