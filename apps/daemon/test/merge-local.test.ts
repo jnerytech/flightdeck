@@ -183,7 +183,12 @@ describe("merge-local", () => {
     const gone = await ready("Sem base", "oi", "dev");
     commit(gone.worktree, "feito.txt", "feito\n");
     git(gone.repo, "branch", "-D", "dev");
-    expect(await message(gone.board.mergeLocal(gone.cardId, "merge", true))).toContain("dev");
+    expect(await message(gone.board.mergeLocal(gone.cardId, "merge", true))).toContain(
+      "a base dev não é uma branch local",
+    );
+    // A card never started has nothing to merge.
+    const idle = gone.board.createCard(gone.project.id, { title: "Parado", description: "x" });
+    expect(await message(gone.board.mergeLocal(idle.id, "merge", true))).toContain("sem worktree");
   });
 
   test("card.updateFromBase e card.mergeLocal pelo protocolo", async () => {
