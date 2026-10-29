@@ -49,7 +49,7 @@ function runCommand(command: string, input: string): void {
       windowsVerbatimArguments: windows,
     } as Parameters<typeof Bun.spawnSync>[1],
   );
-  log({ type: "command", command, code: proc.exitCode, stdout: proc.stdout.toString() });
+  log({ type: "command", command, code: proc.exitCode, stdout: proc.stdout?.toString() ?? "" });
 }
 
 async function postHook(event: string, payload: Record<string, unknown>): Promise<void> {
@@ -68,7 +68,8 @@ async function postHook(event: string, payload: Record<string, unknown>): Promis
 }
 
 const notifications: unknown[] = [];
-let client: Client | null = null;
+/** Holder, so the narrowing of a plain `let` does not hide the assignment in openChannel. */
+const channel: { client: Client | null } = { client: null };
 
 async function openChannel(): Promise<void> {
   const index = args.indexOf("--mcp-config");
@@ -76,7 +77,7 @@ async function openChannel(): Promise<void> {
     mcpServers: Record<string, { command: string; args: string[] }>;
   };
   const server = Object.values(config.mcpServers)[0];
-  client = new Client({ name: "fake-claude", version: "0.0.0" });
+  const client = new Client({ name: "fake-claude", version: "0.0.0" });
   client.fallbackNotificationHandler = async (notification) => {
     notifications.push(notification);
     log({ type: "channel", notification });
@@ -89,6 +90,7 @@ async function openChannel(): Promise<void> {
       stderr: "inherit",
     }),
   );
+  channel.client = client;
   log({ type: "channel-open", capabilities: client.getServerCapabilities() ?? null });
 }
 
@@ -143,5 +145,5 @@ for (const step of steps) {
       break;
   }
 }
-await client?.close();
+await channel.client?.close();
 process.exit(code);
