@@ -8,6 +8,7 @@ import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
+import type { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
@@ -51,6 +52,8 @@ export function daemon(
     costs?: boolean;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
+    /** The quota's samples (phase 8), built over this daemon's database. */
+    quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -104,6 +107,7 @@ export function daemon(
     : undefined;
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   const budgets = options.budgets?.(store.db);
+  const quotaHistory = options.quotaHistory?.(store.db);
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -119,6 +123,7 @@ export function daemon(
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
       ...(budgets ? { budgets } : {}),
+      ...(quotaHistory ? { quotaHistory } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
