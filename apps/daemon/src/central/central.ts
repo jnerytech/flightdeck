@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HooksStatusResult } from "@flightdeck/protocol";
+import { type SnapshotInput, snapshotForHook } from "../checkpoints/snapshots.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -17,6 +18,8 @@ import { RECEPTOR_FILE } from "./wrapper.ts";
 const SWEEP_MS = 60_000;
 
 export interface CentralOptions {
+  /** Phase 12: terminal sessions' turns become git snapshots. */
+  snapshots?: { enqueue(input: SnapshotInput): void };
   db: Database;
   manager: SessionManager;
   hooks: Config["hooks"];
@@ -147,6 +150,10 @@ export class Central {
       external: this.external,
       permissions: this.permissions,
       isManaged: (id) => this.opts.manager.list().some((s) => s.claudeSessionId === id),
+      onHook: (event, payload) => {
+        const snapshot = snapshotForHook(event, payload);
+        if (snapshot) this.opts.snapshots?.enqueue(snapshot);
+      },
     });
     this.server = server;
     mkdirSync(this.opts.dataDir, { recursive: true });

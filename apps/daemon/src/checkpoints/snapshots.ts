@@ -33,6 +33,26 @@ export interface SnapshotInput {
   turnUuid?: string;
 }
 
+/**
+ * The snapshot a terminal session's hook asks for: before the turn on UserPromptSubmit (with
+ * the prompt), after it on Stop; nothing for the other hooks or without a cwd.
+ */
+export function snapshotForHook(
+  event: string,
+  payload: { session_id?: unknown; cwd?: unknown; prompt?: unknown },
+): SnapshotInput | null {
+  const kind = event === "UserPromptSubmit" ? "before" : event === "Stop" ? "after" : null;
+  if (!kind || typeof payload.cwd !== "string" || typeof payload.session_id !== "string") {
+    return null;
+  }
+  return {
+    cwd: payload.cwd,
+    claudeSessionId: payload.session_id,
+    kind,
+    ...(typeof payload.prompt === "string" ? { prompt: payload.prompt } : {}),
+  };
+}
+
 export type SnapshotResult = { row: SnapshotRow } | { skipped: string };
 
 export interface SnapshotsOptions {

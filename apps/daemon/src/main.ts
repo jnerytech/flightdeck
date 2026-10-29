@@ -16,6 +16,7 @@ import {
 } from "./central/hooks-install.ts";
 import { ProjectKeys } from "./central/project-key.ts";
 import { runClaude } from "./central/wrapper.ts";
+import { Snapshots } from "./checkpoints/snapshots.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import {
   type Config,
@@ -334,6 +335,8 @@ export async function startDaemon(
   const quotaHistory = new QuotaHistory({ db: store.db });
   const keys = new ProjectKeys(config.hostName);
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.keyFor(cwd) });
+  // Phase 12: a git snapshot at the start and end of every turn, in the background.
+  const snapshots = new Snapshots({ db: store.db });
   const manager = new SessionManager({
     store,
     runtime,
@@ -346,6 +349,13 @@ export async function startDaemon(
       quotaHistory.sample(readings);
     },
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
+    onTurnEdge: (edge) =>
+      snapshots.enqueue({
+        cwd: edge.cwd,
+        claudeSessionId: edge.claudeSessionId,
+        kind: edge.kind,
+        ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
+      }),
   });
   const history = new HistoryIndexer({
     db: store.db,
@@ -397,6 +407,7 @@ export async function startDaemon(
     dataDir: config.dataDir,
     retention: config.retention,
     backup: config.backup,
+    snapshots,
   });
   maintenance.start();
   // Checked in the background: a slow or unreachable release server never delays the boot.
@@ -416,6 +427,7 @@ export async function startDaemon(
       })
     : undefined;
   const central = new Central({
+    snapshots,
     db: store.db,
     manager,
     hooks: config.hooks,
@@ -445,6 +457,7 @@ export async function startDaemon(
     central,
     maintenance,
     ...(updates ? { updates } : {}),
+    snapshots,
     ...(updater ? { updater } : {}),
     hostName: config.hostName,
     bind: config.bind,

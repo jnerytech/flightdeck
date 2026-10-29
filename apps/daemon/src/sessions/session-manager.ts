@@ -32,6 +32,16 @@ export interface SessionManagerOptions {
   onQuota?: (readings: QuotaReading[]) => void;
   /** Every turn of a managed session, before it is stored (phase 7's usage). */
   onTurn?: (sessionId: string, cwd: string, turn: SessionEventOf<"turn.result">) => void;
+  /** Start and end of every turn (phase 12's snapshots); the first start waits for session.init. */
+  onTurnEdge?: (edge: TurnEdge) => void;
+}
+
+export interface TurnEdge {
+  sessionId: string;
+  claudeSessionId: string;
+  cwd: string;
+  kind: "before" | "after";
+  prompt?: string;
 }
 
 export type EventListener = (envelope: EventEnvelope) => void;
@@ -41,6 +51,8 @@ interface LiveSession {
   /** Messages sent while a turn is in progress, delivered one per turn. */
   queue: string[];
   closing: boolean;
+  /** The first turn's prompt, until session.init names the Claude session. */
+  pendingBefore?: string;
 }
 
 const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);
@@ -351,6 +363,10 @@ export class SessionManager {
         });
         this.emit(sessionId, event);
         if (this.get(sessionId).status === "starting") this.setStatus(sessionId, "running");
+        if (live.pendingBefore !== undefined) {
+          this.turnEdge(sessionId, "before", live.pendingBefore);
+          live.pendingBefore = undefined;
+        }
         return;
       case "quota":
         this.opts.onQuota?.(event.windows);
@@ -358,6 +374,7 @@ export class SessionManager {
       case "turn.result": {
         // Before the event is stored: the usage reads the session's previous total.
         this.opts.onTurn?.(sessionId, this.get(sessionId).cwd, event);
+        this.turnEdge(sessionId, "after");
         this.emit(sessionId, event);
         const next = live.queue.shift();
         if (next !== undefined) this.deliver(sessionId, next);
@@ -375,7 +392,21 @@ export class SessionManager {
     const status = this.get(sessionId).status;
     if (status !== "starting") this.setStatus(sessionId, "running");
     this.emit(sessionId, { type: "message.user", text });
+    if (this.get(sessionId).claudeSessionId) this.turnEdge(sessionId, "before", text);
+    else live.pendingBefore = text;
     live.run.send(text);
+  }
+
+  private turnEdge(sessionId: string, kind: "before" | "after", prompt?: string): void {
+    const { claudeSessionId, cwd } = this.get(sessionId);
+    if (!claudeSessionId) return;
+    this.opts.onTurnEdge?.({
+      sessionId,
+      claudeSessionId,
+      cwd,
+      kind,
+      ...(prompt !== undefined ? { prompt } : {}),
+    });
   }
 
   private fail(sessionId: string, live: LiveSession, code: string, message: string): void {

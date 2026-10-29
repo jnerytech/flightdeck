@@ -32,6 +32,7 @@ import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
+import type { Snapshots } from "./checkpoints/snapshots.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
@@ -78,6 +79,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 12: the git snapshots behind `snapshots.list`. */
+  snapshots?: Snapshots;
   /** Phase 9: applies the checked update (`daemon.update.apply`). */
   updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
@@ -457,6 +460,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, maintenance().backupNow());
       case "maintenance.prune":
         return ok(command.type, maintenance().prune(command.payload.dryRun === true));
+      case "snapshots.list":
+        return ok(command.type, {
+          snapshots: opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
+        });
       case "daemon.update.apply": {
         if (!opts.updater)
           throw new FlightdeckError("invalid_state", "este daemon não se atualiza");

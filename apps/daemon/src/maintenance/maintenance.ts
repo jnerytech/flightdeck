@@ -28,6 +28,8 @@ export interface MaintenanceOptions {
   dataDir: string;
   retention: RetentionPolicy;
   backup?: { enabled: boolean; keep: number };
+  /** Phase 12: the git snapshots go with the retention (50 per session, 30 days). */
+  snapshots?: { prune(policy: { perSession: number; days: number }): Promise<number> };
   now?: () => number;
   timers?: MaintenanceTimers;
 }
@@ -105,6 +107,7 @@ export class Maintenance {
   /** Retention, then a backup when enabled and the last one is a day old (or missing). */
   private daily(): void {
     this.prune(false);
+    void this.opts.snapshots?.prune({ perSession: 50, days: 30 });
     const last = listBackups(this.backupsDir)[0];
     const due = !last || this.now() - Date.parse(last.at) >= DAY_MS;
     if (this.opts.backup?.enabled && due) this.backupNow();

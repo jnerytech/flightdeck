@@ -946,6 +946,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("daemon.shutdown", z.object({}).strict()),
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
+  /** Phase 12: the git snapshots of a Claude session, oldest first. */
+  cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -1067,6 +1069,20 @@ export const HelloResult = z.object({
   allowedRoots: z.array(z.string()),
 });
 export type HelloResult = z.infer<typeof HelloResult>;
+
+/** Phase 12: one git snapshot of a turn (`before`, `after`, or `safety` before a rewind). */
+export const SnapshotInfo = z.object({
+  claudeSessionId: z.string(),
+  n: z.number().int(),
+  ref: z.string(),
+  tree: z.string(),
+  kind: z.string(),
+  turnUuid: z.string().nullable(),
+  prompt: z.string().nullable(),
+  createdAt: z.string(),
+  repo: z.string(),
+});
+export type SnapshotInfo = z.infer<typeof SnapshotInfo>;
 
 /** Phase 9: `daemon-latest.json`, published with each release. */
 export const DaemonManifest = z.object({
@@ -1270,6 +1286,7 @@ export interface CommandResults {
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
+  "snapshots.list": { snapshots: SnapshotInfo[] };
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;

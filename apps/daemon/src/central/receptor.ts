@@ -12,6 +12,8 @@ export interface ReceptorOptions {
   permissions?: ExternalPermissions;
   /** Sessions the daemon itself runs: their hooks (from the user's settings) are ignored. */
   isManaged: (claudeSessionId: string) => boolean;
+  /** Every hook of a terminal session, after it is applied (phase 12's snapshots). */
+  onHook?: (event: string, payload: HookPayload) => void;
 }
 
 export interface Receptor {
@@ -54,6 +56,7 @@ export function startReceptor(opts: ReceptorOptions): Receptor {
     const prompt = event === "Notification" && payload.notification_type === "permission_prompt";
     if (!prompt) opts.permissions?.closeSession(id);
     opts.external.apply(event, payload);
+    opts.onHook?.(event, payload);
     if (event !== "PermissionRequest" || !opts.permissions) return empty();
     const answer = await opts.permissions.hold(payload, req.signal);
     return answer
