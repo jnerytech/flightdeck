@@ -1,4 +1,11 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
@@ -74,17 +81,71 @@ export function excludeLocalSettings(repo: string): void {
   exclude(repo, LOCAL_SETTINGS);
 }
 
+/** Patterns (in the `.gitignore` format) of ignored files a new worktree gets from the repo. */
+export const WORKTREE_INCLUDE = ".worktreeinclude";
+
+/** What `.worktreeinclude` copies into a new worktree, at most (bytes). */
+export const WORKTREE_INCLUDE_LIMIT = 50 * 1024 * 1024;
+
+/** Which of `paths` git ignores (`.gitignore`, `info/exclude`…), through `check-ignore --stdin`. */
+async function ignoredOf(repo: string, paths: string[]): Promise<Set<string>> {
+  const proc = Bun.spawn([whichOnPath("git") ?? "git", "check-ignore", "-z", "--stdin"], {
+    cwd: repo,
+    env: process.env,
+    stdin: new TextEncoder().encode(paths.map((p) => `${p}\0`).join("")),
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const out = await new Response(proc.stdout).text();
+  await proc.exited;
+  return new Set(out.split("\0").filter(Boolean));
+}
+
 /**
- * A new worktree gets the root's settings.local.json (the project rules), unless the repository
- * versions that file: then the worktree already has the committed one.
+ * Copies into the worktree the files git ignores that match `.worktreeinclude`, plus the
+ * built-in `.claude/settings.local.json` (the project rules of phase 7), sorted by path, up to
+ * `limit` bytes in all. Tracked files already come with the worktree; nothing from `.git/` or
+ * `.flightdeck/`. Returns what was copied and what the limit left out.
  */
-async function copyLocalSettings(repo: string, worktree: string): Promise<void> {
-  const source = join(repo, LOCAL_SETTINGS);
-  if (!existsSync(source)) return;
-  const tracked = await git(repo, "ls-files", "--error-unmatch", LOCAL_SETTINGS);
-  if (tracked.code === 0) return;
-  mkdirSync(dirname(join(worktree, LOCAL_SETTINGS)), { recursive: true });
-  copyFileSync(source, join(worktree, LOCAL_SETTINGS));
+export async function copyIncluded(
+  repo: string,
+  worktree: string,
+  limit = WORKTREE_INCLUDE_LIMIT,
+): Promise<{ copied: string[]; skipped: string[] }> {
+  const include = join(repo, WORKTREE_INCLUDE);
+  const listed = must(
+    await git(
+      repo,
+      "-c",
+      "core.quotePath=false",
+      "ls-files",
+      "--others",
+      "--ignored",
+      "-z",
+      `--exclude=/${LOCAL_SETTINGS}`,
+      ...(existsSync(include) ? [`--exclude-from=${include}`] : []),
+    ),
+    "git ls-files",
+  );
+  const matching = listed.stdout
+    .split("\0")
+    .filter((path) => path && !path.startsWith(".flightdeck/") && !path.startsWith(".git/"));
+  const ignored = await ignoredOf(repo, matching);
+  const copied: string[] = [];
+  const skipped: string[] = [];
+  let total = 0;
+  for (const path of matching.filter((p) => ignored.has(p)).sort()) {
+    const size = statSync(join(repo, path)).size;
+    if (total + size > limit) {
+      skipped.push(path);
+      continue;
+    }
+    total += size;
+    mkdirSync(dirname(join(worktree, path)), { recursive: true });
+    copyFileSync(join(repo, path), join(worktree, path));
+    copied.push(path);
+  }
+  return { copied, skipped };
 }
 
 /** The tail of the line of worktrees being added, per repository. */
@@ -117,13 +178,14 @@ async function create(
   repo: string,
   title: string,
   base: string,
-): Promise<{ slug: string; branch: string; path: string }> {
+  includeLimit = WORKTREE_INCLUDE_LIMIT,
+): Promise<{ slug: string; branch: string; path: string; skipped: string[] }> {
   const slug = await freeSlug(repo, slugify(title));
   const branch = `fd/${slug}`;
   const path = worktreeDir(repo, slug);
   exclude(repo, EXCLUDE_LINE);
   excludeLocalSettings(repo);
   must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
-  await copyLocalSettings(repo, path);
-  return { slug, branch, path };
+  const { skipped } = await copyIncluded(repo, path, includeLimit);
+  return { slug, branch, path, skipped };
 }

@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
-import { basename } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, join } from "node:path";
 import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
@@ -34,7 +35,13 @@ import type {
   PrProviderKind,
   PrState,
 } from "./types.ts";
-import { addWorktree, excludeLocalSettings, must } from "./worktree.ts";
+import {
+  addWorktree,
+  excludeLocalSettings,
+  must,
+  WORKTREE_INCLUDE,
+  WORKTREE_INCLUDE_LIMIT,
+} from "./worktree.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
@@ -62,6 +69,8 @@ export interface BoardOptions {
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
   projectKeys?: { keyFor(path: string): string };
+  /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
+  worktreeIncludeLimit?: number;
 }
 
 interface ProjectRow {
@@ -83,6 +92,7 @@ function toProject(row: ProjectRow): Project {
     prProvider: row.pr_provider,
     setupScript: row.setup_script,
     promptTemplate: row.prompt_template,
+    worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
   };
 }
 
@@ -217,7 +227,7 @@ export class Board {
     const taken = this.db.query("SELECT 1 FROM projects WHERE path = ?").get(path);
     if (taken) throw new FlightdeckError("invalid_state", `projeto já cadastrado: ${path}`);
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
-    const project: Project = {
+    const project: Omit<Project, "worktreeInclude"> = {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
@@ -240,7 +250,7 @@ export class Board {
         project.setupScript,
         project.promptTemplate,
       );
-    return project;
+    return this.getProject(project.id);
   }
 
   updateProject(id: string, patch: ProjectPatch): Project {
@@ -509,13 +519,19 @@ export class Board {
     const project = this.getProject(card.projectId);
     let worktree = card.worktreePath;
     if (!worktree) {
-      const added = await addWorktree(project.path, card.title, project.baseBranch);
+      const limit = this.opts.worktreeIncludeLimit ?? WORKTREE_INCLUDE_LIMIT;
+      const added = await addWorktree(project.path, card.title, project.baseBranch, limit);
       worktree = added.path;
+      const left = added.skipped.length;
+      const notice =
+        left === 0
+          ? null
+          : `${left === 1 ? "1 arquivo do .worktreeinclude não copiado" : `${left} arquivos do .worktreeinclude não copiados`}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
       this.db
         .query(
-          "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, updated_at = ? WHERE id = ?",
+          "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, notice = ?, updated_at = ? WHERE id = ?",
         )
-        .run(added.slug, added.branch, added.path, now(), id);
+        .run(added.slug, added.branch, added.path, notice, now(), id);
       this.changed(id);
     }
     excludeLocalSettings(project.path);

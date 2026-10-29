@@ -332,6 +332,8 @@ export const Project = z.object({
   setupScript: z.string().nullable(),
   /** Appended to the prompt of every card. */
   promptTemplate: z.string(),
+  /** The repository has a `.worktreeinclude` (phase 11): the app suggests one when it has not. */
+  worktreeInclude: z.boolean().default(false),
 });
 export type Project = z.infer<typeof Project>;
 
