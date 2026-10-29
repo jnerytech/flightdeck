@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Board } from "../src/board/board.ts";
 import { type BoardEvent, nextColumn } from "../src/board/columns.ts";
 import type { BoardColumn } from "../src/board/types.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
 import { poll } from "./helpers.ts";
+
+// Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
+setDefaultTimeout(20_000);
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {
