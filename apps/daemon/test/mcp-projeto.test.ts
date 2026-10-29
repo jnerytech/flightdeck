@@ -150,9 +150,11 @@ describe("mcp-projeto", () => {
       tools: ["eco"],
       resources: ["nota"],
     });
-    expect(await code(config.test(project, "mudo", true))).toBe(
-      "o servidor mudo não respondeu em 0.3 s",
+    const timedOut = await config.test(project, "mudo", true).then(
+      () => "respondeu",
+      (error: Error) => error.message,
     );
+    expect(timedOut).toBe("o servidor mudo não respondeu em 0.3 s");
   });
 
   test("sessão gerenciada viva: liga e desliga na hora pelo runtime", async () => {
