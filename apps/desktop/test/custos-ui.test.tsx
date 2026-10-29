@@ -278,4 +278,31 @@ describe("custos-ui", () => {
     expect(await store.saveFile("a.csv", "x")).toBe(false);
     expect(store.getState().error).toBe("salvar arquivo indisponível nesta plataforma");
   });
+  test("com dois hosts, a tela troca de host", async () => {
+    const { store } = await online();
+    const other = makeDaemon(cleanups, { costs: true });
+    spend(other, { day: "2026-10-15", key: "kZ", cost: 7 });
+    const second = other.listen();
+    await act(async () => {
+      await store.addHost({ name: "beta", url: second.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[1]?.hostInfo !== null);
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
+    await choose("Host dos custos", store.getState().hosts[1]?.id ?? "");
+    await settle(() => text("Custo estimado") === "US$ 7.00");
+    expect(text("Custo estimado")).toBe("US$ 7.00");
+  });
+
+  test("sem dia injetado, hoje é o dia desta máquina", () => {
+    const local = new AppStore(memoryPlatform(false).platform, { now: () => START });
+    const today = (() => {
+      try {
+        return local.today();
+      } catch {
+        return "";
+      }
+    })();
+    expect(today).toBe(new Date(START).toLocaleDateString("sv-SE"));
+  });
 });
