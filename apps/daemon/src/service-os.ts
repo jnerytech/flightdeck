@@ -1,9 +1,35 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
-import { dirname } from "node:path";
+import { basename, dirname } from "node:path";
 import { spawnExec } from "./exec.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { whichOnPath } from "./which.ts";
+
+/** The OS programs that install, start or stop services. */
+const CONTROLLERS = new Set(["systemctl", "schtasks", "loginctl"]);
+
+/** True for a command that would talk to the real service manager. */
+export function isServiceController(cmd: string[]): boolean {
+  const name = basename(cmd[0] ?? "")
+    .toLowerCase()
+    .replace(/.exe$/, "");
+  return CONTROLLERS.has(name);
+}
+
+/**
+ * Tests set `FLIGHTDECK_SERVICE_GUARD` to a file: service commands are then recorded there and
+ * never run (the preload fails the suite if any was attempted).
+ */
+const guardedExec: typeof spawnExec = (cmd) => {
+  const guard = process.env.FLIGHTDECK_SERVICE_GUARD;
+  if (!guard || !isServiceController(cmd)) return spawnExec(cmd);
+  appendFileSync(
+    guard,
+    `${cmd.join(" ")}
+`,
+  );
+  return Promise.resolve({ code: 99, stdout: "" });
+};
 
 /** The real `ServiceContext`; `overrides` only exist so tests can exercise the Windows branch. */
 export function osServiceContext(
@@ -20,7 +46,7 @@ export function osServiceContext(
     systemRoot: env.SystemRoot ?? "C:\\Windows",
     tempDir: tmpdir(),
     dryRun,
-    exec: spawnExec,
+    exec: guardedExec,
     writeFile(path, content) {
       mkdirSync(dirname(path), { recursive: true });
       // Task Scheduler expects the XML in UTF-16 (the declaration says so) with a BOM.
