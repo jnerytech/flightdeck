@@ -212,6 +212,7 @@ export function App({ store }: { store: AppStore }) {
           }
           t={t}
           nowMs={store.now()}
+          onCopyText={(text) => void store.copyText(text)}
           onOpenHub={() => go({ name: "hub" })}
           onOpenCosts={() => go({ name: "costs" })}
           // Budgets live in Settings (phase 8).

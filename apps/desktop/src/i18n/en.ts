@@ -24,6 +24,7 @@ export const en: Dictionary = {
     reason: "Reason (optional)",
     cancel: "Cancel",
     cwd: "Folder",
+    copyFolder: "Copy folder",
     keys: "A approves · N denies · Esc leaves",
     openSession: "Open session",
     openCard: "Open card",

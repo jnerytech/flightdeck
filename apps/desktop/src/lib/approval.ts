@@ -20,7 +20,7 @@ function relative(path: string, cwd: string | null): string {
 }
 
 /** Nested values flattened to `key.sub`, lists joined, long strings cut. */
-function fields(input: Record<string, unknown>, prefix = ""): Array<[string, string]> {
+export function fields(input: Record<string, unknown>, prefix = ""): Array<[string, string]> {
   return Object.entries(input).flatMap(([key, value]): Array<[string, string]> => {
     const name = `${prefix}${key}`;
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
@@ -29,6 +29,22 @@ function fields(input: Record<string, unknown>, prefix = ""): Array<[string, str
     const shown = Array.isArray(value) ? value.map(String).join(", ") : String(value);
     return [[name, shown.length > MAX_VALUE ? `${shown.slice(0, MAX_VALUE)}…` : shown]];
   });
+}
+
+/** A long path cut in the middle; the whole one goes in a tooltip. */
+export function shortPath(path: string, max = 48): string {
+  if (path.length <= max) return path;
+  const sep = path.includes("\\") ? "\\" : "/";
+  const parts = path.split(sep);
+  // The drive or root and one folder, then the last two.
+  const head = parts.slice(0, parts[0] === "" ? 3 : 2);
+  const tail = parts.slice(-2);
+  if (parts.length > head.length + tail.length) {
+    const cut = `${head.join(sep)}${sep}…${sep}${tail.join(sep)}`;
+    if (cut.length <= max) return cut;
+  }
+  const keep = Math.floor((max - 1) / 2);
+  return `${path.slice(0, keep)}…${path.slice(path.length - keep)}`;
 }
 
 /**

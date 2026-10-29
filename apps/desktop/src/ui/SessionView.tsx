@@ -12,6 +12,8 @@ import { ToolCall } from "./ToolCall.tsx";
 const PT = translator("pt-BR");
 
 export interface SessionActions {
+  /** Copies a text (the approval's folder); the app's store does. */
+  copyText?(text: string): Promise<boolean>;
   send(text: string): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
@@ -67,6 +69,9 @@ function TimelineItem(props: {
           }}
           t={props.t}
           nowMs={props.nowMs}
+          {...(actions.copyText
+            ? { onCopyPath: (path: string) => void actions.copyText?.(path) }
+            : {})}
           alwaysAllow={props.alwaysAllow}
           {...(item.resolution ? { resolution: item.resolution } : {})}
           onRespond={(decision, message, updates) =>

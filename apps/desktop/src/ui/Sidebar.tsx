@@ -39,6 +39,8 @@ export function Sidebar(props: {
   /** The app's translator and clock (phase 10): the queue's card and the request's age. */
   t: T;
   nowMs: number;
+  /** Copies a text (the queue card's folder). */
+  onCopyText(text: string): void;
   onOpenHost(hostId: string): void;
   onOpenSettings(): void;
   onOpenSearch(): void;
@@ -115,6 +117,7 @@ export function Sidebar(props: {
                       }}
                       t={props.t}
                       nowMs={props.nowMs}
+                      onCopyPath={props.onCopyText}
                       onRespond={(decision, message) => props.onRespond(item, decision, message)}
                       actions={
                         <Button

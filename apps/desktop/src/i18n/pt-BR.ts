@@ -26,6 +26,7 @@ export const ptBR = {
     reason: "Motivo (opcional)",
     cancel: "Cancelar",
     cwd: "Pasta",
+    copyFolder: "Copiar pasta",
     keys: "A aprova · N nega · Esc sai",
     openSession: "Abrir sessão",
     openCard: "Abrir card",

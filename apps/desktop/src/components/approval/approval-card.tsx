@@ -1,10 +1,11 @@
 import type { PermissionResolution, PermissionUpdate } from "@flightdeck/protocol";
+import { Copy } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
-import { type ApprovalView, approvalView } from "@/lib/approval";
+import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
 import { cn } from "@/lib/utils";
 import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
 
@@ -28,7 +29,15 @@ const LINE_TONE = {
   " ": "text-muted-foreground",
 } as const;
 
-function Body({ view, t }: { view: ApprovalView; t: T }) {
+function Body({
+  view,
+  t,
+  onCopyPath,
+}: {
+  view: ApprovalView;
+  t: T;
+  onCopyPath?: ((path: string) => void) | undefined;
+}) {
   if (view.kind === "bash") {
     return (
       <div className="flex flex-col gap-2">
@@ -37,8 +46,22 @@ function Body({ view, t }: { view: ApprovalView; t: T }) {
         </pre>
         {view.description && <p className="text-sm">{view.description}</p>}
         {view.cwd && (
-          <p className="text-muted-foreground text-xs">
-            {t("approval.cwd")}: <span className="font-mono">{view.cwd}</span>
+          <p className="flex items-center gap-1 text-muted-foreground text-xs">
+            {t("approval.cwd")}:{" "}
+            <span data-folder title={view.cwd} className="font-mono">
+              {shortPath(view.cwd)}
+            </span>
+            {onCopyPath && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                aria-label={t("approval.copyFolder")}
+                onClick={() => onCopyPath(view.cwd as string)}
+              >
+                <Copy />
+              </Button>
+            )}
           </p>
         )}
       </div>
@@ -90,6 +113,8 @@ export function ApprovalCard(props: {
   ): void;
   /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
   actions?: ReactNode;
+  /** Copies the session's folder (the whole path) when the user asks. */
+  onCopyPath?(path: string): void;
 }) {
   const { request, t, resolution } = props;
   const [denying, setDenying] = useState(false);
@@ -133,7 +158,7 @@ export function ApprovalCard(props: {
         </span>
         {age && <span className="text-muted-foreground text-xs">{age}</span>}
       </div>
-      <Body view={view} t={t} />
+      <Body view={view} t={t} onCopyPath={props.onCopyPath} />
       {resolution ? (
         <p className="text-muted-foreground text-sm">
           {resolution.decision === "deny" && resolution.message
