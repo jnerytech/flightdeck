@@ -1,0 +1,151 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { Budgets } from "../../daemon/src/costs/budgets.ts";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { legacyDaemon } from "./legacy-daemon.ts";
+
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+
+setDefaultTimeout(20_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
+}
+
+const click = async (name: string | RegExp) => {
+  const button = screen.queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+};
+
+const choose = async (label: string, value: string) => {
+  const field = screen.queryByLabelText(label) as HTMLInputElement | HTMLSelectElement | null;
+  expect(field).not.toBeNull();
+  await act(async () => {
+    fireEvent.change(field as HTMLElement, { target: { value } });
+  });
+};
+
+const TODAY = "2026-10-15";
+const START = Date.UTC(2026, 9, 15, 12);
+let seq = 0;
+
+/** A daemon with costs and budgets on a fixed day, US$ 6 spent on it, and the app on it. */
+async function online() {
+  let budgets: Budgets | null = null;
+  const d = makeDaemon(cleanups, {
+    costs: true,
+    budgets: (db) => {
+      budgets = new Budgets({ db, now: () => START, day: () => TODAY });
+      return budgets;
+    },
+  });
+  const spend = (cost: number, key = "kA") =>
+    d.eventStore.db
+      .query(
+        `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model, origin,
+           speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
+         VALUES (?, 's', ?, ?, ?, 'claude-opus-5-5', 'terminal', 'standard', 1, 1, 0, 0, 0, ?)`,
+      )
+      .run(`b${++seq}`, `${TODAY}T12:00:00.000Z`, TODAY, key, cost);
+  spend(6);
+  const server = d.listen();
+  const mem = memoryPlatform(false);
+  const store = new AppStore(mem.platform, {
+    baseDelayMs: 60_000,
+    now: () => START,
+    day: () => TODAY,
+  });
+  render(<App store={store} />);
+  await act(async () => {
+    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+  });
+  await settle(() => store.getState().hosts[0]?.hostInfo !== null);
+  return { d, mem, store, spend, budgets: budgets as unknown as Budgets };
+}
+
+const section = () => screen.queryByRole("region", { name: "Orçamentos de alfa" });
+const rows = () =>
+  [...(section()?.querySelectorAll("li") ?? [])].map((li) => li.firstChild?.textContent);
+
+describe("orcamentos-ui", () => {
+  test("criar, editar e remover orçamento, com o percentual atual", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    expect(section()).not.toBeNull();
+    await choose("Limite (US$)", "10");
+    await click("Salvar orçamento");
+    await settle(() => rows().length === 1);
+    expect(rows()).toEqual(["orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)"]);
+    await click("Editar orçamento do host (dia)");
+    await choose("Limite (US$)", "20");
+    await choose("Ação", "queue");
+    await click("Salvar orçamento");
+    await settle(() => rows()[0]?.includes("(30%)") === true);
+    expect(rows()).toEqual([
+      "orçamento do host (dia) · segurar cards novos · US$ 6.00 de US$ 20.00 (30%)",
+    ]);
+    await choose("Escopo", "project");
+    await choose("Projeto do orçamento", "kA");
+    await choose("Período", "month");
+    await choose("Limite (US$)", "100");
+    await click("Salvar orçamento");
+    await settle(() => rows().length === 2);
+    expect(rows()[1]).toBe("orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)");
+    await click("Remover orçamento do host (dia)");
+    await settle(() => rows().length === 1);
+    expect(rows()).toEqual(["orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)"]);
+  });
+
+  test("limiar cruzado notifica e aparece em Precisa de você; o alerta abre os orçamentos", async () => {
+    const { mem, spend, budgets } = await online();
+    await act(async () => {
+      budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
+    });
+    await settle(() => mem.notifications.length > 0);
+    expect(mem.notifications).toEqual([
+      { title: "Orçamento", body: "alfa: orçamento do host (dia) em 50% de US$ 10.00" },
+    ]);
+    const alert = "alfa · orçamento do host (dia): 60% de US$ 10.00";
+    await settle(() => screen.queryByRole("button", { name: alert }) !== null);
+    expect(screen.queryByText("Precisa de você (1)")).not.toBeNull();
+    spend(3);
+    await act(async () => budgets.evaluate());
+    await settle(() => mem.notifications.length > 1);
+    expect(mem.notifications[1]?.body).toBe("alfa: orçamento do host (dia) em 80% de US$ 10.00");
+    await click("alfa · orçamento do host (dia): 90% de US$ 10.00");
+    await settle(() => section() !== null);
+    expect(section()).not.toBeNull();
+  });
+
+  test("host sem costs: sem orçamentos e sem banner de erro", async () => {
+    const legacy = legacyDaemon(cleanups);
+    const mem = memoryPlatform(false);
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000, now: () => START });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: legacy.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    await act(() => Bun.sleep(50));
+    await click("Configurações");
+    expect(section()).toBeNull();
+    expect(legacy.asked.some((t) => t === "budget.list")).toBe(false);
+    expect(store.getState().error).toBeNull();
+  });
+});

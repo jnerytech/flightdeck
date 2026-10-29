@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
+import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
@@ -48,6 +49,8 @@ export function daemon(
     terminal?: { flightdeckdPath: string | null; wslDistro: string | null };
     /** Estimated costs (phase 8) over this daemon's own usage entries. */
     costs?: boolean;
+    /** Budgets (phase 8), built over this daemon's database. */
+    budgets?: (db: EventStore["db"]) => Budgets;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -100,6 +103,7 @@ export function daemon(
       })
     : undefined;
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
+  const budgets = options.budgets?.(store.db);
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -114,6 +118,7 @@ export function daemon(
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
+      ...(budgets ? { budgets } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -127,6 +132,7 @@ export function daemon(
     quota,
     usage,
     costs,
+    budgets,
     manager,
     project,
     root,
