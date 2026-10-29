@@ -46,10 +46,11 @@ export function gitRepo(name = "repo") {
 }
 
 /** Board over an in-memory store, a FakeRuntime and a fresh repo inside the allowed root. */
-export function newBoard(overrides: Partial<BoardOptions> = {}) {
+/** `delayMs` slows the FakeRuntime down, for tests that act while a turn is running. */
+export function newBoard(overrides: Partial<BoardOptions> = {}, delayMs = 1) {
   const { root, repo } = gitRepo();
   const store = new EventStore(":memory:");
-  const runtime = new FakeRuntime({ delayMs: 1 });
+  const runtime = new FakeRuntime({ delayMs });
   const manager = new SessionManager({
     store,
     runtime,
