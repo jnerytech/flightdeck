@@ -13,6 +13,7 @@ import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
+import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
@@ -71,6 +72,8 @@ export function daemon(
     agentcfg?: boolean;
     /** The MCP servers a live session of the fake runtime reports (phase 12). */
     mcpServers?: string[];
+    /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
+    risk?: (root: string) => RiskClassifier;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -111,6 +114,7 @@ export function daemon(
     defaultPermissionMode: "default",
     allowApiKey: options.allowApiKey ?? false,
     baseEnv: options.baseEnv ?? {},
+    ...(options.risk ? { risk: options.risk(root) } : {}),
   });
   const rewinder = snapshots ? new Rewinder({ snapshots, sessions: manager }) : undefined;
   const forker = rewinder ? new Forker({ runtime, manager, rewinder }) : undefined;
