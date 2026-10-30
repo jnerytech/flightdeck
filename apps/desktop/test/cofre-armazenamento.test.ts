@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Vault } from "../src/lib/vault.ts";
+import { type SecretMeta, Vault } from "../src/lib/vault.ts";
 
 /** The OS keyring and the app's storage, both in memory: the real keyring is never touched. */
 function fakePlatform() {
@@ -82,5 +82,36 @@ describe("cofre-armazenamento", () => {
     expect(keyring.has("s1")).toBe(false);
     expect(vault.list()).toEqual([second]);
     expect(await vault.value("s1")).toBeNull();
+  });
+
+  test("update changes the name, description, tags and allowed hosts and nothing else, and keeps the value", async () => {
+    const { vault, keyring } = newVault();
+    const meta = await vault.create({ name: "deploy", type: "password", value: VALUE });
+    const updated = vault.update(meta.id, {
+      name: "deploy prod",
+      description: "the prod box",
+      tags: ["prod"],
+      allowedHosts: ["h1", "h2"],
+    });
+    expect(updated).toEqual({
+      ...meta,
+      name: "deploy prod",
+      description: "the prod box",
+      tags: ["prod"],
+      allowedHosts: ["h1", "h2"],
+    });
+    expect(vault.list()).toEqual([updated as SecretMeta]);
+    expect(keyring.get(meta.id)).toBe(VALUE);
+  });
+
+  test("update with a subset leaves the other fields, and an unknown id changes nothing", async () => {
+    const { vault } = newVault();
+    const meta = await vault.create({ name: "deploy", type: "token", value: VALUE, tags: ["a"] });
+    expect(vault.update(meta.id, { description: "only this" })).toEqual({
+      ...meta,
+      description: "only this",
+    });
+    expect(vault.update("missing", { name: "x" })).toBeNull();
+    expect(vault.list()).toHaveLength(1);
   });
 });

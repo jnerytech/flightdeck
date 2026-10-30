@@ -27,6 +27,11 @@ export interface NewSecret {
 /** The fields a generated or imported key takes besides its value. */
 export type NewKey = Omit<NewSecret, "type" | "value">;
 
+/** The fields of a secret that can be edited after it exists. */
+export type SecretPatch = Partial<
+  Pick<SecretMeta, "name" | "description" | "tags" | "allowedHosts">
+>;
+
 export interface VaultOptions {
   clock?: () => number;
   newId?: () => string;
@@ -92,6 +97,11 @@ export class Vault {
 
   value(id: string): Promise<string | null> {
     return this.platform.vault.get(id);
+  }
+
+  /** Changes what the person may edit; the id, type, creation time and value never change. */
+  update(_id: string, _patch: SecretPatch): SecretMeta | null {
+    return null;
   }
 
   async remove(id: string): Promise<void> {
