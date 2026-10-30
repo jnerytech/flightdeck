@@ -115,6 +115,7 @@ export class HostConnection {
   private watchingRuns = false;
   private watchingQuota = false;
   private watchingBudgets = false;
+  private watchingVault = false;
 
   constructor(private readonly opts: HostConnectionOptions) {}
 
@@ -144,6 +145,8 @@ export class HostConnection {
           if (this.watchingQuota) this.send("quota.watch", {}).catch(ignore);
           // Daemons before phase 8 have no budgets: the error is ignored.
           if (this.watchingBudgets) this.send("budget.watch", {}).catch(ignore);
+          // Daemons before phase 17 have no vault requests: the error is ignored.
+          if (this.watchingVault) this.send("vault.watch", {}).catch(ignore);
           for (const target of this.changeTargets) {
             this.send("changes.watch", { target }).catch(ignore);
           }
@@ -249,6 +252,11 @@ export class HostConnection {
   /** Streams `budget.updated` from the next (re)connect on; call it before `connect`. */
   watchBudgets(): void {
     this.watchingBudgets = true;
+  }
+
+  /** Streams the daemon's `vault.request` frames from the next (re)connect on (phase 17). */
+  watchVault(): void {
+    this.watchingVault = true;
   }
 
   /** Streams `quota.updated` from the next (re)connect on; call it before `connect`. */

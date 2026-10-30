@@ -826,6 +826,20 @@ export const en: Dictionary = {
     configure: "Configure issues",
     save: "Save",
   },
+  vaultApproval: {
+    session: "Request from {requester}",
+    requester: "Requested by",
+    action: "Action",
+    secret: "Secret",
+    secrets: "Secrets",
+    param: "Parameter",
+    command: "Command",
+    host: "Host",
+    freeReason:
+      "A command written by Claude, with the secrets in its environment: it always asks for your approval",
+    notifyTitle: "Secret request",
+    notifyBody: "{requester} wants to run {what} on {host}",
+  },
   actionsUi: {
     title: "Actions of {project}",
     list: "Actions",

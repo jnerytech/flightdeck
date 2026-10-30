@@ -64,6 +64,7 @@ import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
+import { actionPolicy } from "./vault-approval.ts";
 import {
   applyImport,
   BackupError,
@@ -80,9 +81,9 @@ import {
   answerVaultRequest,
   checkDelivery,
   type DeliveryRefusal,
-  denyAllPolicy,
   type VaultOutcome,
   type VaultPolicy,
+  type VaultRequestContext,
 } from "./vault-requests.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
@@ -151,6 +152,8 @@ export interface AppState {
   secrets: SecretMeta[];
   /** Phase 16: the vault's usage log, newest first; never holds a value. */
   vaultUsage: UsageEntry[];
+  /** Phase 17: the daemon's requests for a secret, waiting for the user; they join the queue. */
+  vaultApprovals: PendingItem[];
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -218,6 +221,7 @@ export type HostCommandType = Extract<
   | `review.${string}`
   | `file.${string}`
   | "vault.deliver"
+  | "vault.deny"
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
@@ -335,6 +339,8 @@ export interface PendingItem {
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
+  /** Phase 17: the daemon asks for a secret to run an action or a free command. */
+  vault?: true;
 }
 
 export interface GateRef {
@@ -355,69 +361,71 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
 
 /** Every open permission request of every host, oldest first. */
 export function needsYou(state: AppState): PendingItem[] {
-  return state.hosts
-    .flatMap((host) => [
-      ...host.sessions.flatMap((session) =>
-        session.pendingPermissions.map((p) => ({
+  const requests: PendingItem[] = state.hosts.flatMap((host) => [
+    ...host.sessions.flatMap((session) =>
+      session.pendingPermissions.map((p) => ({
+        hostId: host.id,
+        hostName: host.name,
+        sessionId: session.id,
+        sessionName: session.name ?? basename(session.cwd),
+        requestId: p.requestId,
+        toolName: p.toolName,
+        createdAt: p.createdAt,
+        ...(p.input ? { input: p.input } : {}),
+        ...(p.risk ? { risk: p.risk } : {}),
+        ...(p.riskReason ? { riskReason: p.riskReason } : {}),
+        cwd: session.cwd,
+      })),
+    ),
+    // Sessions opened in the terminal: the hook holds the request while the app watches.
+    ...Object.entries(state.externalRequests)
+      .filter(([key]) => key.startsWith(`${host.id}/`))
+      .map(([, request]) => {
+        const id = request.claudeSessionId;
+        const session = state.externals[sessionKey(host.id, id)];
+        const name = state.meta[sessionKey(host.id, id)]?.name;
+        return {
           hostId: host.id,
           hostName: host.name,
-          sessionId: session.id,
-          sessionName: session.name ?? basename(session.cwd),
-          requestId: p.requestId,
-          toolName: p.toolName,
-          createdAt: p.createdAt,
-          ...(p.input ? { input: p.input } : {}),
-          ...(p.risk ? { risk: p.risk } : {}),
-          ...(p.riskReason ? { riskReason: p.riskReason } : {}),
-          cwd: session.cwd,
-        })),
-      ),
-      // Sessions opened in the terminal: the hook holds the request while the app watches.
-      ...Object.entries(state.externalRequests)
-        .filter(([key]) => key.startsWith(`${host.id}/`))
-        .map(([, request]) => {
-          const id = request.claudeSessionId;
-          const session = state.externals[sessionKey(host.id, id)];
-          const name = state.meta[sessionKey(host.id, id)]?.name;
-          return {
+          sessionId: id,
+          sessionName: name ?? basename(session?.cwd ?? id),
+          requestId: request.requestId,
+          toolName: request.toolName,
+          createdAt: request.createdAt,
+          external: true,
+          input: request.input,
+          ...(request.risk ? { risk: request.risk } : {}),
+          ...(request.riskReason ? { riskReason: request.riskReason } : {}),
+          cwd: session?.cwd ?? null,
+        };
+      }),
+    // Open gates of the host's workflow runs.
+    ...Object.entries(state.runs)
+      .filter(([key]) => key.startsWith(`${host.id}/`))
+      .flatMap(([, run]) =>
+        run.steps
+          .filter((step) => step.type === "gate" && step.status === "waiting")
+          .map((step) => ({
             hostId: host.id,
             hostName: host.name,
-            sessionId: id,
-            sessionName: name ?? basename(session?.cwd ?? id),
-            requestId: request.requestId,
-            toolName: request.toolName,
-            createdAt: request.createdAt,
-            external: true,
-            input: request.input,
-            ...(request.risk ? { risk: request.risk } : {}),
-            ...(request.riskReason ? { riskReason: request.riskReason } : {}),
-            cwd: session?.cwd ?? null,
-          };
-        }),
-      // Open gates of the host's workflow runs.
-      ...Object.entries(state.runs)
-        .filter(([key]) => key.startsWith(`${host.id}/`))
-        .flatMap(([, run]) =>
-          run.steps
-            .filter((step) => step.type === "gate" && step.status === "waiting")
-            .map((step) => ({
-              hostId: host.id,
-              hostName: host.name,
-              sessionId: run.cardId,
-              sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
-              requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
-              toolName: `gate ${step.stepId}`,
-              createdAt: step.startedAt,
-              gate: {
-                runId: run.id,
-                stepId: step.stepId,
-                attempt: step.attempt,
-                cardId: run.cardId,
-              },
-            })),
-        ),
-    ])
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+            sessionId: run.cardId,
+            sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
+            requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
+            toolName: `gate ${step.stepId}`,
+            createdAt: step.startedAt,
+            gate: {
+              runId: run.id,
+              stepId: step.stepId,
+              attempt: step.attempt,
+              cardId: run.cardId,
+            },
+          })),
+      ),
+  ]);
+  const known = state.vaultApprovals.filter((item) =>
+    state.hosts.some((h) => h.id === item.hostId),
+  );
+  return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 /** Filters of the per-host history list. */
@@ -532,6 +540,7 @@ export class AppStore {
       askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
+      vaultApprovals: [],
       externals: {},
       externalRequests: {},
       meta: {},
@@ -1317,6 +1326,11 @@ export class AppStore {
     /** Why it was denied (phase 10: the card's reason). */
     message?: string,
   ): Promise<void> {
+    const question = this.vaultQuestions.get(requestId);
+    if (question) {
+      question(decision === "allow");
+      return;
+    }
     try {
       await this.connections.get(hostId)?.request("permission.respond", {
         requestId,
@@ -1478,6 +1492,7 @@ export class AppStore {
     conn.watchRuns();
     conn.watchQuota();
     conn.watchBudgets();
+    conn.watchVault();
     conn.connect();
   }
 
@@ -1904,18 +1919,93 @@ export class AppStore {
     };
   }
 
+  /** Phase 17: the questions about the daemon's requests, answered from the queue, by request id. */
+  private readonly vaultQuestions = new Map<string, (approved: boolean) => void>();
+
+  private defaultVaultPolicy: VaultPolicy | null = null;
+
+  /** Puts a request of the daemon for a secret in the queue and waits for the user's answer. */
+  private askVault({ request, hostId, secret }: VaultRequestContext): Promise<boolean> {
+    const { t } = this.i18n;
+    const free = request.command !== undefined;
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const requester = t(`actionsUi.requester.${request.requester}` as Key);
+    const input: Record<string, string> = {
+      [t("vaultApproval.requester")]: requester,
+      ...(free
+        ? {
+            [t("vaultApproval.command")]: request.command ?? "",
+            [t("vaultApproval.secrets")]: (
+              request.secrets ?? [secret?.name ?? request.secretId]
+            ).join(", "),
+            ...(request.host ? { [t("vaultApproval.host")]: request.host } : {}),
+          }
+        : {
+            [t("vaultApproval.action")]: request.action ?? "",
+            [t("vaultApproval.secret")]: secret?.name ?? request.secretId,
+            ...Object.fromEntries(
+              Object.entries(request.params ?? {}).map(([k, v]) => [
+                `${t("vaultApproval.param")} ${k}`,
+                v,
+              ]),
+            ),
+          }),
+    };
+    const item: PendingItem = {
+      hostId,
+      hostName: host?.name ?? hostId,
+      sessionId: "",
+      sessionName: t("vaultApproval.session", { requester }),
+      requestId: request.requestId,
+      toolName: free ? "run_with_secret" : (request.action ?? ""),
+      createdAt: new Date((this.options.now ?? Date.now)()).toISOString(),
+      input,
+      ...(free ? { risk: "high" as const, riskReason: t("vaultApproval.freeReason") } : {}),
+      vault: true,
+    };
+    void this.platform.notify({
+      title: t("vaultApproval.notifyTitle"),
+      body: t("vaultApproval.notifyBody", {
+        requester,
+        what: free ? "run_with_secret" : item.toolName,
+        host: item.hostName,
+      }),
+    });
+    return new Promise((resolve) => {
+      this.vaultQuestions.set(request.requestId, (approved) => {
+        this.vaultQuestions.delete(request.requestId);
+        this.update({
+          vaultApprovals: this.state.vaultApprovals.filter(
+            (i) => i.requestId !== request.requestId,
+          ),
+        });
+        resolve(approved);
+      });
+      this.update({ vaultApprovals: [...this.state.vaultApprovals, item] });
+    });
+  }
+
   /** A `vault.request` of the daemon: the policy decides, and nothing is delivered unless it says so. */
   private async onVaultRequest(config: HostConfig, request: VaultRequestFrame): Promise<void> {
     const outcome = await answerVaultRequest(request, {
       hostId: config.id,
       hostUrl: config.url,
       vault: this.vault,
-      policy: this.options.vaultPolicy ?? denyAllPolicy,
+      policy:
+        this.options.vaultPolicy ??
+        (this.defaultVaultPolicy ??= actionPolicy({
+          ask: (context) => this.askVault(context),
+          now: this.options.now ?? Date.now,
+        })),
       deliver: (payload) => this.dispatch(config.id, "vault.deliver", payload),
       now: this.options.now ?? Date.now,
     });
     this.usage.recordOutcome(outcome);
     this.keepUsage();
+    // A run that waits for the secret fails at once, instead of at the daemon's deadline.
+    if (!outcome.delivered) {
+      void this.dispatch(config.id, "vault.deny", { requestId: request.requestId }).catch(() => {});
+    }
     for (const listener of this.vaultListeners) listener(outcome);
   }
 

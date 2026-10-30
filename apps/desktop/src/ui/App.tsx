@@ -191,6 +191,11 @@ export function App({ store }: { store: AppStore }) {
 
   /** A request from the queue, the tray or a notification: its session, card or terminal view. */
   const openRequest = (item: PendingItem) => {
+    if (item.vault) {
+      // A request for a secret has no session: it is answered in the queue.
+      go({ name: "needs-you" });
+      return;
+    }
     if (item.gate) {
       // A gate opens its card, where it is answered inline.
       const { hostId } = item;

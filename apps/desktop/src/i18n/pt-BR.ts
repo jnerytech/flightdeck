@@ -828,6 +828,20 @@ export const ptBR = {
     configure: "Configurar issues",
     save: "Salvar",
   },
+  vaultApproval: {
+    session: "Pedido de {requester}",
+    requester: "Pedido por",
+    action: "Ação",
+    secret: "Segredo",
+    secrets: "Segredos",
+    param: "Parâmetro",
+    command: "Comando",
+    host: "Host",
+    freeReason:
+      "Um comando escrito pelo Claude, com os segredos no ambiente: sempre pede a sua aprovação",
+    notifyTitle: "Pedido de segredo",
+    notifyBody: "{requester} quer rodar {what} em {host}",
+  },
   actionsUi: {
     title: "Ações de {project}",
     list: "Ações",
