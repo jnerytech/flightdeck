@@ -11,6 +11,7 @@ import { chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
+import { launchFirst } from "./lib/browser.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
 
@@ -209,10 +210,9 @@ export async function takeShots(
   env: Record<string, string>,
   log: (msg: string) => void,
 ): Promise<string> {
-  // The installed Chrome; Edge when Chrome refuses automation (some managed installs do).
-  const browser = await chromium
-    .launch({ channel: "chrome", headless: true, env })
-    .catch(() => chromium.launch({ channel: "msedge", headless: true, env }));
+  const browser = await launchFirst((attempt) =>
+    chromium.launch({ ...attempt, headless: true, env }),
+  );
   const problems: string[] = [];
   try {
     for (const theme of ["light", "dark"] as const) {

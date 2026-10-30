@@ -8,6 +8,7 @@ import { chromium, type Page } from "playwright-core";
 import { type Lang, translator } from "../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import { DANGER_SESSION, type DemoIds } from "./demo-seed.ts";
+import { launchFirst } from "./lib/browser.ts";
 import { JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
 
 const ALFA = "demo-alfa";
@@ -264,9 +265,9 @@ export async function runE2e(
   env: Record<string, string>,
   log: (msg: string) => void,
 ): Promise<void> {
-  const browser = await chromium
-    .launch({ channel: "chrome", headless: true, env })
-    .catch(() => chromium.launch({ channel: "msedge", headless: true, env }));
+  const browser = await launchFirst((attempt) =>
+    chromium.launch({ ...attempt, headless: true, env }),
+  );
   const problems: string[] = [];
   try {
     for (const language of LANGUAGES) {
