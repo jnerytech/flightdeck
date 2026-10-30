@@ -43,9 +43,24 @@ export interface AnswerDeps {
   now: () => number;
 }
 
+const DELIVERY_TTL_MS = 60_000;
+
 /** True when the connection to the host is loopback or Tailscale, which are encrypted or local. */
-export function transportAllowed(_url: string): boolean {
-  return true;
+export function transportAllowed(url: string): boolean {
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (hostname === "localhost" || hostname === "[::1]") return true;
+  if (hostname.startsWith("[fd7a:115c:a1e0:")) return true;
+  const octets = hostname.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
+    return false;
+  }
+  const [first = 0, second = 0] = octets;
+  return first === 127 || (first === 100 && second >= 64 && second <= 127);
 }
 
 /**
@@ -70,5 +85,29 @@ export async function answerVaultRequest(
   const secret = deps.vault.list().find((s) => s.id === request.secretId) ?? null;
   const decision = await deps.policy({ request, hostId: deps.hostId, secret });
   if (decision.kind === "deny") return outcome(false, decision.reason);
+  if (!secret) return outcome(false, "the vault has no such secret");
+  if (!secret.allowedHosts.includes(deps.hostId)) {
+    return outcome(false, "the secret is not allowed for this host");
+  }
+  if (!transportAllowed(deps.hostUrl)) {
+    return outcome(
+      false,
+      "the vault only delivers over loopback or Tailscale, which WireGuard encrypts",
+    );
+  }
+  const value = await deps.vault.value(secret.id);
+  if (value === null) return outcome(false, "the secret's value is missing from the system vault");
+  try {
+    await deps.deliver({
+      secretId: secret.id,
+      value,
+      purpose: request.purpose,
+      expiresAt: deps.now() + DELIVERY_TTL_MS,
+      requester: request.requester,
+    });
+  } catch (error) {
+    // The daemon's message never holds the value (its own tests search for it).
+    return outcome(false, `delivery failed: ${(error as Error).message}`);
+  }
   return outcome(true, "");
 }
