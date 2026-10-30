@@ -1161,7 +1161,8 @@ and an expiry. Move a rule with **Move up**, **Move down** or by dragging.
 - **What happens if…** under the rules asks a connected host what the saved rules decide for a
   use: the decision, its reason, whether it asks once per session, holds the button or hit a
   limit.
-- **Approving:** the request shows the rule that decided and why. **Create a rule from this**
+- **Approving:** the request shows the rule that decided and why. Where the rule allows it,
+  **Approve and don't ask again this session** approves the rest of that session. **Create a rule from this**
   opens the secret's rules with a new first rule for that requester, purpose and action.
 - **Report:** the vault's **Report** tab shows the last 30 days by secret, requester and outcome,
   with **Export CSV**, and each decision with who let it through. A first use by a new requester

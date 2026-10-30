@@ -1144,7 +1144,8 @@ por dia, e uma expiração. Mude a ordem com **Subir**, **Descer** ou arrastando
 - **O que acontece se…** abaixo das regras pergunta a um host conectado o que as regras salvas
   decidem para um uso: a decisão, o motivo, se pergunta uma vez por sessão, se segura o botão ou se
   bateu um limite.
-- **Aprovar:** o pedido mostra a regra que decidiu e o motivo. **Criar regra a partir disto** abre
+- **Aprovar:** o pedido mostra a regra que decidiu e o motivo. Onde a regra permite,
+  **Aprovar e não perguntar mais nesta sessão** aprova o resto daquela sessão. **Criar regra a partir disto** abre
   as regras do segredo com uma regra nova no topo para quem pediu, a finalidade e a ação.
 - **Relatório:** a aba **Relatório** do cofre mostra os últimos 30 dias por segredo, quem pediu e
   resultado, com **Exportar CSV**, e cada decisão com quem deixou passar. O primeiro uso por quem
