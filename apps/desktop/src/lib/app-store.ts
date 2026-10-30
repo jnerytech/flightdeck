@@ -703,6 +703,15 @@ export class AppStore {
     this.update({ settings: { ...this.state.settings, autostart: enabled } });
   }
 
+  /** A host's projects into the state (quiet: a host without a board, or offline, lists none). */
+  async loadProjects(hostId: string): Promise<Project[] | null> {
+    const conn = this.connections.get(hostId);
+    const list = conn ? await quiet(conn.request("project.list", {})) : null;
+    if (!list) return null;
+    this.update({ projects: { ...this.state.projects, [hostId]: list.projects } });
+    return list.projects;
+  }
+
   /**
    * What the palette lists besides live state: the Sessões lists, each host's projects and their
    * cards. Quiet: a host without a board (or offline) just lists less.
@@ -712,10 +721,8 @@ export class AppStore {
       .filter((host) => host.status === "online")
       .map(async (host) => {
         const conn = this.connections.get(host.id) as HostConnection;
-        const list = await quiet(conn.request("project.list", {}));
-        if (!list) return;
-        this.update({ projects: { ...this.state.projects, [host.id]: list.projects } });
-        for (const project of list.projects) {
+        const projects = await this.loadProjects(host.id);
+        for (const project of projects ?? []) {
           const board = await quiet(conn.request("board.get", { projectId: project.id }));
           for (const card of cardsIn(board)) this.onCard(host.id, card);
         }

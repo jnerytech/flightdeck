@@ -65,6 +65,18 @@ export function App({ store }: { store: AppStore }) {
   const route = useSyncExternalStore(router.subscribe, () => router.current);
   const { t } = store.i18n;
 
+  // The header's path names the project of a board, a card or workflows: load the host's projects
+  // when the screen was opened without passing through them (a link, a card of the queue).
+  const projectHost =
+    route.name === "board" || route.name === "card" || route.name === "workflows"
+      ? route.host
+      : null;
+  const projectsKnown = projectHost === null || state.projects[projectHost] !== undefined;
+  const projectHostOnline = state.hosts.some((h) => h.id === projectHost && h.status === "online");
+  useEffect(() => {
+    if (projectHost && !projectsKnown && projectHostOnline) void store.loadProjects(projectHost);
+  }, [store, projectHost, projectsKnown, projectHostOnline]);
+
   /** Opening anything closes the layers above it: the palette (dialogs go with their screen). */
   const go = (next: Route) => {
     store.closeSearch();
