@@ -1,11 +1,12 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { MoreHorizontal, Radio } from "lucide-react";
+import { ListFilter, MoreHorizontal, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import type { StateTone } from "@/components/status/state-badge";
 import { StatusDot } from "@/components/status/status-dot";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +15,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import type { Density } from "../lib/density.ts";
@@ -24,8 +28,6 @@ import {
   type HubState,
   hubGroups,
   hubRows,
-  ORIGIN_LABELS,
-  STATE_LABELS,
   sessionLineText,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
@@ -117,69 +119,92 @@ export function SessionsHub(props: {
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
 
+  const { t } = store.i18n;
+  const active = [
+    filter.host !== "",
+    filter.origin !== "",
+    filter.state !== "",
+    filter.pinnedOnly,
+    filter.showArchived,
+  ].filter(Boolean).length;
   const toolbar = (
     <Toolbar label="Filtros">
       <Input
-        aria-label="Filtrar sessões"
-        placeholder="Filtrar"
+        aria-label={t("hub.filterLabel")}
+        placeholder={t("hub.filterPlaceholder")}
         value={filter.text}
         onChange={(e) => set({ text: e.target.value })}
-        className="h-8 w-full text-xs"
+        className="h-8 min-w-0 flex-1 text-xs"
       />
-      <select
-        aria-label="Host"
-        className={SELECT_CLASS}
-        value={filter.host}
-        onChange={(e) => set({ host: e.target.value })}
-      >
-        <option value="">Todos os hosts</option>
-        {state.hosts
-          .filter((h) => h.status !== "incompatible")
-          .map((h) => (
-            <option key={h.id} value={h.name}>
-              {h.name}
-            </option>
-          ))}
-      </select>
-      <select
-        aria-label="Origem"
-        className={SELECT_CLASS}
-        value={filter.origin}
-        onChange={(e) => set({ origin: e.target.value as HubFilter["origin"] })}
-      >
-        <option value="">Todas as origens</option>
-        <option value="flightdeck">Flightdeck</option>
-        <option value="terminal">Terminal</option>
-        <option value="history">Histórico</option>
-      </select>
-      <select
-        aria-label="Estado"
-        className={SELECT_CLASS}
-        value={filter.state}
-        onChange={(e) => set({ state: e.target.value as HubFilter["state"] })}
-      >
-        <option value="">Todos os estados</option>
-        <option value="running">Rodando</option>
-        <option value="needs_you">Precisa de você</option>
-        <option value="idle">Ociosa</option>
-        <option value="ended">Encerrada</option>
-      </select>
-      <Button
-        size="sm"
-        variant="outline"
-        aria-pressed={filter.pinnedOnly}
-        onClick={() => set({ pinnedOnly: !filter.pinnedOnly })}
-      >
-        Só fixadas
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        aria-pressed={filter.showArchived}
-        onClick={() => set({ showArchived: !filter.showArchived })}
-      >
-        Mostrar arquivadas
-      </Button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1">
+            <ListFilter aria-hidden="true" />
+            {t("hub.filters")}
+            {active > 0 && (
+              <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
+                {active}
+              </Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="flex w-64 flex-col gap-2">
+          <select
+            aria-label={t("hub.host")}
+            className={SELECT_CLASS}
+            value={filter.host}
+            onChange={(e) => set({ host: e.target.value })}
+          >
+            <option value="">{t("hub.allHosts")}</option>
+            {state.hosts
+              .filter((h) => h.status !== "incompatible")
+              .map((h) => (
+                <option key={h.id} value={h.name}>
+                  {h.name}
+                </option>
+              ))}
+          </select>
+          <select
+            aria-label={t("hub.origin")}
+            className={SELECT_CLASS}
+            value={filter.origin}
+            onChange={(e) => set({ origin: e.target.value as HubFilter["origin"] })}
+          >
+            <option value="">{t("hub.allOrigins")}</option>
+            <option value="flightdeck">{t("hub.origins.flightdeck")}</option>
+            <option value="terminal">{t("hub.origins.terminal")}</option>
+            <option value="history">{t("hub.origins.history")}</option>
+          </select>
+          <select
+            aria-label={t("hub.state")}
+            className={SELECT_CLASS}
+            value={filter.state}
+            onChange={(e) => set({ state: e.target.value as HubFilter["state"] })}
+          >
+            <option value="">{t("hub.allStates")}</option>
+            <option value="running">{t("hub.states.running")}</option>
+            <option value="needs_you">{t("hub.states.needs_you")}</option>
+            <option value="idle">{t("hub.states.idle")}</option>
+            <option value="ended">{t("hub.states.ended")}</option>
+          </select>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={filter.pinnedOnly}
+            onClick={() => set({ pinnedOnly: !filter.pinnedOnly })}
+          >
+            {t("hub.pinnedOnly")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={filter.showArchived}
+            onClick={() => set({ showArchived: !filter.showArchived })}
+          >
+            {t("hub.showArchived")}
+          </Button>
+        </PopoverContent>
+      </Popover>
     </Toolbar>
   );
 
@@ -190,7 +215,7 @@ export function SessionsHub(props: {
         {renaming && (
           <div className="flex items-center gap-2">
             <Input
-              aria-label="Novo nome"
+              aria-label={t("hub.newName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-64"
@@ -201,22 +226,22 @@ export function SessionsHub(props: {
                 setRenaming(null);
               }}
             >
-              Salvar nome
+              {t("hub.saveName")}
             </Button>
           </div>
         )}
         {groups.map((group) => (
           <section
             key={group.key}
-            aria-label={`Projeto ${group.name}`}
+            aria-label={t("hub.project", { name: group.name })}
             className="flex flex-col gap-1"
           >
             <h3 className="px-2 font-medium text-muted-foreground text-xs">{group.name}</h3>
             <ul className="flex flex-col">
               {group.rows.map((row) => {
                 const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
-                const line = sessionLineText(row.summary, store.now());
-                const origin = ORIGIN_LABELS[row.origin];
+                const line = sessionLineText(row.summary, store.now(), t);
+                const origin = t(`hub.originTags.${row.origin}` as Key);
                 return (
                   <li
                     key={row.key}
@@ -228,18 +253,26 @@ export function SessionsHub(props: {
                       props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
                     )}
                   >
-                    <StatusDot tone={TONES[row.state]} label={STATE_LABELS[row.state]} />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCursor(listed.findIndex((r) => r.key === row.key));
-                        props.onOpen(row);
-                      }}
-                      className="min-w-0 flex-1 truncate text-left font-medium text-sm"
-                    >
-                      {row.title}
-                    </button>
-                    <span className="max-w-[40%] shrink-0 truncate text-muted-foreground text-xs">
+                    <StatusDot
+                      tone={TONES[row.state]}
+                      label={t(`hub.stateDots.${row.state}` as Key)}
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCursor(listed.findIndex((r) => r.key === row.key));
+                            props.onOpen(row);
+                          }}
+                          className="min-w-0 flex-1 truncate text-left font-medium text-sm"
+                        >
+                          {row.title}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{row.title}</TooltipContent>
+                    </Tooltip>
+                    <span className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline">
                       {origin ? `${row.hostName} · ${origin}` : row.hostName}
                     </span>
                     {row.controllable && (
@@ -248,12 +281,12 @@ export function SessionsHub(props: {
                           aria-hidden="true"
                           className="size-3 shrink-0 text-muted-foreground"
                         />
-                        <span className="sr-only">controlável</span>
+                        <span className="sr-only">{t("hub.controllable")}</span>
                       </>
                     )}
                     {cost !== undefined && (
                       <output
-                        aria-label={`Custo de ${row.title}`}
+                        aria-label={t("hub.cost", { title: row.title })}
                         className="shrink-0 text-muted-foreground text-xs tabular-nums"
                       >
                         {usd(cost)}
@@ -272,7 +305,7 @@ export function SessionsHub(props: {
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label={`Ações de ${row.title}`}
+                            aria-label={t("hub.actions", { title: row.title })}
                             className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                           >
                             <MoreHorizontal />
@@ -285,13 +318,13 @@ export function SessionsHub(props: {
                               setName(row.title);
                             }}
                           >
-                            Renomear
+                            {t("hub.rename")}
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
-                            {row.pinned ? "Desafixar" : "Fixar"}
+                            {row.pinned ? t("hub.unpin") : t("hub.pin")}
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => meta(row, { archived: !row.archived })}>
-                            {row.archived ? "Desarquivar" : "Arquivar"}
+                            {row.archived ? t("hub.unarchive") : t("hub.archive")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={() =>
@@ -300,7 +333,7 @@ export function SessionsHub(props: {
                               )
                             }
                           >
-                            Copiar comando
+                            {t("hub.copyCommand")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

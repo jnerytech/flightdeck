@@ -15,7 +15,6 @@ import {
   Workflow,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
-import type { StateTone } from "@/components/status/state-badge";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,21 +28,12 @@ import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
-import type { ConnectionStatus } from "../lib/host-connection.ts";
+import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
 import type { Route } from "../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
-
-/** A host's connection as the dot of a session state. */
-const HOST_TONE: Record<ConnectionStatus, StateTone> = {
-  online: "running",
-  connecting: "needs-you",
-  offline: "ended",
-  unauthorized: "error",
-  incompatible: "error",
-};
 
 const ITEM =
   "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -107,6 +97,8 @@ export function Sidebar(props: {
   collapsed: boolean;
   t: T;
   go(route: Route): void;
+  /** Board or Workflows of a host: its only project opens directly, several ask which. */
+  onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
   onSelectSession(hostId: string, sessionId: string | null): void;
   onRemoveHost(hostId: string): void;
   onOpenSearch(): void;
@@ -161,14 +153,14 @@ export function Sidebar(props: {
           icon={<Columns3 aria-hidden="true" className={icon} />}
           label={t("sidebar.board")}
           disabled={!navHost}
-          onClick={needHost((host) => ({ name: "projects", host }))}
+          onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
         />
         <NavButton
           collapsed={collapsed}
           icon={<Workflow aria-hidden="true" className={icon} />}
           label={t("sidebar.workflows")}
           disabled={!navHost}
-          onClick={needHost((host) => ({ name: "projects", host }))}
+          onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
         />
         {/* Hosts from phase 8 on read their costs from the transcripts. */}
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
@@ -372,7 +364,7 @@ export function Sidebar(props: {
 function HostDot(props: { host: HostView; t: T }) {
   return (
     <StatusDot
-      tone={HOST_TONE[props.host.status]}
+      {...hostDotView(props.host.status)}
       label={props.t("sidebar.hostState", {
         host: props.host.name,
         state: props.t(`hosts.status.${props.host.status}` as Key),

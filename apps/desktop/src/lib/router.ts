@@ -15,7 +15,8 @@ export type Route =
   | { name: "reader"; target: ReaderTarget; list?: "history" }
   | { name: "history"; host: string }
   | { name: "host"; host: string }
-  | { name: "projects"; host: string }
+  /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
+  | { name: "projects"; host: string; focus?: "board" | "workflows" }
   | { name: "board"; host: string; projectId: string }
   | { name: "card"; host: string; projectId: string; cardId: string }
   | { name: "workflows"; host: string; projectId: string; projectName: string }

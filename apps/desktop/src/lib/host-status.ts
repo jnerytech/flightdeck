@@ -29,10 +29,20 @@ export function hostsBanner(hosts: HostView[]): {
 }
 
 /** A host's connection as the sidebar's dot. */
-export function hostDotView(_status: ConnectionStatus): {
+export function hostDotView(status: ConnectionStatus): {
   tone: "running" | "needs-you" | "idle" | "ended" | "error";
   hollow: boolean;
   pulse: boolean;
 } {
-  return { tone: "idle", hollow: false, pulse: false };
+  switch (status) {
+    case "online":
+      return { tone: "running", hollow: false, pulse: false };
+    case "connecting":
+      return { tone: "needs-you", hollow: false, pulse: true };
+    case "offline":
+      return { tone: "idle", hollow: true, pulse: false };
+    case "unauthorized":
+    case "incompatible":
+      return { tone: "error", hollow: false, pulse: false };
+  }
 }

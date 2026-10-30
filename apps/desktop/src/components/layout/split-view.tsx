@@ -1,11 +1,7 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { clampListWidth, LIST_DEFAULT, LIST_MAX, LIST_MIN } from "@/lib/list-width";
 
-const MIN = 280;
-const MAX = 640;
-const START = 380;
 const STEP = 16;
-
-const clamp = (width: number) => Math.min(MAX, Math.max(MIN, width));
 
 /**
  * A list on the left (about 380 px, resized by the divider with the pointer or ← →) and the
@@ -18,14 +14,24 @@ export function SplitView(props: {
   empty: ReactNode;
   onClose(): void;
   labels: { resize: string };
+  /** The width the list starts with (default 380) and what to do when it changes. */
+  initialWidth?: number;
+  onResize?(width: number): void;
 }) {
-  const [width, setWidth] = useState(START);
+  const [width, setWidth] = useState(props.initialWidth ?? LIST_DEFAULT);
+  /** The width as last set, so keys pressed before a render still add up. */
+  const current = useRef(width);
+  const resize = (next: number) => {
+    current.current = next;
+    setWidth(next);
+    props.onResize?.(next);
+  };
   /** Where a drag began: the pointer's x and the list's width then. */
   const drag = useRef<{ x: number; width: number } | null>(null);
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
-      if (drag.current) setWidth(clamp(drag.current.width + e.clientX - drag.current.x));
+      if (drag.current) resize(clampListWidth(drag.current.width + e.clientX - drag.current.x));
     };
     const stop = () => {
       drag.current = null;
@@ -39,8 +45,8 @@ export function SplitView(props: {
   }, []);
 
   const onDividerKey = (e: KeyboardEvent<HTMLElement>) => {
-    if (e.key === "ArrowLeft") setWidth((w) => clamp(w - STEP));
-    else if (e.key === "ArrowRight") setWidth((w) => clamp(w + STEP));
+    if (e.key === "ArrowLeft") resize(clampListWidth(current.current - STEP));
+    else if (e.key === "ArrowRight") resize(clampListWidth(current.current + STEP));
   };
 
   return (
@@ -53,15 +59,15 @@ export function SplitView(props: {
         if (e.key === "Escape") props.onClose();
       }}
     >
-      <div className="min-h-0 min-w-0 overflow-hidden">{props.list}</div>
+      <div className="@container min-h-0 min-w-0 overflow-hidden">{props.list}</div>
       {/* biome-ignore lint/a11y/useSemanticElements: a focusable window splitter, which <hr> is not */}
       <div
         role="separator"
         aria-orientation="vertical"
         aria-label={props.labels.resize}
         aria-valuenow={width}
-        aria-valuemin={MIN}
-        aria-valuemax={MAX}
+        aria-valuemin={LIST_MIN}
+        aria-valuemax={LIST_MAX}
         tabIndex={0}
         onKeyDown={onDividerKey}
         onPointerDown={(e) => {

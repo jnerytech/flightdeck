@@ -43,6 +43,8 @@ export function ProjectsPage(props: {
   onOpenWorkflows(project: { id: string; name: string }): void;
   /** The host announces `rules`: the project's Regras section. */
   rules: boolean;
+  /** Only the picker for Board or Workflows (a nav item with several projects). */
+  focus?: "board" | "workflows";
 }) {
   const { store, hostId } = props;
   const [list, setList] = useState<ProjectListResult | null>(null);
@@ -96,6 +98,36 @@ export function ProjectsPage(props: {
     value: draft[key],
     onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
   });
+
+  if (props.focus) {
+    const board = props.focus === "board";
+    return (
+      <section className="flex flex-col gap-3 p-6">
+        <h1 className="font-semibold text-xl">
+          {t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}
+        </h1>
+        {loading && <LoadingState label={t("states.loadingProjects")} />}
+        {!loading && list?.projects.length === 0 && (
+          <EmptyState title={t("states.emptyProjects")} />
+        )}
+        <ul aria-label="Projetos" className="flex flex-col">
+          {(list?.projects ?? []).map((project) => (
+            <li key={project.id} className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  board ? props.onOpenBoard(project.id) : props.onOpenWorkflows(project)
+                }
+              >
+                {board ? `Abrir board de ${project.name}` : `Workflows de ${project.name}`}
+              </Button>
+              <span className="text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
 
   return (
     <section className="card projects">

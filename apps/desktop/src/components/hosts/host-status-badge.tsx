@@ -6,7 +6,7 @@ import { type HostTone, hostStatusView } from "@/lib/host-status";
 const TONE_CLASS: Record<HostTone, string> = {
   online: "text-status-idle",
   reconnecting: "text-status-needs-you",
-  offline: "text-status-error",
+  offline: "text-status-idle",
   refused: "text-status-error",
   incompatible: "text-status-risk",
 };

@@ -1,6 +1,9 @@
 import type { ExternalStatus, SessionLine, SessionMeta, SessionStatus } from "@flightdeck/protocol";
+import { type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { basename } from "./paths.ts";
+
+const PT = translator("pt-BR");
 
 export type HubOrigin = "flightdeck" | "terminal" | "history";
 export type HubState = "running" | "needs_you" | "idle" | "ended";
@@ -257,31 +260,38 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
 }
 
 /** The session's line in the lists: "Pedido: …" and what it is doing, at `nowMs`. */
-export function sessionLineText(line: SessionLine | null | undefined, nowMs: number): string {
+export function sessionLineText(
+  line: SessionLine | null | undefined,
+  nowMs: number,
+  t: T = PT,
+): string {
   if (!line) return "";
-  return [line.request ? `Pedido: ${line.request}` : "", activity(line, nowMs)]
+  return [
+    line.request ? t("line.request", { request: line.request }) : "",
+    activity(line, nowMs, t),
+  ]
     .filter(Boolean)
     .join(" · ");
 }
 
-function activity(line: SessionLine, nowMs: number): string {
+function activity(line: SessionLine, nowMs: number, t: T): string {
   switch (line.state) {
     case "running":
-      return line.tool ? `rodando ${line.tool}` : "rodando";
+      return line.tool ? t("line.runningTool", { tool: line.tool }) : t("line.running");
     case "waiting":
-      return line.tool ? `esperando aprovação de ${line.tool}` : "esperando aprovação";
+      return line.tool ? t("line.waitingTool", { tool: line.tool }) : t("line.waiting");
     case "idle":
-      return `ociosa ${idleFor(nowMs - Date.parse(line.since ?? ""))}`;
+      return t("line.idle", { since: idleFor(nowMs - Date.parse(line.since ?? ""), t) }).trim();
     case "ended":
       return "";
   }
 }
 
 /** "há 12 min", "há 2 h"; unknown since says just "ociosa". */
-function idleFor(ms: number): string {
+function idleFor(ms: number, t: T): string {
   if (Number.isNaN(ms)) return "";
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 1) return "há menos de 1 min";
-  if (minutes < 60) return `há ${minutes} min`;
-  return `há ${Math.floor(minutes / 60)} h`;
+  if (minutes < 1) return t("line.lessThanMinute");
+  if (minutes < 60) return t("line.minutes", { n: minutes });
+  return t("line.hours", { n: Math.floor(minutes / 60) });
 }

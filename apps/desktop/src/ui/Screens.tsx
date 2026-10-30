@@ -228,6 +228,8 @@ export function Screen(props: ScreenProps) {
         }
         onClose={() => go({ name: "history", host: hostId })}
         labels={{ resize: t("hub.resize") }}
+        initialWidth={store.listWidth()}
+        onResize={(width) => store.setListWidth(width)}
       />
     );
   }
@@ -271,6 +273,8 @@ export function Screen(props: ScreenProps) {
       }
       onClose={() => go({ name: "hub" })}
       labels={{ resize: t("hub.resize") }}
+      initialWidth={store.listWidth()}
+      onResize={(width) => store.setListWidth(width)}
     />
   );
 }
@@ -413,6 +417,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           hostName={host?.name ?? route.host}
           rules={hasFeature(host?.hostInfo?.features, "rules", false)}
+          {...(route.focus ? { focus: route.focus } : {})}
           onOpenBoard={(projectId) => go({ name: "board", host: route.host, projectId })}
           onOpenWorkflows={({ id, name }) =>
             go({ name: "workflows", host: route.host, projectId: id, projectName: name })

@@ -37,6 +37,7 @@ import { DensityController } from "./density.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
+import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
@@ -476,7 +477,11 @@ export class AppStore {
 
   /** The list column's width, kept across starts (phase 10). */
   listWidth(): number {
-    return 380;
+    return loadListWidth(this.platform.storage);
+  }
+
+  setListWidth(width: number): void {
+    this.platform.storage.setItem(LIST_WIDTH_KEY, String(width));
   }
 
   /** The hub's saved filters (phase 10). */
