@@ -279,7 +279,6 @@ describe("personas-modelo: do host", () => {
     expect(saved).toMatchObject({
       id: "revisor",
       scope: "host",
-      source: "host",
       trusted: true,
       hash: null,
     });
@@ -318,7 +317,6 @@ describe("personas-modelo: do projeto, versionadas", () => {
     expect(listed.personas.map((p) => p.id)).toEqual(["seguranca"]);
     expect(listed.personas[0]).toMatchObject({
       scope: "project",
-      source: "project",
       trusted: false,
     });
     expect(listed.personas[0]?.hash).toBe(personaHash(SECURITY));
