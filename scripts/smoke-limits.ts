@@ -220,7 +220,7 @@ async function run(work: string): Promise<void> {
         client.frames.find(
           (f) =>
             f.type === "quota.updated" &&
-            f.windows.some((w) => Math.abs(w.utilization - 0.95) < 1e-9),
+            f.windows.some((w) => w.utilization !== null && Math.abs(w.utilization - 0.95) < 1e-9),
         ),
       "quota.updated com five_hour em 95%",
     );
