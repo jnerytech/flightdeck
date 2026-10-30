@@ -474,6 +474,11 @@ export class AppStore {
       : formatWhen(iso, this.now(), this.i18n.lang, this.options.timeZone);
   }
 
+  /** The list column's width, kept across starts (phase 10). */
+  listWidth(): number {
+    return 380;
+  }
+
   /** The hub's saved filters (phase 10). */
   hubFilter(): HubFilter {
     return loadHubFilter(this.platform.storage);

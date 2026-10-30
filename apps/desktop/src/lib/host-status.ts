@@ -27,3 +27,12 @@ export function hostsBanner(hosts: HostView[]): {
     reconnecting: hosts.filter((h) => h.status === "connecting"),
   };
 }
+
+/** A host's connection as the sidebar's dot. */
+export function hostDotView(_status: ConnectionStatus): {
+  tone: "running" | "needs-you" | "idle" | "ended" | "error";
+  hollow: boolean;
+  pulse: boolean;
+} {
+  return { tone: "idle", hollow: false, pulse: false };
+}
