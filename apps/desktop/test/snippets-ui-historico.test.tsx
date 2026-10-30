@@ -28,6 +28,8 @@ async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
 const TOKEN_LINE = "export GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789";
 const VAULT_VALUE = "cofre-valor-de-teste-77";
 const VAULT_LINE = `deploy --key ${VAULT_VALUE}`;
+const ENV_VALUE = "envsecretvalue99";
+const ENV_LINE = `release --auth "${ENV_VALUE}"`;
 
 /** A fixture bash history (never the real one) and a vault holding one value that appears in it. */
 async function open() {
@@ -43,6 +45,7 @@ async function open() {
       "git status",
       "bun test",
       VAULT_LINE,
+      ENV_LINE,
       "docker compose up -d",
     ].join("\n"),
   );
@@ -50,6 +53,11 @@ async function open() {
   cleanups.push(() => store.dispose());
   const h = await snippetsHost(cleanups, store, { snippets: { history: { bash } } });
   await store.addSecret({ name: "deploy key", type: "password", value: VAULT_VALUE });
+  await store.addSecret({
+    name: "release env",
+    type: "env",
+    value: `API_URL=https://example.test\nRELEASE_AUTH="${ENV_VALUE}"`,
+  });
   render(<App store={store} />);
   await settle(() => screen.queryByRole("button", { name: "Snippets" }) !== null);
   await act(async () => {
@@ -133,5 +141,14 @@ describe("snippets-ui: import from the shell history", () => {
     expect(screen.queryByText(TOKEN_LINE)).not.toBeNull();
     expect(screen.queryByLabelText(TOKEN_LINE)).toBeNull();
     expect(document.body.innerHTML).not.toContain(VAULT_VALUE);
+  });
+
+  test("one value of an env secret is enough to hide and lock a line, and the values are not kept anywhere", async () => {
+    const { store } = await open();
+    expect(document.body.innerHTML).not.toContain(ENV_VALUE);
+    expect(screen.queryAllByText("Linha oculta: valor do cofre")).toHaveLength(2);
+    expect(screen.queryByLabelText(ENV_LINE)).toBeNull();
+    expect(JSON.stringify(store.getState())).not.toContain(ENV_VALUE);
+    expect(JSON.stringify(store.getState())).not.toContain(VAULT_VALUE);
   });
 });
