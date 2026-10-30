@@ -301,3 +301,15 @@ describe("issues-ui: abrir um link", () => {
     ]);
   });
 });
+
+describe("issues-ui: refreshing the list", () => {
+  test("Atualizar lists the issues again, so a new one shows up", async () => {
+    const { gh } = await openBoard();
+    await openPanel();
+    await settle(() => rows() === 2);
+    gh.respond(ghRules([...ISSUES, ghIssue(3, { title: "Novidade" })]));
+    await click("Atualizar", panel());
+    await settle(() => rows() === 3);
+    expect(issueRow(3)).not.toBeNull();
+  });
+});
