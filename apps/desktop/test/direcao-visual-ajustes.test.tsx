@@ -343,4 +343,18 @@ describe("direcao-visual: ajustes finos", () => {
     expect(screen.queryByLabelText("Card Do diálogo")).not.toBeNull();
     expect(dialog()).toBeNull();
   });
+
+  test("em inglês, as colunas do board falam inglês", async () => {
+    const { store } = await setup({ language: "en", projects: 1 });
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const project = (await store.hostCommand(hostId, "project.list", {}))?.projects[0];
+    await act(async () => {
+      store.router.push({ name: "board", host: hostId, projectId: project?.id ?? "" });
+    });
+    await settle(() => screen.queryByRole("region", { name: "In progress" }) !== null);
+    for (const name of ["Backlog", "In progress", "Needs you", "In review", "Done"]) {
+      expect(screen.queryByRole("region", { name })).not.toBeNull();
+    }
+    expect(screen.queryByRole("region", { name: "Em andamento" })).toBeNull();
+  });
 });
