@@ -12,6 +12,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { Page } = await import("../src/components/layout/page.tsx");
 
 setDefaultTimeout(20_000);
 
@@ -200,6 +201,16 @@ describe("direcao-visual: três colunas", () => {
     expect(screen.queryByRole("status", { name: "Conectando a longe…" })).not.toBeNull();
     expect(within(main()).queryByRole("separator")).toBeNull();
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).toBeNull();
+  });
+
+  test("o corpo de uma página nunca passa da largura da coluna: o conteúdo do ScrollArea é block, não table", () => {
+    render(
+      <Page title="Sessões">
+        <p>corpo</p>
+      </Page>,
+    );
+    const area = document.querySelector("[data-slot='scroll-area']");
+    expect(area?.className ?? "").toContain("[&_[data-slot=scroll-area-viewport]>div]:block!");
   });
 
   test("Configurações, Custos e as páginas do host ocupam a largura toda, sem divisor", async () => {
