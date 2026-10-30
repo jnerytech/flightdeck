@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { Vault } from "../src/lib/vault.ts";
-import { applyImport, BackupError, exportVault, previewImport } from "../src/lib/vault-backup.ts";
+import {
+  applyImport,
+  BackupError,
+  exportVault,
+  fromFdvault,
+  previewImport,
+  toFdvault,
+} from "../src/lib/vault-backup.ts";
 
 /** The OS keyring and the app's storage, both in memory: the real keyring is never touched. */
 function newVault(prefix: string) {
@@ -151,6 +158,37 @@ describe("cofre-backup", () => {
     const target = newVault("t");
     await expect(
       previewImport(target.vault, new TextEncoder().encode("not a vault"), PASS),
+    ).rejects.toMatchObject({ code: "unreadable" });
+  });
+
+  test("the file as text is an armored age file that reads back to the same bytes and hides the content", async () => {
+    const { vault } = await seeded();
+    const file = await exportVault(vault, PASS, PASS, FAST);
+    const text = toFdvault(file);
+    expect(text.startsWith("-----BEGIN AGE ENCRYPTED FILE-----")).toBe(true);
+    expect(text).not.toContain(VALUE);
+    expect(Array.from(fromFdvault(text))).toEqual(Array.from(file));
+    const preview = await previewImport(newVault("t").vault, fromFdvault(text), PASS);
+    expect(preview.added).toHaveLength(2);
+  });
+
+  test("text that is not an armored age file is refused as unreadable", () => {
+    expect(() => fromFdvault("just some text")).toThrow(BackupError);
+    try {
+      fromFdvault("just some text");
+    } catch (error) {
+      expect((error as BackupError).code).toBe("unreadable");
+    }
+  });
+
+  test("armored text with a changed character is refused as unreadable, whichever step notices", async () => {
+    const { vault } = await seeded();
+    const text = toFdvault(await exportVault(vault, PASS, PASS, FAST));
+    const lines = text.split("\n");
+    const body = lines[1] ?? "";
+    lines[1] = `${body.slice(0, 20)}${body[20] === "A" ? "B" : "A"}${body.slice(21)}`;
+    await expect(
+      (async () => previewImport(newVault("t").vault, fromFdvault(lines.join("\n")), PASS))(),
     ).rejects.toMatchObject({ code: "unreadable" });
   });
 });

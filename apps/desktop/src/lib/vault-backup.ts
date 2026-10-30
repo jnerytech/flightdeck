@@ -134,3 +134,13 @@ export async function applyImport(
     skipped: onConflict === "skip" ? preview.conflicting.length : 0,
   };
 }
+
+/** The `.fdvault` as text: `age`'s ASCII armor, so the dialogs can save and read it as a string. */
+export function toFdvault(_file: Uint8Array): string {
+  return "";
+}
+
+/** Reads the text of a `.fdvault`; anything that is not an armored `age` file is unreadable. */
+export function fromFdvault(_text: string): Uint8Array {
+  return new Uint8Array(0);
+}
