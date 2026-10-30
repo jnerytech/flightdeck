@@ -14,6 +14,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const features: string[] = [];
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
   const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
+  /** What `messages.list` answers (phase 21); the payloads asked are in `commands`. */
+  const messaging = { messages: [] as unknown[] };
   /** What `vault.rules.preview` answers (phase 19). */
   const preview = {
     verdict: {
@@ -72,6 +74,9 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
         if (type === "vault.rules.preview") return ack(preview.verdict);
+        if (type === "messages.list") return ack({ messages: messaging.messages });
+        if (type === "messages.directory") return ack({ host: "h", sessions: [] });
+        if (type === "messages.peers") return ack();
         if (type === "vault.report") {
           const csv = (payload as { format?: string }).format === "csv";
           return ack({ rows: audit.rows, ...(csv ? { csv: audit.csv } : {}) });
@@ -100,6 +105,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     features,
     preview,
     audit,
+    messaging,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));
