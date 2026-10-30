@@ -19,6 +19,11 @@ export async function snippetsHost(
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
   const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  // Seeding needs the connection: wait until the host is online.
+  const deadline = Date.now() + 5000;
+  while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
+    await Bun.sleep(10);
+  }
   await store.hostCommand(hostId, "project.add", { path: repo });
   const save = async (input: Record<string, unknown>): Promise<Snippet> =>
     (await store.hostCommand(hostId, "snippets.save", {

@@ -113,7 +113,8 @@ describe("snippets-ui: the screen", () => {
       await save({ name: "status", type: "command", run: "git status" });
     });
     await click("Remover status");
-    expect(rowNames()).toEqual(["status"]);
+    // The confirmation is modal: the list behind it is hidden from the accessibility tree.
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
     await click("Remover");
     expect(rowNames()).toEqual([]);
   });
