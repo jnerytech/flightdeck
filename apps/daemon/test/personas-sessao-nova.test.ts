@@ -222,7 +222,7 @@ describe("personas-sessao-nova: gerenciada", () => {
       persona: { id: "revisor-host" },
     });
     const events = record(manager, sessionId);
-    expect(events.find("session.created")).toMatchObject({
+    expect(events.find("session.created")[0]).toMatchObject({
       persona: { id: "revisor-host", name: "Revisor do host" },
     });
     await poll(() => events.statuses().includes("idle"));
@@ -343,18 +343,18 @@ async function terminalHost(personas: Personas | null, root: string) {
 describe("personas-sessao-nova: o terminal, flightdeckd claude --persona", () => {
   async function run(args: string[], host: { file: string }, cwd?: string) {
     const errors: string[] = [];
-    let code: number | null = null;
+    const exit = { code: null as number | null };
     await runCli(["claude", ...args], {
       env: { ...process.env, FLIGHTDECK_CONFIG: host.file },
       log: { log: () => {}, error: (message) => errors.push(message) },
       exit: (c) => {
-        code = c;
+        exit.code = c;
       },
       onSignal: () => {},
       selfCommand: [process.execPath, "run", join(import.meta.dir, "..", "src", "bin.ts")],
       ...(cwd ? { cwd } : {}),
     });
-    return { code, errors };
+    return { code: exit.code, errors };
   }
 
   const startOf = (fake: ReturnType<typeof installFakeClaude>) =>
@@ -407,7 +407,7 @@ describe("personas-sessao-nova: o terminal, flightdeckd claude --persona", () =>
     cleanups.push(fake.restore);
     await run(["--persona=revisor-host"], host, project);
     const first = startOf(fake).args;
-    expect(first[first.indexOf("--tools") + 1]).toBe("Read,Grep");
+    expect(first).toContain("--tools=Read,Grep");
     expect(first[first.indexOf("--permission-mode") + 1]).toBe("plan");
     expect(first[first.indexOf("--model") + 1]).toBe("claude-opus-5-5");
     expect(first).not.toContain("--allowedTools");
