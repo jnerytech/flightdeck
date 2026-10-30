@@ -276,6 +276,7 @@ const validCommands: Record<CommandType, unknown> = {
     },
   },
   "personas.remove": { scope: "project", id: "seguranca", projectPath: "/w/app" },
+  "personas.reset": { id: "seguranca", language: "en" },
   "personas.trust": { projectPath: "/w/app", id: "seguranca", hash: "abc" },
   "snippets.render": {
     id: "s",
