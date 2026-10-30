@@ -117,6 +117,7 @@ describe("terminal-ui: the xterm screen", () => {
       fontSize: 13,
       fontFamily: "mono",
       cursorBlink: true,
+      allowProposedApi: true,
     });
     expect(s.addons).toHaveLength(4);
     expect(s.terminal.unicode.activeVersion).toBe("11");
