@@ -129,4 +129,22 @@ describe("acoes-execucao: the key of an ssh action's destino comes from the vaul
     expect(requests().map((r) => r.secretId)).toContain("deploy-key");
     expect(jobs).toEqual([]);
   });
+
+  test("run_with_secret on another host runs the command with sh -c on that destino, its key from the vault too", async () => {
+    const { actions, jobs, requests, answer } = setup();
+    answer("127.0.0.1");
+    const done = await actions.runFree({
+      command: "make deploy",
+      secrets: ["token"],
+      host: "cofre",
+      requestedBy: "claude",
+    });
+    expect(jobs.map((j) => [j.target, j.argv, j.env, j.privateKey])).toEqual([
+      ["cofre", ["sh", "-c", "make deploy"], { TOKEN: TOKEN }, KEY],
+    ]);
+    const asked = requests();
+    expect(asked.map((r) => r.secretId).sort()).toEqual(["deploy-key", "token"]);
+    expect(asked.every((r) => r.host === "cofre" && r.command === "make deploy")).toBe(true);
+    expect(done.output).toBe("•••(token) •••(deploy-key)\n");
+  });
 });
