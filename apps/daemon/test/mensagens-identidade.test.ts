@@ -66,13 +66,12 @@ describe("mensagens-identidade: o daemon montado pelo main", () => {
       cwd: repo,
       prompt: "dois",
     });
-    await poll(async () => {
-      const list = await client.data<{ sessions: Array<{ id: string; status: string }> }>(
-        "session.list",
-        {},
-      );
-      return list?.sessions.every((s) => s.status === "idle");
-    }, 5000);
+    // The poll helper takes synchronous checks only, so the wait is a loop.
+    for (let i = 0; i < 100; i++) {
+      const list = await client.data<{ sessions: Array<{ status: string }> }>("session.list", {});
+      if (list?.sessions.length === 2 && list.sessions.every((s) => s.status === "idle")) break;
+      await Bun.sleep(50);
+    }
     const seen = await client.data<{ sessions: Array<{ address: string; receives: boolean }> }>(
       "messages.sessions",
       { as: { session: a?.sessionId } },
