@@ -276,6 +276,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.issues ? ["issues"] : []),
     ...(opts.automations ? ["automation"] : []),
     ...(opts.autoApprove ? ["autoapprove"] : []),
+    // Phase 15: the app shows Conexões for hosts that keep ssh destinos.
+    ...(opts.ssh ? ["ssh"] : []),
   ];
   let pingSeq = 0;
 
