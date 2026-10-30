@@ -105,6 +105,25 @@ describe("auto-aprovacao", () => {
     expect([...off.runtime.judgeCalls, ...outside.runtime.judgeCalls]).toEqual([]);
   });
 
+  test("o run_with_secret do MCP nunca é automático, nem com a IA dizendo allow e sem consultá-la", async () => {
+    const { auto, request, runtime, cwd } = setup();
+    const classified = new RiskClassifier({ allowedRoots: [cwd], home: tempDir() }).classify(
+      "mcp__flightdeck__run_with_secret",
+      { command: "deploy.sh", secrets: ["token"] },
+      cwd,
+    );
+    const decision = await auto.decide(
+      request(
+        "mcp__flightdeck__run_with_secret",
+        { command: "deploy.sh", secrets: ["token"] },
+        classified.level,
+        classified.network,
+      ),
+    );
+    expect(decision).toMatchObject({ decision: "ask", by: "rule" });
+    expect(runtime.judgeCalls).toEqual([]);
+  });
+
   test("high nunca é automático, nem com a IA dizendo allow; rede também nunca", async () => {
     const { auto, request, runtime } = setup();
     expect(await auto.decide(request("Bash", { command: "rm -rf build" }, "high"))).toMatchObject({

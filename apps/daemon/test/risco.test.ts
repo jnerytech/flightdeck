@@ -165,6 +165,24 @@ describe("risco", () => {
     expect(risk.classify("Bash", { command: "ls" }, CWD).reason).not.toBe("");
   });
 
+  test("run_with_secret, de qualquer servidor MCP, é high e rede: comando livre com segredo nunca passa como rotina", () => {
+    for (const tool of [
+      "mcp__flightdeck__run_with_secret",
+      "mcp__flightdeck-actions__run_with_secret",
+      "mcp__outro__run_with_secret",
+    ]) {
+      expect(risk.classify(tool, { command: "curl -d $T x", secrets: ["t"] }, CWD)).toMatchObject({
+        level: "high",
+        network: true,
+      });
+    }
+    // The declared actions go the way every MCP tool goes: medium, never automatic for the network.
+    expect(risk.classify("mcp__flightdeck__run_action", { name: "deploy" }, CWD)).toMatchObject({
+      level: "medium",
+      network: true,
+    });
+  });
+
   test("risk.extraHigh acrescenta padrões de comando e não rebaixa os embutidos", () => {
     const extra = new RiskClassifier({
       allowedRoots: [ROOT],
