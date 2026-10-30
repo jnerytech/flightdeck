@@ -18,6 +18,8 @@ function setup(selection = "", clipboardFails = false) {
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
   const addons: unknown[] = [];
+  const links: Array<(uri: string) => void> = [];
+  const linked: string[] = [];
   let constructed: Record<string, unknown> = {};
   const terminal: XtermTerminal = {
     cols: 80,
@@ -63,7 +65,10 @@ function setup(selection = "", clipboardFails = false) {
       return terminal;
     },
     fit: () => fit,
-    webLinks: () => ({ kind: "links" }),
+    webLinks: (open) => {
+      links.push(open);
+      return { kind: "links" };
+    },
     search: () => search,
     unicode11: () => ({ kind: "unicode" }),
   };
@@ -84,6 +89,7 @@ function setup(selection = "", clipboardFails = false) {
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
     onSearch: () => void searches++,
+    onLink: (uri) => void linked.push(uri),
   });
   const press = (key: string, ctrl = true, shift = true) =>
     keyHandler({
@@ -95,6 +101,8 @@ function setup(selection = "", clipboardFails = false) {
     } as KeyboardEvent);
   return {
     screen,
+    links,
+    linked,
     log,
     clip,
     inputs,
@@ -189,5 +197,17 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.press("V")).toBe(false);
     await Bun.sleep(5);
     expect(s.log).toEqual([]);
+  });
+
+  test("copy and paste are there for a menu too, and a clicked link goes to onLink", async () => {
+    const s = setup("sel");
+    s.screen.copy();
+    s.screen.paste();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:sel"]);
+    expect(s.log).toContain("paste:pasted");
+    s.links[0]?.("https://example.com");
+    expect(s.linked).toEqual(["https://example.com"]);
   });
 });

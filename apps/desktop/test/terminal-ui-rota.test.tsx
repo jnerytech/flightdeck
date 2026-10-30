@@ -65,7 +65,7 @@ describe("terminal-ui: the route and the settings", () => {
     const terminal = realXtermDeps.terminal({ cols: 80, rows: 24, allowProposedApi: true });
     for (const addon of [
       realXtermDeps.fit(),
-      realXtermDeps.webLinks(),
+      realXtermDeps.webLinks(() => {}),
       realXtermDeps.search(),
       realXtermDeps.unicode11(),
     ]) {

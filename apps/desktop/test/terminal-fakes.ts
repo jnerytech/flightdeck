@@ -8,6 +8,7 @@ export function fakeXterm() {
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
   let disposed = false;
+  let openLink: (uri: string) => void = () => {};
   let selection = "";
   let fits = 0;
   const pasted: string[] = [];
@@ -50,7 +51,10 @@ export function fakeXterm() {
         fits++;
       },
     }),
-    webLinks: () => ({}),
+    webLinks: (open) => {
+      openLink = open;
+      return {};
+    },
     search: () => ({
       findNext: (text) => {
         finds.push(`next:${text}`);
@@ -72,6 +76,7 @@ export function fakeXterm() {
     fonts: () => fonts,
     disposed: () => disposed,
     pasted,
+    clickLink: (uri: string) => openLink(uri),
     fits: () => fits,
     select: (text: string) => {
       selection = text;

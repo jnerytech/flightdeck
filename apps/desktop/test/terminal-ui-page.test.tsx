@@ -265,4 +265,40 @@ describe("terminal-ui: the terminal screen", () => {
     await settle(() => (ptys.spawned[0]?.resized.length ?? 0) > 0);
     expect(ptys.spawned[0]?.resized).toEqual([[120, 40]]);
   });
+
+  test("the right button opens a menu with Copiar and Colar", async () => {
+    const { x, copied } = await setup();
+    await settle(() => state("Ao vivo"));
+    x.select("trecho");
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement | null;
+    expect(area).not.toBeNull();
+    await act(async () => {
+      if (area) fireEvent.contextMenu(area, { clientX: 40, clientY: 50 });
+    });
+    expect(screen.queryByRole("menu", { name: "Terminal" })).not.toBeNull();
+    await click("Copiar");
+    expect(copied).toEqual(["trecho"]);
+    expect(screen.queryByRole("menu", { name: "Terminal" })).toBeNull();
+    await act(async () => {
+      if (area) fireEvent.contextMenu(area, { clientX: 40, clientY: 50 });
+    });
+    await act(async () => {
+      fireEvent.keyDown(screen.queryByRole("menu", { name: "Terminal" }) as HTMLElement, {
+        key: "Escape",
+      });
+    });
+    expect(screen.queryByRole("menu", { name: "Terminal" })).toBeNull();
+  });
+
+  test("a link in the output opens in the browser, http and https only", async () => {
+    const { x, store } = await setup();
+    await settle(() => state("Ao vivo"));
+    const opened: string[] = [];
+    (
+      store as unknown as { platform: { openExternal(url: string): Promise<void> } }
+    ).platform.openExternal = async (url) => void opened.push(url);
+    x.clickLink("https://example.com/a");
+    x.clickLink("file:///etc/passwd");
+    expect(opened).toEqual(["https://example.com/a"]);
+  });
 });
