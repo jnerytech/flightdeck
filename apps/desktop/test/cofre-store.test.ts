@@ -56,7 +56,7 @@ describe("cofre-store", () => {
     expect(await store.vault.value(meta.id)).toBeNull();
   });
 
-  test("a vault.request from the daemon is denied in this phase: the outcome says why and no vault.deliver is sent", async () => {
+  test("a vault.request that names no action is denied: the outcome says why and no vault.deliver is sent", async () => {
     const { daemon, meta, outcomes, hostId } = await setup();
     daemon.push({ ...FRAME, secretId: meta.id });
     await settle(() => outcomes.length > 0);
@@ -67,8 +67,7 @@ describe("cofre-store", () => {
         purpose: "ssh",
         requester: "claude",
         delivered: false,
-        reason:
-          "in this phase the daemon cannot ask the vault for secrets: only the uses the app starts are delivered",
+        reason: "the request names neither an action nor a command",
       },
     ]);
     await Bun.sleep(50);

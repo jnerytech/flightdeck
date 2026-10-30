@@ -62,7 +62,7 @@ describe("acoes-ui-aprovacao: a request of the daemon for an action, in Precisa 
     expect(item?.hostId).toBe(hostId);
     expect(item?.risk).toBeUndefined();
     const shown = JSON.stringify(item?.input);
-    for (const part of ["deploy", "claude", "branch", "main"]) expect(shown).toContain(part);
+    for (const part of ["deploy", "Claude", "branch", "main"]) expect(shown).toContain(part);
     expect(shown).not.toContain(VALUE);
     expect(sent("vault.deliver")).toEqual([]);
     await store.respondTo(hostId, "r1", "allow");
