@@ -221,10 +221,10 @@ describe("i18n", () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     });
-    const input = screen.queryByLabelText("Buscar no histórico") as HTMLInputElement | null;
+    // The palette speaks English now, its field too.
+    const input = screen.queryByLabelText("Search the history") as HTMLInputElement | null;
     expect(input).not.toBeNull();
     await act(async () => {
-      // The palette speaks English now.
       fireEvent.change(input as HTMLInputElement, { target: { value: "language" } });
     });
     await act(async () => {
