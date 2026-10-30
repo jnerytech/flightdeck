@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { visibleLiterals } from "../../../scripts/lib/i18n-sweep.ts";
 import { poll } from "../../daemon/test/helpers.ts";
@@ -26,30 +26,23 @@ afterEach(async () => {
 });
 
 const ROOT = resolve(import.meta.dir, "../../..");
-const UI = resolve(import.meta.dir, "../src/ui");
 
-/** Screens whose visible text all comes from the dictionary (the list grows with the sweep). */
-const SWEPT = [
-  "SessionView.tsx",
-  "ExternalView.tsx",
-  "TranscriptReader.tsx",
-  "ToolCall.tsx",
-  "AlwaysAllow.tsx",
-  "NewSessionForm.tsx",
-  "ConfirmDialog.tsx",
-  "DiffView.tsx",
-  "UpdateBanner.tsx",
-  "DaemonUpdate.tsx",
-  "Screens.tsx",
-  "BoardView.tsx",
-  "CardDetail.tsx",
-  "RunTimeline.tsx",
-  "WorkflowsPage.tsx",
-  "ProjectsPage.tsx",
-  "RulesSection.tsx",
-];
+/** Every screen and component with text: all of it comes from the dictionary. */
+const SOURCES = [
+  "src/ui",
+  "src/components/approval",
+  "src/components/feedback",
+  "src/components/hosts",
+  "src/components/layout",
+  "src/components/session",
+  "src/components/status",
+].flatMap((dir) =>
+  readdirSync(resolve(import.meta.dir, "..", dir))
+    .filter((file) => file.endsWith(".tsx"))
+    .map((file) => resolve(import.meta.dir, "..", dir, file)),
+);
 /** Names and ids that are not translated. */
-const ALLOWED = ["Flightdeck", "Transcript", "Token", "Host", "Tokens"];
+const ALLOWED = ["Flightdeck", "Ctrl K", "flightdeck://…"];
 
 async function online(language: string) {
   const d = makeDaemon(cleanups);
@@ -86,9 +79,9 @@ describe("textos", () => {
   });
 
   test("as telas varridas não têm texto visível fora do dicionário", () => {
-    const left = SWEPT.flatMap((file) =>
-      visibleLiterals(readFileSync(resolve(UI, file), "utf8"), ALLOWED).map(
-        (l) => `${file}:${l.line} ${l.text}`,
+    const left = SOURCES.flatMap((file) =>
+      visibleLiterals(readFileSync(file, "utf8"), ALLOWED).map(
+        (l) => `${file.slice(file.indexOf("src"))}:${l.line} ${l.text}`,
       ),
     );
     expect(left).toEqual([]);
@@ -193,6 +186,41 @@ describe("textos", () => {
     });
     await act(() => Bun.sleep(300));
     expect(main().textContent ?? "").toContain("Board of alfa");
+  });
+
+  test("em inglês, Configurações e a página do host falam inglês", async () => {
+    const { store, hostId } = await online("en");
+    await act(async () => {
+      store.router.push({ name: "settings" });
+    });
+    const prefs = main().textContent ?? "";
+    for (const text of [
+      "Appearance",
+      "Window",
+      "Closing the window sends it to the tray",
+      "Global shortcut",
+      "Save shortcut",
+    ]) {
+      expect(prefs).toContain(text);
+    }
+    expect(prefs).not.toMatch(/Aparência|Janela|Atalho|Salvar|Fechar a janela/);
+    await act(async () => {
+      store.router.push({ name: "host", host: hostId });
+    });
+    await act(() => Bun.sleep(300));
+    const host = main().textContent ?? "";
+    for (const text of [
+      "Information",
+      "Claude Code hooks",
+      "Host name",
+      "Save name",
+      "Reconnect",
+      "Remove host",
+    ]) {
+      expect(host).toContain(text);
+    }
+    expect(host).not.toMatch(/Informações|Reconectar|Remover host|Nome do host/);
+    expect(host).toMatch(/up for \d+ s/);
   });
 
   test("termos internos nunca aparecem nas telas principais (lista proibida)", async () => {
