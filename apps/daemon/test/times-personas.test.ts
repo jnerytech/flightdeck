@@ -68,5 +68,17 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
       });
     expect(await personaOf("coordenadora")).toBe("revisor");
     expect(await personaOf("executora 1")).toBe("qa");
+    // Without one, the coordinator is the pack's coordenador.
+    await client.data("teams.create", {
+      projectId: project?.id,
+      name: "segundo",
+      goal: "outro objetivo",
+      workers: 1,
+    });
+    const coordinator = await until(async () => {
+      const listed = await client.data<Listed>("session.list", {});
+      return listed?.sessions.find((s) => s.name === "segundo · coordenadora")?.persona?.id;
+    });
+    expect(coordinator).toBe("coordenador");
   });
 });
