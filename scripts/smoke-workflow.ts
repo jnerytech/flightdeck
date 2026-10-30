@@ -10,6 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { describeCard } from "./lib/smoke-card.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -53,6 +54,9 @@ interface Card {
   worktreePath: string | null;
   prUrl: string | null;
   workflowRunId: string | null;
+  prState?: string | null;
+  checksState?: string | null;
+  notice?: string | null;
 }
 
 interface Run {
@@ -362,7 +366,11 @@ async function run(work: string): Promise<void> {
     await until(
       () => client.card(created.id, (c) => c.column === "done" && c.worktreePath === null),
       "card em Concluído com a worktree removida",
-    );
+    ).catch((error: Error) => {
+      // What the card last said (its notice carries a failed worktree removal) explains the wait.
+      const last = client.card(created.id, () => true);
+      throw new Error(`${error.message} (${describeCard(last)})`);
+    });
     if (existsSync(reviewed.worktreePath ?? "")) throw new Error("a worktree continua no disco");
     log("Concluído; worktree removida");
     client.close();

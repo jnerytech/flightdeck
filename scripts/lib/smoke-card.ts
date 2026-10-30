@@ -8,6 +8,14 @@ export interface CardSnapshot {
 }
 
 /** "column=review worktree=… notice=…": what a timed-out smoke prints about its card. */
-export function describeCard(_card: CardSnapshot | undefined): string {
-  return "";
+export function describeCard(card: CardSnapshot | undefined): string {
+  if (!card) return "no card update seen";
+  const none = (value: string | null | undefined) => value ?? "none";
+  return [
+    `column=${none(card.column)}`,
+    `worktree=${none(card.worktreePath)}`,
+    `pr=${none(card.prState)}`,
+    `checks=${none(card.checksState)}`,
+    `notice=${none(card.notice)}`,
+  ].join(" ");
 }
