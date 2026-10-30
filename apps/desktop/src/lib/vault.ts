@@ -100,8 +100,13 @@ export class Vault {
   }
 
   /** Changes what the person may edit; the id, type, creation time and value never change. */
-  update(_id: string, _patch: SecretPatch): SecretMeta | null {
-    return null;
+  update(id: string, patch: SecretPatch): SecretMeta | null {
+    const list = this.list();
+    const current = list.find((s) => s.id === id);
+    if (!current) return null;
+    const next = { ...current, ...patch };
+    this.save(list.map((s) => (s.id === id ? next : s)));
+    return next;
   }
 
   async remove(id: string): Promise<void> {
