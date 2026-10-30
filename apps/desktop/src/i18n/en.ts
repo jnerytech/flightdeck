@@ -1096,6 +1096,18 @@ export const en: Dictionary = {
       session: "approved earlier in the session",
     },
   },
+  sessionMessages: {
+    tab: "Messages",
+    list: "Messages of this session",
+    write: "Send to another session…",
+    to: "To",
+    text: "Message text",
+    send: "Send",
+    cancel: "Cancel",
+    result: "Send result",
+    sent: "Sent",
+    received: "Received",
+  },
   conversationsUi: {
     title: "Conversations",
     subtitle: "Messages between sessions, on every host",

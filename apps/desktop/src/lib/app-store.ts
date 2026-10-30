@@ -248,6 +248,8 @@ export type HostCommandType = Extract<
   | "vault.rules.preview"
   | "messages.watch"
   | "messages.list"
+  | "messages.sessions"
+  | "messages.send"
   | "messages.relay"
   | "messages.relayed"
   | "messages.directory"

@@ -119,6 +119,7 @@ function ManagedSession(props: {
       hostId={hostId}
       claudeSessionId={claudeId}
       enabled={hasFeature(host?.hostInfo?.features, "review", false)}
+      messagingId={hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null}
     >
       <SessionView
         t={store.i18n.t}
@@ -454,6 +455,11 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           claudeSessionId={route.claudeSessionId}
           enabled={hasFeature(hostOf(route.host)?.hostInfo?.features, "review", false)}
+          messagingId={
+            hasFeature(hostOf(route.host)?.hostInfo?.features, "messaging", false)
+              ? route.claudeSessionId
+              : null
+          }
         >
           <ExternalView
             store={store}

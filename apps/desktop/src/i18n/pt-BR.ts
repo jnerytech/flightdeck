@@ -1094,6 +1094,18 @@ export const ptBR = {
       session: "aprovado antes na sessão",
     },
   },
+  sessionMessages: {
+    tab: "Mensagens",
+    list: "Mensagens desta sessão",
+    write: "Mandar para outra sessão…",
+    to: "Para",
+    text: "Texto da mensagem",
+    send: "Enviar",
+    cancel: "Cancelar",
+    result: "Resultado do envio",
+    sent: "Enviada",
+    received: "Recebida",
+  },
   conversationsUi: {
     title: "Conversas",
     subtitle: "Mensagens entre sessões, em todos os hosts",
