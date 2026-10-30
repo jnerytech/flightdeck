@@ -466,6 +466,8 @@ export const en: Dictionary = {
     error: "error",
   },
   tabs: {
+    newTab: "New tab",
+    badge: { "needs-you": "Needs you", running: "Running" },
     list: "Tabs",
     close: "Close tab {title}",
     pin: "Pin tab {title}",

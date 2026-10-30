@@ -469,6 +469,8 @@ export const ptBR = {
     error: "erro",
   },
   tabs: {
+    newTab: "Nova aba",
+    badge: { "needs-you": "Precisa de você", running: "Rodando" },
     list: "Abas",
     close: "Fechar aba {title}",
     pin: "Fixar aba {title}",

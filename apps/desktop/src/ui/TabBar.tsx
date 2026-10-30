@@ -5,6 +5,7 @@ import {
   type LucideIcon,
   Pin,
   PinOff,
+  Plus,
   SquareKanban,
   SquareTerminal,
   Wallet,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
+import { tabBadge } from "../lib/tab-badge.ts";
 import type { Tab } from "../lib/tabs.ts";
 
 const ICONS: Partial<Record<Route["name"], LucideIcon>> = {
@@ -47,6 +49,7 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
         const label = title(tab, state, store);
         const Icon = ICONS[tab.router.current.name] ?? Layers;
         const active = tab.id === store.tabs.activeId;
+        const badge = tabBadge(tab.router.current, state);
         return (
           <div
             key={tab.id}
@@ -66,6 +69,20 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
             >
               <Icon className="size-4 shrink-0" aria-hidden />
               {!tab.pinned && <span className="truncate">{label}</span>}
+              {badge && (
+                <span
+                  data-badge={badge}
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 text-xs",
+                    badge === "needs-you"
+                      ? "bg-status-needs-you text-white"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                  title={t(`tabs.badge.${badge}`)}
+                >
+                  {tab.pinned ? "" : t(`tabs.badge.${badge}`)}
+                </span>
+              )}
             </button>
             <Button
               variant="ghost"
@@ -90,6 +107,18 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
           </div>
         );
       })}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="mb-0.5 size-7"
+        aria-label={t("tabs.newTab")}
+        onClick={() => {
+          store.tabs.open({ name: "home" });
+          store.openSearch();
+        }}
+      >
+        <Plus />
+      </Button>
     </div>
   );
 }
