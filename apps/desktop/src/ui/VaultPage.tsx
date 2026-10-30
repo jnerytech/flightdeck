@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NewSecretForm } from "@/components/vault/new-secret-form";
 import { TypedConfirm } from "@/components/vault/typed-confirm";
+import { UsageLog } from "@/components/vault/usage-log";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { SecretMeta } from "../lib/vault.ts";
@@ -131,23 +133,34 @@ export function VaultPage(props: {
       }
     >
       {creating && <NewSecretForm store={store} onClose={() => setCreating(false)} />}
-      {state.secrets.length === 0 ? (
-        <EmptyState icon={KeyRound} title={t("vault.empty")} />
-      ) : (
-        <ul aria-label={t("vault.list")} className="flex flex-col gap-2">
-          {state.secrets.map((secret) => (
-            <SecretRow
-              key={secret.id}
-              secret={secret}
-              info={infos[secret.id] ?? {}}
-              revealed={shown?.id === secret.id ? shown.value : null}
-              onReveal={() => setAsking(secret)}
-              onCopy={() => void store.copySecret(secret.id, clearMs)}
-              onRemove={() => setRemoving(secret)}
-            />
-          ))}
-        </ul>
-      )}
+      <Tabs defaultValue="secrets">
+        <TabsList aria-label={t("vault.tabs")}>
+          <TabsTrigger value="secrets">{t("vault.tabSecrets")}</TabsTrigger>
+          <TabsTrigger value="usage">{t("vault.tabUsage")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="secrets">
+          {state.secrets.length === 0 ? (
+            <EmptyState icon={KeyRound} title={t("vault.empty")} />
+          ) : (
+            <ul aria-label={t("vault.list")} className="flex flex-col gap-2">
+              {state.secrets.map((secret) => (
+                <SecretRow
+                  key={secret.id}
+                  secret={secret}
+                  info={infos[secret.id] ?? {}}
+                  revealed={shown?.id === secret.id ? shown.value : null}
+                  onReveal={() => setAsking(secret)}
+                  onCopy={() => void store.copySecret(secret.id, clearMs)}
+                  onRemove={() => setRemoving(secret)}
+                />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+        <TabsContent value="usage">
+          <UsageLog store={store} state={state} />
+        </TabsContent>
+      </Tabs>
       {asking && (
         <TypedConfirm
           message={t("vault.revealMessage", {
