@@ -18,10 +18,10 @@ const TABLES = ["events", "permission_requests", "external_sessions"];
 
 const describeCounts = (counts: PruneCounts, t: T) =>
   Object.entries(counts)
-    .map(
-      ([table, n]) =>
-        `${TABLES.includes(table) ? t(`maintenance.tables.${table}` as Key) : table} ${n}`,
-    )
+    .map(([table, n]) => {
+      const label = TABLES.includes(table) ? t(`maintenance.tables.${table}` as Key) : table;
+      return `${label} ${n}`;
+    })
     .join(", ");
 
 /**

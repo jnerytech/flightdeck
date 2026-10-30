@@ -225,7 +225,8 @@ async function run(work: string): Promise<void> {
       "quota.updated com five_hour em 95%",
     );
     if (reading.type !== "quota.updated") throw new Error("frame inesperado");
-    log(`quota.updated: ${reading.windows.map((w) => `${w.window} ${w.utilization}`).join(", ")}`);
+    const windows = reading.windows.map((w) => `${w.window} ${w.utilization}`).join(", ");
+    log(`quota.updated: ${windows}`);
 
     step = "card na fila por cota";
     const project = await client.call<{ id: string }>("project.add", {
