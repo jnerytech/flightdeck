@@ -2,6 +2,7 @@ import { Drama } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { PersonaEditor } from "@/components/personas/persona-editor";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -30,6 +31,7 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
   const [removing, setRemoving] = useState<AppPersona | null>(null);
   const [publishing, setPublishing] = useState<AppPersona | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [editing, setEditing] = useState<AppPersona | "new" | null>(null);
 
   useEffect(() => {
     if (hostId) void store.loadProjects(hostId);
@@ -91,7 +93,30 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
 
   const projects = hostId ? (state.projects[hostId] ?? []) : [];
   return (
-    <Page title={t("personas.title")} subtitle={t("personas.subtitle", { host: host?.name ?? "" })}>
+    <Page
+      title={t("personas.title")}
+      subtitle={t("personas.subtitle", { host: host?.name ?? "" })}
+      actions={
+        hostId &&
+        editing === null && (
+          <Button onClick={() => setEditing("new")}>{t("personas.newPersona")}</Button>
+        )
+      }
+    >
+      {hostId && editing !== null && (
+        <PersonaEditor
+          key={editing === "new" ? "new" : `${editing.scope}:${editing.id}`}
+          store={store}
+          hostId={hostId}
+          project={project === APP ? "" : project}
+          persona={editing === "new" ? null : editing}
+          onSaved={() => {
+            setEditing(null);
+            void reload();
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
       <div className="mb-4 flex flex-wrap gap-3">
         <label className="flex flex-col gap-1 text-sm">
           {t("personas.project")}
@@ -132,6 +157,14 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
               </div>
               <p className="text-muted-foreground text-sm">{p.description}</p>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={t("personas.editFor", { name: p.name })}
+                  onClick={() => setEditing(p)}
+                >
+                  {t("personas.edit")}
+                </Button>
                 {!p.trusted && (
                   <Button
                     size="sm"
