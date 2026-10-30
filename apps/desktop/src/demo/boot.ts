@@ -61,3 +61,8 @@ export function applyDemoPrefs(storage: Platform["storage"], search: string): vo
 export function entryHtml(html: string, entry: string | undefined): string {
   return entry === "web" ? html.replace("/src/main.tsx", "/src/main.web.tsx") : html;
 }
+
+/** What the store gets in the demo (stub: filled in with the implementation). */
+export function demoStoreOptions(_hosts: DemoHost[]): { baseDelayMs?: number } {
+  return {};
+}

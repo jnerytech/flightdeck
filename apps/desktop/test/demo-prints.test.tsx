@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   applyDemoPrefs,
+  demoStoreOptions,
   entryHtml,
   initialRoute,
   parseDemoHosts,
@@ -83,5 +84,13 @@ describe("demo-prints", () => {
     expect(entryHtml(html, "web")).toBe('<script type="module" src="/src/main.web.tsx"></script>');
     expect(entryHtml(html, undefined)).toBe(html);
     expect(entryHtml(html, "tauri")).toBe(html);
+  });
+
+  test("no demo, um host que não responde fica offline (ou reconectando) tempo bastante para o print", () => {
+    // The real app retries within a second; the prints need the state to hold.
+    expect(demoStoreOptions([])).toEqual({});
+    expect(
+      demoStoreOptions([{ id: "a", name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: "t" }]),
+    ).toEqual({ baseDelayMs: 60_000 });
   });
 });
