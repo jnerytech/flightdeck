@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { startServer } from "../src/server.ts";
-import { SshConnector } from "../src/ssh/connect.ts";
+import { processRun, resolveSshPath, SshConnector } from "../src/ssh/connect.ts";
 import { HostKeys } from "../src/ssh/hostkey.ts";
 import {
   type AgentOps,
@@ -669,6 +669,69 @@ ${"x".repeat(500)}`,
     await client.request("hello", { token: TOKEN, client: "t" });
     const ack = await client.request("ssh.connect", { targetId: "x", cols: 80, rows: 24 });
     expect((ack.error as { code?: string } | undefined)?.code).toBe("invalid_state");
+  });
+});
+
+describe("ssh-connect: peças", () => {
+  test("com os timers de verdade, o desfazer de 60 s é agendado e cancelado ao parar", async () => {
+    const s = setup();
+    const target = s.targets.save({
+      name: "cofre",
+      host: "vault.example.com",
+      user: "me",
+      auth: "vault-key",
+      secretRef: "x",
+    });
+    s.pin(target.id);
+    s.servers.set("vault.example.com", scan("vault.example.com", KEY));
+    let cleaned = 0;
+    const real = new SshConnector({
+      targets: s.targets,
+      hostKeys: new HostKeys({
+        targets: s.targets,
+        exec: async () => scan("vault.example.com", KEY),
+      }),
+      terminals: s.terminals,
+      dir: s.dir,
+      platform: "linux",
+      sshPath: "/usr/bin/ssh",
+      run: async () => ({ code: 0, stderr: "" }),
+      delivery: {
+        kind: "agent",
+        deliver: async () => ({ identityFile: null, env: {}, cleanup: () => cleaned++ }),
+      },
+    });
+    await real.connect({ targetId: target.id, cols: 80, rows: 24, privateKey: PRIVATE });
+    expect(cleaned).toBe(0);
+    real.stop();
+    expect(cleaned).toBe(1);
+  });
+
+  test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {
+    const system32 = "C:WindowsSystem32OpenSSHssh.exe";
+    const both = { exists: (path: string) => path === system32, which: () => "/x/ssh" };
+    expect(resolveSshPath({ platform: "win32", ...both })).toBe(system32);
+    expect(
+      resolveSshPath({ platform: "win32", exists: () => false, which: () => "C:Gitssh.exe" }),
+    ).toBe("C:Gitssh.exe");
+    expect(resolveSshPath({ platform: "linux", ...both })).toBe("/x/ssh");
+    expect(resolveSshPath({ platform: "linux", exists: () => false, which: () => null })).toBe(
+      "ssh",
+    );
+  });
+
+  test("rodar o ssh sem terminal: o ambiente se soma ao do processo, a saída é descartada e o stderr é lido", async () => {
+    const seen: Array<{ cmd: string[]; env: Record<string, string>; stdin: unknown }> = [];
+    const spawn = ((cmd: string[], options: { env: Record<string, string>; stdin: unknown }) => {
+      seen.push({ cmd, env: options.env, stdin: options.stdin });
+      return { stderr: new Response("Permission denied").body, exited: Promise.resolve(255) };
+    }) as unknown as Parameters<typeof processRun>[0];
+    const result = await processRun(spawn)(["ssh", "-V"], { SSH_AUTH_SOCK: "/tmp/s" });
+    expect(result).toEqual({ code: 255, stderr: "Permission denied" });
+    expect(seen[0]?.cmd).toEqual(["ssh", "-V"]);
+    expect(seen[0]?.env.SSH_AUTH_SOCK).toBe("/tmp/s");
+    expect(seen[0]?.env.PATH).toBe(process.env.PATH);
+    expect(seen[0]?.stdin).toBe("ignore");
   });
 });
 
