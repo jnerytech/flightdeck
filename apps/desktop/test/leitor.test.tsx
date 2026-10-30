@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { assistantLine, userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import {
+  assistantLine,
+  summaryLine,
+  userLine,
+  writeTranscript,
+} from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -138,5 +143,33 @@ describe("leitor", () => {
     await settle(() => shown().length === TOTAL);
     expect(shown()).toEqual(Array.from({ length: TOTAL }, (_, i) => `m${i}`));
     expect(screen.queryByRole("button", { name: "Carregar anteriores" })).toBeNull();
+  });
+
+  test("uma linha de resumo (que não é mensagem) aparece como nota centralizada, sem balão", async () => {
+    const d = makeDaemon(cleanups);
+    writeTranscript(d.historyRoot, "-p", "com-resumo", [
+      summaryLine("Resumo da conversa", "m0"),
+      userLine({ uuid: "m0", text: "primeira", cwd: d.project }),
+    ]);
+    d.history.scan();
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await act(async () => {
+      store.router.push({
+        name: "reader",
+        target: { hostId, claudeSessionId: "com-resumo" },
+      });
+    });
+    await settle(() => screen.queryByText("Resumo da conversa") !== null);
+    const note = screen.queryByText("Resumo da conversa");
+    expect(note).not.toBeNull();
+    expect(note?.className ?? "").toContain("text-center");
+    expect(note?.className ?? "").not.toContain("bg-secondary");
+    expect(screen.queryByText("primeira")?.className ?? "").toContain("bg-secondary");
   });
 });
