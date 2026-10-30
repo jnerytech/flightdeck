@@ -1,6 +1,6 @@
 import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ImportPanel } from "@/components/connections/import-panel";
 import { savePayload, TargetForm } from "@/components/connections/target-form";
 import { Page } from "@/components/layout/page";
@@ -37,6 +37,8 @@ export function ConnectionsPage(props: {
   store: AppStore;
   state: AppState;
   go(route: Route): void;
+  /** The id of a destino to connect to once the list is in (the palette's choice). */
+  connect?: string | undefined;
 }) {
   const t = useT();
   const { store, state } = props;
@@ -128,6 +130,16 @@ export function ConnectionsPage(props: {
     ]);
     await reload();
   };
+
+  const asked = useRef<string | null>(null);
+  // `connect` is rebuilt on each render; the destino is what starts it, once.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
+  useEffect(() => {
+    const wanted = targets.find((target) => target.id === props.connect);
+    if (!wanted || asked.current === wanted.id) return;
+    asked.current = wanted.id;
+    void connect(wanted);
+  }, [targets, props.connect]);
 
   const tags = [...new Set(targets.flatMap((target) => target.tags))].sort();
   const vias = [...new Set(targets.flatMap((target) => (target.viaHost ? [target.viaHost] : [])))];

@@ -22,7 +22,8 @@ export type PaletteTarget =
   | { kind: "toggle-theme" }
   | { kind: "switch-language" }
   | { kind: "start-card"; hostId: string; cardId: string }
-  | { kind: "costs" };
+  | { kind: "costs" }
+  | { kind: "connect-ssh"; hostId: string; targetId: string };
 
 export interface PaletteAction {
   label: string;
@@ -198,6 +199,19 @@ export function paletteSections(
     action("settings", t("palette.goSettings"), { kind: "settings" }),
   ];
 
+  const connections = online.flatMap((host) =>
+    (state.ssh[host.id] ?? []).map((target): PaletteItem => {
+      const connect: PaletteTarget = { kind: "connect-ssh", hostId: host.id, targetId: target.id };
+      return {
+        id: `ssh:${host.id}/${target.id}`,
+        label: t("palette.connectTo", { name: target.name }),
+        detail: `${target.user}@${target.host} · ${host.name}`,
+        target: connect,
+        actions: [{ label: t("palette.connect"), target: connect }],
+      };
+    }),
+  );
+
   const needle = query.trim().toLowerCase();
   const matches = (item: PaletteItem) => item.label.toLowerCase().includes(needle);
   return [
@@ -205,6 +219,7 @@ export function paletteSections(
     { title: t("palette.sectionCards"), items: cards },
     { title: t("palette.sectionProjects"), items: projects },
     { title: t("palette.sectionHosts"), items: hosts },
+    { title: t("palette.sectionConnections"), items: connections },
     { title: t("palette.sectionActions"), items: actions },
   ]
     .map((section) => ({ ...section, items: section.items.filter(matches) }))

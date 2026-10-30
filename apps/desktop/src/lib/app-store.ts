@@ -118,6 +118,8 @@ export interface AppState {
   quota: Record<string, QuotaState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
+  ssh: Record<string, SshTarget[]>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -484,6 +486,7 @@ export class AppStore {
       runs: {},
       quota: {},
       budgets: {},
+      ssh: {},
       externals: {},
       externalRequests: {},
       meta: {},
@@ -813,7 +816,15 @@ export class AppStore {
           for (const card of cardsIn(board)) this.onCard(host.id, card);
         }
       });
-    await Promise.all([this.refreshHub(), ...boards]);
+    const targets = this.state.hosts
+      .filter(
+        (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "ssh", false),
+      )
+      .map(async (host) => {
+        const listed = await quiet(this.dispatch(host.id, "ssh.list", {}));
+        if (listed) this.update({ ssh: { ...this.state.ssh, [host.id]: listed.targets } });
+      });
+    await Promise.all([this.refreshHub(), ...boards, ...targets]);
   }
 
   openSearch(): void {

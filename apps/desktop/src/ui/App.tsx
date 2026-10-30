@@ -54,6 +54,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "settings" };
     case "costs":
       return { name: "costs" };
+    case "connect-ssh":
+      return { name: "connections", connect: target.targetId };
   }
 }
 
