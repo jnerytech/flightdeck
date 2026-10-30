@@ -147,10 +147,17 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
         return fail("bad_request", `desconhecido: ${type}`);
     }
   };
+  const sockets = new Set<{ send(data: string): unknown }>();
   const server = Bun.serve({
     port: 0,
     fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("", { status: 426 })),
     websocket: {
+      open(ws) {
+        sockets.add(ws);
+      },
+      close(ws) {
+        sockets.delete(ws);
+      },
       message(ws, raw): void {
         const { id, type, payload = {} } = JSON.parse(String(raw));
         commands.push({ type, payload });
@@ -172,6 +179,10 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
     targets,
     state,
     /** The commands of one type, in order. */
+    /** Sends a frame to every connected app, as the daemon does for `askpass.request`. */
+    push: (frame: unknown) => {
+      for (const ws of sockets) ws.send(JSON.stringify(frame));
+    },
     sent: (type: string) => commands.filter((c) => c.type === type).map((c) => c.payload),
   };
 }
