@@ -115,6 +115,8 @@ const RESUME_QUOTA =
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
   private readonly unsubscribe: Array<() => void> = [];
+  /** The persona each worker card was started with, for the standard names. */
+  private readonly cardPersonas = new Map<string, string>();
   private blocked: boolean;
 
   constructor(private readonly opts: TeamsOptions) {
@@ -244,8 +246,8 @@ export class Teams {
   }
 
   /** The persona a worker's card was started with; the standard name reads it. */
-  personaOfCard(_cardId: string): string | null {
-    return null;
+  personaOfCard(cardId: string): string | null {
+    return this.cardPersonas.get(cardId) ?? null;
   }
 
   /** Creates a worker's card with its instructions and starts it (the quota queue still applies). */
@@ -260,6 +262,8 @@ export class Teams {
       title: name,
       description: workerInstructions(brief, coordinator),
     });
+    // Before the card starts: its session is named with this persona from the first moment.
+    if (persona) this.cardPersonas.set(card.id, persona);
     await (this.opts.startWorker
       ? this.opts.startWorker(card.id, persona)
       : this.opts.board.startCard(card.id));
@@ -305,6 +309,7 @@ export class Teams {
       name: coordinatorName,
       persona: coordinatorPersona,
     });
+    if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
     const address = `${this.opts.host}/${sessionId}`;
     const members: StoredMember[] = [
       {
@@ -449,7 +454,10 @@ export class Teams {
         m.name === target.name ? { ...m, persona } : m,
       );
       this.save(row.id, { members: JSON.stringify(members) });
-      if (target.sessionId) this.opts.applyPersona?.(target.sessionId, persona);
+      if (target.sessionId) {
+        this.opts.applyPersona?.(target.sessionId, persona);
+        this.opts.names?.setPersona(target.sessionId, persona);
+      }
     }
     if (patch.addWorkers) {
       const members = this.stored(this.row(row.id));
