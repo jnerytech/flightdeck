@@ -108,6 +108,7 @@ const NAMES: Record<Route["name"], true> = {
   terminal: true,
   settings: true,
   costs: true,
+  connections: true,
   "add-host": true,
 };
 
