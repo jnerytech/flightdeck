@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const UI = resolve(import.meta.dir, "../src/ui");
@@ -104,28 +104,12 @@ function classTokens(source: string): string[] {
   return found;
 }
 
-/** The screens already moved to the new base. */
-const MIGRATED = [
-  "SessionView.tsx",
-  "ExternalView.tsx",
-  "TranscriptReader.tsx",
-  "ToolCall.tsx",
-  "Markdown.tsx",
-  "NewSessionForm.tsx",
-  "AlwaysAllow.tsx",
-  "TerminalButton.tsx",
-  "BoardView.tsx",
-  "CardDetail.tsx",
-  "DiffView.tsx",
-  "RunTimeline.tsx",
-  "WorkflowsPage.tsx",
-  "ProjectsPage.tsx",
-  "RulesSection.tsx",
-];
+/** Every screen of the app. */
+const SCREENS = readdirSync(UI).filter((file) => file.endsWith(".tsx"));
 
 describe("direcao-visual: telas", () => {
-  test("as classes do estilo antigo saem das telas migradas (sessão, leitor, nova sessão, board, card, workflows, projetos)", () => {
-    const violations = MIGRATED.flatMap((file) =>
+  test("as classes do estilo antigo saem de todas as telas", () => {
+    const violations = SCREENS.flatMap((file) =>
       classTokens(readFileSync(resolve(UI, file), "utf8"))
         .filter((token) => LEGACY.has(token))
         .map((token) => `${file}: ${token}`),
