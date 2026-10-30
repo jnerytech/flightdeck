@@ -22,6 +22,7 @@ import type {
   PermissionUpdate,
   Project,
   QuotaState,
+  RiskLevel,
   SessionEventOf,
   SessionMeta,
   SessionStatus,
@@ -263,6 +264,9 @@ export interface PendingItem {
   cwd?: string | null;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
+  /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
+  risk?: RiskLevel;
+  riskReason?: string;
 }
 
 export interface GateRef {

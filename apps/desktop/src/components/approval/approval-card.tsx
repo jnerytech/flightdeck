@@ -1,4 +1,9 @@
-import type { PermissionResolution, PermissionUpdate } from "@flightdeck/protocol";
+import type {
+  AutoApproval,
+  PermissionResolution,
+  PermissionUpdate,
+  RiskLevel,
+} from "@flightdeck/protocol";
 import { Copy } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +23,13 @@ export interface ApprovalRequest {
   cwd: string | null;
   createdAt: string | null;
   suggestions?: PermissionUpdate[];
+  /** Phase 13: how risky the daemon judged the request; an older daemon sends none. */
+  risk?: RiskLevel | undefined;
+  riskReason?: string | undefined;
 }
+
+/** How long the Aprovar of a high-risk request has to be held (phase 13). */
+export const HIGH_RISK_HOLD_MS = 2000;
 
 /** Diff lines shown before the card cuts the preview. */
 const MAX_LINES = 40;
@@ -105,7 +116,9 @@ export function ApprovalCard(props: {
   nowMs: number;
   /** The host announces `rules` (phase 7): "permitir nesta sessão" and "sempre neste projeto". */
   alwaysAllow?: boolean;
-  resolution?: { decision: PermissionResolution; message?: string };
+  resolution?: { decision: PermissionResolution; message?: string; auto?: AutoApproval };
+  /** Test seam: the hold time of a high-risk approval (2 s when absent). */
+  holdMs?: number;
   onRespond(
     decision: "allow" | "deny",
     message?: string,
