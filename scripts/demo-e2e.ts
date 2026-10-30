@@ -188,6 +188,38 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       throw new Error("um pedido de risco alto não pode ter o botão Aprovar simples");
     }
   },
+
+  // 9. Two tabs and a split by the buttons (Chromium keeps Ctrl+T and Ctrl+W for itself), a
+  // terminal on the host with an echo, then detach and attach again: the scrollback comes back.
+  "abas-terminal": async (c) => {
+    const marker = `fd-${c.lang}-${Date.now()}`;
+    const rows = c.page.locator(".xterm-rows");
+    const shown = async () => ((await rows.first().textContent()) ?? "").split(marker).length - 1;
+    await open(c, { name: "hub" });
+    await c.page.getByRole("button", { name: c.t("tabs.newTab"), exact: true }).click();
+    await c.page.keyboard.press("Escape");
+    await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
+    await c.page.getByRole("button", { name: c.t("tabs.split"), exact: true }).click();
+    await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "a tela dividida");
+    // What is opened goes to the focused area, the new one.
+    await c.page.getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) }).click();
+    await c.page.getByRole("button", { name: c.t("hostTerminal.open"), exact: true }).click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type(`echo ${marker}\n`);
+    // The typed line and the echo's output.
+    await waitFor(async () => (await shown()) >= 2, "o eco do terminal");
+    await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+    await c.page.getByRole("button", { name: c.t("terminalUi.detach"), exact: true }).click();
+    const attach = c.t("hostTerminal.attach", { cwd: "" }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await c.page
+      .getByRole("button", { name: new RegExp(`^${attach}`) })
+      .first()
+      .click();
+    await waitFor(async () => (await shown()) >= 2, "o scrollback ao anexar de novo");
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */

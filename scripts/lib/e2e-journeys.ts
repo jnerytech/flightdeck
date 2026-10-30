@@ -8,6 +8,7 @@ export const JOURNEYS: readonly string[] = [
   "tema-e-idioma",
   "voltar-arquivos",
   "issue-e-risco",
+  "abas-terminal",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
