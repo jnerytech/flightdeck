@@ -12,6 +12,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const refuse = new Map<string, string>();
   /** Features `host.info` announces (a phase 6 daemon announces none). */
   const features: string[] = [];
+  /** What `vault.report` and `vault.decisions` answer (phase 19). */
+  const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
   /** What `vault.rules.preview` answers (phase 19). */
   const preview = {
     verdict: {
@@ -70,6 +72,11 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
         if (type === "vault.rules.preview") return ack(preview.verdict);
+        if (type === "vault.report") {
+          const csv = (payload as { format?: string }).format === "csv";
+          return ack({ rows: audit.rows, ...(csv ? { csv: audit.csv } : {}) });
+        }
+        if (type === "vault.decisions") return ack({ decisions: audit.decisions });
         if (type === "vault.rules.set")
           return ack({ rules: (payload as { rules: unknown[] }).rules.length });
         if (type.endsWith(".watch")) return ack();
@@ -92,6 +99,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     refuse,
     features,
     preview,
+    audit,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));
