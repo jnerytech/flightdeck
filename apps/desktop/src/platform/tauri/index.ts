@@ -12,7 +12,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
-import type { Platform, TrayAction } from "../types.ts";
+import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
 
 export interface BrowserWindow extends FilePickerWindow {
   localStorage: Platform["storage"];
@@ -43,6 +43,9 @@ export function tauriPlatform(
       get: (id) => call<string | null>("vault_get", { id }),
       set: (id, value) => call("vault_set", { id, value }),
       delete: (id) => call("vault_delete", { id }),
+      generateKey: (comment) => call<GeneratedKey>("vault_generate_key", { comment }),
+      pickFile: () => call<PickedFile | null>("vault_pick_file"),
+      removeFile: (path) => call("vault_remove_file", { path }),
     },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";

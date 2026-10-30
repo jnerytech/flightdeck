@@ -24,6 +24,9 @@ export interface NewSecret {
   allowedHosts?: string[];
 }
 
+/** The fields a generated or imported key takes besides its value. */
+export type NewKey = Omit<NewSecret, "type" | "value">;
+
 export interface VaultOptions {
   clock?: () => number;
   newId?: () => string;
@@ -61,6 +64,23 @@ export class Vault {
     // The value first: a list entry never points at a value that was not stored.
     await this.platform.vault.set(meta.id, input.value);
     this.save([...this.list(), meta]);
+    return meta;
+  }
+
+  /** `ssh-keygen` makes the pair; the private key goes to the vault and the public one comes back. */
+  async generateSshKey(input: NewKey): Promise<{ meta: SecretMeta; publicKey: string }> {
+    const { privateKey, publicKey } = await this.platform.vault.generateKey(input.name);
+    const meta = await this.create({ ...input, type: "ssh-key", value: privateKey });
+    return { meta, publicKey };
+  }
+
+  /** The original is deleted only on request, and only after the value is in the vault. */
+  async importKeyFile(input: NewKey & { deleteOriginal?: boolean }): Promise<SecretMeta | null> {
+    const file = await this.platform.vault.pickFile();
+    if (!file) return null;
+    const { deleteOriginal, ...fields } = input;
+    const meta = await this.create({ ...fields, type: "ssh-key", value: file.text });
+    if (deleteOriginal) await this.platform.vault.removeFile(file.path);
     return meta;
   }
 

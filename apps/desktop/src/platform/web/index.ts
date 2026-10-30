@@ -51,6 +51,11 @@ export function createWebPlatform(
       delete: async (id) => {
         vault.delete(id);
       },
+      generateKey: async () => {
+        throw new Error("ssh-keygen needs the desktop app");
+      },
+      pickFile: async () => null,
+      removeFile: async () => {},
     },
     async notify({ title, body, link }) {
       const api = win.Notification;

@@ -62,6 +62,17 @@ export interface AppUpdate {
   notes: string;
 }
 
+/** Phase 16: an ssh-keygen result; the private key is kept in the vault and the files are gone. */
+export interface GeneratedKey {
+  privateKey: string;
+  publicKey: string;
+}
+
+export interface PickedFile {
+  path: string;
+  text: string;
+}
+
 export interface Platform {
   /** Non-secret settings (host names and URLs, preferences). */
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
@@ -79,6 +90,12 @@ export interface Platform {
     get(id: string): Promise<string | null>;
     set(id: string, value: string): Promise<void>;
     delete(id: string): Promise<void>;
+    /** Runs the local `ssh-keygen` for an ed25519 pair, deletes its files and returns the keys. */
+    generateKey(comment: string): Promise<GeneratedKey>;
+    /** The system's file dialog; null when the user cancels. */
+    pickFile(): Promise<PickedFile | null>;
+    /** Deletes a file the user picked and asked to remove. */
+    removeFile(path: string): Promise<void>;
   };
   notify(notification: Notification): Promise<void>;
   isFocused(): boolean;
