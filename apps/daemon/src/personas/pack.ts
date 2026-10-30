@@ -1,6 +1,7 @@
 import type { PersonaDef } from "./model.ts";
 import { parsePersona } from "./model.ts";
 import enArquiteto from "./pack/en/arquiteto.md" with { type: "text" };
+import enCoordenador from "./pack/en/coordenador.md" with { type: "text" };
 import enDba from "./pack/en/dba.md" with { type: "text" };
 import enDocs from "./pack/en/docs.md" with { type: "text" };
 import enFrontend from "./pack/en/frontend.md" with { type: "text" };
@@ -10,6 +11,7 @@ import enRevisor from "./pack/en/revisor.md" with { type: "text" };
 import enSeguranca from "./pack/en/seguranca.md" with { type: "text" };
 import enSre from "./pack/en/sre.md" with { type: "text" };
 import ptArquiteto from "./pack/pt-BR/arquiteto.md" with { type: "text" };
+import ptCoordenador from "./pack/pt-BR/coordenador.md" with { type: "text" };
 import ptDba from "./pack/pt-BR/dba.md" with { type: "text" };
 import ptDocs from "./pack/pt-BR/docs.md" with { type: "text" };
 import ptFrontend from "./pack/pt-BR/frontend.md" with { type: "text" };
@@ -36,11 +38,23 @@ const SOURCES: Record<Language, string[]> = {
     ptDocs,
     ptFrontend,
     ptDba,
+    ptCoordenador,
   ],
-  en: [enArquiteto, enSeguranca, enQa, enSre, enPerformance, enRevisor, enDocs, enFrontend, enDba],
+  en: [
+    enArquiteto,
+    enSeguranca,
+    enQa,
+    enSre,
+    enPerformance,
+    enRevisor,
+    enDocs,
+    enFrontend,
+    enDba,
+    enCoordenador,
+  ],
 };
 
-/** The ids of the nine personas that come ready, in the order of the spec. */
+/** The ids of the personas that come ready: the spec's nine in its order, then phase 21's coordinator. */
 export const PACK_IDS = [
   "arquiteto",
   "seguranca",
@@ -51,6 +65,7 @@ export const PACK_IDS = [
   "docs",
   "frontend",
   "dba",
+  "coordenador",
 ];
 
 /** The pack in a language; a new list every time, so nobody changes the pack by changing it. */
