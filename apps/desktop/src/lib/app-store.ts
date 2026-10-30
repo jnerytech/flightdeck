@@ -56,6 +56,7 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
+import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { hasFeature } from "./version.ts";
@@ -444,6 +445,7 @@ export class AppStore {
   ) {
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
+    this.terminalFont = new TerminalFontController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -484,6 +486,7 @@ export class AppStore {
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
   readonly density: DensityController;
+  readonly terminalFont: TerminalFontController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */

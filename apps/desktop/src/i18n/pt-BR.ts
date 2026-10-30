@@ -158,6 +158,7 @@ export const ptBR = {
     density: "Densidade da lista",
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
+    terminalFont: "Tamanho da fonte do terminal",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -466,6 +467,22 @@ export const ptBR = {
     idle: "ociosa",
     ended: "encerrada",
     error: "erro",
+  },
+  terminalUi: {
+    title: "Terminal",
+    state: {
+      attaching: "Conectando…",
+      live: "Ao vivo",
+      detached: "Desanexado",
+      ended: "Encerrado (código {code})",
+    },
+    reopen: "Reabrir",
+    close: "Fechar terminal",
+    closeMessage: "Desanexar deixa o processo rodando no host. Encerrar processo o interrompe.",
+    detach: "Desanexar",
+    end: "Encerrar processo",
+    searchLabel: "Buscar no terminal",
+    searchHint: "Enter: próxima · Shift+Enter: anterior · Esc: fechar",
   },
   terminal: {
     open: "Abrir no terminal",

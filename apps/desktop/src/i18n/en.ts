@@ -155,6 +155,7 @@ export const en: Dictionary = {
     density: "List density",
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
+    terminalFont: "Terminal font size",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -463,6 +464,22 @@ export const en: Dictionary = {
     idle: "idle",
     ended: "ended",
     error: "error",
+  },
+  terminalUi: {
+    title: "Terminal",
+    state: {
+      attaching: "Connecting…",
+      live: "Live",
+      detached: "Detached",
+      ended: "Ended (code {code})",
+    },
+    reopen: "Reopen",
+    close: "Close terminal",
+    closeMessage: "Detach keeps the process running on the host. End process stops it.",
+    detach: "Detach",
+    end: "End process",
+    searchLabel: "Search in the terminal",
+    searchHint: "Enter: next · Shift+Enter: previous · Esc: close",
   },
   terminal: {
     open: "Open in terminal",
