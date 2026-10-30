@@ -56,7 +56,7 @@ describe("times: as instruções de coordenação", () => {
     }
     expect(text).toContain("critério de pronto");
     expect(text).toContain("commit verde");
-    expect(text).toContain("não confie só no que ela disse");
+    expect(text).toContain("Não confie só no que ela disse");
     expect(text).toContain("merge local");
     expect(text).toContain("PR");
   });
