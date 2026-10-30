@@ -3,6 +3,8 @@ import { type core, z } from "zod";
 
 export interface AgentAction {
   prompt: string;
+  /** Opens the step's session in that persona (phase 20). */
+  persona?: string;
   /** Sends the prompt to the session of that (earlier, `agent`) step instead of a new one. */
   continue?: string;
   permissionMode?: PermissionMode;
@@ -49,6 +51,10 @@ const positive = z.number().positive("precisa ser maior que zero");
 
 const AgentSchema = z.strictObject({
   prompt: text,
+  persona: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+    .optional(),
   continue: text.optional(),
   permissionMode: PermissionMode.optional(),
 });
@@ -146,6 +152,9 @@ function validate(inputs: string[], steps: RawStep[]): string[] {
     for (const agent of agents) {
       if (agent?.continue && earlier.get(agent.continue) !== "agent") {
         fail(`continue para etapa inexistente: ${agent.continue}`);
+      }
+      if (agent?.continue && agent.persona) {
+        fail("persona não vale com continue: a sessão dessa etapa já existe");
       }
     }
     const templates: Array<[string, boolean]> = [

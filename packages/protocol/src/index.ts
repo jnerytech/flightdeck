@@ -540,6 +540,8 @@ export const Project = z.object({
   autoApprove: AutoApproveSettings.default(() => AutoApproveSettings.parse({})),
   /** Phase 13: `null` when the project has no issue integration. */
   issues: IssuesConfig.nullable().default(null),
+  /** The persona a card opens its session in when it starts from that column (phase 20). */
+  personaByColumn: z.partialRecord(BoardColumn, z.string()).default({}),
 });
 export type Project = z.infer<typeof Project>;
 
@@ -1253,6 +1255,10 @@ export const CostsSummary = z.object({
     }),
   ),
   byOrigin: z.array(z.object({ origin: UsageOrigin, costUsd: z.number(), tokens: z.number() })),
+  /** By the persona the session opened with (else the one applied); `null` is no persona. */
+  byPersona: z.array(
+    z.object({ persona: z.string().nullable(), costUsd: z.number(), tokens: z.number() }),
+  ),
   /** The 20 most expensive sessions, subagents included. */
   topSessions: z.array(
     z.object({
@@ -1370,13 +1376,20 @@ const ProjectFields = {
 };
 
 export const ProjectAddPayload = z.object({ path: z.string().min(1), ...ProjectFields });
-export const ProjectUpdatePayload = z.object({ projectId: z.string(), ...ProjectFields });
+export const ProjectUpdatePayload = z.object({
+  projectId: z.string(),
+  ...ProjectFields,
+  /** The default persona by column; `null` removes the one of a column. */
+  personaByColumn: z.partialRecord(BoardColumn, z.string().nullable()).optional(),
+});
 export const CardIdPayload = z.object({ cardId: z.string() });
 /** Phase 6: with `workflow`, the card runs that trusted workflow with `inputs`. */
 export const CardStartPayload = z.object({
   cardId: z.string(),
   workflow: z.string().min(1).optional(),
   inputs: z.record(z.string(), z.string()).optional(),
+  /** Opens the card's session in that persona, over the column's default (phase 20). */
+  persona: PersonaRef.optional(),
 });
 export const GateRespondPayload = z.object({
   runId: z.string(),

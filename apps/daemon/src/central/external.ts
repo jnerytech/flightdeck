@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { statSync } from "node:fs";
 
-import type { ExternalSession, ExternalStatus, SessionPersona } from "@flightdeck/protocol";
+import { type ExternalSession, type ExternalStatus, SessionPersona } from "@flightdeck/protocol";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -150,6 +150,13 @@ export class ExternalSessions {
     this.db
       .query("UPDATE external_sessions SET source = ?, launch_id = ? WHERE claude_session_id = ?")
       .run(text(payload.source), launch, id);
+    // The persona `flightdeckd claude --persona` opened it with (the hook forwards the badge).
+    const persona = SessionPersona.safeParse(payload.persona);
+    if (persona.success) {
+      this.db
+        .query("UPDATE external_sessions SET persona_open = ? WHERE claude_session_id = ?")
+        .run(JSON.stringify(persona.data), id);
+    }
     if (!launch) return;
     this.db
       .query(

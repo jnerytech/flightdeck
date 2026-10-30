@@ -1,3 +1,5 @@
+import { SessionPersona } from "@flightdeck/protocol";
+
 export interface SessionStartOptions {
   /** Receptor base URL, written into the hook command by `hooks install`. */
   url: string;
@@ -7,6 +9,16 @@ export interface SessionStartOptions {
   env: Record<string, string | undefined>;
   /** Gives up after this long: Claude must never wait on Flightdeck. */
   timeoutMs: number;
+}
+
+/** The badge `flightdeckd claude --persona` left in the environment; junk is not forwarded. */
+function personaBadge(raw: string | undefined) {
+  try {
+    const parsed = SessionPersona.safeParse(JSON.parse(raw ?? ""));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -22,9 +34,11 @@ export async function sendSessionStart(opts: SessionStartOptions): Promise<void>
     return;
   }
   const launch = opts.env.FLIGHTDECK_LAUNCH_ID;
+  const persona = personaBadge(opts.env.FLIGHTDECK_PERSONA);
   const body = {
     ...payload,
     ...(launch ? { launch_id: launch } : {}),
+    ...(persona ? { persona } : {}),
     ...(opts.env.FLIGHTDECK_MANAGED === "1" ? { managed: true } : {}),
   };
   await fetch(`${opts.url}/hooks/SessionStart`, {

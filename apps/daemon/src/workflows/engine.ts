@@ -717,7 +717,7 @@ export class WorkflowEngine {
     attempt: number,
     target: string | null,
     prompt: string,
-    action: { permissionMode?: PermissionMode },
+    action: { permissionMode?: PermissionMode; persona?: string },
   ): Promise<string> {
     const started = this.clock();
     if (target) {
@@ -734,6 +734,7 @@ export class WorkflowEngine {
       prompt,
       name: `${title} · ${stepId}`,
       ...(action.permissionMode ? { permissionMode: action.permissionMode } : {}),
+      ...(action.persona ? { persona: { id: action.persona } } : {}),
     });
     this.db
       .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")

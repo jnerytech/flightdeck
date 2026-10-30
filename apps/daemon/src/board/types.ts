@@ -1,4 +1,9 @@
-import type { AutoApproveSettings, IssuesConfig, PrProviderKind } from "@flightdeck/protocol";
+import type {
+  AutoApproveSettings,
+  BoardColumn,
+  IssuesConfig,
+  PrProviderKind,
+} from "@flightdeck/protocol";
 
 // The board's shapes are the protocol's: what the daemon stores is what goes on the wire.
 export type {
@@ -28,4 +33,7 @@ export interface NewProject {
   issues?: IssuesConfig | null | undefined;
 }
 
-export type ProjectPatch = Partial<Omit<NewProject, "path">>;
+export type ProjectPatch = Partial<Omit<NewProject, "path">> & {
+  /** The default persona by column (phase 20); `null` removes a column's. */
+  personaByColumn?: Partial<Record<BoardColumn, string | null>> | undefined;
+};

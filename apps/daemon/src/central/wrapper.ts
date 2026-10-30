@@ -121,7 +121,8 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   // A terminal of the app ("Claude aqui") names the launch it started: the session it opens is
   // then the one that terminal shows. A dedicated variable, because FLIGHTDECK_LAUNCH_ID is in the
   // environment of every claude we start, and a nested `flightdeckd claude` would reuse it.
-  const { [TERMINAL_LAUNCH_VAR]: requested, ...env } = opts.env;
+  // A persona of an outer claude is not this one's: only `--persona` below sets it.
+  const { [TERMINAL_LAUNCH_VAR]: requested, FLIGHTDECK_PERSONA: _outer, ...env } = opts.env;
   const launchId = requested && /^[0-9A-Z]{26}$/.test(requested) ? requested : ulid();
   // Print mode ignores development channels: plain claude, no channel, no warning.
   const { id: personaId, rest: args, broken } = takePersonaFlag(opts.args);
@@ -188,7 +189,20 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
         mcpConfigPath,
       }),
       {
-        env: { ...env, FLIGHTDECK_LAUNCH_ID: launchId },
+        env: {
+          ...env,
+          FLIGHTDECK_LAUNCH_ID: launchId,
+          // The badge only (never the body): the SessionStart hook forwards it to the central.
+          ...(persona
+            ? {
+                FLIGHTDECK_PERSONA: JSON.stringify({
+                  id: persona.persona.id,
+                  name: persona.persona.name,
+                  icon: persona.persona.icon,
+                }),
+              }
+            : {}),
+        },
         stdio: ["inherit", "inherit", "inherit"],
       },
     );

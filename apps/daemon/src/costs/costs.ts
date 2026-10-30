@@ -75,6 +75,21 @@ const csvField = (value: string) =>
 /** Every token of an entry, as one number. */
 export const TOKENS_SQL = "(input + output + cache_read + cache_write_5m + cache_write_1h)";
 
+/**
+ * The persona a usage entry belongs to: the one its session was opened with, else the one applied
+ * to it later (an applied persona does not split a session's cost); a terminal session by its
+ * badge. No owner or no persona is `NULL`.
+ */
+const PERSONA_SQL = `COALESCE(
+  (SELECT json_extract(s.persona, '$.id') FROM sessions s
+    WHERE s.claude_session_id = u.claude_session_id AND s.persona IS NOT NULL
+    ORDER BY s.updated_at DESC LIMIT 1),
+  (SELECT json_extract(s.applied_persona, '$.id') FROM sessions s
+    WHERE s.claude_session_id = u.claude_session_id AND s.applied_persona IS NOT NULL
+    ORDER BY s.updated_at DESC LIMIT 1),
+  (SELECT json_extract(COALESCE(e.persona_open, e.persona_applied), '$.id') FROM external_sessions e
+    WHERE e.claude_session_id = u.claude_session_id))`;
+
 /** Estimated costs of the host's usage entries (equivalent in API prices). */
 export class Costs {
   private readonly db: Database;
@@ -167,6 +182,12 @@ export class Costs {
         costUsd: r.costUsd as number,
         tokens: r.tokens as number,
       })),
+      byPersona: this.db
+        .query(
+          `SELECT ${PERSONA_SQL} AS persona, TOTAL(cost_usd) AS costUsd, SUM(${TOKENS_SQL}) AS tokens
+           FROM usage_entries u WHERE ${sql} GROUP BY persona ORDER BY costUsd DESC, persona`,
+        )
+        .all(params) as CostsSummary["byPersona"],
       topSessions: this.db
         .query(
           `SELECT u.claude_session_id AS claudeSessionId,

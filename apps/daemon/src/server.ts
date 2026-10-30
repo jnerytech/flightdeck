@@ -1343,8 +1343,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return;
       }
       case "card.start": {
-        const { cardId, workflow, inputs } = command.payload;
-        return ok(command.type, await board().startCard(cardId, { workflow, inputs }));
+        const { cardId, workflow, inputs, persona } = command.payload;
+        return ok(command.type, await board().startCard(cardId, { workflow, inputs, persona }));
       }
       case "card.stop":
         return ok(command.type, await board().stopCard(command.payload.cardId));

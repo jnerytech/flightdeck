@@ -10,6 +10,7 @@ import {
   type EffortLevel,
   IssuesConfig,
   type PermissionUpdate,
+  type PersonaRef,
   type SessionEvent,
   type SessionStatus,
   type WorkflowInfo,
@@ -104,6 +105,7 @@ interface ProjectRow {
   prompt_template: string;
   auto_approve: string | null;
   issues: string | null;
+  persona_by_column: string | null;
 }
 
 function toProject(row: ProjectRow): Project {
@@ -118,7 +120,29 @@ function toProject(row: ProjectRow): Project {
     worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
+    personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
   };
+}
+
+const PERSONA_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+
+/** The default personas with the patch applied: plain ids, existing columns, `null` takes one away. */
+function mergePersonas(
+  current: Project["personaByColumn"],
+  patch: NonNullable<ProjectPatch["personaByColumn"]>,
+): Project["personaByColumn"] {
+  const merged: Record<string, string> = { ...current };
+  for (const [column, id] of Object.entries(patch)) {
+    if (!BoardColumnSchema.options.includes(column as BoardColumn)) {
+      throw new FlightdeckError("bad_request", `coluna desconhecida: ${column}`);
+    }
+    if (id === null) delete merged[column];
+    else if (id === undefined) continue;
+    else if (!PERSONA_ID.test(id))
+      throw new FlightdeckError("bad_request", "id de persona inválido");
+    else merged[column] = id;
+  }
+  return merged;
 }
 
 interface CardRow {
@@ -264,7 +288,7 @@ export class Board {
     const taken = this.db.query("SELECT 1 FROM projects WHERE path = ?").get(path);
     if (taken) throw new FlightdeckError("invalid_state", `projeto já cadastrado: ${path}`);
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
-    const project: Omit<Project, "worktreeInclude"> = {
+    const project: Omit<Project, "worktreeInclude" | "personaByColumn"> = {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
@@ -306,11 +330,14 @@ export class Board {
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
       autoApprove: { ...current.autoApprove, ...patch.autoApprove },
       ...(patch.issues !== undefined ? { issues: patch.issues } : {}),
+      ...(patch.personaByColumn
+        ? { personaByColumn: mergePersonas(current.personaByColumn, patch.personaByColumn) }
+        : {}),
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
-         prompt_template = ?, auto_approve = ?, issues = ? WHERE id = ?`,
+         prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -320,6 +347,7 @@ export class Board {
         next.promptTemplate,
         JSON.stringify(next.autoApprove),
         next.issues ? JSON.stringify(next.issues) : null,
+        JSON.stringify(next.personaByColumn),
         id,
       );
     return next;
@@ -664,7 +692,12 @@ export class Board {
    */
   async startCard(
     id: string,
-    options: { workflow?: string | undefined; inputs?: Record<string, string> | undefined } = {},
+    options: {
+      workflow?: string | undefined;
+      inputs?: Record<string, string> | undefined;
+      /** The persona to open the session in; else the default of the card's column. */
+      persona?: PersonaRef | undefined;
+    } = {},
   ): Promise<Card> {
     const card = this.getCard(id);
     if (card.queued || this.running.has(id)) {
@@ -681,9 +714,13 @@ export class Board {
       const project = this.getProject(card.projectId);
       await this.workflows.prepare(id, runId, project, options.workflow, options.inputs ?? {});
     }
+    // Asked for in the start, else the default of the column the card is in; kept with the run
+    // because the session only opens when the run leaves the queue.
+    const standard = this.getProject(card.projectId).personaByColumn[card.column];
+    const persona = options.persona ?? (standard ? { id: standard } : null);
     this.db
-      .query("INSERT INTO card_runs (id, card_id, queued_at) VALUES (?, ?, ?)")
-      .run(runId, id, now());
+      .query("INSERT INTO card_runs (id, card_id, queued_at, persona) VALUES (?, ?, ?, ?)")
+      .run(runId, id, now(), persona ? JSON.stringify(persona) : null);
     this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
     this.place(id, { type: "started" });
     this.pump();
@@ -827,12 +864,16 @@ export class Board {
       .filter((part) => part.trim())
       .join("\n\n");
     const { variant } = card;
+    const asked = this.db
+      .query<{ persona: string | null }, [string]>("SELECT persona FROM card_runs WHERE id = ?")
+      .get(runId)?.persona;
     const { sessionId } = this.opts.manager.create({
       cwd: worktree,
       prompt,
       name: card.title,
       ...(variant?.model ? { model: variant.model } : {}),
       ...(variant?.effort ? { effort: variant.effort } : {}),
+      ...(asked ? { persona: JSON.parse(asked) as PersonaRef } : {}),
     });
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);

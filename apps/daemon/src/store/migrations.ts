@@ -536,4 +536,10 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE external_sessions ADD COLUMN persona_open TEXT;
   ALTER TABLE external_sessions ADD COLUMN persona_applied TEXT;
   `,
+  // Phase 20: the default persona of each board column of a project, and the persona a card run
+  // was started with (it waits in the queue before the session exists).
+  `
+  ALTER TABLE projects ADD COLUMN persona_by_column TEXT;
+  ALTER TABLE card_runs ADD COLUMN persona TEXT;
+  `,
 ];
