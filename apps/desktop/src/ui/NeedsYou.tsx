@@ -183,7 +183,9 @@ export function NeedsYou(props: {
       <h2 className="font-semibold text-base">{t("needsYou.loopTitle")}</h2>
       <p className="text-sm">{loop.message}</p>
       <div>
-        <Button onClick={() => void store.releaseLoop(loop)}>{t("needsYou.release")}</Button>
+        <Button onClick={() => void store.releasePair(loop.hostId, loopPairKey(loop))}>
+          {t("needsYou.release")}
+        </Button>
       </div>
     </div>
   ) : (

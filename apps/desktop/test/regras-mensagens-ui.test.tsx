@@ -112,7 +112,7 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     await settle(() => screen.queryByText("de host pc para projeto app") === null);
     await change("Retenção (dias)", "7");
     await click("Salvar retenção");
-    await settle(() => (lastSet()?.policy as typeof POLICY).retentionDays === 7);
+    await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 7);
     expect(lastSet()).toEqual({ policy: { ...POLICY, exceptions: [], retentionDays: 7 } });
   });
 

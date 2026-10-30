@@ -2178,21 +2178,27 @@ export class AppStore {
     void this.platform.notify({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
   }
 
-  /** Phase 21: frees a paused pair, keeping the host's messaging policy as it is. */
-  async releaseLoop(alert: LoopAlert): Promise<void> {
-    const rules = await this.hostCommand(alert.hostId, "messaging.rules.get", {});
-    if (!rules) return;
-    const key = loopPairKey(alert);
-    const done = await this.hostCommand(alert.hostId, "messaging.rules.set", {
+  /**
+   * Phase 21: frees a paused pair (its `loopPairKey`), keeping the host's messaging policy as it
+   * is; its entry in "Precisa de você" goes too. The host's rules after it, or null on failure.
+   */
+  async releasePair(
+    hostId: string,
+    key: string,
+  ): Promise<CommandResults["messaging.rules.set"] | null> {
+    const rules = await this.hostCommand(hostId, "messaging.rules.get", {});
+    if (!rules) return null;
+    const done = await this.hostCommand(hostId, "messaging.rules.set", {
       policy: rules.policy,
       unpause: [key],
     });
-    if (!done) return;
+    if (!done) return null;
     this.update({
       loopAlerts: this.state.loopAlerts.filter(
-        (a) => a.hostId !== alert.hostId || loopPairKey(a) !== key,
+        (a) => a.hostId !== hostId || loopPairKey(a) !== key,
       ),
     });
+    return done;
   }
 
   /** Phase 21: told each time a team of a host changes. */
