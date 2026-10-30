@@ -749,6 +749,8 @@ export async function startDaemon(
     names,
     teamOf: (sessionId) => teams?.teamOf(sessionId) ?? null,
   });
+  // Phase 20's personas reach the team: the coordinator and each worker open in theirs.
+  const personaSessions = new OpenSessionPersonas({ personas: personaStore, manager, central });
   teams = new Teams({
     db: store.db,
     board,
@@ -757,6 +759,26 @@ export async function startDaemon(
     host: config.hostName,
     quota,
     names,
+    personas: {
+      resolve: (id) => {
+        try {
+          return { id, name: personaStore.resolve({ id }, {}).persona.name };
+        } catch {
+          return null;
+        }
+      },
+    },
+    startCoordinator: ({ cwd, prompt, name, persona }) =>
+      manager.create({ cwd, prompt, name, ...(persona ? { persona: { id: persona } } : {}) }),
+    startWorker: (cardId, persona) =>
+      board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
+    applyPersona: (sessionId, persona) => {
+      const done = persona
+        ? personaSessions.apply({ sessionId, persona: { id: persona } })
+        : personaSessions.clear({ sessionId });
+      // A session that ended keeps the persona it had; the team still records the new one.
+      void done.catch(() => {});
+    },
   });
   // Of a managed session only: the id of a terminal session is not one the manager knows.
   const cardOf = (sessionId: string) => {
@@ -805,7 +827,7 @@ export async function startDaemon(
     askpass,
     snippets,
     personas: personaStore,
-    personaSessions: new OpenSessionPersonas({ personas: personaStore, manager, central }),
+    personaSessions,
     snippetUse: new SnippetUse({
       snippets,
       terminals,
