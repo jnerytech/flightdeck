@@ -8,6 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
+const { requestLink } = await import("../src/lib/request-link.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
@@ -107,5 +108,18 @@ describe("acoes-ui-aprovacao: the card of a request for a secret", () => {
     }
     expect(within(card).queryByRole("button", { name: /Segurar/ })).not.toBeNull();
     expect(within(card).queryByRole("button", { name: "Aprovar" })).toBeNull();
+  });
+
+  test("a notification link to the request opens the queue, since it has no session", async () => {
+    const { store } = await queued({});
+    await act(async () => {
+      store.router.push({ name: "hub" });
+    });
+    const [item] = needsYou(store.getState());
+    await act(async () => {
+      store.openRequestLink(requestLink(item?.hostId ?? "", "r1"));
+    });
+    await settle(() => screen.queryByRole("heading", { name: "Precisa de você" }) !== null);
+    expect(store.router.current.name).toBe("needs-you");
   });
 });
