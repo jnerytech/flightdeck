@@ -120,10 +120,11 @@ describe("direcao-visual: telas", () => {
   test("nenhuma tela usa um <button> cru, sem estilo: os botões são o Button do shadcn ou levam classes", () => {
     const bare = SCREENS.flatMap((file) =>
       readFileSync(resolve(UI, file), "utf8")
-        .split("
-")
+        .split(chr(10))
         .map((text, i) => ({ text, line: i + 1 }))
-        .filter(({ text }) => /<button type="button" onClick=/.test(text) && !text.includes("className"))
+        .filter(
+          ({ text }) => /<button type="button" onClick=/.test(text) && !text.includes("className"),
+        )
         .map(({ line }) => `${file}:${line}`),
     );
     expect(bare).toEqual([]);
