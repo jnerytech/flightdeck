@@ -15,6 +15,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
   const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
   /** What `messages.list` answers (phase 21); the payloads asked are in `commands`. */
+  /** Phase 21: the hub's lists and the host's standard names, when a test fills them. */
+  const hub = { managed: [] as unknown[], names: [] as unknown[] };
   const messaging = {
     policy: { exceptions: [] } as Record<string, unknown>,
     paused: [] as string[],
@@ -77,6 +79,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           "project.list": { projects: [], maxParallelRuns: 2 },
         };
         if (type in known) return ack(known[type]);
+        if (type === "session.list") return ack({ sessions: hub.managed });
+        if (type === "names.list") return ack({ names: hub.names });
         if (type === "vault.deliver") return ack({ expiresAt: 0 });
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
@@ -126,6 +130,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     url: `ws://127.0.0.1:${server.port}/`,
     asked,
     commands,
+    hub,
     refuse,
     features,
     preview,
