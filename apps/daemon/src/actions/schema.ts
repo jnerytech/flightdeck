@@ -47,7 +47,8 @@ const FIELDS = new Set([
 ]);
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const REFERENCE = /\{\{\s*(secret|secretFile|param)\.([A-Za-z0-9._-]+)\s*\}\}/g;
+/** Where a secret or a parameter goes: `{{secret.x}}`, `{{secretFile.x}}`, `{{param.x}}`. */
+export const REFERENCE = /\{\{\s*(secret|secretFile|param)\.([A-Za-z0-9._-]+)\s*\}\}/g;
 const DEFAULT_TIMEOUT_S = 120;
 const MAX_TIMEOUT_S = 3600;
 
@@ -76,6 +77,11 @@ function referencesIn(text: string): Reference[] {
 const isText = (value: unknown): value is string => typeof value === "string";
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** The whole of a value has to match: a pattern with no anchors does not let a part through. */
+export function paramRegex(pattern: string): RegExp {
+  return new RegExp(`^(?:${pattern})$`);
+}
 
 /** The secret ids an action refers to, as values (env) and as temporary files. */
 export function secretsOf(action: ActionDef): { values: string[]; files: string[] } {
@@ -135,7 +141,7 @@ export function validateAction(
     }
     let regex: RegExp | null = null;
     try {
-      regex = new RegExp(pattern);
+      regex = paramRegex(pattern);
     } catch {
       bad(`o pattern do parâmetro ${key} não é uma regex válida`);
       continue;
@@ -204,6 +210,15 @@ export function validateAction(
     if (ref.kind !== "param" && opts.secretIds && !opts.secretIds.has(ref.name)) {
       bad(`o segredo ${ref.name} não existe no cofre`);
     }
+  }
+
+  if (
+    isText(raw.ssh) &&
+    texts.some((text) => referencesIn(text).some((r) => r.kind === "secretFile"))
+  ) {
+    bad(
+      "numa ação ssh o secretFile não existe: seria um caminho local num comando remoto; use env",
+    );
   }
 
   if (errors.length > 0 || !argv) return { action: null, errors };
