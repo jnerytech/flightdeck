@@ -40,6 +40,7 @@ import { Settings } from "./Settings.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
+import { VaultPage } from "./VaultPage.tsx";
 import { WorkflowsPage } from "./WorkflowsPage.tsx";
 
 /** The host a route's screen loads from when it opens, if any. */
@@ -385,6 +386,8 @@ function routeScreen(props: ScreenProps): ReactNode {
           }
         />
       );
+    case "vault":
+      return <VaultPage store={store} state={state} />;
     case "session":
       return (
         <ManagedSession

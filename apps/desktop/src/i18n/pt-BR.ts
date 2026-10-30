@@ -145,6 +145,7 @@ export const ptBR = {
     workflows: "Workflows",
     costs: "Custos",
     connections: "Conexões",
+    vault: "Cofre",
     history: "Histórico",
     hosts: "Hosts",
     addHost: "Adicionar outro host",

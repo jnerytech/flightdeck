@@ -34,6 +34,8 @@ export type Route =
   /** The ssh destinos of the host that keeps them (phase 15). */
   /** `connect`: the destino to connect to as soon as the screen opens (from the palette). */
   | { name: "connections"; connect?: string }
+  /** The vault (phase 16): secrets, their use and the encrypted backup. */
+  | { name: "vault" }
   | { name: "add-host"; draft?: HostDraft; key?: number };
 
 /** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */

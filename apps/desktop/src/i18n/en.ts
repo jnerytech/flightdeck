@@ -143,6 +143,7 @@ export const en: Dictionary = {
     workflows: "Workflows",
     costs: "Costs",
     connections: "Connections",
+    vault: "Vault",
     history: "History",
     hosts: "Hosts",
     addHost: "Add another host",
