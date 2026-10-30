@@ -2,7 +2,7 @@
 
 English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.md)
 
-Complete Flightdeck reference, organized by topic. It applies to version 0.12.0. The roadmap is
+Complete Flightdeck reference, organized by topic. It applies to version 0.13.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
 [`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
@@ -56,6 +56,11 @@ are written in Portuguese.
   - [Rewinding files](#rewinding-files)
   - [Forking](#forking)
   - [The Agent screen](#the-agent-screen)
+- [Issues, automations and arena](#issues-automations-and-arena)
+  - [Issues](#issues)
+  - [Automations](#automations)
+  - [Arena](#arena)
+- [Risk-graded approval](#risk-graded-approval)
 - [Costs, budgets and quota](#costs-budgets-and-quota)
   - [Plan quota](#plan-quota)
   - [Quota queue](#quota-queue)
@@ -923,6 +928,73 @@ the user's `~/.claude` and `~/.claude.json` are shown **read-only**.
 - Project files other than `CLAUDE.local.md` are versioned: the screen warns that saving changes a
   file of the repository.
 
+## Issues, automations and arena
+
+Three things from Phase 13, on the board and in the projects list. Each shows up only when the
+daemon announces the feature (`issues`, `automation`, `arena`; daemon 0.13.0 or later). With an
+older daemon the buttons are simply not there.
+
+### Issues
+
+The **Issues** button in the board header opens a side panel with the project's issues from
+GitHub (through `gh`) or Azure Boards (through `az`). Connect a provider first, from the same
+button: **Connect issues** asks for the provider and an optional search (blank means the open ones
+assigned to you), and can allow the daemon to comment on the issue when the PR opens (off by
+default, because it writes to the provider).
+
+- **Filter issues** narrows the list by title, label or author.
+- **Create card** makes a card in Backlog from the issue and keeps its link: the row then offers
+  **Open card**, the card shows the issue (a button that opens it in the browser) and a PR that
+  closes the card closes the issue (`Fixes #n` or `AB#id`).
+- An issue from an **External author** is marked. Its text is third-party content: the card's
+  automatic approval stays suspended until you resume it.
+- Only `http` and `https` addresses are ever opened.
+
+### Automations
+
+In **Projects**, each project has an **Automations** button (on a daemon that announces
+automation). The screen lists the project's automations, each with its trigger, action, daily
+limit, an **Accepts outside authors** mark and an on/off switch.
+
+- **New automation** is a guided form in three steps: trigger (schedule with cron and time zone, a
+  new comment on a card's PR, a card's PR checks that failed, or a new issue with a label), action
+  (start a workflow, send the event's content to the card's session, or create a card from the
+  issue; the list only offers the actions that fit the trigger) and limit (name, firings per day,
+  and whether to also act on outside authors, off by default).
+- An automation **always starts off**, also after an edit. Turning it on shows the trigger and the
+  action first and needs **Turn on**; turning it off needs nothing.
+- **History** lists the firings: Ran, Failed, Ignored, Skipped, Daily limit or Missed (a schedule
+  that fell while the daemon was stopped; it is recorded, not recovered).
+- A firing that fails does not repeat by itself, and the quota and budget queues still apply.
+
+### Arena
+
+On a card that has not started, **Start in arena** runs the same request in 2 to 4 **variants**,
+each with its own model and effort (blank means the host default), in its own worktree and branch
+(`fd/<slug>-a`, `-b`...). **Add variant** and **Remove variant** change the count. Each variant takes
+one slot of the parallel run limit and waits in the queue when there is none.
+
+The card then shows the **Arena comparison**: one column per variant with its model and effort,
+state, duration, estimated cost, files changed and workflow checks, and **Show changes** for the
+variant's own diff. **Choose variant X** is available once the variant has stopped; it asks for
+confirmation, makes that worktree the card's own and stops and removes the others.
+
+## Risk-graded approval
+
+Every permission request carries a **risk seal**, set by a fixed rule list in the daemon (no AI):
+**Low risk** (reads inside the project), **Medium risk** (most commands, writes inside the project,
+anything that reaches the network, unknown tools and MCP) and **High risk** (for example `rm -rf`,
+`git push --force`, `sudo`, command substitution, a pipe into a shell, or any access to credential
+paths). You can add patterns in the host configuration (`risk.extraHigh`); the built-in ones cannot
+be lowered.
+
+- A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
+  seconds. The A key does not approve it; N still denies.
+- The tray never approves a high-risk request: it only offers **Open**.
+- With automatic approval on, an approval that nobody gave by hand shows in the session's
+  timeline as "Approved automatically", with who decided and why. A high-risk request or one that
+  reaches the network always comes to you.
+
 ## Costs, budgets and quota
 
 ### Plan quota
@@ -1196,7 +1268,7 @@ screenshots.
 
 ### Versions and compatibility
 
-- **One version:** the app, the daemon and the protocol ship with the same version (0.12.0 in
+- **One version:** the app, the daemon and the protocol ship with the same version (0.13.0 in
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the

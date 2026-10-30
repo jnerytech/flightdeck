@@ -39,6 +39,9 @@ sessions from one place, without opening each machine.
 - A board per project: each card is a git worktree plus a session, with pull requests on GitHub
   and Azure DevOps.
 - YAML workflows with agents, checks, approval gates, loops, parallel steps and budgets.
+- Issues from GitHub or Azure Boards turned into cards, automations (schedules, PR comments,
+  failed checks, labels), and an arena that runs one request in 2 to 4 variants to compare and choose.
+- Risk seals on every permission request: a high-risk one asks you to hold the button for 2 seconds.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.

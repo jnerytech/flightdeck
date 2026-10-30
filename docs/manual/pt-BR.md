@@ -2,7 +2,7 @@
 
 [English](en.md) | Português (Brasil) · [Voltar ao README](../../README.pt-BR.md)
 
-Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.12.0. O roadmap
+Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.13.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
 [`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
@@ -56,6 +56,11 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Voltar arquivos](#voltar-arquivos)
   - [Bifurcar](#bifurcar)
   - [A tela Agente](#a-tela-agente)
+- [Issues, automações e arena](#issues-automações-e-arena)
+  - [Issues](#issues)
+  - [Automações](#automações)
+  - [Arena](#arena)
+- [Aprovação graduada por risco](#aprovação-graduada-por-risco)
 - [Custos, orçamentos e cota](#custos-orçamentos-e-cota)
   - [Cota do plano](#cota-do-plano)
   - [Fila por cota](#fila-por-cota)
@@ -904,6 +909,73 @@ arquivo; o `~/.claude` e o `~/.claude.json` do usuário aparecem **só para leit
 - Os arquivos do projeto que não são o `CLAUDE.local.md` são versionados: a tela avisa que salvar
   muda um arquivo do repositório.
 
+## Issues, automações e arena
+
+Três coisas da Fase 13, no board e na lista de projetos. Cada uma só aparece quando o daemon anuncia
+o recurso (`issues`, `automation`, `arena`; daemon 0.13.0 ou mais novo). Com um daemon mais antigo, os
+botões simplesmente não existem.
+
+### Issues
+
+O botão **Issues** no cabeçalho do board abre um painel lateral com as issues do projeto no GitHub
+(pelo `gh`) ou no Azure Boards (pelo `az`). Antes, conecte um provedor pelo mesmo botão: **Conectar
+issues** pergunta o provedor e uma busca opcional (em branco, as abertas atribuídas a você) e pode
+permitir que o daemon comente na issue quando o PR abrir (desligado por padrão, porque escreve no
+provedor).
+
+- **Filtrar issues** reduz a lista por título, rótulo ou autor.
+- **Criar card** faz um card no Backlog a partir da issue e guarda o link: a linha passa a oferecer
+  **Abrir card**, o card mostra a issue (um botão que a abre no navegador) e um PR que fecha o card
+  fecha a issue (`Fixes #n` ou `AB#id`).
+- Uma issue de **Autor externo** vem marcada. O texto é conteúdo de terceiro: a aprovação automática do
+  card fica suspensa até você reativá-la.
+- Só endereços `http` e `https` são abertos.
+
+### Automações
+
+Em **Projetos**, cada projeto tem um botão **Automações** (num daemon que anuncia automação). A tela lista
+as automações do projeto, cada uma com gatilho, ação, limite por dia, a marca **Aceita autores externos**
+e um interruptor.
+
+- **Nova automação** é um formulário guiado em três passos: gatilho (horário com cron e fuso, comentário
+  novo no PR de um card, checks do PR de um card que falharam, ou issue nova com um rótulo), ação (iniciar um
+  workflow, enviar o conteúdo do evento à sessão do card, ou criar um card a partir da issue; a lista só
+  oferece as ações que combinam com o gatilho) e limite (nome, disparos por dia e se também age sobre
+  autores externos, desligado por padrão).
+- Uma automação **sempre nasce desligada**, também depois de editar. Ligar mostra antes o gatilho e a ação e
+  pede **Ligar**; desligar não pede nada.
+- O **Histórico** lista os disparos: Executou, Falhou, Ignorado, Pulado, Limite do dia ou Perdido (um horário
+  que caiu com o daemon parado; é registrado, não recuperado).
+- Um disparo que falha não repete sozinho, e as filas por cota e por orçamento continuam valendo.
+
+### Arena
+
+Num card que ainda não começou, **Iniciar em arena** roda o mesmo pedido em 2 a 4 **variantes**, cada uma com
+o próprio modelo e esforço (em branco, o padrão do host), em worktree e branch próprias (`fd/<slug>-a`,
+`-b`...). **Adicionar variante** e **Remover variante** mudam a contagem. Cada variante ocupa uma vaga do
+limite de execuções em paralelo e espera na fila quando não há.
+
+O card passa a mostrar a **Comparação da arena**: uma coluna por variante com modelo e esforço, estado,
+duração, custo estimado, arquivos alterados e checks do workflow, e **Ver mudanças** para o diff da própria
+variante. **Escolher a variante X** fica disponível quando a variante parou; pede confirmação, faz daquela
+worktree a do card e para e remove as outras.
+
+## Aprovação graduada por risco
+
+Todo pedido de permissão leva um **selo de risco**, definido por uma lista fixa de regras no daemon (sem IA):
+**Risco baixo** (leituras dentro do projeto), **Risco médio** (a maioria dos comandos, escritas dentro do
+projeto, tudo que acessa a rede, ferramentas desconhecidas e MCP) e **Risco alto** (por exemplo `rm -rf`,
+`git push --force`, `sudo`, substituição de comando, pipe para um shell ou qualquer acesso a caminhos de
+credencial). Você pode acrescentar padrões na configuração do host (`risk.extraHigh`); os embutidos não
+podem ser rebaixados.
+
+- Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
+  2 segundos. A tecla A não o aprova; N continua negando.
+- A bandeja nunca aprova um pedido de risco alto: só oferece **Abrir**.
+- Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
+  "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede
+  sempre vem para você.
+
 ## Custos, orçamentos e cota
 
 ### Cota do plano
@@ -1166,7 +1238,7 @@ pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os pr
 
 ### Versões e compatibilidade
 
-- **Uma versão só:** o app, o daemon e o protocolo saem com a mesma versão (0.12.0 nesta
+- **Uma versão só:** o app, o daemon e o protocolo saem com a mesma versão (0.13.0 nesta
   documentação). `flightdeckd --version` imprime `flightdeckd <versão> (protocolo 1)`.
 - **No app:** a página do host mostra a versão do daemon, a do app e a do `claude`. Um daemon de
   outra versão ganha o selo **≠** ("versão diferente") na barra lateral: funciona, mas atualize

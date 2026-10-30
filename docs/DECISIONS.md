@@ -1747,3 +1747,16 @@ O que a spec da Fase 13 (automação) deixou aberto, ou o que mudou na implement
 - **`smoke:automation`:** foi escrito depois das áreas. O vermelho veio deixando a aprovação automática decidir o risco alto: `SMOKE AUTOMATION FAIL no passo "aprovação por risco e por IA": o rm -rf foi respondido sem você`, com exit 1. Origin parece o do GitHub (as issues vêm dele), mas o push vai ao repositório local por `pushInsteadOf`.
 - **Migrações:** todas no fim: aprovação automática (e `projects.auto_approve`), issues (`projects.issues`, `cards.issue_ref`), automações e arena. Nenhum teste fixa o índice de uma delas.
 - **`az` sem arquivo:** o usuário preferiu limitar e limpar o texto (ver "az-cmd") a passar o valor por `@arquivo`.
+
+# Phase 13 decisions: the interface
+
+What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui`) settled or left open. The text of this section is in English, as the conventions ask.
+
+- **Arena comparison refresh:** the variants run on their own and the card does not change with them, so the comparison is read again with `card.arena` every second while any variant is queued, starting or working, and stops once none is. A push event would be cleaner, but the daemon does not send one for a variant.
+- **Choose is gated in the app too:** a variant offers **Choose** only when it has its worktree and has stopped (the daemon refuses it otherwise). A variant that failed to start keeps its notice and cannot be chosen.
+- **Start in arena** is offered only on a card that has not started and is not in an arena (the daemon's rule), and only on a host that announces `arena`. The model is free text (blank means the host default) because the host's model list is not part of the protocol; the effort is the protocol's five levels.
+- **Per-variant diff:** **Show changes** loads the variant's own `card.diff`, on demand, instead of loading every diff with the comparison.
+- **List of automatic approvals:** the screen that lists the decisions of `autoapprove.list` (spec, "App" section) is not built in this branch. The timeline note "Approved automatically" and the risk seal are. This is open for the orchestrator to schedule.
+- **Escape on the dialogs:** the close handler of the automation form and of the arena form each got a test that closes them with Escape; the coverage had shown the handler without one.
+- **`e2e` journey `issue-e-risco`:** turns the seeded GitHub issue into a card and opens the terminal session that waits for `Bash rm -rf build`, checking the red seal and that **Approve** is replaced by **Hold to approve**. It cannot run on the Orange Pi (no Chrome for Linux arm64); the CI screenshots job runs it. The demo seed installs a fake `gh` (the test helper of the suite) for the whole demo and takes it off the PATH when the demo stops.
+- **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).

@@ -29,6 +29,10 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | risco (baixo, médio, alto) | risk (low, medium, high) | O selo de um pedido de permissão; nunca `low`, `medium` e `high` na tela |
 | segurar para aprovar | hold to approve | O Aprovar de um pedido de risco alto: o botão tem de ficar pressionado por 2 segundos |
 | aprovado automaticamente | approved automatically | Um pedido aprovado por regra ou pela IA, sem a pessoa; a linha diz quem decidiu e o motivo |
+| issue | issue | Um item do GitHub ou do Azure Boards listado no painel Issues do board; **Criar card** faz um card a partir dela |
+| automação | automation | Um gatilho (horário, comentário no PR, checks do PR que falharam, issue com rótulo) que dispara uma ação; nasce desligada |
+| arena | arena | O mesmo pedido de um card rodando em 2 a 4 variantes, para comparar e escolher |
+| variante | variant | Uma das execuções de uma arena, com a própria worktree, branch, modelo e esforço |
 
 ## Estados de uma sessão
 
