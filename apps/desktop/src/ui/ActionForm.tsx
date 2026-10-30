@@ -1,6 +1,6 @@
 import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -120,11 +120,12 @@ export function ActionForm(props: {
     else setError(result.message);
   };
 
+  const ids = useId();
   const field = (key: Key, value: string, onChange: (value: string) => void, disabled = false) => (
-    <label className="flex flex-col gap-1 text-sm">
+    <label className="flex flex-col gap-1 text-sm" htmlFor={`${ids}-${key}`}>
       {t(key)}
       <Input
-        aria-label={t(key)}
+        id={`${ids}-${key}`}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -145,10 +146,10 @@ export function ActionForm(props: {
           {field("actionsUi.form.description", draft.description, (description) =>
             set({ description }),
           )}
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-sm" htmlFor={`${ids}-run`}>
             {t("actionsUi.form.run")}
             <Textarea
-              aria-label={t("actionsUi.form.run")}
+              id={`${ids}-run`}
               value={draft.run}
               onChange={(e) => set({ run: e.target.value })}
               className="font-mono"
