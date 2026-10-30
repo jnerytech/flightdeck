@@ -120,4 +120,50 @@ describe("conversas-ui: the messages between sessions", () => {
     await settle(() => (list()?.children.length ?? 0) === 3);
     expect(list()?.children.length).toBe(3);
   });
+
+  test("Abrir a sessão opens the message's recipient", async () => {
+    const { store, daemon, list } = await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === 2);
+    const oldest = list()?.children[1] as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(oldest).getByRole("button", { name: "Abrir a sessão" }));
+    });
+    expect(store.router.current).toMatchObject({ name: "external", claudeSessionId: "s2" });
+    // A recipient that is a managed session of the host opens as one.
+    await act(async () => {
+      daemon.push({
+        type: "event",
+        sessionId: "s1",
+        seq: 1,
+        ts: "2026-10-30T12:00:00.000Z",
+        event: {
+          type: "session.summary",
+          sessionId: "s1",
+          name: "a1",
+          cwd: "/p",
+          status: "idle",
+          pendingPermissions: [],
+          updatedAt: "2026-10-30T12:00:00.000Z",
+        },
+      });
+    });
+    await settle(() => store.getState().hosts[0]?.sessions.length === 1);
+    daemon.messaging.messages = [message({ id: "m9", toSession: "s1" })];
+    await act(async () => {
+      daemon.push({ type: "messages.updated", message: message({ id: "m9", toSession: "s1" }) });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === 1);
+    await act(async () => {
+      fireEvent.click(
+        within(list()?.children[0] as HTMLElement).getByRole("button", { name: "Abrir a sessão" }),
+      );
+    });
+    expect(store.router.current).toMatchObject({ name: "session", id: "s1" });
+  });
 });
