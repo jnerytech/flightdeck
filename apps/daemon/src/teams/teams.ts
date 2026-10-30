@@ -37,6 +37,8 @@ export interface TeamsOptions {
   host: string;
   quota?: Pick<Quota, "watch" | "blocked"> | undefined;
   personas?: TeamPersonas | undefined;
+  /** The standard names: a persona that arrives after the session started renames it. */
+  names?: { setPersona(sessionId: string, persona: string | null): unknown } | undefined;
   clock?: (() => number) | undefined;
   /** Starts the coordinator session; phase 20 passes the persona on. */
   startCoordinator?:
@@ -239,6 +241,11 @@ export class Teams {
     const found = this.opts.personas?.resolve(id);
     if (!found) throw bad(`a persona ${id} não existe`);
     return found.id;
+  }
+
+  /** The persona a worker's card was started with; the standard name reads it. */
+  personaOfCard(_cardId: string): string | null {
+    return null;
   }
 
   /** Creates a worker's card with its instructions and starts it (the quota queue still applies). */
