@@ -22,6 +22,11 @@ export function formatDateTime(iso: string, lang: Lang, timeZone?: string): stri
   return plain(format.format(new Date(iso)));
 }
 
+/** A list's short time: HH:MM today, the day and month before. */
+export function formatWhen(_iso: string, _nowMs: number, _lang: Lang, _timeZone?: string): string {
+  return "";
+}
+
 /** "2 h 5 min", "2 h", "3 min" or "45 s" (seconds only under a minute). */
 export function formatDuration(ms: number, t: T): string {
   const seconds = Math.floor(ms / 1000);

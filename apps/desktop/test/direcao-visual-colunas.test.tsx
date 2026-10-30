@@ -13,6 +13,7 @@ const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { Page } = await import("../src/components/layout/page.tsx");
+const { formatWhen } = await import("../src/i18n/format.ts");
 
 setDefaultTimeout(20_000);
 
@@ -117,6 +118,45 @@ describe("direcao-visual: três colunas", () => {
     expect(menu?.className ?? "").toContain("opacity-0");
     expect(menu?.className ?? "").toContain("focus-visible:opacity-100");
     expect(menu?.className ?? "").toContain("group-hover:opacity-100");
+  });
+
+  test("a hora da linha é curta (HH:MM hoje, dia e mês antes) e inteira no tooltip", async () => {
+    const now = Date.parse("2026-09-01T15:00:00Z");
+    const zone = "America/Sao_Paulo";
+    expect(formatWhen("2026-09-01T10:00:00Z", now, "pt-BR", zone)).toBe("07:00");
+    expect(formatWhen("2026-08-31T10:00:00Z", now, "pt-BR", zone)).toBe("31 de ago.");
+    expect(formatWhen("2026-08-31T10:00:00Z", now, "en", zone)).toBe("Aug 31");
+    // 02:00 UTC is still the day before in São Paulo.
+    expect(formatWhen("2026-09-01T02:00:00Z", now, "pt-BR", zone)).toBe("31 de ago.");
+    await setup();
+    const time = row("Alpha")?.querySelector("time");
+    expect(time?.textContent).toMatch(/^\d{2}:\d{2}$/);
+    expect(time?.getAttribute("title")).toMatch(/^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}$/);
+  });
+
+  test("o título leva o espaço da linha; o resumo é uma segunda linha só na densidade confortável", async () => {
+    const { store } = await setup();
+    const summary = () => row("Alpha")?.querySelector("[data-slot='summary']");
+    expect(
+      within(row("Alpha") as HTMLElement).queryByRole("button", { name: "Alpha" })?.className,
+    ).toContain("flex-1");
+    // Compact: one line, the summary only for screen readers.
+    expect(summary()?.textContent ?? "").not.toBe("");
+    expect(summary()?.className ?? "").toContain("sr-only");
+    await act(async () => {
+      store.density.set("comfortable");
+    });
+    expect(summary()?.className ?? "").not.toContain("sr-only");
+    expect(summary()?.className ?? "").toContain("basis-full");
+    expect(row("Alpha")?.className ?? "").toContain("flex-wrap");
+  });
+
+  test("os filtros da lista são compactos (32 px)", async () => {
+    await setup();
+    for (const label of ["Host", "Origem", "Estado"]) {
+      expect(screen.queryByLabelText(label)?.className ?? "").toContain("h-8");
+    }
+    expect(screen.queryByLabelText("Filtrar sessões")?.className ?? "").toContain("h-8");
   });
 
   test("em Configurações a densidade confortável (40 px) vale para a lista e fica guardada", async () => {
