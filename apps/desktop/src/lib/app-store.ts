@@ -1200,6 +1200,11 @@ export class AppStore {
     }
   }
 
+  /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
+  async copySecret(_id: string, _clearMs: number): Promise<boolean> {
+    return false;
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);

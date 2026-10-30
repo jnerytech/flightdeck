@@ -34,7 +34,14 @@ function SecretRow(props: { secret: SecretMeta; info: SecretInfo }) {
 }
 
 /** Phase 16: the vault's screen. */
-export function VaultPage(props: { store: AppStore; state: AppState }) {
+export function VaultPage(props: {
+  store: AppStore;
+  state: AppState;
+  /** How long a revealed value stays on screen. */
+  revealMs?: number;
+  /** How long a copied value stays on the clipboard. */
+  clearMs?: number;
+}) {
   const t = useT();
   const { store, state } = props;
   const [infos, setInfos] = useState<Record<string, SecretInfo>>({});
