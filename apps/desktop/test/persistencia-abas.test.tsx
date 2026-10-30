@@ -143,7 +143,9 @@ describe("persistencia-abas", () => {
     const second = new AppStore(mem.platform, { baseDelayMs: 10_000, maxDelayMs: 10_000 });
     render(<App store={second} />);
     await act(async () => {});
-    await waitFor(() => expect(screen.queryByText("Conectando a pc…")).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole("status", { name: "Conectando a pc…" })).not.toBeNull(),
+    );
     expect(second.workspace.tabs.tabs).toHaveLength(2);
     second.dispose();
   });
