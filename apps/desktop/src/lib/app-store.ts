@@ -302,7 +302,6 @@ export interface GateRef {
   cardId: string;
 }
 
-/** Every open permission request of every host, oldest first. */
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -312,6 +311,7 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
   }
 }
 
+/** Every open permission request of every host, oldest first. */
 export function needsYou(state: AppState): PendingItem[] {
   return state.hosts
     .flatMap((host) => [
