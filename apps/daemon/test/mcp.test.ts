@@ -79,7 +79,7 @@ async function connected(options: Parameters<typeof setup>[0] = {}) {
 }
 
 describe("mcp", () => {
-  test("expõe exatamente as seis ferramentas: nenhuma de permissão nem de gate", async () => {
+  test("expõe exatamente as nove ferramentas: nenhuma de permissão nem de gate", async () => {
     const { client, ok } = await connected();
     expect(ok).toBe(true);
     const names = await client.listTools().then(
@@ -90,8 +90,11 @@ describe("mcp", () => {
       "create_card",
       "get_card",
       "get_run",
+      "list_actions",
       "list_projects",
       "list_workflows",
+      "run_action",
+      "run_with_secret",
       "start_card",
     ]);
     expect(names.some((n) => /permission|gate|approve|respond/.test(n))).toBe(false);
