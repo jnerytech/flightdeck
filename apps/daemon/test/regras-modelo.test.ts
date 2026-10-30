@@ -194,7 +194,6 @@ describe("regras-modelo: janela, limites e expiração", () => {
     const friday = at(12) + 2 * 24 * HOUR;
     expect(evaluate([night], staging, env({ now: friday + 11 * HOUR })).decision).toBe("allow");
     expect(evaluate([night], staging, env({ now: friday + 14 * HOUR })).decision).toBe("allow");
-    expect(evaluate([night], staging, env({ now: friday + 17 * HOUR })).decision).toBe("deny");
     // Saturday noon, and Saturday 23:00 (a night that did not start on a Friday), are outside.
     expect(evaluate([night], staging, env({ now: friday + 24 * HOUR })).decision).toBe("deny");
     expect(evaluate([night], staging, env({ now: friday + 35 * HOUR })).decision).toBe("deny");

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { decideRequest, requesterOf } from "../src/vault/requests.ts";
+import { decideRequest, requesterOf, systemEnv } from "../src/vault/requests.ts";
 import {
   type Day,
   evaluate,
@@ -348,5 +348,16 @@ describe("regras-padroes: decideRequest", () => {
       decision: "ask",
       needsHold: true,
     });
+  });
+});
+
+describe("regras-padroes: o ambiente do sistema", () => {
+  test("systemEnv usa o relógio e o fuso do PC, e o histórico de usos que lhe derem", () => {
+    const system = systemEnv();
+    expect(Math.abs(system.now() - Date.now())).toBeLessThan(1000);
+    expect(system.local(NOW).minutes).toBeGreaterThanOrEqual(0);
+    expect(system.uses("r", 0)).toBe(0);
+    const counted = systemEnv((id, since) => (id === "r" && since === 5 ? 7 : 0));
+    expect(counted.uses("r", 5)).toBe(7);
   });
 });
