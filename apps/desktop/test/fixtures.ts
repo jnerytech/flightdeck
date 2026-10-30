@@ -28,6 +28,8 @@ import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
+import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
+import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -85,12 +87,19 @@ export function daemon(
     autoApprove?: boolean;
     /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
     risk?: (root: string) => RiskClassifier;
+    /** The host's embedded terminals (phase 14), over fake PTYs that echo what is written. */
+    terminals?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
   const project = join(root, "p");
   mkdirSync(project);
   const store = new EventStore(":memory:");
+  const ptys = fakePtys();
+  const terminals = options.terminals
+    ? new TerminalManager({ pty: ptys.factory, allowedRoots: [root], platform: "linux" })
+    : undefined;
+  if (terminals) cleanups.push(() => terminals.stop());
   const historyRoot = join(root, "claude-projects");
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
@@ -226,6 +235,7 @@ export function daemon(
       ...(options.issues && issues ? { issues } : {}),
       ...(automations ? { automations } : {}),
       ...(autoApprove ? { autoApprove } : {}),
+      ...(terminals ? { terminals } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -258,6 +268,7 @@ export function daemon(
     eventStore: store,
     automations,
     autoApprove,
+    ptys,
   };
 }
 
