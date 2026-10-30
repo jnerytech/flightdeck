@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";

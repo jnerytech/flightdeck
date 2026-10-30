@@ -9,7 +9,6 @@ const ROOT = join(import.meta.dir, "..", "..", "..");
 const json = (path: string) => JSON.parse(readFileSync(join(ROOT, path), "utf8"));
 
 describe("versao", () => {
-  test("protocol, daemon, desktop and tauri.conf.json share the product version, 0.14.0", () => {
   test("protocol, daemon, desktop and tauri.conf.json share the product version, 0.15.0", () => {
     const protocol = json("packages/protocol/package.json").version;
     const daemon = json("apps/daemon/package.json").version;
@@ -17,8 +16,6 @@ describe("versao", () => {
     // tauri.conf.json takes it from the desktop's package.json.
     const tauri = json("apps/desktop/src-tauri/tauri.conf.json").version;
     expect(tauri).toBe("../package.json");
-    expect([protocol, daemon, desktop]).toEqual(["0.14.0", "0.14.0", "0.14.0"]);
-    expect(DAEMON_VERSION).toBe("0.14.0");
     expect([protocol, daemon, desktop]).toEqual(["0.15.0", "0.15.0", "0.15.0"]);
     expect(DAEMON_VERSION).toBe("0.15.0");
   });
