@@ -46,3 +46,55 @@ export function visibleLiterals(source: string, allowed: readonly string[] = [])
   }
   return found.sort((a, b) => a.at - b.at).map(({ line, text }) => ({ line, text }));
 }
+
+const STRING = String.raw`"(?:[^"\\]|\\.)*"|` + "`(?:[^`\\\\]|\\\\.)*`";
+/** Properties whose string is shown to a person: `label: "Abrir"`, `title: "Ações"`. */
+const KEYED = new RegExp(
+  String.raw`\b(?:label|title|detail|body|error|message|text|placeholder|description|shortcutProblem)\s*:\s*(${STRING})`,
+  "g",
+);
+/** A failure the banner shows: `fail("…")`, `this.fail(error, "…")`. */
+const FAIL = new RegExp(String.raw`\bfail\(\s*(?:[^,()]+,\s*)?(${STRING})`, "g");
+const ANY_STRING = new RegExp(STRING, "g");
+/** Letters only Portuguese uses: a string with one is text for a person. */
+const ACCENT = /[áâãàéêíóôõúç]/i;
+/** Lines whose strings are technical (a thrown error is for the log) or not code at all. */
+const TECHNICAL = /\bnew (?:Request)?Error\(|\bthrow\b|^\s*(?:\/\/|\*|\/\*)|^\s*import\b/;
+const TEMPLATE_HOLE = /\$\{[^}]*\}/g;
+
+/**
+ * Visible text written outside the JSX, which the `visibleLiterals` sweep cannot see: values of
+ * `label`, `title`, `detail`, `body`, `error`, `message`… in objects, the text of a `fail(…)`, and
+ * any other string with a Portuguese accent (a table of names). A template literal counts by its
+ * static parts. Thrown errors and comments are left out; `allowed` holds untranslated names.
+ */
+export function visibleTsLiterals(source: string, allowed: readonly string[] = []): Literal[] {
+  const found: Array<Literal & { at: number }> = [];
+  let offset = 0;
+  source.split("\n").forEach((line, i) => {
+    if (!TECHNICAL.test(line)) {
+      const seen = new Set<number>();
+      const keep = (index: number, quoted: string) => {
+        if (seen.has(index)) return;
+        seen.add(index);
+        const text = quoted
+          .slice(1, -1)
+          .replaceAll(TEMPLATE_HOLE, "")
+          .replaceAll(/\s+/g, " ")
+          .trim();
+        if (LETTER.test(text) && !allowed.includes(text)) {
+          found.push({ line: i + 1, text, at: offset + index });
+        }
+      };
+      for (const pattern of [KEYED, FAIL]) {
+        for (const m of line.matchAll(pattern)) {
+          const quoted = m[1] as string;
+          keep(m.index + m[0].length - quoted.length, quoted);
+        }
+      }
+      for (const m of line.matchAll(ANY_STRING)) if (ACCENT.test(m[0])) keep(m.index, m[0]);
+    }
+    offset += line.length + 1;
+  });
+  return found.sort((a, b) => a.at - b.at).map(({ line, text }) => ({ line, text }));
+}
