@@ -119,7 +119,15 @@ function VariantColumn(props: {
           {t("arenaUi.choose", { name: variant.label })}
         </Button>
       </div>
-      {shown && diff && <DiffView diff={diff} />}
+      {shown && diff && (
+        <DiffView
+          files={diff.files}
+          mode="unified"
+          selection={null}
+          onPick={() => {}}
+          composer={null}
+        />
+      )}
     </section>
   );
 }

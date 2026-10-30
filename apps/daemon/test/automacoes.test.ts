@@ -65,6 +65,7 @@ function prHost() {
       ...(state.failed.length > 0 ? { failed: state.failed } : {}),
     }),
     url: async () => null,
+    comments: async () => [],
   };
   return { state, provider };
 }

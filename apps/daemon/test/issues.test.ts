@@ -486,6 +486,7 @@ function recordingPrs() {
     },
     status: async () => ({ state: "open" as const, checks: null }),
     url: async () => null,
+    comments: async () => [],
   };
   return { bodies, url, provider };
 }
