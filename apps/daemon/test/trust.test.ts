@@ -51,6 +51,14 @@ describe("trust", () => {
     ]);
   });
 
+  test("lista os workflows em ordem alfabética sem diferenciar maiúsculas", async () => {
+    const { board, project, repo } = await setup();
+    commitWorkflow(repo, "Zeta", EXAMPLE);
+    commitWorkflow(repo, "alpha", EXAMPLE);
+    const names = (await board.listWorkflows(project.id)).map((workflow) => workflow.name);
+    expect(names).toEqual(["alpha", "feature", "Zeta"]);
+  });
+
   test("workflow não confiado não roda", async () => {
     const { board, card, manager, start } = await setup();
     expect(await failure(start("feature"))).toBe(
