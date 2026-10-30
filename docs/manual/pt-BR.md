@@ -2,7 +2,7 @@
 
 [English](en.md) | Português (Brasil) · [Voltar ao README](../../README.pt-BR.md)
 
-Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.14.0. O roadmap
+Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.17.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
 [`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
@@ -1102,9 +1102,28 @@ tenha: o botão **Ações de <projeto>** só aparece nesse caso.
   um repositório git, e o daemon confere de novo logo antes de cada execução. Se algum mudou, a ação
   mostra **Mudou desde que foi confiada** com o que mudou, e só roda de novo depois que você
   confiar outra vez.
+- **Nova ação** abre um formulário: o nome, uma descrição, o comando com um argumento por linha,
+  um destino SSH, a pasta, o tempo limite e a aprovação (opcionais), as variáveis de ambiente que
+  recebem um segredo do cofre (o seletor mostra nomes e tags, nunca um valor) e os parâmetros com
+  o padrão e o valor inicial. O daemon confere, e o que ele recusa aparece no formulário. **Editar**
+  e **Remover** (que pergunta antes) ficam nas ações criadas no app; uma ação versionada muda no
+  arquivo dela.
+- **Aviso de produção.** Uma ação que roda neste host com um segredo de tag `prod` avisa na linha
+  dela: uma sessão do Claude com Bash neste host poderia ler o segredo enquanto ela roda. Prefira
+  uma ação `ssh:` para ele.
 - **Execuções.** **Execuções de <nome>** abre o histórico, da mais nova para a mais antiga:
   quando, quem pediu (Você, Claude, Automação ou Workflow), o código de saída, a duração e a saída,
   já mascarada pelo daemon.
+
+### Aprovar um pedido
+
+Quando o Claude, uma automação ou um workflow roda uma ação que precisa de um segredo, o pedido
+aparece em **Precisa de você** com uma notificação: quem pediu, a ação e os parâmetros (ou o
+comando, os segredos e o host). **Aprovar** entrega o segredo só para aquela execução; **Negar**
+faz a execução falhar na hora. Uma ação com `approval: never` roda sem pergunta, `first-per-session`
+pergunta uma vez e fica lembrada até o app reiniciar, e `always` pergunta todas as vezes. Um
+`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar, e a bandeja só o
+abre.
 
 ### Como o Claude chama uma ação
 

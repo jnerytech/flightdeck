@@ -2,7 +2,7 @@
 
 English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.md)
 
-Complete Flightdeck reference, organized by topic. It applies to version 0.14.0. The roadmap is
+Complete Flightdeck reference, organized by topic. It applies to version 0.17.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
 [`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
@@ -1120,9 +1120,27 @@ side and hands Claude the exit code and the output (up to 32 KB) with the secret
   inside a git repository, and the daemon checks them again right before each run. If one changed,
   the action shows **Changed since it was trusted** with what changed, and runs again only after
   you trust it again.
+- **New action** opens a form: the name, a description, the command one argument per line, an
+  optional SSH destination, folder, time limit and approval, the environment variables fed by a
+  secret of the vault (the picker shows names and tags, never a value) and the parameters with
+  their pattern and initial value. The daemon checks it and what it refuses shows in the form.
+  **Edit** and **Remove** (which asks first) are on the actions made in the app; a versioned action
+  is changed in its file.
+- **Production warning.** An action that runs on this host with a secret tagged `prod` says so on
+  its row: a Claude session with Bash on this host could read the secret while it runs. Prefer an
+  `ssh:` action for it.
 - **Runs.** **Runs of <name>** opens the history, newest first: when, who asked (You, Claude,
   Automation or Workflow), the exit code, the duration and the output, already masked by the
   daemon.
+
+### Approving a request
+
+When Claude, an automation or a workflow runs an action that needs a secret, the request shows in
+**Needs you** with a notification: who asked, the action and its parameters (or the command, the
+secrets and the host). **Approve** delivers the secret for that run only; **Deny** fails the run
+at once. An action with `approval: never` runs without a question, `first-per-session` asks once
+and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
+is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
 
 ### How Claude calls an action
 
