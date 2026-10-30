@@ -159,6 +159,8 @@ describe("custos-resumo", () => {
         { origin: "terminal", costUsd: 1, tokens: 1_000_120 },
         { origin: "subagent", costUsd: 0.5, tokens: 5 },
       ],
+      // No session of these has a persona: all of it is in the one row with none.
+      byPersona: [{ persona: null, costUsd: 3.5, tokens: 1_500_145 }],
       topSessions: [
         {
           claudeSessionId: "s2",
