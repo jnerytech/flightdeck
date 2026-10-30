@@ -103,6 +103,8 @@ export interface AppState {
   searchOpen: boolean;
   /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
   closingTerminal: { areaId: string; tabId: string } | null;
+  /** Sessions that replied while no tab showed them (phase 14), by session key. */
+  unread: Record<string, true>;
   /** Board cards seen so far, keyed by `sessionKey(hostId, cardId)`; kept by `card.updated`. */
   cards: Record<string, Card>;
   /** Sessions opened outside Flightdeck, by `sessionKey(hostId, claudeSessionId)`. */
@@ -457,9 +459,10 @@ export class AppStore {
   ) {
     this.workspace = Workspace.restore(storedWorkspace(platform.storage));
     this.router = this.workspace.router;
-    this.workspace.subscribe(() =>
-      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
-    );
+    this.workspace.subscribe(() => {
+      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot()));
+      this.clearShownUnread();
+    });
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
@@ -473,6 +476,7 @@ export class AppStore {
       search: null,
       searchOpen: false,
       closingTerminal: null,
+      unread: {},
       cards: {},
       runs: {},
       quota: {},
@@ -1519,6 +1523,12 @@ export class AppStore {
       ...h,
       sessions: prev ? h.sessions.map((s) => (s.id === next.id ? next : s)) : [...h.sessions, next],
     }));
+    const replied =
+      (prev?.status === "running" || prev?.status === "starting") && next.status === "idle";
+    const key = sessionKey(hostId, next.id);
+    if (replied && !this.shownSessions().has(key)) {
+      this.update({ unread: { ...this.state.unread, [key]: true } });
+    }
     const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
@@ -1526,6 +1536,25 @@ export class AppStore {
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
       void this.platform.notify(n);
     }
+  }
+
+  /** The sessions an area shows right now (the active tab of each area), by session key. */
+  private shownSessions(): Set<string> {
+    const shown = new Set<string>();
+    for (const area of this.workspace.areas) {
+      const route = area.router.current;
+      if (route.name === "session") shown.add(sessionKey(route.host, route.id));
+    }
+    return shown;
+  }
+
+  /** A session on screen is read. */
+  private clearShownUnread(): void {
+    const shown = [...this.shownSessions()].filter((key) => this.state.unread[key]);
+    if (shown.length === 0) return;
+    const unread = { ...this.state.unread };
+    for (const key of shown) delete unread[key];
+    this.update({ unread });
   }
 
   /** External sessions follow `external.updated`; requests stay in the queue while open. */

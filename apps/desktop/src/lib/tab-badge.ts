@@ -1,8 +1,8 @@
-import { type AppState, needsYou } from "./app-store.ts";
+import { type AppState, needsYou, sessionKey } from "./app-store.ts";
 import type { Route } from "./router.ts";
 
-/** What a tab shows besides its title: something waits for the user, or a session is working. */
-export type TabBadge = "needs-you" | "running" | null;
+/** What a tab shows besides its title: something waits for the user, a session is working, or it replied unseen. */
+export type TabBadge = "needs-you" | "running" | "unread" | null;
 
 export function tabBadge(route: Route, state: AppState): TabBadge {
   if (route.name === "needs-you") return needsYou(state).length > 0 ? "needs-you" : null;
@@ -12,5 +12,6 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
     ?.sessions.find((candidate) => candidate.id === route.id);
   if (!session) return null;
   if (session.pendingPermissions.length > 0) return "needs-you";
-  return session.status === "running" || session.status === "starting" ? "running" : null;
+  if (session.status === "running" || session.status === "starting") return "running";
+  return state.unread[sessionKey(route.host, route.id)] ? "unread" : null;
 }

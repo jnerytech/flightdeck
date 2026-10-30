@@ -500,7 +500,7 @@ export const ptBR = {
     area: "Área {n}",
     resize: "Redimensionar a divisão",
     newTab: "Nova aba",
-    badge: { "needs-you": "Precisa de você", running: "Rodando" },
+    badge: { "needs-you": "Precisa de você", running: "Rodando", unread: "Não lida" },
     list: "Abas",
     close: "Fechar aba {title}",
     pin: "Fixar aba {title}",

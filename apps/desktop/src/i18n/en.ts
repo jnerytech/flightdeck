@@ -497,7 +497,7 @@ export const en: Dictionary = {
     area: "Area {n}",
     resize: "Resize the split",
     newTab: "New tab",
-    badge: { "needs-you": "Needs you", running: "Running" },
+    badge: { "needs-you": "Needs you", running: "Running", unread: "Unread" },
     list: "Tabs",
     close: "Close tab {title}",
     pin: "Pin tab {title}",
