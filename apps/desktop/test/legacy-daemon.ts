@@ -16,6 +16,9 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
   /** What `messages.list` answers (phase 21); the payloads asked are in `commands`. */
   const messaging = {
+    policy: { exceptions: [] } as Record<string, unknown>,
+    paused: [] as string[],
+    teams: [] as unknown[],
     messages: [] as unknown[],
     sessions: [] as unknown[],
     send: { id: "m-sent", status: "queued", reason: null } as unknown,
@@ -80,6 +83,22 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         if (type === "vault.rules.preview") return ack(preview.verdict);
         if (type === "messages.list") return ack({ messages: messaging.messages });
         if (type === "messages.sessions") return ack({ sessions: messaging.sessions });
+        if (type === "messaging.rules.get") {
+          return ack({ policy: messaging.policy, paused: messaging.paused });
+        }
+        if (type === "messaging.rules.set") {
+          const set = payload as { policy: Record<string, unknown>; unpause?: string[] };
+          messaging.policy = set.policy;
+          messaging.paused = messaging.paused.filter((p) => !(set.unpause ?? []).includes(p));
+          return ack({ policy: messaging.policy, paused: messaging.paused });
+        }
+        if (type === "teams.list") return ack({ teams: messaging.teams });
+        if (type === "teams.status") {
+          const team = messaging.teams.find(
+            (t) => (t as { id: string }).id === (payload as { team: string }).team,
+          );
+          return ack({ team, members: [], messages: 0 });
+        }
         if (type === "messages.send") return ack(messaging.send);
         if (type === "messages.directory") return ack({ host: "h", sessions: [] });
         if (type === "messages.peers") return ack();
