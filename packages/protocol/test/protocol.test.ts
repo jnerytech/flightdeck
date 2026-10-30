@@ -71,6 +71,7 @@ const validCommands: Record<CommandType, unknown> = {
   "daemon.shutdown": {},
   "daemon.update.apply": { confirm: true },
   "snapshots.list": { claudeSessionId: "c1" },
+  "snapshots.files": { claudeSessionId: "c", n: 3 },
   "rewind.preview": { claudeSessionId: "c1", turn: 1 },
   "rewind.apply": { claudeSessionId: "c1", turn: 1, confirm: true },
   "rewind.undo": { claudeSessionId: "c1", confirm: true },
