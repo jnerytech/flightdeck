@@ -86,7 +86,10 @@ async function setup(options: { agentcfg?: boolean } = {}) {
   writeFileSync(join(repo, ".claude", "settings.local.json"), JSON.stringify({ other: 1 }));
   writeFileSync(
     join(d.root, "claude.json"),
-    JSON.stringify({ mcpServers: { global: { command: "python", args: ["srv.py"] } } }),
+    JSON.stringify({
+      mcpServers: { global: { command: "python", args: ["srv.py"] } },
+      projects: { [repo]: { mcpServers: { local: { command: "python", args: ["loc.py"] } } } },
+    }),
   );
   writeFileSync(join(repo, "README.md"), "# repo\n");
   git(repo, "add", ".");
@@ -139,6 +142,10 @@ describe("agente-ui", () => {
     expect(within(row("global")).queryByText("Do usuário (~/.claude.json)")).not.toBeNull();
     expect(within(row("global")).queryByText("Só leitura")).not.toBeNull();
     expect(within(row("global")).queryByRole("button", { name: "Remover global" })).toBeNull();
+    expect(
+      within(row("local")).queryByText("Do usuário, neste projeto (~/.claude.json)"),
+    ).not.toBeNull();
+    expect(within(row("local")).queryByText("Só leitura")).not.toBeNull();
     expect(screen.queryByText(/O \.mcp\.json é versionado/)).not.toBeNull();
     // Nothing runs because the list was opened.
     await act(() => Bun.sleep(300));
@@ -262,5 +269,19 @@ describe("agente-ui", () => {
     expect(screen.queryByRole("switch", { name: "Ligar eco" })?.getAttribute("aria-checked")).toBe(
       "false",
     );
+  });
+
+  test("uma configuração que não carrega mostra o erro e tenta de novo", async () => {
+    const { store, hostId } = await setup();
+    await act(async () => {
+      store.router.push({ name: "agent", host: hostId, projectId: "nenhum", projectName: "x" });
+    });
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(
+      screen.queryByText("Não foi possível carregar a configuração deste projeto."),
+    ).not.toBeNull();
+    await click("Tentar de novo");
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")).not.toBeNull();
   });
 });
