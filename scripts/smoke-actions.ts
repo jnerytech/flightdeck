@@ -101,6 +101,14 @@ class App {
       await this.call("vault.deny", { requestId: request.requestId });
       return;
     }
+    // Phase 19: a request that asks is approved, holding the button where it has to be held.
+    if (request.decision === "ask") {
+      await this.call("vault.approve", {
+        requestId: request.requestId,
+        via: "app",
+        heldMs: request.needsHold ? 2000 : 0,
+      });
+    }
     await this.call("vault.deliver", {
       secretId: request.secretId,
       value: this.vault.get(request.secretId),

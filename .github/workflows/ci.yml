@@ -105,6 +105,7 @@ jobs:
           bun run smoke:vault
           bun run smoke:actions
           bun run smoke:snippets
+          bun run smoke:rules-vault
 
       # The Tauri context needs the built frontend (frontendDist) to exist.
       - name: cargo check do app
