@@ -1878,3 +1878,16 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Vermelho do `smoke:ssh`:** numa cópia da base `56d23a1`, `SMOKE SSH FAIL no passo "importar o ssh config"` (o comando não existe) e código 1. Passa no Windows (arquivo temporário, `askpass.cmd` chamado pelo ssh falso) e no contêiner Linux (agent por conexão falso).
 - **Regra 7:** os ramos que a cobertura apontou foram removidos para o teste ficar vermelho antes de voltar: aspas no `unquote` do import, o `-i` de uma chave entregue como arquivo, a limpeza da entrega quando os arquivos do ssh não podem ser escritos, e o id padrão do socket do agent.
 - **Ainda sem conferência real:** o `ssh` do sistema pedindo a senha por um `askpass.cmd` no Windows (o ssh falso o chamou, o de verdade só na conferência com o usuário) e um destino real atrás de jump.
+
+## Phase 15 decisions: the app
+
+- **The registry is the first online host that announces `ssh`.** The spec keeps the destinos in the daemon of the local host. Hosts announce `ssh` in `host.info` (new feature flag, `ssh-destinos` area), and the Conexões screen, the palette and the sidebar use the first online one. Several hosts that keep destinos are not merged.
+- **`via_host` is stored and shown, but the connection opens on the host that keeps the destino.** The daemon does not route `ssh.connect` to another Flightdeck host, so opening through the VPS needs the destino to exist there too. Left for a later phase.
+- **The form offers `agent` and `key-file` only.** `vault-key` and `password` need the vault (phase 16) and the app's answer to `askpass.request`; a destino created elsewhere with those auths still lists and edits (the reference is kept), but the form cannot set them until the vault is on top. The app does not answer `askpass.request` yet, so such a password prompt gets no answer.
+- **Connect checks the server key in the app before `ssh.connect`.** `ssh.hostkey.check` says `pinned` (connect), `unknown` (show the fingerprint, confirm with `ssh.hostkey.confirm`, then connect) or `changed` (blocked, old and new shown; the way out is Forget server key in the form).
+- **The terminal screen is opened at 80x24.** The terminal screen resizes it once attached.
+- **The palette reads the destinos when it opens** (`loadPalette`), and choosing one opens Conexões with the destino to connect to (`Route.connections.connect`), so the key check and its dialogs are the same as from the button.
+- **The red border is on the terminal screen, not on a tab.** Tabs (phase 14's last areas) are not in this branch; the screen carries the badge and the border, and the tab will take them from the same `store.sshTerminals` entry. A terminal opened from a destino is remembered by `hostId/terminalId` in memory only: after a restart the screen has no badge.
+- **Prod tags** are `prod`, `produção` and `producao`, in any case (`lib/ssh.ts`).
+- **"Claude aqui" over SSH** and pairing a destino that has `flightdeckd` as a host are not part of this branch.
+- **The version is 0.15.0** (`test(versao)` cycle); at integration it resolves to the highest number.

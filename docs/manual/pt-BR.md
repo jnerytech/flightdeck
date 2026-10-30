@@ -988,6 +988,38 @@ podem ser rebaixados.
   **Reativar** pede confirmação antes de ligar de novo.
 - O texto da bandeja soma quantas aprovações automáticas o app viu.
 
+## Conexões
+
+**Conexões** (barra lateral, para hosts que guardam destinos SSH) lista os **destinos** cadastrados
+no primeiro host online que os anuncia e abre cada um numa tela de terminal com o cliente OpenSSH
+desse host. O Flightdeck não tem cliente SSH próprio: ele monta o comando `ssh` como uma lista de
+argumentos, sem shell no meio, e nunca guarda uma senha nem uma chave, só a referência a uma (o
+caminho de um arquivo de chave).
+
+- **Conectar** confere antes a chave do servidor. Um servidor nunca visto mostra o **fingerprint
+  SHA256** e espera **Confirmar chave do servidor**; só então o terminal abre. As conexões seguintes
+  usam um arquivo known_hosts próprio do Flightdeck e exigem que a chave seja a mesma. Uma **chave
+  trocada bloqueia a conexão** e mostra o fingerprint guardado e o novo; nada conecta até você abrir
+  o destino e escolher **Esquecer chave do servidor**.
+- **Novo destino**, **Editar**, **Duplicar** e **Remover** (com confirmação). Um destino tem nome,
+  host, porta, usuário, autenticação (o **agente SSH** do host, ou um **arquivo de chave** pelo
+  caminho), o host que o abre, um **salto** opcional (outro destino), etiquetas e uma lista curta e
+  fixa de opções: segundos de keep-alive, compressão, encaminhamentos locais em texto e
+  **ForwardAgent**, que vem desligado e pede confirmação para ligar.
+- **Testar conexão** (no formulário de edição) roda o `ssh` sem terminal e diz "Conexão ok." ou o
+  erro em palavras. Não cobre senhas.
+- **Importar do SSH config** lê o `~/.ssh/config` do host (só leitura, nunca escreve), lista os
+  nomes que achou, marca os já cadastrados e cria só os que você marcar. Entradas com curinga (`*`,
+  `?`) são padrões para as outras, não destinos.
+- **Busca** por nome, host ou usuário; filtro por etiqueta e pelo host que abre o destino. O
+  **Ctrl+K** também oferece **Conectar a <nome>** para cada destino.
+- O terminal de um destino mostra um selo com o nome e as etiquetas. Um destino com a etiqueta
+  `prod` ou `produção` deixa essa tela com **borda vermelha**, para um servidor de produção não ser
+  confundido com outro.
+
+Senhas, frases de chaves e chaves guardadas no cofre chegam com o Cofre (fase 16) por cima desta
+fase; até lá um destino usa o agente do host ou um arquivo de chave.
+
 ## Custos, orçamentos e cota
 
 ### Cota do plano

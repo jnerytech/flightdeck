@@ -42,6 +42,8 @@ sessions from one place, without opening each machine.
 - Issues from GitHub or Azure Boards turned into cards, automations (schedules, PR comments,
   failed checks, labels), and an arena that runs one request in 2 to 4 variants to compare and choose.
 - Risk seals on every permission request: a high-risk one asks you to hold the button for 2 seconds.
+- SSH destinations (Termius-style, with the host's OpenSSH): import `~/.ssh/config`, check and pin
+  the server key, connect in a terminal screen, and a red border for `prod`.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.

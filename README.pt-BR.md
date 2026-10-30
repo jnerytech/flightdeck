@@ -43,6 +43,8 @@ sessões num lugar só, sem abrir cada máquina.
 - Issues do GitHub ou do Azure Boards viram cards, automações (horários, comentários no PR, checks que
   falharam, rótulos) e uma arena que roda um pedido em 2 a 4 variantes para comparar e escolher.
 - Selo de risco em cada pedido de permissão: o de risco alto pede que você segure o botão por 2 segundos.
+- Destinos SSH (no estilo Termius, com o OpenSSH do host): importe o `~/.ssh/config`, confira e
+  guarde a chave do servidor, conecte numa tela de terminal e veja borda vermelha em `prod`.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.

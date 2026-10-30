@@ -18,6 +18,8 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | daemon | daemon | O `flightdeckd`, o serviço de cada host |
 | histórico | history | As conversas já gravadas pelo Claude Code, que o app só lê |
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
+| destino SSH | SSH destination | Um servidor cadastrado em Conexões (host, porta, usuário, autenticação, etiquetas); a tela se chama Conexões / Connections |
+| chave do servidor | server key | A chave que o servidor SSH mostra; o app guarda o fingerprint e bloqueia se ele mudar |
 | turno | turn | One message of the user and the agent's whole answer to it; the timeline lists them |
 | linha do tempo | timeline | The side panel of a session with its turns, what each changed in the files, and the rewind and fork actions |
 | Voltar arquivos | Rewind files | Puts the repository's files back to how they were before a turn; files only, never external commands; it can be undone |
