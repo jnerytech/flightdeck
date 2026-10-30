@@ -138,14 +138,21 @@ describe("terminal-ui: abrir um terminal", () => {
 
   test("the host page's list follows terminals opened and ended elsewhere", async () => {
     const { store, hostId, root } = await setup();
+    const row = () => screen.queryByRole("button", { name: `Abrir o terminal em ${root}` });
+    // The list asks again on a timer: let the time pass inside act, so its renders land.
+    const until = async (check: () => boolean) => {
+      for (let i = 0; i < 20 && !check(); i++) {
+        await act(async () => {
+          await Bun.sleep(200);
+        });
+      }
+    };
     await waitFor(() => expect(screen.queryByText("Nenhum terminal aberto.")).not.toBeNull());
     const { terminalId } = await store.terminalHost(hostId).open(root, 80, 24);
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: `Abrir o terminal em ${root}` })).not.toBeNull(),
-    );
+    await until(() => row() !== null);
+    expect(row()).not.toBeNull();
     await store.terminalHost(hostId).close(terminalId, true);
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: `Abrir o terminal em ${root}` })).toBeNull(),
-    );
+    await until(() => row() === null);
+    expect(row()).toBeNull();
   });
 });
