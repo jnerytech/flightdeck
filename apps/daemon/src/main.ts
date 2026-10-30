@@ -648,6 +648,10 @@ export async function startDaemon(
     projects: (id) => board.getProject(id),
     // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
     ssh: (job) => sshConnect.exec(job),
+    sshTags: (name) => {
+      const named = sshTargets.list().filter((t) => t.name === name);
+      return named.length === 1 ? (named[0]?.tags ?? []) : [];
+    },
     sshKey: (name) => {
       const named = sshTargets.list().filter((t) => t.name === name);
       return named.length === 1 && named[0]?.auth === "vault-key" ? named[0].secretRef : null;

@@ -380,7 +380,11 @@ export class Actions {
       use: {
         purpose: "action",
         action: found.action.name,
-        tags: found.action.tags ?? [],
+        // The ssh destino's tags count too (a prod destino asks at every use, held).
+        tags: [
+          ...(found.action.tags ?? []),
+          ...(found.action.ssh ? (this.opts.sshTags?.(found.action.ssh) ?? []) : []),
+        ],
         command: found.action.run.join(" "),
         cwd: found.base,
         ...(found.action.approval ? { actionApproval: found.action.approval } : {}),
@@ -440,7 +444,7 @@ export class Actions {
         },
         use: {
           purpose: "run_with_secret",
-          tags: [],
+          tags: remote ? (this.opts.sshTags?.(remote) ?? []) : [],
           command: input.command,
           cwd: this.baseOf(),
           ...(input.session ? { session: input.session } : {}),
