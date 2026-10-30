@@ -17,7 +17,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function setup() {
+async function setup(listFails = false) {
   const d = makeDaemon(cleanups, { terminals: true });
   const server = d.listen();
   const mem = memoryPlatform(false, "pt-BR");
@@ -31,6 +31,15 @@ async function setup() {
   const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   const { terminalId } = await store.terminalHost(hostId).open(d.project, 80, 24);
+  if (listFails) {
+    const real = store.terminalHost.bind(store);
+    store.terminalHost = (id) => ({
+      ...real(id),
+      list: async () => {
+        throw new Error("recusado");
+      },
+    });
+  }
   const x = fakeXterm();
   const closed: number[] = [];
   render(
@@ -216,5 +225,33 @@ describe("terminal-ui: the terminal screen", () => {
     } finally {
       globalThis.ResizeObserver = saved;
     }
+  });
+
+  test("a host that refuses the list of terminals leaves the screen live, without Ver como sessão", async () => {
+    const { store, hostId } = await setup(true);
+    await settle(() => state("Ao vivo"));
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        externals: {
+          [`${hostId}/c1`]: {
+            claudeSessionId: "c1",
+            cwd: "/p",
+            transcriptPath: null,
+            source: null,
+            status: "idle",
+            statusReason: null,
+            launchId: "L1",
+            controllable: true,
+            projectKey: null,
+            startedAt: "2026-10-30T12:00:00Z",
+            lastEventAt: "2026-10-30T12:00:00Z",
+            endedAt: null,
+          },
+        },
+      });
+      await Bun.sleep(20);
+    });
+    expect(state("Ao vivo")).not.toBeNull();
+    expect(button("Ver como sessão")).toBeNull();
   });
 });
