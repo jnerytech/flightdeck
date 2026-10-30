@@ -30,8 +30,8 @@ describe("util", () => {
     const failed = new AsyncQueue<number>();
     const waiting = failed[Symbol.asyncIterator]().next();
     failed.fail(new Error("boom"));
-    expect(waiting).rejects.toThrow("boom");
-    expect(failed[Symbol.asyncIterator]().next()).rejects.toThrow("boom");
+    await expect(waiting).rejects.toThrow("boom");
+    await expect(failed[Symbol.asyncIterator]().next()).rejects.toThrow("boom");
   });
 
   test("ulid é monotônico mesmo no mesmo milissegundo, inclusive com carry", () => {
