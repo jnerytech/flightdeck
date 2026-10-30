@@ -101,6 +101,7 @@ function template(def: SnippetDef): string {
  */
 export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): SnippetDef {
   const name = input.name.trim();
+  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "o nome ou as tags têm segredo");
   if (!NAME.test(name))
     throw badRequest("nome de 1 a 64 caracteres: letras, números, espaço, . _ -");
   const isCommand = input.type === "command";
@@ -151,14 +152,19 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
     body,
     ...Object.values(vars).flatMap((v) => [v.default ?? "", ...(v.options ?? [])]),
   ];
-  const secrets = [...new Set(content.flatMap((text) => scanner.scan(text)))];
+  refuseSecrets(scanner, content, "o snippet tem segredo");
+  return def;
+}
+
+/** `snippet_secret` naming the kinds found (never the values), so the app can offer to make an action. */
+function refuseSecrets(scanner: SecretScanner, texts: string[], what: string): void {
+  const secrets = [...new Set(texts.flatMap((text) => scanner.scan(text)))];
   if (secrets.length > 0) {
     throw new FlightdeckError(
       "snippet_secret",
-      `o snippet tem segredo (${secrets.join(", ")}): um snippet não leva segredo, transforme-o em ação`,
+      `${what} (${secrets.join(", ")}): um snippet não leva segredo, transforme-o em ação`,
     );
   }
-  return def;
 }
 
 function checkVar(key: string, spec: SnippetVar): void {

@@ -75,6 +75,8 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { SecretScanner } from "./snippets/model.ts";
+import { Snippets } from "./snippets/store.ts";
 import { AskpassBroker, askpassHook, runAskpass } from "./ssh/askpass.ts";
 import { processExec, processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
 import { HostKeys } from "./ssh/hostkey.ts";
@@ -633,6 +635,12 @@ export async function startDaemon(
     sshHostKeys,
     sshConnect,
     askpass,
+    snippets: new Snippets({
+      db: store.db,
+      allowedRoots: config.allowedRoots,
+      // The vault joins this scanner when it exists (phase 16).
+      scanner: new SecretScanner(),
+    }),
     sshImport: new SshImporter({
       targets: sshTargets,
       configPath: join(homedir(), ".ssh", "config"),

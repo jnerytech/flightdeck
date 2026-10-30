@@ -65,6 +65,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { Snippets } from "./snippets/store.ts";
 import type { AskpassBroker } from "./ssh/askpass.ts";
 import type { SshConnector } from "./ssh/connect.ts";
 import type { HostKeys } from "./ssh/hostkey.ts";
@@ -153,6 +154,8 @@ export interface ServerOptions {
   log?: (message: string) => void;
   /** The ssh password and passphrase requests behind `askpass.*` (phase 15). */
   askpass?: AskpassBroker;
+  /** The snippets behind `snippets.*` (phase 18). */
+  snippets?: Snippets;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -494,6 +497,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function ssh(): SshTargets {
     if (!opts.ssh) throw new FlightdeckError("invalid_state", "destinos ssh desativados");
     return opts.ssh;
+  }
+
+  function snippets(): Snippets {
+    if (!opts.snippets) throw new FlightdeckError("invalid_state", "snippets desativados");
+    return opts.snippets;
   }
 
   function askpass(): AskpassBroker {
@@ -1104,6 +1112,27 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.remove":
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
+      case "snippets.list":
+        return ok(command.type, snippets().list(command.payload));
+      case "snippets.save":
+        return ok(command.type, snippets().save(command.payload));
+      case "snippets.get": {
+        const { id, name, projectPath } = command.payload;
+        return ok(
+          command.type,
+          id ? snippets().get(id) : snippets().find(name as string, projectPath),
+        );
+      }
+      case "snippets.remove":
+        snippets().remove(command.payload.id);
+        return ok(command.type);
+      case "snippets.trust":
+        return ok(
+          command.type,
+          snippets().trust(command.payload.projectPath, command.payload.hash),
+        );
+      case "snippets.favorite":
+        return ok(command.type, snippets().favorite(command.payload.id, command.payload.favorite));
       case "askpass.watch":
         ws.data.unwatchAskpass?.();
         ws.data.unwatchAskpass = askpass().watch((frame) => send(ws, frame));

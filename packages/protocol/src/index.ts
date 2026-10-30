@@ -777,6 +777,39 @@ export const SnippetField = z.object({
 });
 export type SnippetField = z.infer<typeof SnippetField>;
 
+export const SnippetScope = z.enum(["host", "project"]);
+
+/** A snippet of this host, from the daemon or from a project's versioned file. */
+export const Snippet = z.object({
+  /** A ULID for the ones in the daemon; `file:<project>:<name>` for the ones in the file. */
+  id: z.string(),
+  scope: SnippetScope,
+  source: z.enum(["daemon", "file"]),
+  projectPath: z.string().nullable(),
+  name: z.string(),
+  type: z.enum(["command", "prompt"]),
+  run: z.string().nullable(),
+  text: z.string().nullable(),
+  vars: z.record(z.string(), SnippetVar),
+  tags: z.array(z.string()),
+  fields: z.array(SnippetField),
+  favorite: z.boolean(),
+  uses: z.number().int(),
+  lastUsedAt: z.string().nullable(),
+  /** A command from the versioned file runs only when the file is trusted; pasting never needs it. */
+  runnable: z.boolean(),
+});
+export type Snippet = z.infer<typeof Snippet>;
+
+/** The project's versioned `.flightdeck/snippets.yaml`: its hash, whether it is trusted and what was left out. */
+export const SnippetFileInfo = z.object({
+  path: z.string(),
+  hash: z.string(),
+  trusted: z.boolean(),
+  errors: z.array(z.string()),
+});
+export type SnippetFileInfo = z.infer<typeof SnippetFileInfo>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1777,6 +1810,48 @@ export const Command = z.discriminatedUnion("type", [
     "askpass.answer",
     z.object({ requestId: z.string(), secret: z.string().max(4096).nullable() }).strict(),
   ),
+  /** Snippets of the host and, with `projectPath`, of that project, favorites and recents first. */
+  cmd(
+    "snippets.list",
+    z
+      .object({
+        scope: z.enum(["host", "project", "all"]).optional(),
+        projectPath: z.string().optional(),
+        query: z.string().optional(),
+        tag: z.string().optional(),
+        type: z.enum(["command", "prompt"]).optional(),
+      })
+      .strict(),
+  ),
+  /** Creates (no `id`) or edits a snippet; a secret in it is refused with `snippet_secret`. */
+  cmd(
+    "snippets.save",
+    z
+      .object({
+        ...SnippetInput.shape,
+        id: z.string().optional(),
+        scope: SnippetScope,
+        target: z.enum(["daemon", "file"]).optional(),
+        projectPath: z.string().optional(),
+      })
+      .strict(),
+  ),
+  /** By `id`, or by `name` (the host's, then the `projectPath`'s). */
+  cmd(
+    "snippets.get",
+    z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+        projectPath: z.string().optional(),
+      })
+      .strict()
+      .refine((p) => p.id !== undefined || p.name !== undefined, { message: "id ou name" }),
+  ),
+  cmd("snippets.remove", z.object({ id: z.string() }).strict()),
+  /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
+  cmd("snippets.trust", z.object({ projectPath: z.string(), hash: z.string() }).strict()),
+  cmd("snippets.favorite", z.object({ id: z.string(), favorite: z.boolean() }).strict()),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -2175,6 +2250,12 @@ export interface CommandResults {
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
+  "snippets.list": { snippets: Snippet[]; file: SnippetFileInfo | null };
+  "snippets.save": Snippet;
+  "snippets.get": Snippet;
+  "snippets.remove": undefined;
+  "snippets.trust": SnippetFileInfo;
+  "snippets.favorite": Snippet;
   "askpass.watch": undefined;
   "askpass.ask": { secret: string };
   "askpass.answer": undefined;

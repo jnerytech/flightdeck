@@ -448,4 +448,37 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX action_runs_scope ON action_runs (scope, name);
   `,
+  // Phase 18: the snippets kept in the daemon (the host's and a project's own), the marks
+  // (favorite, uses, last use) of those and of the ones in a project's versioned file, and the
+  // hashes of those files that were trusted to run commands.
+  `
+  CREATE TABLE snippets (
+    id           TEXT PRIMARY KEY,
+    scope        TEXT NOT NULL,
+    project_path TEXT,
+    name         TEXT NOT NULL,
+    type         TEXT NOT NULL,
+    body         TEXT NOT NULL,
+    vars         TEXT NOT NULL,
+    tags         TEXT NOT NULL,
+    created_at   TEXT,
+    updated_at   TEXT
+  );
+
+  CREATE INDEX snippets_scope ON snippets (scope, project_path);
+
+  CREATE TABLE snippet_marks (
+    id           TEXT PRIMARY KEY,
+    favorite     INTEGER NOT NULL DEFAULT 0,
+    uses         INTEGER NOT NULL DEFAULT 0,
+    last_used_at TEXT
+  );
+
+  CREATE TABLE snippet_trust (
+    project_path TEXT NOT NULL,
+    hash         TEXT NOT NULL,
+    trusted_at   TEXT,
+    PRIMARY KEY (project_path, hash)
+  );
+  `,
 ];
