@@ -220,6 +220,7 @@ export const en: Dictionary = {
   },
   common: {
     cancel: "Cancel",
+    close: "Close",
   },
   session: {
     cost: "estimated cost:",
@@ -868,5 +869,59 @@ export const en: Dictionary = {
         "The file changed on disk after you opened it. What you wrote is still here; reload to see the current version.",
       reload: "Reload",
     },
+  },
+  timeline: {
+    open: "Timeline",
+    title: "Timeline",
+    description:
+      "Each turn of this conversation and what it changed in the files. Rewinding files undoes repository files only: external commands (database, network, git push) are not undone.",
+    loading: "Loading the turns…",
+    empty:
+      "There are no turns with a snapshot in this session yet. Snapshots only exist in folders of a git repository.",
+    list: "Turns",
+    turn: "Turn {n}",
+    changed: "Changed files",
+    unchanged: "No file changes",
+    running: "In progress",
+    unknown: "The end of the turn was not recorded",
+    showFiles: "Show files of turn {n}",
+    hideFiles: "Hide files of turn {n}",
+    lines: "+{added} −{removed}",
+    change: { modified: "changed", created: "created", deleted: "deleted" },
+    rewind: "Rewind files to here",
+    rewindTurn: "Rewind files to here (turn {n})",
+    fork: "Fork from here",
+    forkTurn: "Fork from here (turn {n})",
+    busy: "The session is in a turn: stop it before rewinding files.",
+    noUuid:
+      "Could not find this turn's message in the transcript, so it cannot be forked from here.",
+    rewindTitle: "Rewind files to turn {n}",
+    rewindNote:
+      "Only the repository's files go back. External commands (database, network, git push) are not undone. Before going back, Flightdeck saves the current state, so it can be undone.",
+    via: {
+      sdk: "Through Claude Code's checkpoint.",
+      snapshot: "Through the turn's git snapshot.",
+    },
+    effect: {
+      modified: "goes back to what it was",
+      created: "will be removed (created later)",
+      deleted: "will be restored",
+    },
+    nothing: "Nothing to rewind: the files are already as in this turn.",
+    previewing: "Working out what changes…",
+    rewindConfirm: "Rewind files",
+    rewound: "Files rewound to turn {n}.",
+    undo: "Undo rewind",
+    undone: "Rewind undone.",
+    forkTitle: "Fork from turn {n}",
+    forkDescription: "Creates a new conversation from this turn. The original stays as it is.",
+    forkWhere: "Where to open",
+    forkFlightdeck: "Open in Flightdeck",
+    forkTerminal: "Open in the terminal",
+    forkFiles: "Also rewind the files",
+    forkFilesNote:
+      "Before opening, the files go back to the state of this turn. You can undo it later, from the timeline.",
+    forkConfirm: "Fork",
+    forkCommand: "Conversation forked. To open it in the terminal, run:",
   },
 };

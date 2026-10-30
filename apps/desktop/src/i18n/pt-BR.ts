@@ -223,6 +223,7 @@ export const ptBR = {
   },
   common: {
     cancel: "Cancelar",
+    close: "Fechar",
   },
   session: {
     cost: "custo estimado:",
@@ -872,5 +873,59 @@ export const ptBR = {
         "O arquivo mudou no disco depois que você o abriu. O que você escreveu continua aqui; recarregue para ver a versão atual.",
       reload: "Recarregar",
     },
+  },
+  timeline: {
+    open: "Linha do tempo",
+    title: "Linha do tempo",
+    description:
+      "Cada turno desta conversa e o que ele mudou nos arquivos. Voltar arquivos desfaz só arquivos do repositório: comandos externos (banco, rede, git push) não voltam.",
+    loading: "Carregando os turnos…",
+    empty:
+      "Ainda não há turnos com snapshot nesta sessão. Os snapshots só existem em pastas de um repositório git.",
+    list: "Turnos",
+    turn: "Turno {n}",
+    changed: "Mudou arquivos",
+    unchanged: "Sem mudança nos arquivos",
+    running: "Em andamento",
+    unknown: "Sem registro do fim do turno",
+    showFiles: "Ver arquivos do turno {n}",
+    hideFiles: "Esconder arquivos do turno {n}",
+    lines: "+{added} −{removed}",
+    change: { modified: "alterado", created: "criado", deleted: "apagado" },
+    rewind: "Voltar arquivos até aqui",
+    rewindTurn: "Voltar arquivos até aqui (turno {n})",
+    fork: "Bifurcar daqui",
+    forkTurn: "Bifurcar daqui (turno {n})",
+    busy: "A sessão está num turno: pare-a antes de voltar arquivos.",
+    noUuid:
+      "Não achei a mensagem deste turno no transcript, então não dá para bifurcar a partir dele.",
+    rewindTitle: "Voltar arquivos até o turno {n}",
+    rewindNote:
+      "Só os arquivos do repositório voltam. Comandos externos (banco, rede, git push) não são desfeitos. Antes de voltar, o Flightdeck guarda o estado de agora, e dá para desfazer.",
+    via: {
+      sdk: "Pelo checkpoint do Claude Code.",
+      snapshot: "Pelo snapshot git do turno.",
+    },
+    effect: {
+      modified: "volta ao que era",
+      created: "será removido (criado depois)",
+      deleted: "será restaurado",
+    },
+    nothing: "Nada para voltar: os arquivos já estão como neste turno.",
+    previewing: "Calculando o que muda…",
+    rewindConfirm: "Voltar arquivos",
+    rewound: "Arquivos voltados ao turno {n}.",
+    undo: "Desfazer volta",
+    undone: "Volta desfeita.",
+    forkTitle: "Bifurcar a partir do turno {n}",
+    forkDescription: "Cria uma conversa nova a partir deste turno. A original continua como está.",
+    forkWhere: "Onde abrir",
+    forkFlightdeck: "Abrir no Flightdeck",
+    forkTerminal: "Abrir no terminal",
+    forkFiles: "Voltar os arquivos também",
+    forkFilesNote:
+      "Antes de abrir, os arquivos voltam ao estado deste turno. Dá para desfazer depois, pela linha do tempo.",
+    forkConfirm: "Bifurcar",
+    forkCommand: "Conversa bifurcada. Para abrir no terminal, rode:",
   },
 } as const;

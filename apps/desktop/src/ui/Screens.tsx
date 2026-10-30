@@ -14,11 +14,13 @@ import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 import { emptySession } from "../lib/session-state.ts";
+import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { AgentPage } from "./AgentPage.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
+import { CheckpointsButton } from "./Checkpoints.tsx";
 import { CostsPage } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { HistoryList } from "./HistoryList.tsx";
@@ -120,6 +122,18 @@ function ManagedSession(props: {
                 cwd: summary?.cwd ?? session.cwd ?? "",
                 claudeSessionId: session.claudeSessionId,
               }}
+            />
+          )
+        }
+        timeline={
+          hasFeature(host?.hostInfo?.features, "checkpoints", false) &&
+          session.claudeSessionId && (
+            <CheckpointsButton
+              store={store}
+              hostId={hostId}
+              claudeSessionId={session.claudeSessionId}
+              cwd={summary?.cwd ?? session.cwd ?? ""}
+              busy={isBusy(session.status)}
             />
           )
         }

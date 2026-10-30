@@ -120,6 +120,8 @@ export function SessionView(props: {
   alwaysAllow?: boolean;
   /** "Abrir no terminal" (phase 8), when the view belongs to a session of its own. */
   terminal?: ReactNode;
+  /** "Linha do tempo" (phase 12), when the host has checkpoints. */
+  timeline?: ReactNode;
   /** Estimated cost of the session and its subagents (phase 8); `null` when unknown. */
   costUsd?: number | null;
   /** The app's translator and clock (phase 10); pt-BR and the real clock when absent. */
@@ -169,6 +171,7 @@ export function SessionView(props: {
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
+            {props.timeline}
             {props.terminal}
             {closed ? (
               <Button variant="outline" size="sm" onClick={() => void actions.resume()}>

@@ -26,3 +26,8 @@ export function statusTone(status: SessionStatus): StateTone {
       return "ended";
   }
 }
+
+/** A turn is on (starting, running or waiting for a permission): files cannot go back now. */
+export function isBusy(status: SessionStatus | undefined): boolean {
+  return status === "starting" || status === "running" || status === "awaiting_permission";
+}
