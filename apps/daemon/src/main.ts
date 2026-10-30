@@ -467,6 +467,14 @@ export async function startDaemon(
     },
     usage: { record: (entry) => usageIndex.record(entry) },
   });
+  // The vault joins this scanner when it exists (phase 16).
+  const snippetScanner = new SecretScanner();
+  const personaStore = new Personas({
+    db: store.db,
+    allowedRoots: config.allowedRoots,
+    scanner: snippetScanner,
+    pack: packPersonas,
+  });
   const manager = new SessionManager({
     store,
     runtime,
@@ -489,6 +497,7 @@ export async function startDaemon(
         ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
         ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
       }),
+    personas: personaStore,
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   const history = new HistoryIndexer({
@@ -602,14 +611,6 @@ export async function startDaemon(
   const sshTargets = new SshTargets({ db: store.db });
   const sshHostKeys = new HostKeys({ targets: sshTargets });
   const sshDir = join(config.dataDir, "ssh");
-  // The vault joins this scanner when it exists (phase 16).
-  const snippetScanner = new SecretScanner();
-  const personaStore = new Personas({
-    db: store.db,
-    allowedRoots: config.allowedRoots,
-    scanner: snippetScanner,
-    pack: packPersonas,
-  });
   const snippets = new Snippets({
     db: store.db,
     allowedRoots: config.allowedRoots,

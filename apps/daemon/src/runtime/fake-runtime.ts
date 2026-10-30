@@ -216,7 +216,8 @@ class FakeRun implements AgentRun {
         const total = this.costs.get(this.claudeSessionId) ?? 0;
         this.costs.set(this.claudeSessionId, total + Number(cost));
       }
-      const reply = `Echo: ${text}`;
+      const echo = `Echo: ${text}`;
+      const reply = text.includes("[persona]") ? `${echo}\n${this.personaLine()}` : echo;
       await this.stream(reply, abort.signal);
       this.emit({ type: "message.assistant", blocks: [{ type: "text", text: reply }] });
       this.result("success", false, started);
@@ -226,6 +227,15 @@ class FakeRun implements AgentRun {
     } finally {
       this.turnAbort = null;
     }
+  }
+
+  /** `[persona]`: what the session was opened with, so a smoke can see the role it plays. */
+  private personaLine(): string {
+    const { persona, agents } = this.opts;
+    const first = persona?.append.split("\n")[0] ?? "nenhuma";
+    const tools = persona?.tools ? persona.tools.join(",") : "todas";
+    const named = Object.keys(agents ?? {}).join(",") || "nenhum";
+    return `Persona: ${first} | esforço=${persona?.effort ?? "-"} | ferramentas=${tools} | agentes=${named}`;
   }
 
   /** Writes `fake-<n>.txt` in the cwd and commits it, like an agent working on a card. */
