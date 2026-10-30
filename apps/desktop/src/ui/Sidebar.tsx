@@ -4,6 +4,7 @@ import {
   Coins,
   Columns3,
   History,
+  KeyRound,
   Layers,
   MoreHorizontal,
   Network,
@@ -183,6 +184,12 @@ export function Sidebar(props: {
             onClick={() => go({ name: "connections" })}
           />
         )}
+        <NavButton
+          collapsed={collapsed}
+          icon={<KeyRound aria-hidden="true" className={icon} />}
+          label={t("sidebar.vault")}
+          onClick={() => go({ name: "vault" })}
+        />
         <NavButton
           collapsed={collapsed}
           icon={<History aria-hidden="true" className={icon} />}

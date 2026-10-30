@@ -95,6 +95,20 @@ export const en: Dictionary = {
     },
   },
   vault: { picker: { none: "No secret" } },
+  vault: {
+    picker: { none: "No secret" },
+    title: "Vault",
+    subtitle: "Secrets kept in the system vault. A value never shows here unless you ask.",
+    empty: "No secret stored.",
+    list: "Secrets",
+    type: {
+      "ssh-key": "SSH key",
+      password: "Password",
+      token: "Token",
+      env: "Environment variables",
+    },
+    fingerprint: "Fingerprint {value}",
+  },
   approval: {
     label: "Request for {tool}",
     title: "Permission for",

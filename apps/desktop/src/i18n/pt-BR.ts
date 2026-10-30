@@ -97,6 +97,20 @@ export const ptBR = {
     },
   },
   vault: { picker: { none: "Nenhum segredo" } },
+  vault: {
+    picker: { none: "Nenhum segredo" },
+    title: "Cofre",
+    subtitle: "Segredos guardados no cofre do sistema. O valor nunca aparece aqui sem você pedir.",
+    empty: "Nenhum segredo guardado.",
+    list: "Segredos",
+    type: {
+      "ssh-key": "Chave SSH",
+      password: "Senha",
+      token: "Token",
+      env: "Variáveis de ambiente",
+    },
+    fingerprint: "Impressão digital {value}",
+  },
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",
