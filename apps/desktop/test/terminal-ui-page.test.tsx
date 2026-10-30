@@ -254,4 +254,15 @@ describe("terminal-ui: the terminal screen", () => {
     expect(state("Ao vivo")).not.toBeNull();
     expect(button("Ver como sessão")).toBeNull();
   });
+
+  test("a new size of xterm reaches the host, debounced", async () => {
+    const { x, ptys } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => {
+      x.resize(100, 30);
+      x.resize(120, 40);
+    });
+    await settle(() => (ptys.spawned[0]?.resized.length ?? 0) > 0);
+    expect(ptys.spawned[0]?.resized).toEqual([[120, 40]]);
+  });
 });
