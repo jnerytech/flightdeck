@@ -920,6 +920,17 @@ describe("ssh-connect: entrega da chave do cofre", () => {
     expect(refusing.calls.map((c) => c.what)).toEqual(["start", "stop"]);
   });
 
+  test("sem um id dado, cada conexão tem o socket de um nome curto e diferente", async () => {
+    const dir = tempDir();
+    const { ops, calls } = agentOps();
+    const delivery = createAgentDelivery({ sockDir: dir, ops });
+    await delivery.deliver(PRIVATE);
+    await delivery.deliver(PRIVATE);
+    const socks = calls.filter((c) => c.what === "start").map((c) => String(c.detail));
+    expect(socks[0]).toMatch(/fd-[0-9A-Z]{10}\.sock$/);
+    expect(new Set(socks).size).toBe(2);
+  });
+
   test("as operações de processo: ssh-agent -D -a, espera o socket, e ssh-add com a chave no stdin", async () => {
     const spawned: Array<{ cmd: string[]; stdin: unknown; wrote: string[]; killed: boolean }> = [];
     const spawn = ((cmd: string[], options: { stdin: unknown }) => {
