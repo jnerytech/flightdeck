@@ -217,7 +217,10 @@ describe("hub-ui", () => {
     expect(badge("Gerenciada", "ociosa")?.className).toContain("bg-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
     expect(item("Do histórico")?.textContent ?? "").toContain("alfa · histórico");
-    expect(item("Do histórico")?.querySelector("time")?.textContent).toBe("01/09/2026, 07:00");
+    expect(item("Do histórico")?.querySelector("time")?.getAttribute("title")).toBe(
+      "01/09/2026, 07:00",
+    );
+    expect(item("Do histórico")?.querySelector("time")?.textContent).toBe("1 de set.");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
     expect(badge("Do histórico", "encerrada")?.className).toContain("bg-status-ended");
   });
