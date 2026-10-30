@@ -8,7 +8,7 @@ import { daemon as makeDaemon, TOKEN } from "./fixtures.ts";
 export async function personasHost(
   cleanups: Array<() => unknown>,
   store: AppStore,
-  options: Parameters<typeof makeDaemon>[1] = { personas: true, terminals: true },
+  options: Parameters<typeof makeDaemon>[1] = { personas: true, terminals: true, agentcfg: true },
 ) {
   const d = makeDaemon(cleanups, options);
   const repo = join(d.root, "repo");

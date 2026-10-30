@@ -21,6 +21,7 @@ import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
 import { packPersonas } from "../../daemon/src/personas/pack.ts";
+import { agentPublisher } from "../../daemon/src/personas/publish.ts";
 import { Personas } from "../../daemon/src/personas/store.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
@@ -141,6 +142,8 @@ export function daemon(
         allowedRoots: [root],
         scanner: new SecretScanner(),
         pack: packPersonas,
+        // Published personas go through phase 12's agent editor, as main.ts wires it.
+        publisher: agentPublisher(new AgentConfig({ claudeDir: join(root, "claude-home") })),
       })
     : undefined;
   const manager = new SessionManager({
