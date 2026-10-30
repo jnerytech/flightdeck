@@ -126,6 +126,31 @@ describe("worktree", () => {
   });
 });
 
+describe("worktree: criação em paralelo", () => {
+  // Cards of a team or an arena start together: `git worktree add` of one reads the half-made
+  // admin folder of another ("failed to read .git/worktrees/x/commondir"), and two cards with the
+  // same title pick the same slug. One at a time per repository, so each gets its own.
+  test("várias worktrees ao mesmo tempo no mesmo repositório: todas nascem, cada uma com o seu slug, até com o mesmo título", async () => {
+    const { repo } = gitRepo();
+    const titles = [
+      "Mesmo",
+      "Mesmo",
+      "Mesmo",
+      ...Array.from({ length: 13 }, (_, n) => `Outro ${n}`),
+    ];
+    const results = await Promise.allSettled(
+      titles.map((title) => addWorktree(repo, title, "main")),
+    );
+    expect(results.map((r) => (r.status === "fulfilled" ? "ok" : String(r.reason)))).toEqual(
+      titles.map(() => "ok"),
+    );
+    const slugs = results.flatMap((r) => (r.status === "fulfilled" ? [r.value.slug] : []));
+    expect(new Set(slugs).size).toBe(titles.length);
+    expect(slugs.slice(0, 3).sort()).toEqual(["mesmo", "mesmo-2", "mesmo-3"]);
+    expect(git(repo, "branch", "--list", "fd/*").split("\n")).toHaveLength(titles.length);
+  });
+});
+
 describe("worktree: falhas do git", () => {
   test("base inexistente: o erro do git chega a quem iniciou e nenhuma branch fica para trás", async () => {
     const { repo } = gitRepo();
