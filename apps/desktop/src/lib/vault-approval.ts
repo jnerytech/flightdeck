@@ -78,13 +78,12 @@ export function actionPolicy(deps: {
       return { kind: "deliver" };
     }
 
-    let question = asking.get(runKey);
+    const ask = () => deps.ask(context).then((answer) => (answer === true ? ONCE : answer || null));
+    // A request that needs holding gets a question of its own: one hold, one request.
+    let question = request.needsHold ? undefined : asking.get(runKey);
     if (!question) {
-      question = deps
-        .ask(context)
-        .then((answer) => (answer === true ? ONCE : answer || null))
-        .finally(() => asking.delete(runKey));
-      asking.set(runKey, question);
+      question = request.needsHold ? ask() : ask().finally(() => asking.delete(runKey));
+      if (!request.needsHold) asking.set(runKey, question);
     }
     const answer = await question;
     if (!answer) return { kind: "deny", reason: "you denied the request" };
