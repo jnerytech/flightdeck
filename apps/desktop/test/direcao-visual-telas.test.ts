@@ -66,6 +66,27 @@ const LEGACY = new Set([
   "snippet",
   "filters",
   "form-error",
+  "field-error",
+  "board",
+  "board-card",
+  "badges",
+  "columns",
+  "column",
+  "card-detail",
+  "check-output",
+  "actions",
+  "budget",
+  "budgets",
+  "errors",
+  "confirm",
+  "costs",
+  "costs-breakdown",
+  "costs-totals",
+  "costs-chart",
+  "costs-day",
+  "costs-segment",
+  "costs-top",
+  "transcript-note",
 ]);
 
 /** The class tokens a source gives to `className`, in a string or in a `cn(...)`/ternary. */
@@ -93,10 +114,17 @@ const MIGRATED = [
   "NewSessionForm.tsx",
   "AlwaysAllow.tsx",
   "TerminalButton.tsx",
+  "BoardView.tsx",
+  "CardDetail.tsx",
+  "DiffView.tsx",
+  "RunTimeline.tsx",
+  "WorkflowsPage.tsx",
+  "ProjectsPage.tsx",
+  "RulesSection.tsx",
 ];
 
 describe("direcao-visual: telas", () => {
-  test("as classes do estilo antigo saem das telas migradas (sessão, leitor, nova sessão)", () => {
+  test("as classes do estilo antigo saem das telas migradas (sessão, leitor, nova sessão, board, card, workflows, projetos)", () => {
     const violations = MIGRATED.flatMap((file) =>
       classTokens(readFileSync(resolve(UI, file), "utf8"))
         .filter((token) => LEGACY.has(token))
