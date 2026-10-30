@@ -1,0 +1,137 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { liveScreen, registerDom } from "./dom.ts";
+import { memoryPlatform } from "./fixtures.ts";
+import { snippetsHost } from "./snippets-ui-setup.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+
+setDefaultTimeout(30_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
+}
+
+const TOKEN_LINE = "export GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+const VAULT_VALUE = "cofre-valor-de-teste-77";
+const VAULT_LINE = `deploy --key ${VAULT_VALUE}`;
+
+/** A fixture bash history (never the real one) and a vault holding one value that appears in it. */
+async function open() {
+  const dir = mkdtempSync(join(tmpdir(), "fd-hist-"));
+  const bash = join(dir, "bash_history");
+  writeFileSync(
+    bash,
+    [
+      "git status",
+      "bun test",
+      "git status",
+      TOKEN_LINE,
+      "git status",
+      "bun test",
+      VAULT_LINE,
+      "ls -la",
+    ].join("\n"),
+  );
+  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+  cleanups.push(() => store.dispose());
+  const h = await snippetsHost(cleanups, store, { snippets: { history: { bash } } });
+  await store.addSecret({ name: "deploy key", type: "password", value: VAULT_VALUE });
+  render(<App store={store} />);
+  await settle(() => screen.queryByRole("button", { name: "Snippets" }) !== null);
+  await act(async () => {
+    fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
+  });
+  await act(() => Bun.sleep(80));
+  await click("Importar do histórico do shell");
+  return { store, ...h };
+}
+
+async function click(name: string) {
+  const button = screen.queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+  await act(() => Bun.sleep(120));
+}
+
+const lines = () => {
+  const list = screen.queryByRole("list", { name: "Histórico do shell" });
+  return list ? within(list).queryAllByRole("listitem") : [];
+};
+
+describe("snippets-ui: import from the shell history", () => {
+  test("the preview is ordered by use, each line with its count, and lines with a secret are hidden and cannot be ticked", async () => {
+    await open();
+    const texts = lines().map((li) => li.textContent ?? "");
+    expect(texts[0]).toContain("git status");
+    expect(texts[0]).toContain("3×");
+    expect(texts[1]).toContain("bun test");
+    expect(screen.queryByLabelText("git status")).not.toBeNull();
+    expect(screen.queryByText("Linha oculta: token do GitHub, senha na linha")).not.toBeNull();
+    expect(screen.queryByText("Linha oculta: valor do cofre")).not.toBeNull();
+    expect(lines().filter((li) => li.querySelector("input[type=checkbox]") === null)).toHaveLength(
+      2,
+    );
+    expect(document.body.innerHTML).not.toContain("ghp_abcdef");
+    expect(document.body.innerHTML).not.toContain(VAULT_VALUE);
+  });
+
+  test("the ticked lines go to the host's snippets, tagged histórico", async () => {
+    const { store, hostId } = await open();
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("git status") as HTMLElement);
+      fireEvent.click(screen.queryByLabelText("ls -la") as HTMLElement);
+    });
+    await click("Importar selecionados");
+    expect(screen.queryByText("Importados: 2")).not.toBeNull();
+    const listed = await store.hostCommand(hostId, "snippets.list", {});
+    expect(listed?.snippets.map((s) => [s.run, s.tags]).sort()).toEqual([
+      ["git status", ["histórico"]],
+      ["ls -la", ["histórico"]],
+    ]);
+  });
+
+  test("or to the app's global snippets, and then not to the host", async () => {
+    const { store, hostId } = await open();
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("bun test") as HTMLElement);
+      fireEvent.change(screen.queryByLabelText("Importar para") as HTMLElement, {
+        target: { value: "global" },
+      });
+    });
+    await click("Importar selecionados");
+    expect(store.globalSnippets.list().map((s) => [s.run, s.tags])).toEqual([
+      ["bun test", ["histórico"]],
+    ]);
+    expect((await store.hostCommand(hostId, "snippets.list", {}))?.snippets).toEqual([]);
+  });
+
+  test("the versioned file of a project is never offered as a destination", async () => {
+    await open();
+    const target = screen.queryByLabelText("Importar para") as HTMLSelectElement | null;
+    expect([...(target?.options ?? [])].map((o) => o.value)).toEqual(["host", "global"]);
+  });
+
+  test("revealing shows a line the patterns flagged, still not selectable; a vault value is never shown", async () => {
+    await open();
+    await click("Revelar linhas ocultas");
+    expect(screen.queryByText(TOKEN_LINE)).not.toBeNull();
+    expect(screen.queryByLabelText(TOKEN_LINE)).toBeNull();
+    expect(document.body.innerHTML).not.toContain(VAULT_VALUE);
+  });
+});
