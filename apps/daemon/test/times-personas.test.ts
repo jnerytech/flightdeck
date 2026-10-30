@@ -80,5 +80,10 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
       return listed?.sessions.find((s) => s.name === "segundo · coordenadora")?.persona?.id;
     });
     expect(coordinator).toBe("coordenador");
+    // The worker's card is still starting: wait for it, so the daemon does not stop under it.
+    await until(async () => {
+      const listed = await client.data<Listed>("session.list", {});
+      return listed?.sessions.find((s) => s.name === "segundo · executora 1");
+    });
   });
 });
