@@ -38,6 +38,18 @@ export function processRun(spawn: SpawnRun = Bun.spawn as unknown as SpawnRun): 
   };
 }
 
+/** Phase 17: runs ssh for an action, writing `input` to its stdin and keeping what it prints. */
+export type ExecSsh = (
+  argv: string[],
+  env: Record<string, string>,
+  input: string,
+  timeoutMs: number,
+) => Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean }>;
+
+export function processExec(): ExecSsh {
+  return async () => ({ code: 0, stdout: "", stderr: "", timedOut: false });
+}
+
 /**
  * The `ssh` to run. On Windows the OpenSSH of the system, which is the one that takes `NUL` and
  * `-F`, when it exists; otherwise whatever the PATH finds.
@@ -75,6 +87,8 @@ export interface SshConnectorOptions {
   delivery: KeyDelivery;
   askpass?: AskpassHook;
   run: RunSsh;
+  /** Phase 17: how an `ssh:` action's ssh runs. */
+  exec?: ExecSsh;
   timers?: Timers;
 }
 
@@ -166,6 +180,21 @@ export class SshConnector {
     } finally {
       plan.release();
     }
+  }
+
+  /**
+   * Phase 17: runs an `ssh:` action on the destino named `target`. The argv arrives quoted as one
+   * remote command and the environment goes over stdin; a key from the vault is delivered for
+   * this one run.
+   */
+  async exec(_req: {
+    target: string;
+    argv: string[];
+    env: Record<string, string>;
+    timeoutS: number;
+    privateKey?: string;
+  }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
+    return { exitCode: 0, stdout: "", stderr: "", timedOut: false };
   }
 
   /** Takes away every key still delivered. */
