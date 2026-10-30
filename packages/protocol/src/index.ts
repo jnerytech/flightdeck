@@ -1252,6 +1252,10 @@ export const AgentCfgItem = z.object({
 });
 export type AgentCfgItem = z.infer<typeof AgentCfgItem>;
 
+/** Phase 16: who asks for a secret. `you` is only for uses the app itself started. */
+export const VaultRequester = z.enum(["you", "claude", "automation", "workflow"]);
+export type VaultRequester = z.infer<typeof VaultRequester>;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -1383,6 +1387,30 @@ export const Command = z.discriminatedUnion("type", [
   cmd("mcp.status", z.object({ sessionId: z.string() })),
   /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
   cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
+  /**
+   * Phase 16: the app hands the daemon a secret for one use. The daemon keeps it in memory only,
+   * for at most 60 s (or until `expiresAt`, in milliseconds since the epoch), and only accepts it
+   * from loopback or Tailscale.
+   */
+  cmd(
+    "vault.deliver",
+    z.object({
+      secretId: z.string().min(1).max(200),
+      value: z.string().min(1).max(65_536),
+      purpose: z.string().min(1).max(100),
+      expiresAt: z.number().int(),
+      requester: VaultRequester.default("you"),
+    }),
+  ),
+  /** Phase 16: runs a daemon action with a delivered secret, which is then discarded. */
+  cmd(
+    "vault.use",
+    z.object({
+      secretId: z.string().min(1).max(200),
+      purpose: z.string().min(1).max(100),
+      action: z.string().min(1).max(100),
+    }),
+  ),
   /** Phase 13: the same request in 2 to 4 variants, each in its own worktree. */
   cmd(
     "card.startArena",
@@ -1932,6 +1960,8 @@ export interface CommandResults {
   "mcp.toggle": { servers: McpServerView[] };
   "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
+  "vault.deliver": { expiresAt: number };
+  "vault.use": { result: string };
   "card.startArena": Arena;
   "card.arena": Arena;
   "card.chooseVariant": Card;
@@ -2179,6 +2209,32 @@ export const TerminalResync = z.object({
   terminalId: z.string(),
 });
 export type TerminalResync = z.infer<typeof TerminalResync>;
+/** Phase 16: who a daemon can be asking for; never `you`. */
+export const VaultDaemonRequester = z.enum(["claude", "automation", "workflow"]);
+
+/**
+ * Phase 16: a use that needs a secret, asked of the app by the daemon. In this phase no daemon
+ * feature asks, and a request that names `you` does not parse (the app treats it as unknown).
+ */
+export const VaultRequestFrame = z.object({
+  type: z.literal("vault.request"),
+  requestId: z.string(),
+  secretId: z.string(),
+  purpose: z.string(),
+  requester: VaultDaemonRequester,
+});
+export type VaultRequestFrame = z.infer<typeof VaultRequestFrame>;
+
+/** Phase 16: a delivered secret was used (for the app's usage log); never carries the value. */
+export const VaultUsed = z.object({
+  type: z.literal("vault.used"),
+  secretId: z.string(),
+  purpose: z.string(),
+  requester: VaultRequester,
+  action: z.string(),
+  at: z.string(),
+});
+export type VaultUsed = z.infer<typeof VaultUsed>;
 
 export const ServerMessage = z.union([
   AckOk,
@@ -2197,6 +2253,8 @@ export const ServerMessage = z.union([
   TerminalData,
   TerminalExited,
   TerminalResync,
+  VaultRequestFrame,
+  VaultUsed,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 

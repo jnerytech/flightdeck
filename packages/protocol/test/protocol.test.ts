@@ -105,6 +105,14 @@ const validCommands: Record<CommandType, unknown> = {
   },
   "card.arena": { cardId: "c1" },
   "card.chooseVariant": { cardId: "c1", variantId: "v2", confirm: true },
+  "vault.deliver": {
+    secretId: "s1",
+    value: "ghp_exemplo",
+    purpose: "ssh",
+    expiresAt: 1_800_000_000_000,
+    requester: "you",
+  },
+  "vault.use": { secretId: "s1", purpose: "ssh", action: "echo" },
   "automation.list": { projectId: "p1" },
   "automation.save": {
     projectId: "p1",

@@ -880,6 +880,11 @@ function runBackup(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
+/** Stub. */
+export function vaultActions(_kind: RuntimeKind): Record<string, (value: string) => string> {
+  return { echo: (value) => value };
+}
+
 /** The real pieces that stop the daemon of a service: shutdown request, lock and process. */
 function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
   return {

@@ -70,6 +70,7 @@ import type { SshTargets } from "./ssh/targets.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
+import type { Vault } from "./vault/vault.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
@@ -97,6 +98,8 @@ export interface ServerOptions {
   maintenance?: Maintenance;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
+  /** Phase 16: secrets the app hands over for one use (`vault.*`). */
+  vault?: Vault;
   /** Phase 13: the projects' automations (`automation.*`). */
   automations?: Automations;
   /** Phase 13: issues of the projects (`issues.*`). */
@@ -646,6 +649,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, variantId, confirm } = command.payload;
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
       }
+      case "vault.deliver":
+        return ok(command.type, { expiresAt: 0 });
+      case "vault.use":
+        return ok(command.type, { result: "" });
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
