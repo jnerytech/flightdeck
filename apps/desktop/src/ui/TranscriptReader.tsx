@@ -1,5 +1,8 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
+import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { Markdown } from "./Markdown.tsx";
@@ -20,11 +23,6 @@ function merge(list: HistoryMessage[], page: HistoryMessage[], where: "before" |
   const seen = new Set(list.map((m) => m.uuid));
   const fresh = page.filter((m) => !seen.has(m.uuid));
   return where === "before" ? [...fresh, ...list] : [...list, ...fresh];
-}
-
-function itemClass(message: HistoryMessage): string {
-  if (message.kind !== "message") return "muted transcript-note";
-  return message.role === "user" ? "msg msg-user" : "msg msg-assistant";
 }
 
 /** Read-only transcript from a host's history, in pages, with the chat's look. */
@@ -106,53 +104,58 @@ export function TranscriptReader(props: {
   };
 
   return (
-    <section className="session">
-      <header className="session-header">
-        <div>
-          <h2>{session?.title ?? target.claudeSessionId}</h2>
-          {session && <div className="muted">{`${props.hostName} · ${basename(session.cwd)}`}</div>}
-        </div>
-        {session && (
-          <div className="session-controls">
-            {session.maybeActive && <span className="badge badge-warn">possivelmente em uso</span>}
-            <button
-              type="button"
-              className="primary"
-              // Two processes writing the same conversation corrupt it: ask first.
-              onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
-            >
-              Continuar no Flightdeck
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                void store
-                  .copyText(`claude --resume ${target.claudeSessionId}`)
-                  .then((ok) => setCopied(ok))
-              }
-            >
-              Copiar comando
-            </button>
-            {copied && <span className="muted">Comando copiado</span>}
-          </div>
-        )}
-      </header>
+    <SessionPane>
+      <SessionHeader
+        title={session?.title ?? target.claudeSessionId}
+        {...(session ? { subtitle: `${props.hostName} · ${basename(session.cwd)}` } : {})}
+        {...(session
+          ? {
+              controls: (
+                <>
+                  {session.maybeActive && (
+                    <span className="text-status-needs-you text-xs">possivelmente em uso</span>
+                  )}
+                  <Button
+                    size="sm"
+                    // Two processes writing the same conversation corrupt it: ask first.
+                    onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
+                  >
+                    Continuar no Flightdeck
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      void store
+                        .copyText(`claude --resume ${target.claudeSessionId}`)
+                        .then((ok) => setCopied(ok))
+                    }
+                  >
+                    Copiar comando
+                  </Button>
+                  {copied && <span className="text-muted-foreground text-xs">Comando copiado</span>}
+                </>
+              ),
+            }
+          : {})}
+      />
       {confirming && (
-        <div className="card confirm">
+        <div className="m-3 flex flex-col gap-3 rounded-lg border border-status-needs-you/40 p-4 text-sm">
           <p>
             Esta sessão pode estar em uso em outro lugar: o arquivo mudou nos últimos 2 minutos.
             Dois processos escrevendo na mesma conversa a corrompem.
           </p>
-          <button type="button" className="primary" onClick={() => void resume(true)}>
-            Continuar mesmo assim
-          </button>
-          <button type="button" onClick={() => setConfirming(false)}>
-            Cancelar
-          </button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => void resume(true)}>
+              Continuar mesmo assim
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirming(false)}>
+              Cancelar
+            </Button>
+          </div>
         </div>
       )}
-      <div
-        className="timeline"
+      <Timeline
         role="log"
         aria-label="Transcript"
         ref={log}
@@ -164,21 +167,38 @@ export function TranscriptReader(props: {
         }}
       >
         {prev && (
-          <button type="button" onClick={() => void loadPage(prev, "before")}>
-            Carregar anteriores
-          </button>
-        )}
-        {messages.map((m) => (
-          <div
-            key={m.uuid}
-            data-uuid={m.uuid}
-            className={itemClass(m)}
-            aria-current={m.uuid === target.focusUuid ? "true" : undefined}
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-center"
+            onClick={() => void loadPage(prev, "before")}
           >
-            {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
-          </div>
-        ))}
-      </div>
-    </section>
+            Carregar anteriores
+          </Button>
+        )}
+        {messages.map((m) =>
+          m.kind !== "message" ? (
+            <p
+              key={m.uuid}
+              data-uuid={m.uuid}
+              className="text-center text-muted-foreground text-xs"
+              aria-current={m.uuid === target.focusUuid ? "true" : undefined}
+            >
+              {m.text}
+            </p>
+          ) : (
+            <Message
+              key={m.uuid}
+              from={m.role === "user" ? "user" : "assistant"}
+              data-uuid={m.uuid}
+              {...(m.uuid === target.focusUuid ? { "aria-current": "true" as const } : {})}
+              className={cn(m.uuid === target.focusUuid && "ring-2 ring-ring")}
+            >
+              {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
+            </Message>
+          ),
+        )}
+      </Timeline>
+    </SessionPane>
   );
 }

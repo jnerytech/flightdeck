@@ -1,7 +1,8 @@
 import type { SessionStatus } from "@flightdeck/protocol";
-import { StateBadge } from "@/components/status/state-badge";
+import { StatusText } from "@/components/status/status-text";
 import { STATUS_LABELS, statusTone } from "../lib/status.ts";
 
+/** A session's status: its dot and its word. */
 export function StatusBadge({ status }: { status: SessionStatus }) {
-  return <StateBadge tone={statusTone(status)}>{STATUS_LABELS[status]}</StateBadge>;
+  return <StatusText tone={statusTone(status)}>{STATUS_LABELS[status]}</StatusText>;
 }

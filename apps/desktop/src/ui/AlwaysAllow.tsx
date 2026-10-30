@@ -1,5 +1,7 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 /** The default project rule: the exact command for Bash, the tool's name for the others. */
 export function defaultRule(toolName: string, input: Record<string, unknown>): string {
@@ -30,31 +32,36 @@ export function AlwaysAllow(props: {
   const session = (props.suggestions ?? []).filter((s) => s.destination === "session");
   if (rule !== null) {
     return (
-      <div className="always-allow">
-        <input aria-label="Regra" value={rule} onChange={(e) => setRule(e.target.value)} />
-        <button
-          type="button"
-          className="primary"
-          onClick={() => props.onAllow([projectRule(rule)])}
-        >
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          aria-label="Regra"
+          value={rule}
+          onChange={(e) => setRule(e.target.value)}
+          className="h-8 min-w-48 flex-1 font-mono text-xs"
+        />
+        <Button size="sm" onClick={() => props.onAllow([projectRule(rule)])}>
           Salvar regra
-        </button>
-        <button type="button" onClick={() => setRule(null)}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setRule(null)}>
           Cancelar
-        </button>
+        </Button>
       </div>
     );
   }
   return (
-    <div className="always-allow">
+    <div className="flex flex-wrap items-center gap-2">
       {session.length > 0 && (
-        <button type="button" onClick={() => props.onAllow(session)}>
+        <Button variant="outline" size="sm" onClick={() => props.onAllow(session)}>
           Permitir nesta sessão
-        </button>
+        </Button>
       )}
-      <button type="button" onClick={() => setRule(defaultRule(props.toolName, props.input))}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setRule(defaultRule(props.toolName, props.input))}
+      >
         Sempre neste projeto
-      </button>
+      </Button>
     </div>
   );
 }

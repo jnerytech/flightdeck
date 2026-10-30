@@ -1,6 +1,16 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import {
+  Composer,
+  Message,
+  SessionHeader,
+  SessionPane,
+  Timeline,
+} from "@/components/session/parts";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { type T, translator } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
@@ -37,10 +47,10 @@ function TimelineItem(props: {
   const { item, session, actions } = props;
   switch (item.kind) {
     case "user":
-      return <div className="msg msg-user">{item.text}</div>;
+      return <Message from="user">{item.text}</Message>;
     case "assistant":
       return (
-        <div className="msg msg-assistant">
+        <Message from="assistant">
           {item.blocks.map((block, i) =>
             block.type === "text" ? (
               // biome-ignore lint/suspicious/noArrayIndexKey: blocks are immutable and ordered
@@ -54,7 +64,7 @@ function TimelineItem(props: {
               />
             ),
           )}
-        </div>
+        </Message>
       );
     case "permission":
       return (
@@ -82,13 +92,20 @@ function TimelineItem(props: {
     case "result": {
       const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
       return (
-        <div className={item.isError ? "turn-result error" : "turn-result"}>
+        <div
+          className={cn(
+            "text-muted-foreground text-xs tabular-nums",
+            item.isError && "text-status-error",
+          )}
+        >
           {`${item.subtype} · ${(item.durationMs / 1000).toFixed(1)} s${cost}`}
         </div>
       );
     }
     case "error":
-      return <div className="session-error">{`${item.code}: ${item.message}`}</div>;
+      return (
+        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
+      );
   }
 }
 
@@ -129,52 +146,58 @@ export function SessionView(props: {
   };
 
   return (
-    <section className="session">
-      <header className="session-header">
-        <div>
-          <h2>{props.title}</h2>
-          <div className="muted">{session.cwd}</div>
-          {typeof props.costUsd === "number" && (
-            <div className="muted">
-              custo estimado: <output aria-label="Custo da sessão">{usd(props.costUsd)}</output>
-            </div>
-          )}
-        </div>
-        <div className="session-controls">
-          {session.status && <StatusBadge status={session.status} />}
-          {session.statusReason && <span className="muted">{session.statusReason}</span>}
-          {props.terminal}
-          {closed ? (
-            <button type="button" onClick={() => void actions.resume()}>
-              Retomar
-            </button>
-          ) : (
-            <>
-              <button type="button" onClick={() => void actions.interrupt()}>
-                Interromper
-              </button>
-              <button type="button" onClick={() => setClosing(true)}>
-                Encerrar
-              </button>
-              {closing && (
-                <ConfirmDialog
-                  message="Encerrar esta sessão? O Claude Code para; dá para retomá-la depois."
-                  confirmLabel="Encerrar sessão"
-                  destructive
-                  onConfirm={() => {
-                    setClosing(false);
-                    void actions.close();
-                  }}
-                  onCancel={() => setClosing(false)}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </header>
-      <div className="timeline" ref={timeline}>
+    <SessionPane>
+      <SessionHeader
+        title={props.title}
+        subtitle={
+          <>
+            <span>{session.cwd}</span>
+            {typeof props.costUsd === "number" && (
+              <span>
+                custo estimado: <output aria-label="Custo da sessão">{usd(props.costUsd)}</output>
+              </span>
+            )}
+          </>
+        }
+        controls={
+          <>
+            {session.status && <StatusBadge status={session.status} />}
+            {session.statusReason && (
+              <span className="text-muted-foreground text-xs">{session.statusReason}</span>
+            )}
+            {props.terminal}
+            {closed ? (
+              <Button variant="outline" size="sm" onClick={() => void actions.resume()}>
+                Retomar
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={() => void actions.interrupt()}>
+                  Interromper
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setClosing(true)}>
+                  Encerrar
+                </Button>
+                {closing && (
+                  <ConfirmDialog
+                    message="Encerrar esta sessão? O Claude Code para; dá para retomá-la depois."
+                    confirmLabel="Encerrar sessão"
+                    destructive
+                    onConfirm={() => {
+                      setClosing(false);
+                      void actions.close();
+                    }}
+                    onCancel={() => setClosing(false)}
+                  />
+                )}
+              </>
+            )}
+          </>
+        }
+      />
+      <Timeline ref={timeline}>
         {session.pruned && session.items.length === 0 && (
-          <p className="muted">conversa removida pela retenção</p>
+          <p className="text-muted-foreground text-sm">conversa removida pela retenção</p>
         )}
         {session.items.map((item) => (
           <TimelineItem
@@ -188,14 +211,18 @@ export function SessionView(props: {
           />
         ))}
         {session.streaming && (
-          <div className="msg msg-assistant streaming">{session.streaming}</div>
+          <Message from="assistant" className="opacity-80">
+            {session.streaming}
+          </Message>
         )}
-      </div>
-      <div className="composer">
-        <textarea
+      </Timeline>
+      <Composer>
+        <Textarea
           aria-label="Mensagem"
           placeholder="Mensagem (Ctrl+Enter envia)"
           value={text}
+          className="max-h-40 min-h-9 flex-1 resize-none"
+          rows={1}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -204,10 +231,8 @@ export function SessionView(props: {
             }
           }}
         />
-        <button type="button" className="primary" onClick={submit}>
-          Enviar
-        </button>
-      </div>
-    </section>
+        <Button onClick={submit}>Enviar</Button>
+      </Composer>
+    </SessionPane>
   );
 }

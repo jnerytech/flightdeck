@@ -1,5 +1,9 @@
+import { Radio } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { Composer, SessionHeader, SessionPane } from "@/components/session/parts";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
@@ -47,59 +51,74 @@ export function ExternalView(props: {
   };
 
   return (
-    <section className="external">
-      <header className="session-header">
-        <h2>{title}</h2>
-        <span className="muted">{`${props.hostName} · terminal · ${STATES[session?.status ?? "unknown"]}`}</span>
-        {session?.controllable && <span className="badge">controlável</span>}
-        {session?.cwd && (
-          <TerminalButton
-            store={store}
-            hostId={hostId}
-            target={{ cwd: session.cwd, claudeSessionId: id }}
-          />
-        )}
-      </header>
-      {requests.map((request) => (
-        <ApprovalCard
-          key={request.requestId}
-          request={{
-            requestId: request.requestId,
-            toolName: request.toolName,
-            input: request.input,
-            cwd: session?.cwd ?? null,
-            createdAt: request.createdAt,
-            ...(request.suggestions ? { suggestions: request.suggestions } : {}),
-          }}
-          t={store.i18n.t}
-          nowMs={store.now()}
-          onCopyPath={(path) => void store.copyText(path)}
-          alwaysAllow={alwaysAllow}
-          onRespond={(decision, message, updates) =>
-            void store.respondTo(hostId, request.requestId, decision, updates, message)
-          }
-        />
-      ))}
+    <SessionPane>
+      <SessionHeader
+        title={title}
+        subtitle={`${props.hostName} · terminal · ${STATES[session?.status ?? "unknown"]}`}
+        controls={
+          <>
+            {session?.controllable && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                <Radio aria-hidden="true" className="size-3" />
+                controlável
+              </span>
+            )}
+            {session?.cwd && (
+              <TerminalButton
+                store={store}
+                hostId={hostId}
+                target={{ cwd: session.cwd, claudeSessionId: id }}
+              />
+            )}
+          </>
+        }
+      />
+      {requests.length > 0 && (
+        <div className="flex flex-col gap-3 border-b p-3">
+          {requests.map((request) => (
+            <ApprovalCard
+              key={request.requestId}
+              request={{
+                requestId: request.requestId,
+                toolName: request.toolName,
+                input: request.input,
+                cwd: session?.cwd ?? null,
+                createdAt: request.createdAt,
+                ...(request.suggestions ? { suggestions: request.suggestions } : {}),
+              }}
+              t={store.i18n.t}
+              nowMs={store.now()}
+              onCopyPath={(path) => void store.copyText(path)}
+              alwaysAllow={alwaysAllow}
+              onRespond={(decision, message, updates) =>
+                void store.respondTo(hostId, request.requestId, decision, updates, message)
+              }
+            />
+          ))}
+        </div>
+      )}
       {session?.controllable && (
-        <div className="composer">
-          <textarea
+        <Composer>
+          <Textarea
             aria-label="Mensagem para a sessão"
             placeholder="Mensagem (vai pelo canal do flightdeckd claude)"
             value={text}
+            className="max-h-40 min-h-9 flex-1 resize-none"
+            rows={1}
             onChange={(e) => setText(e.target.value)}
           />
-          <button type="button" className="primary" onClick={send}>
-            Enviar mensagem
-          </button>
-        </div>
+          <Button onClick={send}>Enviar mensagem</Button>
+        </Composer>
       )}
-      <TranscriptReader
-        key={id}
-        store={store}
-        target={target}
-        hostName={props.hostName}
-        onResumed={props.onResumed}
-      />
-    </section>
+      <div className="min-h-0 flex-1">
+        <TranscriptReader
+          key={id}
+          store={store}
+          target={target}
+          hostName={props.hostName}
+          onResumed={props.onResumed}
+        />
+      </div>
+    </SessionPane>
   );
 }
