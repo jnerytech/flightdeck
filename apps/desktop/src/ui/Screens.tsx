@@ -44,6 +44,7 @@ import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { SnippetsPage } from "./SnippetsPage.tsx";
+import { TeamsPage } from "./TeamsPage.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
@@ -392,6 +393,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       return null;
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
+    case "teams":
+      return <TeamsPage store={store} state={state} />;
     case "conversations":
       return <ConversationsPage store={store} state={state} go={go} />;
     case "personas":

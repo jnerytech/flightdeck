@@ -18,6 +18,7 @@ import {
   parseServerMessage,
   type QuotaState,
   type SessionSubscribeResult,
+  type TeamsUpdatedFrame,
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
@@ -74,6 +75,8 @@ export interface HostConnectionOptions {
   onVaultAlert?(alert: VaultAlertFrame): void;
   /** Phase 21: a message for another host to carry, or a message's new state. */
   onMessages?(frame: MessagesRelayFrame | MessagesUpdatedFrame): void;
+  /** Phase 21: a team changed (and why, when the daemon paused or resumed it). */
+  onTeams?(frame: TeamsUpdatedFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
@@ -177,6 +180,7 @@ export class HostConnection {
       if (message.type === "vault.request") return this.opts.onVaultRequest?.(message);
       if (message.type === "vault.used") return this.opts.onVaultUsed?.(message);
       if (message.type === "vault.alert") return this.opts.onVaultAlert?.(message);
+      if (message.type === "teams.updated") return this.opts.onTeams?.(message);
       if (message.type === "messages.relay" || message.type === "messages.updated") {
         return this.opts.onMessages?.(message);
       }

@@ -17,6 +17,7 @@ import {
   SquareCode,
   SunMoon,
   TriangleAlert,
+  UsersRound,
   Workflow,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -185,6 +186,14 @@ export function Sidebar(props: {
             icon={<MessagesSquare aria-hidden="true" className={icon} />}
             label={t("sidebar.conversations")}
             onClick={() => go({ name: "conversations" })}
+          />
+        )}
+        {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<UsersRound aria-hidden="true" className={icon} />}
+            label={t("sidebar.teams")}
+            onClick={() => go({ name: "teams" })}
           />
         )}
         {/* Hosts from phase 20 keep engineering personas. */}

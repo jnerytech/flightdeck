@@ -33,6 +33,7 @@ import type {
   SessionSummary,
   Snippet,
   SshTarget,
+  TeamsUpdatedFrame,
   TerminalInfo,
   VaultRequestFrame,
   VaultVerdict,
@@ -248,6 +249,7 @@ export type HostCommandType = Extract<
   | "vault.rules.preview"
   | "messages.watch"
   | "messages.list"
+  | `teams.${string}`
   | "messages.sessions"
   | "messages.send"
   | "messages.relay"
@@ -1536,6 +1538,9 @@ export class AppStore {
         this.keepUsage();
       },
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
+      onTeams: (frame) => {
+        for (const listener of this.teamListeners) listener(config.id, frame);
+      },
       onMessages: (frame) => {
         if (frame.type === "messages.updated") {
           for (const listener of this.messageListeners) listener(config.id, frame.message);
@@ -1654,6 +1659,9 @@ export class AppStore {
       void conn.request("askpass.watch", {}).catch(() => null);
     }
     // Phase 21: this app carries the host's messages for the other hosts.
+    if (hasFeature(hostInfo?.features, "teams", false)) {
+      void conn.request("teams.watch", {}).catch(() => null);
+    }
     if (hasFeature(hostInfo?.features, "messaging", false)) {
       void conn.request("messages.watch", {}).catch(() => null);
       this.startPeersSync();
@@ -2126,6 +2134,15 @@ export class AppStore {
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
+  private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
+
+  /** Phase 21: told each time a team of a host changes. */
+  onTeamsUpdated(listener: (hostId: string, frame: TeamsUpdatedFrame) => void): () => void {
+    this.teamListeners.add(listener);
+    return () => {
+      this.teamListeners.delete(listener);
+    };
+  }
 
   /** Phase 21: told each time a message between sessions changes on a host. */
   onMessageUpdated(listener: (hostId: string, message: MessageInfo) => void): () => void {

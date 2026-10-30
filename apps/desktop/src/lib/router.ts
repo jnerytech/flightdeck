@@ -51,6 +51,8 @@ export type Route =
   | { name: "personas" }
   /** Phase 21: the messages between sessions. */
   | { name: "conversations" }
+  /** Phase 21: the teams of a host. */
+  | { name: "teams" }
   /** The vault (phase 16): secrets, their use and the encrypted backup. */
   | {
       name: "vault";
@@ -136,6 +138,7 @@ const NAMES: Record<Route["name"], true> = {
   snippets: true,
   personas: true,
   conversations: true,
+  teams: true,
   vault: true,
   "add-host": true,
 };
