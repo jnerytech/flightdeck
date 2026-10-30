@@ -159,17 +159,20 @@ describe("direcao-visual: ajustes finos", () => {
     await click(screen.queryByRole("button", { name: "Board" }));
     await settle(() => screen.queryByRole("heading", { name: "Board de alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Board de alfa" })).not.toBeNull();
+    // The title is there at once; the projects come when the host answers.
+    await settle(() => screen.queryAllByRole("button", { name: /^Abrir board de/ }).length === 2);
     expect(screen.queryAllByRole("button", { name: /^Abrir board de/ })).toHaveLength(2);
     expect(screen.queryAllByRole("button", { name: /^Workflows de/ })).toHaveLength(0);
     await click(screen.queryByRole("button", { name: "Workflows" }));
     await settle(() => screen.queryByRole("heading", { name: "Workflows de alfa" }) !== null);
+    await settle(() => screen.queryAllByRole("button", { name: /^Workflows de/ }).length === 2);
     expect(screen.queryAllByRole("button", { name: /^Workflows de/ })).toHaveLength(2);
     expect(screen.queryAllByRole("button", { name: /^Abrir board de/ })).toHaveLength(0);
     // Each project opens the screen asked for.
     await click(screen.queryAllByRole("button", { name: /^Workflows de repo/ })[0] ?? null);
     expect(store2.router.current.name).toBe("workflows");
     await click(screen.queryByRole("button", { name: "Board" }));
-    await settle(() => screen.queryByRole("heading", { name: "Board de alfa" }) !== null);
+    await settle(() => screen.queryAllByRole("button", { name: /^Abrir board de/ }).length === 2);
     await click(screen.queryAllByRole("button", { name: /^Abrir board de/ })[0] ?? null);
     expect(store2.router.current.name).toBe("board");
   });
