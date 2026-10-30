@@ -147,7 +147,11 @@ describe("historico-host", () => {
     await settle(() => document.querySelectorAll("[data-uuid]").length > 0);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
     // Three columns: the list stays on the left with the open one marked.
-    expect(document.querySelectorAll("[aria-current]")).toHaveLength(1);
+    expect(
+      screen
+        .queryByRole("list", { name: "Sessões do histórico" })
+        ?.querySelectorAll("[aria-current]"),
+    ).toHaveLength(1);
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).not.toBeNull();
   });
 
