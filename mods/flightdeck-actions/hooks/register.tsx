@@ -11,6 +11,8 @@ import { atom, read, update } from "claude-code";
 const DAEMON = "flightdeckd";
 const LIST = "mcp__flightdeck-actions__list_actions";
 const RUN = "mcp__flightdeck-actions__run_action";
+const SNIPPETS = "mcp__flightdeck-actions__list_snippets";
+const SNIPPET = "mcp__flightdeck-actions__get_snippet";
 // An approval in the app can take a while; the daemon itself gives up after two minutes.
 const RUN_TIMEOUT_MS = 180_000;
 
@@ -25,7 +27,11 @@ type Listed = {
 };
 
 export const register: Register = (on) => {
+  /** The session's folder: the project whose snippets count with the host's. */
+  let cwd = "";
+
   on("session.start", async ($, e, next) => {
+    cwd = e.cwd;
     await $.tool.register({
       name: "list_actions",
       description:
@@ -51,6 +57,27 @@ export const register: Register = (on) => {
       },
       isDeferred: false,
     });
+    await $.tool.register({
+      name: "list_snippets",
+      description:
+        "List the Flightdeck snippets (saved commands and prompts) of this host and of the session's project, with their text and variables. Reading only: a command runs through Claude Code's own permissions.",
+      inputSchema: {
+        type: "object",
+        properties: { query: { type: "string", description: "Words to look for" } },
+      },
+      isDeferred: false,
+    });
+    await $.tool.register({
+      name: "get_snippet",
+      description:
+        "The text of one Flightdeck snippet by name, to use as a reference. It does not run it.",
+      inputSchema: {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+      },
+      isDeferred: false,
+    });
     await $.command.register({
       name: "flightdeck-actions",
       description: "List the Flightdeck actions Claude can run",
@@ -72,6 +99,24 @@ export const register: Register = (on) => {
       ? next(e)
       : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
   );
+
+  /** The session's project, for `flightdeckd snippet …`; none before the session started. */
+  const project = () => (cwd ? ["--project-path", cwd] : []);
+  const printed = (done: { exitCode: number; stdout: string; stderr: string }) =>
+    done.exitCode === 0
+      ? { result: done.stdout }
+      : { deny: `flightdeck-actions: ${done.stderr.trim() || "flightdeckd snippet failed"}` };
+
+  on("tool.call", { tool: SNIPPETS }, async ($, e) => {
+    const query = typeof e.query === "string" && e.query ? ["--query", e.query] : [];
+    return printed(await $.process.run([DAEMON, "snippet", "list", ...project(), ...query]));
+  });
+
+  on("tool.call", { tool: SNIPPET }, async ($, e) => {
+    const name = typeof e.name === "string" ? e.name : "";
+    if (!name) return { deny: "flightdeck-actions: get_snippet needs the name of a snippet" };
+    return printed(await $.process.run([DAEMON, "snippet", "get", name, ...project()]));
+  });
 
   on("tool.call", { tool: RUN }, async ($, e) => {
     const name = typeof e.name === "string" ? e.name : "";
