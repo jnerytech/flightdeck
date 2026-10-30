@@ -13,6 +13,7 @@ import type { Key, T } from "@/i18n/index";
 import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
 import { cn } from "@/lib/utils";
 import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
+import { HoldButton } from "./hold-button.tsx";
 
 /** One open (or answered) permission request, from any kind of session. */
 export interface ApprovalRequest {
@@ -105,6 +106,36 @@ function Body({
   );
 }
 
+/** The risk seal: a word, a tone and, on a high one, why. */
+const RISK_TONE: Record<RiskLevel, string> = {
+  low: "border-border text-muted-foreground",
+  medium: "border-status-needs-you/60 text-status-needs-you",
+  high: "border-status-error text-status-error",
+};
+
+function RiskSeal({ risk, reason, t }: { risk: RiskLevel; reason?: string | undefined; t: T }) {
+  return (
+    <span
+      data-risk={risk}
+      title={reason}
+      className={cn("rounded-full border px-2 py-0.5 font-medium text-xs", RISK_TONE[risk])}
+    >
+      {t(`approval.risk.${risk}` as Key)}
+    </span>
+  );
+}
+
+/** "Aprovado automaticamente (regra): motivo": who decided, and why. */
+function autoLine(auto: AutoApproval, t: T): string {
+  const by =
+    auto.by === "ai"
+      ? auto.model
+        ? t("approval.autoBy.aiModel", { model: auto.model })
+        : t("approval.autoBy.ai")
+      : t("approval.autoBy.rule");
+  return t("approval.autoApproved", { by, reason: auto.reason });
+}
+
 /**
  * The approval card of every session (managed, terminal, card) and of the sidebar's queue: what
  * the tool will do, readable, with Aprovar and Negar together. With the card focused, A approves,
@@ -137,6 +168,7 @@ export function ApprovalCard(props: {
     if (denying) reasonRef.current?.focus();
   }, [denying]);
   const view = approvalView(request.toolName, request.input, request.cwd);
+  const high = request.risk === "high";
   const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
   const deny = () => {
     const message = reason.trim();
@@ -148,7 +180,8 @@ export function ApprovalCard(props: {
     // Keys typed in the reason (or any other field of the card) are text, not shortcuts.
     if (e.target !== e.currentTarget || resolution) return;
     const key = e.key.toLowerCase();
-    if (key === "a") props.onRespond("allow");
+    // A high-risk request is approved by holding the button, never by a key.
+    if (key === "a" && !high) props.onRespond("allow");
     else if (key === "n") setDenying(true);
     else if (e.key === "Escape") e.currentTarget.blur();
   };
@@ -169,14 +202,22 @@ export function ApprovalCard(props: {
         <span>
           {t("approval.title")} <strong>{request.toolName}</strong>
         </span>
-        {age && <span className="text-muted-foreground text-xs">{age}</span>}
+        <span className="flex items-baseline gap-2">
+          {request.risk && <RiskSeal risk={request.risk} reason={request.riskReason} t={t} />}
+          {age && <span className="text-muted-foreground text-xs">{age}</span>}
+        </span>
       </div>
+      {high && request.riskReason && (
+        <p className="text-sm text-status-error">{request.riskReason}</p>
+      )}
       <Body view={view} t={t} onCopyPath={props.onCopyPath} />
       {resolution ? (
         <p className="text-muted-foreground text-sm">
           {resolution.decision === "deny" && resolution.message
             ? t("approval.deniedWith", { message: resolution.message })
-            : t(`approval.resolved.${resolution.decision}` as Key)}
+            : resolution.auto
+              ? autoLine(resolution.auto, t)
+              : t(`approval.resolved.${resolution.decision}` as Key)}
         </p>
       ) : (
         <>
@@ -200,7 +241,16 @@ export function ApprovalCard(props: {
               </>
             ) : (
               <>
-                <Button onClick={() => props.onRespond("allow")}>{t("approval.approve")}</Button>
+                {high ? (
+                  <HoldButton
+                    label={t("approval.hold")}
+                    hint={t("approval.holdHint")}
+                    holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
+                    onHeld={() => props.onRespond("allow")}
+                  />
+                ) : (
+                  <Button onClick={() => props.onRespond("allow")}>{t("approval.approve")}</Button>
+                )}
                 <Button variant="outline" onClick={() => setDenying(true)}>
                   {t("approval.deny")}
                 </Button>
@@ -208,7 +258,7 @@ export function ApprovalCard(props: {
             )}
             {props.actions}
           </div>
-          {props.alwaysAllow && (
+          {props.alwaysAllow && !high && (
             <AlwaysAllow
               toolName={request.toolName}
               input={request.input}
@@ -216,7 +266,9 @@ export function ApprovalCard(props: {
               onAllow={(updates) => props.onRespond("allow", undefined, updates)}
             />
           )}
-          <p className="text-muted-foreground text-xs">{t("approval.keys")}</p>
+          <p className="text-muted-foreground text-xs">
+            {t(high ? "approval.keysHigh" : "approval.keys")}
+          </p>
         </>
       )}
     </fieldset>

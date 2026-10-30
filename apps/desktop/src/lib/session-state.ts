@@ -1,8 +1,10 @@
 import type {
   AssistantBlock,
+  AutoApproval,
   EventEnvelope,
   PermissionResolution,
   PermissionUpdate,
+  RiskLevel,
   SessionStatus,
   ToolInput,
 } from "@flightdeck/protocol";
@@ -18,7 +20,10 @@ export type ChatItem =
       input: ToolInput;
       /** What the CLI offers to stop asking (phase 7). */
       suggestions?: PermissionUpdate[];
-      resolution?: { decision: PermissionResolution; message?: string };
+      resolution?: { decision: PermissionResolution; message?: string; auto?: AutoApproval };
+      /** Phase 13: the risk the daemon judged, and why. */
+      risk?: RiskLevel;
+      riskReason?: string;
       /** When it was asked (the event's time): the card shows its age (phase 10). */
       at?: string;
     }
@@ -104,6 +109,8 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
           toolName: event.toolName,
           input: event.input,
           ...(event.suggestions ? { suggestions: event.suggestions } : {}),
+          ...(event.risk ? { risk: event.risk } : {}),
+          ...(event.riskReason ? { riskReason: event.riskReason } : {}),
           at: envelope.ts,
         }),
         pending: [...state.pending, event.requestId],
@@ -119,6 +126,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
                 resolution: {
                   decision: event.decision,
                   ...(event.message ? { message: event.message } : {}),
+                  ...(event.auto ? { auto: event.auto } : {}),
                 },
               }
             : item,

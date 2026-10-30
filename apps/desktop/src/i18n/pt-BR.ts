@@ -32,6 +32,12 @@ export const ptBR = {
     openSession: "Abrir sessão",
     openCard: "Abrir card",
     deniedWith: "negado: {message}",
+    risk: { low: "Risco baixo", medium: "Risco médio", high: "Risco alto" },
+    hold: "Segurar para aprovar",
+    holdHint: "Risco alto: segure o botão por 2 segundos para aprovar",
+    keysHigh: "Segure o botão para aprovar · N nega · Esc sai",
+    autoApproved: "Aprovado automaticamente ({by}): {reason}",
+    autoBy: { rule: "regra", ai: "IA", aiModel: "IA, {model}" },
     resolved: { allow: "aprovado", deny: "negado", cancelled: "cancelado", expired: "expirado" },
   },
   states: {

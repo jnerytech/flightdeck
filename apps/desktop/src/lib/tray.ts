@@ -23,7 +23,8 @@ export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
       return {
         key: `${item.hostId}/${item.requestId}`,
         label: `${item.hostName} · ${item.sessionName} · ${tool}`,
-        actions: item.gate ? ["open"] : ["approve", "deny", "open"],
+        // A gate is answered in the app, and a high-risk request is approved by holding a button.
+        actions: item.gate || item.risk === "high" ? ["open"] : ["approve", "deny", "open"],
       };
     }),
     more,

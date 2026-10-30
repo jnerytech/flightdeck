@@ -290,6 +290,8 @@ export function needsYou(state: AppState): PendingItem[] {
           toolName: p.toolName,
           createdAt: p.createdAt,
           ...(p.input ? { input: p.input } : {}),
+          ...(p.risk ? { risk: p.risk } : {}),
+          ...(p.riskReason ? { riskReason: p.riskReason } : {}),
           cwd: session.cwd,
         })),
       ),
@@ -310,6 +312,8 @@ export function needsYou(state: AppState): PendingItem[] {
             createdAt: request.createdAt,
             external: true,
             input: request.input,
+            ...(request.risk ? { risk: request.risk } : {}),
+            ...(request.riskReason ? { riskReason: request.riskReason } : {}),
             cwd: session?.cwd ?? null,
           };
         }),
@@ -654,7 +658,8 @@ export class AppStore {
     }
     const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
     if (!item) return;
-    if (action === "open") this.openRequest(item);
+    // The tray never approves a high-risk request: that takes holding the button in the app.
+    if (action === "open" || (action === "approve" && item.risk === "high")) this.openRequest(item);
     else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 

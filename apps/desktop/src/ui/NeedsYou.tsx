@@ -150,6 +150,8 @@ export function NeedsYou(props: {
           input: item.input ?? {},
           cwd: item.cwd ?? null,
           createdAt: item.createdAt,
+          ...(item.risk ? { risk: item.risk } : {}),
+          ...(item.riskReason ? { riskReason: item.riskReason } : {}),
         }}
         t={t}
         nowMs={store.now()}

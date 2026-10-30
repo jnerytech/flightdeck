@@ -75,6 +75,8 @@ function TimelineItem(props: {
             cwd: session.cwd ?? null,
             createdAt: item.at ?? null,
             ...(item.suggestions ? { suggestions: item.suggestions } : {}),
+            ...(item.risk ? { risk: item.risk } : {}),
+            ...(item.riskReason ? { riskReason: item.riskReason } : {}),
           }}
           t={props.t}
           nowMs={props.nowMs}

@@ -100,6 +100,8 @@ export function ExternalView(props: {
                 cwd: session?.cwd ?? null,
                 createdAt: request.createdAt,
                 ...(request.suggestions ? { suggestions: request.suggestions } : {}),
+                ...(request.risk ? { risk: request.risk } : {}),
+                ...(request.riskReason ? { riskReason: request.riskReason } : {}),
               }}
               t={store.i18n.t}
               nowMs={store.now()}

@@ -26,6 +26,9 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | snapshot | snapshot | The git copy of the working tree taken at the start and end of a turn; it never touches the user's index or files |
 | agente | agent | In "Agente de {project}", the project's configuration for Claude Code: MCP servers, CLAUDE.md, agents and skills |
 | só leitura | read-only | What Flightdeck shows but never writes: the user's `~/.claude` and `~/.claude.json` |
+| risco (baixo, médio, alto) | risk (low, medium, high) | O selo de um pedido de permissão; nunca `low`, `medium` e `high` na tela |
+| segurar para aprovar | hold to approve | O Aprovar de um pedido de risco alto: o botão tem de ficar pressionado por 2 segundos |
+| aprovado automaticamente | approved automatically | Um pedido aprovado por regra ou pela IA, sem a pessoa; a linha diz quem decidiu e o motivo |
 
 ## Estados de uma sessão
 
