@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { SnapshotInfo } from "@flightdeck/protocol";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -12,6 +13,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { turnsOf } = await import("../src/lib/turns.ts");
 
 // Real git and a real daemon: more than the default 5 s.
 setDefaultTimeout(30_000);
@@ -261,5 +263,64 @@ describe("linha-do-tempo-ui", () => {
     await click("Linha do tempo");
     await settle(() => screen.queryByText(/Ainda não há turnos/) !== null);
     expect(screen.queryByText(/Ainda não há turnos/)).not.toBeNull();
+  });
+
+  test("Esc fecha a prévia e o formulário de bifurcar sem fazer nada, e Fechar esconde a linha do tempo", async () => {
+    const { repo, runtime } = await setup();
+    await openTimeline();
+    const escape = async (name: string) => {
+      await act(async () => {
+        fireEvent.keyDown(screen.queryByRole("dialog", { name }) as HTMLElement, {
+          key: "Escape",
+        });
+      });
+      await settle(() => screen.queryByRole("dialog", { name }) === null);
+      expect(screen.queryByRole("dialog", { name })).toBeNull();
+    };
+    await click("Voltar arquivos até aqui (turno 2)");
+    await settle(
+      () => screen.queryByRole("dialog", { name: "Voltar arquivos até o turno 2" }) !== null,
+    );
+    await escape("Voltar arquivos até o turno 2");
+    await click("Bifurcar daqui (turno 2)");
+    await settle(
+      () => screen.queryByRole("dialog", { name: "Bifurcar a partir do turno 2" }) !== null,
+    );
+    await escape("Bifurcar a partir do turno 2");
+    expect(text(join(repo, "README.md"))).toBe("v2\n");
+    expect(runtime.forks).toHaveLength(0);
+
+    await click("Fechar");
+    await settle(() => screen.queryByRole("dialog", { name: "Linha do tempo" }) === null);
+    expect(screen.queryByRole("dialog", { name: "Linha do tempo" })).toBeNull();
+  });
+
+  test("os turnos: sem fim registrado, o último está em andamento e os outros sem registro; os de segurança não contam", () => {
+    const row = (n: number, kind: string, tree: string): SnapshotInfo => ({
+      claudeSessionId: "s",
+      n,
+      ref: "r",
+      tree,
+      kind,
+      turnUuid: null,
+      prompt: `p${n}`,
+      createdAt: "2026-11-03T10:00:00.000Z",
+      repo: "/r",
+    });
+    const turns = turnsOf([
+      row(1, "before", "a"),
+      row(2, "after", "a"),
+      row(3, "before", "a"),
+      row(4, "before", "b"),
+      row(5, "safety", "c"),
+      row(6, "after", "d"),
+      row(7, "before", "d"),
+    ]);
+    expect(turns.map((t) => [t.n, t.ordinal, t.files])).toEqual([
+      [1, 1, "unchanged"],
+      [3, 2, "unknown"],
+      [4, 3, "changed"],
+      [7, 4, "running"],
+    ]);
   });
 });
