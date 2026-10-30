@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
-import { isProd } from "../lib/ssh.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { createXtermScreen, type XtermDeps, type XtermScreen } from "../lib/xterm-screen.ts";
@@ -144,29 +143,10 @@ export function TerminalPage(props: {
       ? t("terminalUi.state.ended", { code: String(state.exitCode) })
       : t(`terminalUi.state.${state.state}`);
 
-  const ssh = store.sshTerminals.get(`${hostId}/${terminalId}`);
-  const prod = ssh ? isProd(ssh.tags) : false;
-
-  const page = (
+  return (
     <Page
       title={t("terminalUi.title")}
-      subtitle={
-        <span className="flex flex-wrap items-center gap-2">
-          <span role="status">{status}</span>
-          {ssh && (
-            <>
-              <span className="rounded bg-muted px-1.5 text-xs">
-                {t("terminalUi.sshBadge", { name: ssh.name })}
-              </span>
-              {ssh.tags.map((tag) => (
-                <span key={tag} className="rounded bg-muted px-1.5 text-xs">
-                  {tag}
-                </span>
-              ))}
-            </>
-          )}
-        </span>
-      }
+      subtitle={<span role="status">{status}</span>}
       actions={
         <>
           {(state.state === "detached" || state.state === "ended") && (
@@ -259,20 +239,6 @@ export function TerminalPage(props: {
         />
       )}
     </Page>
-  );
-  if (!ssh) return page;
-  // A production server is easy to mistake for another: the whole screen gets a red border.
-  return (
-    <div
-      data-testid="ssh-terminal"
-      data-prod={String(prod)}
-      className={cn(
-        "h-full rounded-lg border-2",
-        prod ? "border-destructive" : "border-transparent",
-      )}
-    >
-      {page}
-    </div>
   );
 }
 

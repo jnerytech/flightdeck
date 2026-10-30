@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
+import { isProd } from "../lib/ssh.ts";
 import { type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
@@ -32,9 +33,20 @@ const ICONS: Record<TabKind, LucideIcon> = {
   screen: Layers,
 };
 
+/** What a terminal tab says about the ssh destino it was opened from, if it was. */
+const sshOf = (tab: Tab, store: AppStore) => {
+  const route = tab.router.current;
+  return route.name === "terminal"
+    ? store.sshTerminals.get(`${route.host}/${route.terminalId}`)
+    : undefined;
+};
+
 /** The title of a tab: the last step of the path its route shows in the header. */
-const title = (tab: Tab, state: AppState, store: AppStore) =>
-  breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
+const title = (tab: Tab, state: AppState, store: AppStore) => {
+  const ssh = sshOf(tab, store);
+  if (ssh) return store.i18n.t("terminalUi.sshBadge", { name: ssh.name });
+  return breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
+};
 
 /** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
 export function TabBar(props: {
@@ -61,6 +73,9 @@ export function TabBar(props: {
           const Icon = ICONS[kind];
           const selected = tab.id === tabs.activeId;
           const badge = tabBadge(tab.router.current, state);
+          const ssh = sshOf(tab, store);
+          // A production server is easy to mistake for another: its tab gets a red border.
+          const prod = ssh ? isProd(ssh.tags) : undefined;
           return (
             <button
               key={tab.id}
@@ -68,9 +83,11 @@ export function TabBar(props: {
               role="tab"
               aria-selected={selected}
               {...(tab.pinned ? { "aria-label": label } : {})}
+              {...(prod === undefined ? {} : { "data-prod": String(prod) })}
               className={cn(
                 "flex min-w-0 max-w-48 items-center gap-1.5 rounded-t-md border border-b-0 px-2 py-1.5 text-sm",
                 selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
+                prod && "border-2 border-destructive",
               )}
               onClick={() => tabs.activate(tab.id)}
               onAuxClick={(e) => {
@@ -92,6 +109,12 @@ export function TabBar(props: {
             >
               <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
               {!tab.pinned && <span className="truncate">{label}</span>}
+              {!tab.pinned &&
+                ssh?.tags.map((tag) => (
+                  <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
+                    {tag}
+                  </span>
+                ))}
               {badge && (
                 <span
                   data-badge={badge}
