@@ -9,8 +9,8 @@ import {
   formatDuration,
   formatNumber,
   formatTime,
-  formatWhen,
   formatUsd,
+  formatWhen,
 } from "../src/i18n/format.ts";
 import { I18n, LANG_KEY, languageFor, translator } from "../src/i18n/index.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
