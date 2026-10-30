@@ -43,7 +43,9 @@ describe("acoes-confianca", () => {
     expect(fingerprint(action({ run: [join(outside, "solto.sh")] }), outside).files).toEqual({});
     const root = repo();
     expect(fingerprint(action({ run: ["./scripts"] }), root).files).toEqual({});
-    expect(fingerprint(action({ run: ["./scripts/{{param.branch}}.sh"] }), root).files).toEqual({});
+    expect(
+      fingerprint(action({ run: ["./fazer.sh", "./scripts/{{param.branch}}.sh"] }), root).files,
+    ).toEqual({});
   });
 
   test("o cwd da ação vale para achar os arquivos, relativo à pasta do projeto", () => {

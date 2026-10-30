@@ -189,6 +189,28 @@ describe("acoes-execucao", () => {
     expect(result.output).toContain("•••(chave)");
   });
 
+  test("uma saída de centenas de KB é lida até o limite e o resto descartado, sem travar o programa nem deixar parte do segredo", async () => {
+    const action = make(
+      [
+        "const t = process.env.TOKEN;",
+        // The capture stops at 250,000 characters: the secret starts ten characters before that.
+        "process.stdout.write('y'.repeat(250_000 - 10));",
+        "process.stdout.write(t);",
+        "process.stdout.write('z'.repeat(1000));",
+        "process.stderr.write('e'.repeat(100003));",
+        "process.stderr.write('e'.repeat(200001));",
+      ].join("\n"),
+      { env: { TOKEN: "{{secret.deploy-token}}" } },
+    );
+    const result = await runAction(action, {}, { "deploy-token": TOKEN }, opts());
+    expect(result.exitCode).toBe(0);
+    expect(result.truncated).toBe(true);
+    expect(result.output.length).toBeLessThanOrEqual(32 * 1024 + 100);
+    expect(result.output).not.toContain(TOKEN);
+    // Not even the ten characters of it that were inside the capture.
+    expect(result.output).not.toContain(TOKEN.slice(0, 10));
+  });
+
   test("roda no cwd da ação, relativo à pasta do projeto, e o ambiente do daemon não leva as chaves de API", async () => {
     const base = tempDir();
     const sub = join(base, "sub");

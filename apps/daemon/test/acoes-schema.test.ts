@@ -89,6 +89,14 @@ describe("acoes-schema", () => {
     expect(secretsOf(ok)).toEqual({ values: ["a"], files: ["b", "c"] });
   });
 
+  test("numa ação ssh o arquivo temporário do segredo não existe: seria um caminho local num comando remoto", () => {
+    expect(errorsOf(action({ ssh: "prod", env: { K: "{{secretFile.chave}}" } })).join()).toContain(
+      "ssh",
+    );
+    expect(errorsOf(action({ ssh: "prod", env: { K: "{{secret.chave}}" } }))).toEqual([]);
+    expect(errorsOf(action({ env: { K: "{{secretFile.chave}}" } }))).toEqual([]);
+  });
+
   test("parâmetro sem pattern, com regex inválida ou com default fora do pattern é erro; usar um não declarado também", () => {
     const withParam = (param: unknown, run = ["./fazer.sh", "{{param.x}}"]) =>
       errorsOf(action({ run, params: { x: param } }));
