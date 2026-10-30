@@ -15,3 +15,10 @@ deploy.hosts.json
 
 # Prints of the demo (phase 10)
 apps/desktop/screenshots/
+
+# Claude Code: the shared configuration (hooks, skills, agents) is versioned; personal settings,
+# local mods and session state are not.
+.claude/settings.local.json
+.claude/mods/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
