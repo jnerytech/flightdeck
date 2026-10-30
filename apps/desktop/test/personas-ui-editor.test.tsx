@@ -117,12 +117,17 @@ describe("personas-ui: the editor", () => {
   });
 
   test("a secret in the instructions is refused with the reason", async () => {
-    await open();
+    const { store, hostId } = await open();
     await newPersona();
     await fill("Instruções", "Use o token ghp_abcdefghijklmnopqrstuvwxyz0123456789 no deploy.");
     await click("Salvar persona");
     expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
-    expect(document.body.innerHTML).not.toContain("ghp_abcdef");
+    // What was typed stays in the field; nothing was kept on the host.
+    const listed = await store.hostCommand(hostId, "personas.list", {
+      scope: "host",
+      language: "pt-BR",
+    });
+    expect(listed?.personas.some((p) => p.id === "meu-qa")).toBe(false);
   });
 
   test("Editar a pack persona saves the host's version of it, with the id kept", async () => {
