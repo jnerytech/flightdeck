@@ -78,6 +78,7 @@ import { SessionManager } from "./sessions/session-manager.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { Snippets } from "./snippets/store.ts";
+import { SnippetUse } from "./snippets/use.ts";
 import { AskpassBroker, askpassHook, runAskpass } from "./ssh/askpass.ts";
 import { processExec, processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
 import { HostKeys } from "./ssh/hostkey.ts";
@@ -644,6 +645,14 @@ export async function startDaemon(
     sshConnect,
     askpass,
     snippets,
+    snippetUse: new SnippetUse({
+      snippets,
+      terminals,
+      manager,
+      central,
+      exec: spawnExec,
+      allowedRoots: config.allowedRoots,
+    }),
     snippetHistory: new HistoryImporter({
       sources: defaultHistorySources({
         home: homedir(),

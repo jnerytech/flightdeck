@@ -832,6 +832,15 @@ export const SnippetHistoryResult = z.object({
 });
 export type SnippetHistoryResult = z.infer<typeof SnippetHistoryResult>;
 
+const SnippetValues = z.record(z.string().max(100), z.string().max(4000));
+const SnippetUseContext = z
+  .object({
+    cwd: z.string().optional(),
+    file: z.string().max(4000).optional(),
+    selection: z.string().max(20_000).optional(),
+  })
+  .strict();
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1888,6 +1897,38 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** The text a snippet would produce with these values and context, and the fields it asks for. */
+  cmd(
+    "snippets.render",
+    z
+      .object({
+        id: z.string(),
+        values: SnippetValues.optional(),
+        context: SnippetUseContext.optional(),
+      })
+      .strict(),
+  ),
+  /**
+   * Uses a snippet: `paste` types a command into a terminal (`enter` also runs it), `run` opens a
+   * new tab at `context.cwd`, `send` sends a prompt to a session (`sessionId` or `claudeSessionId`).
+   */
+  cmd(
+    "snippets.use",
+    z
+      .object({
+        id: z.string(),
+        action: z.enum(["paste", "run", "send"]),
+        values: SnippetValues.optional(),
+        context: SnippetUseContext.optional(),
+        terminalId: z.string().optional(),
+        enter: z.boolean().optional(),
+        cols: TerminalCols.optional(),
+        rows: TerminalRows.optional(),
+        sessionId: z.string().optional(),
+        claudeSessionId: z.string().optional(),
+      })
+      .strict(),
+  ),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -2293,6 +2334,8 @@ export interface CommandResults {
   "snippets.trust": SnippetFileInfo;
   "snippets.favorite": Snippet;
   "snippets.importHistory": SnippetHistoryResult;
+  "snippets.render": { text: string; fields: SnippetField[] };
+  "snippets.use": { text: string; terminal: TerminalInfo | null };
   "askpass.watch": undefined;
   "askpass.ask": { secret: string };
   "askpass.answer": undefined;
@@ -2350,6 +2393,8 @@ export const ErrorCode = z.enum([
   /** `ssh.connect` to a server whose key was never confirmed, or whose key changed (phase 15). */
   "hostkey_unconfirmed",
   "hostkey_changed",
+  /** Running a command from a project's versioned snippets file that is not trusted (phase 18). */
+  "snippet_untrusted",
   /** A snippet with a secret in it; the app offers "Transformar em ação" (phase 18). */
   "snippet_secret",
 ]);

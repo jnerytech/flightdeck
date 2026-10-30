@@ -67,6 +67,7 @@ import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
+import type { SnippetUse } from "./snippets/use.ts";
 import type { AskpassBroker } from "./ssh/askpass.ts";
 import type { SshConnector } from "./ssh/connect.ts";
 import type { HostKeys } from "./ssh/hostkey.ts";
@@ -159,6 +160,8 @@ export interface ServerOptions {
   snippets?: Snippets;
   /** The import from the shell history behind `snippets.importHistory` (phase 18). */
   snippetHistory?: HistoryImporter;
+  /** Using a snippet behind `snippets.render` and `snippets.use` (phase 18). */
+  snippetUse?: SnippetUse;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -505,6 +508,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function snippets(): Snippets {
     if (!opts.snippets) throw new FlightdeckError("invalid_state", "snippets desativados");
     return opts.snippets;
+  }
+
+  function snippetUse(): SnippetUse {
+    if (!opts.snippetUse) throw new FlightdeckError("invalid_state", "usar snippets desativado");
+    return opts.snippetUse;
   }
 
   function snippetHistory(): HistoryImporter {
@@ -1152,6 +1160,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
         return ok(command.type, { ...preview, ...done });
       }
+      case "snippets.render":
+        return ok(command.type, await snippetUse().render(command.payload));
+      case "snippets.use":
+        return ok(command.type, await snippetUse().use(command.payload));
       case "askpass.watch":
         ws.data.unwatchAskpass?.();
         ws.data.unwatchAskpass = askpass().watch((frame) => send(ws, frame));
