@@ -15,6 +15,7 @@ import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
+import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
@@ -78,6 +79,8 @@ export function daemon(
     issues?: boolean;
     /** The projects' automations (phase 13); the scheduler is not started. */
     automations?: boolean;
+    /** The automatic approval's decisions (phase 13), kept in this daemon's database. */
+    autoApprove?: boolean;
     /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
     risk?: (root: string) => RiskClassifier;
   } = {},
@@ -164,6 +167,19 @@ export function daemon(
   const issues = options.issues || options.automations ? new Issues({ board }) : undefined;
   const automations =
     options.automations && issues ? new Automations({ db: store.db, board, issues }) : undefined;
+  const autoApprove = options.autoApprove
+    ? new AutoApprover({
+        db: store.db,
+        runtime,
+        dataDir: join(root, "data"),
+        context: (cwd) => {
+          const found = board.projectForCwd(cwd);
+          return found
+            ? { projectId: found.project.id, settings: found.project.autoApprove }
+            : null;
+        },
+      })
+    : undefined;
   // Like the real daemon, costs come with the quota's history.
   const quotaHistory =
     options.quotaHistory?.(store.db) ??
@@ -200,6 +216,7 @@ export function daemon(
       ...(issues ? { issues } : {}),
       ...(options.issues && issues ? { issues } : {}),
       ...(automations ? { automations } : {}),
+      ...(autoApprove ? { autoApprove } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -231,6 +248,7 @@ export function daemon(
     configFile,
     eventStore: store,
     automations,
+    autoApprove,
   };
 }
 
