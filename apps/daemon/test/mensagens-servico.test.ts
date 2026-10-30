@@ -178,7 +178,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     const first = setup();
     first.endpoints.add("s1");
     first.endpoints.add("s2");
-    first.messaging.setPolicy({ perPairPerHour: 7 });
+    first.messaging.setPolicy({ perSessionPerHour: 70 });
     for (let i = 0; i < 10; i++) {
       first.now.at = NOW + i * 10_000;
       const [from, to] = i % 2 === 0 ? ["s1", "s2"] : ["s2", "s1"];
@@ -187,7 +187,7 @@ describe("mensagens-regras: o que o serviço aplica", () => {
     first.now.at = NOW + 100_000;
     first.messaging.send({ as: { session: "s1" }, to: "s2", text: "laço" });
     const second = setup({ db: first.store.db });
-    expect(second.messaging.getPolicy().perPairPerHour).toBe(7);
+    expect(second.messaging.getPolicy().perSessionPerHour).toBe(70);
     expect(second.messaging.pausedPairs()).toEqual(["pc/s1|pc/s2"]);
   });
 });
