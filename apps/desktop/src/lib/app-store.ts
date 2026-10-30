@@ -331,6 +331,8 @@ export interface AppStoreOptions {
   appUpdateIntervalMs?: number;
   /** Phase 16: decides a `vault.request` of the daemon; denies them all when absent. */
   vaultPolicy?: VaultPolicy;
+  /** Phase 21: how often the app tells each daemon the others' sessions (5 s when absent). */
+  peersSyncMs?: number;
   /** scrypt work factor (log2 N) of an exported vault; tests lower it to stay fast. */
   vaultWorkFactor?: number;
 }
