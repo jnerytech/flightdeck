@@ -27,8 +27,7 @@ const sources = [
   .filter((path) => !path.startsWith(VENDOR_UI))
   .filter((path) =>
     hasRuntimeCode(readFileSync(resolve(ROOT, path), "utf8"), path.endsWith(".tsx") ? "tsx" : "ts"),
-  )
-  .sort();
+  );
 
 const report = parseLcov(readFileSync(resolve(ROOT, "coverage/lcov.info"), "utf8"));
 const problems = checkCoverage(report, sources);

@@ -32,7 +32,9 @@ export function checkCoverage(
   sources: readonly string[],
 ): string[] {
   const problems: string[] = [];
-  for (const source of sources.map(normalize)) {
+  // Pinned locale: the report must read the same on every machine.
+  const ordered = sources.map(normalize).sort((a, b) => a.localeCompare(b, "en"));
+  for (const source of ordered) {
     const file = report.get(source);
     if (!file) {
       problems.push(`${source}: nenhum teste carrega este arquivo`);
