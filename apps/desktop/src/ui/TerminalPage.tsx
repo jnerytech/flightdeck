@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
@@ -144,24 +145,34 @@ export function TerminalPage(props: {
     >
       <div ref={area} className="h-[60vh] w-full" />
       {closing && (
-        <AlertDialog open onOpenChange={(open) => !open && setClosing(false)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t("terminalUi.close")}</AlertDialogTitle>
-              <AlertDialogDescription>{t("terminalUi.closeMessage")}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-              <AlertDialogAction onClick={() => void close(false)}>
-                {t("terminalUi.detach")}
-              </AlertDialogAction>
-              <AlertDialogAction variant="destructive" onClick={() => void close(true)}>
-                {t("terminalUi.end")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <TerminalCloseDialog
+          onClose={(kill) => (kill === null ? setClosing(false) : void close(kill))}
+        />
       )}
     </Page>
+  );
+}
+
+/** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
+export function TerminalCloseDialog(props: { onClose(kill: boolean | null): void }) {
+  const t = useT();
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && props.onClose(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("terminalUi.close")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("terminalUi.closeMessage")}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={() => props.onClose(true)}>
+            {t("terminalUi.end")}
+          </AlertDialogAction>
+          <AlertDialogAction onClick={() => props.onClose(false)}>
+            {t("terminalUi.detach")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

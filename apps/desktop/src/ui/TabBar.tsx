@@ -115,7 +115,7 @@ export function TabBar(props: {
                 size="icon"
                 className="size-6"
                 aria-label={t("tabs.close", { title: label })}
-                onClick={() => tabs.close(tab.id)}
+                onClick={() => store.closeTab(tabs, tab.id)}
               >
                 <X />
               </Button>

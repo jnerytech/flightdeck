@@ -15,6 +15,7 @@ import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
 import { Sidebar } from "./Sidebar.tsx";
+import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
@@ -68,7 +69,7 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
   else if (key === "t") {
     tabs.open({ name: "home" });
     store.openSearch();
-  } else if (key === "w") tabs.close(tabs.activeId);
+  } else if (key === "w") store.closeTab(tabs, tabs.activeId);
   else if (key === "Tab") {
     if (e.shiftKey) tabs.previous();
     else tabs.next();
@@ -300,6 +301,9 @@ export function App({ store }: { store: AppStore }) {
             />
           </div>
           <Notices store={store} state={state} />
+          {state.closingTerminal && (
+            <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
+          )}
           {state.searchOpen && (
             <GlobalSearch
               state={state}
