@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Command, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION } from "@flightdeck/protocol";
+import { AgentConfig } from "../src/agentcfg/files.ts";
+import { McpConfig } from "../src/agentcfg/mcp.ts";
+import { Forker } from "../src/checkpoints/fork.ts";
+import { Rewinder } from "../src/checkpoints/rewind.ts";
+import { Snapshots } from "../src/checkpoints/snapshots.ts";
+import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { startServer } from "../src/server.ts";
+import { EventStore } from "../src/store/event-store.ts";
 import { newBoard } from "./board-helpers.ts";
 import { newManager } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -109,5 +116,26 @@ describe("protocolo-compat", () => {
       "central",
       "maintenance",
     ]);
+  });
+
+  test("host.info anuncia checkpoints e agentcfg só quando as peças estão ligadas", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const { manager } = newManager({ store });
+    const snapshots = new Snapshots({ db: store.db });
+    const rewinder = new Rewinder({ snapshots, sessions: manager });
+    const forker = new Forker({ runtime: new FakeRuntime(), manager, rewinder });
+    const featuresOf = async (extra: Partial<Parameters<typeof startServer>[0]>) => {
+      const client = new FrameClient(serve({ features: undefined, ...extra }).url);
+      cleanups.push(() => client.close());
+      await client.request("hello", { token: TOKEN, client: "t" });
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features;
+    };
+    expect(await featuresOf({ snapshots, rewinder, forker })).toEqual(["checkpoints"]);
+    expect(await featuresOf({ snapshots, rewinder })).toEqual([]);
+    expect(await featuresOf({ agentcfg: new AgentConfig(), mcp: new McpConfig() })).toEqual([
+      "agentcfg",
+    ]);
+    expect(await featuresOf({ agentcfg: new AgentConfig() })).toEqual([]);
   });
 });
