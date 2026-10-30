@@ -52,6 +52,9 @@ export function ProjectsPage(props: {
   onOpenWorkflows(project: { id: string; name: string }): void;
   /** The host announces `rules`: the project's Regras section. */
   rules: boolean;
+  /** The host announces `agentcfg` (phase 12): the project's Agente screen. */
+  agent: boolean;
+  onOpenAgent(project: { id: string; name: string }): void;
   /** Only the picker for Board or Workflows (a nav item with several projects). */
   focus?: "board" | "workflows";
 }) {
@@ -171,6 +174,11 @@ export function ProjectsPage(props: {
               <Button variant="ghost" size="sm" onClick={() => props.onOpenWorkflows(project)}>
                 {t("projectsUi.workflows", { name: project.name })}
               </Button>
+              {props.agent && (
+                <Button variant="ghost" size="sm" onClick={() => props.onOpenAgent(project)}>
+                  {t("agent.open", { name: project.name })}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

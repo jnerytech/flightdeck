@@ -16,6 +16,7 @@ import type { Route } from "../lib/router.ts";
 import { emptySession } from "../lib/session-state.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
+import { AgentPage } from "./AgentPage.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
 import { CostsPage } from "./CostsPage.tsx";
@@ -45,6 +46,7 @@ function hostToWait(route: Route): string | null {
     case "board":
     case "card":
     case "workflows":
+    case "agent":
       return route.host;
     default:
       return null;
@@ -434,6 +436,10 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           hostName={host?.name ?? route.host}
           rules={hasFeature(host?.hostInfo?.features, "rules", false)}
+          agent={hasFeature(host?.hostInfo?.features, "agentcfg", false)}
+          onOpenAgent={({ id, name }) =>
+            go({ name: "agent", host: route.host, projectId: id, projectName: name })
+          }
           {...(route.focus ? { focus: route.focus } : {})}
           onOpenBoard={(projectId) => go({ name: "board", host: route.host, projectId })}
           onOpenWorkflows={({ id, name }) =>
@@ -464,6 +470,16 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           cardId={route.cardId}
           onBack={() => go({ name: "board", host: route.host, projectId: route.projectId })}
+        />
+      );
+    case "agent":
+      return (
+        <AgentPage
+          key={`${route.host}/${route.projectId}`}
+          store={store}
+          hostId={route.host}
+          projectId={route.projectId}
+          projectName={route.projectName}
         />
       );
     case "workflows":
