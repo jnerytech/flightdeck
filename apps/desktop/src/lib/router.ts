@@ -47,6 +47,8 @@ export type Route =
   | { name: "connections"; connect?: string }
   /** Saved commands and prompts (phase 18). */
   | { name: "snippets" }
+  /** Engineering personas (phase 20). */
+  | { name: "personas" }
   /** The vault (phase 16): secrets, their use and the encrypted backup. */
   | {
       name: "vault";
@@ -130,6 +132,7 @@ const NAMES: Record<Route["name"], true> = {
   costs: true,
   connections: true,
   snippets: true,
+  personas: true,
   vault: true,
   "add-host": true,
 };

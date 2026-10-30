@@ -3,6 +3,7 @@ import {
   CircleAlert,
   Coins,
   Columns3,
+  Drama,
   History,
   KeyRound,
   Layers,
@@ -174,6 +175,15 @@ export function Sidebar(props: {
             icon={<Coins aria-hidden="true" className={icon} />}
             label={t("sidebar.costs")}
             onClick={() => go({ name: "costs" })}
+          />
+        )}
+        {/* Hosts from phase 20 keep engineering personas. */}
+        {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "personas", false)) && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Drama aria-hidden="true" className={icon} />}
+            label={t("sidebar.personas")}
+            onClick={() => go({ name: "personas" })}
           />
         )}
         {/* Hosts from phase 18 keep saved commands and prompts. */}
