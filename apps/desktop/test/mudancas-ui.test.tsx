@@ -536,4 +536,56 @@ describe("mudancas-ui", () => {
     await settle(() => !files().includes("solto.txt"));
     expect(files()).not.toContain("solto.txt");
   });
+
+  test("a session lists the files it wrote and says that Bash changes do not count", async () => {
+    const ctx = await setup();
+    const { claudeId } = await openSession(ctx);
+    ctx.eventStore.db
+      .query(
+        "INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        claudeId,
+        join(ctx.repo, "src", "a.ts"),
+        2,
+        "2026-10-01T10:00:00.000Z",
+        "2026-10-02T10:00:00.000Z",
+      );
+    await openChanges();
+    await settle(
+      () => screen.queryByRole("list", { name: "Arquivos que a sessão escreveu" }) !== null,
+    );
+    expect(text("Arquivos que a sessão escreveu")).toContain("a.ts");
+    expect(text("Arquivos que a sessão escreveu")).toContain("2 edições");
+    expect(document.body.textContent ?? "").toContain("Mudanças feitas pelo Bash não entram.");
+  });
+
+  test("a session that wrote nothing says so, and a file's sessions come with the first and the last date", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\n");
+    ctx.eventStore.db
+      .query(
+        "INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        "antiga-1",
+        join(ctx.repo, "novo.txt"),
+        3,
+        "2026-10-01T10:00:00.000Z",
+        "2026-10-02T10:00:00.000Z",
+      );
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    expect(screen.queryByText("A sessão ainda não escreveu arquivos.")).not.toBeNull();
+    await click("Sessões que mexeram em novo.txt");
+    await settle(() => screen.queryByRole("list", { name: "Sessões que mexeram aqui" }) !== null);
+    expect(text("Sessões que mexeram aqui")).toContain(
+      ctx.store.formatDateTime("2026-10-01T10:00:00.000Z"),
+    );
+    expect(text("Sessões que mexeram aqui")).toContain(
+      ctx.store.formatDateTime("2026-10-02T10:00:00.000Z"),
+    );
+    expect(document.body.textContent ?? "").toContain("Mudanças feitas pelo Bash não entram.");
+  });
 });
