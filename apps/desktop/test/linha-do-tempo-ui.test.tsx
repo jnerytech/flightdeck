@@ -95,10 +95,12 @@ async function setup(options: { checkpoints?: boolean; git?: boolean } = {}) {
 async function openTimeline() {
   await click("Linha do tempo");
   await settle(() => screen.queryByRole("dialog", { name: "Linha do tempo" }) !== null);
-  await settle(() => screen.queryByText("arrume o README") !== null);
+  await settle(() => sheet().queryByText("arrume o README") !== null);
 }
 
-const turn = (prompt: string) => screen.queryByText(prompt)?.closest("li") as HTMLElement;
+/** The sheet's own text: the conversation behind it repeats the prompts. */
+const sheet = () => within(screen.queryByRole("dialog", { name: "Linha do tempo" }) as HTMLElement);
+const turn = (prompt: string) => sheet().queryByText(prompt)?.closest("li") as HTMLElement;
 
 describe("linha-do-tempo-ui", () => {
   test("sem os checkpoints no daemon, a sessão não tem linha do tempo", async () => {
@@ -110,7 +112,6 @@ describe("linha-do-tempo-ui", () => {
   test("cada turno mostra o prompt, a hora e se mudou arquivos; abrir mostra quais", async () => {
     await setup();
     await openTimeline();
-    expect(screen.queryByText("oi")).not.toBeNull();
     expect(within(turn("oi")).queryByText("Sem mudança nos arquivos")).not.toBeNull();
     expect(within(turn("oi")).queryByText("Turno 1")).not.toBeNull();
     expect(within(turn("arrume o README")).queryByText("Mudou arquivos")).not.toBeNull();
@@ -139,6 +140,7 @@ describe("linha-do-tempo-ui", () => {
     const dialog = within(
       screen.queryByRole("dialog", { name: "Voltar arquivos até o turno 2" }) as HTMLElement,
     );
+    await settle(() => dialog.queryByText("README.md") !== null);
     expect(dialog.queryByText("README.md")).not.toBeNull();
     expect(dialog.queryByText("volta ao que era")).not.toBeNull();
     expect(dialog.queryByText("novo.txt")).not.toBeNull();
@@ -151,7 +153,12 @@ describe("linha-do-tempo-ui", () => {
     expect(text(join(repo, "README.md"))).toBe("v2\n");
 
     await click("Voltar arquivos até aqui (turno 2)");
-    await settle(() => screen.queryByRole("button", { name: "Voltar arquivos" }) !== null);
+    // The button waits for the preview.
+    await settle(
+      () =>
+        screen.queryByRole("button", { name: "Voltar arquivos" })?.hasAttribute("disabled") ===
+        false,
+    );
     await click("Voltar arquivos");
     await settle(() => !existsSync(join(repo, "novo.txt")));
     expect(text(join(repo, "README.md"))).toBe("# repo\n");
