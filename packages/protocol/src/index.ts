@@ -35,6 +35,65 @@ export const PermissionMode = z.enum([
 ]);
 export type PermissionMode = z.infer<typeof PermissionMode>;
 
+const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
+
+/** What the form sends for a persona (phase 20): a role the Claude takes, with its suggestions. */
+export const PersonaInput = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    icon: z.string().optional(),
+    model: z.string().optional(),
+    effort: PersonaEffort.optional(),
+    /** Only restricts: the tools the persona may use; absent means the session's own. */
+    tools: z.array(z.string()).optional(),
+    /** A suggestion, never above the session's mode. */
+    permissionMode: PermissionMode.optional(),
+    /** The text added to the system prompt, at most 8 KB and with no secret. */
+    body: z.string(),
+  })
+  .strict();
+export type PersonaInput = z.infer<typeof PersonaInput>;
+
+/** A persona in its normal form: every optional field is `null` when absent. */
+export const PersonaFields = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  model: z.string().nullable(),
+  effort: PersonaEffort.nullable(),
+  tools: z.array(z.string()).nullable(),
+  permissionMode: PermissionMode.nullable(),
+  body: z.string(),
+});
+export type PersonaFields = z.infer<typeof PersonaFields>;
+
+/** The persona of a session, as the lists and the timeline show it. */
+export const SessionPersona = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string().nullable(),
+});
+export type SessionPersona = z.infer<typeof SessionPersona>;
+
+/**
+ * Which persona to use: an `id` (the project's, else the host's, else the pack's) or a whole
+ * `definition` (the app's global ones live in the app). `language` picks the pack's language.
+ */
+export const PersonaRef = z
+  .object({
+    id: z.string().optional(),
+    definition: PersonaInput.optional(),
+    language: z.enum(["pt-BR", "en"]).optional(),
+  })
+  .strict()
+  .refine((ref) => (ref.id === undefined) !== (ref.definition === undefined), {
+    message: "informe id ou definition, um dos dois",
+  });
+export type PersonaRef = z.infer<typeof PersonaRef>;
+
 export const ToolInput = z.record(z.string(), z.unknown());
 export type ToolInput = z.infer<typeof ToolInput>;
 
@@ -79,6 +138,8 @@ export const SessionSummary = z.object({
   lastSeq: z.number().int().nonnegative(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** The persona the session was opened with (phase 20). */
+  persona: SessionPersona.nullable().optional(),
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
@@ -208,6 +269,7 @@ export const SessionEvent = z.discriminatedUnion("type", [
     cwd: z.string(),
     name: z.string().nullable(),
     permissionMode: PermissionMode,
+    persona: SessionPersona.optional(),
   }),
   z.object({
     type: z.literal("session.status"),
@@ -303,6 +365,8 @@ export const SessionCreatePayload = z.object({
   model: z.string().min(1).optional(),
   /** Phase 13: for a session that is not resumed later (arena variants). */
   effort: EffortLevel.optional(),
+  /** Opens the session in a persona's role (phase 20). */
+  persona: PersonaRef.optional(),
 });
 
 export const SessionSendPayload = z.object({ sessionId: z.string(), text: z.string().min(1) });
@@ -841,41 +905,6 @@ const SnippetUseContext = z
   })
   .strict();
 
-const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
-
-/** What the form sends for a persona (phase 20): a role the Claude takes, with its suggestions. */
-export const PersonaInput = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    description: z.string(),
-    icon: z.string().optional(),
-    model: z.string().optional(),
-    effort: PersonaEffort.optional(),
-    /** Only restricts: the tools the persona may use; absent means the session's own. */
-    tools: z.array(z.string()).optional(),
-    /** A suggestion, never above the session's mode. */
-    permissionMode: PermissionMode.optional(),
-    /** The text added to the system prompt, at most 8 KB and with no secret. */
-    body: z.string(),
-  })
-  .strict();
-export type PersonaInput = z.infer<typeof PersonaInput>;
-
-/** A persona in its normal form: every optional field is `null` when absent. */
-export const PersonaFields = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  icon: z.string().nullable(),
-  model: z.string().nullable(),
-  effort: PersonaEffort.nullable(),
-  tools: z.array(z.string()).nullable(),
-  permissionMode: PermissionMode.nullable(),
-  body: z.string(),
-});
-export type PersonaFields = z.infer<typeof PersonaFields>;
-
 /** A persona of this host: where it lives, the hash of a versioned file and whether it is trusted. */
 export const Persona = PersonaFields.extend({
   scope: z.enum(["pack", "host", "project"]),
@@ -887,6 +916,15 @@ export const Persona = PersonaFields.extend({
   modified: z.boolean(),
 });
 export type Persona = z.infer<typeof Persona>;
+
+/** A persona ready to use, with where it came from. */
+export const ResolvedPersonaResult = z.object({
+  persona: PersonaFields,
+  source: z.enum(["project", "host", "pack", "inline"]),
+  /** The hash of the versioned file, for the ones from a project. */
+  hash: z.string().nullable(),
+});
+export type ResolvedPersonaResult = z.infer<typeof ResolvedPersonaResult>;
 
 /** The project's `.flightdeck/personas` folder and the files in it that were left out. */
 export const PersonaProjectInfo = z.object({ path: z.string(), errors: z.array(z.string()) });
@@ -2074,6 +2112,11 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** The persona to use, as `session.create` and `flightdeckd claude --persona` would resolve it. */
+  cmd(
+    "personas.resolve",
+    z.object({ ref: PersonaRef, projectPath: z.string().optional() }).strict(),
+  ),
   /** Puts a pack persona back as it came (the host's edit goes away). */
   cmd(
     "personas.reset",
@@ -2500,6 +2543,7 @@ export interface CommandResults {
   "personas.save": Persona;
   "personas.remove": undefined;
   "personas.reset": Persona;
+  "personas.resolve": ResolvedPersonaResult;
   "personas.trust": Persona;
   "snippets.render": { text: string; fields: SnippetField[] };
   "snippets.use": { text: string; terminal: TerminalInfo | null };

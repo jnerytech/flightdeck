@@ -33,8 +33,10 @@ export interface PersonasOptions {
 
 /** What names a persona: its id in the host's or the project's list, or a definition from the app. */
 export interface PersonaRef {
-  id?: string;
+  id?: string | undefined;
   definition?: unknown;
+  /** The language of the pack personas (the context's is used when absent). */
+  language?: Language | undefined;
 }
 
 export interface PersonaContext {
@@ -175,7 +177,10 @@ export class Personas {
         hash: null,
       };
     }
-    const view = this.get(ref.id as string, ctx);
+    const view = this.get(ref.id as string, {
+      projectPath: ctx.projectPath,
+      language: ref.language ?? ctx.language,
+    });
     if (!view.trusted) {
       throw new FlightdeckError(
         "persona_untrusted",

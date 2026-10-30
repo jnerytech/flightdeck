@@ -261,7 +261,15 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
       env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
       settingSources: ["user", "project", "local"],
-      systemPrompt: { type: "preset", preset: "claude_code" },
+      systemPrompt: {
+        type: "preset",
+        preset: "claude_code",
+        ...(opts.persona ? { append: opts.persona.append } : {}),
+      },
+      // `tools` is the set that is available, so a persona can only take away; `allowedTools`
+      // would pre-approve tools, which a persona never does.
+      ...(opts.persona?.effort ? { effort: opts.persona.effort } : {}),
+      ...(opts.persona?.tools ? { tools: opts.persona.tools } : {}),
       canUseTool: async (toolName, input, ctx): Promise<PermissionResult> => {
         const decision = await opts.canUseTool(toolName, input, {
           signal: ctx.signal,

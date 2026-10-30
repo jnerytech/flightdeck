@@ -6,10 +6,12 @@ import {
   type EventEnvelope,
   type PermissionMode,
   SessionEvent,
+  type SessionPersona,
   type SessionStatus,
   type SessionSummary,
   type ToolInput,
 } from "@flightdeck/protocol";
+import type { PersonaSnapshot } from "../personas/snapshot.ts";
 import { MIGRATIONS } from "./migrations.ts";
 
 export type PermissionStatus = "pending" | "allowed" | "denied" | "cancelled" | "expired";
@@ -32,6 +34,8 @@ export interface NewSession {
   status: SessionStatus;
   permissionMode: PermissionMode;
   model: string | null;
+  /** The persona it opens in (phase 20). */
+  persona?: PersonaSnapshot | null;
 }
 
 interface SessionRow {
@@ -42,6 +46,7 @@ interface SessionRow {
   status: SessionStatus;
   permission_mode: PermissionMode;
   model: string | null;
+  persona: string | null;
   last_seq: number;
   created_at: string;
   updated_at: string;
@@ -79,7 +84,13 @@ function toSummary(row: SessionRow): SessionSummary {
     lastSeq: row.last_seq,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...(row.persona ? { persona: personaBadge(JSON.parse(row.persona) as PersonaSnapshot) } : {}),
   };
+}
+
+/** The part of a persona the lists and the timeline show. */
+export function personaBadge(snapshot: PersonaSnapshot): SessionPersona {
+  return { id: snapshot.id, name: snapshot.name, icon: snapshot.icon };
 }
 
 function toPermission(row: PermissionRow): PermissionRecord {
@@ -139,8 +150,29 @@ export class EventStore {
         `INSERT INTO sessions (id, name, cwd, status, permission_mode, model, last_seq, created_at, updated_at)
          VALUES ($id, $name, $cwd, $status, $permissionMode, $model, 0, $ts, $ts)`,
       )
-      .run({ ...session, ts });
+      .run({
+        id: session.id,
+        name: session.name,
+        cwd: session.cwd,
+        status: session.status,
+        permissionMode: session.permissionMode,
+        model: session.model,
+        ts,
+      });
+    if (session.persona) {
+      this.db
+        .query("UPDATE sessions SET persona = ? WHERE id = ?")
+        .run(JSON.stringify(session.persona), session.id);
+    }
     return this.requireSession(session.id);
+  }
+
+  /** The persona the session was opened with, whole; `null` for one without. */
+  sessionPersona(id: string): PersonaSnapshot | null {
+    const row = this.db.query("SELECT persona FROM sessions WHERE id = ?").get(id) as {
+      persona: string | null;
+    } | null;
+    return row?.persona ? (JSON.parse(row.persona) as PersonaSnapshot) : null;
   }
 
   getSession(id: string): SessionSummary | null {

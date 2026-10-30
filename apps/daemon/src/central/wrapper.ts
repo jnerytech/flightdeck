@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ResolvedPersonaResult } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
+import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
 
@@ -43,9 +45,61 @@ async function liveReceptor(dataDir: string, timeoutMs: number): Promise<string 
   return healthy ? url : null;
 }
 
+/**
+ * `--persona <id>` (or `--persona=<id>`) in the first place: the persona to open claude in. Past
+ * the first argument it is the user's own text for claude and is left alone.
+ */
+export function takePersonaFlag(args: string[]): {
+  id: string | null;
+  rest: string[];
+  broken: boolean;
+} {
+  const first = args[0];
+  if (first === "--persona") {
+    const id = args[1];
+    return id === undefined || id.startsWith("-")
+      ? { id: null, rest: args, broken: true }
+      : { id, rest: args.slice(2), broken: false };
+  }
+  if (first?.startsWith("--persona=")) {
+    const id = first.slice("--persona=".length);
+    return id === ""
+      ? { id: null, rest: args, broken: true }
+      : { id, rest: args.slice(1), broken: false };
+  }
+  return { id: null, rest: args, broken: false };
+}
+
+/** Whether the user already passed `flag` (as `--flag value` or `--flag=value`). */
+const passed = (args: string[], flag: string) =>
+  args.some((arg) => arg === flag || arg.startsWith(`${flag}=`));
+
+/**
+ * The claude arguments a persona adds. The user's own always win: what they passed is not
+ * repeated. `--permission-mode` only goes when the persona asks for `plan`, the most restrictive,
+ * because the session's real mode may come from the user's settings and cannot be seen from here.
+ */
+export function personaArgs(
+  persona: ResolvedPersonaResult["persona"],
+  file: string,
+  user: string[],
+): string[] {
+  const out = ["--append-system-prompt-file", file];
+  if (persona.model && !passed(user, "--model")) out.push("--model", persona.model);
+  if (persona.effort && !passed(user, "--effort")) out.push("--effort", persona.effort);
+  // `--tools` sets the available tools, so it only restricts; --allowedTools would pre-approve.
+  if (persona.tools && !passed(user, "--tools")) out.push(`--tools=${persona.tools.join(",")}`);
+  if (persona.permissionMode === "plan" && !passed(user, "--permission-mode")) {
+    out.push("--permission-mode", "plan");
+  }
+  return out;
+}
+
 export interface RunClaudeOptions {
   args: string[];
   config: Config;
+  /** The folder claude runs in: the project whose personas count. The process's when absent. */
+  cwd?: string;
   env: Record<string, string | undefined>;
   /** This daemon's command line, which `claude` runs as the channel's MCP server. */
   self: string[];
@@ -70,7 +124,22 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const { [TERMINAL_LAUNCH_VAR]: requested, ...env } = opts.env;
   const launchId = requested && /^[0-9A-Z]{26}$/.test(requested) ? requested : ulid();
   // Print mode ignores development channels: plain claude, no channel, no warning.
-  const print = opts.args.includes("-p") || opts.args.includes("--print");
+  const { id: personaId, rest: args, broken } = takePersonaFlag(opts.args);
+  if (broken) {
+    opts.log.error("flightdeckd: --persona pede o id da persona");
+    return 1;
+  }
+  // Asked for on purpose, so a persona that cannot be had stops here: no claude without the role.
+  let persona: ResolvedPersonaResult | null = null;
+  if (personaId) {
+    try {
+      persona = await fetchPersona(opts.config, personaId, opts.cwd ?? process.cwd());
+    } catch (error) {
+      opts.log.error(`flightdeckd: persona ${personaId}: ${(error as Error).message}`);
+      return 1;
+    }
+  }
+  const print = args.includes("-p") || args.includes("--print");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
   const token = opts.config.hooks.token;
   let mcpConfigPath: string | null = null;
@@ -86,11 +155,52 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
     );
   }
-  const proc = Bun.spawn(buildClaudeLaunch({ claude, args: opts.args, mcpConfigPath }), {
-    env: { ...env, FLIGHTDECK_LAUNCH_ID: launchId },
-    stdio: ["inherit", "inherit", "inherit"],
+  // The body travels in a file that only lives while claude runs.
+  let personaFile: string | null = null;
+  if (persona) {
+    const dir = join(opts.config.dataDir, "personas");
+    mkdirSync(dir, { recursive: true });
+    personaFile = join(dir, `${launchId}.md`);
+    writeFileSync(personaFile, persona.persona.body);
+  }
+  try {
+    const proc = Bun.spawn(
+      buildClaudeLaunch({
+        claude,
+        args:
+          persona && personaFile
+            ? [...personaArgs(persona.persona, personaFile, args), ...args]
+            : args,
+        mcpConfigPath,
+      }),
+      {
+        env: { ...env, FLIGHTDECK_LAUNCH_ID: launchId },
+        stdio: ["inherit", "inherit", "inherit"],
+      },
+    );
+    return await proc.exited;
+  } finally {
+    if (mcpConfigPath) rmSync(mcpConfigPath, { force: true });
+    if (personaFile) rmSync(personaFile, { force: true });
+  }
+}
+
+/** Asks the daemon of this host for the persona, which applies the project's, the trust and the pack. */
+async function fetchPersona(
+  config: Config,
+  id: string,
+  cwd: string,
+): Promise<ResolvedPersonaResult> {
+  const daemon = await DaemonClient.connect(
+    daemonUrl(config),
+    config.token,
+    "flightdeckd-claude",
+  ).catch(() => {
+    throw new Error("o daemon do Flightdeck está fora do ar");
   });
-  const code = await proc.exited;
-  if (mcpConfigPath) rmSync(mcpConfigPath, { force: true });
-  return code;
+  try {
+    return await daemon.call("personas.resolve", { ref: { id }, projectPath: cwd });
+  } finally {
+    daemon.close();
+  }
 }

@@ -3,6 +3,7 @@ import type {
   McpLiveStatus,
   PermissionMode,
   PermissionUpdate,
+  PersonaFields,
   SessionEvent,
   ToolInput,
 } from "@flightdeck/protocol";
@@ -50,6 +51,15 @@ export interface StartOptions {
   /** Already sanitized environment for the agent process. */
   env: Record<string, string>;
   canUseTool: CanUseToolFn;
+  /**
+   * The role the session plays (phase 20): `append` is added to the system prompt, `tools` is the
+   * set of tools available (it only restricts; `null` leaves the session's own).
+   */
+  persona?: {
+    append: string;
+    effort?: NonNullable<PersonaFields["effort"]>;
+    tools?: string[] | null;
+  };
 }
 
 /** What the SDK's `Query.rewindFiles` answers (phase 12). */

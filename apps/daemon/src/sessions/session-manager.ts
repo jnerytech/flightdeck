@@ -20,6 +20,9 @@ import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-appro
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
+import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
+import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
+import type { PersonaContext, PersonaRef, ResolvedPersona } from "../personas/store.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -27,7 +30,7 @@ import type {
   RewindFilesResult,
   RuntimeEvent,
 } from "../runtime/types.ts";
-import type { EventStore } from "../store/event-store.ts";
+import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 
 export const RESTART_REASON = "daemon reiniciado";
@@ -49,6 +52,8 @@ export interface SessionManagerOptions {
   risk?: RiskClassifier;
   /** Phase 13: the projects' automatic approval. */
   autoApprove?: Pick<AutoApprover, "decide">;
+  /** The personas a session can be opened in (phase 20). */
+  personas?: { resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona };
 }
 
 export interface TurnEdge {
@@ -70,6 +75,15 @@ interface LiveSession {
   closing: boolean;
   /** The first turn's prompt and uuid, until session.init names the Claude session. */
   pendingBefore?: { text: string; uuid: string };
+}
+
+/** What the runtime is given of a session's persona. */
+function personaOf(snapshot: PersonaSnapshot) {
+  return {
+    append: snapshot.append,
+    ...(snapshot.effort ? { effort: snapshot.effort } : {}),
+    tools: snapshot.tools,
+  };
 }
 
 const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);
@@ -166,7 +180,12 @@ export class SessionManager {
   create(payload: CommandPayload<"session.create">): { sessionId: string } {
     const cwd = resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const id = ulid();
-    const permissionMode = payload.permissionMode ?? this.opts.defaultPermissionMode;
+    // Resolved before anything is created: a missing, untrusted or invalid persona leaves no session.
+    const resolved = payload.persona ? this.resolvePersona(payload.persona, cwd) : null;
+    const asked = payload.permissionMode ?? this.opts.defaultPermissionMode;
+    // A persona only suggests: it counts when it is less permissive than what was asked for.
+    const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
+    const persona = resolved ? snapshotOf(resolved.persona, resolved.hash) : null;
     const name = payload.name ?? null;
     this.store.createSession({
       id,
@@ -174,9 +193,16 @@ export class SessionManager {
       cwd,
       status: "starting",
       permissionMode,
-      model: payload.model ?? null,
+      model: payload.model ?? persona?.model ?? null,
+      persona,
     });
-    this.emit(id, { type: "session.created", cwd, name, permissionMode });
+    this.emit(id, {
+      type: "session.created",
+      cwd,
+      name,
+      permissionMode,
+      ...(persona ? { persona: personaBadge(persona) } : {}),
+    });
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
@@ -354,25 +380,40 @@ export class SessionManager {
 
   // -- internals ------------------------------------------------------------
 
+  private resolvePersona(ref: PersonaRef, cwd: string): ResolvedPersona {
+    if (!this.opts.personas) {
+      throw new FlightdeckError("invalid_state", "personas indisponíveis neste host");
+    }
+    return this.opts.personas.resolve(ref, { projectPath: cwd, language: ref.language });
+  }
+
   private startRun(sessionId: string, resume?: string): LiveSession {
     const session = this.get(sessionId);
+    // The persona the session opened with, as it was then: the prompt it appends is in no transcript.
+    const persona = this.store.sessionPersona(sessionId);
     const run = this.opts.runtime.start({
       cwd: session.cwd,
       permissionMode: session.permissionMode,
       env: buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
       canUseTool: (toolName, input, ctx) =>
-        this.broker.request(
-          sessionId,
-          toolName,
-          input,
-          ctx.signal,
-          parseSuggestions(ctx.suggestions),
-        ),
+        persona && !toolAllowed(persona.tools, toolName)
+          ? Promise.resolve({
+              behavior: "deny",
+              message: `a persona ${persona.name} não usa a ferramenta ${toolName}`,
+            })
+          : this.broker.request(
+              sessionId,
+              toolName,
+              input,
+              ctx.signal,
+              parseSuggestions(ctx.suggestions),
+            ),
       ...(resume ? { resume } : {}),
       ...(session.model ? { model: session.model } : {}),
       ...(this.efforts.has(sessionId)
         ? { effort: this.efforts.get(sessionId) as EffortLevel }
         : {}),
+      ...(persona ? { persona: personaOf(persona) } : {}),
     });
     const live: LiveSession = { run, queue: [], closing: false };
     this.live.set(sessionId, live);

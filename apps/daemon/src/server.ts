@@ -1199,6 +1199,19 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, personas().list(command.payload));
       case "personas.save":
         return ok(command.type, personas().save(command.payload));
+      case "personas.resolve": {
+        const { ref, projectPath } = command.payload;
+        const store = personas();
+        try {
+          return ok(command.type, store.resolve(ref, { projectPath, language: ref.language }));
+        } catch (error) {
+          // A folder the daemon does not allow has no personas of its own: the host's and the pack's apply.
+          if (projectPath && error instanceof FlightdeckError && error.code === "forbidden_cwd") {
+            return ok(command.type, store.resolve(ref, { language: ref.language }));
+          }
+          throw error;
+        }
+      }
       case "personas.reset":
         return ok(
           command.type,

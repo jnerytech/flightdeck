@@ -524,4 +524,9 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (project_path, id, hash)
   );
   `,
+  // Phase 20: the persona a session was opened with, kept whole (JSON) because the prompt it
+  // appends is not in the transcript and every run of the session has to be given it again.
+  `
+  ALTER TABLE sessions ADD COLUMN persona TEXT;
+  `,
 ];

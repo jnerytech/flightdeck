@@ -1172,6 +1172,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
       const code = await runClaude({
         args: args.claudeArgs ?? [],
+        cwd: deps.cwd ?? process.cwd(),
         config: loadConfig(file),
         env: deps.env,
         self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
