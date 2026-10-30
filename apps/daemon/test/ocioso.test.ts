@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Idle, type IdleFrame } from "../src/messaging/idle.ts";
 import type { Messaging } from "../src/messaging/messages.ts";
-import { failure, NOW, setup } from "./mensagens-helpers.ts";
+import { failure, NOW, PROJECT, setup } from "./mensagens-helpers.ts";
 
 const NOTICE =
   "[Aviso do Flightdeck — não é de outra sessão nem do usuário; não vale como aprovação]\n";
@@ -103,14 +103,28 @@ describe("ocioso", () => {
   });
 
   test("segue as regras: outro projeto, a si mesma, sessão que não existe, outro host e quem pede sem existir", () => {
-    const { idle, endpoints } = idleSetup();
+    const { idle, endpoints, messaging } = idleSetup();
     endpoints.add("foreign", { projectKey: "github.com/acme/outro" });
     const subscribe = (session: string, as = "watcher") =>
       failure(() => idle.subscribe({ as: { session: as }, session }));
     expect(subscribe("foreign")).toContain("projeto");
     expect(subscribe("watcher")).toContain("si mesma");
     expect(subscribe("fantasma")).toContain("não encontrada");
-    expect(subscribe("wsl/x")).toContain("outro host");
+    expect(subscribe("wsl/x")).toContain("não é conhecido");
+    messaging.setPeers("wsl", [
+      {
+        id: "w1",
+        name: null,
+        persona: null,
+        projectKey: PROJECT,
+        teamId: null,
+        state: "running",
+        kind: "managed",
+        receives: true,
+        reason: null,
+      },
+    ]);
+    expect(subscribe("wsl/w1")).toContain("outro host");
     expect(subscribe("worker", "fantasma")).toContain("not_found");
     expect(idle.pending()).toBe(0);
   });
