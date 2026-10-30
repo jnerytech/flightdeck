@@ -90,8 +90,8 @@ describe("leitor", () => {
     const hitEl = document.querySelector(`[data-uuid="m${HIT}"]`);
     expect(hitEl?.getAttribute("aria-current")).toBe("true");
     // Same look as the chat: user and assistant bubbles, no message box.
-    expect(hitEl?.className).toContain("msg-user");
-    expect(document.querySelector('[data-uuid="m31"]')?.className).toContain("msg-assistant");
+    expect(hitEl?.className).toContain("bg-secondary");
+    expect(document.querySelector('[data-uuid="m31"]')?.className).not.toContain("bg-secondary");
     expect(screen.queryByLabelText("Mensagem")).toBeNull();
     expect(screen.queryByText("alfa · p")).not.toBeNull();
   });
