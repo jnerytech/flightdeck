@@ -11,6 +11,7 @@ import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
 import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
+import { Automations } from "../../daemon/src/automations/automations.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
@@ -75,6 +76,8 @@ export function daemon(
     mcpServers?: string[];
     /** The project's issues (phase 13), read through the `gh` and `az` on the PATH. */
     issues?: boolean;
+    /** The projects' automations (phase 13); the scheduler is not started. */
+    automations?: boolean;
     /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
     risk?: (root: string) => RiskClassifier;
   } = {},
@@ -158,7 +161,9 @@ export function daemon(
     : undefined;
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   const budgets = options.budgets?.(store.db);
-  const issues = options.issues ? new Issues({ board }) : undefined;
+  const issues = options.issues || options.automations ? new Issues({ board }) : undefined;
+  const automations =
+    options.automations && issues ? new Automations({ db: store.db, board, issues }) : undefined;
   // Like the real daemon, costs come with the quota's history.
   const quotaHistory =
     options.quotaHistory?.(store.db) ??
@@ -193,6 +198,8 @@ export function daemon(
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
       ...(issues ? { issues } : {}),
+      ...(options.issues && issues ? { issues } : {}),
+      ...(automations ? { automations } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -223,6 +230,7 @@ export function daemon(
     settingsFile,
     configFile,
     eventStore: store,
+    automations,
   };
 }
 
