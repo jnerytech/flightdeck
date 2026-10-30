@@ -31,6 +31,7 @@ import type {
   SessionSummary,
   SshTarget,
   TerminalInfo,
+  VaultRequestFrame,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
@@ -62,6 +63,13 @@ import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
+import { type NewSecret, type SecretMeta, Vault } from "./vault.ts";
+import {
+  answerVaultRequest,
+  denyAllPolicy,
+  type VaultOutcome,
+  type VaultPolicy,
+} from "./vault-requests.ts";
 import { hasFeature } from "./version.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
@@ -124,6 +132,8 @@ export interface AppState {
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
   ssh: Record<string, SshTarget[]>;
+  /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
+  secrets: SecretMeta[];
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -190,6 +200,7 @@ export type HostCommandType = Extract<
   | `changes.${string}`
   | `review.${string}`
   | `file.${string}`
+  | "vault.deliver"
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
@@ -272,6 +283,8 @@ export interface AppStoreOptions {
   daemonUpdateTimeoutMs?: number;
   /** How often the app looks for its own update while open (6 h when absent). */
   appUpdateIntervalMs?: number;
+  /** Phase 16: decides a `vault.request` of the daemon; denies them all when absent. */
+  vaultPolicy?: VaultPolicy;
 }
 
 /** A toast: a host's error (by code, the daemon's message as detail) or a short success. */
@@ -472,6 +485,10 @@ export class AppStore {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot()));
       this.clearShownUnread();
     });
+    this.workspace.subscribe(() =>
+      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
+    );
+    this.vault = new Vault(platform);
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
@@ -492,6 +509,7 @@ export class AppStore {
       budgets: {},
       ssh: {},
       askpass: [],
+      secrets: new Vault(platform).list(),
       externals: {},
       externalRequests: {},
       meta: {},
@@ -1393,6 +1411,7 @@ export class AppStore {
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
+      onVaultRequest: (request) => void this.onVaultRequest(config, request),
       onRunUpdated: (run) => this.onRun(config.id, run),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
@@ -1693,6 +1712,41 @@ export class AppStore {
     if (!info) return null;
     this.sshTerminals.set(`${hostId}/${info.terminalId}`, { name: target.name, tags: target.tags });
     return info.terminalId;
+  /** Phase 16: the vault, whose values live in the system keyring. */
+  readonly vault: Vault;
+
+  private readonly vaultListeners = new Set<(outcome: VaultOutcome) => void>();
+
+  async addSecret(input: NewSecret): Promise<SecretMeta> {
+    const meta = await this.vault.create(input);
+    this.update({ secrets: this.vault.list() });
+    return meta;
+  }
+
+  async removeSecret(id: string): Promise<void> {
+    await this.vault.remove(id);
+    this.update({ secrets: this.vault.list() });
+  }
+
+  /** Calls `listener` with the result of each `vault.request` the daemon makes. */
+  onVaultOutcome(listener: (outcome: VaultOutcome) => void): () => void {
+    this.vaultListeners.add(listener);
+    return () => {
+      this.vaultListeners.delete(listener);
+    };
+  }
+
+  /** A `vault.request` of the daemon: the policy decides, and nothing is delivered unless it says so. */
+  private async onVaultRequest(config: HostConfig, request: VaultRequestFrame): Promise<void> {
+    const outcome = await answerVaultRequest(request, {
+      hostId: config.id,
+      hostUrl: config.url,
+      vault: this.vault,
+      policy: this.options.vaultPolicy ?? denyAllPolicy,
+      deliver: (payload) => this.dispatch(config.id, "vault.deliver", payload),
+      now: this.options.now ?? Date.now,
+    });
+    for (const listener of this.vaultListeners) listener(outcome);
   }
 
   async removeBudget(hostId: string, budget: Budget): Promise<void> {
