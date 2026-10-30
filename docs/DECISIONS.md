@@ -2284,3 +2284,64 @@ O mod passou a se chamar **`flightdeck`** (era `flightdeck-actions`, da Fase 17)
 - **`smoke:teams`:** foi escrito depois das áreas. O vermelho veio duas vezes por mutação: com o detector de laço desligado (`o laço devia ser recusado`) e com o aviso de ocioso desligado (`timeout esperando os dois avisos de ocioso`). Como o runtime falso não raciocina, **o script faz o papel da coordenadora**, chamando as ferramentas do MCP com a identidade dela (despacha, assina o ocioso, confere a worktree de cada executora com `git log`, aceita a de commit e recusa a que não fez); o app de teste no meio carrega as mensagens entre os dois daemons e conta a cada um o que o outro tem.
 - **Migração:** uma, no fim (`session_messages`, `messaging_config`, `messaging_paused` e `teams`). Nenhum teste fixa o índice dela.
 - **Áreas do app que esperam a Fase 10:** `conversas-ui` e `times-ui`.
+
+# Phase 21 decisions: the app
+
+The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `precisa-de-voce`, `regras-mensagens-ui` and `nomes-ui`. This round also changed the daemon in one place: `mensagens-regras` now keeps the retention in the policy.
+
+## Screens and features
+
+- **Each screen depends on what the host announces.**
+  - "Conversas" (route `conversations`) and the session's "Mensagens" tab need `messaging`.
+  - "Times" (route `teams`) needs `teams`.
+  - The standard names in Sessões need `names`.
+  - A host without the feature is not asked for the commands and shows nothing of it.
+- **The relay runs in the app.**
+  - On connect, the app sends `messages.watch` and `teams.watch`.
+  - A `messages.relay` frame goes to the online host whose `hostInfo.hostName` is the target. The result goes back to the origin with `messages.relayed`.
+  - A `messages.updated` from another host goes back to the origin too.
+  - Every 5 seconds (`peersSyncMs`), each host's `messages.directory` is sent to the others as `messages.peers`.
+
+## Precisa de você
+
+- **A paused loop (`messaging.alert`) is an entry in "Precisa de você".** It is kept once per pair and host. It also raises an OS notification and counts in the sidebar.
+- **It follows the budget alerts.** The tray menu and the tab badge list only approvals, so the loop entry does not appear there.
+- **Soltar o par reads the policy first.**
+  - `messaging.rules.set` replaces the whole policy, and the daemon fills any field left out with its default.
+  - So Soltar reads `messaging.rules.get` first and sends the same policy back, with `unpause: [<pair key>]`.
+  - The pair key is the daemon's `[from, to].sort().join("|")`.
+  - Settings uses the same `releasePair` path, and it clears the entry in "Precisa de você" too.
+- **A team paused by the quota notifies.** Every `teams.updated` with a `reason` notifies as "Time <name>" with the reason as the text. The Times row already says "pausado pela cota".
+- **No entry for "a task that needs you".** The spec puts that entry in "Precisa de você", but the daemon has no frame for it. When a team needs the user, it says so in a message, which shows in Conversas and in the session's Mensagens tab.
+
+## Rules in Configurações
+
+- **Each host with `messaging` has its own section.** The section holds:
+  - the exceptions, one way or both (`bothWays`), with selectors by session, project, team or host;
+  - the retention in days;
+  - the pairs paused for a loop, each with Soltar.
+- **Each save sends the policy the host gave, with one field changed.** The daemon would put defaults back in the missing fields. A refusal shows the daemon's reason, and the list stays as the host keeps it.
+- **Exceptions are added in Configurações only.** The spec allows them "em Configurações, ou no time"; Configurações covers that. The team screen links nothing.
+- **The retention is in the messaging policy** (`retentionDays`, a positive integer, 30 by default).
+  - This replaces the service option `retentionDays`, which nothing set. The Portuguese "Entrega" note above, which says that option is waiting for phase 10, is outdated.
+  - A policy stored before this change has no `retentionDays` and gets the default of 30.
+
+## Standard names in Sessões
+
+- **Names come from `names.list`.** They are matched by the managed id, or by the Claude session id for terminals and history.
+- **The name the user gave wins.** Then the standard name, then the origin's own title.
+- **The order inside a group:**
+  1. sessions that need you;
+  2. pinned sessions;
+  3. sessions with a standard name, in name order, with numbers compared as numbers (`· 2` before `· 10`);
+  4. latest activity.
+  - The groups are still ordered by latest activity.
+- **The persona filter lists the personas of the standard names.** It is kept with the other filters.
+- **The hub reloads once the host's `host.info` arrives.** Otherwise the first visit, made before the app knew the host has `names`, would show folder titles.
+
+## The rename of the mod
+
+- **The mod and its tools are renamed.** The app, the README and both manuals follow:
+  - the mod `flightdeck-actions` is now `flightdeck`;
+  - the command `/flightdeck-actions` is now `/flightdeck`;
+  - the tools `mcp__flightdeck-actions__*` are now `mcp__flightdeck__*`.
