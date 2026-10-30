@@ -56,12 +56,9 @@ export function translator(lang: Lang): T {
   const rules = new Intl.PluralRules(lang);
   return (key, vars = {}) => {
     const found = entry(DICTIONARIES[lang], key);
-    const text =
-      typeof found === "string"
-        ? found
-        : rules.select(Number(vars.n ?? 0)) === "one"
-          ? found.one
-          : found.other;
+    let text: string;
+    if (typeof found === "string") text = found;
+    else text = rules.select(Number(vars.n ?? 0)) === "one" ? found.one : found.other;
     return text.replace(/\{(\w+)\}/g, (all, name: string) =>
       name in vars ? String(vars[name]) : all,
     );

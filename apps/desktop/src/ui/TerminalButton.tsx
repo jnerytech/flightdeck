@@ -17,14 +17,10 @@ export function TerminalButton(props: {
   const { store, hostId, target, name } = props;
   const launch = store.terminalLaunch(hostId, target);
   if (!launch) return null;
-  const label =
-    launch.kind === "spawn"
-      ? name
-        ? t("terminal.openNamed", { name })
-        : t("terminal.open")
-      : name
-        ? t("terminal.copyNamed", { name })
-        : t("terminal.copy");
+  let label: string;
+  if (launch.kind === "spawn")
+    label = name ? t("terminal.openNamed", { name }) : t("terminal.open");
+  else label = name ? t("terminal.copyNamed", { name }) : t("terminal.copy");
   return (
     <Button variant="outline" size="sm" onClick={() => void store.openInTerminal(hostId, target)}>
       {label}

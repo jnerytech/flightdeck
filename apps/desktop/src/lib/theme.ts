@@ -82,7 +82,8 @@ export class ThemeController {
   private apply(notify = true): void {
     const env = this.env as ThemeEnv;
     const systemDark = env.matchMedia(DARK_QUERY).matches;
-    this.resolved = this.mode === "system" ? (systemDark ? "dark" : "light") : this.mode;
+    const system = systemDark ? "dark" : "light";
+    this.resolved = this.mode === "system" ? system : this.mode;
     env.root.classList.toggle("dark", this.resolved === "dark");
     if (notify) for (const listener of this.listeners) listener();
   }

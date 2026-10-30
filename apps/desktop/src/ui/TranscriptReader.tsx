@@ -176,28 +176,32 @@ export function TranscriptReader(props: {
             {t("reader.loadPrevious")}
           </Button>
         )}
-        {messages.map((m) =>
-          m.kind !== "message" ? (
-            <p
-              key={m.uuid}
-              data-uuid={m.uuid}
-              className="text-center text-muted-foreground text-xs"
-              aria-current={m.uuid === target.focusUuid ? "true" : undefined}
-            >
-              {m.text}
-            </p>
-          ) : (
+        {messages.map((m) => {
+          const focused = m.uuid === target.focusUuid;
+          if (m.kind !== "message") {
+            return (
+              <p
+                key={m.uuid}
+                data-uuid={m.uuid}
+                className="text-center text-muted-foreground text-xs"
+                aria-current={focused ? "true" : undefined}
+              >
+                {m.text}
+              </p>
+            );
+          }
+          return (
             <Message
               key={m.uuid}
               from={m.role === "user" ? "user" : "assistant"}
               data-uuid={m.uuid}
-              {...(m.uuid === target.focusUuid ? { "aria-current": "true" as const } : {})}
-              className={cn(m.uuid === target.focusUuid && "ring-2 ring-ring")}
+              {...(focused ? { "aria-current": "true" as const } : {})}
+              className={cn(focused && "ring-2 ring-ring")}
             >
               {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
             </Message>
-          ),
-        )}
+          );
+        })}
       </Timeline>
     </SessionPane>
   );

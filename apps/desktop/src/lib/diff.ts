@@ -15,7 +15,9 @@ function lines(value: string): string[] {
 
 function between(before: string, after: string): DiffLine[] {
   return diffLines(before, after).flatMap((part) => {
-    const op = part.added ? "+" : part.removed ? "-" : " ";
+    let op = " ";
+    if (part.added) op = "+";
+    else if (part.removed) op = "-";
     return lines(part.value).map((text) => ({ op, text }) as DiffLine);
   });
 }

@@ -63,6 +63,16 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
 
   const last = status?.lastBackup;
   const cleanup = status?.lastPrune;
+  const backupText = last
+    ? t("maintenance.lastBackup", {
+        when: store.formatDateTime(last.at),
+        size: formatBytes(last.bytes),
+      })
+    : t("maintenance.noBackup");
+  const dryRunNote = cleanup?.dryRun ? t("maintenance.dryRun") : "";
+  const cleanupText = cleanup
+    ? t("maintenance.lastCleanup", { when: store.formatDateTime(cleanup.at) }) + dryRunNote
+    : t("maintenance.noCleanup");
   return (
     <section aria-label={t("maintenance.title")}>
       <Panel title={t("maintenance.title")}>
@@ -76,20 +86,8 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
                 external: status.counts.externalSessions,
               })}
             </li>
-            <li>
-              {last
-                ? t("maintenance.lastBackup", {
-                    when: store.formatDateTime(last.at),
-                    size: formatBytes(last.bytes),
-                  })
-                : t("maintenance.noBackup")}
-            </li>
-            <li>
-              {cleanup
-                ? t("maintenance.lastCleanup", { when: store.formatDateTime(cleanup.at) }) +
-                  (cleanup.dryRun ? t("maintenance.dryRun") : "")
-                : t("maintenance.noCleanup")}
-            </li>
+            <li>{backupText}</li>
+            <li>{cleanupText}</li>
           </ul>
         ) : (
           <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
