@@ -5,6 +5,7 @@
  * `--shots` takes the prints (scripts/demo-shots.ts) into apps/desktop/screenshots/ and exits.
  */
 import { join, resolve } from "node:path";
+import { runE2e } from "./demo-e2e.ts";
 import { seedDemo } from "./demo-seed.ts";
 import { takeShots } from "./demo-shots.ts";
 
@@ -55,6 +56,20 @@ if (process.argv.includes("--shots")) {
     await stop();
   }
   process.exit(0);
+}
+
+if (process.argv.includes("--e2e")) {
+  let failed = false;
+  try {
+    await runE2e(url, seed.ids, browserEnv, log);
+    console.log("E2E OK");
+  } catch (error) {
+    failed = true;
+    console.error((error as Error).message);
+  } finally {
+    await stop();
+  }
+  process.exit(failed ? 1 : 0);
 }
 
 console.log(`\nFlightdeck demo em ${url} (Ctrl+C para sair)`);
