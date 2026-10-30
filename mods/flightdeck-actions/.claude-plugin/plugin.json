@@ -1,6 +1,7 @@
 {
   "name": "flightdeck-actions",
   "version": "0.17.0",
+  "author": { "name": "Flightdeck" },
   "description": "Run Flightdeck actions that use a vault secret without Claude ever seeing it: list_actions, run_action, a band while one runs, and /flightdeck-actions.",
   "types": "./types/index.d.ts"
 }

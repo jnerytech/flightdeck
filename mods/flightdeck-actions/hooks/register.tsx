@@ -67,7 +67,11 @@ export const register: Register = (on) => {
     return done.exitCode === 0
       ? { result: done.stdout }
       : { deny: `flightdeck-actions: ${done.stderr.trim() || "flightdeckd action list failed"}` };
-  });
+  }).catch(($, e, next) =>
+    next.called
+      ? next(e)
+      : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
+  );
 
   on("tool.call", { tool: RUN }, async ($, e) => {
     const name = typeof e.name === "string" ? e.name : "";
@@ -93,7 +97,11 @@ export const register: Register = (on) => {
         return at < 0 ? list : [...list.slice(0, at), ...list.slice(at + 1)];
       });
     }
-  });
+  }).catch(($, e, next) =>
+    next.called
+      ? next(e)
+      : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
+  );
 
   on("command.run", { command: "flightdeck-actions" }, async ($) => {
     const done = await $.process.run([DAEMON, "action", "list"]);
