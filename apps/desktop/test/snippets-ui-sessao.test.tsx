@@ -32,6 +32,7 @@ async function open() {
   await h.save({ name: "explicar", type: "prompt", text: "Explique {{assunto}}." });
   await h.save({ name: "status", type: "command", run: "git status" });
   store.globalSnippets.save({ name: "resumir", type: "prompt", text: "Resuma o que mudou." });
+  store.globalSnippets.save({ name: "traduzir", type: "prompt", text: "Traduza {{texto}}." });
   const { sessionId } = h.d.manager.create({ cwd: h.d.project, prompt: "oi", name: "Gerenciada" });
   await poll(() => h.d.manager.get(sessionId).status === "idle");
   render(<App store={store} />);
@@ -64,7 +65,7 @@ describe("snippets-uso: in the session", () => {
   test("/ in the message box lists the prompt snippets of the host and of the app, and not the commands", async () => {
     await open();
     await typeInBox("/");
-    expect(menu().sort()).toEqual(["explicar", "resumir", "revisar"]);
+    expect(menu().sort()).toEqual(["explicar", "resumir", "revisar", "traduzir"]);
     await typeInBox("/rev");
     expect(menu()).toEqual(["revisar"]);
   });
@@ -121,5 +122,17 @@ describe("snippets-uso: in the session", () => {
     });
     await settle(() => document.body.textContent?.includes("Resuma o que mudou.") === true);
     expect(document.body.textContent).toContain("Resuma o que mudou.");
+  });
+
+  test("a global prompt with a field to fill also goes in as written", async () => {
+    await open();
+    await typeInBox("/trad");
+    const option = screen.queryByRole("option", { name: "traduzir" });
+    expect(option).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(option as HTMLElement);
+    });
+    await settle(() => box()?.value.startsWith("Traduza") === true);
+    expect(box()?.value).toBe("Traduza {{texto}}.");
   });
 });
