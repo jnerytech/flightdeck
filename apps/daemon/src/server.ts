@@ -145,6 +145,8 @@ export interface ServerOptions {
   sshHostKeys?: HostKeys;
   /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test` (phase 15). */
   sshConnect?: SshConnector;
+  /** Where the server writes what it refuses (never a secret). */
+  log?: (message: string) => void;
   /** The ssh password and passphrase requests behind `askpass.*` (phase 15). */
   askpass?: AskpassBroker;
   /** Inline comments behind `review.*` (phase 11). */

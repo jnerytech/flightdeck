@@ -5,7 +5,12 @@ import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import { runCli, vaultActions } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
-import { isVaultTransport, Vault, type VaultDelivery } from "../src/vault/vault.ts";
+import {
+  isVaultTransport,
+  requireVaultTransport,
+  Vault,
+  type VaultDelivery,
+} from "../src/vault/vault.ts";
 import { newManager, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
@@ -415,5 +420,94 @@ describe("cofre-entrega", () => {
     expect(refused).toMatchObject({ ok: false, error: { code: "invalid_state" } });
     expect(JSON.stringify(refused)).not.toContain("SEGREDO-DE-TESTE");
     expect(JSON.stringify(refused)).not.toContain(sha(VALUE));
+  });
+
+  test("a vault key from outside loopback and Tailscale is refused with the reason and logged without the key", () => {
+    const logs: string[] = [];
+    const refused = code(() =>
+      requireVaultTransport("192.168.1.5", "ssh.connect", (m) => logs.push(m)),
+    );
+    expect(refused).toStartWith("invalid_state:");
+    expect(refused).toContain("loopback");
+    expect(refused).toContain("Tailscale");
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toContain("192.168.1.5");
+    expect(logs[0]).toContain("ssh.connect");
+    for (const ok of ["127.0.0.1", "::1", "100.64.0.9", "fd7a:115c:a1e0::1"]) {
+      expect(code(() => requireVaultTransport(ok, "ssh.connect"))).toBe("ok");
+    }
+  });
+
+  test("ssh.connect and ssh.test with a key from a LAN connection are refused before anything runs, and the key is not logged", async () => {
+    const lan = Object.values(networkInterfaces())
+      .flatMap((list) => list ?? [])
+      .find((i) => i.family === "IPv4" && !i.internal && !isVaultTransport(i.address));
+    if (!lan) return; // a machine with no such interface (the unit test above is the same function)
+    const calls: string[] = [];
+    const logs: string[] = [];
+    const server = startServer({
+      manager: newManager().manager,
+      sshConnect: {
+        connect: async (req: { privateKey?: string }) =>
+          void calls.push(`connect:${req.privateKey ?? ""}`),
+        test: async (req: { privateKey?: string }) =>
+          void calls.push(`test:${req.privateKey ?? ""}`),
+      } as never,
+      log: (m) => logs.push(m),
+      hostName: "h",
+      bind: lan.address,
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+      allowedNetworks: [`${lan.address}/32`],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const key =
+      "-----BEGIN OPENSSH PRIVATE KEY-----\nSEGREDO-DE-TESTE-ssh\n-----END OPENSSH PRIVATE KEY-----\n";
+    const connect = await client.request("ssh.connect", {
+      targetId: "t1",
+      cols: 80,
+      rows: 24,
+      privateKey: key,
+    });
+    const test = await client.request("ssh.test", { targetId: "t1", privateKey: key });
+    for (const ack of [connect, test]) {
+      expect(ack).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+      expect(JSON.stringify(ack)).toContain("Tailscale");
+      expect(JSON.stringify(ack)).not.toContain("SEGREDO-DE-TESTE");
+    }
+    expect(calls).toEqual([]);
+    expect(logs.join("\n")).not.toContain("SEGREDO-DE-TESTE");
+    expect(logs.length).toBeGreaterThan(0);
+    // Without a key (agent or key file on the host) the LAN connection still works.
+    await client.request("ssh.connect", { targetId: "t1", cols: 80, rows: 24 });
+    expect(calls).toEqual(["connect:"]);
+  });
+
+  test("over loopback the key reaches ssh.connect and ssh.test", async () => {
+    const calls: string[] = [];
+    const server = startServer({
+      manager: newManager().manager,
+      sshConnect: {
+        connect: async (req: { privateKey?: string }) =>
+          void calls.push(`connect:${req.privateKey}`),
+        test: async (req: { privateKey?: string }) => void calls.push(`test:${req.privateKey}`),
+      } as never,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    await client.request("ssh.connect", { targetId: "t1", cols: 80, rows: 24, privateKey: "k1" });
+    await client.request("ssh.test", { targetId: "t1", privateKey: "k2" });
+    expect(calls).toEqual(["connect:k1", "test:k2"]);
   });
 });

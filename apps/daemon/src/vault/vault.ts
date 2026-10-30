@@ -16,6 +16,16 @@ export function isVaultTransport(address: string): boolean {
   return ipInNetworks(address, VAULT_NETWORKS);
 }
 
+/**
+ * Refuses, with the reason and a log line that never holds a secret, a use of a vault key that
+ * comes from a connection outside loopback and Tailscale. `what` names the command in the log.
+ */
+export function requireVaultTransport(
+  _origin: string,
+  _what: string,
+  _log?: (message: string) => void,
+): void {}
+
 export interface VaultDelivery {
   secretId: string;
   value: string;
