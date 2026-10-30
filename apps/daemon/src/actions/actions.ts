@@ -216,25 +216,30 @@ export class Actions {
     requestedBy: VaultRequester;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
-    if (input.host !== undefined && input.host !== "local") {
+    // Another host is a phase 15 destino of that name: the command runs there with sh -c.
+    const remote = input.host !== undefined && input.host !== "local" ? input.host : null;
+    if (remote && !this.opts.ssh) {
       throw invalid(
-        `o host ${input.host} depende dos destinos SSH da Fase 15; por ora o comando roda só neste host`,
+        `o host ${remote} é um destino SSH, e este daemon não roda comandos nos destinos da Fase 15`,
       );
     }
     const ids = [...new Set(input.secrets)];
     for (const id of ids) if (!SECRET_ID.test(id)) throw bad(`nome de segredo inválido: ${id}`);
-    const line = shellLine(input.command, process.platform);
+    const line = remote ? null : shellLine(input.command, process.platform);
+    const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
       const action: ActionDef = {
         name: FREE,
         description: "comando livre com segredos no ambiente",
-        run: line.argv,
+        run: line ? line.argv : ["sh", "-c", input.command],
         env: Object.fromEntries(ids.map((id) => [envName(id), `{{secret.${id}}}`])),
         params: {},
         timeoutS: 120,
         approval: "always",
+        ...(remote ? { ssh: remote } : {}),
       };
-      const secrets = await this.collect(ids, {
+      const asked = keyId && !ids.includes(keyId) ? [...ids, keyId] : ids;
+      const secrets = await this.collect(asked, {
         requester,
         purposeBase: FREE,
         frame: {
@@ -245,9 +250,9 @@ export class Actions {
         },
       });
       const found: Found = { action, source: "app", scope: "", base: this.baseOf() };
-      return await this.execute(found, {}, secrets, requester, ids);
+      return await this.execute(found, {}, secrets, requester, asked, keyId);
     } finally {
-      line.cleanup();
+      line?.cleanup();
     }
   }
 
