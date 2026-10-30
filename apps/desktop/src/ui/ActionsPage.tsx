@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Where the action runs, in words: this host, a named one or an SSH destination. */
 function whereText(t: T, action: ActionInfo): string {
@@ -29,6 +31,7 @@ export function ActionsPage(props: {
   const { t } = store.i18n;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [trusting, setTrusting] = useState<ActionInfo | null>(null);
   const loading = useMinLoading(actions === null);
 
   const load = useCallback(async () => {
@@ -40,6 +43,22 @@ export function ActionsPage(props: {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const trust = async (action: ActionInfo) => {
+    setTrusting(null);
+    const updated = await store.hostCommand(hostId, "actions.trust", {
+      projectId,
+      name: action.name,
+      hash: action.hash,
+    });
+    if (updated) {
+      setActions((list) =>
+        (list ?? []).map((a) =>
+          a.name === updated.name && a.source === updated.source ? updated : a,
+        ),
+      );
+    }
+  };
 
   return (
     <Page title={t("actionsUi.title", { project: props.projectName })}>
@@ -72,11 +91,32 @@ export function ActionsPage(props: {
                   <Badge variant="outline">{whereText(t, action)}</Badge>
                   <Badge variant="outline">{t(`actionsUi.approval.${action.approval}`)}</Badge>
                   <Badge variant="outline">{t(`actionsUi.source.${action.source}`)}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={action.trusted ? "text-status-idle" : "text-status-needs-you"}
+                  >
+                    {t(action.trusted ? "actionsUi.trusted" : "actionsUi.notTrusted")}
+                  </Badge>
                 </div>
                 {secrets.length > 0 && (
                   <span className="text-xs">
                     {t("actionsUi.secrets", { names: secrets.join(", ") })}
                   </span>
+                )}
+                {action.changed.length > 0 && (
+                  <span className="text-status-needs-you text-xs">
+                    {t("actionsUi.changedSince", { what: action.changed.join(", ") })}
+                  </span>
+                )}
+                {!action.trusted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() => setTrusting(action)}
+                  >
+                    {t("actionsUi.trust", { name: action.name })}
+                  </Button>
                 )}
                 {params.length > 0 && (
                   <span className="text-xs">
@@ -88,6 +128,18 @@ export function ActionsPage(props: {
           })}
         </ul>
       </div>
+      {trusting && (
+        <ConfirmDialog
+          message={`${t("actionsUi.trustMessage", { name: trusting.name, run: trusting.run.join(" ") })}${
+            trusting.changed.length > 0
+              ? ` ${t("actionsUi.changedSince", { what: trusting.changed.join(", ") })}.`
+              : ""
+          }`}
+          confirmLabel={t("actionsUi.trustLabel")}
+          onConfirm={() => void trust(trusting)}
+          onCancel={() => setTrusting(null)}
+        />
+      )}
     </Page>
   );
 }

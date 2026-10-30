@@ -846,6 +846,13 @@ export const ptBR = {
     secrets: "Segredos: {names}",
     params: "Parâmetros: {names}",
     source: { app: "Criada no app", versioned: "Versionada" },
+    trusted: "Confiada",
+    notTrusted: "Não confiada",
+    changedSince: "Mudou desde que foi confiada: {what}",
+    trust: "Confiar em {name}",
+    trustLabel: "Confiar",
+    trustMessage:
+      "Confiar na ação {name}? Ela executa: {run}. Confiar fixa o que ela executa, então uma mudança no script pede de novo.",
   },
   autoApprovalsUi: {
     open: "Aprovações automáticas",

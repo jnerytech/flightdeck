@@ -844,6 +844,13 @@ export const en: Dictionary = {
     secrets: "Secrets: {names}",
     params: "Parameters: {names}",
     source: { app: "Made in the app", versioned: "Versioned" },
+    trusted: "Trusted",
+    notTrusted: "Not trusted",
+    changedSince: "Changed since it was trusted: {what}",
+    trust: "Trust {name}",
+    trustLabel: "Trust",
+    trustMessage:
+      "Trust the action {name}? It runs: {run}. Trusting pins what it runs, so a change to the script asks again.",
   },
   autoApprovalsUi: {
     open: "Automatic approvals",
