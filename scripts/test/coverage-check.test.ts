@@ -40,7 +40,7 @@ describe("cobertura", () => {
     ]);
   });
 
-  test("lista os problemas em ordem alfabética sem diferenciar maiúsculas", () => {
+  test("lists the problems alphabetically, with case only as a tie-break", () => {
     const problems = checkCoverage(parseLcov(lcov), [
       "apps/daemon/src/Zeta.ts",
       "apps/daemon/src/alpha.ts",
