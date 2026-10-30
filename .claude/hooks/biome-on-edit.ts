@@ -4,7 +4,7 @@
  * to (the main one or a worktree); exit 2 hands what is left to Claude.
  */
 import { relative, resolve } from "node:path";
-import { checkoutRoot } from "./checkout-root.ts";
+import { checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
 
 const CHECKED = /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$/i;
 const ROOT = resolve(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, "../.."));
@@ -16,7 +16,6 @@ if (typeof filePath !== "string" || !CHECKED.test(filePath)) process.exit(0);
 const root = checkoutRoot(filePath, ROOT);
 if (!root) process.exit(0);
 const rel = relative(root, resolve(ROOT, filePath));
-if (rel === "") process.exit(0);
 
 const proc = Bun.spawnSync(
   [
