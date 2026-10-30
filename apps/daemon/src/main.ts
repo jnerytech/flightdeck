@@ -75,6 +75,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { Snippets } from "./snippets/store.ts";
 import { AskpassBroker, askpassHook, runAskpass } from "./ssh/askpass.ts";
@@ -565,6 +566,13 @@ export async function startDaemon(
   const sshTargets = new SshTargets({ db: store.db });
   const sshHostKeys = new HostKeys({ targets: sshTargets });
   const sshDir = join(config.dataDir, "ssh");
+  // The vault joins this scanner when it exists (phase 16).
+  const snippetScanner = new SecretScanner();
+  const snippets = new Snippets({
+    db: store.db,
+    allowedRoots: config.allowedRoots,
+    scanner: snippetScanner,
+  });
   const askpass = new AskpassBroker({});
   const sshAskpass = askpassHook({
     broker: askpass,
@@ -635,11 +643,15 @@ export async function startDaemon(
     sshHostKeys,
     sshConnect,
     askpass,
-    snippets: new Snippets({
-      db: store.db,
-      allowedRoots: config.allowedRoots,
-      // The vault joins this scanner when it exists (phase 16).
-      scanner: new SecretScanner(),
+    snippets,
+    snippetHistory: new HistoryImporter({
+      sources: defaultHistorySources({
+        home: homedir(),
+        appData: process.env.APPDATA,
+        platform: process.platform,
+      }),
+      scanner: snippetScanner,
+      snippets,
     }),
     sshImport: new SshImporter({
       targets: sshTargets,

@@ -65,6 +65,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
 import type { AskpassBroker } from "./ssh/askpass.ts";
 import type { SshConnector } from "./ssh/connect.ts";
@@ -156,6 +157,8 @@ export interface ServerOptions {
   askpass?: AskpassBroker;
   /** The snippets behind `snippets.*` (phase 18). */
   snippets?: Snippets;
+  /** The import from the shell history behind `snippets.importHistory` (phase 18). */
+  snippetHistory?: HistoryImporter;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -502,6 +505,12 @@ export function startServer(opts: ServerOptions): RunningServer {
   function snippets(): Snippets {
     if (!opts.snippets) throw new FlightdeckError("invalid_state", "snippets desativados");
     return opts.snippets;
+  }
+
+  function snippetHistory(): HistoryImporter {
+    if (!opts.snippetHistory)
+      throw new FlightdeckError("invalid_state", "importar do histórico desativado");
+    return opts.snippetHistory;
   }
 
   function askpass(): AskpassBroker {
@@ -1133,6 +1142,16 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
       case "snippets.favorite":
         return ok(command.type, snippets().favorite(command.payload.id, command.payload.favorite));
+      case "snippets.importHistory": {
+        const { limit, reveal, select } = command.payload;
+        const importer = snippetHistory();
+        const done = select ? importer.import(select) : { created: [], skipped: [] };
+        const preview = importer.preview({
+          ...(limit ? { limit } : {}),
+          ...(reveal ? { reveal } : {}),
+        });
+        return ok(command.type, { ...preview, ...done });
+      }
       case "askpass.watch":
         ws.data.unwatchAskpass?.();
         ws.data.unwatchAskpass = askpass().watch((frame) => send(ws, frame));

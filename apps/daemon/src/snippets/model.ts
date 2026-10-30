@@ -34,7 +34,7 @@ const MAX_OPTIONS = 50;
 const badRequest = (message: string) => new FlightdeckError("bad_request", message);
 
 /** Control characters other than the ones `allow` lets through (tab for a command, tab and lines for a prompt). */
-function hasControl(text: string, allow: string): boolean {
+export function hasControl(text: string, allow: string): boolean {
   return [...text].some((char) => {
     const code = char.charCodeAt(0);
     return (code < 32 || code === 127) && !allow.includes(char);

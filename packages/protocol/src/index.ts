@@ -810,6 +810,28 @@ export const SnippetFileInfo = z.object({
 });
 export type SnippetFileInfo = z.infer<typeof SnippetFileInfo>;
 
+/** A line of the shell history that could become a snippet; a flagged one has no `command` until revealed and is never `selectable`. */
+export const SnippetHistoryCandidate = z.object({
+  /** Stable for the same command, so the app can say which ones to import. */
+  id: z.string(),
+  command: z.string().nullable(),
+  count: z.number().int(),
+  shells: z.array(z.string()),
+  /** What the secret scan found (the kinds, never the values). */
+  flagged: z.array(z.string()),
+  hidden: z.boolean(),
+  selectable: z.boolean(),
+});
+export type SnippetHistoryCandidate = z.infer<typeof SnippetHistoryCandidate>;
+
+export const SnippetHistoryResult = z.object({
+  candidates: z.array(SnippetHistoryCandidate),
+  sources: z.array(z.object({ shell: z.string(), found: z.boolean() })),
+  created: z.array(Snippet),
+  skipped: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+export type SnippetHistoryResult = z.infer<typeof SnippetHistoryResult>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1852,6 +1874,20 @@ export const Command = z.discriminatedUnion("type", [
   /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
   cmd("snippets.trust", z.object({ projectPath: z.string(), hash: z.string() }).strict()),
   cmd("snippets.favorite", z.object({ id: z.string(), favorite: z.boolean() }).strict()),
+  /**
+   * The most used commands of this host's shell histories (read only, secrets hidden). With
+   * `select` (ids of the candidates) it also makes them snippets of the host.
+   */
+  cmd(
+    "snippets.importHistory",
+    z
+      .object({
+        limit: z.number().int().min(1).max(200).optional(),
+        reveal: z.boolean().optional(),
+        select: z.array(z.string()).max(200).optional(),
+      })
+      .strict(),
+  ),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -2256,6 +2292,7 @@ export interface CommandResults {
   "snippets.remove": undefined;
   "snippets.trust": SnippetFileInfo;
   "snippets.favorite": Snippet;
+  "snippets.importHistory": SnippetHistoryResult;
   "askpass.watch": undefined;
   "askpass.ask": { secret: string };
   "askpass.answer": undefined;
