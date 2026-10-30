@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { HostView } from "../lib/app-store.ts";
+import { trimTrailingSeparators } from "../lib/paths.ts";
 
 const MODES: PermissionMode[] = [
   "default",
@@ -19,7 +20,7 @@ const MODES: PermissionMode[] = [
 export function joinPath(root: string, sub: string): string {
   const sep = root.includes("\\") ? "\\" : "/";
   const clean = sub.trim().replace(/^[\\/]+/, "");
-  return clean ? `${root.replace(/[\\/]+$/, "")}${sep}${clean}` : root;
+  return clean ? `${trimTrailingSeparators(root)}${sep}${clean}` : root;
 }
 
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */

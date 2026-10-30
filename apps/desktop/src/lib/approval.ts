@@ -1,4 +1,5 @@
 import { type DiffLine, toolDiff } from "./diff.ts";
+import { trimTrailingSeparators } from "./paths.ts";
 
 /** What an approval shows, by tool: a command, a file with its preview or diff, or plain fields. */
 export type ApprovalView =
@@ -14,7 +15,7 @@ const text = (value: unknown) => (typeof value === "string" ? value : null);
 /** `path` relative to `cwd` when inside it (either separator), else as it is. */
 function relative(path: string, cwd: string | null): string {
   if (!cwd) return path;
-  const base = cwd.replace(/[\\/]+$/, "");
+  const base = trimTrailingSeparators(cwd);
   const rest = path.slice(base.length);
   return path.startsWith(base) && /^[\\/]/.test(rest) ? rest.slice(1) : path;
 }
