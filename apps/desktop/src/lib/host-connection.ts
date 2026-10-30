@@ -8,6 +8,9 @@ import {
   type CommandType,
   type EventEnvelope,
   type ExternalPermissionFrame,
+  type TerminalData,
+  type TerminalExited,
+  type TerminalResync,
   type ExternalUpdated,
   type HelloResult,
   type HistoryChanged,
@@ -65,6 +68,8 @@ export interface HostConnectionOptions {
   onBudgetUpdated?(update: BudgetUpdated): void;
   /** The diff of a watched target changed on disk (after `watchChanges`, phase 11). */
   onChangesUpdated?(update: ChangesUpdated): void;
+  /** A frame of an attached terminal (after `terminal.attach`, phase 14). */
+  onTerminal?(frame: TerminalData | TerminalExited | TerminalResync): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -157,6 +162,13 @@ export class HostConnection {
       }
       if (message.type === "budget.updated") return this.opts.onBudgetUpdated?.(message);
       if (message.type === "changes.updated") return this.opts.onChangesUpdated?.(message);
+      if (
+        message.type === "terminal.data" ||
+        message.type === "terminal.exited" ||
+        message.type === "terminal.resync"
+      ) {
+        return this.opts.onTerminal?.(message);
+      }
       if (message.type === "external.updated" || message.type === "external.permission") {
         return this.opts.onExternal?.(message);
       }
