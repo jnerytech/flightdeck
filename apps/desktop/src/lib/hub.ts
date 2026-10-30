@@ -242,7 +242,7 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
     Number(b.pinned) - Number(a.pinned) ||
     b.lastActivity.localeCompare(a.lastActivity);
   return [...byKey.entries()]
-    .map(([key, list]) => ({ key, name: groupName(key), rows: list.sort(order) }))
+    .map(([key, list]) => ({ key, name: groupName(key), rows: [...list].sort(order) }))
     .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));
 }
 

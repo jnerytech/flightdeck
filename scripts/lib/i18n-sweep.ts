@@ -44,7 +44,7 @@ export function visibleLiterals(source: string, allowed: readonly string[] = [])
     }
     offset += line.length + 1;
   }
-  return found.sort((a, b) => a.at - b.at).map(({ line, text }) => ({ line, text }));
+  return [...found].sort((a, b) => a.at - b.at).map(({ line, text }) => ({ line, text }));
 }
 
 const STRING = String.raw`"(?:[^"\\]|\\.)*"|` + "`(?:[^`\\\\]|\\\\.)*`";
@@ -96,5 +96,5 @@ export function visibleTsLiterals(source: string, allowed: readonly string[] = [
     }
     offset += line.length + 1;
   });
-  return found.sort((a, b) => a.at - b.at).map(({ line, text }) => ({ line, text }));
+  return [...found].sort((a, b) => a.at - b.at).map(({ line, text }) => ({ line, text }));
 }

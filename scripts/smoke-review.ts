@@ -52,7 +52,7 @@ async function until<T>(check: () => Promise<T | null | undefined | false>, what
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   frames: ServerMessage[] = [];
 
@@ -208,7 +208,7 @@ async function run(work: string): Promise<void> {
     const changes = await client.call<{ files: Array<{ path: string }> }>("changes.get", {
       target: `card:${created.id}`,
     });
-    const paths = changes.files.map((f) => f.path).sort();
+    const paths = changes.files.map((f) => f.path).sort((a, b) => (a < b ? -1 : Number(a > b)));
     if (JSON.stringify(paths) !== JSON.stringify(["fake-1.txt", "fake-2.txt"])) {
       throw new Error(`mudanças do card: ${JSON.stringify(paths)}`);
     }

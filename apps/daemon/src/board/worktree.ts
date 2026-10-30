@@ -134,7 +134,9 @@ export async function copyIncluded(
   const copied: string[] = [];
   const skipped: string[] = [];
   let total = 0;
-  for (const path of matching.filter((p) => ignored.has(p)).sort()) {
+  for (const path of matching
+    .filter((p) => ignored.has(p))
+    .sort((a, b) => (a < b ? -1 : Number(a > b)))) {
     const size = statSync(join(repo, path)).size;
     if (total + size > limit) {
       skipped.push(path);
