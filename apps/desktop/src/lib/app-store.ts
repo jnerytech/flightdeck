@@ -2131,7 +2131,13 @@ export class AppStore {
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
-  async approveVaultForSession(_hostId: string, requestId: string): Promise<void> {
+  async approveVaultForSession(hostId: string, requestId: string): Promise<void> {
+    // Only where the rule allows it and no hold is needed: the session approval has no button to
+    // hold, so it can never stand in for one.
+    const item = this.state.vaultApprovals.find(
+      (i) => i.hostId === hostId && i.requestId === requestId,
+    );
+    if (!item?.vaultOnce) return;
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
   }
 
@@ -2199,7 +2205,8 @@ export class AppStore {
           }
         : {}),
       vault: true,
-      ...(request.once ? { vaultOnce: true as const } : {}),
+      // A request that needs holding is approved only by the held button, one use at a time.
+      ...(request.once && !request.needsHold ? { vaultOnce: true as const } : {}),
       vaultRule: {
         secretId: request.secretId,
         match: {
