@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Automations } from "../src/automations/automations.ts";
 import type { Issues } from "../src/issues/issues.ts";
+import type { AutoApprover } from "../src/permissions/auto-approve.ts";
 import { startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -12,7 +13,12 @@ afterEach(async () => {
 });
 
 /** What `host.info` announces for a server built with these parts. */
-async function features(parts: { board?: boolean; issues?: boolean; automations?: boolean }) {
+async function features(parts: {
+  board?: boolean;
+  issues?: boolean;
+  automations?: boolean;
+  autoApprove?: boolean;
+}) {
   const ctx = newBoard();
   cleanups.push(() => ctx.board.stop());
   const server = startServer({
@@ -20,6 +26,7 @@ async function features(parts: { board?: boolean; issues?: boolean; automations?
     ...(parts.board ? { board: ctx.board } : {}),
     ...(parts.issues ? { issues: {} as Issues } : {}),
     ...(parts.automations ? { automations: {} as Automations } : {}),
+    ...(parts.autoApprove ? { autoApprove: {} as AutoApprover } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
@@ -46,5 +53,10 @@ describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
       "issues",
       "automation",
     ]);
+  });
+
+  test("autoapprove só quando o daemon tem a aprovação automática", async () => {
+    expect(await features({})).toEqual([]);
+    expect(await features({ autoApprove: true })).toEqual(["autoapprove"]);
   });
 });
