@@ -1,6 +1,7 @@
 import { Columns2, Rows2, SquareSplitHorizontal } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { Screen } from "./Screens.tsx";
@@ -109,7 +110,7 @@ export function Areas(props: {
         );
         if (i === 0 || !split) return [pane];
         return [
-          // biome-ignore lint/a11y/useSemanticElements: a focusable window splitter, which <hr> is not
+          // biome-ignore lint/a11y/useSemanticElements: a focusable window splitter, unlike hr
           <div
             key="divider"
             role="separator"
@@ -123,7 +124,10 @@ export function Areas(props: {
             onPointerDown={() => {
               dragging.current = true;
             }}
-            className={`bg-border transition-colors hover:bg-brand/50 focus-visible:bg-brand focus-visible:outline-none ${split === "horizontal" ? "cursor-row-resize" : "cursor-col-resize"}`}
+            className={cn(
+              "bg-border transition-colors hover:bg-brand/50 focus-visible:bg-brand focus-visible:outline-none",
+              split === "horizontal" ? "cursor-row-resize" : "cursor-col-resize",
+            )}
           />,
           pane,
         ];
