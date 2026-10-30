@@ -532,11 +532,13 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "actions":
       return (
         <ActionsPage
-          key={`${route.host}/${route.projectId}`}
+          // A draft handed over opens a fresh screen, with its form.
+          key={`${route.host}/${route.projectId}/${JSON.stringify(route.draft ?? null)}`}
           store={store}
           hostId={route.host}
           projectId={route.projectId}
           projectName={route.projectName}
+          draft={route.draft}
         />
       );
     case "auto-approvals":

@@ -100,12 +100,17 @@ export function ActionForm(props: {
   hostId: string;
   projectId: string;
   initial: ActionInfo | null;
+  /** A new action's name and command, handed over from elsewhere. */
+  seed?: { name: string; run: string[] };
   onClose(): void;
   onSaved(action: ActionInfo): void;
 }) {
   const { store, initial } = props;
   const { t } = store.i18n;
-  const [draft, setDraft] = useState<Draft>(() => draftOf(initial));
+  const [draft, setDraft] = useState<Draft>(() => ({
+    ...draftOf(initial),
+    ...(props.seed ? { name: props.seed.name, run: props.seed.run.join("\n") } : {}),
+  }));
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const secrets = store.getState().secrets;

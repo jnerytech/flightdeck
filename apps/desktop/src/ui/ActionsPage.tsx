@@ -71,6 +71,8 @@ export function ActionsPage(props: {
   hostId: string;
   projectId: string;
   projectName: string;
+  /** Opens Nova ação already filled (phase 18 hands over a snippet). */
+  draft?: { name: string; run: string[] } | undefined;
 }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
@@ -80,7 +82,7 @@ export function ActionsPage(props: {
   const [history, setHistory] = useState<Record<string, ActionRunInfo[]>>({});
   const [trusting, setTrusting] = useState<ActionInfo | null>(null);
   /** `"new"` for the creation, an action made in the app for its editing. */
-  const [editing, setEditing] = useState<ActionInfo | "new" | null>(null);
+  const [editing, setEditing] = useState<ActionInfo | "new" | null>(props.draft ? "new" : null);
   const [removing, setRemoving] = useState<ActionInfo | null>(null);
   const loading = useMinLoading(actions === null);
 
@@ -256,6 +258,7 @@ export function ActionsPage(props: {
           hostId={hostId}
           projectId={projectId}
           initial={editing === "new" ? null : editing}
+          {...(editing === "new" && props.draft ? { seed: props.draft } : {})}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {
             setEditing(null);
