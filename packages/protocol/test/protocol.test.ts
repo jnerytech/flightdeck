@@ -260,6 +260,23 @@ const validCommands: Record<CommandType, unknown> = {
   "snippets.favorite": { id: "s", favorite: true },
   "snippets.parse": { text: "- name: x" },
   "snippets.importHistory": { limit: 20, reveal: false, select: ["abc"] },
+  "personas.list": { scope: "project", projectPath: "/w/app", language: "en" },
+  "personas.save": {
+    scope: "host",
+    persona: {
+      id: "seguranca",
+      name: "Revisor",
+      description: "Revisa",
+      icon: "shield",
+      model: "claude-opus-5-5",
+      effort: "high",
+      tools: ["Read", "Grep"],
+      permissionMode: "plan",
+      body: "Você atua como revisor.",
+    },
+  },
+  "personas.remove": { scope: "project", id: "seguranca", projectPath: "/w/app" },
+  "personas.trust": { projectPath: "/w/app", id: "seguranca", hash: "abc" },
   "snippets.render": {
     id: "s",
     values: { arquivo: "a.ts" },
