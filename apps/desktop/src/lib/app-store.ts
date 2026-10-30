@@ -63,7 +63,7 @@ import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
-import { type NewKey, type NewSecret, type SecretMeta, Vault } from "./vault.ts";
+import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import {
   applyImport,
   BackupError,
@@ -1829,6 +1829,13 @@ export class AppStore {
     const result = await applyImport(this.vault, preview, onConflict);
     this.update({ secrets: this.vault.list() });
     return result;
+  }
+
+  /** Edits a secret's name, description, tags and allowed hosts; its value is not touched. */
+  updateSecret(id: string, patch: SecretPatch): SecretMeta | null {
+    const meta = this.vault.update(id, patch);
+    this.update({ secrets: this.vault.list() });
+    return meta;
   }
 
   async removeSecret(id: string): Promise<void> {

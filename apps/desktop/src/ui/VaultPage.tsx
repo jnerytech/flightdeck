@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackupPanel } from "@/components/vault/backup-panel";
+import { EditSecretForm } from "@/components/vault/edit-secret-form";
 import { NewSecretForm } from "@/components/vault/new-secret-form";
 import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { UsageLog } from "@/components/vault/usage-log";
@@ -30,6 +31,9 @@ function SecretRow(props: {
   onReveal(): void;
   onCopy(): void;
   onRemove(): void;
+  onEdit(): void;
+  onCopyPublicKey(): void;
+  hostName(id: string): string;
 }) {
   const t = useT();
   const { secret, info } = props;
@@ -46,6 +50,16 @@ function SecretRow(props: {
         ))}
       </div>
       {detail && <p className="font-mono text-muted-foreground text-sm">{detail}</p>}
+      <p className="flex flex-wrap gap-x-3 text-muted-foreground text-xs">
+        <span>
+          {secret.lastUsedAt === null
+            ? t("vault.neverUsed")
+            : t("vault.lastUsed", { when: new Date(secret.lastUsedAt).toLocaleString() })}
+        </span>
+        <span>
+          {t("vault.hosts", { hosts: secret.allowedHosts.map(props.hostName).join(", ") })}
+        </span>
+      </p>
       {props.revealed !== null && (
         <code className="break-all rounded bg-muted p-2 text-sm">{props.revealed}</code>
       )}
@@ -66,6 +80,24 @@ function SecretRow(props: {
         >
           {t("vault.copy")}
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("vault.editFor", { name: secret.name })}
+          onClick={props.onEdit}
+        >
+          {t("vault.edit")}
+        </Button>
+        {info.publicKey && (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={t("vault.copyPublicFor", { name: secret.name })}
+            onClick={props.onCopyPublicKey}
+          >
+            {t("vault.copyPublicKey")}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -94,6 +126,7 @@ export function VaultPage(props: {
   const revealMs = props.revealMs ?? REVEAL_MS;
   const clearMs = props.clearMs ?? CLEAR_MS;
   const [asking, setAsking] = useState<SecretMeta | null>(null);
+  const [editing, setEditing] = useState<SecretMeta | null>(null);
   const [creating, setCreating] = useState(false);
   const [removing, setRemoving] = useState<SecretMeta | null>(null);
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
@@ -134,6 +167,15 @@ export function VaultPage(props: {
       }
     >
       {creating && <NewSecretForm store={store} onClose={() => setCreating(false)} />}
+      {editing && (
+        <EditSecretForm
+          key={editing.id}
+          store={store}
+          state={state}
+          secret={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
           <TabsTrigger value="secrets">{t("vault.tabSecrets")}</TabsTrigger>
@@ -154,6 +196,9 @@ export function VaultPage(props: {
                   onReveal={() => setAsking(secret)}
                   onCopy={() => void store.copySecret(secret.id, clearMs)}
                   onRemove={() => setRemoving(secret)}
+                  onEdit={() => setEditing(secret)}
+                  onCopyPublicKey={() => void store.copyText(infos[secret.id]?.publicKey ?? "")}
+                  hostName={(hostId) => state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
                 />
               ))}
             </ul>
