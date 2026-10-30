@@ -264,4 +264,42 @@ describe("acoes-protocolo: o daemon montado pelo main", () => {
       error: { code: "not_found" },
     });
   });
+
+  test("an ssh action goes to the phase 15 destinos: one that does not exist is named in the error", async () => {
+    const { root, repo } = gitRepo();
+    const dir = tempDir("fd-main-ssh-");
+    const file = join(dir, "config.json");
+    await Bun.write(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        allowedRoots: [root],
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const client = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const project = await client.data<{ id: string }>("project.add", { path: repo });
+    const projectId = project?.id ?? "";
+    await client.data("actions.save", {
+      projectId,
+      definition: { name: "remoto", description: "remoto", ssh: "nao-existe", run: ["uptime"] },
+    });
+    expect(
+      await client.request("actions.run", { projectId, name: "remoto", requestedBy: "you" }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "not_found", message: "destino nao-existe não encontrado" },
+    });
+  });
 });
