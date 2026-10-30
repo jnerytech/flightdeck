@@ -226,6 +226,9 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.board ? ["rules"] : []),
     ...(opts.costs ? ["costs"] : []),
     ...(opts.changes ? ["review"] : []),
+    // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
+    ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
+    ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
   ];
   let pingSeq = 0;
 
