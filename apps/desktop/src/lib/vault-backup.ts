@@ -1,4 +1,4 @@
-import { Decrypter, Encrypter } from "age-encryption";
+import { armor, Decrypter, Encrypter } from "age-encryption";
 import type { SecretMeta, Vault } from "./vault.ts";
 
 export const MIN_PASSPHRASE = 12;
@@ -136,11 +136,15 @@ export async function applyImport(
 }
 
 /** The `.fdvault` as text: `age`'s ASCII armor, so the dialogs can save and read it as a string. */
-export function toFdvault(_file: Uint8Array): string {
-  return "";
+export function toFdvault(file: Uint8Array): string {
+  return armor.encode(file);
 }
 
 /** Reads the text of a `.fdvault`; anything that is not an armored `age` file is unreadable. */
-export function fromFdvault(_text: string): Uint8Array {
-  return new Uint8Array(0);
+export function fromFdvault(text: string): Uint8Array {
+  try {
+    return armor.decode(text);
+  } catch {
+    throw new BackupError("unreadable");
+  }
 }
