@@ -8,9 +8,6 @@ import {
   type CommandType,
   type EventEnvelope,
   type ExternalPermissionFrame,
-  type TerminalData,
-  type TerminalExited,
-  type TerminalResync,
   type ExternalUpdated,
   type HelloResult,
   type HistoryChanged,
@@ -18,6 +15,9 @@ import {
   parseServerMessage,
   type QuotaState,
   type SessionSubscribeResult,
+  type TerminalData,
+  type TerminalExited,
+  type TerminalResync,
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { backoffDelay } from "./backoff.ts";

@@ -70,6 +70,11 @@ describe("terminal-ui: the store follows a host's terminal", () => {
 
   test("the terminals of a host that is not connected refuse", async () => {
     const { store } = await setup();
-    expect(await store.terminalHost("ghost").list().catch(() => "refused")).toBe("refused");
+    expect(
+      await store
+        .terminalHost("ghost")
+        .list()
+        .catch(() => "refused"),
+    ).toBe("refused");
   });
 });
