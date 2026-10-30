@@ -70,6 +70,7 @@ import {
   type VaultOutcome,
   type VaultPolicy,
 } from "./vault-requests.ts";
+import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
@@ -134,6 +135,8 @@ export interface AppState {
   ssh: Record<string, SshTarget[]>;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
+  /** Phase 16: the vault's usage log, newest first; never holds a value. */
+  vaultUsage: UsageEntry[];
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -510,6 +513,7 @@ export class AppStore {
       ssh: {},
       askpass: [],
       secrets: new Vault(platform).list(),
+      vaultUsage: new VaultUsageLog(platform).list(),
       externals: {},
       externalRequests: {},
       meta: {},
