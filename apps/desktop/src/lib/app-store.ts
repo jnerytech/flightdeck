@@ -49,6 +49,7 @@ import { isHot } from "./quota.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
   type TerminalEnv,
@@ -1627,6 +1628,36 @@ export class AppStore {
 
   /** Terminals opened from a ssh destino, by `hostId/terminalId`, for the badge of their screen. */
   readonly sshTerminals = new Map<string, { name: string; tags: string[] }>();
+
+  /**
+   * Keeps a copy of `target` (and of the destinos it jumps through) on `runner`, which builds the
+   * ssh command from its own destinos: the copy it already has by name is updated, never doubled.
+   * `null` when the host refuses.
+   */
+  async sshCopyTo(
+    runner: string,
+    target: SshTarget,
+    all: SshTarget[],
+    seen: Set<string> = new Set([target.id]),
+  ): Promise<SshTarget | null> {
+    const listed = await this.hostCommand(runner, "ssh.list", {});
+    if (!listed) return null;
+    let jump: string | null = null;
+    const through = all.find((other) => other.id === target.jump);
+    if (through && !seen.has(through.id)) {
+      seen.add(through.id);
+      const copy = await this.sshCopyTo(runner, through, all, seen);
+      if (!copy) return null;
+      jump = copy.id;
+    }
+    const existing = listed.targets.find((other) => other.name === target.name);
+    return this.hostCommand(runner, "ssh.save", {
+      ...(existing ? { id: existing.id } : {}),
+      ...savePayload(target, target.name),
+      viaHost: null,
+      jump,
+    });
+  }
 
   /** Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused. */
   async sshConnect(hostId: string, target: SshTarget): Promise<string | null> {

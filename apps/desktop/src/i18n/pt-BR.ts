@@ -71,6 +71,8 @@ export const ptBR = {
       test: "Testar conexão",
       testOk: "Conexão ok.",
     },
+    viaOffline: "O host {host} não está conectado.",
+    viaNoSsh: "O host {host} não tem o recurso de SSH.",
     copySuffix: "{name} (cópia)",
     removeMessage: "Remover o destino {name}? As chaves e senhas dele não são apagadas.",
     hostKey: {

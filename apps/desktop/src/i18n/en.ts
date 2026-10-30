@@ -69,6 +69,8 @@ export const en: Dictionary = {
       test: "Test connection",
       testOk: "Connection ok.",
     },
+    viaOffline: "The host {host} is not connected.",
+    viaNoSsh: "The host {host} does not have the SSH feature.",
     copySuffix: "{name} (copy)",
     removeMessage: "Remove the destination {name}? Its keys and passwords are not deleted.",
     hostKey: {

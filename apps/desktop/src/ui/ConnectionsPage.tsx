@@ -2,7 +2,7 @@ import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/pro
 import { Network } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ImportPanel } from "@/components/connections/import-panel";
-import { savePayload, TargetForm } from "@/components/connections/target-form";
+import { TargetForm } from "@/components/connections/target-form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import {
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
+import { savePayload } from "../lib/ssh.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -54,9 +55,13 @@ export function ConnectionsPage(props: {
   const [importing, setImporting] = useState<SshImportEntry[] | null>(null);
   const [importMessage, setImportMessage] = useState<string[]>([]);
   const [removing, setRemoving] = useState<SshTarget | null>(null);
-  const [keyCheck, setKeyCheck] = useState<{ target: SshTarget; check: SshHostKeyCheck } | null>(
-    null,
-  );
+  /** The host that runs the ssh, the destino as it is kept there and what its key check found. */
+  const [keyCheck, setKeyCheck] = useState<{
+    runner: string;
+    target: SshTarget;
+    check: SshHostKeyCheck;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const hostId = host?.id;
   const reload = useCallback(async () => {
@@ -68,31 +73,47 @@ export function ConnectionsPage(props: {
     void reload();
   }, [reload]);
 
-  const open = async (target: SshTarget) => {
-    if (!hostId) return;
-    const terminalId = await store.sshConnect(hostId, target);
-    if (terminalId) props.go({ name: "terminal", host: hostId, terminalId });
+  const open = async (runner: string, target: SshTarget) => {
+    const terminalId = await store.sshConnect(runner, target);
+    if (terminalId) props.go({ name: "terminal", host: runner, terminalId });
   };
 
+  /** The host that runs the ssh: the destino's via host, or the one that keeps the destinos. */
   const connect = async (target: SshTarget) => {
     if (!hostId) return;
-    const check = await store.hostCommand(hostId, "ssh.hostkey.check", { targetId: target.id });
+    setError(null);
+    const runner = target.viaHost ?? hostId;
+    let kept = target;
+    if (runner !== hostId) {
+      const via = state.hosts.find((h) => h.id === runner);
+      if (!via || via.status !== "online") {
+        return setError(t("connections.viaOffline", { host: via?.name ?? runner }));
+      }
+      if (!hasFeature(via.hostInfo?.features, "ssh", false)) {
+        return setError(t("connections.viaNoSsh", { host: via.name }));
+      }
+      // The via host builds the ssh command from its own destinos: it gets a copy.
+      const copy = await store.sshCopyTo(runner, target, targets);
+      if (!copy) return;
+      kept = copy;
+    }
+    const check = await store.hostCommand(runner, "ssh.hostkey.check", { targetId: kept.id });
     if (!check) return;
-    if (check.status === "pinned") await open(target);
-    else setKeyCheck({ target, check });
+    if (check.status === "pinned") await open(runner, kept);
+    else setKeyCheck({ runner, target: kept, check });
   };
 
   const confirmKey = async () => {
-    if (!hostId || !keyCheck) return;
-    const { target, check } = keyCheck;
+    if (!keyCheck) return;
+    const { runner, target, check } = keyCheck;
     setKeyCheck(null);
-    const kept = await store.hostCommand(hostId, "ssh.hostkey.confirm", {
+    const confirmed = await store.hostCommand(runner, "ssh.hostkey.confirm", {
       targetId: target.id,
       fingerprint: check.fingerprint,
     });
-    if (!kept) return;
-    await reload();
-    await open(target);
+    if (!confirmed) return;
+    if (runner === hostId) await reload();
+    await open(runner, target);
   };
 
   const duplicate = async (target: SshTarget) => {
@@ -167,6 +188,11 @@ export function ConnectionsPage(props: {
         )
       }
     >
+      {error && (
+        <p role="alert" className="mb-4 text-destructive text-sm">
+          {error}
+        </p>
+      )}
       {importing && (
         <ImportPanel
           entries={importing}

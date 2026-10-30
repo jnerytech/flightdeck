@@ -16,23 +16,6 @@ const split = (text: string, separator: string): string[] =>
     .map((part) => part.trim())
     .filter(Boolean);
 
-/** The payload of `ssh.save` for a destino, whether it comes from the form or from a duplicate. */
-export function savePayload(target: SshTarget, name: string) {
-  return {
-    name,
-    host: target.host,
-    port: target.port,
-    user: target.user,
-    viaHost: target.viaHost,
-    auth: target.auth,
-    secretRef: target.secretRef,
-    jump: target.jump,
-    options: target.options,
-    tags: target.tags,
-    ...(target.options.forwardAgent ? { confirm: true } : {}),
-  };
-}
-
 /** Creates or edits a ssh destino; only the reference to a secret is ever typed here. */
 export function TargetForm(props: {
   store: AppStore;
