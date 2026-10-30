@@ -61,8 +61,10 @@ export function SessionsHub(props: {
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   const [name, setName] = useState("");
-  // Reload when hosts come online or sessions come and go.
-  const signature = state.hosts.map((h) => `${h.id}:${h.status}:${h.sessions.length}`).join();
+  // Reload when hosts come online (and say what they offer) or sessions come and go.
+  const signature = state.hosts
+    .map((h) => `${h.id}:${h.status}:${h.sessions.length}:${h.hostInfo ? "info" : ""}`)
+    .join();
   useEffect(() => {
     if (signature) void store.refreshHub();
   }, [store, signature]);

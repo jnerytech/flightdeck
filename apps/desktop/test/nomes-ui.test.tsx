@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { HUB_FILTER_KEY, loadHubFilter } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -83,6 +84,7 @@ async function open(features: string[]) {
 describe("nomes-ui: the standard names in Sessões", () => {
   test("a host with names shows each session by its standard name, by name inside the group", async () => {
     await open(["names"]);
+    await settle(() => group()[0] === "flightdeck · geral · 1");
     expect(group()).toEqual([
       "flightdeck · geral · 1",
       "flightdeck · revisor · 2",
@@ -110,5 +112,13 @@ describe("nomes-ui: the standard names in Sessões", () => {
       fireEvent.change(persona as HTMLElement, { target: { value: "revisor" } });
     });
     expect(group()).toEqual(["flightdeck · revisor · 2", "flightdeck · revisor · 10"]);
+  });
+
+  test("the persona filter is kept with the others; none kept means all", () => {
+    const stored = (value: object) => ({
+      getItem: (key: string) => (key === HUB_FILTER_KEY ? JSON.stringify(value) : null),
+    });
+    expect(loadHubFilter(stored({ persona: "revisor" })).persona).toBe("revisor");
+    expect(loadHubFilter(stored({})).persona).toBeUndefined();
   });
 });

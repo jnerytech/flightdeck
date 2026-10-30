@@ -29,6 +29,7 @@ import type {
   RiskLevel,
   SessionEventOf,
   SessionMeta,
+  SessionNameInfo,
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
@@ -173,6 +174,8 @@ export interface AppState {
   vaultUsage: UsageEntry[];
   /** Phase 17: the daemon's requests for a secret, waiting for the user; they join the queue. */
   vaultApprovals: PendingItem[];
+  /** Phase 21: the standard session names of each host that announces `names`, by host id. */
+  names: Record<string, SessionNameInfo[]>;
   /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */
   loopAlerts: LoopAlert[];
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
@@ -604,6 +607,7 @@ export class AppStore {
       snippetChoice: null,
       personas: {},
       loopAlerts: [],
+      names: {},
       askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
@@ -1145,10 +1149,12 @@ export class AppStore {
         .filter((host) => host.status === "online")
         .map(async (host) => {
           const conn = this.connections.get(host.id) as HostConnection;
-          const [managed, history, external] = await Promise.all([
+          const named = hasFeature(host.hostInfo?.features, "names", false);
+          const [managed, history, external, standard] = await Promise.all([
             quiet(conn.request("session.list", {})),
             quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
             quiet(conn.request("external.list", {})),
+            named ? quiet(conn.request("names.list", {})) : null,
           ]);
           const meta = { ...this.state.meta };
           const externals = { ...this.state.externals };
@@ -1163,7 +1169,8 @@ export class AppStore {
             ...this.state.hub,
             [host.id]: { managed: managed?.sessions ?? [], history: history?.sessions ?? [] },
           };
-          this.update({ hub, meta, externals });
+          const names = { ...this.state.names, [host.id]: standard?.names ?? [] };
+          this.update({ hub, meta, externals, names });
         }),
     );
   }

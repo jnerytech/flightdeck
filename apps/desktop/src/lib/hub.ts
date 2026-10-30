@@ -35,6 +35,8 @@ export interface HubRow {
   summary: SessionLine | null;
   /** The persona it runs in (phase 20). */
   persona: SessionPersona | null;
+  /** Phase 21: `project · persona · number`, on a host with names; null elsewhere. */
+  standardName?: string | null;
 }
 
 export interface HubFilter {
@@ -159,22 +161,31 @@ export function hubRows(state: AppState): HubRow[] {
     const meta = (id: string | null) =>
       (id ? state.meta[`${host.id}/${id}`] : undefined) ?? NO_META;
     const seen = new Set<string>();
-    const base = (id: string | null, cwd: string, key: string | null | undefined) => {
+    const names = new Map((state.names[host.id] ?? []).map((n) => [n.sessionId, n]));
+    const base = (
+      id: string | null,
+      cwd: string,
+      key: string | null | undefined,
+      managedId?: string,
+    ) => {
       if (id) seen.add(id);
-      const { name, pinned, archived } = meta(id);
+      const meta_ = meta(id);
+      const standard = names.get(managedId ?? "") ?? names.get(id ?? "");
       return {
+        // The name the user gave wins; then the standard one; then the origin's own title.
+        name: meta_.name ?? standard?.display ?? null,
+        pinned: meta_.pinned,
+        archived: meta_.archived,
+        standardName: standard?.display ?? null,
         hostId: host.id,
         hostName: host.name,
         claudeSessionId: id,
         cwd,
-        name,
-        pinned,
-        archived,
         projectKey: key ?? `host:${host.name}:${cwd}`,
       };
     };
     const managed = data.managed.map((s): HubRow => {
-      const { name, ...common } = base(s.claudeSessionId, s.cwd, s.projectKey);
+      const { name, ...common } = base(s.claudeSessionId, s.cwd, s.projectKey, s.id);
       const live = host.sessions.find((x) => x.id === s.id);
       return {
         ...common,
@@ -242,8 +253,9 @@ const matches = (row: HubRow, filter: HubFilter) =>
 const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 
 /**
- * Filtered rows by project; the ones that need you first, then pinned, then latest activity;
- * groups by latest activity.
+ * Filtered rows by project; the ones that need you first, then pinned, then the standard names
+ * in order (phase 21: only hosts with names give them), then latest activity; groups by latest
+ * activity.
  */
 export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   const byKey = new Map<string, HubRow[]>();
@@ -253,6 +265,8 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   const order = (a: HubRow, b: HubRow) =>
     Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
     Number(b.pinned) - Number(a.pinned) ||
+    Number(b.standardName != null) - Number(a.standardName != null) ||
+    (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
     b.lastActivity.localeCompare(a.lastActivity);
   return [...byKey.entries()]
     .map(([key, list]) => ({ key, name: groupName(key), rows: [...list].sort(order) }))
