@@ -71,9 +71,14 @@ describe("automacoes-ui: what a trigger can drive", () => {
 
 /** A host with a project and one trusted workflow, on the projects screen. */
 async function online(features?: string[]) {
-  const d = await workflowDaemon(cleanups, { revisar: WORKFLOW, outro: WORKFLOW }, ["revisar", "outro"], {
-    automations: true,
-  });
+  const d = await workflowDaemon(
+    cleanups,
+    { revisar: WORKFLOW, outro: WORKFLOW },
+    ["revisar", "outro"],
+    {
+      automations: true,
+    },
+  );
   const server = features ? d.listen(0, undefined, features) : d.server;
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
