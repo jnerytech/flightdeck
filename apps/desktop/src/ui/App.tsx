@@ -218,13 +218,9 @@ export function App({ store }: { store: AppStore }) {
               t={t}
               go={go}
               onOpenProjectScreen={openProjectScreen}
-              onSelectSession={(hostId, id) => {
-                store.select(hostId, id);
-                go(
-                  id
-                    ? { name: "session", host: hostId, id }
-                    : { name: "new-session", host: hostId },
-                );
+              onNewSession={(hostId) => {
+                store.select(hostId, null);
+                go({ name: "new-session", host: hostId });
               }}
               onRemoveHost={(id) => void store.removeHost(id)}
               onOpenSearch={() => store.openSearch()}

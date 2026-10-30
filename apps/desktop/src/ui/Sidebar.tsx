@@ -99,7 +99,7 @@ export function Sidebar(props: {
   go(route: Route): void;
   /** Board or Workflows of a host: its only project opens directly, several ask which. */
   onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
-  onSelectSession(hostId: string, sessionId: string | null): void;
+  onNewSession(hostId: string): void;
   onRemoveHost(hostId: string): void;
   onOpenSearch(): void;
   onToggleTheme(): void;
@@ -275,7 +275,7 @@ export function Sidebar(props: {
                                 {t("sidebar.hostProjects")}
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onSelect={() => props.onSelectSession(host.id, null)}>
+                            <DropdownMenuItem onSelect={() => props.onNewSession(host.id)}>
                               {t("sidebar.newSession")}
                             </DropdownMenuItem>
                           </>
