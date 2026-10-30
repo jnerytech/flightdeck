@@ -135,6 +135,25 @@ export class SshTargets {
     return toTarget(this.row(id) as Row);
   }
 
+  /** The pinned server key: its fingerprint and every key (`<type> <base64>`), or none yet. */
+  pinned(id: string): { fingerprint: string; keys: string[] } | null {
+    const raw = this.row(id)?.host_key;
+    return raw ? (JSON.parse(raw) as { fingerprint: string; keys: string[] }) : null;
+  }
+
+  pin(id: string, key: { fingerprint: string; keys: string[] }): SshTarget {
+    return this.setHostKey(id, JSON.stringify(key));
+  }
+
+  unpin(id: string): SshTarget {
+    return this.setHostKey(id, null);
+  }
+
+  private setHostKey(id: string, value: string | null): SshTarget {
+    this.opts.db.query("UPDATE ssh_targets SET host_key = ? WHERE id = ?").run(value, id);
+    return toTarget(this.row(id) as Row);
+  }
+
   remove(id: string, confirm: boolean): void {
     if (!this.row(id)) throw new FlightdeckError("not_found", "destino não encontrado");
     if (!confirm) {

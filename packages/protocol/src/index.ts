@@ -712,6 +712,19 @@ export const SshImportResult = z.object({
 });
 export type SshImportResult = z.infer<typeof SshImportResult>;
 
+/**
+ * What `ssh.hostkey.check` found: `unknown` (first connection: confirm the fingerprint),
+ * `pinned` (the key is the one kept) or `changed` (blocked: `pinned` is the old fingerprint).
+ */
+export const SshHostKeyCheck = z.object({
+  status: z.enum(["unknown", "pinned", "changed"]),
+  /** The SHA256 fingerprint the server shows now. */
+  fingerprint: z.string(),
+  /** The fingerprint kept for this destino, `null` before the first confirmation. */
+  pinned: z.string().nullable(),
+});
+export type SshHostKeyCheck = z.infer<typeof SshHostKeyCheck>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1537,6 +1550,11 @@ export const Command = z.discriminatedUnion("type", [
       .strict(),
   ),
   cmd("ssh.remove", z.object({ id: z.string(), confirm: z.boolean() }).strict()),
+  /** Reads the server key with ssh-keyscan and compares it with the one kept. */
+  cmd("ssh.hostkey.check", z.object({ targetId: z.string() }).strict()),
+  /** Keeps the key whose fingerprint `check` just showed; replacing one asks to forget it first. */
+  cmd("ssh.hostkey.confirm", z.object({ targetId: z.string(), fingerprint: z.string() }).strict()),
+  cmd("ssh.hostkey.forget", z.object({ targetId: z.string() }).strict()),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -1924,6 +1942,9 @@ export interface CommandResults {
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
+  "ssh.hostkey.check": SshHostKeyCheck;
+  "ssh.hostkey.confirm": SshTarget;
+  "ssh.hostkey.forget": SshTarget;
   "ssh.import.preview": { entries: SshImportEntry[] };
   "ssh.import.apply": SshImportResult;
   "statusline.get": {

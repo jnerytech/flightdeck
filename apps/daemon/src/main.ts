@@ -72,6 +72,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { HostKeys } from "./ssh/hostkey.ts";
 import { SshImporter } from "./ssh/import.ts";
 import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
@@ -526,6 +527,7 @@ export async function startDaemon(
     sessionFiles: new SessionFiles({ db: store.db }),
     ssh: sshTargets,
     // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
+    sshHostKeys: new HostKeys({ targets: sshTargets }),
     sshImport: new SshImporter({
       targets: sshTargets,
       configPath: join(homedir(), ".ssh", "config"),
