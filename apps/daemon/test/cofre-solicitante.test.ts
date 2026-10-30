@@ -12,14 +12,15 @@ describe("cofre-solicitante", () => {
     }
   });
 
-  test("o pedido do daemon vai ao app, que decide; quem diz ser you ou não se conhece é negado", () => {
+  test("o solicitante do daemon passa pelas regras (o padrão do Claude pergunta ao app, o da automação e do workflow nega); you ou o desconhecido é negado", () => {
     for (const requester of ["claude", "automation", "workflow", "you", undefined, "root"]) {
       const decision = decideRequest({ requester });
       const daemon = ["claude", "automation", "workflow"].includes(requester as string);
-      expect(decision.granted).toBe(daemon);
-      expect(decision.reason).toContain("app");
+      expect(decision.granted).toBe(requester === "claude");
+      expect(decision.reason).not.toBe("");
       expect(decision.requester).toBe(daemon ? (requester as Requester) : "unknown");
     }
+    expect(decideRequest({ requester: "claude" }).reason).toContain("app");
   });
 
   test("o frame vault.request só aceita os solicitantes do daemon: com you ele não é um pedido válido", () => {

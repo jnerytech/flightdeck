@@ -4,6 +4,8 @@
  * (any local process that reads the config speaks the protocol). Anything else is treated as the
  * most restricted. Whether a known requester gets the secret is the app's decision.
  */
+import type { Rule, RulesEnv, UseContext } from "./rules.ts";
+
 export type Requester = "claude" | "automation" | "workflow" | "unknown";
 
 const DAEMON_REQUESTERS: ReadonlySet<string> = new Set(["claude", "automation", "workflow"]);
@@ -14,22 +16,55 @@ export function requesterOf(raw: unknown): Requester {
 }
 
 export type RequestDecision =
-  | { granted: true; requester: Exclude<Requester, "unknown">; reason: string }
-  | { granted: false; requester: Requester; reason: string };
+  | {
+      granted: true;
+      requester: Exclude<Requester, "unknown">;
+      reason: string;
+      decision: "allow" | "ask";
+      ruleId: string | null;
+      once: boolean;
+      needsHold: boolean;
+    }
+  | {
+      granted: false;
+      requester: Requester;
+      reason: string;
+      decision: "deny";
+      ruleId: string | null;
+      limited: boolean;
+    };
+
+/** What a request from the daemon says of the use, besides who asks. */
+export type RequestInput = { requester?: unknown } & Partial<Omit<UseContext, "requester">>;
 
 /**
- * The answer to a `vault.request` of the daemon: a known requester may ask, and the app decides
- * (it asks you, or follows the action's approval); `you`, which only the app is, and anything
- * unknown are refused.
+ * The answer to a `vault.request` of the daemon. A requester the daemon does not know (including
+ * `you`, which only the app is) is refused before any rule; a known one goes through the secret's
+ * rules and the safe defaults, and the app is who finally delivers the secret.
  */
-export function decideRequest(raw: { requester?: unknown }): RequestDecision {
+export function decideRequest(
+  raw: RequestInput,
+  _rules: readonly Rule[] = [],
+  _env?: RulesEnv,
+): RequestDecision {
   const requester = requesterOf(raw.requester);
   if (requester === "unknown") {
     return {
       granted: false,
       requester,
-      reason: "só o Claude, uma automação ou um workflow pedem segredos ao app por este caminho",
+      reason: "",
+      decision: "deny",
+      ruleId: null,
+      limited: false,
     };
   }
-  return { granted: true, requester, reason: "o app decide se entrega o segredo" };
+  return {
+    granted: true,
+    requester,
+    reason: "",
+    decision: "ask",
+    ruleId: null,
+    once: false,
+    needsHold: false,
+  };
 }
