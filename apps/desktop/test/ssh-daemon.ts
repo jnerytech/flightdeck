@@ -84,7 +84,7 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
         const next = sshTarget({
           ...(existing ?? {}),
           ...payload,
-          id: existing?.id ?? `t${++seq}`,
+          id: existing?.id ?? `n${++seq}`,
           name: String(payload.name),
           updatedAt: "2026-10-30T12:00:00.000Z",
         } as Partial<SshTarget> & { id: string; name: string });
@@ -131,7 +131,7 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
         const created = aliases.map((alias) => {
           const entry = (options.importEntries ?? []).find((e) => e.alias === alias);
           const target = sshTarget({
-            id: `t${++seq}`,
+            id: `n${++seq}`,
             name: alias,
             host: entry?.host ?? alias,
             port: entry?.port ?? 22,
