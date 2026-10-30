@@ -139,4 +139,22 @@ describe("terminal-ui: the session of one terminal", () => {
     session.dispose();
     expect(timers[0]?.cancelled).toBe(true);
   });
+
+  test("a host that refuses a write, a resize or a close does not break the session", async () => {
+    const { session, timers } = setup();
+    const refuse = async () => {
+      throw new Error("offline");
+    };
+    session.opts.host.write = refuse;
+    session.opts.host.resize = refuse;
+    session.opts.host.close = refuse;
+    await session.start();
+    session.input("a");
+    session.resize(90, 20);
+    timers[0]?.run();
+    await session.close(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(session.state).toBe("live");
+  });
 });
