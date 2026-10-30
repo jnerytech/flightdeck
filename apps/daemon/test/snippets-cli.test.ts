@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runCli } from "../src/main.ts";
+import { parseArgs, runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { SecretScanner } from "../src/snippets/model.ts";
 import { Snippets } from "../src/snippets/store.ts";
@@ -68,6 +68,22 @@ async function setup() {
 }
 
 describe("snippets-cli: flightdeckd snippet list and get, the bridge the mod uses", () => {
+  test("parseArgs: snippet list with --project-path and --query, snippet get with a name", () => {
+    expect(parseArgs(["snippet", "list", "--project-path", "/p", "--query", "git"])).toMatchObject({
+      command: "snippet",
+      action: "list",
+      projectPath: "/p",
+      query: "git",
+    });
+    expect(parseArgs(["snippet", "get", "revisar"])).toMatchObject({
+      command: "snippet",
+      action: "get",
+      snippetName: "revisar",
+    });
+    expect(() => parseArgs(["snippet", "apagar"])).toThrow("snippet");
+    expect(() => parseArgs(["snippet", "get"])).toThrow("nome");
+  });
+
   test("snippet list prints the host's and the project's snippets as JSON", async () => {
     const { run, project } = await setup();
     const done = await run("snippet", "list", "--project-path", project);
