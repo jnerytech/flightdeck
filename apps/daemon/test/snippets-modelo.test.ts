@@ -288,6 +288,9 @@ describe("snippets-modelo: segredos", () => {
     expect(refused(command("echo {{a}}", { vars: { a: { options: ["x", token] } } }))).toBe(
       "snippet_secret|false|true",
     );
+    // The name and the tags are content too, and are looked at before anything else about them.
+    expect(refused(command("ls", { tags: [token] }))).toBe("snippet_secret|false|true");
+    expect(refused(command("ls", { name: token }))).toBe("snippet_secret|false|true");
     expect(refused(command("ls", { name: "ls" }))).toBe("ok");
   });
 });
