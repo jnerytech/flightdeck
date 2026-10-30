@@ -433,6 +433,39 @@ describe("terminal-daemon", () => {
     expect(result.exit).toBe(7);
   });
 
+  test("kill sends SIGHUP, which an interactive shell obeys (it ignores SIGTERM), and SIGKILL if the process is still there after the grace", async () => {
+    const signals: Array<string | undefined> = [];
+    let ended!: (code: number) => void;
+    const spawn: SpawnFn = () => ({
+      exited: new Promise<number>((resolve) => {
+        ended = resolve;
+      }),
+      terminal: { write: () => 0, resize: () => {} },
+      kill: (signal) => {
+        signals.push(signal);
+      },
+    });
+    const start = {
+      argv: ["bash"],
+      cwd: "/w",
+      env: {},
+      cols: 80,
+      rows: 24,
+      onData: () => {},
+      onExit: () => {},
+    };
+    bunPty(spawn, 20)(start).kill();
+    expect(signals).toEqual(["SIGHUP"]);
+    await Bun.sleep(60);
+    expect(signals).toEqual(["SIGHUP", "SIGKILL"]);
+    // A process that ends within the grace gets nothing more.
+    signals.length = 0;
+    bunPty(spawn, 20)(start).kill();
+    ended(129);
+    await Bun.sleep(60);
+    expect(signals).toEqual(["SIGHUP"]);
+  });
+
   test("o adaptador do Bun também informa o fim quando o PTY não avisa o fim da saída", async () => {
     let ended!: (code: number) => void;
     const spawn: SpawnFn = () => ({
