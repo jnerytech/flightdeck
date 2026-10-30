@@ -137,6 +137,20 @@ export function TranscriptReader(props: {
                   {copied && (
                     <span className="text-muted-foreground text-xs">{t("reader.copied")}</span>
                   )}
+                  {store.embeddedTerminal(target.hostId) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        void store.openClaudeHere(target.hostId, {
+                          cwd: session.cwd,
+                          claudeSessionId: target.claudeSessionId,
+                        })
+                      }
+                    >
+                      {t("claudeHere.resume")}
+                    </Button>
+                  )}
                 </>
               ),
             }
