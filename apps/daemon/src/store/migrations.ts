@@ -546,4 +546,39 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE projects ADD COLUMN persona_subagents TEXT;
   `,
+  // Phase 21: the messages between sessions (what the conversations screen shows), the policy of
+  // who may talk to whom, and the pairs the loop detector paused.
+  `
+  CREATE TABLE session_messages (
+    id           TEXT PRIMARY KEY,
+    from_session TEXT NOT NULL,
+    from_host    TEXT NOT NULL,
+    to_session   TEXT NOT NULL,
+    to_host      TEXT NOT NULL,
+    text         TEXT NOT NULL,
+    status       TEXT NOT NULL,
+    reason       TEXT,
+    created_at   TEXT NOT NULL,
+    created_ms   INTEGER NOT NULL,
+    delivered_at TEXT,
+    team_id      TEXT,
+    kind         TEXT NOT NULL DEFAULT 'session',
+    sender       TEXT,
+    untrusted    INTEGER NOT NULL DEFAULT 0,
+    relayed      INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE INDEX session_messages_pair ON session_messages (from_session, to_session, created_ms);
+  CREATE INDEX session_messages_time ON session_messages (created_ms);
+
+  CREATE TABLE messaging_config (
+    id     INTEGER PRIMARY KEY CHECK (id = 1),
+    policy TEXT NOT NULL
+  );
+
+  CREATE TABLE messaging_paused (
+    pair TEXT PRIMARY KEY,
+    at   TEXT NOT NULL
+  );
+  `,
 ];
