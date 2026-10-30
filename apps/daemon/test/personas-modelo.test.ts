@@ -419,6 +419,12 @@ describe("personas-modelo: do projeto, versionadas", () => {
       ),
     ).toBe("bad_request");
     expect(codeOf(() => personas.resolve({}, {}))).toBe("bad_request");
+    for (const definition of ["texto", 42, null, ["lista"]]) {
+      expect([definition, codeOf(() => personas.resolve({ definition }, {}))]).toEqual([
+        definition,
+        "bad_request",
+      ]);
+    }
     expect(codeOf(() => personas.resolve({ id: "nao-existe" }, {}))).toBe("not_found");
   });
 });
