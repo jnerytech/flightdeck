@@ -191,7 +191,9 @@ export class Actions {
     this.assertTrusted(found);
     const params = resolveParams(found.action, input.params ?? {});
     const { values, files } = secretsOf(found.action);
-    const ids = [...values, ...files];
+    // A destino that logs in with a key from the vault: the key is asked for like the secrets.
+    const keyId = found.action.ssh ? (this.opts.sshKey?.(found.action.ssh) ?? null) : null;
+    const ids = [...new Set([...values, ...files, ...(keyId ? [keyId] : [])])];
     const secrets = await this.collect(ids, {
       requester: input.requestedBy,
       purposeBase: `action:${found.action.name}`,
@@ -199,7 +201,7 @@ export class Actions {
     });
     // The approval can take a while: what the action executes is checked again before it starts.
     this.assertTrusted(found);
-    return this.execute(found, params, secrets, input.requestedBy, ids);
+    return this.execute(found, params, secrets, input.requestedBy, ids, keyId);
   }
 
   /**
@@ -471,12 +473,14 @@ export class Actions {
     secrets: Record<string, string>,
     requester: VaultRequester,
     ids: string[],
+    keyId: string | null = null,
   ): Promise<ActionResult> {
     const startedAt = now();
     const result: RunResult = await runAction(found.action, params, secrets, {
       base: found.base,
       ...(this.opts.baseEnv ? { baseEnv: this.opts.baseEnv } : {}),
       ...(this.opts.ssh ? { ssh: this.opts.ssh } : {}),
+      ...(keyId ? { sshKey: { id: keyId, value: secrets[keyId] as string } } : {}),
     });
     const runId = ulid();
     this.opts.db

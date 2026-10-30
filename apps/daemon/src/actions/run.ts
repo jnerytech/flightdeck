@@ -24,7 +24,7 @@ export interface SshJob {
 /** The SSH destinations of phase 15 plug in here: `ssh <target> -- <argv>` with the env sent. */
 export type SshExecutor = (
   job: SshJob,
-) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
+) => Promise<{ exitCode: number; stdout: string; stderr: string; timedOut?: boolean }>;
 
 export interface RunOptions {
   /** The folder relative paths are resolved against (the project's). */
@@ -34,6 +34,8 @@ export interface RunOptions {
   /** Milliseconds; the action's `timeoutS` when absent (tests make it short). */
   timeoutMs?: number;
   ssh?: SshExecutor;
+  /** The ssh destino's key from the vault: handed to the executor, and masked like a secret. */
+  sshKey?: { id: string; value: string };
 }
 
 export interface RunResult {
@@ -144,6 +146,7 @@ export async function runAction(
     name: id,
     value: secrets[id] as string,
   }));
+  if (opts.sshKey) masked.push({ name: opts.sshKey.id, value: opts.sshKey.value });
   const folder = mkdtempSync(join(tmpdir(), "fd-action-"));
   const started = performance.now();
   try {
@@ -167,11 +170,12 @@ export async function runAction(
         argv,
         env,
         timeoutS: action.timeoutS,
+        ...(opts.sshKey ? { privateKey: opts.sshKey.value } : {}),
       });
       return {
         exitCode: done.exitCode,
         durationMs: Math.round(performance.now() - started),
-        timedOut: false,
+        timedOut: done.timedOut ?? false,
         ...finish(
           { out: done.stdout, err: done.stderr, outCapped: false, errCapped: false },
           masked,
