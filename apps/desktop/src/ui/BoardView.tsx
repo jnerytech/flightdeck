@@ -1,5 +1,5 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
-import { Columns3, MoreHorizontal, Plus } from "lucide-react";
+import { Columns3, ListTodo, MoreHorizontal, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -28,7 +28,10 @@ import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
+import { hasFeature } from "../lib/version.ts";
+import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
 function CardTile(props: {
   card: Card;
@@ -100,6 +103,8 @@ function CardTile(props: {
               : t("kanban.waitingQuota")}
           </Badge>
         )}
+        {card.issueRef && <Badge variant="outline">{issueNumber(card.issueRef)}</Badge>}
+        {card.issueExternal && <ExternalSeal t={t} />}
         {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
         {card.checksState && (
           <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
@@ -131,6 +136,13 @@ export function BoardView(props: {
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(false);
+  /** The issues panel (phase 13), on a daemon that announces issues. */
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const withIssues = hasFeature(
+    props.state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "issues",
+    false,
+  );
   const { t } = store.i18n;
 
   useEffect(() => {
@@ -179,6 +191,12 @@ export function BoardView(props: {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
+          {withIssues && (
+            <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
+              <ListTodo aria-hidden="true" />
+              {t("issuesUi.button")}
+            </Button>
+          )}
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />
             {t("kanban.newCard")}
@@ -243,6 +261,17 @@ export function BoardView(props: {
           ))}
         </div>
       </div>
+      {issuesOpen && project && (
+        <IssuesPanel
+          store={store}
+          hostId={hostId}
+          project={project}
+          cards={all}
+          onClose={() => setIssuesOpen(false)}
+          onProject={setProject}
+          onOpenCard={props.onOpenCard}
+        />
+      )}
       <Dialog open={creating} onOpenChange={(open) => (open ? setCreating(true) : close())}>
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>

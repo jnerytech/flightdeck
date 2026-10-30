@@ -10,11 +10,13 @@ import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
+import { issueLabel, issueUrl } from "../lib/issues.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
 import { CardReview } from "./CardReview.tsx";
 import { ChangesPanel } from "./ChangesPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { ExternalSeal } from "./IssuesPanel.tsx";
 import { PrComments } from "./PrComments.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
@@ -161,6 +163,18 @@ export function CardDetail(props: {
           </Button>
           {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
           {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
+          {card.issueRef && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!issueUrl(card.issueRef)}
+              aria-label={t("issuesUi.openIssue", { issue: issueLabel(card.issueRef) })}
+              onClick={() => store.openLink(issueUrl(card.issueRef as string) ?? "")}
+            >
+              {issueLabel(card.issueRef)}
+            </Button>
+          )}
+          {card.issueExternal && <ExternalSeal t={t} />}
           {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
           {card.checksState && (
             <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>

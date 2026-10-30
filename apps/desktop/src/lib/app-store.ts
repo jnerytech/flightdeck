@@ -166,6 +166,9 @@ export type HostCommandType = Extract<
   | "session.fork"
   | `mcp.${string}`
   | `agentcfg.${string}`
+  | `issues.${string}`
+  | `automation.${string}`
+  | `autoapprove.${string}`
 >;
 
 /** A command's answer kept apart from the error banner: the caller decides what to show. */
@@ -664,7 +667,9 @@ export class AppStore {
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
-  openLink(_url: string): void {}
+  openLink(url: string): void {
+    if (/^https?:\/\//i.test(url)) void this.platform.openExternal(url);
+  }
 
   /** `flightdeck://` links opened from outside the app (OS deep link or second instance). */
   onDeepLink(handler: (url: string) => void): () => void {
