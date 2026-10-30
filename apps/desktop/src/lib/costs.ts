@@ -41,3 +41,8 @@ export function periodRange(
 
 /** `US$ 1.23`. */
 export const usd = (value: number) => `US$ ${value.toFixed(2)}`;
+
+/** A project key as a person reads it (stub: filled in with the implementation). */
+export function projectLabel(key: string): string {
+  return key;
+}

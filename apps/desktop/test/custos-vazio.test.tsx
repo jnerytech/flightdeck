@@ -8,6 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { projectLabel } = await import("../src/lib/costs.ts");
 
 setDefaultTimeout(20_000);
 
@@ -79,5 +80,11 @@ describe("custos-ui: a tela nunca fica em branco", () => {
     await settle(() => text().includes("Nenhum host informa custos"));
     expect(text()).toContain("Nenhum host informa custos ainda.");
     expect(within(main()).queryByRole("heading", { name: "Custos" })).not.toBeNull();
+  });
+
+  test("o projeto de um custo aparece pelo nome da pasta, sem o host nem o caminho", () => {
+    expect(projectLabel("host:alfa:C:\\Users\\dev\\flightdeck-web")).toBe("flightdeck-web");
+    expect(projectLabel("host:beta:/home/dev/work/api-gateway")).toBe("api-gateway");
+    expect(projectLabel("github.com/acme/central")).toBe("github.com/acme/central");
   });
 });
