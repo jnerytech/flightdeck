@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import { Actions } from "../src/actions/actions.ts";
+import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { Vault } from "../src/vault/vault.ts";
@@ -218,5 +220,48 @@ describe("acoes-protocolo", () => {
     expect(
       await claude.request("actions.run", { projectId: "p1", name: "echo", requestedBy: "claude" }),
     ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+  });
+});
+
+describe("acoes-protocolo: o daemon montado pelo main", () => {
+  test("uma ação de projeto resolve o projeto cadastrado no board do daemon de verdade", async () => {
+    const { root, repo } = gitRepo();
+    const dir = tempDir("fd-main-");
+    const file = join(dir, "config.json");
+    await Bun.write(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        allowedRoots: [root],
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const client = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const project = await client.data<{ id: string }>("project.add", { path: repo });
+    const projectId = project?.id ?? "";
+    const saved = await client.data<{ name: string }>("actions.save", {
+      projectId,
+      definition: { name: "oi", description: "oi", run: ["echo", "oi"] },
+    });
+    expect(saved?.name).toBe("oi");
+    const listed = await client.data<{ actions: Array<{ name: string }> }>("actions.list", {
+      projectId,
+    });
+    expect(listed?.actions.map((a) => a.name)).toEqual(["oi"]);
+    expect(await client.request("actions.list", { projectId: "nao-existe" })).toMatchObject({
+      ok: false,
+      error: { code: "not_found" },
+    });
   });
 });

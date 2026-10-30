@@ -6,3 +6,5 @@ coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageThreshold = { lines = 1.0, functions = 1.0 }
 coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts"]
+# The mods run under `claude plugin test`, not under bun.
+pathIgnorePatterns = ["mods/**"]

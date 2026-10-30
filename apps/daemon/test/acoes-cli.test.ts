@@ -144,6 +144,24 @@ describe("acoes-cli", () => {
     expect(done.out).not.toContain(VALUE);
   });
 
+  test("sem daemon no ar o comando diz que não conseguiu conectar", async () => {
+    const dead = join(tempDir(), "config.json");
+    writeFileSync(
+      dead,
+      JSON.stringify({ token: TOKEN, port: 1, dataDir: join(tempDir(), "data") }),
+    );
+    const errors: string[] = [];
+    const exits: number[] = [];
+    await runCli(["action", "list", "--config", dead], {
+      env: {},
+      log: { log: () => {}, error: (m) => errors.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+    });
+    expect(exits).toEqual([1]);
+    expect(errors.join(" ")).toContain("não consegui conectar no daemon");
+  });
+
   test("um erro do daemon vira erro do comando, com o código e a mensagem", async () => {
     const { run } = await setup();
     const refused = await run("action", "run", "diz", "--project", "p1", "--param", "palavra=NÃO");
