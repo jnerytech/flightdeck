@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
+import { Actions } from "../../daemon/src/actions/actions.ts";
 import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";
 import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
@@ -30,6 +31,7 @@ import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
+import { Vault } from "../../daemon/src/vault/vault.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -89,6 +91,8 @@ export function daemon(
     risk?: (root: string) => RiskClassifier;
     /** The host's embedded terminals (phase 14), over fake PTYs that echo what is written; "off" has them turned off. */
     terminals?: boolean | "off";
+    /** The actions that use a vault secret (phase 17), over this daemon's database. */
+    actions?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -197,6 +201,16 @@ export function daemon(
         },
       })
     : undefined;
+  const actions = options.actions
+    ? new Actions({
+        db: store.db,
+        vault: new Vault({ log: () => {} }),
+        hostBase: root,
+        requestTimeoutMs: 3000,
+        projects: (id) => board.getProject(id),
+      })
+    : undefined;
+  if (actions) cleanups.push(() => actions.stop());
   // Like the real daemon, costs come with the quota's history.
   const quotaHistory =
     options.quotaHistory?.(store.db) ??
@@ -242,6 +256,7 @@ export function daemon(
       ...(automations ? { automations } : {}),
       ...(autoApprove ? { autoApprove } : {}),
       ...(terminals ? { terminals } : {}),
+      ...(actions ? { actions } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -275,6 +290,7 @@ export function daemon(
     automations,
     autoApprove,
     ptys,
+    actions,
   };
 }
 
