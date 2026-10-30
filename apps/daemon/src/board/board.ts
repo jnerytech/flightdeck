@@ -192,6 +192,8 @@ export class Board {
   private limit: number;
   private readonly pollTimer: ReturnType<typeof setInterval>;
   private polling = false;
+  /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
+  private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
   private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
   /** Workflows of the projects and their runs (phase 6). */
@@ -711,9 +713,11 @@ export class Board {
       this.running.add(next.card_id);
       this.db.query("UPDATE card_runs SET started_at = ? WHERE id = ?").run(now(), next.id);
       this.changed(next.card_id);
-      void this.launch(next.card_id, next.id).catch((error: unknown) =>
-        this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error)),
-      );
+      void this.launch(next.card_id, next.id).catch((error: unknown) => {
+        // After stop() the failure is the shutdown's (a closed database): nothing to record.
+        if (this.stopped) return;
+        this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error));
+      });
     }
   }
 
@@ -1224,6 +1228,7 @@ export class Board {
   }
 
   stop(): void {
+    this.stopped = true;
     clearInterval(this.pollTimer);
     this.unwatchQuota();
     this.unwatchBudgets();
