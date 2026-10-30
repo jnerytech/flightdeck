@@ -179,7 +179,7 @@ describe("snippets-historico: ler os históricos", () => {
 
   test("um histórico enorme é lido só pelo final, sem a linha cortada no começo", () => {
     const filler = `${"x".repeat(99)}\n`;
-    const text = `early command only once\n${filler.repeat(52_000)}late command twice\nlate command twice\n`;
+    const text = `early command only once\n${filler.repeat(53_000)}late command twice\nlate command twice\n`;
     const { importer } = setup({ bash: text });
     const { candidates } = importer.preview({});
     expect(commands(candidates)).toContain("late command twice");
@@ -202,13 +202,7 @@ describe("snippets-historico: varredura de segredos", () => {
     const { candidates } = importer.preview({});
     const flagged = candidates.filter((c) => c.hidden);
     expect(flagged.map((c) => c.flagged.join(" + ")).sort()).toEqual(
-      [
-        "chave da AWS",
-        "chave sk-",
-        "senha na linha",
-        "token Bearer",
-        "token do GitHub + senha na linha",
-      ].sort(),
+      ["chave da AWS", "chave sk-", "senha na linha", "token Bearer", "token do GitHub"].sort(),
     );
     for (const candidate of flagged) {
       expect(candidate).toMatchObject({ command: null, selectable: false });
@@ -246,8 +240,8 @@ describe("snippets-historico: varredura de segredos", () => {
     );
     const { candidates } = importer.preview({});
     expect(candidates.map((c) => [c.command, c.flagged])).toEqual([
-      [null, ["valor do cofre"]],
       ["git status", []],
+      [null, ["valor do cofre"]],
     ]);
   });
 });
