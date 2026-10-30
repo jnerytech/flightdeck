@@ -496,4 +496,60 @@ describe("agente-ui", () => {
     expect(screen.queryByText("Nenhuma skill neste projeto.")).not.toBeNull();
     expect(screen.queryByText("Escolha um arquivo da lista.")).not.toBeNull();
   });
+
+  test("cancelar a remoção, ou fechar o formulário, não muda o .mcp.json", async () => {
+    const { repo } = await setup();
+    const before = text(join(repo, ".mcp.json"));
+    await settle(() => screen.queryByRole("button", { name: "Remover eco" }) !== null);
+    await click("Remover eco");
+    await settle(() => screen.queryByRole("alertdialog") !== null);
+    await click("Cancelar");
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+
+    await click("Adicionar servidor");
+    await settle(() => screen.queryByRole("dialog") !== null);
+    await type("Nome do servidor", "descartado");
+    await act(async () => {
+      fireEvent.keyDown(screen.queryByRole("dialog") as HTMLElement, { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog") === null);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(text(join(repo, ".mcp.json"))).toBe(before);
+  });
+
+  test("um agente com a descrição em várias linhas avisa e deixa o campo para o arquivo", async () => {
+    const { repo } = await setup();
+    writeFileSync(
+      join(repo, ".claude", "agents", "longo.md"),
+      "---\nname: longo\ndescription: >\n  uma linha\n  outra linha\n---\nCorpo\n",
+    );
+    await openTab("Agentes");
+    await settle(() => screen.queryByRole("button", { name: "longo (Do projeto)" }) !== null);
+    await click("longo (Do projeto)");
+    await settle(() => screen.queryByLabelText("Descrição") !== null);
+    expect((screen.queryByLabelText("Descrição") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByText("Valor em várias linhas: edite direto no arquivo.")).not.toBeNull();
+    // The name still edits, and saving keeps the block as it was.
+    await type("Nome", "longo2");
+    await click("Salvar");
+    await settle(() => text(join(repo, ".claude", "agents", "longo.md")).includes("longo2"));
+    expect(text(join(repo, ".claude", "agents", "longo.md"))).toBe(
+      "---\nname: longo2\ndescription: >\n  uma linha\n  outra linha\n---\nCorpo\n",
+    );
+  });
+
+  test("uma lista de arquivos que não carrega mostra o erro", async () => {
+    const { store, hostId } = await setup();
+    await act(async () => {
+      store.router.push({ name: "agent", host: hostId, projectId: "nenhum", projectName: "x" });
+    });
+    await openTab("Skills");
+    await settle(
+      () => screen.queryByText("Não foi possível carregar a configuração deste projeto.") !== null,
+    );
+    expect(
+      screen.queryByText("Não foi possível carregar a configuração deste projeto."),
+    ).not.toBeNull();
+  });
 });
