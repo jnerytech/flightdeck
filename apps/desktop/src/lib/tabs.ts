@@ -160,6 +160,29 @@ export class Tabs {
     this.emit();
   }
 
+  /** Removes a tab without remembering it as closed, to put it in another area; may leave none. */
+  take(id: string): Tab | null {
+    const index = this.tabs.findIndex((tab) => tab.id === id);
+    const tab = this.tabs[index];
+    if (!tab) return null;
+    this.unwatch.get(id)?.();
+    this.unwatch.delete(id);
+    this.tabs = this.tabs.filter((other) => other.id !== id);
+    if (this.activeId === id) {
+      this.activeId = this.tabs[Math.min(index, this.tabs.length - 1)]?.id ?? "";
+    }
+    this.emit();
+    return tab;
+  }
+
+  /** Puts a tab taken from another area at `index` (after the active one by default) and activates it. */
+  adopt(tab: Tab, index?: number): void {
+    const after = this.tabs.findIndex((other) => other.id === this.activeId) + 1;
+    this.insert(tab, index ?? after);
+    this.activeId = tab.id;
+    this.emit();
+  }
+
   private get pinnedCount(): number {
     return this.tabs.filter((tab) => tab.pinned).length;
   }
@@ -172,6 +195,11 @@ export class Tabs {
 
   private add(route: Route, index: number, pinned: boolean): Tab {
     const tab: Tab = { id: this.newId(), router: new Router(route), pinned };
+    this.insert(tab, index);
+    return tab;
+  }
+
+  private insert(tab: Tab, index: number): void {
     this.unwatch.set(
       tab.id,
       tab.router.subscribe(() => {
@@ -179,7 +207,6 @@ export class Tabs {
       }),
     );
     this.tabs = [...this.tabs.slice(0, index), tab, ...this.tabs.slice(index)];
-    return tab;
   }
 
   private emit(): void {
