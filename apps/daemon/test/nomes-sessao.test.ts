@@ -100,7 +100,8 @@ describe("nomes-sessao: a sequência e o apelido", () => {
     expect(restarted.assign("s4", { project: "flightdeck" }).display).toBe(
       "flightdeck · geral · 4",
     );
-    expect(restarted.resolve("flightdeck-geral-1")).toBeNull();
+    // The alias stays reserved for the session that had it, so no other can take it.
+    expect(restarted.resolve("flightdeck-geral-1")).toBe("s1");
   });
 
   test("dois projetos de nome parecido não repetem o apelido", () => {
