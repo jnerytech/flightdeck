@@ -91,7 +91,7 @@ describe("cofre-gerar-importar", () => {
   });
 
   test("web: the tools that need the desktop shell report so, and the dialog finds nothing", async () => {
-    const platform = createWebPlatform();
+    const platform = createWebPlatform({} as never);
     expect(await platform.vault.pickFile()).toBeNull();
     await platform.vault.removeFile("/x");
     let message = "";
@@ -109,7 +109,7 @@ describe("cofre-gerar-importar", () => {
       if (cmd === "vault_pick_file") return { path: "/home/a/id_x", text: "FILE" };
       return undefined;
     }) as never;
-    const platform = tauriPlatform(window, call);
+    const platform = tauriPlatform({} as never, call);
     expect(await platform.vault.generateKey("deploy")).toEqual({
       privateKey: "PRIV",
       publicKey: "ssh-ed25519 PUB",
