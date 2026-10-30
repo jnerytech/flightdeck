@@ -1,5 +1,5 @@
 /**
- * Phase 17: `flightdeckd action list|run`, how the `flightdeck-actions` mod (which cannot open a
+ * Phase 17: `flightdeckd action list|run`, how the `flightdeck` mod (which cannot open a
  * WebSocket) and a terminal reach the actions of the local daemon. It speaks the protocol as
  * Claude would: a run is asked of the app like any other, and what is printed is the same JSON the
  * MCP tools answer, with the secrets masked.

@@ -9,10 +9,10 @@ import { atom, read, update } from "claude-code";
  * secret masked.
  */
 const DAEMON = "flightdeckd";
-const LIST = "mcp__flightdeck-actions__list_actions";
-const RUN = "mcp__flightdeck-actions__run_action";
-const SNIPPETS = "mcp__flightdeck-actions__list_snippets";
-const SNIPPET = "mcp__flightdeck-actions__get_snippet";
+const LIST = "mcp__flightdeck__list_actions";
+const RUN = "mcp__flightdeck__run_action";
+const SNIPPETS = "mcp__flightdeck__list_snippets";
+const SNIPPET = "mcp__flightdeck__get_snippet";
 // An approval in the app can take a while; the daemon itself gives up after two minutes.
 const RUN_TIMEOUT_MS = 180_000;
 
@@ -88,7 +88,7 @@ const MESSAGE_TOOLS: MessageTool[] = [
   },
 ];
 
-const running = atom({ plugin: "flightdeck-actions", key: "running" } as const, [] as string[]);
+const running = atom({ plugin: "flightdeck", key: "running" } as const, [] as string[]);
 
 type Param = { pattern: string; default: string | null };
 type Listed = {
@@ -159,7 +159,7 @@ export const register: Register = (on) => {
       });
     }
     await $.command.register({
-      name: "flightdeck-actions",
+      name: "flightdeck",
       description: "List the Flightdeck actions Claude can run",
     });
 
@@ -173,11 +173,9 @@ export const register: Register = (on) => {
 
     return done.exitCode === 0
       ? { result: done.stdout }
-      : { deny: `flightdeck-actions: ${done.stderr.trim() || "flightdeckd action list failed"}` };
+      : { deny: `flightdeck: ${done.stderr.trim() || "flightdeckd action list failed"}` };
   }).catch(($, e, next) =>
-    next.called
-      ? next(e)
-      : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
+    next.called ? next(e) : { deny: "flightdeck: could not run flightdeckd (is it on the PATH?)" },
   );
 
   /** The session's project, for `flightdeckd snippet …`; none before the session started. */
@@ -185,7 +183,7 @@ export const register: Register = (on) => {
   const printed = (done: { exitCode: number; stdout: string; stderr: string }) =>
     done.exitCode === 0
       ? { result: done.stdout }
-      : { deny: `flightdeck-actions: ${done.stderr.trim() || "flightdeckd snippet failed"}` };
+      : { deny: `flightdeck: ${done.stderr.trim() || "flightdeckd snippet failed"}` };
 
   on("tool.call", { tool: SNIPPETS }, async ($, e) => {
     const query = typeof e.query === "string" && e.query ? ["--query", e.query] : [];
@@ -194,13 +192,13 @@ export const register: Register = (on) => {
 
   on("tool.call", { tool: SNIPPET }, async ($, e) => {
     const name = typeof e.name === "string" ? e.name : "";
-    if (!name) return { deny: "flightdeck-actions: get_snippet needs the name of a snippet" };
+    if (!name) return { deny: "flightdeck: get_snippet needs the name of a snippet" };
     return printed(await $.process.run([DAEMON, "snippet", "get", name, ...project()]));
   });
 
   on("tool.call", { tool: RUN }, async ($, e) => {
     const name = typeof e.name === "string" ? e.name : "";
-    if (!name) return { deny: "flightdeck-actions: run_action needs the name of an action" };
+    if (!name) return { deny: "flightdeck: run_action needs the name of an action" };
 
     const argv = [DAEMON, "action", "run", name];
     if (typeof e.projectId === "string" && e.projectId) argv.push("--project", e.projectId);
@@ -215,7 +213,7 @@ export const register: Register = (on) => {
 
       return done.exitCode === 0
         ? { result: done.stdout }
-        : { deny: `flightdeck-actions: ${done.stderr.trim() || "flightdeckd action run failed"}` };
+        : { deny: `flightdeck: ${done.stderr.trim() || "flightdeckd action run failed"}` };
     } finally {
       await update($, running, (list) => {
         const at = list.indexOf(name);
@@ -223,36 +221,34 @@ export const register: Register = (on) => {
       });
     }
   }).catch(($, e, next) =>
-    next.called
-      ? next(e)
-      : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
+    next.called ? next(e) : { deny: "flightdeck: could not run flightdeckd (is it on the PATH?)" },
   );
 
   for (const tool of MESSAGE_TOOLS) {
-    on("tool.call", { tool: `mcp__flightdeck-actions__${tool.name}` }, async ($, e) => {
+    on("tool.call", { tool: `mcp__flightdeck__${tool.name}` }, async ($, e) => {
       const argv = tool.argv(e as Record<string, unknown>);
       if ("missing" in argv) {
-        return { deny: `flightdeck-actions: ${tool.name} needs ${argv.missing}` };
+        return { deny: `flightdeck: ${tool.name} needs ${argv.missing}` };
       }
       const done = await $.process.run([DAEMON, "message", ...argv]);
 
       return done.exitCode === 0
         ? { result: done.stdout }
         : {
-            deny: `flightdeck-actions: ${done.stderr.trim() || `flightdeckd message ${argv[0]} failed`}`,
+            deny: `flightdeck: ${done.stderr.trim() || `flightdeckd message ${argv[0]} failed`}`,
           };
     }).catch(($, e, next) =>
       next.called
         ? next(e)
-        : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
+        : { deny: "flightdeck: could not run flightdeckd (is it on the PATH?)" },
     );
   }
 
-  on("command.run", { command: "flightdeck-actions" }, async ($) => {
+  on("command.run", { command: "flightdeck" }, async ($) => {
     const done = await $.process.run([DAEMON, "action", "list"]);
     if (done.exitCode !== 0) {
       return {
-        text: `flightdeck-actions: ${done.stderr.trim() || "flightdeckd action list failed"}`,
+        text: `flightdeck: ${done.stderr.trim() || "flightdeckd action list failed"}`,
       };
     }
     const { actions } = JSON.parse(done.stdout) as { actions: Listed[] };

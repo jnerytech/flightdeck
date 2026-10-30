@@ -3,8 +3,8 @@
   "owner": { "name": "Flightdeck" },
   "plugins": [
     {
-      "name": "flightdeck-actions",
-      "source": "./mods/flightdeck-actions",
+      "name": "flightdeck",
+      "source": "./mods/flightdeck",
       "description": "Run Flightdeck actions that use a vault secret without Claude ever seeing it."
     }
   ]

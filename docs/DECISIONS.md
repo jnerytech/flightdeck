@@ -2264,7 +2264,9 @@ O que a spec da Fase 21 (times e comunicação entre sessões) deixou aberto, ou
 
 ## O mod
 
-O mod continua com o nome `flightdeck-actions` nesta rodada. Ele ganhou as cinco ferramentas de mensagem pela ponte `flightdeckd message list|send|idle|read|team`, que imprime o mesmo JSON do MCP. A spec manda renomeá-lo para `flightdeck`, o que muda o prefixo das ferramentas (`mcp__flightdeck-actions__*` para `mcp__flightdeck__*`) e a entrada do marketplace; fica para a decisão do orquestrador.
+O mod passou a se chamar **`flightdeck`** (era `flightdeck-actions`, da Fase 17), como a spec manda, enquanto não foi publicado nem instalado: a pasta é `mods/flightdeck`, as ferramentas são `mcp__flightdeck__*`, o comando é `/flightdeck` e a entrada do marketplace tem o mesmo nome. O risco `high` do `run_with_secret` não muda, porque o classificador olha o fim do nome da ferramenta, de qualquer servidor. Ele ganhou as cinco ferramentas de mensagem pela ponte `flightdeckd message list|send|idle|read|team`, que imprime o mesmo JSON do MCP.
+
+**O mod e o MCP têm o mesmo prefixo.** Um servidor MCP registrado com `claude mcp add flightdeck` também dá `mcp__flightdeck__*`. O mod é para as sessões sem o MCP configurado; com os dois ligados na mesma sessão as ferramentas se repetem. Use um dos dois.
 
 ## Travas e testes
 

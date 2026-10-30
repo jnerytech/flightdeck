@@ -1,5 +1,5 @@
 /**
- * Phase 21: `flightdeckd message list|send|idle|read|team`, how the `flightdeck-actions` mod
+ * Phase 21: `flightdeckd message list|send|idle|read|team`, how the `flightdeck` mod
  * (which cannot open a WebSocket) and a terminal reach the messaging tools. Who is asking comes from
  * the environment of the Claude Code session (FLIGHTDECK_SESSION, or the launch id of a terminal).
  */

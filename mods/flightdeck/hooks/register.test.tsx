@@ -24,9 +24,9 @@ const LISTED = JSON.stringify({
   ],
 });
 
-/** `/flightdeck-actions` typed at the prompt, as the engine raises it. */
+/** `/flightdeck` typed at the prompt, as the engine raises it. */
 const LISTING = {
-  command: "flightdeck-actions",
+  command: "flightdeck",
   args: "",
   origin: { kind: "composer" },
   presentation: { isFullscreen: false, columns: 80 },
@@ -170,7 +170,7 @@ test("a flightdeckd that cannot start is an error for the model, not a crash", a
   }
 });
 
-test("/flightdeck-actions lists each trusted action with its description and approval", async ($, on) => {
+test("/flightdeck lists each trusted action with its description and approval", async ($, on) => {
   const argvs: string[][] = [];
   on("process.run", (_, e) => {
     argvs.push([...e.argv]);
@@ -183,7 +183,7 @@ test("/flightdeck-actions lists each trusted action with its description and app
   expect(done.text).toBe("deploy-staging: Deploy the branch to staging (first-per-session)");
 });
 
-test("/flightdeck-actions says when no action is trusted, and shows flightdeckd's error", async ($, on) => {
+test("/flightdeck says when no action is trusted, and shows flightdeckd's error", async ($, on) => {
   let reply = RESULT({ stdout: JSON.stringify({ actions: [] }) });
   on("process.run", () => ({ value: reply }));
 
@@ -191,7 +191,7 @@ test("/flightdeck-actions says when no action is trusted, and shows flightdeckd'
     "No Flightdeck actions are trusted on this host.",
   );
   reply = RESULT({ exitCode: 1, stderr: "could not connect\n" });
-  expect((await $.command.run(LISTING)).text).toBe("flightdeck-actions: could not connect");
+  expect((await $.command.run(LISTING)).text).toBe("flightdeck: could not connect");
 });
 
 test("list_snippets reads the snippets of the session's project through flightdeckd, with the query", async ($, on) => {
@@ -206,7 +206,7 @@ test("list_snippets reads the snippets of the session's project through flightde
   await $.session.start({ cwd: "/work/app", surface: "terminal", isInteractive: true });
 
   const answer = await $.tool.call({
-    tool: "mcp__flightdeck-actions__list_snippets",
+    tool: "mcp__flightdeck__list_snippets",
     query: "git",
   });
 
@@ -226,14 +226,14 @@ test("get_snippet reads one snippet by name and never runs it; flightdeckd's err
   on("tool.call", () => ({ result: {} }));
 
   const answer = await $.tool.call({
-    tool: "mcp__flightdeck-actions__get_snippet",
+    tool: "mcp__flightdeck__get_snippet",
     name: "revisar",
   });
 
   expect(argvs).toEqual([["flightdeckd", "snippet", "get", "revisar"]]);
   expect(String(answer.result)).toContain("Revise {{file}}");
   reply = RESULT({ exitCode: 1, stderr: "not_found: snippet\n" });
-  const missing = await $.tool.call({ tool: "mcp__flightdeck-actions__get_snippet", name: "nada" });
+  const missing = await $.tool.call({ tool: "mcp__flightdeck__get_snippet", name: "nada" });
   expect((missing as { deny?: string }).deny).toContain("not_found");
 const SESSION_CALLS = [
   ["list_sessions", {}, ["flightdeckd", "message", "list"]],

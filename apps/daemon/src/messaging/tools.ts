@@ -1,6 +1,6 @@
 /**
  * Phase 21: what the messaging tools answer, shared by the MCP server and by `flightdeckd message`
- * (the way the `flightdeck-actions` mod reaches them). Each takes who is asking and speaks the
+ * (the way the `flightdeck` mod reaches them). Each takes who is asking and speaks the
  * protocol of the local daemon.
  */
 import type {
