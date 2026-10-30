@@ -79,6 +79,12 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
         { label: t("sidebar.board"), route: projects(route.host, "board") },
         { label: projectName(route.host, route.projectId) },
       );
+    case "automations":
+      return path(
+        host(route.host),
+        { label: t("projectsUi.list"), route: projects(route.host) },
+        { label: route.projectName },
+      );
     case "workflows":
       return path(
         host(route.host),

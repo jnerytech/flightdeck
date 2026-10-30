@@ -18,6 +18,7 @@ import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { AgentPage } from "./AgentPage.tsx";
+import { AutomationsPage } from "./AutomationsPage.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
@@ -49,6 +50,7 @@ function hostToWait(route: Route): string | null {
     case "card":
     case "workflows":
     case "agent":
+    case "automations":
       return route.host;
     default:
       return null;
@@ -459,6 +461,10 @@ function routeScreen(props: ScreenProps): ReactNode {
           onOpenWorkflows={({ id, name }) =>
             go({ name: "workflows", host: route.host, projectId: id, projectName: name })
           }
+          automations={hasFeature(host?.hostInfo?.features, "automation", false)}
+          onOpenAutomations={({ id, name }) =>
+            go({ name: "automations", host: route.host, projectId: id, projectName: name })
+          }
         />
       );
     }
@@ -489,6 +495,16 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "agent":
       return (
         <AgentPage
+          key={`${route.host}/${route.projectId}`}
+          store={store}
+          hostId={route.host}
+          projectId={route.projectId}
+          projectName={route.projectName}
+        />
+      );
+    case "automations":
+      return (
+        <AutomationsPage
           key={`${route.host}/${route.projectId}`}
           store={store}
           hostId={route.host}

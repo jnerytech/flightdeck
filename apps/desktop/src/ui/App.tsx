@@ -68,7 +68,10 @@ export function App({ store }: { store: AppStore }) {
   // The header's path names the project of a board, a card or workflows: load the host's projects
   // when the screen was opened without passing through them (a link, a card of the queue).
   const projectHost =
-    route.name === "board" || route.name === "card" || route.name === "workflows"
+    route.name === "board" ||
+    route.name === "card" ||
+    route.name === "workflows" ||
+    route.name === "automations"
       ? route.host
       : null;
   const projectsKnown = projectHost === null || state.projects[projectHost] !== undefined;

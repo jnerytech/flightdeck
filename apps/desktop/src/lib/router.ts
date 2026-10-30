@@ -22,6 +22,8 @@ export type Route =
   | { name: "workflows"; host: string; projectId: string; projectName: string }
   /** A project's agent: MCP servers, CLAUDE.md, agents and skills (phase 12). */
   | { name: "agent"; host: string; projectId: string; projectName: string }
+  /** A project's automations (phase 13). */
+  | { name: "automations"; host: string; projectId: string; projectName: string }
   | { name: "settings" }
   /** The Custos screen (phase 8, track A). */
   | { name: "costs" }
