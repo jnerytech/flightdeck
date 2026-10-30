@@ -246,6 +246,7 @@ describe("hub-ui", () => {
     }
     await openMenu("repo-run");
     expect(screen.queryAllByRole("menuitem").map((m) => m.textContent)).toEqual([
+      "Abrir em nova aba",
       "Renomear",
       "Fixar",
       "Arquivar",
