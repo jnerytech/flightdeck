@@ -27,6 +27,8 @@ const state = (sessions: unknown[]) =>
   ({
     hosts: [{ id: "h", name: "pc", sessions }],
     externalRequests: {},
+    runs: {},
+    cards: {},
     externals: {},
     meta: {},
   }) as unknown as AppState;
@@ -65,7 +67,7 @@ describe("abas: selos e botão de aba nova", () => {
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
       (store as unknown as { update(patch: Partial<AppState>): void }).update({
-        hosts: [{ id: "h", name: "pc", sessions: [session("idle", 1)] }] as never,
+        hosts: [{ id: "h", name: "pc", status: "online", sessions: [session("idle", 1)] }] as never,
       });
     });
     expect(
