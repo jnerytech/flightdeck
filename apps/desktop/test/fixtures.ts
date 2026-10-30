@@ -11,6 +11,10 @@ import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
+import { Changes } from "../../daemon/src/review/changes.ts";
+import { ReviewComments } from "../../daemon/src/review/comments.ts";
+import { ReviewFiles } from "../../daemon/src/review/files.ts";
+import { SessionFiles } from "../../daemon/src/review/session-files.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
@@ -54,6 +58,8 @@ export function daemon(
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
+    /** The review of changes (phase 11): `changes.*`, `review.*`, `file.*` and `files.sessions`. */
+    review?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -111,6 +117,16 @@ export function daemon(
   const quotaHistory =
     options.quotaHistory?.(store.db) ??
     (options.costs ? new QuotaHistory({ db: store.db }) : undefined);
+  // Like the real daemon: the diff of every session and card, with comments, files and sessions.
+  const changes = options.review ? new Changes({ db: store.db, board }) : undefined;
+  const review = changes
+    ? {
+        changes,
+        review: new ReviewComments({ db: store.db, changes, manager, board, central }),
+        sessionFiles: new SessionFiles({ db: store.db }),
+        files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: [root] }),
+      }
+    : undefined;
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -127,6 +143,7 @@ export function daemon(
       ...(costs ? { costs } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
+      ...(review ?? {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
