@@ -82,8 +82,9 @@ export class DaemonClient {
 /**
  * `flightdeckd mcp`: an MCP server for the Claude Code of this host. It talks to the local
  * daemon with the token of its config and lets a session list projects and workflows, create
- * and start cards and follow them. Approving permissions and answering gates stay with you, in
- * the app: there is no tool for either.
+ * and start cards and follow them, and run the declared actions that use a secret without seeing
+ * it. Approving permissions, answering gates and handing a secret over stay with you, in the app:
+ * there is no tool for any of them.
  */
 export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   const daemon = await DaemonClient.connect(opts.url, opts.token).catch((error: Error) => {
@@ -145,6 +146,59 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     "Execução de um workflow: etapas, uso e orçamento.",
     { runId: z.string() },
     ({ runId }) => daemon.call("run.get", { runId }),
+  );
+
+  // Phase 17: use a secret without ever receiving it. The value stays between the app and the
+  // daemon; what comes back is the exit code and the output, with the secret masked.
+  tool(
+    "list_actions",
+    "Ações que você pode rodar com run_action: nome, descrição e parâmetros (padrão e valor default). Nunca mostra segredos.",
+    { projectId: z.string().optional() },
+    async ({ projectId }) => {
+      const { actions } = await daemon.call("actions.list", projectId ? { projectId } : {});
+      return {
+        actions: actions
+          .filter((action) => action.trusted)
+          .map(({ name, description, approval, params }) => ({
+            name,
+            description,
+            approval,
+            params,
+          })),
+      };
+    },
+  );
+  tool(
+    "run_action",
+    "Roda uma ação declarada, pelo nome, com os parâmetros que ela permite. O Flightdeck aplica os segredos do lado dele (pode pedir a aprovação do usuário no app) e devolve o código de saída e a saída, até 32 KB, com os segredos mascarados.",
+    {
+      name: z.string().min(1),
+      params: z.record(z.string(), z.string()).optional(),
+      projectId: z.string().optional(),
+    },
+    ({ name, params, projectId }) =>
+      daemon.call("actions.run", {
+        name,
+        requestedBy: "claude",
+        ...(params ? { params } : {}),
+        ...(projectId ? { projectId } : {}),
+      }),
+  );
+  tool(
+    "run_with_secret",
+    "Roda um comando seu com segredos do cofre no ambiente (deploy-token vira DEPLOY_TOKEN). Sempre pede a aprovação do usuário no app, com o comando, os nomes dos segredos e o host; nunca é automático. A saída volta com os segredos mascarados, mas só valores literais, em base64, em URL e em hex: prefira uma ação declarada.",
+    {
+      command: z.string().min(1).max(4000),
+      secrets: z.array(z.string().min(1)).min(1).max(8),
+      host: z.string().optional(),
+    },
+    ({ command, secrets, host }) =>
+      daemon.call("actions.runFree", {
+        command,
+        secrets,
+        requestedBy: "claude",
+        ...(host ? { host } : {}),
+      }),
   );
 
   const { promise: closed, resolve } = Promise.withResolvers<void>();
