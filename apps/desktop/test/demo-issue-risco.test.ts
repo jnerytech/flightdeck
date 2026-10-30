@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { DANGER_SESSION, type DemoSeed, seedDemo } from "../../../scripts/demo-seed.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { FrameClient } from "../../daemon/test/history-helpers.ts";
 
 // Two daemons, real git and a fake `gh`: more than the default 5 s.
 setDefaultTimeout(60_000);
