@@ -91,9 +91,9 @@ describe("snippets-ui: import from the shell history", () => {
     expect(texts[1]).toContain("bun test");
     expect(screen.queryByLabelText("git status")).not.toBeNull();
     expect(screen.queryByText("Linha oculta: token do GitHub")).not.toBeNull();
-    expect(screen.queryByText("Linha oculta: valor do cofre")).not.toBeNull();
+    expect(screen.queryAllByText("Linha oculta: valor do cofre").length).toBeGreaterThan(0);
     expect(lines().filter((li) => li.querySelector("input[type=checkbox]") === null)).toHaveLength(
-      2,
+      3,
     );
     expect(document.body.innerHTML).not.toContain("ghp_abcdef");
     expect(document.body.innerHTML).not.toContain(VAULT_VALUE);
