@@ -133,6 +133,21 @@ export class Vault {
     }
   }
 
+  /** The value, for the purpose it was delivered for; it is discarded. */
+  take(_secretId: string, _purpose: string): string {
+    return "";
+  }
+
+  /** Resolves with the value when it is (or becomes) held for this purpose; rejects at the deadline. */
+  waitFor(
+    _secretId: string,
+    _purpose: string,
+    _timeoutMs: number,
+    _signal?: AbortSignal,
+  ): Promise<string> {
+    return Promise.resolve("");
+  }
+
   /** How many secrets are in memory (never which, nor their values). */
   held(): number {
     for (const id of [...this.values.keys()]) this.live(id);

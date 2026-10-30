@@ -12,12 +12,12 @@ describe("cofre-solicitante", () => {
     }
   });
 
-  test("nesta fase todo vault.request do daemon é negado, e quem diz ser you vale como desconhecido", () => {
+  test("o pedido do daemon vai ao app, que decide; quem diz ser you ou não se conhece é negado", () => {
     for (const requester of ["claude", "automation", "workflow", "you", undefined, "root"]) {
       const decision = decideRequest({ requester });
-      expect(decision.granted).toBe(false);
-      expect(decision.reason).toContain("app");
       const daemon = ["claude", "automation", "workflow"].includes(requester as string);
+      expect(decision.granted).toBe(daemon);
+      expect(decision.reason).toContain("app");
       expect(decision.requester).toBe(daemon ? (requester as Requester) : "unknown");
     }
   });

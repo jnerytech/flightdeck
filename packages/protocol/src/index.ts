@@ -1256,6 +1256,66 @@ export type AgentCfgItem = z.infer<typeof AgentCfgItem>;
 export const VaultRequester = z.enum(["you", "claude", "automation", "workflow"]);
 export type VaultRequester = z.infer<typeof VaultRequester>;
 
+/** Phase 16: who a daemon can be asking for; never `you`. */
+export const VaultDaemonRequester = z.enum(["claude", "automation", "workflow"]);
+
+/** Phase 17: how an action asks for approval. */
+export const ActionApproval = z.enum(["always", "never", "first-per-session"]);
+
+/** Phase 17: a declared action, as the app lists it (no secret values: only which ids it uses). */
+export const ActionInfo = z.object({
+  name: z.string(),
+  description: z.string(),
+  /** `app` was made in the app; `versioned` comes from .flightdeck/actions.yaml. */
+  source: z.enum(["app", "versioned"]),
+  projectId: z.string().nullable(),
+  host: z.string().nullable(),
+  ssh: z.string().nullable(),
+  run: z.array(z.string()),
+  cwd: z.string().nullable(),
+  env: z.record(z.string(), z.string()),
+  params: z.record(z.string(), z.object({ pattern: z.string(), default: z.string().nullable() })),
+  timeoutS: z.number().int(),
+  /** The effective mode: the declared one, or the default for its kind. */
+  approval: ActionApproval,
+  secrets: z.object({ values: z.array(z.string()), files: z.array(z.string()) }),
+  trusted: z.boolean(),
+  /** What differs from what was trusted: "declaração" and/or file paths. */
+  changed: z.array(z.string()),
+  /** What to pass to `actions.trust` to trust this declaration as it is. */
+  hash: z.string(),
+});
+export type ActionInfo = z.infer<typeof ActionInfo>;
+
+/** Phase 17: one run of an action; the output is masked. */
+export const ActionRunInfo = z.object({
+  id: z.string(),
+  name: z.string(),
+  projectId: z.string().nullable(),
+  requestedBy: VaultRequester,
+  startedAt: z.string(),
+  durationMs: z.number().int(),
+  exitCode: z.number().int(),
+  timedOut: z.boolean(),
+  truncated: z.boolean(),
+  output: z.string(),
+});
+export type ActionRunInfo = z.infer<typeof ActionRunInfo>;
+
+/** The actions of a scope, and what is wrong with the versioned file (the valid ones still load). */
+export const ActionList = z.object({ actions: z.array(ActionInfo), errors: z.array(z.string()) });
+export type ActionList = z.infer<typeof ActionList>;
+
+export const ActionResult = z.object({
+  runId: z.string(),
+  exitCode: z.number().int(),
+  output: z.string(),
+  durationMs: z.number().int(),
+  timedOut: z.boolean(),
+  truncated: z.boolean(),
+});
+export type ActionResult = z.infer<typeof ActionResult>;
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -1387,6 +1447,58 @@ export const Command = z.discriminatedUnion("type", [
   cmd("mcp.status", z.object({ sessionId: z.string() })),
   /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
   cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
+  /** Phase 17: the actions of a project (and of the host) and their runs. */
+  cmd("actions.list", z.object({ projectId: z.string().optional() })),
+  /** `secretIds` is what the app has, so a reference to another secret is an error. */
+  cmd(
+    "actions.save",
+    z.object({
+      projectId: z.string().optional(),
+      definition: z.record(z.string(), z.unknown()),
+      secretIds: z.array(z.string()).optional(),
+    }),
+  ),
+  cmd("actions.remove", z.object({ projectId: z.string().optional(), name: z.string().min(1) })),
+  /** Versioned actions run only once trusted, by the hash `actions.list` shows. */
+  cmd(
+    "actions.trust",
+    z.object({
+      projectId: z.string().optional(),
+      name: z.string().min(1),
+      hash: z.string().min(1),
+    }),
+  ),
+  cmd(
+    "actions.run",
+    z.object({
+      projectId: z.string().optional(),
+      name: z.string().min(1),
+      params: z.record(z.string(), z.string()).optional(),
+      requestedBy: VaultRequester,
+    }),
+  ),
+  /** A command written by Claude with secrets in its environment; the app always approves it. */
+  cmd(
+    "actions.runFree",
+    z.object({
+      command: z.string().min(1).max(4000),
+      secrets: z.array(z.string().min(1)).min(1).max(8),
+      host: z.string().optional(),
+      requestedBy: VaultDaemonRequester,
+    }),
+  ),
+  cmd(
+    "actions.runs",
+    z.object({
+      projectId: z.string().optional(),
+      name: z.string().optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+    }),
+  ),
+  /** Receive the daemon's `vault.request` and `vault.used` frames (the app does). */
+  cmd("vault.watch", z.object({}).strict()),
+  /** The user refused a `vault.request`: the run that waits for it fails at once. */
+  cmd("vault.deny", z.object({ requestId: z.string().min(1) })),
   /**
    * Phase 16: the app hands the daemon a secret for one use. The daemon keeps it in memory only,
    * for at most 60 s (or until `expiresAt`, in milliseconds since the epoch), and only accepts it
@@ -1960,6 +2072,15 @@ export interface CommandResults {
   "mcp.toggle": { servers: McpServerView[] };
   "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
+  "actions.list": ActionList;
+  "actions.save": ActionInfo;
+  "actions.remove": ActionList;
+  "actions.trust": ActionInfo;
+  "actions.run": ActionResult;
+  "actions.runFree": ActionResult;
+  "actions.runs": { runs: ActionRunInfo[] };
+  "vault.watch": undefined;
+  "vault.deny": undefined;
   "vault.deliver": { expiresAt: number };
   "vault.use": { result: string };
   "card.startArena": Arena;
@@ -2222,6 +2343,14 @@ export const VaultRequestFrame = z.object({
   secretId: z.string(),
   purpose: z.string(),
   requester: VaultDaemonRequester,
+  /** Phase 17: the action that needs it, its parameters and how it asks for approval. */
+  action: z.string().optional(),
+  params: z.record(z.string(), z.string()).optional(),
+  approval: z.enum(["always", "never", "first-per-session"]).optional(),
+  /** Phase 17: for `run_with_secret`, exactly what would run, with which secrets, and where. */
+  command: z.string().optional(),
+  secrets: z.array(z.string()).optional(),
+  host: z.string().optional(),
 });
 export type VaultRequestFrame = z.infer<typeof VaultRequestFrame>;
 
