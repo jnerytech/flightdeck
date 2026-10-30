@@ -15,6 +15,7 @@ const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { hostDotView } = await import("../src/lib/host-status.ts");
+const { HostsBanner } = await import("../src/components/hosts/hosts-banner.tsx");
 
 setDefaultTimeout(20_000);
 
@@ -30,10 +31,16 @@ async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
 }
 
 /** One host with a managed session "Alpha", a repository project and, optionally, a dead host. */
-async function setup(options: { language?: string; deadHost?: boolean; projects?: number } = {}) {
+async function setup(
+  options: { language?: string; deadHost?: boolean; projects?: number; waiting?: boolean } = {},
+) {
   const d = makeDaemon(cleanups);
   const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
   await poll(() => d.manager.get(sessionId).status === "idle");
+  if (options.waiting) {
+    d.manager.send(sessionId, "[bash]");
+    await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
+  }
   for (let i = 0; i < (options.projects ?? 0); i++) {
     const repo = join(d.root, `repo${i}`);
     mkdirSync(repo);
@@ -202,5 +209,53 @@ describe("direcao-visual: ajustes finos", () => {
     expect(new AppStore(mem.platform).listWidth()).toBe(380);
     mem.platform.storage.setItem("flightdeck.listWidth", "9999");
     expect(new AppStore(mem.platform).listWidth()).toBe(640);
+  });
+
+  test("reconectando também aparece na linha de hosts com problema, quando aberta", () => {
+    const store = new AppStore(memoryPlatform().platform);
+    cleanups.push(() => store.dispose());
+    const host = (id: string, status: string) => ({ id, name: id, status }) as never;
+    render(
+      <HostsBanner
+        hosts={[host("volta", "connecting"), host("caiu", "offline")]}
+        t={store.i18n.t}
+      />,
+    );
+    const toggle = screen.queryByRole("button", { name: "2 hosts com problema" });
+    expect(toggle).not.toBeNull();
+    fireEvent.click(toggle as HTMLElement);
+    expect(screen.queryByText("1 host reconectando")).not.toBeNull();
+    expect(screen.queryByText("1 host offline")).not.toBeNull();
+  });
+
+  test("a escolha de Board e Workflows mostra o carregamento e, sem projetos, o estado vazio", async () => {
+    const { store } = await setup({ projects: 0 });
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await act(async () => {
+      store.router.push({ name: "projects", host: hostId, focus: "board" });
+    });
+    expect(screen.queryByRole("status", { name: "Carregando projetos" })).not.toBeNull();
+    await settle(() => screen.queryByText("Nenhum projeto cadastrado.") !== null);
+    expect(screen.queryByText("Nenhum projeto cadastrado.")).not.toBeNull();
+  });
+
+  test("a largura da lista também é guardada em Precisa de você e no Histórico", async () => {
+    const { store, mem } = await setup({ waiting: true });
+    const separator = () => screen.queryByRole("separator", { name: /Redimensionar a lista/ });
+    const widen = async () => {
+      await act(async () => {
+        fireEvent.keyDown(separator() as HTMLElement, { key: "ArrowRight" });
+      });
+    };
+    await act(async () => {
+      store.router.push({ name: "history", host: store.getState().hosts[0]?.id ?? "" });
+    });
+    await settle(() => separator() !== null);
+    await widen();
+    expect(mem.platform.storage.getItem("flightdeck.listWidth")).toBe("396");
+    await sidebar.openQueue();
+    await settle(() => separator() !== null);
+    await widen();
+    expect(mem.platform.storage.getItem("flightdeck.listWidth")).toBe("412");
   });
 });
