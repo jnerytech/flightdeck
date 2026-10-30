@@ -10,6 +10,7 @@ export const JOURNEYS: readonly string[] = [
   "issue-e-risco",
   "abas-terminal",
   "acoes",
+  "regras",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

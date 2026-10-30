@@ -251,6 +251,31 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click();
     await row.getByText(c.t("actionsUi.trusted"), { exact: true }).waitFor({ timeout: WAIT });
   },
+
+  // 11. A secret of the vault gets a rule (Claude is denied), saved and there when reopened.
+  regras: async (c) => {
+    const name = `e2e-regras-${c.lang}`;
+    await open(c, { name: "vault" });
+    await c.page.getByRole("button", { name: c.t("vault.newSecret"), exact: true }).click();
+    await c.page.getByLabel(c.t("vault.name"), { exact: true }).fill(name);
+    await c.page.getByLabel(c.t("vault.value"), { exact: true }).fill("e2e-valor-de-teste");
+    await c.page.getByRole("button", { name: c.t("vault.save"), exact: true }).click();
+    const rules = c.t("vaultRulesUi.open", { name });
+    await c.page.getByRole("button", { name: rules, exact: true }).click();
+    const editor = c.page.getByRole("region", { name: rules });
+    await editor.getByRole("button", { name: c.t("vaultRulesUi.add"), exact: true }).click();
+    const field = (label: string) =>
+      editor.getByLabel(c.t("vaultRulesUi.at", { label, n: 1 }), { exact: true });
+    await field(c.t("vaultRulesUi.requester")).selectOption("claude");
+    await field(c.t("vaultRulesUi.decisionLabel")).selectOption("deny");
+    await editor.getByRole("button", { name: c.t("vaultRulesUi.save"), exact: true }).click();
+    await editor.waitFor({ state: "detached", timeout: WAIT });
+    await c.page.getByRole("button", { name: rules, exact: true }).click();
+    await waitFor(
+      async () => (await field(c.t("vaultRulesUi.requester")).inputValue()) === "claude",
+      "a regra salva ao reabrir",
+    );
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
