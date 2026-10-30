@@ -49,6 +49,7 @@ import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
+import { runMessageCli } from "./messaging/cli.ts";
 import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
@@ -129,13 +130,22 @@ export interface CliArgs {
     | "statusline"
     | "action"
     | "snippet"
+    | "message"
     | "version"
     | "db"
     | "backup"
     | "restore"
     | "update";
   /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
-  action?: ServiceAction | "reindex" | "list" | "run" | "get";
+  action?: ServiceAction | "reindex" | "list" | "run" | "get" | "send" | "idle" | "read" | "team";
+  /** `message send <to> <text>`. */
+  to?: string;
+  text?: string;
+  /** `message idle|read <session>`, with `--last N` for read. */
+  session?: string;
+  last?: number;
+  /** `message team <team>`. */
+  team?: string;
   /** `action ... --project <id>`. */
   project?: string;
   /** `action run <name>`. */
@@ -189,6 +199,7 @@ const USAGE = [
   "     flightdeckd askpass <prompt>   (chamado pelo ssh via SSH_ASKPASS; config em FLIGHTDECK_CONFIG)",
   "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
   "     flightdeckd statusline [--config <arquivo>]   (uma linha para a statusline do Claude Code)",
+  "     flightdeckd message list|send <para> <texto>|idle <sessão>|read <sessão> [--last N]|team <time>",
   "     flightdeckd action list [--project <id>] [--config <arquivo>]",
   "     flightdeckd action run <nome> [--project <id>] [--param chave=valor ...] [--config <arquivo>]",
   "     flightdeckd snippet list [--project-path <pasta>] [--query <texto>] [--config <arquivo>]",
@@ -340,6 +351,41 @@ export function parseArgs(argv: readonly string[]): CliArgs {
           }
           args.snippetName = name;
         }
+        break;
+      }
+      case "message": {
+        args.command = "message";
+        const action = argv[++i];
+        if (
+          action !== "list" &&
+          action !== "send" &&
+          action !== "idle" &&
+          action !== "read" &&
+          action !== "team"
+        ) {
+          throw new Error(`ação de mensagem inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        const operand = (what: string) => {
+          const next = argv[++i];
+          if (next === undefined || next.startsWith("--")) {
+            throw new Error(`falta ${what}\n${USAGE}`);
+          }
+          return next;
+        };
+        if (action === "send") {
+          args.to = operand("o endereço da sessão");
+          args.text = operand("o texto");
+        }
+        if (action === "idle" || action === "read") args.session = operand("a sessão");
+        if (action === "team") args.team = operand("o time");
+        break;
+      }
+      case "--last": {
+        const last = Number(value());
+        if (!Number.isInteger(last) || last < 1)
+          throw new Error(`--last quer um inteiro positivo\n${USAGE}`);
+        args.last = last;
         break;
       }
       case "--project":
@@ -1267,6 +1313,24 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         identity: identityOf(deps.env),
       });
       void mcp.closed.then(() => deps.exit(0));
+      return null;
+    }
+    if (args.command === "message") {
+      const config = loadConfig(configPath(args));
+      const printed = await runMessageCli(
+        {
+          action: args.action as "list" | "send" | "idle" | "read" | "team",
+          to: args.to,
+          text: args.text,
+          session: args.session,
+          last: args.last,
+          team: args.team,
+        },
+        config,
+        identityOf(deps.env),
+      );
+      deps.log.log(JSON.stringify(printed, null, 2));
+      deps.exit(0);
       return null;
     }
     if (args.command === "action") {

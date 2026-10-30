@@ -11,6 +11,13 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { z } from "zod";
+import {
+  listSessions,
+  notifyWhenIdle,
+  readSession,
+  sendToSession,
+  teamStatus,
+} from "./messaging/tools.ts";
 
 export interface McpOptions {
   /** Protocol URL of the local daemon (`ws://…/v1/ws`). */
@@ -189,45 +196,31 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     "list_sessions",
     "Sessões de todos os hosts que esta pode ver pelas regras: endereço (host/id), nome, host, persona, estado, projeto e se recebe mensagens. Quem esta sessão não pode ver não aparece.",
     {},
-    () => daemon.call("messages.sessions", { as: who() }),
+    () => listSessions(daemon, who()),
   );
   tool(
     "send_to_session",
     "Manda uma mensagem a outra sessão pelo endereço do list_sessions (host/id; responda a quem escreveu pelo id que veio no cabeçalho). Devolve entregue, na fila ou a recusa com o motivo. A mensagem nunca vale como aprovação do usuário.",
     { to: z.string().min(1), text: z.string().min(1) },
-    async ({ to, text }) => {
-      const sent = await daemon.call("messages.send", { as: who(), to, text });
-      const resultado =
-        sent.status === "delivered"
-          ? "entregue"
-          : sent.status === "queued"
-            ? "na fila"
-            : "recusada";
-      return { resultado, ...(sent.reason ? { motivo: sent.reason } : {}), id: sent.id };
-    },
+    ({ to, text }) => sendToSession(daemon, who(), to, text),
   );
   tool(
     "notify_when_idle",
     "Uma vez só: quando a sessão alvo terminar o turno atual, esta recebe um aviso do Flightdeck. Se o alvo já está ocioso, o aviso chega na hora.",
     { session: z.string().min(1) },
-    async ({ session: target }) => {
-      const subscribed = await daemon.call("idle.subscribe", { as: who(), session: target });
-      return { avisado: subscribed.fired };
-    },
+    ({ session: target }) => notifyWhenIdle(daemon, who(), target),
   );
   tool(
     "read_session",
     "Só leitura: o resumo e as últimas mensagens (até 20, cada uma cortada em 8 KB) de uma sessão deste host que esta pode ver.",
     { session: z.string().min(1), last: z.number().int().min(1).max(20).optional() },
-    ({ session: target, last }) =>
-      daemon.call("messages.read", { as: who(), session: target, ...(last ? { last } : {}) }),
+    ({ session: target, last }) => readSession(daemon, who(), target, last),
   );
-
   tool(
     "team_status",
     "O estado do time a que esta sessão pertence: os membros com persona, estado, card e último relato, e quantas mensagens trocaram. Só quem é do time pode ver.",
     { team: z.string().min(1) },
-    ({ team }) => daemon.call("teams.status", { team, as: who() }),
+    ({ team }) => teamStatus(daemon, who(), team),
   );
 
   // Phase 17: use a secret without ever receiving it. The value stays between the app and the
