@@ -319,6 +319,17 @@ describe("direcao-visual: ajustes finos", () => {
     await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Cancelar" }));
     expect(dialog()).toBeNull();
     expect(screen.queryByLabelText("Card Rascunho")).toBeNull();
+    // Esc closes it too, and what was typed is forgotten.
+    await click(screen.queryByRole("button", { name: "Novo card" }));
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Título do card") as HTMLElement, {
+        target: { value: "Esquecido" },
+      });
+    });
+    await act(async () => {
+      fireEvent.keyDown(dialog() as HTMLElement, { key: "Escape" });
+    });
+    expect(dialog()).toBeNull();
     // Criar adds the card and closes the dialog; a new one opens empty.
     await click(screen.queryByRole("button", { name: "Novo card" }));
     expect((screen.queryByLabelText("Título do card") as HTMLInputElement).value).toBe("");
