@@ -12,6 +12,7 @@ import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
+import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
@@ -72,6 +73,8 @@ export function daemon(
     agentcfg?: boolean;
     /** The MCP servers a live session of the fake runtime reports (phase 12). */
     mcpServers?: string[];
+    /** The project's issues (phase 13), read through the `gh` and `az` on the PATH. */
+    issues?: boolean;
     /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
     risk?: (root: string) => RiskClassifier;
   } = {},
@@ -155,6 +158,7 @@ export function daemon(
     : undefined;
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   const budgets = options.budgets?.(store.db);
+  const issues = options.issues ? new Issues({ board }) : undefined;
   // Like the real daemon, costs come with the quota's history.
   const quotaHistory =
     options.quotaHistory?.(store.db) ??
@@ -188,6 +192,7 @@ export function daemon(
       ...(review ?? {}),
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
+      ...(issues ? { issues } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,

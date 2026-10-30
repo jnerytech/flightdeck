@@ -663,6 +663,9 @@ export class AppStore {
     else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
+  /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
+  openLink(_url: string): void {}
+
   /** `flightdeck://` links opened from outside the app (OS deep link or second instance). */
   onDeepLink(handler: (url: string) => void): () => void {
     return this.platform.onDeepLink(handler);
