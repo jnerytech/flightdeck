@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { memoryPlatform, TOKEN } from "./fixtures.ts";
+import { legacyDaemon } from "./legacy-daemon.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -9,13 +10,26 @@ const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(20_000);
-afterEach(cleanup);
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
+}
 
 const TOKEN_VALUE = "ghp_screenTestToken0123456789WXYZ";
 const ENV_VALUE = "API_URL=https://example.test\nAPI_KEY=env-screen-secret-value";
 
 async function open(setup?: (store: InstanceType<typeof AppStore>) => Promise<void>) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  // The app shows the add-host form until a host exists.
+  const daemon = legacyDaemon(cleanups);
+  await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+  await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await setup?.(store);
   render(<App store={store} />);
   const nav = screen.queryByRole("button", { name: "Cofre" });
@@ -35,7 +49,7 @@ describe("cofre-ui: the screen", () => {
   test("an empty vault says so and offers no row", async () => {
     await open();
     expect(screen.queryByText("Nenhum segredo guardado.")).not.toBeNull();
-    expect(screen.queryAllByRole("listitem")).toEqual([]);
+    expect(screen.queryByRole("list", { name: "Segredos" })).toBeNull();
   });
 
   test("each secret shows its name, type and tags", async () => {
@@ -48,7 +62,9 @@ describe("cofre-ui: the screen", () => {
       });
       await store.addSecret({ name: "app env", type: "env", value: ENV_VALUE });
     });
-    const rows = await screen.findAllByRole("listitem");
+    const rows = within(await screen.findByRole("list", { name: "Segredos" })).getAllByRole(
+      "listitem",
+    );
     expect(rows).toHaveLength(2);
     const github = within(rows[0] as HTMLElement);
     expect(github.queryByText("github")).not.toBeNull();
