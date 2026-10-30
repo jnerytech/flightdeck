@@ -70,6 +70,7 @@ export const ptBR = {
       pasteRun: "Colar e rodar",
       run: "Rodar numa aba nova",
       copy: "Copiar",
+      send: "Enviar à sessão",
     },
     history: {
       open: "Importar do histórico do shell",
@@ -518,6 +519,7 @@ export const ptBR = {
     endConfirm: "Encerrar sessão",
     pruned: "conversa removida pela retenção",
     message: "Mensagem",
+    snippets: "Snippets de prompt",
     placeholder: "Mensagem (Ctrl+Enter envia)",
     send: "Enviar",
     turnDone: "turno concluído · {seconds} s",

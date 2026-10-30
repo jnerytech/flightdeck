@@ -1813,6 +1813,43 @@ export class AppStore {
   }
 
   /**
+   * Phase 18: the prompt snippets a session's message box offers after `/`, the host's and the
+   * app's, and the text of one: filled from the session's folder, or as written when a field
+   * still needs a value (the person completes it in the box).
+   */
+  promptSnippets(hostId: string, cwd: string) {
+    return {
+      list: async () => {
+        const listed = await this.hostCommand(hostId, "snippets.list", { type: "prompt" });
+        return [
+          ...(listed?.snippets ?? []).map((s) => ({ key: `host:${s.id}`, name: s.name })),
+          ...this.globalSnippets
+            .list({ type: "prompt" })
+            .map((s) => ({ key: `global:${s.id}`, name: s.name })),
+        ];
+      },
+      fill: async (key: string): Promise<string> => {
+        const [kind, id] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+        if (kind === "global") {
+          const snippet = this.globalSnippets.list().find((s) => s.id === id);
+          try {
+            return this.globalSnippets.use(id, {}, { cwd });
+          } catch {
+            return snippet?.text ?? "";
+          }
+        }
+        const rendered = await this.hostRequest(hostId, "snippets.render", {
+          id,
+          context: { cwd },
+        });
+        if (rendered.ok) return rendered.data.text;
+        const got = await this.hostCommand(hostId, "snippets.get", { id });
+        return got?.text ?? "";
+      },
+    };
+  }
+
+  /**
    * Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused.
    * `privateKey` is the vault key of a `vault-key` destino, for this connection only.
    */

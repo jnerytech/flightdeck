@@ -113,6 +113,12 @@ function TimelineItem(props: {
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
+/** The prompt snippets a message box offers after `/`. */
+export interface PromptSnippets {
+  list(): Promise<Array<{ key: string; name: string }>>;
+  fill(key: string): Promise<string>;
+}
+
 export function SessionView(props: {
   title: string;
   session: SessionState;
@@ -129,6 +135,8 @@ export function SessionView(props: {
   /** The app's translator and clock (phase 10); pt-BR and the real clock when absent. */
   t?: T;
   nowMs?: number;
+  /** Phase 18: the prompt snippets `/` offers in the message box, and the text of the chosen one. */
+  prompts?: PromptSnippets;
 }) {
   const ctx = useT();
   const t = props.t ?? ctx;
@@ -142,6 +150,14 @@ export function SessionView(props: {
   }, [focusRequestId, cards]);
   const { session, actions } = props;
   const [text, setText] = useState("");
+  const [prompts, setPrompts] = useState<Array<{ key: string; name: string }> | null>(null);
+  // `/` and a name without spaces: the prompt snippets, filtered by what follows the slash.
+  const slash = props.prompts && /^\/\S*$/.test(text) ? text.slice(1).toLowerCase() : null;
+  useEffect(() => {
+    if (slash !== null && prompts === null) void props.prompts?.list().then(setPrompts);
+  }, [slash, prompts, props.prompts]);
+  const offered =
+    slash === null ? [] : (prompts ?? []).filter((p) => p.name.toLowerCase().includes(slash));
   const [closing, setClosing] = useState(false);
   const closed = session.status === "ended" || session.status === "error";
 
@@ -225,6 +241,26 @@ export function SessionView(props: {
           </Message>
         )}
       </Timeline>
+      {offered.length > 0 && (
+        <div
+          role="listbox"
+          aria-label={t("session.snippets")}
+          className="mx-4 mb-1 flex flex-col rounded-md border bg-popover p-1 text-sm"
+        >
+          {offered.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              role="option"
+              aria-selected={false}
+              className="rounded px-2 py-1 text-left hover:bg-muted"
+              onClick={() => void props.prompts?.fill(p.key).then(setText)}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
       <Composer>
         <Textarea
           aria-label={t("session.message")}

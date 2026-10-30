@@ -118,6 +118,9 @@ function ManagedSession(props: {
       <SessionView
         t={store.i18n.t}
         nowMs={store.now()}
+        {...(hasFeature(host?.hostInfo?.features, "snippets", false)
+          ? { prompts: store.promptSnippets(hostId, summary?.cwd ?? session.cwd ?? "") }
+          : {})}
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         session={session}
         actions={store}

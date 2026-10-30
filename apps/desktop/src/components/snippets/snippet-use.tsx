@@ -72,6 +72,12 @@ export function SnippetUse(props: {
       .map((f) => [f.name, values[f.name] as string]),
   );
 
+  // A prompt goes to the managed session on screen (of this host, for a host's snippet).
+  const session =
+    route.name === "session" && (choice.hostId === null || route.host === choice.hostId)
+      ? route
+      : null;
+
   const done = () => props.onClose();
   const fail = (message: string) => setError(message);
 
@@ -123,6 +129,24 @@ export function SnippetUse(props: {
       fail((thrown as Error).message);
       return null;
     }
+  };
+
+  const send = async () => {
+    if (!session) return;
+    if (choice.hostId === null) {
+      const text = fillGlobal();
+      if (text === null) return;
+      await store.send(text);
+      return done();
+    }
+    const result = await store.hostRequest(choice.hostId, "snippets.use", {
+      id: snippet.id,
+      action: "send",
+      sessionId: session.id,
+      values: own,
+      context,
+    });
+    return result.ok ? done() : fail(result.message);
   };
 
   const copy = async () => {
@@ -209,6 +233,9 @@ export function SnippetUse(props: {
             >
               {t("snippets.use.run")}
             </Button>
+          )}
+          {!isCommand && session && (
+            <Button onClick={() => void send()}>{t("snippets.use.send")}</Button>
           )}
           <Button variant="outline" onClick={() => void copy()}>
             {t("snippets.use.copy")}

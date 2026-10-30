@@ -68,6 +68,7 @@ export const en: Dictionary = {
       pasteRun: "Paste and run",
       run: "Run in a new tab",
       copy: "Copy",
+      send: "Send to the session",
     },
     history: {
       open: "Import from the shell history",
@@ -516,6 +517,7 @@ export const en: Dictionary = {
     endConfirm: "End session",
     pruned: "conversation removed by retention",
     message: "Message",
+    snippets: "Prompt snippets",
     placeholder: "Message (Ctrl+Enter sends)",
     send: "Send",
     turnDone: "turn finished · {seconds} s",
