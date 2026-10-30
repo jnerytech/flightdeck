@@ -32,6 +32,7 @@ const state = (sessions: unknown[]) =>
     unread: {},
     externals: {},
     meta: {},
+    vaultApprovals: [],
   }) as unknown as AppState;
 const route = { name: "session", host: "h", id: "s1" } as const;
 
