@@ -185,7 +185,20 @@ export class Messaging {
 
   /** Every session of this host, unfiltered, for the app to hand to the other daemons. */
   directory(): PeerSession[] {
-    return [];
+    return this.opts.endpoints.list().map((info) => {
+      const party = this.partyOf(info);
+      return {
+        id: info.id,
+        name: party.name,
+        persona: party.persona,
+        projectKey: party.projectKey,
+        teamId: party.teamId,
+        state: info.state,
+        kind: info.kind,
+        receives: info.controllable,
+        reason: info.reason,
+      };
+    });
   }
 
   setPeers(host: string, sessions: PeerSession[]): void {
