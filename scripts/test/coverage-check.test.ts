@@ -40,6 +40,17 @@ describe("cobertura", () => {
     ]);
   });
 
+  test("lista os problemas em ordem alfabética sem diferenciar maiúsculas", () => {
+    const problems = checkCoverage(parseLcov(lcov), [
+      "apps/daemon/src/Zeta.ts",
+      "apps/daemon/src/alpha.ts",
+    ]);
+    expect(problems).toEqual([
+      "apps/daemon/src/alpha.ts: nenhum teste carrega este arquivo",
+      "apps/daemon/src/Zeta.ts: nenhum teste carrega este arquivo",
+    ]);
+  });
+
   test("tudo coberto não gera problemas", () => {
     expect(checkCoverage(parseLcov(lcov), ["apps/daemon/src/a.ts"])).toEqual([]);
   });
