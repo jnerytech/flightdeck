@@ -152,6 +152,8 @@ export interface AppState {
   ssh: Record<string, SshTarget[]>;
   /** The snippets of each host that keeps them, by host id; read when the palette opens (phase 18). */
   snippets: Record<string, Snippet[]>;
+  /** The snippet to fill and use now, from the palette or a terminal's list (phase 18). */
+  snippetChoice: { hostId: string | null; snippetId: string } | null;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
   /** Phase 16: the vault's usage log, newest first; never holds a value. */
@@ -544,6 +546,7 @@ export class AppStore {
       budgets: {},
       ssh: {},
       snippets: {},
+      snippetChoice: null,
       askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
