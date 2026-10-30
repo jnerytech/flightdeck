@@ -42,6 +42,14 @@ export interface MessagingOptions {
   personaOf?: ((sessionId: string) => string | null) | undefined;
   /** Days the history is kept (30 when absent). */
   retentionDays?: number | undefined;
+  /** The standard names of the sessions: their aliases address them. */
+  names?: NameBook | undefined;
+}
+
+/** What the messaging layer needs of the standard names. */
+export interface NameBook {
+  get(sessionId: string): { display: string; alias: string; aliases: string[] } | null;
+  resolve(alias: string): string | null;
 }
 
 /** The frames the app watches. */
@@ -61,6 +69,8 @@ export type MessagingFrame =
 export interface PeerSession {
   id: string;
   name: string | null;
+  alias?: string | null | undefined;
+  aliases?: string[] | undefined;
   persona: string | null;
   projectKey: string | null;
   teamId: string | null;
@@ -69,6 +79,9 @@ export interface PeerSession {
   receives: boolean;
   reason: string | null;
 }
+
+/** A session of this host as the app hands it to the other daemons: the aliases always come. */
+export type ListedSession = PeerSession & { alias: string | null; aliases: string[] };
 
 interface Row {
   id: string;
@@ -184,12 +197,14 @@ export class Messaging {
   }
 
   /** Every session of this host, unfiltered, for the app to hand to the other daemons. */
-  directory(): PeerSession[] {
+  directory(): ListedSession[] {
     return this.opts.endpoints.list().map((info) => {
       const party = this.partyOf(info);
       return {
         id: info.id,
         name: party.name,
+        alias: null,
+        aliases: [],
         persona: party.persona,
         projectKey: party.projectKey,
         teamId: party.teamId,
@@ -283,6 +298,8 @@ export class Messaging {
         id: party.id,
         host: party.host,
         name: party.name,
+        alias: null,
+        aliases: [],
         persona: party.persona,
         projectKey: party.projectKey,
         teamId: party.teamId,

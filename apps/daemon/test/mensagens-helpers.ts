@@ -6,6 +6,7 @@ import {
   type MessagingFrame,
   type MessagingOptions,
 } from "../src/messaging/messages.ts";
+import { Names } from "../src/names/names.ts";
 import { EventStore } from "../src/store/event-store.ts";
 
 export const NOW = Date.UTC(2026, 9, 28, 15, 0, 0);
@@ -113,17 +114,19 @@ export function setup(over: Partial<MessagingOptions> = {}) {
   const store = new EventStore(":memory:");
   const now = { at: NOW };
   const teams = new Map<string, string>();
+  const names = new Names(store.db);
   const messaging = new Messaging({
     db: store.db,
     host: "pc",
     endpoints,
+    names,
     clock: () => now.at,
     teamOf: (id) => teams.get(id) ?? null,
     ...over,
   });
   const frames: MessagingFrame[] = [];
   const unwatch = messaging.watch((frame) => frames.push(frame));
-  return { messaging, endpoints, store, now, teams, frames, unwatch };
+  return { messaging, endpoints, store, names, now, teams, frames, unwatch };
 }
 
 /** Two daemons that only know their own sessions, joined the way the app joins them. */

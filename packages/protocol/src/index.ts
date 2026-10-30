@@ -1540,6 +1540,10 @@ export const MessagingSession = z.object({
   id: z.string(),
   host: z.string(),
   name: z.string().nullable(),
+  /** The standard alias (`project-persona-number`) that addresses it; null when it has none. */
+  alias: z.string().nullable(),
+  /** Every alias that points at it, the old ones of a rename included. */
+  aliases: z.array(z.string()),
   persona: z.string().nullable(),
   state: MessagingState,
   projectKey: z.string().nullable(),
@@ -1555,6 +1559,8 @@ export type MessagingSession = z.infer<typeof MessagingSession>;
 export const MessagingPeer = z.object({
   id: z.string().min(1),
   name: z.string().nullable(),
+  alias: z.string().nullable().default(null),
+  aliases: z.array(z.string()).default([]),
   persona: z.string().nullable(),
   projectKey: z.string().nullable(),
   teamId: z.string().nullable(),
