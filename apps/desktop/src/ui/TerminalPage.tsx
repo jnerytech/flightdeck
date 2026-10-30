@@ -13,13 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
+import { isProd } from "../lib/ssh.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { createXtermScreen, type XtermDeps, type XtermScreen } from "../lib/xterm-screen.ts";
-
-/** The tags that mark a destino as production, whatever their case. */
-const PROD_TAGS: ReadonlySet<string> = new Set(["prod", "produção", "producao"]);
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 export function TerminalPage(props: {
@@ -146,7 +145,7 @@ export function TerminalPage(props: {
       : t(`terminalUi.state.${state.state}`);
 
   const ssh = store.sshTerminals.get(`${hostId}/${terminalId}`);
-  const prod = ssh?.tags.some((tag) => PROD_TAGS.has(tag.toLowerCase())) ?? false;
+  const prod = ssh ? isProd(ssh.tags) : false;
 
   const page = (
     <Page
@@ -267,7 +266,10 @@ export function TerminalPage(props: {
     <div
       data-testid="ssh-terminal"
       data-prod={String(prod)}
-      className={`h-full rounded-lg border-2 ${prod ? "border-destructive" : "border-transparent"}`}
+      className={cn(
+        "h-full rounded-lg border-2",
+        prod ? "border-destructive" : "border-transparent",
+      )}
     >
       {page}
     </div>
