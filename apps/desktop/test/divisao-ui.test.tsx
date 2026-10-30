@@ -108,4 +108,54 @@ describe("divisao: a tela dividida", () => {
     expect(store.workspace.split).toBeNull();
     expect(bars()).toHaveLength(1);
   });
+
+  test("the divider follows the pointer while held, and the arrows of a stacked split are up and down", async () => {
+    const store = setup();
+    await key("\\");
+    const saved = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 800,
+        right: 1000,
+        bottom: 800,
+        x: 0,
+        y: 0,
+      }) as DOMRect;
+    try {
+      const bar = divider() as HTMLElement;
+      expect(bar).not.toBeNull();
+      await act(async () => {
+        fireEvent.pointerMove(window, { clientX: 700 });
+      });
+      expect(store.workspace.fraction).toBe(0.5);
+      await act(async () => {
+        fireEvent.pointerDown(bar);
+        fireEvent.pointerMove(window, { clientX: 300 });
+        fireEvent.pointerUp(window);
+        fireEvent.pointerMove(window, { clientX: 600 });
+      });
+      expect(store.workspace.fraction).toBe(0.3);
+      await act(async () => {
+        store.workspace.setOrientation("horizontal");
+      });
+      const stacked = divider() as HTMLElement;
+      await act(async () => {
+        fireEvent.keyDown(stacked, { key: "ArrowDown" });
+      });
+      expect(store.workspace.fraction).toBeCloseTo(0.35);
+      await act(async () => {
+        fireEvent.keyDown(stacked, { key: "ArrowUp" });
+        fireEvent.keyDown(stacked, { key: "ArrowRight" });
+        fireEvent.pointerDown(stacked);
+        fireEvent.pointerMove(window, { clientY: 400 });
+        fireEvent.pointerUp(window);
+      });
+      expect(store.workspace.fraction).toBe(0.5);
+    } finally {
+      Element.prototype.getBoundingClientRect = saved;
+    }
+  });
 });
