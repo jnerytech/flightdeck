@@ -12,6 +12,8 @@ import {
   type ExternalUpdated,
   type HelloResult,
   type HistoryChanged,
+  type MessagesRelayFrame,
+  type MessagesUpdatedFrame,
   PROTOCOL_VERSION,
   parseServerMessage,
   type QuotaState,
@@ -70,6 +72,8 @@ export interface HostConnectionOptions {
   onVaultUsed?(used: VaultUsed): void;
   /** Phase 19: a warning about a secret's use, even where a rule let it through. */
   onVaultAlert?(alert: VaultAlertFrame): void;
+  /** Phase 21: a message for another host to carry, or a message's new state. */
+  onMessages?(frame: MessagesRelayFrame | MessagesUpdatedFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
@@ -173,6 +177,9 @@ export class HostConnection {
       if (message.type === "vault.request") return this.opts.onVaultRequest?.(message);
       if (message.type === "vault.used") return this.opts.onVaultUsed?.(message);
       if (message.type === "vault.alert") return this.opts.onVaultAlert?.(message);
+      if (message.type === "messages.relay" || message.type === "messages.updated") {
+        return this.opts.onMessages?.(message);
+      }
       if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });

@@ -53,6 +53,7 @@ import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
+import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
@@ -244,6 +245,11 @@ export type HostCommandType = Extract<
   | "vault.approve"
   | "vault.rules.set"
   | "vault.rules.preview"
+  | "messages.watch"
+  | "messages.relay"
+  | "messages.relayed"
+  | "messages.directory"
+  | "messages.peers"
   | "vault.report"
   | "vault.decisions"
   | `pr.${string}`
@@ -1440,6 +1446,8 @@ export class AppStore {
   }
 
   dispose(): void {
+    if (this.peersTimer) clearInterval(this.peersTimer);
+    this.peersTimer = null;
     for (const conn of this.connections.values()) conn.dispose();
     this.connections.clear();
     this.offTrayAction?.();
@@ -1524,6 +1532,11 @@ export class AppStore {
         this.keepUsage();
       },
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
+      onMessages: (frame) => {
+        const deps = this.relayDeps();
+        if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
+        else void relayUpdate(deps, config.id, frame.message);
+      },
       onVaultAlert: (alert) => {
         const notice: Notice = {
           id: ++this.noticeSeq,
@@ -1632,6 +1645,11 @@ export class AppStore {
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
+    }
+    // Phase 21: this app carries the host's messages for the other hosts.
+    if (hasFeature(hostInfo?.features, "messaging", false)) {
+      void conn.request("messages.watch", {}).catch(() => null);
+      this.startPeersSync();
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
@@ -2098,6 +2116,29 @@ export class AppStore {
   private readonly vaultQuestions = new Map<string, (answer: VaultAnswer | null) => void>();
 
   private defaultVaultPolicy: VaultPolicy | null = null;
+
+  private peersTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Phase 21: the hosts as the relay sees them; only an online one with messaging takes part. */
+  private relayDeps(): RelayDeps {
+    return {
+      hosts: () =>
+        this.state.hosts.map((h) => ({
+          id: h.id,
+          hostName: h.hostInfo?.hostName ?? "",
+          online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
+        })),
+      call: (hostId, type, payload) =>
+        this.dispatch(hostId, type as HostCommandType, payload as never),
+    };
+  }
+
+  /** Keeps every daemon told of the other hosts' sessions, so a message can name them. */
+  private startPeersSync(): void {
+    const sync = () => void syncPeers(this.relayDeps()).catch(() => {});
+    sync();
+    this.peersTimer ??= setInterval(sync, this.options.peersSyncMs ?? 5000);
+  }
 
   /** Phase 19: a secret's usage rules, in order. */
   vaultRules(secretId: string): unknown[] {
