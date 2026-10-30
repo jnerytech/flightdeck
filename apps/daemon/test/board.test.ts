@@ -72,6 +72,8 @@ describe("board", () => {
       (c.notice ?? "").includes("alterações pendentes"),
     );
     expect(kept ?? {}).toMatchObject({ column: "done", worktreePath: worktree });
+    // The round that set the notice ends with its own update: count only the rounds after it.
+    await Bun.sleep(100);
     let changes = 0;
     const unwatch = board.watch((c) => {
       if (c.id === card.id) changes++;
@@ -79,6 +81,20 @@ describe("board", () => {
     cleanups.push(unwatch);
     await Bun.sleep(300);
     expect(changes).toBe(0);
+  });
+
+  test("a merged card started again keeps its new worktree and session across rounds", async () => {
+    const { board, card, gh, manager } = await cardWithPr();
+    gh.respond([{ args: ["view", VIEW], stdout: JSON.stringify({ state: "MERGED" }) }]);
+    const done = await cardWhen(board, card.id, (c) => c.column === "done" && !c.worktreePath);
+    expect(done).not.toBeNull();
+    await board.startCard(card.id);
+    const again = await cardWhen(board, card.id, (c) => c.column === "review");
+    expect(again?.worktreePath ?? null).not.toBeNull();
+    await Bun.sleep(300);
+    const later = board.getCard(card.id);
+    expect(later.worktreePath).toBe(again?.worktreePath ?? "");
+    expect(manager.get(later.sessionId ?? "").status).not.toBe("ended");
   });
 
   test("the worktree is removed only after the injected idle() settles", async () => {
