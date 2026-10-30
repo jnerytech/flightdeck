@@ -76,7 +76,7 @@ describe("snippets-ui: the editor", () => {
     const { store, hostId } = await open();
     await click("Novo snippet");
     await fill("Nome", "testes");
-    await fill("Tipo", "command");
+    await fill("Tipo do snippet", "command");
     await fill("Comando", "cd {{cwd}} && bun test {{arquivo}}");
     expect(fieldsPreview()).toEqual(["cwd (do contexto)", "arquivo"]);
     await fill("Padrão de arquivo", "a.test.ts");
@@ -97,7 +97,7 @@ describe("snippets-ui: the editor", () => {
     const { store, hostId } = await open();
     await click("Novo snippet");
     await fill("Nome", "revisar");
-    await fill("Tipo", "prompt");
+    await fill("Tipo do snippet", "prompt");
     expect(screen.queryByLabelText("Comando")).toBeNull();
     await fill("Texto", "Revise {{file}} procurando injeção.");
     expect(fieldsPreview()).toEqual(["file (do contexto)"]);
