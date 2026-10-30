@@ -1032,12 +1032,18 @@ one (a key file path).
   entries (`*`, `?`) are defaults for the others, not destinations.
 - **Search** by name, host or user; filter by tag and by the host that opens the destination.
   **Ctrl+K** also offers **Connect to <name>** for each destination.
-- The terminal of a destination shows a badge with its name and tags. A destination tagged `prod`
-  or `produção` gives that screen a **red border**, so a production server is hard to mistake for
-  another.
+- The terminal tab of a destination is named "SSH · name" and carries its tags. A destination
+  tagged `prod` or `produção` gives that **tab a red border**, so a production server is hard to
+  mistake for another.
 
-Passwords, key passphrases and keys kept in the vault come with the Vault (phase 16) on top of this
-phase; until then a destination uses the host's agent or a key file.
+A destination can also use **Password** authentication: when ssh asks, the app opens a masked
+dialog (or one for a key passphrase). The answer goes to the host once, is never stored or logged,
+and **Cancel** makes ssh fail at once. Keys kept in the vault come with the Vault (phase 16) on top
+of this phase.
+
+A destination with a **host that opens it** other than the one that keeps it runs ssh there (for
+example a VPS, to reach its internal network): Flightdeck keeps a copy of the destination on that
+host, and says so on screen if the host is offline or has no SSH support.
 
 ## Costs, budgets and quota
 

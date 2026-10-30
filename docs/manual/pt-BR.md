@@ -1013,12 +1013,18 @@ caminho de um arquivo de chave).
   `?`) são padrões para as outras, não destinos.
 - **Busca** por nome, host ou usuário; filtro por etiqueta e pelo host que abre o destino. O
   **Ctrl+K** também oferece **Conectar a <nome>** para cada destino.
-- O terminal de um destino mostra um selo com o nome e as etiquetas. Um destino com a etiqueta
-  `prod` ou `produção` deixa essa tela com **borda vermelha**, para um servidor de produção não ser
-  confundido com outro.
+- A aba de terminal de um destino se chama "SSH · nome" e leva as etiquetas. Um destino com a
+  etiqueta `prod` ou `produção` deixa essa **aba com borda vermelha**, para um servidor de produção
+  não ser confundido com outro.
 
-Senhas, frases de chaves e chaves guardadas no cofre chegam com o Cofre (fase 16) por cima desta
-fase; até lá um destino usa o agente do host ou um arquivo de chave.
+Um destino também pode usar a autenticação por **Senha**: quando o ssh pergunta, o app abre uma
+janela com o campo mascarado (ou uma para a frase de uma chave). A resposta vai ao host uma vez,
+nunca é guardada nem registrada, e **Cancelar** faz o ssh falhar na hora. As chaves guardadas no
+cofre chegam com o Cofre (fase 16) por cima desta fase.
+
+Um destino com **host que o abre** diferente do que o guarda roda o ssh lá (por exemplo uma VPS,
+para alcançar a rede interna dela): o Flightdeck guarda uma cópia do destino nesse host e avisa na
+tela se o host está offline ou sem suporte a SSH.
 
 ## Custos, orçamentos e cota
 
