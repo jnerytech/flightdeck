@@ -19,6 +19,7 @@ import type {
   HistorySearchHit,
   HistorySessionSummary,
   HostInfoResult,
+  MessageInfo,
   PendingPermission,
   PermissionUpdate,
   PersonaRef,
@@ -246,6 +247,7 @@ export type HostCommandType = Extract<
   | "vault.rules.set"
   | "vault.rules.preview"
   | "messages.watch"
+  | "messages.list"
   | "messages.relay"
   | "messages.relayed"
   | "messages.directory"
@@ -1533,6 +1535,9 @@ export class AppStore {
       },
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
       onMessages: (frame) => {
+        if (frame.type === "messages.updated") {
+          for (const listener of this.messageListeners) listener(config.id, frame.message);
+        }
         const deps = this.relayDeps();
         if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
         else void relayUpdate(deps, config.id, frame.message);
@@ -2118,6 +2123,15 @@ export class AppStore {
   private defaultVaultPolicy: VaultPolicy | null = null;
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
+
+  /** Phase 21: told each time a message between sessions changes on a host. */
+  onMessageUpdated(listener: (hostId: string, message: MessageInfo) => void): () => void {
+    this.messageListeners.add(listener);
+    return () => {
+      this.messageListeners.delete(listener);
+    };
+  }
 
   /** Phase 21: the hosts as the relay sees them; only an online one with messaging takes part. */
   private relayDeps(): RelayDeps {

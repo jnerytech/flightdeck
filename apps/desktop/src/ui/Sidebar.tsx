@@ -7,6 +7,7 @@ import {
   History,
   KeyRound,
   Layers,
+  MessagesSquare,
   MoreHorizontal,
   Network,
   Plane,
@@ -175,6 +176,15 @@ export function Sidebar(props: {
             icon={<Coins aria-hidden="true" className={icon} />}
             label={t("sidebar.costs")}
             onClick={() => go({ name: "costs" })}
+          />
+        )}
+        {/* Hosts from phase 21 carry messages between sessions. */}
+        {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<MessagesSquare aria-hidden="true" className={icon} />}
+            label={t("sidebar.conversations")}
+            onClick={() => go({ name: "conversations" })}
           />
         )}
         {/* Hosts from phase 20 keep engineering personas. */}

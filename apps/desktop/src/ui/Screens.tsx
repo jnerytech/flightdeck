@@ -28,6 +28,7 @@ import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
 import { ConnectionsPage } from "./ConnectionsPage.tsx";
+import { ConversationsPage } from "./ConversationsPage.tsx";
 import { CostsPage } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { HistoryList } from "./HistoryList.tsx";
@@ -390,6 +391,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       return null;
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
+    case "conversations":
+      return <ConversationsPage store={store} state={state} go={go} />;
     case "personas":
       return <PersonasPage store={store} state={state} />;
     case "snippets":
