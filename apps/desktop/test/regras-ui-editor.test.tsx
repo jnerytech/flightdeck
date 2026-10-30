@@ -127,6 +127,11 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await act(async () => {
       fireEvent.click(screen.getByLabelText("Uma vez por sessão na regra 1"));
       fireEvent.click(screen.getByLabelText("seg na regra 1"));
+      // A day checked and unchecked again is not in the window.
+      fireEvent.click(screen.getByLabelText("sex na regra 1"));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("sex na regra 1"));
     });
     await change("Tags na regra 1", "prod");
     await change("Das na regra 1", "08:00");
