@@ -40,7 +40,11 @@ async function setup(options: { costs: boolean; routeFirst?: boolean }) {
   await act(async () => {
     await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
-  await settle(() => store.getState().hosts[0]?.status === "online");
+  // `host.info` (the features) lands after the host turns online; the screen needs it to pick a host.
+  await settle(() => {
+    const host = store.getState().hosts[0];
+    return host?.status === "online" && Boolean(host.hostInfo);
+  });
   if (!options.routeFirst) {
     await act(async () => {
       store.router.push({ name: "costs" });
