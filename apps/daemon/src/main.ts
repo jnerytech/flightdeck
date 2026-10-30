@@ -54,6 +54,7 @@ import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
+import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
@@ -469,11 +470,14 @@ export async function startDaemon(
   });
   // The vault joins this scanner when it exists (phase 16).
   const snippetScanner = new SecretScanner();
+  // Phase 12's agent editor also writes the personas published as project agents.
+  const agentcfg = new AgentConfig();
   const personaStore = new Personas({
     db: store.db,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
     pack: packPersonas,
+    publisher: agentPublisher(agentcfg),
   });
   const manager = new SessionManager({
     store,
@@ -740,7 +744,7 @@ export async function startDaemon(
     rewinder,
     forker: new Forker({ runtime, manager, rewinder }),
     mcp: new McpConfig(),
-    agentcfg: new AgentConfig(),
+    agentcfg,
     ...(updater ? { updater } : {}),
     hostName: config.hostName,
     bind: config.bind,
