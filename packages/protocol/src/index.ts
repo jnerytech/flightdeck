@@ -523,6 +523,9 @@ export const Issue = z.object({
   createdAt: z.string(),
 });
 export type Issue = z.infer<typeof Issue>;
+/** Which personas become subagents in a project: the pack and the project's, only the project's, or none. */
+export const PersonaSubagentsMode = z.enum(["all", "project", "none"]);
+export type PersonaSubagentsMode = z.infer<typeof PersonaSubagentsMode>;
 
 export const Project = z.object({
   id: z.string(),
@@ -542,6 +545,8 @@ export const Project = z.object({
   issues: IssuesConfig.nullable().default(null),
   /** The persona a card opens its session in when it starts from that column (phase 20). */
   personaByColumn: z.partialRecord(BoardColumn, z.string()).default({}),
+  /** The personas offered as `persona-<id>` subagents in this project (phase 20). */
+  personaSubagents: PersonaSubagentsMode.default("all"),
 });
 export type Project = z.infer<typeof Project>;
 
@@ -1381,6 +1386,7 @@ export const ProjectUpdatePayload = z.object({
   ...ProjectFields,
   /** The default persona by column; `null` removes the one of a column. */
   personaByColumn: z.partialRecord(BoardColumn, z.string().nullable()).optional(),
+  personaSubagents: PersonaSubagentsMode.optional(),
 });
 export const CardIdPayload = z.object({ cardId: z.string() });
 /** Phase 6: with `workflow`, the card runs that trusted workflow with `inputs`. */

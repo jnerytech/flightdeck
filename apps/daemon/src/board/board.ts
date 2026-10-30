@@ -11,6 +11,8 @@ import {
   IssuesConfig,
   type PermissionUpdate,
   type PersonaRef,
+  type PersonaSubagentsMode,
+  PersonaSubagentsMode as PersonaSubagentsModeSchema,
   type SessionEvent,
   type SessionStatus,
   type WorkflowInfo,
@@ -106,6 +108,7 @@ interface ProjectRow {
   auto_approve: string | null;
   issues: string | null;
   persona_by_column: string | null;
+  persona_subagents: PersonaSubagentsMode | null;
 }
 
 function toProject(row: ProjectRow): Project {
@@ -121,10 +124,19 @@ function toProject(row: ProjectRow): Project {
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
+    personaSubagents: row.persona_subagents ?? "all",
   };
 }
 
 const PERSONA_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+
+function subagentsMode(mode: string): PersonaSubagentsMode {
+  const parsed = PersonaSubagentsModeSchema.safeParse(mode);
+  if (!parsed.success) {
+    throw new FlightdeckError("bad_request", "personaSubagents: all, project ou none");
+  }
+  return parsed.data;
+}
 
 /** The default personas with the patch applied: plain ids, existing columns, `null` takes one away. */
 function mergePersonas(
@@ -288,7 +300,7 @@ export class Board {
     const taken = this.db.query("SELECT 1 FROM projects WHERE path = ?").get(path);
     if (taken) throw new FlightdeckError("invalid_state", `projeto já cadastrado: ${path}`);
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
-    const project: Omit<Project, "worktreeInclude" | "personaByColumn"> = {
+    const project: Omit<Project, "worktreeInclude" | "personaByColumn" | "personaSubagents"> = {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
@@ -333,11 +345,15 @@ export class Board {
       ...(patch.personaByColumn
         ? { personaByColumn: mergePersonas(current.personaByColumn, patch.personaByColumn) }
         : {}),
+      ...(patch.personaSubagents
+        ? { personaSubagents: subagentsMode(patch.personaSubagents) }
+        : {}),
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
-         prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ? WHERE id = ?`,
+         prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ?,
+         persona_subagents = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -348,6 +364,7 @@ export class Board {
         JSON.stringify(next.autoApprove),
         next.issues ? JSON.stringify(next.issues) : null,
         JSON.stringify(next.personaByColumn),
+        next.personaSubagents,
         id,
       );
     return next;

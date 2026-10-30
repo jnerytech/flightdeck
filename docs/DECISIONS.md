@@ -2191,3 +2191,9 @@ What the Phase 19 interface settled or left open. The text of this section is in
 - **O runtime falso ganhou `[persona]`**, que responde o papel com que a sessão abriu (primeira linha do corpo, esforço, ferramentas e agentes), para o smoke enxergar o que um processo separado recebeu.
 - **Regra 7:** o ramo de `--persona=` vazio, o de aplicar sem o cadastro e o de sair em inglês foram removidos para o teste ficar vermelho antes de voltar.
 - **Não conferido sem o claude real:** a persona `seguranca` respondendo no papel (conferido no transcript), `flightdeckd claude --persona qa` mostrando a persona aplicada e o Claude delegando ao `persona-revisor`.
+
+### Interruptor dos subagentes por projeto
+
+- **`personaSubagents`: `all` | `project` | `none`** (padrão `all`), pelo `project.update`. `all` é o pacote, as do host e as do projeto; `project` só as do projeto já confiadas; `none` nenhuma. Vale para o `agents` do SDK e para o `--agents` do wrapper (com `none` nem o arquivo é gerado). As versionadas sem confiança continuam listadas em `untrusted` com `project`, para a pessoa saber o porquê. O nome do campo é `personaSubagents` para não colidir com o comando `personas.subagents`.
+- **A pasta decide o projeto.** A sessão do projeto e a de um card, que roda numa worktree própria, seguem o mesmo interruptor (a worktree responde pelo projeto de onde saiu); uma pasta que não é de projeto nenhum fica no padrão.
+- **A confiança também.** Um achado do teste: a confiança numa persona versionada era guardada pela pasta onde o arquivo foi lido, então uma sessão de card, que lê o mesmo arquivo commitado na worktree, a via sem confiança. Agora a worktree responde pelo projeto também aí.

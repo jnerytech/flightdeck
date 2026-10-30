@@ -437,7 +437,7 @@ export class SessionManager {
         ? { effort: this.efforts.get(sessionId) as EffortLevel }
         : {}),
       ...(persona ? { persona: personaOf(persona) } : {}),
-      ...(agents ? { agents } : {}),
+      ...(agents && Object.keys(agents).length > 0 ? { agents } : {}),
     });
     const live: LiveSession = { run, queue: [], closing: false };
     this.live.set(sessionId, live);

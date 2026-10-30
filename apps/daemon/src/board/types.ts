@@ -2,6 +2,7 @@ import type {
   AutoApproveSettings,
   BoardColumn,
   IssuesConfig,
+  PersonaSubagentsMode,
   PrProviderKind,
 } from "@flightdeck/protocol";
 
@@ -36,4 +37,6 @@ export interface NewProject {
 export type ProjectPatch = Partial<Omit<NewProject, "path">> & {
   /** The default persona by column (phase 20); `null` removes a column's. */
   personaByColumn?: Partial<Record<BoardColumn, string | null>> | undefined;
+  /** Which personas the project offers as subagents (phase 20). */
+  personaSubagents?: PersonaSubagentsMode | undefined;
 };

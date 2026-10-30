@@ -542,4 +542,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE projects ADD COLUMN persona_by_column TEXT;
   ALTER TABLE card_runs ADD COLUMN persona TEXT;
   `,
+  // Phase 20: which personas a project offers as subagents (all when null).
+  `
+  ALTER TABLE projects ADD COLUMN persona_subagents TEXT;
+  `,
 ];

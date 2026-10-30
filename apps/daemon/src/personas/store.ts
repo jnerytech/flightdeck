@@ -15,6 +15,7 @@ import type {
   PersonaInput,
   PersonaProjectInfo,
   PersonaSubagents,
+  PersonaSubagentsMode,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
@@ -158,9 +159,11 @@ export class Personas {
    */
   subagents(ctx: PersonaContext): PersonaSubagents {
     const project = this.optionalProject(ctx.projectPath);
+    const mode = project ? this.subagentsMode(project) : "all";
+    if (mode === "none") return { agents: {}, untrusted: [] };
     const loaded = project ? this.loadProject(project) : null;
     const views = [
-      ...this.hostViews(ctx.language),
+      ...(mode === "all" ? this.hostViews(ctx.language) : []),
       ...(loaded?.views.filter((view) => view.trusted) ?? []),
     ];
     const agents: Record<string, PersonaAgent> = {};
@@ -222,7 +225,7 @@ export class Personas {
     rmSync(file);
     this.opts.db
       .query("DELETE FROM persona_trust WHERE project_path = ? AND id = ?")
-      .run(project, id);
+      .run(this.trustFolder(project), id);
   }
 
   /** Trusts the versioned persona as it is now, by the hash the app was shown. */
@@ -270,6 +273,19 @@ export class Personas {
 
   private project(path: string): string {
     return resolveAllowedCwd(path, this.opts.allowedRoots);
+  }
+
+  /** What the project of a folder (or of a card's worktree) offers as subagents; all by default. */
+  private subagentsMode(folder: string): PersonaSubagentsMode {
+    const row = this.opts.db
+      .query(
+        `SELECT persona_subagents AS mode FROM projects WHERE path = $folder
+         UNION ALL
+         SELECT p.persona_subagents FROM cards c JOIN projects p ON p.id = c.project_id
+          WHERE c.worktree_path = $folder LIMIT 1`,
+      )
+      .get({ $folder: folder }) as { mode: PersonaSubagentsMode | null } | null;
+    return row?.mode ?? "all";
   }
 
   /** A folder the daemon does not allow has no personas of its own. */
@@ -336,12 +352,23 @@ export class Personas {
     return views;
   }
 
+  /** The folder trust is kept under: a card's worktree answers for the project it was made from. */
+  private trustFolder(folder: string): string {
+    const row = this.opts.db
+      .query(
+        `SELECT p.path FROM cards c JOIN projects p ON p.id = c.project_id
+         WHERE c.worktree_path = ?`,
+      )
+      .get(folder) as { path: string } | null;
+    return row?.path ?? folder;
+  }
+
   private trustHash(project: string, id: string, hash: string): void {
     this.opts.db
       .query(
         "INSERT OR IGNORE INTO persona_trust (project_path, id, hash, trusted_at) VALUES (?, ?, ?, ?)",
       )
-      .run(project, id, hash, new Date(this.now()).toISOString());
+      .run(this.trustFolder(project), id, hash, new Date(this.now()).toISOString());
   }
 
   /** The project's personas: what is valid, what is not and why, and which are trusted. */
@@ -363,7 +390,7 @@ export class Personas {
         const trusted =
           this.opts.db
             .query("SELECT 1 FROM persona_trust WHERE project_path = ? AND id = ? AND hash = ?")
-            .get(project, id, hash) !== null;
+            .get(this.trustFolder(project), id, hash) !== null;
         views.push({ ...persona, scope: "project", hash, trusted, modified: false });
       } catch (error) {
         errors.push(`${name}: ${(error as Error).message}`);
