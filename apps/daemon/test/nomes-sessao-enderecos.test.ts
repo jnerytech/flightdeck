@@ -51,6 +51,13 @@ describe("nomes-sessao: o apelido endereça a sessão", () => {
     expect(missing.reason).toContain("app-geral-9");
   });
 
+  test("um id que é também o apelido de outra sessão vence o apelido", () => {
+    const { messaging, endpoints } = host();
+    endpoints.add("app-geral-2");
+    messaging.send({ as: ASKER, to: "app-geral-2", text: "pelo id" });
+    expect(endpoints.sent.map((m) => m.id)).toEqual(["app-geral-2"]);
+  });
+
   test("notify_when_idle e read_session usam o mesmo endereço", () => {
     const { messaging, endpoints } = host();
     endpoints.transcripts.set("s2", {
