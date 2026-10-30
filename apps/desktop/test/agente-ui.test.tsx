@@ -597,4 +597,16 @@ describe("agente-ui", () => {
     await settle(() => (json(settings).disabledMcpjsonServers ?? []).includes("eco"));
     expect(runtime.mcpToggles).toEqual([]);
   });
+  test("a server the live session reports as failed shows its error", async () => {
+    const { manager } = await setup({ live: true });
+    manager.mcpStatus = async () => [
+      { name: "eco", status: "failed", error: "spawn eco ENOENT" },
+      { name: "marcador", status: "needs-auth" },
+    ];
+    await settle(() => screen.queryByText("spawn eco ENOENT") !== null);
+    const row = (name: string) => screen.queryByRole("listitem", { name }) as HTMLElement;
+    expect(within(row("eco")).queryByText("Falhou")).not.toBeNull();
+    expect(within(row("eco")).queryByText("spawn eco ENOENT")).not.toBeNull();
+    expect(within(row("marcador")).queryByText("Precisa de login")).not.toBeNull();
+  });
 });
