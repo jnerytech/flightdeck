@@ -406,21 +406,17 @@ export class Snippets {
     writeFileSync(join(project, ".flightdeck", "snippets.yaml"), text);
   }
 
-  /** The versioned file: what it holds that is valid, what is not and why, and whether it is trusted. */
-  private loadFile(project: string): LoadedFile | null {
-    const path = join(project, ".flightdeck", "snippets.yaml");
-    if (!existsSync(path)) return null;
-    const bytes = readFileSync(path);
-    const hash = createHash("sha256").update(bytes).digest("hex");
-    const trusted =
-      this.opts.db
-        .query("SELECT 1 FROM snippet_trust WHERE project_path = ? AND hash = ?")
-        .get(project, hash) !== null;
+  /**
+   * A YAML (or JSON, which YAML reads too) list of snippets: the valid ones, normalized and with
+   * unique names, and why each of the others was left out. Shared by the versioned file and an
+   * import from a file.
+   */
+  private parseList(text: string): { defs: SnippetDef[]; errors: string[] } {
     const errors: string[] = [];
     const defs: SnippetDef[] = [];
     let data: unknown;
     try {
-      data = Bun.YAML.parse(bytes.toString("utf8")) ?? [];
+      data = Bun.YAML.parse(text) ?? [];
     } catch (error) {
       errors.push(`YAML inválido: ${(error as Error).message}`);
       data = [];
@@ -444,6 +440,35 @@ export class Snippets {
         errors.push(`${label}: ${(error as Error).message}`);
       }
     }
+    return { defs, errors };
+  }
+
+  /** An import from a file: the snippets it holds, as the form would send them, and the reasons for the rest. */
+  parse(text: string): { snippets: SnippetInput[]; errors: string[] } {
+    const { defs, errors } = this.parseList(text);
+    const snippets = defs.map(
+      (def): SnippetInput => ({
+        name: def.name,
+        type: def.type,
+        ...(def.type === "command" ? { run: def.run as string } : { text: def.text as string }),
+        vars: def.vars,
+        tags: def.tags,
+      }),
+    );
+    return { snippets, errors };
+  }
+
+  /** The versioned file: what it holds that is valid, what is not and why, and whether it is trusted. */
+  private loadFile(project: string): LoadedFile | null {
+    const path = join(project, ".flightdeck", "snippets.yaml");
+    if (!existsSync(path)) return null;
+    const bytes = readFileSync(path);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    const trusted =
+      this.opts.db
+        .query("SELECT 1 FROM snippet_trust WHERE project_path = ? AND hash = ?")
+        .get(project, hash) !== null;
+    const { defs, errors } = this.parseList(bytes.toString("utf8"));
     return { info: { path, hash, trusted, errors }, defs };
   }
 }

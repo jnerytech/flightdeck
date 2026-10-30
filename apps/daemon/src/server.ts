@@ -1153,7 +1153,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "snippets.favorite":
         return ok(command.type, snippets().favorite(command.payload.id, command.payload.favorite));
       case "snippets.parse":
-        return ok(command.type, { snippets: [], errors: [] });
+        return ok(command.type, snippets().parse(command.payload.text));
       case "snippets.importHistory": {
         const { limit, reveal, select } = command.payload;
         const importer = snippetHistory();
