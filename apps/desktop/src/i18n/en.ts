@@ -33,6 +33,8 @@ export const en: Dictionary = {
     favorite: "Favorite {name}",
     unfavorite: "Unfavorite {name}",
     picker: "Command snippets",
+    useSnippet: "Use",
+    useFor: "Use {name}",
     newSnippet: "New snippet",
     edit: "Edit",
     editFor: "Edit {name}",

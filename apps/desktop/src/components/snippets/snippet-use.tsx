@@ -19,6 +19,8 @@ const SELECT = "h-9 rounded-md border bg-transparent px-2";
 export interface SnippetChoice {
   hostId: string | null;
   snippetId: string;
+  /** The snippet itself, when it comes from a list the store does not keep (a project's). */
+  snippet?: AppSnippet;
 }
 
 /** The snippet a choice names, from the host's list the palette read or from the app's globals. */
@@ -27,6 +29,7 @@ export function chosenSnippet(
   state: AppState,
   choice: SnippetChoice,
 ): AppSnippet | undefined {
+  if (choice.snippet) return choice.snippet;
   return choice.hostId
     ? state.snippets[choice.hostId]?.find((s) => s.id === choice.snippetId)
     : store.globalSnippets.list().find((s) => s.id === choice.snippetId);
@@ -110,8 +113,22 @@ export function SnippetUse(props: {
     return result.ok ? done() : fail(result.message);
   };
 
+  /** A global command opens a terminal on the host on screen, else the first online one. */
+  const runGlobalInNewTab = async () => {
+    const hostId =
+      ("host" in route ? route.host : undefined) ??
+      state.hosts.find((h) => h.status === "online")?.id;
+    if (!hostId) return;
+    const text = fillGlobal();
+    if (text === null) return;
+    const { terminalId } = await store.terminalHost(hostId).open(folder, 120, 30);
+    await store.terminalHost(hostId).write(terminalId, `${text}\r`);
+    store.tabs.open({ name: "terminal", host: hostId, terminalId });
+    done();
+  };
+
   const runInNewTab = async () => {
-    if (!choice.hostId) return;
+    if (!choice.hostId) return runGlobalInNewTab();
     const result = await store.hostRequest(choice.hostId, "snippets.use", {
       id: snippet.id,
       action: "run",
@@ -238,7 +255,7 @@ export function SnippetUse(props: {
             )}
           </div>
         ))}
-        {isCommand && choice.hostId && (
+        {isCommand && (
           <div className="flex flex-col gap-1 text-sm">
             <label htmlFor={`${id}-folder`}>{t("snippets.use.folder")}</label>
             <Input id={`${id}-folder`} value={folder} onChange={(e) => setFolder(e.target.value)} />
@@ -261,7 +278,7 @@ export function SnippetUse(props: {
               </Button>
             </>
           )}
-          {isCommand && choice.hostId && (
+          {isCommand && (
             <Button
               variant="outline"
               disabled={!snippet.runnable || folder.trim() === ""}

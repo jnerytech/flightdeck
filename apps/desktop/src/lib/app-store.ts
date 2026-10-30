@@ -41,7 +41,7 @@ import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/ty
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
-import { GlobalSnippets } from "./global-snippets.ts";
+import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
@@ -153,7 +153,7 @@ export interface AppState {
   /** The snippets of each host that keeps them, by host id; read when the palette opens (phase 18). */
   snippets: Record<string, Snippet[]>;
   /** The snippet to fill and use now, from the palette or a terminal's list (phase 18). */
-  snippetChoice: { hostId: string | null; snippetId: string } | null;
+  snippetChoice: { hostId: string | null; snippetId: string; snippet?: AppSnippet } | null;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
   /** Phase 16: the vault's usage log, newest first; never holds a value. */
@@ -1821,7 +1821,9 @@ export class AppStore {
   }
 
   /** Opens the use dialog for a snippet (`null` closes it): from the palette or a terminal's list. */
-  chooseSnippet(choice: { hostId: string | null; snippetId: string } | null): void {
+  chooseSnippet(
+    choice: { hostId: string | null; snippetId: string; snippet?: AppSnippet } | null,
+  ): void {
     this.update({ snippetChoice: choice });
   }
 

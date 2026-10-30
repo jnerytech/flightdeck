@@ -35,6 +35,8 @@ export const ptBR = {
     favorite: "Favoritar {name}",
     unfavorite: "Desfavoritar {name}",
     picker: "Snippets de comando",
+    useSnippet: "Usar",
+    useFor: "Usar {name}",
     newSnippet: "Novo snippet",
     edit: "Editar",
     editFor: "Editar {name}",

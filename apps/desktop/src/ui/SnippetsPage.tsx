@@ -64,9 +64,10 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
     setSnippets(listed.snippets);
     setFile(listed.file);
   }, [store, hostId, project, query, type]);
+  // Again when the use dialog closes: a use moves the snippet up.
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    if (state.snippetChoice === null) void reload();
+  }, [reload, state.snippetChoice]);
 
   const favorite = async (snippet: AppSnippet) => {
     if (snippet.scope === "global") {
@@ -241,6 +242,20 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
                   onClick={() => void favorite(snippet)}
                 >
                   <Star className={snippet.favorite ? "fill-current" : ""} aria-hidden />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={t("snippets.useFor", { name: snippet.name })}
+                  onClick={() =>
+                    store.chooseSnippet({
+                      hostId: snippet.scope === "global" ? null : (hostId ?? null),
+                      snippetId: snippet.id,
+                      snippet,
+                    })
+                  }
+                >
+                  {t("snippets.useSnippet")}
                 </Button>
                 <Button
                   variant="outline"
