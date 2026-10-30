@@ -343,6 +343,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.snippets ? ["snippets"] : []),
     // Phase 20: the engineering personas of the host and its projects.
     ...(opts.personas ? ["personas"] : []),
+    // Phase 21: messages between sessions, teams and the standard session names.
+    ...(opts.messaging ? ["messaging"] : []),
+    ...(opts.teams ? ["teams"] : []),
+    ...(opts.names ? ["names"] : []),
   ];
   let pingSeq = 0;
 
