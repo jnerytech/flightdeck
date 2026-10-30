@@ -1,5 +1,17 @@
-import type { Route } from "./router.ts";
+import { ROUTE_NAMES, type Route } from "./router.ts";
 import { type Navigation, type Tab, Tabs } from "./tabs.ts";
+
+/** What is kept of the window between starts: the tabs' screens, not their histories. */
+export interface WorkspaceSnapshot {
+  v: 1;
+  areas: { tabs: { route: Route; pinned: boolean }[]; active: number }[];
+  split: Orientation | null;
+  focus: 0 | 1;
+  fraction: number;
+}
+
+/** Where the window's layout is kept. */
+export const WORKSPACE_KEY = "flightdeck.workspace";
 
 export type Orientation = "vertical" | "horizontal";
 
@@ -22,8 +34,14 @@ export class Workspace {
   constructor(
     initial: Route = { name: "home" },
     private readonly newId?: () => string,
+    restored?: Pick<Workspace, "areas" | "split" | "focus" | "fraction">,
   ) {
-    this.attach(new Tabs(initial, newId));
+    if (restored) {
+      for (const area of restored.areas) this.attach(area);
+      this.split = restored.split;
+      this.focus = restored.focus;
+      this.fraction = restored.fraction;
+    } else this.attach(new Tabs(initial, newId));
     const focused = () => this.tabs.router;
     this.router = {
       get current() {
@@ -39,6 +57,47 @@ export class Workspace {
       back: () => focused().back(),
       forward: () => focused().forward(),
       subscribe: this.subscribe,
+    };
+  }
+
+  /** The window as it comes back after a restart; anything unusable gives a fresh window. */
+  static restore(stored: unknown, newId?: () => string): Workspace {
+    const data = (stored ?? {}) as Partial<Record<keyof WorkspaceSnapshot, unknown>>;
+    const areas = (data.v === 1 && Array.isArray(data.areas) ? data.areas : [])
+      .slice(0, 2)
+      .map((area) => restoreArea(area, newId))
+      .filter((area): area is Tabs => area !== null);
+    if (areas.length === 0) return new Workspace({ name: "home" }, newId);
+    const split =
+      areas.length === 2 ? (data.split === "horizontal" ? "horizontal" : "vertical") : null;
+    const fraction = typeof data.fraction === "number" ? data.fraction : 0.5;
+    return new Workspace({ name: "home" }, newId, {
+      areas,
+      split,
+      focus: data.focus === 1 && areas.length === 2 ? 1 : 0,
+      fraction: Math.min(FRACTION_MAX, Math.max(FRACTION_MIN, fraction)),
+    });
+  }
+
+  /** What `restore` takes back: each tab's screen (never the host form, which can hold a token). */
+  snapshot(): WorkspaceSnapshot {
+    return {
+      v: 1,
+      areas: this.areas
+        .map((area) => {
+          const kept = area.tabs.filter((tab) => tab.router.current.name !== "add-host");
+          return {
+            tabs: kept.map((tab) => ({ route: tab.router.current, pinned: tab.pinned })),
+            active: Math.max(
+              0,
+              kept.findIndex((tab) => tab.id === area.activeId),
+            ),
+          };
+        })
+        .filter((area) => area.tabs.length > 0),
+      split: this.split,
+      focus: this.focus,
+      fraction: this.fraction,
     };
   }
 
@@ -132,4 +191,23 @@ export class Workspace {
     this.version++;
     for (const listener of this.listeners) listener();
   }
+}
+
+/** One stored area, or null when nothing in it can be used. */
+function restoreArea(stored: unknown, newId?: () => string): Tabs | null {
+  const area = (stored ?? {}) as { tabs?: unknown; active?: unknown };
+  const entries = (Array.isArray(area.tabs) ? area.tabs : [])
+    .map((tab: { route?: { name?: unknown }; pinned?: unknown } | null) => ({
+      route: tab?.route as Route,
+      pinned: tab?.pinned === true,
+    }))
+    .filter(
+      (tab) =>
+        typeof tab.route?.name === "string" &&
+        ROUTE_NAMES.has(tab.route.name) &&
+        tab.route.name !== "add-host",
+    );
+  if (entries.length === 0) return null;
+  const active = Number.isInteger(area.active) ? (area.active as number) : 0;
+  return Tabs.restore(entries, active >= 0 && active < entries.length ? active : 0, newId);
 }

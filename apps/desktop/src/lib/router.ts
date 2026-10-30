@@ -84,3 +84,29 @@ export class Router {
     for (const listener of this.listeners) listener();
   }
 }
+
+const NAMES: Record<Route["name"], true> = {
+  home: true,
+  hub: true,
+  "needs-you": true,
+  session: true,
+  "new-session": true,
+  external: true,
+  reader: true,
+  history: true,
+  host: true,
+  projects: true,
+  board: true,
+  card: true,
+  workflows: true,
+  agent: true,
+  automations: true,
+  "auto-approvals": true,
+  terminal: true,
+  settings: true,
+  costs: true,
+  "add-host": true,
+};
+
+/** The names a stored tab may carry: anything else is dropped when the tabs come back. */
+export const ROUTE_NAMES: ReadonlySet<string> = new Set(Object.keys(NAMES));

@@ -65,6 +65,22 @@ export class Tabs {
     };
   }
 
+  /** Tabs as they were kept: the screens in order, which are pinned and which one is active. */
+  static restore(
+    entries: { route: Route; pinned: boolean }[],
+    active: number,
+    newId?: () => string,
+  ): Tabs {
+    const [first, ...rest] = entries as [{ route: Route; pinned: boolean }, ...typeof entries];
+    const tabs = new Tabs(first.route, newId);
+    for (const entry of rest) tabs.open(entry.route);
+    entries.forEach((entry, i) => {
+      if (entry.pinned) tabs.pin((tabs.tabs[i] as Tab).id, true);
+    });
+    tabs.activate((tabs.tabs[active] as Tab).id);
+    return tabs;
+  }
+
   get active(): Tab {
     return this.tabs.find((tab) => tab.id === this.activeId) as Tab;
   }

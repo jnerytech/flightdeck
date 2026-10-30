@@ -48,7 +48,7 @@ import { isHot } from "./quota.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
-import type { Tabs } from "./tabs.ts";
+import type { Navigation, Tabs } from "./tabs.ts";
 import {
   type TerminalEnv,
   type TerminalLaunch,
@@ -60,7 +60,7 @@ import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { hasFeature } from "./version.ts";
-import { Workspace } from "./workspace.ts";
+import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -299,6 +299,15 @@ export interface GateRef {
 }
 
 /** Every open permission request of every host, oldest first. */
+/** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
+function storedWorkspace(storage: Platform["storage"]): unknown {
+  try {
+    return JSON.parse(storage.getItem(WORKSPACE_KEY) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
 export function needsYou(state: AppState): PendingItem[] {
   return state.hosts
     .flatMap((host) => [
@@ -444,6 +453,11 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
+    this.workspace = Workspace.restore(storedWorkspace(platform.storage));
+    this.router = this.workspace.router;
+    this.workspace.subscribe(() =>
+      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
+    );
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
@@ -491,8 +505,8 @@ export class AppStore {
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
-  readonly workspace = new Workspace();
-  readonly router = this.workspace.router;
+  readonly workspace: Workspace;
+  readonly router: Navigation;
 
   /** The focused area's tabs. */
   get tabs(): Tabs {
