@@ -1,5 +1,6 @@
 import {
   type Ack,
+  type ActionInfo,
   type CommandPayload,
   type CommandResults,
   type CommandType,
@@ -79,6 +80,13 @@ export class DaemonClient {
   }
 }
 
+/** What Claude may know of the actions it can run: never the command, the env or a secret. */
+export function runnableActions(actions: ActionInfo[]) {
+  return actions
+    .filter((action) => action.trusted)
+    .map(({ name, description, approval, params }) => ({ name, description, approval, params }));
+}
+
 /**
  * `flightdeckd mcp`: an MCP server for the Claude Code of this host. It talks to the local
  * daemon with the token of its config and lets a session list projects and workflows, create
@@ -156,16 +164,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     { projectId: z.string().optional() },
     async ({ projectId }) => {
       const { actions } = await daemon.call("actions.list", projectId ? { projectId } : {});
-      return {
-        actions: actions
-          .filter((action) => action.trusted)
-          .map(({ name, description, approval, params }) => ({
-            name,
-            description,
-            approval,
-            params,
-          })),
-      };
+      return { actions: runnableActions(actions) };
     },
   );
   tool(

@@ -6,6 +6,7 @@ import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Actions } from "./actions/actions.ts";
+import { runActionCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
@@ -113,13 +114,20 @@ export interface CliArgs {
     | "askpass"
     | "mcp"
     | "statusline"
+    | "action"
     | "version"
     | "db"
     | "backup"
     | "restore"
     | "update";
-  /** `service <action>`, `hooks <action>` or `history reindex`. */
-  action?: ServiceAction | "reindex";
+  /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
+  action?: ServiceAction | "reindex" | "list" | "run";
+  /** `action ... --project <id>`. */
+  project?: string;
+  /** `action run <name>`. */
+  actionName?: string;
+  /** `action run ... --param k=v`, repeatable. */
+  params?: Record<string, string>;
   /** `service ... --dry-run`: print, change nothing. */
   dryRun?: true;
   config?: string;
@@ -161,6 +169,8 @@ const USAGE = [
   "     flightdeckd askpass <prompt>   (chamado pelo ssh via SSH_ASKPASS; config em FLIGHTDECK_CONFIG)",
   "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
   "     flightdeckd statusline [--config <arquivo>]   (uma linha para a statusline do Claude Code)",
+  "     flightdeckd action list [--project <id>] [--config <arquivo>]",
+  "     flightdeckd action run <nome> [--project <id>] [--param chave=valor ...] [--config <arquivo>]",
 ].join("\n");
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
@@ -276,6 +286,31 @@ export function parseArgs(argv: readonly string[]): CliArgs {
           throw new Error(`ação de histórico inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
         }
         args.action = action;
+        break;
+      }
+      case "action": {
+        args.command = "action";
+        const action = argv[++i];
+        if (action !== "list" && action !== "run") {
+          throw new Error(`ação inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        if (action === "run") {
+          const name = argv[++i];
+          if (name === undefined || name.startsWith("--")) {
+            throw new Error(`falta o nome da ação\n${USAGE}`);
+          }
+          args.actionName = name;
+        }
+        break;
+      }
+      case "--project":
+        args.project = value();
+        break;
+      case "--param": {
+        const [key, ...rest] = value().split("=");
+        if (!key || rest.length === 0) throw new Error(`--param quer chave=valor\n${USAGE}`);
+        args.params = { ...args.params, [key]: rest.join("=") };
         break;
       }
       case "--dry-run":
@@ -1101,6 +1136,21 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         transport: deps.mcpTransport ?? new StdioServerTransport(),
       });
       void mcp.closed.then(() => deps.exit(0));
+      return null;
+    }
+    if (args.command === "action") {
+      const config = loadConfig(configPath(args));
+      const printed = await runActionCli(
+        {
+          action: args.action as "list" | "run",
+          project: args.project,
+          name: args.actionName,
+          params: args.params,
+        },
+        config,
+      );
+      deps.log.log(JSON.stringify(printed, null, 2));
+      deps.exit(0);
       return null;
     }
     if (args.command === "hooks") {
