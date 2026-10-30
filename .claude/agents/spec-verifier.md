@@ -22,8 +22,9 @@ checkout). Run everything inside the worktree.
    - does the test file exist (`apps/*/test/<area>.test.ts(x)`, `packages/*/test/...` or
      `scripts/test/<area>.test.ts`)?
    - does it pass with `bun --config=bunfig.area.toml test <file>`?
-   - do the tests cover what the "O que precisa passar" column says? Read the assertions. A test
-     with the right name and a weak assertion does not count.
+   - do the tests cover what the "What must pass" column says ("O que precisa passar" in the
+     older, Portuguese specs)? Read the assertions. A test with the right name and a weak
+     assertion does not count.
 3. **TDD order:** does `bun run tdd:audit -- --since $(git merge-base HEAD main)` print
    `TDD AUDIT OK`? First check that `git log --oneline $(git merge-base HEAD main)..HEAD` is not
    empty. With no commits, the audit passes without auditing anything.

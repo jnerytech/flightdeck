@@ -5,8 +5,9 @@ description: Opens a new Flightdeck phase (writes docs/SPEC-fase-N.md in the for
 
 # Open or close a phase
 
-The argument is the phase number (`N`). It creates no tags: the audit uses the branch's base
-commit.
+The argument is the phase number (`N`). Phase sessions never push, tag or release: they hand
+the green HEAD to the maintainer, who integrates it into `main`. The audit uses the branch's
+base commit, so no tag is needed while the phase runs.
 
 ## Open
 
@@ -46,9 +47,12 @@ Each item with its command and exit code visible:
 - [ ] Every smoke in `package.json` except `smoke:real`, each with its `... OK`.
 - [ ] Builds: `bun run build:daemon` and `bun run build:desktop`.
 - [ ] Versions at `0.N.0` (the `test(versao)` cycle). Check with `bun run release:version v0.N.0`.
-- [ ] Prints, when the phase changes the screens: `bun run demo:shots`.
+- [ ] When the phase changes the screens: the prints and the axe check (`bun run demo:shots`)
+      and the end-to-end journeys (`bun run e2e`), in both languages.
 - [ ] README (pt-BR and en), manual (`docs/manual/`) and `docs/DECISIONS.md` with the phase's
       section.
-- [ ] CI green on the branch push.
+- [ ] The `spec-verifier` agent's verdict is **accept**.
+- [ ] Hand over: the HEAD, the commands above with their exit codes and the verifier's table. The
+      maintainer pushes, waits for CI, tags and releases.
 - [ ] The spec's specific items, such as a check with the real claude. Use Sonnet and a short
       prompt, to save quota.
