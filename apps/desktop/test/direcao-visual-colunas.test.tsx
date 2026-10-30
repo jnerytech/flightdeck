@@ -134,6 +134,13 @@ describe("direcao-visual: três colunas", () => {
     expect(time?.getAttribute("title")).toMatch(/^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}$/);
   });
 
+  test("uma data ilegível vira texto vazio na linha, sem derrubar a lista", () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    expect(() => store.formatWhen("não é uma data")).not.toThrow();
+    expect(store.formatWhen("não é uma data")).toBe("");
+  });
+
   test("o título leva o espaço da linha; o resumo é uma segunda linha só na densidade confortável", async () => {
     const { store } = await setup();
     const summary = () => row("Alpha")?.querySelector("[data-slot='summary']");
