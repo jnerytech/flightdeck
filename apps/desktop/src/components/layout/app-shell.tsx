@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 
 /** Below this width the sidebar collapses by itself. */
 export const NARROW_QUERY = "(max-width: 959px)";
@@ -13,13 +14,13 @@ export interface AppShellLabels {
 }
 
 /**
- * The app's frame: a fixed header over a two-column grid, the 260 px sidebar and the content.
- * The sidebar collapses by itself in narrow windows; the button overrides that until the window
- * crosses 960 px again.
+ * The app's frame: a fixed header over a two-column grid, the 240 px sidebar and the content. The
+ * sidebar collapses to a 56 px rail of icons (it is given `collapsed` to draw itself); it does so
+ * by itself in narrow windows, and the button overrides that until the window crosses 960 px again.
  */
 export function AppShell(props: {
   header: ReactNode;
-  sidebar: ReactNode | ((collapsed: boolean) => ReactNode);
+  sidebar: (collapsed: boolean) => ReactNode;
   labels: AppShellLabels;
   children: ReactNode;
 }) {
@@ -43,20 +44,18 @@ export function AppShell(props: {
         <div className="flex min-w-0 flex-1 items-center gap-2">{props.header}</div>
       </header>
       <div
-        className={
-          open
-            ? "grid min-h-0 grid-cols-[260px_minmax(0,1fr)]"
-            : "grid min-h-0 grid-cols-[minmax(0,1fr)]"
-        }
-      >
-        {open && (
-          <aside
-            aria-label={labels.sidebar}
-            className="min-h-0 overflow-y-auto border-r bg-sidebar text-sidebar-foreground"
-          >
-            {typeof props.sidebar === "function" ? props.sidebar(!open) : props.sidebar}
-          </aside>
+        className={cn(
+          "grid min-h-0 transition-[grid-template-columns] duration-150 ease-out",
+          open ? "grid-cols-[240px_minmax(0,1fr)]" : "grid-cols-[56px_minmax(0,1fr)]",
         )}
+      >
+        <aside
+          aria-label={labels.sidebar}
+          data-collapsed={!open}
+          className="min-h-0 overflow-y-auto overflow-x-hidden border-r bg-sidebar text-sidebar-foreground"
+        >
+          {props.sidebar(!open)}
+        </aside>
         <main className="min-h-0 min-w-0 overflow-hidden">{props.children}</main>
       </div>
     </div>

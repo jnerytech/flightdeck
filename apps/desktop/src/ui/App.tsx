@@ -183,49 +183,36 @@ export function App({ store }: { store: AppStore }) {
           >
             <ArrowRight />
           </Button>
-          <span className="font-semibold">Flightdeck</span>
         </>
       }
-      sidebar={
+      sidebar={(collapsed) => (
         <Sidebar
           state={state}
-          onSelect={(hostId, id) => {
+          collapsed={collapsed}
+          t={t}
+          go={go}
+          onSelectSession={(hostId, id) => {
             store.select(hostId, id);
             go(id ? { name: "session", host: hostId, id } : { name: "new-session", host: hostId });
           }}
           onRemoveHost={(id) => void store.removeHost(id)}
-          onAddHost={() => go({ name: "add-host" })}
-          onOpenSettings={() => go({ name: "settings" })}
           onOpenSearch={() => store.openSearch()}
-          onOpenHistory={(hostId) => go({ name: "history", host: hostId })}
-          onOpenHost={(hostId) => go({ name: "host", host: hostId })}
-          onOpenProjects={(hostId) => go({ name: "projects", host: hostId })}
-          onRespond={(item, decision, message) =>
-            item.gate
-              ? void store.respondGate(
-                  item.hostId,
-                  item.gate,
-                  decision === "allow" ? "approve" : "reject",
-                  message,
-                )
-              : void store.respondTo(item.hostId, item.requestId, decision, undefined, message)
-          }
-          t={t}
-          nowMs={store.now()}
-          onCopyText={(text) => void store.copyText(text)}
-          onOpenHub={() => go({ name: "hub" })}
-          onOpenCosts={() => go({ name: "costs" })}
-          // Budgets live in Settings (phase 8).
-          onOpenBudgets={() => go({ name: "settings" })}
-          onOpenRequest={openRequest}
+          onToggleTheme={() => store.theme.toggle()}
         />
-      }
+      )}
     >
       <div className="flex h-full min-h-0 flex-col">
         <UpdateBanner store={store} state={state} />
         {/* Screens that are a Page scroll by themselves; the others scroll here. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <Screen route={route} store={store} state={state} theme={themeMode} go={go} />
+          <Screen
+            route={route}
+            store={store}
+            state={state}
+            theme={themeMode}
+            go={go}
+            onOpenRequest={openRequest}
+          />
         </div>
       </div>
       <Notices store={store} state={state} />

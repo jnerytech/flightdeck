@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { LoadingState } from "@/components/layout/states";
-import { type AppState, type AppStore, type HostView, sessionKey } from "../lib/app-store.ts";
+import {
+  type AppState,
+  type AppStore,
+  type HostView,
+  type PendingItem,
+  sessionKey,
+} from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
@@ -14,6 +20,7 @@ import { ExternalView } from "./ExternalView.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { HostPage } from "./HostPage.tsx";
+import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { ProjectsPage } from "./ProjectsPage.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
@@ -150,6 +157,8 @@ export function Screen(props: {
   state: AppState;
   theme: ThemeMode;
   go(route: Route): void;
+  /** A request from the Precisa de você screen: its session, card or terminal view. */
+  onOpenRequest(item: PendingItem): void;
 }) {
   const { route, store, state, go } = props;
   const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
@@ -206,7 +215,7 @@ export function Screen(props: {
     case "hub":
       return hub;
     case "needs-you":
-      return null;
+      return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
     case "costs":
       return (
         <CostsPage

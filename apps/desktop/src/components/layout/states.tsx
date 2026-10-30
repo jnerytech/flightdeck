@@ -1,11 +1,14 @@
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** An empty list or panel: one sentence and one action. */
-export function EmptyState(props: { title: string; action?: ReactNode }) {
+/** An empty list or panel: a large soft icon, one sentence and one action. */
+export function EmptyState(props: { title: string; icon?: LucideIcon; action?: ReactNode }) {
+  const Icon = props.icon;
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
+      {Icon && <Icon aria-hidden="true" className="size-10 text-muted-foreground/40" />}
       <p className="text-muted-foreground">{props.title}</p>
       {props.action}
     </div>
