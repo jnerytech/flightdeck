@@ -139,4 +139,24 @@ describe("conexoes-ui: ssh asks for a password", () => {
     );
     for (const spy of spies) spy.mockRestore();
   });
+
+  test("the form offers password authentication, which keeps no reference to the password", async () => {
+    const { d } = await open();
+    await click("Conexões");
+    await click("Novo destino");
+    const fill = async (label: string, value: string) => {
+      const field = screen.queryByLabelText(label);
+      expect(field).not.toBeNull();
+      await act(async () => {
+        fireEvent.change(field as HTMLElement, { target: { value } });
+      });
+    };
+    await fill("Nome", "box");
+    await fill("Host", "box.example.com");
+    await fill("Usuário", "me");
+    await fill("Autenticação", "password");
+    expect(screen.queryByLabelText("Arquivo de chave")).toBeNull();
+    await click("Salvar destino");
+    expect(d.sent("ssh.save").at(-1)).toMatchObject({ auth: "password", secretRef: null });
+  });
 });
