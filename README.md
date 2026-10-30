@@ -350,11 +350,50 @@ para atualizar, e o `manifestUrl` padrão é `null`.
   migrações que faltarem rodam no boot seguinte.
 - **A `config.json` fica fora do backup**, porque tem os tokens: guarde uma cópia à parte.
 
+## Interface
+
+O app segue um desenho só, no estilo do Linear: Inter embutida (sem rede), base de 13 px,
+superfícies em camadas, um único token de destaque e o estado das sessões como um pontinho de
+8 px (rodando em azul, precisa de você em âmbar, ociosa em cinza, encerrada esmaecida, erro em
+vermelho).
+
+- **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
+  Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
+  Configurações e o tema. Recolhe para um trilho de ícones de 56 px, sozinha abaixo de 960 px.
+- **Três colunas** em Sessões, Precisa de você e Histórico: a lista à esquerda (largura
+  ajustável e guardada), a sessão, o pedido ou a transcrição à direita. Board, Custos,
+  Configurações e as páginas do host usam a largura toda. O cabeçalho mostra o caminho
+  (Sessões > sessão, Histórico > host, Board > projeto > card).
+- **Teclado:** `J` e `K` movem pela lista, `Enter` abre, `Esc` fecha o detalhe, `A` e `N`
+  aprovam e negam, `Ctrl K` abre a paleta, `Alt+←` e `Alt+→` voltam e avançam.
+- **Densidade:** linhas compactas (32 px, o padrão) ou confortáveis (40 px), em Configurações.
+- **Tema:** Claro, Escuro e Sistema (o padrão), em Configurações, na barra lateral e na paleta.
+  A escolha fica guardada.
+- **Idioma:** o do sistema (`pt-BR` para qualquer `pt-*`, `en` para o resto), trocado em
+  Configurações ou na paleta, sem reiniciar. Datas e horas saem sempre em hora local. O
+  vocabulário está em [`docs/GLOSSARY.md`](docs/GLOSSARY.md).
+- **Modos de permissão** aparecem com nome e uma linha de explicação, nunca com o valor técnico;
+  o "Sem perguntas" avisa em vermelho.
+
+### Modo demonstração, prints e testes de ponta a ponta
+
+```bash
+bun run demo         # sobe dois hosts de mentira (runtime fake, dados semeados) e a entrada web
+                     # do app já pareada, em http://localhost:1420
+bun run demo:shots   # os prints das telas, nos 2 temas e nos 2 idiomas, em
+                     # apps/desktop/screenshots/ (e o axe-core, que reprova serious e critical)
+bun run e2e          # as cinco jornadas num navegador de verdade, nos 2 idiomas, e a conferência
+                     # do layout a 1280x800 e a 800x600
+```
+
+Nada sai da máquina e nenhum dado real é usado. Os scripts usam o Chrome instalado (ou o Edge)
+pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os prints.
+
 ## App desktop: frota e Windows
 
-- **Precisa de você:** no topo da barra lateral, todos os pedidos de permissão abertos em todos os
-  hosts, do mais antigo ao mais novo. **✓** e **✕** permitem ou negam ali mesmo, no host do
-  pedido; clicar no pedido abre a sessão no card de aprovação.
+- **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
+  tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
+  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠.
