@@ -12,6 +12,7 @@ import {
   Plus,
   Search,
   Settings as SettingsIcon,
+  SquareCode,
   SunMoon,
   TriangleAlert,
   Workflow,
@@ -173,6 +174,15 @@ export function Sidebar(props: {
             icon={<Coins aria-hidden="true" className={icon} />}
             label={t("sidebar.costs")}
             onClick={() => go({ name: "costs" })}
+          />
+        )}
+        {/* Hosts from phase 18 keep saved commands and prompts. */}
+        {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "snippets", false)) && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<SquareCode aria-hidden="true" className={icon} />}
+            label={t("sidebar.snippets")}
+            onClick={() => go({ name: "snippets" })}
           />
         )}
         {/* Hosts from phase 15 keep ssh destinos. */}
