@@ -350,5 +350,11 @@ O agente implementa só a Fase 1, em passos pequenos e verificáveis, sem gastar
 | 19 | Regras de uso por segredo: solicitante, janela, limites, teto seguro e auditoria | [SPEC-fase-19.md](SPEC-fase-19.md) |
 | 20 | Personas de engenharia: biblioteca com pacote inicial, sessão nova ou aberta, subagentes, workflows, arena e board | [SPEC-fase-20.md](SPEC-fase-20.md) |
 | 21 | Times e comunicação entre sessões: mensagens em qualquer host, regras e limites, aviso de ocioso, coordenadora com executoras e pausa por cota | [SPEC-fase-21.md](SPEC-fase-21.md) |
+| 22 | PR: vigiar e consertar (Azure DevOps primeiro) e rastro PR ↔ sessões ↔ item de trabalho | [SPEC-fase-22.md](SPEC-fase-22.md) |
+| 23 | Telemetria OpenTelemetry das sessões do terminal: tempo, espera de permissão e erros | [SPEC-fase-23.md](SPEC-fase-23.md) |
+| 24 | Ambiente de execução por card: portas, run e preview | [SPEC-fase-24.md](SPEC-fase-24.md) |
+| 25 | Rastro e replay da sessão com árvore de subagentes | [SPEC-fase-25.md](SPEC-fase-25.md) |
+| 26 | Memória, contexto e plugins do Claude Code | [SPEC-fase-26.md](SPEC-fase-26.md) |
+| 27 | Sessões em segundo plano do Claude Code (`--bg`, `claude agents`) na central | [SPEC-fase-27.md](SPEC-fase-27.md) |
 
 Cada fase fecha pelos próprios critérios de aceite e é integrada na ordem do roadmap; duas fases independentes podem ser desenvolvidas em paralelo em worktrees separados, com a posterior rebaseada sobre a tag da anterior antes de fechar. O produto é desktop, sem celular.
