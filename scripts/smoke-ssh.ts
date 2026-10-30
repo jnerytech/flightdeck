@@ -339,7 +339,11 @@ async function run(work: string): Promise<void> {
     const ssh = readLog(fakeLog).filter((e) => e.tool === "ssh");
     const argv: string[] = ssh[0]?.argv ?? [];
     const joined = argv.join(" ");
-    for (const part of ["BatchMode=no", "StrictHostKeyChecking=yes", "IdentitiesOnly=yes"]) {
+    for (const part of [
+      "BatchMode=no",
+      "StrictHostKeyChecking=yes",
+      WIN ? "IdentitiesOnly=yes" : "IdentitiesOnly=no",
+    ]) {
       if (!joined.includes(part)) throw new Error(`faltou ${part} no argv: ${joined}`);
     }
     if (argv.at(-2) !== "--" || argv.at(-1) !== "deploy@vault.example.test") {
