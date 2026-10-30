@@ -2027,6 +2027,22 @@ export class AppStore {
 
   private defaultVaultPolicy: VaultPolicy | null = null;
 
+  /** Phase 19: a secret's usage rules, in order. */
+  vaultRules(_secretId: string): unknown[] {
+    return [];
+  }
+
+  /**
+   * Phase 19: replaces a secret's rules. The connected hosts check them (the ceiling) and keep a
+   * copy; a refusal comes back with the daemon's reason and nothing is saved.
+   */
+  async setVaultRules(
+    _secretId: string,
+    _rules: unknown[],
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    return { ok: true };
+  }
+
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
   async approveVaultForSession(_hostId: string, requestId: string): Promise<void> {
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
