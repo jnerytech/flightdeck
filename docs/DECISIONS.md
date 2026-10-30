@@ -1799,7 +1799,7 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 
 - **The router became the active tab's:** each tab owns a `Router` with its own history, and `store.router` is a facade over the focused area's active tab. No screen changed: they keep calling `store.router` and `go`.
 - **"Open in a new tab" without touching every list:** `Ctrl+click` and the middle button set a one-event flag on the focused tabs (`openNextInNewTab`), and the next navigation opens a tab instead of replacing the current one. The middle button fires no `click`, so the capture listener clicks the item itself.
-- **Menu entry:** **Abrir em nova aba** is in the host's menu (sidebar) and in a session row's menu. The board card's menu has only **Iniciar**, and cards open in a new tab by `Ctrl+click` or the middle button.
+- **Menu entry:** **Abrir em nova aba** is in the host's menu (sidebar) and in a session row's menu. The other items (board cards, projects, history rows) open in a new tab by `Ctrl+click` or the middle button: the board card's menu has only **Iniciar**, and the project and history rows have no menu.
 - **The plus button:** the spec opens a new tab with `Ctrl+T`. Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself, so the web entry (the demo and the e2e) needs a button: **Nova aba**, at the end of the bar, opens a tab on the palette like `Ctrl+T`.
 - **Unread:** a session tab gets **Não lida** when the session goes from running to idle while no area's active tab shows it, and loses it when it is shown.
 - **Closed tabs:** the last 20 are kept with their screen only (not their history).
@@ -1825,15 +1825,21 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Tests:** xterm does not render in happy-dom. The screen talks to xterm through a small adapter (`createXtermScreen`) built from injected factories, and the tests drive a fake one; the real factories are only checked to build a terminal.
 - **Font size** in Settings, 10 to 24 px, 13 by default; the family is `"Cascadia Mono", Consolas, monospace`.
 - **Opening:** the host page's **Terminal** panel (new or live terminals, turning them on or off) and **Novo terminal em <host>** in the palette. The terminal opens in the host's first allowed folder.
+- **Copy and paste:** `Ctrl+Shift+C` / `Ctrl+Shift+V`, and the right button opens a small **Copiar** / **Colar** menu over the terminal.
+- **Links:** a link in the output goes through the app's `openLink` (only http and https reach the browser), not xterm's default `window.open`, which does nothing in the desktop webview.
+- **Refit:** a resize observer fits xterm again when the window, the tab or the split changes the box, and the new size goes to the host through the session's 100 ms debounce.
 - **Closing:** the tab's close button, `Ctrl+W` and the screen's own **Fechar terminal** all ask **Desanexar** (the default) or **Encerrar processo**; the screen's close now closes its tab instead of going back.
 
 ## Claude here in the app (`claude-aqui`)
 
 - **Where:** every `TerminalButton` (session, card, project, checkpoints, terminal session) adds **Abrir Claude aqui (terminal)** or **Continuar no terminal** when the host's terminals are on, and the palette's terminal action prefers the embedded terminal.
 - **The outside terminal keeps its labels:** the spec renames it to "Abrir no Windows Terminal". The button also copies a command for remote hosts and other suites assert on its text, so it keeps "Abrir no terminal" / "Copiar comando" and sits next to the new one.
+- **Reader:** an ended terminal session or a history one opens in the reader, which has **Continuar no terminal** next to its own **Continuar** when the host's terminals are on.
 - **Linking the two views:** the terminal tab finds its launch id through `terminal.list` and shows **Ver como sessão** when an external session of the same host has that launch id; the session shows **Ver terminal** when a live terminal of its host has its launch id.
 
 ## e2e (`e2e-abas-terminal`)
 
-- **Buttons, not keys:** the journey opens the second tab with **Nova aba** and splits with **Dividir a tela**, since Chromium keeps the tab keys.
+- **No tab keys:** Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T`. The journey opens the second tab with a `Ctrl+click` on alfa (the **Nova aba** button opens the palette over the bar) and splits with **Dividir a tela**. It ends its terminal at the end, since the demo keeps its state from one language to the next.
+- **Bugs the journey found:** the session decoded the output with Node's `Buffer` (absent in the browser, so every terminal came up detached), and ending a terminal sent SIGTERM, which an interactive shell ignores. The session now decodes with `atob`, and the daemon sends SIGHUP and, 2 s later, SIGKILL to what is still there.
+- **Prints:** `demo:shots` takes `abas-divididas` (two tabs, split) and `terminal` (a live terminal after an echo) in both themes and languages.
 - **A real shell:** the demo daemons listen on loopback, so their terminals are on with the host's real shell. The journey types an `echo` of a unique marker, detaches, attaches again from the host page and finds the marker in the scrollback.

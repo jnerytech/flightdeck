@@ -1210,8 +1210,8 @@ tab, with no SSH.
   opens the host's default shell (`pwsh` or `powershell` on Windows; `$SHELL`, `bash` or `sh` on
   Linux) in its first allowed folder. The panel also lists the live terminals, each with
   **Open**.
-- **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` (`Ctrl+C` goes to the
-  process), search with `Ctrl+Shift+F` (Enter for the next match, Shift+Enter for the previous,
+- **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` or the right button's
+  **Copy** / **Paste** menu (`Ctrl+C` goes to the process), search with `Ctrl+Shift+F` (Enter for the next match, Shift+Enter for the previous,
   Esc to close). Links open in the browser. The font is the system monospace; its size is in
   Settings (**Terminal font size**, 10 to 24).
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
@@ -1230,7 +1230,8 @@ checkpoint) gets a companion:
 - **Open Claude here (terminal)** opens `flightdeckd claude` in the folder (the card's worktree
   for a card) in a terminal tab. The session is born in the central, controllable: you approve
   and send messages from the app while you watch the terminal.
-- **Continue in the terminal** resumes a session with `flightdeckd claude --resume <id>`.
+- **Continue in the terminal** resumes a session with `flightdeckd claude --resume <id>`; ended
+  terminal sessions and history sessions have it in the reader.
 - The terminal tab of such a session has **View as session**, and the session has **View
   terminal**: both are the same Claude, tied by the launch id.
 

@@ -1186,7 +1186,8 @@ numa aba, sem SSH.
 - **Abrir:** **Novo terminal** na página do host, ou **Novo terminal em <host>** na paleta, abre o
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
-- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` (`Ctrl+C` vai para o processo),
+- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu **Copiar** /
+  **Colar** do botão direito (`Ctrl+C` vai para o processo),
   buscar com `Ctrl+Shift+F` (Enter para a próxima, Shift+Enter para a anterior, Esc fecha). Links
   abrem no navegador. A fonte é a monoespaçada do sistema; o tamanho fica nas Configurações
   (**Tamanho da fonte do terminal**, de 10 a 24).
@@ -1205,7 +1206,8 @@ checkpoint) ganha um companheiro:
 - **Abrir Claude aqui (terminal)** abre o `flightdeckd claude` na pasta (a worktree, num card)
   numa aba de terminal. A sessão nasce na central, controlável: você aprova e manda mensagens pelo
   app enquanto vê o terminal.
-- **Continuar no terminal** retoma uma sessão com `flightdeckd claude --resume <id>`.
+- **Continuar no terminal** retoma uma sessão com `flightdeckd claude --resume <id>`; as sessões
+  do terminal encerradas e as do histórico o têm no leitor.
 - A aba de terminal dessa sessão tem **Ver como sessão**, e a sessão tem **Ver terminal**: as duas
   são o mesmo Claude, ligadas pelo id do lançamento.
 
