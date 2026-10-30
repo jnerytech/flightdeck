@@ -59,6 +59,8 @@ import {
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
 
+const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
+
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
   "com mensagens descritivas a cada passo concluído.";
@@ -88,6 +90,8 @@ export interface BoardOptions {
   projectKeys?: { keyFor(path: string): string };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
   worktreeIncludeLimit?: number;
+  /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
+  idle?: () => Promise<void>;
 }
 
 interface ProjectRow {
@@ -858,12 +862,11 @@ export class Board {
     if (!card.worktreePath) return;
     const pending = must(await git(card.worktreePath, "status", "--porcelain"), "git status");
     if (pending.stdout.trim()) {
-      this.db
-        .query("UPDATE cards SET notice = ? WHERE id = ?")
-        .run("worktree com alterações pendentes: não foi removida", id);
+      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(PENDING_NOTICE, id);
       return;
     }
     const repo = this.getProject(card.projectId).path;
+    await this.opts.idle?.();
     must(await git(repo, "worktree", "remove", card.worktreePath), "git worktree remove");
     this.db.query("UPDATE cards SET worktree_path = NULL, notice = NULL WHERE id = ?").run(id);
   }
@@ -1164,14 +1167,22 @@ export class Board {
       const open = this.db
         .query<{ id: string }, []>("SELECT id FROM cards WHERE pr_state = 'open'")
         .all();
-      for (const { id } of open) {
-        await this.pollPr(id).catch((error: unknown) => {
-          const notice = error instanceof Error ? error.message : String(error);
-          this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
-          // The card may have been discarded while the provider was answering.
-          if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
-        });
-      }
+      const failed = (id: string) => (error: unknown) => {
+        const notice = error instanceof Error ? error.message : String(error);
+        this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+        // The card may have been discarded while the provider was answering.
+        if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
+      };
+      for (const { id } of open) await this.pollPr(id).catch(failed(id));
+      // Merged, but the worktree removal failed (a busy folder on Windows): finish again, without
+      // asking the provider. Pending changes wait for the user, as in completeCard.
+      const unfinished = this.db
+        .query<{ id: string }, [string]>(
+          `SELECT id FROM cards WHERE pr_state = 'merged' AND worktree_path IS NOT NULL
+           AND (notice IS NULL OR notice <> ?)`,
+        )
+        .all(PENDING_NOTICE);
+      for (const { id } of unfinished) await this.finish(id).catch(failed(id));
     } finally {
       this.polling = false;
     }

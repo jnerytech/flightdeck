@@ -430,6 +430,8 @@ export async function startDaemon(
     budgets,
     projectKeys: keys,
     cardCost: costs.card.bind(costs),
+    // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
+    idle: snapshots.idle.bind(snapshots),
     ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>
