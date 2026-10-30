@@ -103,6 +103,15 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
     }
   });
 
+  test("uma decisão da IA mostra o modelo que decidiu", async () => {
+    const d = await setup();
+    d.runtime.judgePermission = async () => ({ decision: "allow", reason: "só lê um arquivo" });
+    await d.decide(d.repo, "r3", "Grep", { level: "medium", reason: "busca", network: false });
+    await click("Aprovações automáticas");
+    await settle(() => rows().length === 3);
+    expect(rows()[0]).toContain("IA (");
+  });
+
   test("Filtrar decisões reduz a lista pela ferramenta ou pelo motivo", async () => {
     await setup();
     await click("Aprovações automáticas");

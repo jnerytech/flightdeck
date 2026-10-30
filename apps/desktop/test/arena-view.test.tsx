@@ -106,6 +106,12 @@ describe("ArenaView", () => {
     expect(list.textContent).toContain("src/b.ts");
     expect(list.textContent).toContain("+3 −1");
     expect(within(list).queryAllByText("não commitado").length).toBe(1);
+    // The comparison is read-only: picking a line number does nothing.
+    const line = region.querySelector("button[aria-pressed]") as HTMLElement;
+    await act(async () => {
+      fireEvent.click(line);
+    });
+    expect(line.getAttribute("aria-pressed")).toBe("false");
   });
 
   test("Escolher hands the variant over", async () => {
