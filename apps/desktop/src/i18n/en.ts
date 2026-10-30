@@ -488,6 +488,7 @@ export const en: Dictionary = {
     none: "No terminal open.",
   },
   tabs: {
+    openInNew: "Open in new tab",
     moveToOther: "Move tab {title} to the other area",
     split: "Split the screen",
     join: "Join the areas",

@@ -102,6 +102,8 @@ export function Sidebar(props: {
   onNewSession(hostId: string): void;
   onRemoveHost(hostId: string): void;
   onOpenSearch(): void;
+  /** The next navigation opens a new tab ("Abrir em nova aba"). */
+  onNewTab(): void;
   onToggleTheme(): void;
 }) {
   const { state, t, collapsed, go } = props;
@@ -261,6 +263,14 @@ export function Sidebar(props: {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
                         {/* An incompatible host offers nothing but its page and removal. */}
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            props.onNewTab();
+                            go({ name: "host", host: host.id });
+                          }}
+                        >
+                          {t("tabs.openInNew")}
+                        </DropdownMenuItem>
                         {host.status !== "incompatible" && (
                           <>
                             <DropdownMenuItem

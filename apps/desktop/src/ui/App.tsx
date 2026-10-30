@@ -284,6 +284,7 @@ export function App({ store }: { store: AppStore }) {
               }}
               onRemoveHost={(id) => void store.removeHost(id)}
               onOpenSearch={() => store.openSearch()}
+              onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
             />
           )}

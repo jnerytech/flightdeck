@@ -491,6 +491,7 @@ export const ptBR = {
     none: "Nenhum terminal aberto.",
   },
   tabs: {
+    openInNew: "Abrir em nova aba",
     moveToOther: "Mover a aba {title} para a outra área",
     split: "Dividir a tela",
     join: "Juntar as áreas",

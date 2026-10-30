@@ -314,6 +314,14 @@ export function SessionsHub(props: {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onSelect={() => {
+                              store.tabs.openNextInNewTab();
+                              props.onOpen(row);
+                            }}
+                          >
+                            {t("tabs.openInNew")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => {
                               setRenaming(row);
                               setName(row.title);
                             }}
