@@ -44,6 +44,7 @@ describe("nomes-sessao: o formato", () => {
     expect(aliasName({ project: "Meu App", persona: "Revisor Sênior", number: 2 })).toBe(
       "meu-app-revisor-senior-2",
     );
+    expect(aliasName({ project: "!!!", persona: "???", number: 1 })).toBe("sem-projeto-geral-1");
   });
 
   test("o card entra com o número do card, e a segunda sessão do card leva o seu número depois", () => {
@@ -172,6 +173,28 @@ describe("nomes-sessao: renomear e a persona que chega depois", () => {
     // The same persona again changes nothing; the number it left is not given to anyone.
     expect(names.setPersona("s1", "revisor")).toEqual(moved);
     expect(names.assign("s3", { project: "flightdeck" }).display).toBe("flightdeck · geral · 2");
+  });
+
+  test("um apelido que o renomear já tomou faz o número do próximo pular", () => {
+    const { names } = newNames();
+    names.assign("s1", { project: "flightdeck" });
+    names.rename("s1", "flightdeck geral 2");
+    const next = names.assign("s2", { project: "flightdeck" });
+    expect(next).toMatchObject({ display: "flightdeck · geral · 3", number: 3 });
+    expect(next.alias).toBe("flightdeck-geral-3");
+  });
+
+  test("o endereço não diferencia maiúsculas nem espaços nas pontas", () => {
+    const { names } = newNames();
+    names.assign("s1", { project: "flightdeck" });
+    expect(names.resolve("  Flightdeck-Geral-1 ")).toBe("s1");
+  });
+
+  test("um nome em branco não renomeia nada, e uma persona em branco vale geral", () => {
+    const { names } = newNames();
+    names.assign("s1", { project: "flightdeck", persona: "  " });
+    expect(code(() => names.rename("s1", "   "))).toBe("bad_request");
+    expect(names.get("s1")?.display).toBe("flightdeck · geral · 1");
   });
 
   test("renomear ou pôr persona numa sessão sem nome é not_found", () => {
