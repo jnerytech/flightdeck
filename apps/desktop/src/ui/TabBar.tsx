@@ -12,7 +12,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { type ReactNode, useSyncExternalStore } from "react";
+import { type ReactNode, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -46,6 +46,8 @@ export function TabBar(props: {
   const { store, state, tabs } = props;
   const { t } = store.i18n;
   useSyncExternalStore(tabs.subscribe, () => tabs.version);
+  /** The tab being dragged to a new place. */
+  const dragged = useRef<string | null>(null);
   return (
     <div
       role="tablist"
@@ -73,6 +75,16 @@ export function TabBar(props: {
               {...(tab.pinned ? { "aria-label": label } : {})}
               className="flex min-w-0 items-center gap-1.5 px-2 py-1.5"
               onClick={() => tabs.activate(tab.id)}
+              draggable
+              onDragStart={() => {
+                dragged.current = tab.id;
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                const id = dragged.current;
+                dragged.current = null;
+                if (id) tabs.move(id, tabs.tabs.indexOf(tab));
+              }}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
               {!tab.pinned && <span className="truncate">{label}</span>}
