@@ -119,6 +119,7 @@ describe("acoes-ui-form: criar, editar e remover uma ação do app", () => {
       definition: { name: "eco", description: "ecoa", run: ["echo", "oi"] },
     });
     await sidebar.hostAction("Projetos", "alfa");
+    await settle(() => screen.queryByRole("button", { name: "Ações de repo" }) !== null);
     await click("Ações de repo");
     await settle(() => row("eco") !== null);
     await click("Editar eco", row("eco"));
@@ -142,6 +143,7 @@ describe("acoes-ui-form: criar, editar e remover uma ação do app", () => {
       definition: { name: "eco", description: "ecoa", run: ["echo", "oi"] },
     });
     await sidebar.hostAction("Projetos", "alfa");
+    await settle(() => screen.queryByRole("button", { name: "Ações de repo" }) !== null);
     await click("Ações de repo");
     await settle(() => row("eco") !== null);
     await click("Remover eco", row("eco"));
@@ -153,12 +155,64 @@ describe("acoes-ui-form: criar, editar e remover uma ação do app", () => {
     expect((await listed(d))?.actions).toEqual([]);
   });
 
-  test("Cancelar fecha o formulário sem criar nada", async () => {
+  test("Cancelar e Escape fecham o formulário sem criar nada", async () => {
     const d = await online();
     await click("Nova ação");
     await change("Nome da ação", "descartada");
     await click("Cancelar", dialog());
     expect(dialog()).toBeNull();
+    // Escape closes it too.
+    await click("Nova ação");
+    await act(async () => {
+      fireEvent.keyDown(dialog() as HTMLElement, { key: "Escape" });
+    });
+    await settle(() => dialog() === null);
+    expect(dialog()).toBeNull();
     expect((await listed(d))?.actions).toEqual([]);
+  });
+
+  test("editar uma ação com segredo, valor fixo e parâmetro: os campos vêm preenchidos, remover linhas tira só elas e o valor fixo fica", async () => {
+    const d = await online();
+    await d.actions?.save({
+      projectId: d.project.id,
+      definition: {
+        name: "logs",
+        description: "lê o log",
+        run: ["journalctl", "-n", "{{param.lines}}"],
+        ssh: "prod-api",
+        env: { TOKEN: `{{secret.${d.secret.id}}}`, LANG: "C" },
+        params: { lines: { pattern: "^[0-9]{1,4}$", default: "200" } },
+        approval: "always",
+      },
+      secretIds: [d.secret.id],
+    });
+    await sidebar.hostAction("Projetos", "alfa");
+    await settle(() => screen.queryByRole("button", { name: "Ações de repo" }) !== null);
+    await click("Ações de repo");
+    await settle(() => row("logs") !== null);
+    await click("Editar logs", row("logs"));
+    const value = (label: string) => (screen.queryByLabelText(label) as HTMLInputElement).value;
+    expect(value("Nome da variável 1")).toBe("TOKEN");
+    expect(value("Segredo da variável 1")).toBe(d.secret.id);
+    expect(value("Nome do parâmetro 1")).toBe("lines");
+    expect(value("Valor inicial do parâmetro 1")).toBe("200");
+    expect(value("Destino SSH (vazio: roda neste host)")).toBe("prod-api");
+    expect(value("Aprovação")).toBe("always");
+    await change("Pasta (opcional)", "/srv/app");
+    await change("Tempo limite em segundos (opcional)", "30");
+    await change("Aprovação", "never");
+    await change("Destino SSH (vazio: roda neste host)", "prod-api-2");
+    await click("Remover variável 1");
+    await click("Remover parâmetro 1");
+    await change("Comando, um argumento por linha", "journalctl\n-n\n50");
+    await click("Salvar", dialog());
+    await settle(() => dialog() === null);
+    const saved = (await listed(d))?.actions.find((a) => a.name === "logs");
+    expect(saved?.env).toEqual({ LANG: "C" });
+    expect(saved?.params).toEqual({});
+    expect(saved?.ssh).toBe("prod-api-2");
+    expect(saved?.cwd).toBe("/srv/app");
+    expect(saved?.timeoutS).toBe(30);
+    expect(saved?.approval).toBe("never");
   });
 });
