@@ -105,7 +105,11 @@ describe("snippets-mcp", () => {
       "get_snippet",
       "list_snippets",
     ]);
-    expect(tools.some((name) => /paste|run_|use_|exec/.test(name))).toBe(false);
+    // Phase 17's run_action and run_with_secret run declared actions, not snippets.
+    const actions = new Set(["run_action", "run_with_secret"]);
+    expect(
+      tools.filter((name) => !actions.has(name)).some((name) => /paste|run_|use_|exec/.test(name)),
+    ).toBe(false);
   });
 
   test("list_snippets devolve os do host e os do projeto (do daemon e do arquivo), com o texto e os campos", async () => {
