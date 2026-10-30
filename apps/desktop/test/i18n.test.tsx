@@ -256,4 +256,25 @@ describe("i18n", () => {
       { line: 4, text: "{`${n} itens`}" },
     ]);
   });
+
+  test("varredura de literais: texto em várias linhas e as propriedades que o usuário lê", () => {
+    const source = [
+      "<Button>",
+      "  Salvar nome",
+      "</Button>",
+      '<Page title="Custos" subtitle="em dólar" />',
+      '<ConfirmDialog message="Apagar?" confirmLabel="Apagar" />',
+      '<Foo label="Host" id="x" />',
+      "if (a > b && c < d) run();",
+      '<p>{t("a")}</p>',
+    ].join("\n");
+    expect(visibleLiterals(source)).toEqual([
+      { line: 2, text: "Salvar nome" },
+      { line: 4, text: 'title="Custos"' },
+      { line: 4, text: 'subtitle="em dólar"' },
+      { line: 5, text: 'message="Apagar?"' },
+      { line: 5, text: 'confirmLabel="Apagar"' },
+      { line: 6, text: 'label="Host"' },
+    ]);
+  });
 });
