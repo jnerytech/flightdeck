@@ -76,7 +76,7 @@ import {
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { AskpassBroker, askpassHook, runAskpass } from "./ssh/askpass.ts";
-import { processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
+import { processExec, processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
 import { HostKeys } from "./ssh/hostkey.ts";
 import { SshImporter } from "./ssh/import.ts";
 import { chooseDelivery, processOps } from "./ssh/key-delivery.ts";
@@ -580,6 +580,7 @@ export async function startDaemon(
       config.ssh.path ??
       resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
     run: processRun(),
+    exec: processExec(),
     ...(sshAskpass ? { askpass: sshAskpass } : {}),
     // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
     delivery: chooseDelivery({
@@ -602,6 +603,12 @@ export async function startDaemon(
     db: store.db,
     vault,
     projects: (id) => board.getProject(id),
+    // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
+    ssh: (job) => sshConnect.exec(job),
+    sshKey: (name) => {
+      const named = sshTargets.list().filter((t) => t.name === name);
+      return named.length === 1 && named[0]?.auth === "vault-key" ? named[0].secretRef : null;
+    },
   });
   const server = startServer({
     manager,
