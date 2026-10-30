@@ -9,6 +9,7 @@ import {
   formatDuration,
   formatNumber,
   formatTime,
+  formatWhen,
   formatUsd,
 } from "../src/i18n/format.ts";
 import { I18n, LANG_KEY, languageFor, translator } from "../src/i18n/index.ts";
@@ -79,6 +80,32 @@ describe("i18n", () => {
     );
     // A missing variable stays visible instead of vanishing.
     expect(enT("tray.more")).toBe("and {n} more…");
+  });
+
+  test("the date formatters are built once per language and zone, not once per call", () => {
+    const iso = "2026-10-29T15:04:00.000Z";
+    const nowMs = Date.parse("2026-10-30T12:00:00.000Z");
+    const Real = Intl.DateTimeFormat;
+    let built = 0;
+    Intl.DateTimeFormat = new Proxy(Real, {
+      construct(target, args) {
+        built += 1;
+        return Reflect.construct(target, args);
+      },
+    });
+    try {
+      const run = () => {
+        formatTime(iso, "en", "UTC");
+        formatDateTime(iso, "en", "UTC");
+        formatWhen(iso, nowMs, "en", "UTC");
+      };
+      run();
+      const afterFirst = built;
+      for (let i = 0; i < 50; i += 1) run();
+      expect(built).toBe(afterFirst);
+    } finally {
+      Intl.DateTimeFormat = Real;
+    }
   });
 
   test("datas e horas locais, números, dólares e durações legíveis", () => {
