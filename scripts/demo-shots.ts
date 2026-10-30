@@ -44,19 +44,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "precisa-de-voce",
       route: { name: "needs-you" },
       prepare: async (page) => {
-        // On a busy machine the first summaries can arrive before the host is known: load again.
         const request = page.getByRole("button", { name: /Testes do backend: Bash/ });
-        for (let attempt = 0; attempt < 3; attempt++) {
-          if (
-            await request.waitFor({ timeout: 6000 }).then(
-              () => true,
-              () => false,
-            )
-          )
-            break;
-          await page.reload();
-          await page.waitForTimeout(1500);
-        }
         await request.click();
         await page.waitForTimeout(500);
       },

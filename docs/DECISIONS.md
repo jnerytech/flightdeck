@@ -1619,8 +1619,12 @@ removed. The origin of a terminal session in the history list now reads "termina
 - **Prints:** the four tabs with a file of each open, the timeline, and its rewind and fork dialogs, in
   both themes and languages, with axe. `DEMO_SHOTS=<part of a name>` takes only the prints whose name
   has it, a failing preparation leaves a `*-FALHOU.png` of what the page showed, and page errors are
-  logged. The "Precisa de você" print reloads up to three times when the Bash request is missing: on a
-  busy machine the first session summaries can arrive before the app knows the host.
+  logged. While building this, the "Precisa de você" print once found its Bash request missing, with
+  an earlier version of the seed that ran file-writing turns in the shared repository. The app was
+  instrumented to look for summaries arriving before the host was known: it adds a host to its state
+  before it connects, the statuses and the summaries came in order, and the connection never
+  dropped, even under eight CPU busy-loops. No race was found in the store; the final seed passed
+  the prints three times in a row under that load, with no retry.
 - **e2e:** a sixth journey, `voltar-arquivos`, rewinds the second turn and ends with "Desfazer volta",
   because the demo keeps its state from one language to the next. The Agente screen joins the layout
   check at 1280×800 and 800×600.
