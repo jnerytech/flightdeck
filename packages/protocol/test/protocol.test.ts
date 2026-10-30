@@ -51,6 +51,7 @@ const validCommands: Record<CommandType, unknown> = {
     projectId: "p",
     setupScript: null,
     personaByColumn: { review: "revisor", backlog: null },
+    personaSubagents: "project",
   },
   "board.get": { projectId: "p" },
   "board.settings": { maxParallelRuns: 3 },

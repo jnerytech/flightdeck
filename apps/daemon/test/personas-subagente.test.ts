@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { PersonaInput } from "@flightdeck/protocol";
+import { Board } from "../src/board/board.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { type Receptor, startReceptor } from "../src/central/receptor.ts";
 import { RECEPTOR_FILE } from "../src/central/wrapper.ts";
@@ -11,9 +12,12 @@ import { personaHash } from "../src/personas/model.ts";
 import { PACK_IDS, packPersonas } from "../src/personas/pack.ts";
 import { Personas } from "../src/personas/store.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
+import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { startServer } from "../src/server.ts";
+import { SessionManager } from "../src/sessions/session-manager.ts";
 import { SecretScanner } from "../src/snippets/model.ts";
 import { EventStore } from "../src/store/event-store.ts";
+import { cardWhen, gitRepo } from "./board-helpers.ts";
 import { installFakeClaude } from "./fake-claude.ts";
 import { newManager, tempDir, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -414,5 +418,130 @@ describe("personas-subagente: pelo protocolo", () => {
     expect(
       await code("personas.publishAgent", { id: "qa", projectPath: "/x", confirm: true }),
     ).toBe("invalid_state");
+  });
+});
+
+/** A board, a manager and personas over one database, in a git repository. */
+function boardSetup() {
+  const { root, repo } = gitRepo();
+  const store = new EventStore(":memory:");
+  const personas = new Personas({
+    db: store.db,
+    allowedRoots: [root],
+    scanner,
+    pack: packPersonas,
+  });
+  const runtime = new FakeRuntime({ delayMs: 1 });
+  const manager = new SessionManager({
+    store,
+    runtime,
+    allowedRoots: [root],
+    defaultPermissionMode: "default",
+    allowApiKey: false,
+    baseEnv: {},
+    personas,
+  });
+  const board = new Board({ db: store.db, manager, allowedRoots: [root] });
+  cleanups.push(() => board.stop());
+  cleanups.push(() => manager.shutdown());
+  const project = (async () => board.addProject({ path: repo, promptTemplate: "" }))();
+  const dir = join(repo, ".flightdeck", "personas");
+  const addPersona = (id: string) => {
+    mkdirSync(dir, { recursive: true });
+    const source = `---\nid: ${id}\nname: ${id}\ndescription: Do projeto\n---\nCorpo de ${id}.\n`;
+    writeFileSync(join(dir, `${id}.md`), source);
+    personas.trust(repo, id, personaHash(source));
+  };
+  return { root, repo, store, personas, runtime, manager, board, project, addPersona };
+}
+
+describe("personas-subagente: o interruptor do projeto", () => {
+  test("o padrão é all: o pacote e as do projeto; project só as do projeto; none nenhuma", async () => {
+    const { board, personas, repo, project, addPersona } = boardSetup();
+    const { id } = await project;
+    expect(board.getProject(id).personaSubagents).toBe("all");
+    addPersona("do-projeto");
+    const names = () => Object.keys(personas.subagents({ projectPath: repo }).agents).sort();
+    expect(names()).toHaveLength(10);
+    expect(names()).toContain("persona-do-projeto");
+    board.updateProject(id, { personaSubagents: "project" });
+    expect(board.getProject(id).personaSubagents).toBe("project");
+    expect(names()).toEqual(["persona-do-projeto"]);
+    // The versioned ones without trust are still reported, so the person knows why.
+    writeFileSync(
+      join(repo, ".flightdeck", "personas", "sem-confianca.md"),
+      "---\nid: sem-confianca\nname: X\ndescription: d\n---\nCorpo.\n",
+    );
+    expect(personas.subagents({ projectPath: repo }).untrusted).toEqual(["sem-confianca"]);
+    board.updateProject(id, { personaSubagents: "none" });
+    expect(personas.subagents({ projectPath: repo })).toEqual({ agents: {}, untrusted: [] });
+    board.updateProject(id, { personaSubagents: "all" });
+    expect(names()).toHaveLength(10);
+  });
+
+  test("só all, project e none; a pasta que não é de projeto nenhum fica no padrão", async () => {
+    const { board, personas, project, root } = boardSetup();
+    const { id } = await project;
+    let failure = "ok";
+    try {
+      board.updateProject(id, { personaSubagents: "tudo" as never });
+    } catch (error) {
+      failure = (error as { code?: string }).code ?? "sem código";
+    }
+    expect(failure).toBe("bad_request");
+    expect(board.getProject(id).personaSubagents).toBe("all");
+    expect(Object.keys(personas.subagents({ projectPath: root }).agents)).toHaveLength(9);
+  });
+
+  test("a sessão gerenciada do projeto, e a do card na worktree dele, seguem o interruptor", async () => {
+    const { board, manager, runtime, repo, project, addPersona } = boardSetup();
+    const { id } = await project;
+    addPersona("do-projeto");
+    manager.create({ cwd: repo, prompt: "oi" });
+    expect(Object.keys(runtime.starts[0]?.agents ?? {})).toHaveLength(10);
+    board.updateProject(id, { personaSubagents: "none" });
+    manager.create({ cwd: repo, prompt: "oi" });
+    expect(runtime.starts[1]?.agents).toBeUndefined();
+    // A card runs in a worktree of its own, which still belongs to the project.
+    const card = board.createCard(id, { title: "Tarefa", description: "faça" });
+    await board.startCard(card.id);
+    const running = await cardWhen(board, card.id, (c) => c.sessionId !== null);
+    expect(running?.worktreePath).not.toBe(repo);
+    expect(runtime.starts.at(-1)?.agents).toBeUndefined();
+    board.updateProject(id, { personaSubagents: "project" });
+    manager.create({ cwd: running?.worktreePath ?? repo, prompt: "oi" });
+    expect(Object.keys(runtime.starts.at(-1)?.agents ?? {})).toEqual(["persona-do-projeto"]);
+  });
+
+  test("o --agents do wrapper também: sem arquivo com none, só as do projeto com project", async () => {
+    const { board, personas, root, repo, project, addPersona } = boardSetup();
+    const { id } = await project;
+    addPersona("do-projeto");
+    const host = await terminalHost(personas, root);
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const run = async () => {
+      await runCli(["claude"], {
+        env: { ...process.env, FLIGHTDECK_CONFIG: host.file },
+        log: { log: () => {}, error: () => {} },
+        exit: () => {},
+        onSignal: () => {},
+        selfCommand: [process.execPath, "run", join(import.meta.dir, "..", "src", "bin.ts")],
+        cwd: repo,
+      });
+      return fake
+        .events()
+        .filter((e) => e.type === "start")
+        .at(-1) as unknown as {
+        args: string[];
+        agents: Record<string, unknown> | null;
+      };
+    };
+    board.updateProject(id, { personaSubagents: "project" });
+    expect(Object.keys((await run()).agents ?? {})).toEqual(["persona-do-projeto"]);
+    board.updateProject(id, { personaSubagents: "none" });
+    const none = await run();
+    expect(none.args).not.toContain("--agents");
+    expect(none.agents).toBeNull();
   });
 });
