@@ -114,7 +114,7 @@ describe("cofre-entrega", () => {
 
   test("o temporizador descarta o valor sozinho, sem ninguém usar", async () => {
     const { vault } = setup({ ttlMs: 40 });
-    vault.deliver(delivery({ expiresAt: Date.now() + 600_000 }), "127.0.0.1");
+    vault.deliver(delivery({ expiresAt: NOW + 600_000 }), "127.0.0.1");
     // The injected clock stands still, so only the timer can have removed it.
     expect(vault.held()).toBe(1);
     expect(await poll(() => vault.held() === 0, 1000)).toBe(true);
@@ -157,6 +157,27 @@ describe("cofre-entrega", () => {
     expect(code(() => vault.use("s1", "ssh", "lerValor"))).toStartWith("invalid_state:");
     expect(vault.held()).toBe(1);
     expect(vault.use("s1", "ssh", "echo").result).toBe(sha(VALUE));
+  });
+
+  test("uma ação que falha não repassa a mensagem do erro (ela poderia trazer o valor) e o valor já saiu da memória", () => {
+    const logs: string[] = [];
+    const vault = new Vault({
+      clock: () => NOW,
+      log: (message) => logs.push(message),
+      actions: {
+        quebra: (value) => {
+          throw new Error(`falhou com ${value}`);
+        },
+      },
+    });
+    cleanups.push(() => vault.stop());
+    vault.deliver(delivery(), "127.0.0.1");
+    const failed = code(() => vault.use("s1", "ssh", "quebra"));
+    expect(failed).toStartWith("invalid_state:");
+    expect(failed).not.toContain("SEGREDO-DE-TESTE");
+    expect(logs.join("\n")).not.toContain("SEGREDO-DE-TESTE");
+    expect(logs.join("\n")).toContain("quebra");
+    expect(vault.held()).toBe(0);
   });
 
   test("parar o cofre apaga o que está em memória", () => {
