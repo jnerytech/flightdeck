@@ -122,6 +122,8 @@ describe("continuar", () => {
     expect(screen.queryByText("Comando copiado")).not.toBeNull();
     failCopy();
     await click("Copiar comando");
+    // The toast mounts a tick after the failure.
+    await settle(() => screen.queryByRole("alert") !== null);
     expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
       "área de transferência indisponível",
     );
