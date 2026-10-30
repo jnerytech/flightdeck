@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { AppState } from "../src/lib/app-store.ts";
-import { tabBadge } from "../src/lib/tab-badge.ts";
+import { tabBadge, tabKind } from "../src/lib/tab-badge.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -74,5 +74,31 @@ describe("abas: selos e botão de aba nova", () => {
     expect(
       screen.queryByText("Precisa de você", { selector: "[role=tab] [data-badge]" }),
     ).not.toBeNull();
+  });
+
+  test("each kind of screen has its icon: session, card (and its diff), terminal, reader, Custos, agent", () => {
+    expect(tabKind({ name: "session", host: "h", id: "s" })).toBe("session");
+    expect(tabKind({ name: "external", host: "h", claudeSessionId: "c" })).toBe("session");
+    expect(tabKind({ name: "new-session", host: "h" })).toBe("session");
+    expect(tabKind({ name: "card", host: "h", projectId: "p", cardId: "c" })).toBe("card");
+    expect(tabKind({ name: "board", host: "h", projectId: "p" })).toBe("card");
+    expect(tabKind({ name: "terminal", host: "h", terminalId: "t" })).toBe("terminal");
+    expect(tabKind({ name: "reader", target: { hostId: "h", claudeSessionId: "c" } })).toBe(
+      "reader",
+    );
+    expect(tabKind({ name: "history", host: "h" })).toBe("reader");
+    expect(tabKind({ name: "costs" })).toBe("costs");
+    expect(tabKind({ name: "agent", host: "h", projectId: "p", projectName: "x" })).toBe("agent");
+    expect(tabKind({ name: "settings" })).toBe("screen");
+  });
+
+  test("the tab shows the icon of its kind", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "costs" });
+    });
+    const tab = screen.queryAllByRole("tab")[1];
+    expect(tab?.querySelector("[data-icon]")?.getAttribute("data-icon")).toBe("costs");
   });
 });
