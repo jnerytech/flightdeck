@@ -1926,3 +1926,10 @@ O que a spec da Fase 16 (cofre de segredos) deixou aberto, ou o que mudou na imp
 - **Ramos revelados pela cobertura (regra 7):** a ação que falha sem repassar a mensagem (vermelho: a mensagem com o valor).
 - **`smoke:vault`:** foi escrito depois das áreas. O vermelho veio guardando o valor depois do uso: `SMOKE VAULT FAIL no passo "o valor sai da memória no uso"`, com exit 1.
 - **Áreas do app que esperam a Fase 10:** `cofre-armazenamento`, `cofre-tipos`, `cofre-gerar-importar`, `cofre-uso`, `cofre-backup` e `cofre-ui`, e a lista de hosts permitidos de cada segredo (o app confere antes de entregar).
+
+## Phase 16 decisions: the app side of delivery
+
+- **The seam is `VaultPolicy`** (`apps/desktop/src/lib/vault-requests.ts`): `answerVaultRequest` guards the requester, asks the policy (`deny` with a reason, or `deliver`) and then applies the hard rules itself (the secret exists, the host is in its allowed hosts, the connection is loopback or Tailscale, the value is in the keyring). Phase 17 hands `AppStore` a `vaultPolicy` that asks the user; the default denies every request.
+- **No `vault.deny` goes on the wire.** The daemon asks nobody in this phase, so a denial is only an outcome handed to `AppStore.onVaultOutcome` listeners (the usage log reads it). Phase 17 adds a deny command if the daemon waits for an answer.
+- **Allowed hosts are compared with the host id.** The default `["local"]` therefore matches no host until the Hosts screen maps the machine's own host to it; until then a delivery is refused, which fails closed.
+- **A `vault.request` that names `you` does not parse** (protocol), so the connection drops it before the policy; a requester that still reaches the app outside claude, automation and workflow is `unknown` and denied.
