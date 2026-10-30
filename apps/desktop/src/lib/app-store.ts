@@ -28,6 +28,7 @@ import type {
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
+  SshTarget,
   TerminalInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
@@ -1611,6 +1612,21 @@ export class AppStore {
   async setBudget(hostId: string, input: BudgetInput): Promise<void> {
     const budget = await this.hostCommand(hostId, "budget.set", input);
     if (budget) this.keepBudget(hostId, budget, false);
+  }
+
+  /** Terminals opened from a ssh destino, by `hostId/terminalId`, for the badge of their screen. */
+  readonly sshTerminals = new Map<string, { name: string; tags: string[] }>();
+
+  /** Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused. */
+  async sshConnect(hostId: string, target: SshTarget): Promise<string | null> {
+    const info = await this.hostCommand(hostId, "ssh.connect", {
+      targetId: target.id,
+      cols: 80,
+      rows: 24,
+    });
+    if (!info) return null;
+    this.sshTerminals.set(`${hostId}/${info.terminalId}`, { name: target.name, tags: target.tags });
+    return info.terminalId;
   }
 
   async removeBudget(hostId: string, budget: Budget): Promise<void> {

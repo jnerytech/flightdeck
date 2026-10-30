@@ -1,8 +1,18 @@
-import type { SshTarget } from "@flightdeck/protocol";
+import type { SshHostKeyCheck, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -34,6 +44,10 @@ export function ConnectionsPage(props: {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("");
   const [via, setVia] = useState("");
+  /** A connection waiting for the server key to be confirmed, or blocked by a changed one. */
+  const [keyCheck, setKeyCheck] = useState<{ target: SshTarget; check: SshHostKeyCheck } | null>(
+    null,
+  );
 
   const hostId = host?.id;
   const reload = useCallback(async () => {
@@ -44,6 +58,33 @@ export function ConnectionsPage(props: {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const open = async (target: SshTarget) => {
+    if (!hostId) return;
+    const terminalId = await store.sshConnect(hostId, target);
+    if (terminalId) props.go({ name: "terminal", host: hostId, terminalId });
+  };
+
+  const connect = async (target: SshTarget) => {
+    if (!hostId) return;
+    const check = await store.hostCommand(hostId, "ssh.hostkey.check", { targetId: target.id });
+    if (!check) return;
+    if (check.status === "pinned") await open(target);
+    else setKeyCheck({ target, check });
+  };
+
+  const confirmKey = async () => {
+    if (!hostId || !keyCheck) return;
+    const { target, check } = keyCheck;
+    setKeyCheck(null);
+    const kept = await store.hostCommand(hostId, "ssh.hostkey.confirm", {
+      targetId: target.id,
+      fingerprint: check.fingerprint,
+    });
+    if (!kept) return;
+    await reload();
+    await open(target);
+  };
 
   const tags = [...new Set(targets.flatMap((target) => target.tags))].sort();
   const vias = [...new Set(targets.flatMap((target) => (target.viaHost ? [target.viaHost] : [])))];
@@ -117,6 +158,9 @@ export function ConnectionsPage(props: {
                     variant="outline"
                     size="sm"
                     aria-label={t(`connections.${verb}For`, { name: target.name })}
+                    onClick={() => {
+                      if (verb === "connect") void connect(target);
+                    }}
                   >
                     {t(`connections.${verb}`)}
                   </Button>
@@ -125,6 +169,46 @@ export function ConnectionsPage(props: {
             </li>
           ))}
         </ul>
+      )}
+      {keyCheck && (
+        <AlertDialog open onOpenChange={(isOpen) => !isOpen && setKeyCheck(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {keyCheck.check.status === "changed"
+                  ? t("connections.hostKey.changedTitle")
+                  : t("connections.hostKey.confirmTitle", { name: keyCheck.target.name })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {keyCheck.check.status === "changed"
+                  ? t("connections.hostKey.changedMessage", { name: keyCheck.target.name })
+                  : t("connections.hostKey.confirmMessage", { name: keyCheck.target.name })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {keyCheck.check.status === "changed" && keyCheck.check.pinned && (
+              <p className="text-sm">
+                {t("connections.hostKey.pinned")}:{" "}
+                <code className="break-all">{keyCheck.check.pinned}</code>
+              </p>
+            )}
+            <p className="text-sm">
+              {keyCheck.check.status === "changed" && `${t("connections.hostKey.current")}: `}
+              <code className="break-all">{keyCheck.check.fingerprint}</code>
+            </p>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {keyCheck.check.status === "changed"
+                  ? t("connections.hostKey.close")
+                  : t("common.cancel")}
+              </AlertDialogCancel>
+              {keyCheck.check.status === "unknown" && (
+                <AlertDialogAction onClick={() => void confirmKey()}>
+                  {t("connections.hostKey.confirm")}
+                </AlertDialogAction>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </Page>
   );

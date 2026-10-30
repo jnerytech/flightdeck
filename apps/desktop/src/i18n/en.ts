@@ -35,6 +35,17 @@ export const en: Dictionary = {
     duplicateFor: "Duplicate {name}",
     remove: "Remove",
     removeFor: "Remove {name}",
+    hostKey: {
+      confirmTitle: "Server key of {name}",
+      confirmMessage: "First connection to {name}. Check the fingerprint before trusting this key.",
+      confirm: "Confirm server key",
+      changedTitle: "The server key changed",
+      changedMessage:
+        "{name} showed a key different from the one kept. The connection was blocked.",
+      pinned: "Kept",
+      current: "Now",
+      close: "Close",
+    },
   },
   approval: {
     label: "Request for {tool}",

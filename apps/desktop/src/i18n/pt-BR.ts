@@ -37,6 +37,17 @@ export const ptBR = {
     duplicateFor: "Duplicar {name}",
     remove: "Remover",
     removeFor: "Remover {name}",
+    hostKey: {
+      confirmTitle: "Chave do servidor de {name}",
+      confirmMessage:
+        "Primeira conexão com {name}. Confira o fingerprint antes de confiar nesta chave.",
+      confirm: "Confirmar chave do servidor",
+      changedTitle: "A chave do servidor mudou",
+      changedMessage: "{name} mostrou uma chave diferente da guardada. A conexão foi bloqueada.",
+      pinned: "Guardada",
+      current: "Agora",
+      close: "Fechar",
+    },
   },
   approval: {
     label: "Pedido de {tool}",
