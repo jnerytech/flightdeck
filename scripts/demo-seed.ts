@@ -93,6 +93,12 @@ export interface DemoIds {
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
+/** One versioned action: the actions journey trusts it from the Ações screen. */
+const ACTIONS_YAML = `- name: versao
+  description: Mostra a versão do Bun
+  run: ["bun", "--version"]
+`;
+
 const WORKFLOW = `steps:
   - id: plan
     agent: { prompt: "Escreva o plano da mudança" }
@@ -381,6 +387,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "CLAUDE.md": CLAUDE_MD,
     ".claude/agents/revisor.md": AGENT_MD,
     ".claude/skills/deploy/SKILL.md": SKILL_MD,
+    ".flightdeck/actions.yaml": ACTIONS_YAML,
   });
   git(web, "remote", "add", "origin", "git@github.com:Acme/App.git");
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });

@@ -232,6 +232,24 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       "o terminal encerrado",
     );
   },
+
+  // 10. The project's versioned action is not trusted; trusting it asks first and then says so.
+  acoes: async (c) => {
+    await open(c, {
+      name: "actions",
+      host: ALFA,
+      projectId: c.ids.project,
+      projectName: "flightdeck-web",
+    });
+    const row = c.page.getByRole("listitem", { name: c.t("actionsUi.row", { name: "versao" }) });
+    await row.getByText(c.t("actionsUi.notTrusted"), { exact: true }).waitFor({ timeout: WAIT });
+    await row.getByRole("button", { name: c.t("actionsUi.trust", { name: "versao" }) }).click();
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("actionsUi.trustLabel"), exact: true })
+      .click();
+    await row.getByText(c.t("actionsUi.trusted"), { exact: true }).waitFor({ timeout: WAIT });
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
