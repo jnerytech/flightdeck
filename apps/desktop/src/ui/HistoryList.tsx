@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
 import { basename } from "../lib/paths.ts";
-import { when } from "./GlobalSearch.tsx";
 
 const ORIGIN_LABELS: Record<HistoryOrigin, string> = {
   flightdeck: "Flightdeck",
@@ -120,7 +119,7 @@ export function HistoryList(props: {
                     {[
                       s.title ?? s.claudeSessionId,
                       basename(s.cwd),
-                      when(s.lastTs),
+                      store.formatDateTime(s.lastTs ?? ""),
                       ORIGIN_LABELS[s.origin],
                     ].join(" · ")}
                   </span>

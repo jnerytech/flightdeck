@@ -14,7 +14,6 @@ import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DiffView } from "./DiffView.tsx";
-import { when } from "./GlobalSearch.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
@@ -297,7 +296,7 @@ export function CardDetail(props: {
               <li key={run.queuedAt} className="tabular-nums">
                 {[
                   `#${i + 1}`,
-                  when(run.queuedAt),
+                  store.formatDateTime(run.queuedAt),
                   run.endedAt
                     ? t("cardUi.runEnded")
                     : run.startedAt

@@ -24,8 +24,6 @@ const describeCounts = (counts: PruneCounts, t: T) =>
     )
     .join(", ");
 
-const when = (iso: string) => new Date(iso).toLocaleString();
-
 /**
  * The host's database: size, backups and the retention cleanup (`maintenance.*`). Cleaning up
  * for real asks first; simulating only counts.
@@ -81,14 +79,14 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
             <li>
               {last
                 ? t("maintenance.lastBackup", {
-                    when: when(last.at),
+                    when: store.formatDateTime(last.at),
                     size: formatBytes(last.bytes),
                   })
                 : t("maintenance.noBackup")}
             </li>
             <li>
               {cleanup
-                ? t("maintenance.lastCleanup", { when: when(cleanup.at) }) +
+                ? t("maintenance.lastCleanup", { when: store.formatDateTime(cleanup.at) }) +
                   (cleanup.dryRun ? t("maintenance.dryRun") : "")
                 : t("maintenance.noCleanup")}
             </li>

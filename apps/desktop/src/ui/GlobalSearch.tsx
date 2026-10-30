@@ -33,9 +33,6 @@ export function Snippet({ text }: { text: string }) {
   );
 }
 
-/** `YYYY-MM-DD HH:MM` of an ISO timestamp (as stored, UTC). */
-export const when = (ts: string | null) => (ts ? ts.slice(0, 16).replace("T", " ") : "");
-
 /**
  * The Ctrl+K palette: live sessions, cards, projects, hosts and actions filtered as you type, then
  * the history search across every host (Enter with nothing chosen), merged by date as each host
@@ -179,7 +176,7 @@ export function GlobalSearch(props: {
                   onClick={() => props.onOpenHit(hit)}
                 >
                   <span className="text-muted-foreground text-xs tabular-nums">
-                    {`${hit.hostName} · ${basename(hit.cwd)} · ${when(hit.ts)}`}
+                    {`${hit.hostName} · ${basename(hit.cwd)} · ${props.store.formatDateTime(hit.ts ?? "")}`}
                   </span>
                   <Snippet text={hit.snippet} />
                 </button>
