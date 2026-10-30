@@ -185,6 +185,23 @@ describe("direcao-visual: três colunas", () => {
     expect(within(main()).queryByText("Escolha uma sessão para ler.")).not.toBeNull();
   });
 
+  test("Histórico de um host que ainda não conectou mostra só o carregamento, sem a lista", async () => {
+    const mem = memoryPlatform();
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    // Nothing listens there: the host stays out of reach.
+    const hostId = await act(() =>
+      store.addHost({ name: "longe", url: "ws://127.0.0.1:9", token: TOKEN }),
+    );
+    await act(async () => {
+      store.router.push({ name: "history", host: hostId });
+    });
+    expect(screen.queryByRole("status", { name: "Conectando a longe…" })).not.toBeNull();
+    expect(within(main()).queryByRole("separator")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Sessões do histórico" })).toBeNull();
+  });
+
   test("Configurações, Custos e as páginas do host ocupam a largura toda, sem divisor", async () => {
     const { store } = await setup();
     for (const name of ["settings", "host"] as const) {
