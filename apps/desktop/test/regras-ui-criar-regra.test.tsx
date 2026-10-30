@@ -66,4 +66,54 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     expect(needsYou(store.getState())).toHaveLength(1);
     expect(daemon.commands.some((c) => c.type === "vault.deny")).toBe(false);
   });
+
+  test("where the rule allows it, the card approves for the rest of the session; otherwise it does not offer it", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const daemon = legacyDaemon(cleanups);
+    render(<App store={store} />);
+    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    await settle(() => daemon.asked.includes("vault.watch"));
+    const secret = await act(() =>
+      store.addSecret({ name: "staging", type: "token", value: "v", allowedHosts: [hostId] }),
+    );
+    const push = (requestId: string, once: boolean) =>
+      act(async () => {
+        daemon.push({
+          type: "vault.request",
+          requestId,
+          secretId: secret.id,
+          purpose: `action:deploy:${requestId}`,
+          requester: "claude",
+          action: "deploy",
+          params: {},
+          approval: "always",
+          decision: "ask",
+          reason: "regra r1: ask",
+          once,
+        });
+      });
+    await act(async () => {
+      store.router.push({ name: "needs-you" });
+    });
+    await push("r1", false);
+    await settle(() => needsYou(store.getState()).length === 1);
+    await click(/alfa · Pedido de Claude: deploy/);
+    expect(
+      screen.queryByRole("button", { name: "Aprovar e não perguntar mais nesta sessão" }),
+    ).toBeNull();
+    await click("Negar");
+    await click("Negar");
+    await settle(() => needsYou(store.getState()).length === 0);
+    await push("r2", true);
+    await settle(() => needsYou(store.getState()).length === 1);
+    await click(/alfa · Pedido de Claude: deploy/);
+    await click("Aprovar e não perguntar mais nesta sessão");
+    await settle(() => daemon.commands.some((c) => c.type === "vault.deliver"));
+    expect(daemon.commands.find((c) => c.type === "vault.approve")?.payload).toEqual({
+      requestId: "r2",
+      via: "app",
+      scope: "session",
+    });
+  });
 });
