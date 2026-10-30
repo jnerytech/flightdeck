@@ -201,6 +201,9 @@ só. Os hosts são independentes: nada é copiado entre eles.
   processo do mesmo usuário (uma sessão do Claude com Bash no mesmo host) pode ler o ambiente ou o
   arquivo temporário. Segredos de produção ficam em ações `ssh:`, que rodam num host remoto onde o
   Claude não tem shell.
+- **Regras de uso por segredo.** Cada segredo tem regras em ordem (quem, para quê, quando, quantas
+  vezes) sobre padrões seguros; nenhuma regra permite `run_with_secret` nem um segredo `prod` fora
+  de uma janela de horário, e um uso de risco alto sempre pergunta.
 - **Atualizações assinadas.** O app e o daemon só instalam atualizações assinadas com a chave do
   projeto ([`release/flightdeck.pub`](release/flightdeck.pub)). O instalador do Windows em si não
   tem assinatura de código.

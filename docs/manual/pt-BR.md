@@ -2,7 +2,7 @@
 
 [English](en.md) | Português (Brasil) · [Voltar ao README](../../README.pt-BR.md)
 
-Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.17.0. O roadmap
+Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.19.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
 [`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
@@ -1127,6 +1127,28 @@ faz a execução falhar na hora. Uma ação com `approval: never` roda sem pergu
 pergunta uma vez e fica lembrada até o app reiniciar, e `always` pergunta todas as vezes. Um
 `run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar, e a bandeja só o
 abre.
+
+### Regras de uso por segredo
+
+Cada segredo tem uma lista ordenada de regras: a primeira que casa com um uso decide, e sem regra
+vale o padrão seguro (você: permite; o Claude com uma ação declarada: pergunta uma vez por sessão;
+`run_with_secret`: pergunta a cada uso; automações e workflows: nega; tag `prod`: pergunta a cada
+uso, segurando o botão). **Regras de <segredo>** na tela do cofre as edita: quem pede, a
+finalidade, a ação (com `*`), host, tags, projeto, sessão, a decisão (uma vez por sessão com
+**Perguntar**), uma janela no relógio deste computador com o que vale fora dela, limites por hora e
+por dia, e uma expiração. Mude a ordem com **Subir**, **Descer** ou arrastando.
+
+- **O teto:** uma regra pode afrouxar um padrão, mas nunca permitir `run_with_secret`, nem permitir
+  um segredo `prod` sem janela. Os hosts conferem as regras quando você salva, e o que recusam
+  aparece com o motivo.
+- **O que acontece se…** abaixo das regras pergunta a um host conectado o que as regras salvas
+  decidem para um uso: a decisão, o motivo, se pergunta uma vez por sessão, se segura o botão ou se
+  bateu um limite.
+- **Aprovar:** o pedido mostra a regra que decidiu e o motivo. **Criar regra a partir disto** abre
+  as regras do segredo com uma regra nova no topo para quem pediu, a finalidade e a ação.
+- **Relatório:** a aba **Relatório** do cofre mostra os últimos 30 dias por segredo, quem pediu e
+  resultado, com **Exportar CSV**, e cada decisão com quem deixou passar. O primeiro uso por quem
+  nunca pediu mostra um alerta, mesmo quando uma regra permitiu.
 
 ### Como o Claude chama uma ação
 

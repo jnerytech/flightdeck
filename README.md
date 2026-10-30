@@ -195,6 +195,9 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
   **The limit is the operating-system user:** while an action runs, another process of the same
   user (a Claude session with Bash on the same host) can read its environment or temporary file.
   Keep production secrets in `ssh:` actions, which run on a remote host where Claude has no shell.
+- **Usage rules per secret.** Each secret has ordered rules (who, for what, when, how often) over
+  safe defaults; no rule can allow `run_with_secret` or a `prod` secret outside a time window, and
+  a high-risk use always asks.
 - **Signed updates.** The app and the daemon install only updates signed with the project's key
   ([`release/flightdeck.pub`](release/flightdeck.pub)). The Windows installer itself is not
   code-signed.

@@ -2,7 +2,7 @@
 
 English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.md)
 
-Complete Flightdeck reference, organized by topic. It applies to version 0.17.0. The roadmap is
+Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
 [`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
@@ -1144,6 +1144,28 @@ secrets and the host). **Approve** delivers the secret for that run only; **Deny
 at once. An action with `approval: never` runs without a question, `first-per-session` asks once
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
 is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
+
+### Usage rules per secret
+
+Each secret has an ordered list of rules: the first that matches a use decides, and without one
+the safe default applies (you: allow; Claude with a declared action: ask once per session;
+`run_with_secret`: ask every time; automations and workflows: deny; a `prod` tag: ask every time,
+holding the button). **Rules of <secret>** on the vault screen edits them: who asks, the purpose,
+the action (with `*`), host, tags, project, session, the decision (once per session with **Ask**),
+a time window on this computer's clock with what holds outside it, limits per hour and per day,
+and an expiry. Move a rule with **Move up**, **Move down** or by dragging.
+
+- **The ceiling:** a rule can loosen a default, but never allow `run_with_secret`, nor allow a
+  `prod` secret without a window. The hosts check the rules when you save, and what they refuse
+  shows with the reason.
+- **What happens if…** under the rules asks a connected host what the saved rules decide for a
+  use: the decision, its reason, whether it asks once per session, holds the button or hit a
+  limit.
+- **Approving:** the request shows the rule that decided and why. **Create a rule from this**
+  opens the secret's rules with a new first rule for that requester, purpose and action.
+- **Report:** the vault's **Report** tab shows the last 30 days by secret, requester and outcome,
+  with **Export CSV**, and each decision with who let it through. A first use by a new requester
+  shows an alert, even where a rule allowed it.
 
 ### How Claude calls an action
 

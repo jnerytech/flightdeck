@@ -49,6 +49,9 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | ação | action | A command declared with places for vault secrets and parameters; Claude calls it by name and never receives the secret |
 | confiada | trusted | An action whose declaration and executed files the user accepted; a change asks again |
 | execuções | runs | The history of an action: who asked, exit code, duration and the masked output |
+| regra de uso | usage rule | One rule of a secret: who, for what and when it may be used; the first that matches decides |
+| teto | ceiling | What no rule may loosen: allow for run_with_secret, or allow for a prod secret without a window |
+| janela | window | Days and hours, on this computer's clock, when a rule decides; outside it another decision holds |
 
 ## Estados de uma sessão
 
