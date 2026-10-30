@@ -84,12 +84,12 @@ describe("acoes-ui-aprovacao: the policy for the daemon's requests", () => {
 
   test("a free command is asked every time, even after the same one was approved", async () => {
     const { policy, asked, advance } = setup([true, true]);
-    const free = {
+    const free: Partial<VaultRequestFrame> = {
       action: undefined,
       command: "make deploy",
       secrets: ["tok"],
       approval: "never",
-    } as const;
+    };
     await policy(context(frame(free)));
     advance(SIBLING_MS * 10);
     await policy(context(frame(free)));
