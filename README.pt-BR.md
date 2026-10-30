@@ -47,6 +47,10 @@ sessões num lugar só, sem abrir cada máquina.
   guarde a chave do servidor, conecte numa tela de terminal e veja borda vermelha em `prod`.
 - Cofre de segredos (chaves SSH, senhas, tokens e variáveis de ambiente): os valores ficam no cofre
   de credenciais do sistema, só aparecem depois de você digitar uma palavra e saem num backup cifrado.
+- Ações: você declara um comando com lugares para segredos do cofre e para parâmetros, e o Claude
+  o chama pelo nome (ferramentas MCP `list_actions` e `run_action`, ou o mod `flightdeck-actions`)
+  sem nunca receber o segredo. Ele recebe o código de saída e a saída (até 32 KB) com o segredo
+  mascarado.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.
@@ -184,6 +188,16 @@ só. Os hosts são independentes: nada é copiado entre eles.
   conteúdo nunca vai para o log nem para o banco.
 - **Nada é aprovado sem um clique.** Os comandos `check` de um workflow só rodam se você confiou
   no workflow, e um arquivo alterado pede confiança de novo.
+- **Segredos fora do transcript.** Uma ação roda o `run` como lista de argumentos, nunca por um
+  shell, e o segredo vai só para o ambiente ou para um arquivo temporário, nunca para um argumento.
+  Um `.flightdeck/actions.yaml` versionado só roda depois que você confia, e a confiança fixa o
+  sha256 do script que ele executa, conferido de novo logo antes de cada execução.
+  `run_with_secret` (um comando escrito pelo Claude) sempre pede a sua aprovação e nunca é
+  automático. A máscara cobre o valor literal e as formas em base64, URL e hex, não um valor
+  transformado de outro jeito. **O limite é o usuário do sistema:** enquanto a ação roda, outro
+  processo do mesmo usuário (uma sessão do Claude com Bash no mesmo host) pode ler o ambiente ou o
+  arquivo temporário. Segredos de produção ficam em ações `ssh:`, que rodam num host remoto onde o
+  Claude não tem shell.
 - **Atualizações assinadas.** O app e o daemon só instalam atualizações assinadas com a chave do
   projeto ([`release/flightdeck.pub`](release/flightdeck.pub)). O instalador do Windows em si não
   tem assinatura de código.

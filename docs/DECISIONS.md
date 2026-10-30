@@ -2021,3 +2021,12 @@ O schema aceita `ssh: <destino>` (e recusa `{{secretFile}}` nelas) e o `runActio
 - **`smoke:actions`:** foi escrito depois das áreas. O vermelho veio por mutação, duas vezes: tirando a máscara (o valor aparecia na saída do `run_action`) e fazendo o pedido do comando livre devolver um valor sem esperar o app (`SMOKE ACTIONS FAIL no passo "run_with_secret sem aprovação não roda"`). Roda como o Claude Code roda: um `flightdeckd mcp` de verdade por stdio, com um cliente JSON-RPC mínimo no lugar do Claude.
 - **Migração:** uma, no fim (`actions`, `action_trust` e `action_runs`). Nenhum teste fixa o índice dela.
 - **Áreas do app que esperam a Fase 10:** `acoes-ui` (tela de ações por projeto e host, seletor de segredo, histórico, confiar a versionada) e o aviso do segredo `prod`.
+
+# Phase 17 decisions: the interface (`acoes-ui`)
+
+What the Phase 17 interface settled or left open. The text of this section is in English, as the conventions ask.
+
+- **Where the screen lives:** the project's **Actions of <name>** button, next to Workflows and Automations, shown only when the host announces `actions` (`host.info`, a feature the daemon adds when it has the actions service). The scope is the project; the host's own actions (the `host` scope of the protocol) have no screen in this phase.
+- **Trust shown from the list:** `actions.list` already carries `trusted`, `changed` and the `hash`, so the screen needs no extra call. **Trust** sends the hash the list gave; if the declaration changed between listing and confirming, the daemon refuses and the list is stale until reopened. The confirmation shows `run` joined by spaces and what changed; it does not show a line diff of the script, because the daemon gives the names of what changed (the declaration or the file paths), not their content.
+- **Runs show the output as received:** the app never unmasks or re-derives anything; the history is `actions.runs` for the action, newest first.
+- **README for Phase 17:** the Portuguese README that the daemon commits changed was dropped in the rebase (the READMEs are English now); the Actions text was ported to `README.md` and `README.pt-BR.md`, and the manuals have a section of their own.

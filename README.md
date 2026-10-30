@@ -46,6 +46,9 @@ sessions from one place, without opening each machine.
   the server key, connect in a terminal screen, and a red border for `prod`.
 - A vault for secrets (SSH keys, passwords, tokens, env sets): values live in the system credential
   store, are revealed only after you type a word, and leave in an encrypted backup you choose.
+- Actions: you declare a command with places for vault secrets and parameters, and Claude calls it
+  by name (MCP tools `list_actions` and `run_action`, or the `flightdeck-actions` mod) without ever
+  receiving the secret. It gets the exit code and the output (up to 32 KB) with the secret masked.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
@@ -181,6 +184,15 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
   for confirmation. Its content never goes to the log or to the database.
 - **Nothing is approved without a click.** Workflow `check` commands run only if you trusted the
   workflow, and a changed file asks for trust again.
+- **Secrets stay out of the transcript.** An action runs `run` as a list of arguments, never
+  through a shell, and a secret goes only to its environment or a temporary file, never to an
+  argument. A versioned `.flightdeck/actions.yaml` runs only once you trust it, and the trust pins
+  the sha256 of the script it runs, checked again right before each run. `run_with_secret` (a
+  command written by Claude) always asks for your approval and is never automatic. The mask covers
+  the literal value and its base64, URL-encoded and hex forms, not a value transformed another way.
+  **The limit is the operating-system user:** while an action runs, another process of the same
+  user (a Claude session with Bash on the same host) can read its environment or temporary file.
+  Keep production secrets in `ssh:` actions, which run on a remote host where Claude has no shell.
 - **Signed updates.** The app and the daemon install only updates signed with the project's key
   ([`release/flightdeck.pub`](release/flightdeck.pub)). The Windows installer itself is not
   code-signed.

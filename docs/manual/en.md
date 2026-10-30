@@ -61,6 +61,7 @@ are written in Portuguese.
   - [Automations](#automations)
   - [Arena](#arena)
 - [Risk-graded approval](#risk-graded-approval)
+- [Actions: Claude uses a secret without seeing it](#actions-claude-uses-a-secret-without-seeing-it)
 - [Costs, budgets and quota](#costs-budgets-and-quota)
   - [Plan quota](#plan-quota)
   - [Quota queue](#quota-queue)
@@ -1076,6 +1077,74 @@ the tags and a description of the secret.
 A secret reaches a daemon only when the app sends it, only to a host in the secret's allowed hosts,
 and only over `localhost` or Tailscale; the daemon keeps it in memory for at most 60 seconds. In
 this version no daemon feature asks for secrets yet, so every request from a daemon is denied.
+## Actions: Claude uses a secret without seeing it
+
+An **action** is a command you declare, with places for vault secrets and for parameters. Claude
+calls it by name and only chooses the parameters you allowed. The daemon applies the secret on its
+side and hands Claude the exit code and the output (up to 32 KB) with the secret masked as
+`•••(name)`. Actions need the vault (a secret stored in the app) and a daemon that has them: the
+**Actions of <project>** button on a project appears only then.
+
+```yaml
+# .flightdeck/actions.yaml (versioned, no secrets) or the project's Actions screen
+- name: deploy-staging
+  description: Deploys the branch to the staging VPS
+  run: ["./scripts/deploy.sh", "{{param.branch}}"]
+  cwd: /srv/app
+  env:
+    DEPLOY_TOKEN: "{{secret.deploy-token-staging}}"
+  params:
+    branch: { pattern: "^[a-zA-Z0-9._/-]{1,80}$", default: main }
+  timeoutS: 600
+  approval: first-per-session   # always | never | first-per-session
+```
+
+- `run` is a list of arguments and never goes through a shell. A secret goes only to `env` or to a
+  temporary file (`{{secretFile.x}}`, deleted afterwards), never to an argument, because arguments
+  show in the process list.
+- Each parameter must match its whole `pattern`, and a `{{param.*}}` cannot sit where an
+  interpreter reads code (after `-c`, `-e`, `/c`, `-Command`, `-EncodedCommand` or `eval`).
+- `ssh: <destination>` runs the action on a remote host, where Claude has no shell.
+- `approval` defaults to `first-per-session` for an action with a secret and `never` for one
+  without.
+
+### The Actions screen
+
+- Each action shows its description, where it runs (this host, a named host or an SSH
+  destination), how it asks for approval, the secrets and parameters it uses, and whether it was
+  **Made in the app** or is **Versioned**. Problems in `.flightdeck/actions.yaml` are listed above
+  (the valid actions still load).
+- **Trust.** An action made in the app is trusted as it is saved. A versioned one shows **Not
+  trusted** until you press **Trust <name>** and confirm; the confirmation shows what it runs.
+  Trust pins the declaration and the sha256 of `run[0]` and of every file in the argv that is
+  inside a git repository, and the daemon checks them again right before each run. If one changed,
+  the action shows **Changed since it was trusted** with what changed, and runs again only after
+  you trust it again.
+- **Runs.** **Runs of <name>** opens the history, newest first: when, who asked (You, Claude,
+  Automation or Workflow), the exit code, the duration and the output, already masked by the
+  daemon.
+
+### How Claude calls an action
+
+- **MCP (`flightdeckd mcp`):** `list_actions` (name, description and parameters, never secrets),
+  `run_action { name, params }` and `run_with_secret { command, secrets, host }`. The last one is
+  a command written by Claude itself, with the secrets in its environment: it **always** asks for
+  your approval, with the command, the secret names and the host, and it is never automatic, not
+  even with automatic approval. It has no "allow always".
+- **The `flightdeck-actions` mod** (`mods/flightdeck-actions`, install it with
+  `/plugin install`) registers the same two tools for terminal sessions without the MCP, shows an
+  "action running" band and the `/flightdeck-actions` command.
+- **The mask** replaces the delivered value, each line of a multi-line value, and its base64,
+  URL-encoded and hex forms. A secret transformed another way (a hash, a cut in the middle) is not
+  caught, which is why a declared action is the safe path and a free command is not.
+
+### The limit: the same system user
+
+The guarantee is that the secret never reaches the transcript or the model's context through
+Flightdeck. It is not isolation from a hostile process of the same user: while an action runs,
+its environment (`/proc/<pid>/environ` on Linux) and its temporary file can be read by another
+process of the same operating-system user, and a Claude session with Bash on the **same host** can
+read them. Keep production secrets in `ssh:` actions.
 
 ## Costs, budgets and quota
 

@@ -61,6 +61,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Automações](#automações)
   - [Arena](#arena)
 - [Aprovação graduada por risco](#aprovação-graduada-por-risco)
+- [Ações: o Claude usa um segredo sem vê-lo](#ações-o-claude-usa-um-segredo-sem-vê-lo)
 - [Custos, orçamentos e cota](#custos-orçamentos-e-cota)
   - [Cota do plano](#cota-do-plano)
   - [Fila por cota](#fila-por-cota)
@@ -1060,6 +1061,72 @@ Um segredo só chega a um daemon quando o app o envia, só para um host da lista
 do segredo e só por `localhost` ou Tailscale; o daemon o guarda na memória por no máximo 60
 segundos. Nesta versão nenhuma função do daemon pede segredos ainda, então todo pedido vindo de um
 daemon é negado.
+## Ações: o Claude usa um segredo sem vê-lo
+
+Uma **ação** é um comando que você declara, com lugares para segredos do cofre e para parâmetros.
+O Claude a chama pelo nome e só escolhe os parâmetros que você permitiu. O daemon aplica o segredo
+do lado dele e entrega ao Claude o código de saída e a saída (até 32 KB) com o segredo mascarado
+como `•••(nome)`. As ações precisam do cofre (um segredo guardado no app) e de um daemon que as
+tenha: o botão **Ações de <projeto>** só aparece nesse caso.
+
+```yaml
+# .flightdeck/actions.yaml (versionado, sem segredos) ou a tela Ações do projeto
+- name: deploy-staging
+  description: Faz o deploy da branch na VPS de staging
+  run: ["./scripts/deploy.sh", "{{param.branch}}"]
+  cwd: /srv/app
+  env:
+    DEPLOY_TOKEN: "{{secret.deploy-token-staging}}"
+  params:
+    branch: { pattern: "^[a-zA-Z0-9._/-]{1,80}$", default: main }
+  timeoutS: 600
+  approval: first-per-session   # always | never | first-per-session
+```
+
+- `run` é uma lista de argumentos e nunca passa por shell. O segredo vai só para o `env` ou para um
+  arquivo temporário (`{{secretFile.x}}`, apagado depois), nunca para um argumento, porque
+  argumento aparece na lista de processos.
+- Cada parâmetro precisa casar o `pattern` inteiro, e um `{{param.*}}` não pode ocupar a posição de
+  código de um interpretador (depois de `-c`, `-e`, `/c`, `-Command`, `-EncodedCommand` ou `eval`).
+- `ssh: <destino>` roda a ação num host remoto, onde o Claude não tem shell.
+- `approval` vale `first-per-session` por padrão para uma ação com segredo e `never` para uma sem.
+
+### A tela Ações
+
+- Cada ação mostra a descrição, onde roda (este host, um host nomeado ou um destino SSH), como pede
+  aprovação, os segredos e os parâmetros que usa, e se foi **Criada no app** ou é **Versionada**. Os
+  problemas do `.flightdeck/actions.yaml` aparecem acima (as ações válidas continuam carregando).
+- **Confiança.** Uma ação criada no app já nasce confiada. Uma versionada mostra **Não confiada**
+  até você apertar **Confiar em <nome>** e confirmar; a confirmação mostra o que ela executa. A
+  confiança fixa a declaração e o sha256 do `run[0]` e de cada arquivo do argv que está dentro de
+  um repositório git, e o daemon confere de novo logo antes de cada execução. Se algum mudou, a ação
+  mostra **Mudou desde que foi confiada** com o que mudou, e só roda de novo depois que você
+  confiar outra vez.
+- **Execuções.** **Execuções de <nome>** abre o histórico, da mais nova para a mais antiga:
+  quando, quem pediu (Você, Claude, Automação ou Workflow), o código de saída, a duração e a saída,
+  já mascarada pelo daemon.
+
+### Como o Claude chama uma ação
+
+- **MCP (`flightdeckd mcp`):** `list_actions` (nome, descrição e parâmetros, nunca segredos),
+  `run_action { name, params }` e `run_with_secret { command, secrets, host }`. A última é um
+  comando escrito pelo próprio Claude, com os segredos no ambiente: **sempre** pede a sua
+  aprovação, com o comando, os nomes dos segredos e o host, e nunca é automática, nem com a
+  aprovação automática. Não existe "permitir sempre" aqui.
+- **O mod `flightdeck-actions`** (`mods/flightdeck-actions`, instale com `/plugin install`)
+  registra as mesmas duas ferramentas para sessões do terminal sem o MCP, mostra uma faixa "ação
+  rodando" e o comando `/flightdeck-actions`.
+- **A máscara** troca o valor entregue, cada linha de um valor de várias linhas e as formas dele em
+  base64, URL-encode e hex. Um segredo transformado de outro jeito (um hash, um corte no meio) não
+  é pego; por isso a ação declarada é o caminho seguro, e o comando livre não.
+
+### O limite: o mesmo usuário do sistema
+
+A garantia é que o segredo nunca chega ao transcript nem ao contexto do modelo pelo Flightdeck. Não
+é isolamento contra um processo hostil do mesmo usuário: enquanto a ação roda, o ambiente dela
+(`/proc/<pid>/environ` no Linux) e o arquivo temporário podem ser lidos por outro processo do mesmo
+usuário do sistema operacional, e uma sessão do Claude com Bash no **mesmo host** consegue lê-los.
+Segredos de produção ficam em ações `ssh:`.
 
 ## Custos, orçamentos e cota
 
