@@ -2591,3 +2591,4 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./pairing.ts";
+export * from "./snippets.ts";
