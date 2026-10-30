@@ -408,7 +408,9 @@ export function evaluate(rules: readonly Rule[], ctx: UseContext, env: RulesEnv)
   const prod = ctx.tags.some(isProdTag);
   if (prod) {
     if (out.decision === "allow" && !inWindow) raise("prod pede a sua aprovação a cada uso");
-    else if (out.decision === "ask" && !rule) {
+    // A rule may say once per session; prod still asks at every use, so a session approval
+    // (this one's, or another use's under the same rule) never stands in for the held button.
+    else if (out.decision === "ask" && (out.once || !rule)) {
       out.once = false;
       out.reason = `${out.reason}; prod pede a sua aprovação a cada uso`;
     }
