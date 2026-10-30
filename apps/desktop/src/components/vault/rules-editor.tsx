@@ -24,11 +24,20 @@ const SELECT =
  * Phase 19: a secret's usage rules, in order (the first that matches decides). The connected
  * hosts check them when they are saved, and what they refuse (the ceiling) shows here.
  */
-export function RulesEditor(props: { store: AppStore; secret: SecretMeta; onClose(): void }) {
+export function RulesEditor(props: {
+  store: AppStore;
+  secret: SecretMeta;
+  /** A new rule matching this goes first, where it decides before the others. */
+  seed?: Record<string, string>;
+  onClose(): void;
+}) {
   const t = useT();
   const id = useId();
   const { store, secret } = props;
-  const [drafts, setDrafts] = useState<RuleDraft[]>(() => store.vaultRules(secret.id).map(draftOf));
+  const [drafts, setDrafts] = useState<RuleDraft[]>(() => {
+    const saved = store.vaultRules(secret.id).map(draftOf);
+    return props.seed ? [{ ...newDraft(saved), ...props.seed }, ...saved] : saved;
+  });
   const [error, setError] = useState<string | null>(null);
   // A ref: the drop reads it in the same gesture that set it, before any render.
   const dragged = useRef<number | null>(null);

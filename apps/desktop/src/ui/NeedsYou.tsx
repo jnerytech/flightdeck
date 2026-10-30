@@ -168,7 +168,14 @@ export function NeedsYou(props: {
         }
         actions={
           // A request for a secret belongs to no session: the card is all there is to open.
-          item.vault ? undefined : (
+          item.vault ? (
+            <Button
+              variant="ghost"
+              onClick={() => item.vaultRule && go({ name: "vault", rule: item.vaultRule })}
+            >
+              {t("vaultRulesUi.fromRequest")}
+            </Button>
+          ) : (
             <Button variant="ghost" onClick={() => props.onOpenRequest(item)}>
               {t(item.gate ? "approval.openCard" : "approval.openSession")}
             </Button>

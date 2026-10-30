@@ -395,7 +395,14 @@ function routeScreen(props: ScreenProps): ReactNode {
         />
       );
     case "vault":
-      return <VaultPage store={store} state={state} />;
+      return (
+        <VaultPage
+          key={JSON.stringify(route.rule ?? null)}
+          store={store}
+          state={state}
+          {...(route.rule ? { rule: route.rule } : {})}
+        />
+      );
     case "session":
       return (
         <ManagedSession

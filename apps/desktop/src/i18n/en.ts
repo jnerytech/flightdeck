@@ -972,6 +972,7 @@ export const en: Dictionary = {
       limited: "limit reached",
     },
     add: "Add rule",
+    fromRequest: "Create a rule from this",
     save: "Save rules",
     cancel: "Cancel",
   },

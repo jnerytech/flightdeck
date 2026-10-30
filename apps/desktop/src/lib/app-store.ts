@@ -358,6 +358,8 @@ export interface PendingItem {
   riskReason?: string;
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
+  /** Phase 19: what a rule made from this request matches ("Criar regra a partir disto"). */
+  vaultRule?: { secretId: string; match: Record<string, string> };
 }
 
 export interface GateRef {
@@ -2181,6 +2183,17 @@ export class AppStore {
           }
         : {}),
       vault: true,
+      vaultRule: {
+        secretId: request.secretId,
+        match: {
+          requester: request.requester,
+          ...(free
+            ? { purpose: "run_with_secret" }
+            : request.action === undefined
+              ? { purpose: "ssh" }
+              : { purpose: "action", action: request.action }),
+        },
+      },
     };
     void this.platform.notify({
       title: t("vaultApproval.notifyTitle"),

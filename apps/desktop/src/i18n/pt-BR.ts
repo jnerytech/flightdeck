@@ -974,6 +974,7 @@ export const ptBR = {
       limited: "limite atingido",
     },
     add: "Adicionar regra",
+    fromRequest: "Criar regra a partir disto",
     save: "Salvar regras",
     cancel: "Cancelar",
   },

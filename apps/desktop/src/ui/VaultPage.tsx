@@ -126,6 +126,8 @@ export function VaultPage(props: {
   revealMs?: number;
   /** How long a copied value stays on the clipboard. */
   clearMs?: number;
+  /** Phase 19: opens a secret's rules with a new rule that matches this. */
+  rule?: { secretId: string; match: Record<string, string> };
 }) {
   const t = useT();
   const { store, state } = props;
@@ -135,7 +137,9 @@ export function VaultPage(props: {
   const [asking, setAsking] = useState<SecretMeta | null>(null);
   const [editing, setEditing] = useState<SecretMeta | null>(null);
   const [creating, setCreating] = useState(false);
-  const [ruling, setRuling] = useState<SecretMeta | null>(null);
+  const [ruling, setRuling] = useState<SecretMeta | null>(
+    () => state.secrets.find((s) => s.id === props.rule?.secretId) ?? null,
+  );
   const [removing, setRemoving] = useState<SecretMeta | null>(null);
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
 
@@ -189,6 +193,7 @@ export function VaultPage(props: {
           key={ruling.id}
           store={store}
           secret={ruling}
+          {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
           onClose={() => setRuling(null)}
         />
       )}
