@@ -131,6 +131,7 @@ describe("direcao-visual: barra lateral", () => {
 
     await openHostMenu();
     expect(screen.queryAllByRole("menuitem").map((m) => m.textContent)).toEqual([
+      "Abrir em nova aba",
       "Histórico",
       "Projetos",
       "Nova sessão",
