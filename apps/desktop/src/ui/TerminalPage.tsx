@@ -40,6 +40,8 @@ export function TerminalPage(props: {
   const [searching, setSearching] = useState(false);
   const [needle, setNeedle] = useState("");
   const [closing, setClosing] = useState(false);
+  /** Where the right button opened the copy and paste menu. */
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [launchId, setLaunchId] = useState<string | null>(null);
   const appState = useSyncExternalStore(store.subscribe, store.getState);
   /** The session in the central of a "Claude aqui" terminal: same host, same launch. */
@@ -70,6 +72,7 @@ export function TerminalPage(props: {
         onInput: (data) => session.current?.input(data),
         onResize: (cols, rows) => session.current?.resize(cols, rows),
         onSearch: () => setSearching(true),
+        onLink: (uri) => store.openLink(uri),
       });
       const current = new TerminalSession({
         terminalId,
@@ -107,6 +110,19 @@ export function TerminalPage(props: {
       screen.current = null;
     };
   }, [store, hostId, terminalId, props.deps]);
+
+  // A click anywhere else closes the menu.
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [menu]);
+  const fromMenu = (action: "copy" | "paste") => {
+    setMenu(null);
+    screen.current?.[action]();
+    screen.current?.focus();
+  };
 
   useEffect(() => screen.current?.setFontSize(font), [font]);
   useEffect(() => screen.current?.setTheme(terminalTheme(theme)), [theme]);
@@ -176,7 +192,44 @@ export function TerminalPage(props: {
         )
       }
     >
-      <div ref={area} className="h-[60vh] w-full" />
+      <div
+        ref={area}
+        data-terminal-area
+        className="h-[60vh] w-full"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY });
+        }}
+      />
+      {menu && (
+        <div
+          role="menu"
+          aria-label={t("terminalUi.title")}
+          tabIndex={-1}
+          className="fixed z-50 flex flex-col rounded-md border bg-popover p-1 text-sm shadow-md"
+          style={{ left: menu.x, top: menu.y }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setMenu(null);
+          }}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start"
+            onClick={() => fromMenu("copy")}
+          >
+            {t("terminalUi.copy")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start"
+            onClick={() => fromMenu("paste")}
+          >
+            {t("terminalUi.paste")}
+          </Button>
+        </div>
+      )}
       {closing && (
         <TerminalCloseDialog
           onClose={(kill) => (kill === null ? setClosing(false) : void close(kill))}

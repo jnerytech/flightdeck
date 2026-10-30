@@ -30,7 +30,7 @@ export interface XtermSearch {
 export interface XtermDeps {
   terminal(options: Record<string, unknown>): XtermTerminal;
   fit(): { fit(): void };
-  webLinks(): unknown;
+  webLinks(open: (uri: string) => void): unknown;
   search(): XtermSearch;
   unicode11(): unknown;
 }
@@ -43,6 +43,8 @@ export interface XtermScreenOptions {
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /** A link in the output was clicked. */
+  onLink(uri: string): void;
 }
 
 export interface XtermScreen {
@@ -55,6 +57,10 @@ export interface XtermScreen {
   find(text: string, direction: "next" | "previous"): boolean;
   clearFind(): void;
   focus(): void;
+  /** The selection to the clipboard, as Ctrl+Shift+C does. */
+  copy(): void;
+  /** The clipboard into the terminal, as Ctrl+Shift+V does. */
+  paste(): void;
   dispose(): void;
 }
 
@@ -68,22 +74,28 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
   });
   const fit = deps.fit();
   const search = deps.search();
-  for (const addon of [fit, deps.webLinks(), search, deps.unicode11()]) terminal.loadAddon(addon);
+  for (const addon of [fit, deps.webLinks(options.onLink), search, deps.unicode11()])
+    terminal.loadAddon(addon);
   terminal.unicode.activeVersion = "11";
 
+  const copy = () => {
+    if (terminal.hasSelection()) options.clipboard.copy(terminal.getSelection()).catch(() => {});
+  };
+  const paste = () => {
+    options.clipboard.read().then(
+      (text) => terminal.paste(text),
+      () => {},
+    );
+  };
   const input = terminal.onData(options.onInput);
   const size = terminal.onResize(({ cols, rows }) => options.onResize(cols, rows));
   terminal.attachCustomKeyEventHandler((event) => {
     switch (terminalKeyAction(event)) {
       case "copy":
-        if (terminal.hasSelection())
-          options.clipboard.copy(terminal.getSelection()).catch(() => {});
+        copy();
         return false;
       case "paste":
-        options.clipboard.read().then(
-          (text) => terminal.paste(text),
-          () => {},
-        );
+        paste();
         return false;
       case "search":
         options.onSearch();
@@ -112,6 +124,8 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       direction === "next" ? search.findNext(text) : search.findPrevious(text),
     clearFind: () => search.clearDecorations(),
     focus: () => terminal.focus(),
+    copy,
+    paste,
     dispose: () => {
       input.dispose();
       size.dispose();

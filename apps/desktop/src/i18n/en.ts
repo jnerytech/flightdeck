@@ -505,6 +505,8 @@ export const en: Dictionary = {
   },
   terminalUi: {
     title: "Terminal",
+    copy: "Copy",
+    paste: "Paste",
     state: {
       attaching: "Connecting…",
       live: "Live",

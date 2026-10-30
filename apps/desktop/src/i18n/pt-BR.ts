@@ -508,6 +508,8 @@ export const ptBR = {
   },
   terminalUi: {
     title: "Terminal",
+    copy: "Copiar",
+    paste: "Colar",
     state: {
       attaching: "Conectando…",
       live: "Ao vivo",

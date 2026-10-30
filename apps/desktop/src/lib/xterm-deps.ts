@@ -9,7 +9,7 @@ import type { XtermDeps, XtermTerminal } from "./xterm-screen.ts";
 export const realXtermDeps: XtermDeps = {
   terminal: (options) => new Terminal(options) as unknown as XtermTerminal,
   fit: () => new FitAddon(),
-  webLinks: () => new WebLinksAddon(),
+  webLinks: (open) => new WebLinksAddon((_event, uri) => open(uri)),
   search: () => new SearchAddon(),
   unicode11: () => new Unicode11Addon(),
 };
