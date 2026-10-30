@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
 import type { AppState, AppStore, GlobalHit } from "../lib/app-store.ts";
 import {
   type PaletteItem,
@@ -12,13 +13,22 @@ import { hasFeature } from "../lib/version.ts";
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
 export function Snippet({ text }: { text: string }) {
   const parts = text.split(/«|»/);
+  // A part's position in the text is its key (parts are immutable and ordered).
+  let at = 0;
   return (
-    <span className="snippet">
+    <span className="text-sm">
       {/* Odd parts sit between the markers. */}
-      {parts.map((part, i) =>
-        // biome-ignore lint/suspicious/noArrayIndexKey: parts are immutable and ordered
-        i % 2 === 1 ? <mark key={i}>{part}</mark> : <span key={i}>{part}</span>,
-      )}
+      {parts.map((part, i) => {
+        const key = at;
+        at += part.length + 1;
+        return i % 2 === 1 ? (
+          <mark key={key} className="rounded bg-status-needs-you/30 px-0.5 text-foreground">
+            {part}
+          </mark>
+        ) : (
+          <span key={key}>{part}</span>
+        );
+      })}
     </span>
   );
 }
@@ -102,7 +112,7 @@ export function GlobalSearch(props: {
   return (
     <dialog
       open
-      className="global-search"
+      className="fixed top-20 left-1/2 z-50 m-0 flex max-h-[70vh] w-[min(40rem,92vw)] -translate-x-1/2 flex-col gap-3 overflow-y-auto rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg"
       aria-label="Busca global"
       onKeyDown={(e) => {
         if (e.key === "Escape") props.onClose();
@@ -114,7 +124,7 @@ export function GlobalSearch(props: {
           props.onSearch(query);
         }}
       >
-        <input
+        <Input
           aria-label="Buscar no histórico"
           placeholder="Sessões, cards, projetos, ações… (Enter busca no histórico)"
           value={query}
@@ -126,9 +136,9 @@ export function GlobalSearch(props: {
         />
       </form>
       {sections.map((section) => (
-        <section key={section.title} className="palette-section">
-          <h3>{section.title}</h3>
-          <div role="listbox" aria-label={section.title} className="palette-list">
+        <section key={section.title} className="flex flex-col gap-1">
+          <h3 className="px-2 font-medium text-muted-foreground text-xs">{section.title}</h3>
+          <div role="listbox" aria-label={section.title} className="flex flex-col">
             {section.items.map((item) => (
               <button
                 key={item.id}
@@ -136,30 +146,36 @@ export function GlobalSearch(props: {
                 role="option"
                 aria-label={item.label}
                 aria-selected={visible.indexOf(item) === cursor}
+                className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent aria-selected:bg-accent"
                 onClick={() => props.onGo(item.target)}
               >
-                <span>{item.label}</span> <span className="muted">{item.detail}</span>
+                <span>{item.label}</span>{" "}
+                <span className="truncate text-muted-foreground text-xs">{item.detail}</span>
               </button>
             ))}
           </div>
         </section>
       ))}
       {search && (
-        <section className="palette-section">
-          <h3>Histórico</h3>
-          <ul className="search-status">
+        <section className="flex flex-col gap-1">
+          <h3 className="px-2 font-medium text-muted-foreground text-xs">Histórico</h3>
+          <ul className="flex flex-col px-2 text-muted-foreground text-xs">
             {search.waiting.map((id) => (
-              <li key={id} className="muted">{`${name(id)}: buscando…`}</li>
+              <li key={id}>{`${name(id)}: buscando…`}</li>
             ))}
             {search.silent.map((id) => (
-              <li key={id} className="muted">{`${name(id)}: sem resposta`}</li>
+              <li key={id}>{`${name(id)}: sem resposta`}</li>
             ))}
           </ul>
-          <ul aria-label="Resultados da busca">
+          <ul aria-label="Resultados da busca" className="flex flex-col">
             {search.hits.map((hit) => (
               <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
-                <button type="button" onClick={() => props.onOpenHit(hit)}>
-                  <span className="muted">
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                  onClick={() => props.onOpenHit(hit)}
+                >
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {`${hit.hostName} · ${basename(hit.cwd)} · ${when(hit.ts)}`}
                   </span>
                   <Snippet text={hit.snippet} />

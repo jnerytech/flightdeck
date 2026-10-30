@@ -1,7 +1,9 @@
 import { parsePairingLink } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Spinner, useBusy } from "@/components/feedback/busy";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export interface HostDraft {
   name: string;
@@ -35,6 +37,7 @@ export function HostForm(props: {
   /** May return a promise: the form is busy until it settles (the connection is tested). */
   onSubmit(draft: HostDraft): unknown;
 }) {
+  const id = useId();
   const [busy, run] = useBusy();
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
   const [link, setLink] = useState("");
@@ -46,7 +49,7 @@ export function HostForm(props: {
 
   return (
     <form
-      className="card form"
+      className="mx-auto flex w-full max-w-md flex-col gap-4 p-6"
       onSubmit={(e) => {
         e.preventDefault();
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
@@ -64,10 +67,11 @@ export function HostForm(props: {
         );
       }}
     >
-      {props.notice && <p className="notice">{props.notice}</p>}
-      <label>
+      {props.notice && <InlineNotice>{props.notice}</InlineNotice>}
+      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-link`}>
         Link de pareamento
-        <input
+        <Input
+          id={`${id}-link`}
           value={link}
           placeholder="flightdeck://…"
           onChange={(e) => {
@@ -80,25 +84,30 @@ export function HostForm(props: {
           }}
         />
       </label>
-      {linkError && <small className="field-error">{linkError}</small>}
-      <label>
+      {linkError && <small className="text-status-error text-xs">{linkError}</small>}
+      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-name`}>
         Nome
-        <input value={draft.name} onChange={set("name")} placeholder="meu pc" />
+        <Input id={`${id}-name`} value={draft.name} onChange={set("name")} placeholder="meu pc" />
       </label>
-      <label>
+      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-address`}>
         Endereço
-        <input value={draft.address} onChange={set("address")} placeholder="100.64.0.1" />
+        <Input
+          id={`${id}-address`}
+          value={draft.address}
+          onChange={set("address")}
+          placeholder="100.64.0.1"
+        />
       </label>
-      <label>
+      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-port`}>
         Porta
-        <input value={draft.port} onChange={set("port")} inputMode="numeric" />
+        <Input id={`${id}-port`} value={draft.port} onChange={set("port")} inputMode="numeric" />
       </label>
-      <label>
+      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-token`}>
         Token
-        <input type="password" value={draft.token} onChange={set("token")} />
+        <Input id={`${id}-token`} type="password" value={draft.token} onChange={set("token")} />
       </label>
       {error && (
-        <p role="alert" className="form-error">
+        <p role="alert" className="text-sm text-status-error">
           {error}
         </p>
       )}

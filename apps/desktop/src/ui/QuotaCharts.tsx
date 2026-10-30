@@ -1,5 +1,6 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { Panel } from "@/components/layout/panel";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
@@ -20,9 +21,15 @@ function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
     y: HEIGHT - (s.utilization ?? 0) * HEIGHT,
   }));
   return (
-    <section aria-label={`Janela de ${label}`} className="quota-chart">
-      <h4>{label}</h4>
-      <svg width={WIDTH} height={HEIGHT} role="img" aria-label={`Utilização da janela de ${label}`}>
+    <section aria-label={`Janela de ${label}`} className="flex flex-col gap-2">
+      <h4 className="font-medium text-sm">{label}</h4>
+      <svg
+        width={WIDTH}
+        height={HEIGHT}
+        role="img"
+        aria-label={`Utilização da janela de ${label}`}
+        className="rounded-md border bg-card text-status-running"
+      >
         <polyline
           fill="none"
           stroke="currentColor"
@@ -32,7 +39,7 @@ function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
           <circle key={history.samples[i]?.takenAt} data-sample cx={p.x} cy={p.y} r={2} />
         ))}
       </svg>
-      <p>
+      <p className="text-muted-foreground text-xs">
         {projectionText(
           history.window,
           history.projection,
@@ -42,8 +49,10 @@ function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
       </p>
       {history.window === "five_hour" && (
         <section aria-label="Quem consumiu a janela de 5 horas">
-          <p className="muted">atribuição aproximada: o plano não diz quem consumiu</p>
-          <ul>
+          <p className="text-muted-foreground text-xs">
+            atribuição aproximada: o plano não diz quem consumiu
+          </p>
+          <ul className="flex flex-col gap-1 text-xs tabular-nums">
             {history.consumers.map((c) => (
               <li
                 key={c.projectKey}
@@ -71,11 +80,14 @@ export function QuotaCharts(props: { store: AppStore; hostId: string }) {
     ).then((all) => setHistories(all.filter((h): h is QuotaHistory => h !== null)));
   }, [store, hostId]);
   return (
-    <section aria-label="Cota" className="quota-charts">
-      <h3>Cota</h3>
-      {histories.map((history) => (
-        <WindowChart key={history.window} store={store} history={history} />
-      ))}
+    <section aria-label="Cota">
+      <Panel title="Cota">
+        <div className="flex flex-wrap gap-6">
+          {histories.map((history) => (
+            <WindowChart key={history.window} store={store} history={history} />
+          ))}
+        </div>
+      </Panel>
     </section>
   );
 }

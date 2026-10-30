@@ -1,5 +1,7 @@
 import type { MaintenanceStatus, PruneCounts } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
+import { Panel } from "@/components/layout/panel";
+import { Button } from "@/components/ui/button";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -58,40 +60,41 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
   const last = status?.lastBackup;
   const cleanup = status?.lastPrune;
   return (
-    <section aria-label="Manutenção" className="maintenance">
-      <h3>Manutenção</h3>
-      {status ? (
-        <ul>
-          <li>{`banco: ${formatBytes(status.dbBytes)}`}</li>
-          <li>
-            {`sessões: ${status.counts.sessions} · eventos: ${status.counts.events} · sessões externas: ${status.counts.externalSessions}`}
-          </li>
-          <li>
-            {last
-              ? `último backup: ${when(last.at)} (${formatBytes(last.bytes)})`
-              : "último backup: nenhum ainda"}
-          </li>
-          <li>
-            {cleanup
-              ? `última limpeza: ${when(cleanup.at)}${cleanup.dryRun ? " (simulação)" : ""}`
-              : "última limpeza: nenhuma ainda"}
-          </li>
-        </ul>
-      ) : (
-        <p className="muted">consultando…</p>
-      )}
-      {result && <p>{result}</p>}
-      <div className="row">
-        <button type="button" onClick={() => void backup()}>
-          Fazer backup agora
-        </button>
-        <button type="button" onClick={() => void prune(true)}>
-          Simular
-        </button>
-        <button type="button" className="danger" onClick={() => setConfirming(true)}>
-          Limpar
-        </button>
-      </div>
+    <section aria-label="Manutenção">
+      <Panel title="Manutenção">
+        {status ? (
+          <ul className="flex flex-col gap-1 text-sm">
+            <li>{`banco: ${formatBytes(status.dbBytes)}`}</li>
+            <li>
+              {`sessões: ${status.counts.sessions} · eventos: ${status.counts.events} · sessões externas: ${status.counts.externalSessions}`}
+            </li>
+            <li>
+              {last
+                ? `último backup: ${when(last.at)} (${formatBytes(last.bytes)})`
+                : "último backup: nenhum ainda"}
+            </li>
+            <li>
+              {cleanup
+                ? `última limpeza: ${when(cleanup.at)}${cleanup.dryRun ? " (simulação)" : ""}`
+                : "última limpeza: nenhuma ainda"}
+            </li>
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm">consultando…</p>
+        )}
+        {result && <p className="text-sm">{result}</p>}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => void backup()}>
+            Fazer backup agora
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void prune(true)}>
+            Simular
+          </Button>
+          <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
+            Limpar
+          </Button>
+        </div>
+      </Panel>
       {confirming && (
         <ConfirmDialog
           message="Apagar os dados antigos deste host conforme a retenção configurada? Eventos de conversas encerradas e sessões externas antigas não voltam (a não ser por um backup)."

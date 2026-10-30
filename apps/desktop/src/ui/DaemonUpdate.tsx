@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -13,13 +14,15 @@ export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
   const progress = host.daemonUpdate;
   if (progress?.failed) {
     return (
-      <p className="warning">
+      <InlineNotice>
         {`A atualização do daemon não terminou: ${progress.failed}. No host, com o binário novo: `}
-        <code>flightdeckd update --from &lt;binário novo&gt;</code>
-      </p>
+        <code className="rounded bg-muted px-1 font-mono text-xs">
+          flightdeckd update --from &lt;binário novo&gt;
+        </code>
+      </InlineNotice>
     );
   }
-  if (progress) return <p className="muted">atualizando…</p>;
+  if (progress) return <p className="text-muted-foreground text-sm">atualizando…</p>;
   if (!offer?.available || !offer.version) return null;
   const version = offer.version;
   return (

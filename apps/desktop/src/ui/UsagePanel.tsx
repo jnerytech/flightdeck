@@ -1,5 +1,6 @@
 import type { UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { Panel } from "@/components/layout/panel";
 import type { AppStore } from "../lib/app-store.ts";
 import { periodRange, usd } from "../lib/costs.ts";
 
@@ -52,35 +53,36 @@ export function UsagePanel(props: {
   }, [store, hostId, online, costs]);
 
   return (
-    <section aria-label="Uso dos últimos 7 dias" className="usage">
-      <h3>Uso dos últimos 7 dias</h3>
-      <p className="muted">
-        {costs
-          ? "Todas as sessões do host; custo estimado em preços de API."
-          : "Só sessões gerenciadas; o custo é a estimativa que o SDK informa."}
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Dia</th>
-            <th>Projeto</th>
-            <th>Custo</th>
-            <th>Tokens</th>
-            {!costs && <th>Turnos</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.day}/${row.projectKey}`}>
-              <td>{row.day}</td>
-              <td>{row.projectKey}</td>
-              <td>{usd(row.costUsd)}</td>
-              <td>{row.tokens}</td>
-              {row.turns !== null && <td>{row.turns}</td>}
+    <section aria-label="Uso dos últimos 7 dias">
+      <Panel title="Uso dos últimos 7 dias">
+        <p className="text-muted-foreground text-xs">
+          {costs
+            ? "Todas as sessões do host; custo estimado em preços de API."
+            : "Só sessões gerenciadas; o custo é a estimativa que o SDK informa."}
+        </p>
+        <table className="w-full text-left text-sm tabular-nums">
+          <thead className="text-muted-foreground text-xs">
+            <tr>
+              <th className="py-1 font-medium">Dia</th>
+              <th className="py-1 font-medium">Projeto</th>
+              <th className="py-1 font-medium">Custo</th>
+              <th className="py-1 font-medium">Tokens</th>
+              {!costs && <th className="py-1 font-medium">Turnos</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.day}/${row.projectKey}`} className="border-t">
+                <td className="py-1">{row.day}</td>
+                <td className="py-1">{row.projectKey}</td>
+                <td className="py-1">{usd(row.costUsd)}</td>
+                <td className="py-1">{row.tokens}</td>
+                {row.turns !== null && <td className="py-1">{row.turns}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
     </section>
   );
 }

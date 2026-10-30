@@ -138,8 +138,12 @@ function AddHost(props: {
     else setError(result.error);
   };
   return (
-    <div className="welcome">
-      {props.empty && <p>Adicione um host com o endereço e o token do flightdeckd.</p>}
+    <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
+      {props.empty && (
+        <p className="text-muted-foreground text-sm">
+          Adicione um host com o endereço e o token do flightdeckd.
+        </p>
+      )}
       <HostForm
         {...(props.draft
           ? {
