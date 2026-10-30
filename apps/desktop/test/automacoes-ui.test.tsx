@@ -71,7 +71,7 @@ describe("automacoes-ui: what a trigger can drive", () => {
 
 /** A host with a project and one trusted workflow, on the projects screen. */
 async function online(features?: string[]) {
-  const d = await workflowDaemon(cleanups, { revisar: WORKFLOW }, ["revisar"], {
+  const d = await workflowDaemon(cleanups, { revisar: WORKFLOW, outro: WORKFLOW }, ["revisar", "outro"], {
     automations: true,
   });
   const server = features ? d.listen(0, undefined, features) : d.server;
@@ -375,5 +375,64 @@ describe("automacoes-ui: history, edit and remove", () => {
     expect(automationsOf(d)).toHaveLength(0);
     await settle(() => row("Revisar issues auto") === null);
     expect(row("Revisar issues auto")).toBeNull();
+  });
+});
+
+describe("automacoes-ui: the other triggers and actions", () => {
+  const openForm = async () => {
+    await click("Automações de repo");
+    await settle(() => screen.queryByRole("button", { name: "Nova automação" }) !== null);
+    await click("Nova automação");
+  };
+
+  test("a PR comment can message the card, with outside authors allowed by its switch", async () => {
+    const d = await online();
+    await openForm();
+    await change("Gatilho", "pr_comment");
+    await click("Próximo");
+    await change("Ação", "send_to_card");
+    await click("Próximo");
+    await change("Nome da automação", "Comentários");
+    const control = screen.queryByRole("switch", { name: "Agir também sobre autores externos" });
+    expect(control).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(control as HTMLElement);
+    });
+    await click("Salvar");
+    await settle(() => automationsOf(d).length === 1);
+    expect(automationsOf(d)[0]).toMatchObject({
+      enabled: false,
+      trigger: { type: "pr_comment" },
+      action: { type: "send_to_card" },
+      allowExternalAuthors: true,
+    });
+  });
+
+  test("a schedule keeps the time zone that was typed and the workflow that was picked", async () => {
+    const d = await online();
+    await openForm();
+    await change("Expressão cron", "30 8 * * 1");
+    await change("Fuso horário", "America/Sao_Paulo");
+    await click("Próximo");
+    await settle(() => options("Workflow").includes("revisar"));
+    // "outro" is the one the picker starts on, so picking "revisar" is a real choice.
+    await change("Workflow", "revisar");
+    await click("Próximo");
+    await change("Nome da automação", "Segunda cedo");
+    await click("Salvar");
+    await settle(() => automationsOf(d).length === 1);
+    expect(automationsOf(d)[0]).toMatchObject({
+      trigger: { type: "cron", expr: "30 8 * * 1", tz: "America/Sao_Paulo" },
+      action: { type: "start_workflow", workflow: "revisar" },
+      allowExternalAuthors: false,
+    });
+  });
+
+  test("Cancelar closes the form and saves nothing", async () => {
+    const d = await online();
+    await openForm();
+    await click("Cancelar");
+    expect(screen.queryByRole("dialog", { name: "Nova automação" })).toBeNull();
+    expect(automationsOf(d)).toHaveLength(0);
   });
 });
