@@ -1258,6 +1258,7 @@ export type VaultRequester = z.infer<typeof VaultRequester>;
 
 /** Phase 16: who a daemon can be asking for; never `you`. */
 export const VaultDaemonRequester = z.enum(["claude", "automation", "workflow"]);
+export type VaultDaemonRequester = z.infer<typeof VaultDaemonRequester>;
 
 /** Phase 17: how an action asks for approval. */
 export const ActionApproval = z.enum(["always", "never", "first-per-session"]);

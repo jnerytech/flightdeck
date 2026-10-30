@@ -412,4 +412,40 @@ export const MIGRATIONS: readonly string[] = [
     updated_at TEXT
   );
   `,
+  // Phase 17: actions made in the app (scope is a project id, or '' for the host), what was
+  // trusted of each one (its declaration and the files it executes), and their runs. The output
+  // of a run is stored already masked.
+  `
+  CREATE TABLE actions (
+    scope      TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    definition TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (scope, name)
+  );
+
+  CREATE TABLE action_trust (
+    scope       TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    declaration TEXT NOT NULL,
+    files       TEXT NOT NULL,
+    trusted_at  TEXT NOT NULL,
+    PRIMARY KEY (scope, name)
+  );
+
+  CREATE TABLE action_runs (
+    id           TEXT PRIMARY KEY,
+    scope        TEXT NOT NULL,
+    name         TEXT NOT NULL,
+    requested_by TEXT NOT NULL,
+    started_at   TEXT NOT NULL,
+    duration_ms  INTEGER NOT NULL,
+    exit_code    INTEGER NOT NULL,
+    timed_out    INTEGER NOT NULL,
+    truncated    INTEGER NOT NULL,
+    output       TEXT NOT NULL
+  );
+
+  CREATE INDEX action_runs_scope ON action_runs (scope, name);
+  `,
 ];

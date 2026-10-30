@@ -306,6 +306,30 @@ describe("acoes-servico: ações versionadas e confiança", () => {
     expect(existsSync(marker)).toBe(true);
   });
 
+  test("o script que muda enquanto o app decide é recusado logo antes de executar, e nada roda", async () => {
+    const { actions, repo, requests, deliver } = setup();
+    mkdirSync(join(repo, "scripts"));
+    const script = join(repo, "scripts", "deploy.ts");
+    const marker = join(repo, "rodou.txt");
+    writeFileSync(script, "console.log(process.env.TOKEN)\n");
+    await actions.save({
+      projectId: "p1",
+      definition: echoDef({ run: [process.execPath, "scripts/deploy.ts"] }),
+    });
+    const running = failure(actions.run({ projectId: "p1", name: "echo", requestedBy: "claude" }));
+    const frame = (await poll(() => requests()[0])) as VaultRequestFrame;
+    // The agent edits the script while the user reads the request.
+    writeFileSync(
+      script,
+      `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "x"); console.log(process.env.TOKEN)\n`,
+    );
+    deliver(frame);
+    const error = await running;
+    expect(error).toContain("invalid_state");
+    expect(error).toContain("scripts/deploy.ts");
+    expect(existsSync(marker)).toBe(false);
+  });
+
   test("confiar numa ação que não existe falha", async () => {
     const { actions } = setup();
     expect(await failure(actions.trust("p1", "nada", "abc"))).toContain("not_found");

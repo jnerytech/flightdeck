@@ -51,6 +51,14 @@ export interface VaultOptions {
   actions?: Record<string, (value: string) => string>;
 }
 
+/** Someone waiting for a secret to be delivered for one purpose. */
+interface Waiter {
+  secretId: string;
+  purpose: string;
+  resolve(value: string): void;
+  reject(error: Error): void;
+}
+
 interface Held {
   value: string;
   purpose: string;
@@ -70,6 +78,7 @@ const REFUSED_TRANSPORT =
 
 export class Vault {
   private readonly values = new Map<string, Held>();
+  private readonly waiters = new Set<Waiter>();
 
   constructor(private readonly opts: VaultOptions = {}) {}
 
@@ -96,6 +105,7 @@ export class Vault {
       expiresAt,
       timer,
     });
+    this.serve(input.secretId);
     return { expiresAt };
   }
 
@@ -108,16 +118,7 @@ export class Vault {
     purpose: string,
     action: string,
   ): { result: string; requester: VaultRequester } {
-    const held = this.live(secretId);
-    if (!held) {
-      throw new FlightdeckError(
-        "not_found",
-        `o segredo ${secretId} não está com este daemon: o cofre é do app, que precisa estar aberto para entregá-lo`,
-      );
-    }
-    if (held.purpose !== purpose) {
-      throw invalid(`o segredo ${secretId} foi entregue para ${held.purpose}, não para ${purpose}`);
-    }
+    const held = this.peek(secretId, purpose);
     const actions = this.opts.actions ?? {};
     if (!Object.hasOwn(actions, action)) throw invalid(`ação desconhecida: ${action}`);
     this.drop(secretId);
@@ -134,18 +135,59 @@ export class Vault {
   }
 
   /** The value, for the purpose it was delivered for; it is discarded. */
-  take(_secretId: string, _purpose: string): string {
-    return "";
+  take(secretId: string, purpose: string): string {
+    const held = this.peek(secretId, purpose);
+    this.drop(secretId);
+    return held.value;
   }
 
-  /** Resolves with the value when it is (or becomes) held for this purpose; rejects at the deadline. */
+  /**
+   * Resolves with the value as soon as it is (or already was) held for this purpose, and discards
+   * it. Rejects at the deadline, when the signal aborts or when the vault stops; a delivery for
+   * another purpose does not wake it and stays held.
+   */
   waitFor(
-    _secretId: string,
-    _purpose: string,
-    _timeoutMs: number,
-    _signal?: AbortSignal,
+    secretId: string,
+    purpose: string,
+    timeoutMs: number,
+    signal?: AbortSignal,
   ): Promise<string> {
-    return Promise.resolve("");
+    return new Promise<string>((resolve, reject) => {
+      const cancelled = () => invalid(`a espera pelo segredo ${secretId} foi cancelada`);
+      if (signal?.aborted) return reject(cancelled());
+      const held = this.live(secretId);
+      if (held?.purpose === purpose) {
+        this.drop(secretId);
+        return resolve(held.value);
+      }
+      const finish = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
+        this.waiters.delete(waiter);
+      };
+      const onAbort = () => {
+        finish();
+        reject(cancelled());
+      };
+      const timer = setTimeout(() => {
+        finish();
+        reject(invalid(`o segredo ${secretId} não foi entregue a tempo`));
+      }, timeoutMs);
+      const waiter: Waiter = {
+        secretId,
+        purpose,
+        resolve: (value) => {
+          finish();
+          resolve(value);
+        },
+        reject: (error) => {
+          finish();
+          reject(error);
+        },
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this.waiters.add(waiter);
+    });
   }
 
   /** How many secrets are in memory (never which, nor their values). */
@@ -157,6 +199,7 @@ export class Vault {
   /** Drops everything: nothing outlives the daemon. */
   stop(): void {
     for (const id of [...this.values.keys()]) this.drop(id);
+    for (const waiter of [...this.waiters]) waiter.reject(invalid("o cofre foi encerrado"));
   }
 
   private now(): number {
@@ -171,6 +214,33 @@ export class Vault {
       return undefined;
     }
     return held;
+  }
+
+  /** The held secret, if it is there and was delivered for this purpose; nothing is spent. */
+  private peek(secretId: string, purpose: string): Held {
+    const held = this.live(secretId);
+    if (!held) {
+      throw new FlightdeckError(
+        "not_found",
+        `o segredo ${secretId} não está com este daemon: o cofre é do app, que precisa estar aberto para entregá-lo`,
+      );
+    }
+    if (held.purpose !== purpose) {
+      throw invalid(`o segredo ${secretId} foi entregue para ${held.purpose}, não para ${purpose}`);
+    }
+    return held;
+  }
+
+  /** Hands a fresh delivery to someone waiting for exactly it. */
+  private serve(secretId: string): void {
+    const held = this.values.get(secretId) as Held;
+    for (const waiter of this.waiters) {
+      if (waiter.secretId === secretId && waiter.purpose === held.purpose) {
+        this.drop(secretId);
+        waiter.resolve(held.value);
+        return;
+      }
+    }
   }
 
   private drop(secretId: string): void {
