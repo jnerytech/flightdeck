@@ -2979,6 +2979,7 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./pairing.ts";
+export * from "./personas.ts";
 export * from "./snippets.ts";
 
 /**
