@@ -29,6 +29,9 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+/** The protocol's names, which the screen shows as they are. */
+const TRANSPORTS: McpDraft["transport"][] = ["stdio", "http", "sse"];
+
 interface TestResult {
   tools: string[];
   resources: string[];
@@ -264,9 +267,11 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
               )
             }
           >
-            <option value="stdio">stdio</option>
-            <option value="http">http</option>
-            <option value="sse">sse</option>
+            {TRANSPORTS.map((transport) => (
+              <option key={transport} value={transport}>
+                {transport}
+              </option>
+            ))}
           </select>
           {draft?.transport === "stdio" ? (
             <>

@@ -844,6 +844,7 @@ export const ptBR = {
     },
     files: {
       list: "Arquivos",
+      open: "{name} ({origin})",
       emptyClaudemd: "Nenhum CLAUDE.md neste projeto.",
       emptyAgent: "Nenhum agente neste projeto.",
       emptySkill: "Nenhuma skill neste projeto.",

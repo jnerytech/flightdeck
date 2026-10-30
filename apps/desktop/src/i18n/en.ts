@@ -840,6 +840,7 @@ export const en: Dictionary = {
     },
     files: {
       list: "Files",
+      open: "{name} ({origin})",
       emptyClaudemd: "No CLAUDE.md in this project.",
       emptyAgent: "No agents in this project.",
       emptySkill: "No skills in this project.",
