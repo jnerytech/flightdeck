@@ -581,4 +581,23 @@ export const MIGRATIONS: readonly string[] = [
     at   TEXT NOT NULL
   );
   `,
+  // Phase 21: teams, a coordinator and workers with cards of their own. The members are JSON;
+  // the live session of a worker is the one its card is running.
+  `
+  CREATE TABLE teams (
+    id                   TEXT PRIMARY KEY,
+    name                 TEXT NOT NULL,
+    project_id           TEXT NOT NULL,
+    goal                 TEXT NOT NULL,
+    coordinator          TEXT,
+    members              TEXT NOT NULL,
+    checks               TEXT NOT NULL,
+    state                TEXT NOT NULL,
+    paused_by            TEXT,
+    instructions_version TEXT NOT NULL,
+    created_at           TEXT NOT NULL
+  );
+
+  CREATE INDEX teams_project ON teams (project_id, created_at);
+  `,
 ];

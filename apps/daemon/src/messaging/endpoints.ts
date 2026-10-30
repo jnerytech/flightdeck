@@ -76,7 +76,7 @@ export interface LocalEndpointsOptions {
   readFile?: ((path: string) => string | null) | undefined;
 }
 
-const MANAGED_STATE: Record<SessionStatus, MessagingSession["state"]> = {
+export const MANAGED_STATE: Record<SessionStatus, MessagingSession["state"]> = {
   starting: "running",
   running: "running",
   awaiting_permission: "waiting",
