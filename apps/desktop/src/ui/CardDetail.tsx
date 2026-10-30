@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n/context";
+import type { Key } from "../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
-import { CHECK_LABELS, PR_LABELS } from "../lib/board.ts";
 import { usd } from "../lib/costs.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -18,8 +19,6 @@ import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
-
-const UNSENT = "Há alterações não enviadas que serão perdidas.";
 
 interface Confirming {
   kind: "complete" | "discard";
@@ -34,6 +33,7 @@ export function CardDetail(props: {
   cardId: string;
   onBack(): void;
 }) {
+  const t = useT();
   const { store, hostId, cardId } = props;
   const card = props.state.cards[sessionKey(hostId, cardId)];
   const [description, setDescription] = useState(card?.description ?? "");
@@ -105,7 +105,7 @@ export function CardDetail(props: {
     if (missing) void store.hostCommand(hostId, "card.get", { cardId });
   }, [store, hostId, cardId, missing]);
 
-  if (!card) return <p className="p-6 text-muted-foreground text-sm">Card não encontrado.</p>;
+  if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -113,7 +113,7 @@ export function CardDetail(props: {
       : null;
     const files = current?.files ?? [];
     const unsent = files.some((f) => f.uncommitted) || (files.length > 0 && !card.prUrl);
-    setConfirming({ kind: "discard", warning: unsent ? UNSENT : null });
+    setConfirming({ kind: "discard", warning: unsent ? t("cardUi.unsent") : null });
   };
 
   const confirm = async () => {
@@ -154,19 +154,21 @@ export function CardDetail(props: {
       subtitle={
         cardCost !== null ? (
           <span>
-            custo estimado: <output aria-label="Custo do card">{usd(cardCost)}</output>
+            {t("session.cost")} <output aria-label={t("cardUi.cost")}>{usd(cardCost)}</output>
           </span>
         ) : undefined
       }
       actions={
         <>
           <Button variant="outline" size="sm" onClick={props.onBack}>
-            Voltar ao board
+            {t("cardUi.back")}
           </Button>
           {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
-          {card.queued && <Badge variant="outline">na fila</Badge>}
-          {card.prState && <Badge variant="outline">{PR_LABELS[card.prState]}</Badge>}
-          {card.checksState && <Badge variant="outline">{CHECK_LABELS[card.checksState]}</Badge>}
+          {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
+          {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
+          {card.checksState && (
+            <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
+          )}
           {/* The worktree, resuming the card's session once Claude Code named it. */}
           {card.worktreePath && (!session || session.claudeSessionId) && (
             <TerminalButton
@@ -182,7 +184,7 @@ export function CardDetail(props: {
         {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
         <div className="flex items-start gap-2">
           <Textarea
-            aria-label="Descrição"
+            aria-label={t("cardUi.description")}
             value={description}
             className="min-h-20 flex-1"
             onChange={(e) => setDescription(e.target.value)}
@@ -191,12 +193,12 @@ export function CardDetail(props: {
             variant="outline"
             onClick={() => void store.hostCommand(hostId, "card.update", { cardId, description })}
           >
-            Salvar descrição
+            {t("cardUi.saveDescription")}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            aria-label="Workflow"
+            aria-label={t("cardUi.workflow")}
             className={SELECT}
             value={workflow}
             onChange={(e) => {
@@ -204,7 +206,7 @@ export function CardDetail(props: {
               setInputs({});
             }}
           >
-            <option value="">Nenhum (card simples)</option>
+            <option value="">{t("cardUi.noWorkflow")}</option>
             {workflows.map((w) => (
               <option key={w.name} value={w.name}>
                 {w.name}
@@ -214,7 +216,7 @@ export function CardDetail(props: {
           {chosen?.inputs.map((name) => (
             <Input
               key={name}
-              aria-label={`Input ${name}`}
+              aria-label={t("cardUi.input", { name })}
               placeholder={name}
               className="w-48"
               value={inputs[name] ?? ""}
@@ -231,39 +233,43 @@ export function CardDetail(props: {
               })
             }
           >
-            Iniciar
+            {t("cardUi.start")}
           </Button>
           <Button
             variant="outline"
             onClick={() => void store.hostCommand(hostId, "card.stop", { cardId })}
           >
-            Parar
+            {t("cardUi.stop")}
           </Button>
           <Button
             variant="outline"
             onClick={() => void store.hostCommand(hostId, "card.pr.create", { cardId })}
           >
-            Abrir PR
+            {t("cardUi.openPr")}
           </Button>
           <Button
             variant="outline"
             onClick={() => setConfirming({ kind: "complete", warning: null })}
           >
-            Concluir
+            {t("cardUi.complete")}
           </Button>
           <Button variant="destructive" onClick={() => void askDiscard()}>
-            Descartar
+            {t("cardUi.discard")}
           </Button>
         </div>
         {confirming && (
           <ConfirmDialog
             message={
               confirming.kind === "complete"
-                ? "Concluir este card? A worktree é removida se não houver alterações pendentes."
-                : "Descartar este card? A worktree e a branch local são apagadas."
+                ? t("cardUi.completeMessage")
+                : t("cardUi.discardMessage")
             }
             warning={confirming.warning}
-            confirmLabel={confirming.kind === "complete" ? "Concluir card" : "Descartar card"}
+            confirmLabel={
+              confirming.kind === "complete"
+                ? t("cardUi.completeConfirm")
+                : t("cardUi.discardConfirm")
+            }
             destructive={confirming.kind === "discard"}
             onConfirm={() => void confirm()}
             onCancel={() => setConfirming(null)}
@@ -271,25 +277,32 @@ export function CardDetail(props: {
         )}
         <div className="flex items-start gap-2">
           <Textarea
-            aria-label="Ajuste"
-            placeholder="O que ajustar"
+            aria-label={t("cardUi.adjustment")}
+            placeholder={t("cardUi.adjustmentPlaceholder")}
             value={adjustment}
             className="min-h-16 flex-1"
             onChange={(e) => setAdjustment(e.target.value)}
           />
           <Button variant="outline" onClick={sendAdjustment}>
-            Pedir ajuste
+            {t("cardUi.askAdjustment")}
           </Button>
         </div>
         <section className="flex flex-col gap-2">
-          <h3 className="font-semibold text-sm">Execuções</h3>
-          <ul aria-label="Execuções" className="flex flex-col gap-1 text-muted-foreground text-xs">
+          <h3 className="font-semibold text-sm">{t("cardUi.runs")}</h3>
+          <ul
+            aria-label={t("cardUi.runs")}
+            className="flex flex-col gap-1 text-muted-foreground text-xs"
+          >
             {card.runs.map((run, i) => (
               <li key={run.queuedAt} className="tabular-nums">
                 {[
                   `#${i + 1}`,
                   when(run.queuedAt),
-                  run.endedAt ? "encerrada" : run.startedAt ? "ativa" : "na fila",
+                  run.endedAt
+                    ? t("cardUi.runEnded")
+                    : run.startedAt
+                      ? t("cardUi.runActive")
+                      : t("cardUi.runQueued"),
                 ].join(" · ")}
               </li>
             ))}
@@ -314,7 +327,7 @@ export function CardDetail(props: {
             className="aria-pressed:bg-accent"
             onClick={() => setTab("conversation")}
           >
-            Conversa
+            {t("cardUi.conversation")}
           </Button>
           <Button
             variant="outline"
@@ -323,15 +336,17 @@ export function CardDetail(props: {
             className="aria-pressed:bg-accent"
             onClick={() => setTab("diff")}
           >
-            Diff
+            {t("cardUi.diff")}
           </Button>
         </div>
         {tab === "diff" ? (
           diff && <DiffView diff={diff} />
         ) : openedStep?.type === "check" ? (
           <div className="flex flex-col gap-2">
-            <p className="text-muted-foreground text-xs">{`código ${openedStep.exitCode}`}</p>
-            <section aria-label={`Saída do check ${openedStep.stepId}`}>
+            <p className="text-muted-foreground text-xs">
+              {t("cardUi.exitCode", { code: openedStep.exitCode ?? "" })}
+            </p>
+            <section aria-label={t("cardUi.checkOutput", { step: openedStep.stepId })}>
               <pre className="overflow-x-auto rounded-md border bg-muted p-3 font-mono text-xs">
                 {openedStep.output}
               </pre>
@@ -340,7 +355,7 @@ export function CardDetail(props: {
         ) : openedStep && stepSession ? (
           <div
             role="log"
-            aria-label={`Conversa da etapa ${openedStep.stepId}`}
+            aria-label={t("cardUi.stepConversation", { step: openedStep.stepId })}
             className="h-[32rem] overflow-hidden rounded-lg border"
           >
             <SessionView
@@ -356,7 +371,7 @@ export function CardDetail(props: {
         ) : session && sessionId ? (
           <div
             role="log"
-            aria-label="Conversa do card"
+            aria-label={t("cardUi.cardConversation")}
             className="h-[32rem] overflow-hidden rounded-lg border"
           >
             <SessionView
@@ -370,7 +385,7 @@ export function CardDetail(props: {
             />
           </div>
         ) : (
-          <p className="text-muted-foreground text-sm">Sem sessão ainda.</p>
+          <p className="text-muted-foreground text-sm">{t("cardUi.noSession")}</p>
         )}
       </div>
     </Page>

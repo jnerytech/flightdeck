@@ -112,7 +112,7 @@ export function ProjectsPage(props: {
         {!loading && list?.projects.length === 0 && (
           <EmptyState title={t("states.emptyProjects")} />
         )}
-        <ul aria-label="Projetos" className="flex flex-col">
+        <ul aria-label={t("projectsUi.list")} className="flex flex-col">
           {(list?.projects ?? []).map((project) => (
             <li key={project.id} className="flex items-center gap-3">
               <Button
@@ -121,7 +121,9 @@ export function ProjectsPage(props: {
                   board ? props.onOpenBoard(project.id) : props.onOpenWorkflows(project)
                 }
               >
-                {board ? `Abrir board de ${project.name}` : `Workflows de ${project.name}`}
+                {board
+                  ? t("projectsUi.openBoard", { name: project.name })
+                  : t("projectsUi.workflows", { name: project.name })}
               </Button>
               <span className="text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
             </li>
@@ -134,7 +136,7 @@ export function ProjectsPage(props: {
   const SELECT =
     "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
-    <Page title={`Projetos de ${props.hostName}`}>
+    <Page title={t("projectsUi.title", { host: props.hostName })}>
       <div className="flex max-w-3xl flex-col gap-6">
         {loading && <LoadingState label={t("states.loadingProjects")} />}
         {!loading && list?.projects.length === 0 && (
@@ -146,14 +148,14 @@ export function ProjectsPage(props: {
             }
           />
         )}
-        <ul aria-label="Projetos" className="flex flex-col gap-2">
+        <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">
           {(list?.projects ?? []).map((project) => (
             <li
               key={project.id}
               className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm"
             >
               <Button variant="ghost" size="sm" onClick={() => props.onOpenBoard(project.id)}>
-                {`Abrir board de ${project.name}`}
+                {t("projectsUi.openBoard", { name: project.name })}
               </Button>
               <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
               <TerminalButton
@@ -163,7 +165,7 @@ export function ProjectsPage(props: {
                 name={project.name}
               />
               <Button variant="ghost" size="sm" onClick={() => props.onOpenWorkflows(project)}>
-                {`Workflows de ${project.name}`}
+                {t("projectsUi.workflows", { name: project.name })}
               </Button>
               <Button
                 variant="ghost"
@@ -173,47 +175,59 @@ export function ProjectsPage(props: {
                   setDraft(fromProject(project));
                 }}
               >
-                {`Editar ${project.name}`}
+                {t("projectsUi.edit", { name: project.name })}
               </Button>
             </li>
           ))}
         </ul>
-        <Panel title={editing ? "Editar projeto" : "Novo projeto"}>
+        <Panel title={editing ? t("projectsUi.editTitle") : t("projectsUi.newTitle")}>
           <Input
             ref={pathField}
-            aria-label="Caminho do repositório"
+            aria-label={t("projectsUi.path")}
             placeholder={t("projects.pathPlaceholder")}
             disabled={editing !== null}
             {...field("path")}
           />
-          <Input aria-label="Nome" placeholder="Nome" {...field("name")} />
-          <Input aria-label="Branch base" placeholder="Branch base" {...field("baseBranch")} />
-          <select aria-label="Provedor de PR" className={SELECT} {...field("prProvider")}>
-            <option value="none">Sem PR</option>
+          <Input
+            aria-label={t("projectsUi.name")}
+            placeholder={t("projectsUi.name")}
+            {...field("name")}
+          />
+          <Input
+            aria-label={t("projectsUi.baseBranch")}
+            placeholder={t("projectsUi.baseBranch")}
+            {...field("baseBranch")}
+          />
+          <select
+            aria-label={t("projectsUi.prProvider")}
+            className={SELECT}
+            {...field("prProvider")}
+          >
+            <option value="none">{t("projectsUi.noPr")}</option>
             <option value="github">GitHub (gh)</option>
             <option value="azure-devops">Azure DevOps (az)</option>
           </select>
           <Input
-            aria-label="Script de preparação"
-            placeholder="Script de preparação (opcional)"
+            aria-label={t("projectsUi.setup")}
+            placeholder={t("projectsUi.setupPlaceholder")}
             {...field("setupScript")}
           />
           <Textarea
-            aria-label="Modelo de instruções"
-            placeholder="Instruções anexadas ao prompt de todo card"
+            aria-label={t("projectsUi.template")}
+            placeholder={t("projectsUi.templatePlaceholder")}
             {...field("promptTemplate")}
           />
           <Button className="self-start" onClick={() => void submit()}>
-            {editing ? "Salvar projeto" : "Cadastrar projeto"}
+            {editing ? t("projectsUi.save") : t("projectsUi.register")}
           </Button>
         </Panel>
         {editing && props.rules && (
           <RulesSection key={editing} store={store} hostId={hostId} projectId={editing} />
         )}
-        <Panel title="Limite do host">
+        <Panel title={t("projectsUi.hostLimit")}>
           <div className="flex items-center gap-2">
             <Input
-              aria-label="Execuções em paralelo"
+              aria-label={t("projectsUi.parallel")}
               type="number"
               min={1}
               className="w-28"
@@ -228,7 +242,7 @@ export function ProjectsPage(props: {
                 })
               }
             >
-              Salvar limite
+              {t("projectsUi.saveLimit")}
             </Button>
           </div>
         </Panel>

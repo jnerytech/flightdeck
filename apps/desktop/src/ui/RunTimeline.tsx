@@ -4,16 +4,19 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n/context";
+import type { Key } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
-import { budgetLines, RUN_LABELS, STEP_LABELS, stepDuration, stepUsage } from "../lib/runs.ts";
+import { budgetLines, stepDuration, stepUsage } from "../lib/runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 
 /** Turns, minutes and estimated cost against the run's budget. */
 function BudgetMeter({ run }: { run: WorkflowRun }) {
+  const t = useT();
   return (
-    <section aria-label="Orçamento" className="flex flex-col gap-1 text-sm">
-      {budgetLines(run).map((line) => (
+    <section aria-label={t("runUi.budget")} className="flex flex-col gap-1 text-sm">
+      {budgetLines(run, t).map((line) => (
         <div key={line.label} className="flex items-center gap-3">
           <span className="w-56 text-muted-foreground text-xs tabular-nums">{line.text}</span>
           {line.max !== undefined && <Meter label={line.label} value={line.value} max={line.max} />}
@@ -28,11 +31,12 @@ function GateCard(props: {
   step: StepRun;
   onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
 }) {
+  const t = useT();
   const { step } = props;
   const [note, setNote] = useState("");
   return (
     <section
-      aria-label={`Gate ${step.stepId}`}
+      aria-label={t("runUi.gate", { step: step.stepId })}
       className="mt-2 flex flex-col gap-2 rounded-lg border border-status-needs-you/50 p-3 text-sm"
     >
       <p>{step.message}</p>
@@ -42,17 +46,17 @@ function GateCard(props: {
         </pre>
       )}
       <Textarea
-        aria-label="Nota do gate"
-        placeholder="Nota (opcional)"
+        aria-label={t("runUi.gateNote")}
+        placeholder={t("runUi.notePlaceholder")}
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
       <div className="flex gap-2">
         <Button size="sm" onClick={() => props.onRespond(step, "approve", note)}>
-          Aprovar
+          {t("runUi.approve")}
         </Button>
         <Button variant="outline" size="sm" onClick={() => props.onRespond(step, "reject", note)}>
-          Recusar
+          {t("runUi.reject")}
         </Button>
       </div>
     </section>
@@ -72,40 +76,47 @@ export function RunTimeline(props: {
   /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
   costUsd?: number | null;
 }) {
+  const t = useT();
   const { run } = props;
   return (
-    <section aria-label="Execução do workflow" className="flex flex-col gap-3">
-      <h3 className="font-semibold text-sm">{`Workflow ${run.workflowName} · ${RUN_LABELS[run.status]}`}</h3>
+    <section aria-label={t("runUi.run")} className="flex flex-col gap-3">
+      <h3 className="font-semibold text-sm">
+        {t("runUi.title", {
+          name: run.workflowName,
+          status: t(`runUi.status.${run.status}` as Key),
+        })}
+      </h3>
       {typeof props.costUsd === "number" && (
         <p className="text-muted-foreground text-xs">
-          custo estimado das sessões:{" "}
-          <output aria-label="Custo da execução">{usd(props.costUsd)}</output>
+          {t("runUi.costLine")} <output aria-label={t("runUi.cost")}>{usd(props.costUsd)}</output>
         </p>
       )}
       {run.quotaUntil ? (
-        <InlineNotice>{`aguardando cota até ${props.formatTime(run.quotaUntil)}`}</InlineNotice>
+        <InlineNotice>
+          {t("runUi.waitingQuota", { time: props.formatTime(run.quotaUntil) })}
+        </InlineNotice>
       ) : (
         run.statusReason && <InlineNotice>{run.statusReason}</InlineNotice>
       )}
       <BudgetMeter run={run} />
-      <ol aria-label="Etapas" className="flex flex-col gap-1 text-sm">
+      <ol aria-label={t("runUi.steps")} className="flex flex-col gap-1 text-sm">
         {run.steps.map((step) => {
           const line = [
             step.stepId,
-            `tentativa ${step.attempt}`,
-            STEP_LABELS[step.status],
+            t("runUi.attempt", { n: step.attempt }),
+            t(`runUi.step.${step.status}` as Key),
             stepDuration(step),
-            ...(step.usage ? [stepUsage(step.usage)] : []),
+            ...(step.usage ? [stepUsage(step.usage, t)] : []),
           ].join(" · ");
           const opens = step.type === "check" || (step.type === "agent" && step.sessionId);
-          const attempt = step.attempt > 1 ? ` (tentativa ${step.attempt})` : "";
+          const attempt = step.attempt > 1 ? t("runUi.attemptNote", { n: step.attempt }) : "";
           return (
             <li key={stepKey(step)}>
               {opens ? (
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label={`Abrir etapa ${step.stepId}${attempt}`}
+                  aria-label={t("runUi.openStep", { step: step.stepId, attempt })}
                   onClick={() => props.onOpenStep(step)}
                 >
                   {line}

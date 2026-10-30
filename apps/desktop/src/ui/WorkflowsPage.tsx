@@ -4,13 +4,15 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/context";
+import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** What trusting a workflow allows, said before the user confirms it. */
-function trustMessage(workflow: WorkflowInfo): string {
-  const commands = workflow.checks.join("; ") || "nenhum";
-  return `Confiar no workflow ${workflow.name}? Ele poderá rodar estes comandos na worktree dos cards: ${commands}.`;
+function trustMessage(workflow: WorkflowInfo, t: T): string {
+  const commands = workflow.checks.join("; ") || t("workflowsUi.none");
+  return t("workflowsUi.trustMessage", { name: workflow.name, commands });
 }
 
 /**
@@ -23,6 +25,7 @@ export function WorkflowsPage(props: {
   projectId: string;
   projectName: string;
 }) {
+  const t = useT();
   const { store, hostId, projectId } = props;
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
   const [trusting, setTrusting] = useState<WorkflowInfo | null>(null);
@@ -45,22 +48,27 @@ export function WorkflowsPage(props: {
 
   return (
     <Page
-      title={`Workflows de ${props.projectName}`}
-      subtitle="Lidos de .flightdeck/workflows na branch base do projeto."
+      title={t("workflowsUi.title", { project: props.projectName })}
+      subtitle={t("workflowsUi.subtitle")}
     >
-      <ul aria-label="Workflows" className="flex flex-col gap-3">
+      <ul aria-label={t("workflowsUi.list")} className="flex flex-col gap-3">
         {workflows.map((workflow) => (
           <li
             key={workflow.name}
-            aria-label={`Workflow ${workflow.name}`}
+            aria-label={t("workflowsUi.item", { name: workflow.name })}
             className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-sm"
           >
             <div className="flex items-center gap-2">
               <strong>{workflow.name}</strong>{" "}
-              <Badge variant="outline">{workflow.trusted ? "confiado" : "não confiado"}</Badge>
+              <Badge variant="outline">
+                {workflow.trusted ? t("workflowsUi.trusted") : t("workflowsUi.untrusted")}
+              </Badge>
             </div>
             {workflow.errors.length > 0 && (
-              <ul aria-label={`Erros de ${workflow.name}`} className="flex flex-col gap-1">
+              <ul
+                aria-label={t("workflowsUi.errors", { name: workflow.name })}
+                className="flex flex-col gap-1"
+              >
                 {workflow.errors.map((error) => (
                   <li key={error}>
                     <InlineNotice tone="error">{error}</InlineNotice>
@@ -68,7 +76,10 @@ export function WorkflowsPage(props: {
                 ))}
               </ul>
             )}
-            <ul aria-label={`Comandos de ${workflow.name}`} className="flex flex-col gap-1">
+            <ul
+              aria-label={t("workflowsUi.commands", { name: workflow.name })}
+              className="flex flex-col gap-1"
+            >
               {workflow.checks.map((command) => (
                 <li key={command}>
                   <code className="rounded bg-muted px-1 font-mono text-xs">{command}</code>
@@ -82,7 +93,7 @@ export function WorkflowsPage(props: {
                 className="self-start"
                 onClick={() => setTrusting(workflow)}
               >
-                {`Confiar em ${workflow.name}`}
+                {t("workflowsUi.trust", { name: workflow.name })}
               </Button>
             )}
           </li>
@@ -90,8 +101,8 @@ export function WorkflowsPage(props: {
       </ul>
       {trusting && (
         <ConfirmDialog
-          message={trustMessage(trusting)}
-          confirmLabel="Confiar"
+          message={trustMessage(trusting, t)}
+          confirmLabel={t("workflowsUi.trustConfirm")}
           onConfirm={() => void trust(trusting)}
           onCancel={() => setTrusting(null)}
         />

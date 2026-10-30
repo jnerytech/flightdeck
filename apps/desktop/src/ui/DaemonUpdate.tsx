@@ -17,7 +17,7 @@ export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
   if (progress?.failed) {
     return (
       <InlineNotice>
-        {t("daemonUpdate.failed", { reason: progress.failed }) + " "}
+        {`${t("daemonUpdate.failed", { reason: progress.failed })} `}
         <code className="rounded bg-muted px-1 font-mono text-xs">
           flightdeckd update --from {t("daemonUpdate.binary")}
         </code>

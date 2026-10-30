@@ -15,15 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { useT } from "@/i18n/context";
+import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import {
-  CHECK_LABELS,
-  COLUMNS,
-  filterCards,
-  PR_LABELS,
-  positionBefore,
-  projectCards,
-} from "../lib/board.ts";
+import { COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { StatusBadge } from "./StatusBadge.tsx";
 
 function CardTile(props: {
@@ -36,11 +31,12 @@ function CardTile(props: {
   onDragStart(): void;
   onDropOn(): void;
 }) {
+  const t = useT();
   const { card } = props;
   return (
     <li
       draggable
-      aria-label={`Card ${card.title}`}
+      aria-label={t("kanban.card", { title: card.title })}
       className="flex cursor-grab flex-col gap-2 rounded-md border bg-card p-2 text-sm hover:bg-accent"
       onDragStart={props.onDragStart}
       onDrop={(e) => {
@@ -70,16 +66,18 @@ function CardTile(props: {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
-        {card.queued && <Badge variant="outline">na fila</Badge>}
+        {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
         {card.queueReason === "quota" && (
           <Badge variant="outline" className="text-status-needs-you">
             {card.quotaUntil
-              ? `aguardando cota até ${props.formatTime(card.quotaUntil)}`
-              : "aguardando cota"}
+              ? t("kanban.waitingQuotaUntil", { time: props.formatTime(card.quotaUntil) })
+              : t("kanban.waitingQuota")}
           </Badge>
         )}
-        {card.prState && <Badge variant="outline">{PR_LABELS[card.prState]}</Badge>}
-        {card.checksState && <Badge variant="outline">{CHECK_LABELS[card.checksState]}</Badge>}
+        {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
+        {card.checksState && (
+          <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
+        )}
       </div>
       {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
     </li>
@@ -139,33 +137,33 @@ export function BoardView(props: {
 
   return (
     <Page
-      title={`Board de ${project?.name ?? ""}`}
+      title={t("kanban.boardOf", { project: project?.name ?? "" })}
       toolbar={
-        <Toolbar label="Filtros">
+        <Toolbar label={t("hub.filters")}>
           <Input
-            aria-label="Filtrar cards"
-            placeholder="Filtrar"
+            aria-label={t("kanban.filter")}
+            placeholder={t("hub.filterPlaceholder")}
             className="h-8 w-40 text-xs"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
           <Input
             ref={titleField}
-            aria-label="Título do card"
-            placeholder="Título"
+            aria-label={t("kanban.titleLabel")}
+            placeholder={t("kanban.titlePlaceholder")}
             className="h-8 w-48 text-xs"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <Input
-            aria-label="Descrição do card"
-            placeholder="Descrição"
+            aria-label={t("kanban.descriptionLabel")}
+            placeholder={t("kanban.descriptionPlaceholder")}
             className="h-8 min-w-48 flex-1 text-xs"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
           <Button size="sm" onClick={create}>
-            Criar card
+            {t("kanban.create")}
           </Button>
         </Toolbar>
       }
