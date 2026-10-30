@@ -574,6 +574,7 @@ export const en: Dictionary = {
     unpin: "Unpin tab {title}",
   },
   terminalUi: {
+    sshBadge: "SSH · {name}",
     title: "Terminal",
     copy: "Copy",
     paste: "Paste",

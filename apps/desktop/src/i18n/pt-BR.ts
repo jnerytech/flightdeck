@@ -577,6 +577,7 @@ export const ptBR = {
     unpin: "Desafixar aba {title}",
   },
   terminalUi: {
+    sshBadge: "SSH · {name}",
     title: "Terminal",
     copy: "Copiar",
     paste: "Colar",

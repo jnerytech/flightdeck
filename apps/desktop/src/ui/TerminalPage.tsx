@@ -18,6 +18,9 @@ import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts"
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { createXtermScreen, type XtermDeps, type XtermScreen } from "../lib/xterm-screen.ts";
 
+/** The tags that mark a destino as production, whatever their case. */
+const PROD_TAGS: ReadonlySet<string> = new Set(["prod", "produção", "producao"]);
+
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 export function TerminalPage(props: {
   store: AppStore;
@@ -142,10 +145,29 @@ export function TerminalPage(props: {
       ? t("terminalUi.state.ended", { code: String(state.exitCode) })
       : t(`terminalUi.state.${state.state}`);
 
-  return (
+  const ssh = store.sshTerminals.get(`${hostId}/${terminalId}`);
+  const prod = ssh?.tags.some((tag) => PROD_TAGS.has(tag.toLowerCase())) ?? false;
+
+  const page = (
     <Page
       title={t("terminalUi.title")}
-      subtitle={<span role="status">{status}</span>}
+      subtitle={
+        <span className="flex flex-wrap items-center gap-2">
+          <span role="status">{status}</span>
+          {ssh && (
+            <>
+              <span className="rounded bg-muted px-1.5 text-xs">
+                {t("terminalUi.sshBadge", { name: ssh.name })}
+              </span>
+              {ssh.tags.map((tag) => (
+                <span key={tag} className="rounded bg-muted px-1.5 text-xs">
+                  {tag}
+                </span>
+              ))}
+            </>
+          )}
+        </span>
+      }
       actions={
         <>
           {(state.state === "detached" || state.state === "ended") && (
@@ -238,6 +260,17 @@ export function TerminalPage(props: {
         />
       )}
     </Page>
+  );
+  if (!ssh) return page;
+  // A production server is easy to mistake for another: the whole screen gets a red border.
+  return (
+    <div
+      data-testid="ssh-terminal"
+      data-prod={String(prod)}
+      className={`h-full rounded-lg border-2 ${prod ? "border-destructive" : "border-transparent"}`}
+    >
+      {page}
+    </div>
   );
 }
 
