@@ -115,6 +115,43 @@ describe("snippets-escopos: do host", () => {
     expect(codeOf(() => snippets.save({ ...cmd("x"), id: "nada" }))).toBe("not_found");
   });
 
+  test("um snippet não muda de lugar na edição: do daemon para o arquivo, nem o contrário", () => {
+    const { snippets, project, writeFile } = setup();
+    const mine = snippets.save({
+      scope: "project",
+      projectPath: project,
+      name: "meu",
+      type: "command",
+      run: "ls",
+    });
+    expect(
+      codeOf(() =>
+        snippets.save({
+          id: mine.id,
+          scope: "project",
+          target: "file",
+          projectPath: project,
+          name: "meu",
+          type: "command",
+          run: "ls",
+        }),
+      ),
+    ).toBe("bad_request");
+    writeFile(SPEC_FILE);
+    expect(
+      codeOf(() =>
+        snippets.save({
+          id: `file:${project}:testes-rapidos`,
+          scope: "project",
+          projectPath: project,
+          name: "testes-rapidos",
+          type: "command",
+          run: "ls",
+        }),
+      ),
+    ).toBe("bad_request");
+  });
+
   test("um snippet com segredo é recusado, também no nome e nas tags", () => {
     const { snippets } = setup();
     const token = "ghp_0123456789abcdef0123456789abcdef0123";
