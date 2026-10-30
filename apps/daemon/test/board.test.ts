@@ -177,4 +177,28 @@ describe("board", () => {
     expect(await discarding).toMatchObject({ discarded: true, worktreePath: null });
     expect(existsSync(worktree)).toBe(false);
   });
+
+  test("a card still starting when the daemon stops leaves no unhandled error and writes nothing after", async () => {
+    // In a process of its own: an unhandled rejection there is output and an exit code to check.
+    const script = `
+      import { newBoard } from ${JSON.stringify(join(import.meta.dir, "board-helpers.ts"))};
+      const { board, store, repo } = newBoard();
+      const project = await board.addProject({ path: repo, promptTemplate: "" });
+      const card = board.createCard(project.id, { title: "Parar no meio", description: "faça" });
+      await board.startCard(card.id);
+      // The start (worktree, session) is still in flight: stop as the daemon does, then close.
+      board.stop();
+      store.close();
+      await Bun.sleep(1500);
+      console.log("fim");
+    `;
+    const proc = Bun.spawn([process.execPath, "-e", script], { stdout: "pipe", stderr: "pipe" });
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    expect(stderr).not.toContain("closed database");
+    expect({ code, stdout: stdout.trim() }).toEqual({ code: 0, stdout: "fim" });
+  });
 });
