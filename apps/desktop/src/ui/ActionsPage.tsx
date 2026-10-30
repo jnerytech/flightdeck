@@ -1,4 +1,4 @@
-import type { ActionInfo } from "@flightdeck/protocol";
+import type { ActionInfo, ActionRunInfo } from "@flightdeck/protocol";
 import { Terminal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
@@ -17,6 +17,42 @@ function whereText(t: T, action: ActionInfo): string {
   return t("actionsUi.here");
 }
 
+/** One action's runs, newest first; the output is shown as the daemon masked it. */
+function Runs(props: { store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }) {
+  const { store, action } = props;
+  const { t } = store.i18n;
+  if (props.runs.length === 0) {
+    return <p className="text-muted-foreground text-xs">{t("actionsUi.noRuns")}</p>;
+  }
+  return (
+    <ul aria-label={t("actionsUi.runs", { name: action.name })} className="flex flex-col gap-2">
+      {props.runs.map((run) => (
+        <li key={run.id} className="flex flex-col gap-1 text-xs">
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <time dateTime={run.startedAt} className="text-muted-foreground tabular-nums">
+              {store.formatDateTime(run.startedAt)}
+            </time>
+            <span>{t(`actionsUi.requester.${run.requestedBy}`)}</span>
+            <strong className={run.exitCode === 0 ? "text-status-idle" : "text-status-error"}>
+              {t("actionsUi.exit", { code: run.exitCode })}
+            </strong>
+            <span className="text-muted-foreground tabular-nums">
+              {(run.durationMs / 1000).toFixed(1)} s
+            </span>
+            {run.timedOut && <span>{t("actionsUi.timedOut")}</span>}
+            {run.truncated && <span>{t("actionsUi.truncated")}</span>}
+          </span>
+          {run.output && (
+            <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono">
+              {run.output}
+            </pre>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * A project's actions: the commands that use a vault secret without Claude seeing it, each with
  * where it runs, how it asks for approval, the secrets it uses and its parameters.
@@ -31,6 +67,8 @@ export function ActionsPage(props: {
   const { t } = store.i18n;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  /** The runs of the actions whose history is open, by `source:name`. */
+  const [history, setHistory] = useState<Record<string, ActionRunInfo[]>>({});
   const [trusting, setTrusting] = useState<ActionInfo | null>(null);
   const loading = useMinLoading(actions === null);
 
@@ -44,6 +82,19 @@ export function ActionsPage(props: {
     void load();
   }, [load]);
 
+  const toggleRuns = async (action: ActionInfo) => {
+    const key = `${action.source}:${action.name}`;
+    if (history[key]) {
+      const { [key]: _closed, ...rest } = history;
+      setHistory(rest);
+      return;
+    }
+    const result = await store.hostCommand(hostId, "actions.runs", {
+      projectId,
+      name: action.name,
+    });
+    if (result) setHistory({ ...history, [key]: result.runs });
+  };
   const trust = async (action: ActionInfo) => {
     setTrusting(null);
     const updated = await store.hostCommand(hostId, "actions.trust", {
@@ -79,9 +130,10 @@ export function ActionsPage(props: {
           {(actions ?? []).map((action) => {
             const secrets = [...action.secrets.values, ...action.secrets.files];
             const params = Object.keys(action.params);
+            const key = `${action.source}:${action.name}`;
             return (
               <li
-                key={`${action.source}:${action.name}`}
+                key={key}
                 aria-label={t("actionsUi.row", { name: action.name })}
                 className="flex flex-col gap-1 rounded-lg border bg-card p-3 text-sm"
               >
@@ -103,6 +155,18 @@ export function ActionsPage(props: {
                     {t("actionsUi.secrets", { names: secrets.join(", ") })}
                   </span>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="self-start"
+                  aria-label={t(history[key] ? "actionsUi.hideRuns" : "actionsUi.showRuns", {
+                    name: action.name,
+                  })}
+                  onClick={() => void toggleRuns(action)}
+                >
+                  {t(history[key] ? "actionsUi.hideRunsButton" : "actionsUi.runsButton")}
+                </Button>
+                {history[key] && <Runs store={store} action={action} runs={history[key] ?? []} />}
                 {action.changed.length > 0 && (
                   <span className="text-status-needs-you text-xs">
                     {t("actionsUi.changedSince", { what: action.changed.join(", ") })}
