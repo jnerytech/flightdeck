@@ -313,3 +313,13 @@ describe("issues-ui: refreshing the list", () => {
     expect(issueRow(3)).not.toBeNull();
   });
 });
+
+describe("issues-ui: the issue's link in the panel", () => {
+  test("the open-issue button of a row opens the issue in the browser", async () => {
+    const { opened } = await openBoard();
+    await openPanel();
+    await settle(() => rows() === 2);
+    await click("Abrir issue Acme/App#2", issueRow(2));
+    expect(opened).toEqual(["https://github.com/Acme/App/issues/2"]);
+  });
+});
