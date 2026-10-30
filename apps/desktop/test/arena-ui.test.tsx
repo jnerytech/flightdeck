@@ -192,4 +192,18 @@ describe("arena-ui", () => {
     expect(choose).not.toBeNull();
     expect(choose?.disabled || idle()).toBe(true);
   });
+
+  test("Cancelar and Escape close the form without creating an arena", async () => {
+    const { board, card } = await openCard();
+    await click("Iniciar em arena");
+    await click("Cancelar", startDialog());
+    expect(startDialog()).toBeNull();
+    await click("Iniciar em arena");
+    await act(async () => {
+      fireEvent.keyDown(startDialog() as HTMLElement, { key: "Escape" });
+    });
+    expect(startDialog()).toBeNull();
+    expect(comparison()).toBeNull();
+    expect((await board.arena(card.id)).variants).toHaveLength(0);
+  });
 });
