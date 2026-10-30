@@ -90,7 +90,9 @@ Para compilar a partir do código-fonte, veja o [manual](docs/manual/pt-BR.md#a-
    ~/.flightdeck/bin/flightdeckd service install
    ```
 
-   A primeira execução cria `~/.flightdeck/config.json`. Ponha em `allowedRoots` as pastas onde
+   Os comandos abaixo supõem `~/.flightdeck/bin` no seu `PATH`; senão, use o caminho completo
+   (`~\.flightdeck\bin\flightdeckd.exe` no Windows). A primeira execução cria
+   `~/.flightdeck/config.json`. Ponha em `allowedRoots` as pastas onde
    as sessões podem rodar (com a lista vazia nenhuma sessão pode ser criada) e reinicie:
    `flightdeckd service stop && flightdeckd service start`. Para um host que não seja esta
    máquina, defina também `bind` e `allowedNetworks`

@@ -87,7 +87,9 @@ Building from source is covered in the [manual](docs/manual/en.md#from-source).
    ~/.flightdeck/bin/flightdeckd service install
    ```
 
-   The first run creates `~/.flightdeck/config.json`. Set `allowedRoots` there to the folders
+   The commands below assume `~/.flightdeck/bin` is on your `PATH`; otherwise use the full path
+   (`~\.flightdeck\bin\flightdeckd.exe` on Windows). The first run creates
+   `~/.flightdeck/config.json`. Set `allowedRoots` there to the folders
    where sessions may run (with an empty list no session can be created), then restart:
    `flightdeckd service stop && flightdeckd service start`. For a host other than this machine,
    also set `bind` and `allowedNetworks`

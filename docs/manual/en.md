@@ -76,7 +76,10 @@ are written in Portuguese.
 
 UI labels follow the app's English dictionary. One exception: the section titles and some action
 labels of the `Ctrl+K` palette are currently hard-coded in Portuguese in the app, and this manual
-gives their English names (see [Palette Ctrl+K](#palette-ctrlk)).
+gives their English names (see [Palette Ctrl+K](#palette-ctrlk)). The daemon's own CLI messages
+and `--help` text are in Portuguese too; messages quoted in this manual (for example "already
+running") are translations. The manual assumes `flightdeckd` is on your `PATH`; the installed
+binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PATH`.
 
 ## Overview
 
