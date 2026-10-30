@@ -13,6 +13,7 @@ import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
 import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
+import { spawnExec } from "../../daemon/src/exec.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
@@ -28,6 +29,10 @@ import { SessionFiles } from "../../daemon/src/review/session-files.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
+import { HistoryImporter, type HistorySources } from "../../daemon/src/snippets/history.ts";
+import { SecretScanner } from "../../daemon/src/snippets/model.ts";
+import { Snippets } from "../../daemon/src/snippets/store.ts";
+import { SnippetUse } from "../../daemon/src/snippets/use.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
@@ -93,6 +98,8 @@ export function daemon(
     terminals?: boolean | "off";
     /** The actions that use a vault secret (phase 17), over this daemon's database. */
     actions?: boolean;
+    /** The snippets (phase 18) in this daemon's database; `history` names fixture shell histories. */
+    snippets?: boolean | { history?: HistorySources };
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -211,6 +218,18 @@ export function daemon(
       })
     : undefined;
   if (actions) cleanups.push(() => actions.stop());
+  const snippetScanner = new SecretScanner();
+  const snippets = options.snippets
+    ? new Snippets({ db: store.db, allowedRoots: [root], scanner: snippetScanner })
+    : undefined;
+  const snippetHistory =
+    snippets && typeof options.snippets === "object" && options.snippets.history
+      ? new HistoryImporter({
+          sources: options.snippets.history,
+          scanner: snippetScanner,
+          snippets,
+        })
+      : undefined;
   // Like the real daemon, costs come with the quota's history.
   const quotaHistory =
     options.quotaHistory?.(store.db) ??
@@ -257,6 +276,20 @@ export function daemon(
       ...(autoApprove ? { autoApprove } : {}),
       ...(terminals ? { terminals } : {}),
       ...(actions ? { actions } : {}),
+      ...(snippets
+        ? {
+            snippets,
+            snippetUse: new SnippetUse({
+              snippets,
+              ...(terminals ? { terminals } : {}),
+              manager,
+              central,
+              exec: spawnExec,
+              allowedRoots: [root],
+            }),
+          }
+        : {}),
+      ...(snippetHistory ? { snippetHistory } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,

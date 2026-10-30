@@ -201,6 +201,7 @@ export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
   | `ssh.${string}`
+  | `snippets.${string}`
   | `askpass.${string}`
   | `project.${string}`
   | `board.${string}`
