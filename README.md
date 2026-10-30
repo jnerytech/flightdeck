@@ -42,6 +42,11 @@ sessions from one place, without opening each machine.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
+- Files that are not tracked (such as `.env`) can follow a card into its worktree: list them in
+  `.worktreeinclude` at the root of the repository.
+- A Claude Code statusline with your quota and cost: set `statusLine` to
+  `flightdeckd statusline`. Flightdeck never writes that setting; to keep a statusline you already
+  have, call both in one script and join the lines (see the manual).
 
 **Cost and quota**
 
