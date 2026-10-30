@@ -65,6 +65,18 @@ import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, Vault } from "./vault.ts";
 import {
+  applyImport,
+  BackupError,
+  type BackupErrorCode,
+  type ConflictChoice,
+  exportVault,
+  fromFdvault,
+  type ImportPreview,
+  type ImportResult,
+  previewImport,
+  toFdvault,
+} from "./vault-backup.ts";
+import {
   answerVaultRequest,
   denyAllPolicy,
   type VaultOutcome,
@@ -1770,6 +1782,53 @@ export class AppStore {
       this.fail(error);
       return null;
     }
+  }
+
+  /** Saves the vault as an encrypted `cofre.fdvault`; the reason when it is refused or cancelled. */
+  async exportVault(
+    passphrase: string,
+    confirmation: string,
+  ): Promise<{ ok: true } | { ok: false; code: BackupErrorCode | "cancelled" }> {
+    try {
+      const file = await exportVault(this.vault, passphrase, confirmation, {
+        ...(this.options.vaultWorkFactor !== undefined && {
+          workFactor: this.options.vaultWorkFactor,
+        }),
+      });
+      const saved = await this.platform.saveFile("cofre.fdvault", toFdvault(file));
+      return saved ? { ok: true } : { ok: false, code: "cancelled" };
+    } catch (error) {
+      if (error instanceof BackupError) return { ok: false, code: error.code };
+      this.fail(error);
+      return { ok: false, code: "cancelled" };
+    }
+  }
+
+  /** Reads a `.fdvault` the person picks and compares it with the vault; changes nothing. */
+  async previewVaultImport(
+    passphrase: string,
+  ): Promise<
+    { ok: true; preview: ImportPreview } | { ok: false; code: BackupErrorCode | "cancelled" }
+  > {
+    try {
+      const file = await this.platform.vault.pickFile();
+      if (!file) return { ok: false, code: "cancelled" };
+      const preview = await previewImport(this.vault, fromFdvault(file.text), passphrase);
+      return { ok: true, preview };
+    } catch (error) {
+      if (error instanceof BackupError) return { ok: false, code: error.code };
+      this.fail(error);
+      return { ok: false, code: "cancelled" };
+    }
+  }
+
+  async applyVaultImport(
+    preview: ImportPreview,
+    onConflict: ConflictChoice,
+  ): Promise<ImportResult> {
+    const result = await applyImport(this.vault, preview, onConflict);
+    this.update({ secrets: this.vault.list() });
+    return result;
   }
 
   async removeSecret(id: string): Promise<void> {

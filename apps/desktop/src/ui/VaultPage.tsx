@@ -4,6 +4,7 @@ import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BackupPanel } from "@/components/vault/backup-panel";
 import { NewSecretForm } from "@/components/vault/new-secret-form";
 import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { UsageLog } from "@/components/vault/usage-log";
@@ -137,6 +138,7 @@ export function VaultPage(props: {
         <TabsList aria-label={t("vault.tabs")}>
           <TabsTrigger value="secrets">{t("vault.tabSecrets")}</TabsTrigger>
           <TabsTrigger value="usage">{t("vault.tabUsage")}</TabsTrigger>
+          <TabsTrigger value="backup">{t("vault.tabBackup")}</TabsTrigger>
         </TabsList>
         <TabsContent value="secrets">
           {state.secrets.length === 0 ? (
@@ -159,6 +161,9 @@ export function VaultPage(props: {
         </TabsContent>
         <TabsContent value="usage">
           <UsageLog store={store} state={state} />
+        </TabsContent>
+        <TabsContent value="backup">
+          <BackupPanel store={store} />
         </TabsContent>
       </Tabs>
       {asking && (
