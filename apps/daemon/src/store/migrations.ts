@@ -506,4 +506,22 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX vault_decisions_secret ON vault_decisions (secret_id, requester);
   CREATE INDEX vault_decisions_rule ON vault_decisions (rule_id, at_ms);
   `,
+  // Phase 20: the host's personas (the project ones are files) and the hashes of the project
+  // ones that were trusted.
+  `
+  CREATE TABLE personas (
+    id         TEXT PRIMARY KEY,
+    data       TEXT NOT NULL,
+    created_at TEXT,
+    updated_at TEXT
+  );
+
+  CREATE TABLE persona_trust (
+    project_path TEXT NOT NULL,
+    id           TEXT NOT NULL,
+    hash         TEXT NOT NULL,
+    trusted_at   TEXT,
+    PRIMARY KEY (project_path, id, hash)
+  );
+  `,
 ];

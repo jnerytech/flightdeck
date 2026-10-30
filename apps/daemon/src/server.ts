@@ -57,6 +57,7 @@ import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
+import type { Personas } from "./personas/store.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
@@ -163,6 +164,8 @@ export interface ServerOptions {
   snippetHistory?: HistoryImporter;
   /** Using a snippet behind `snippets.render` and `snippets.use` (phase 18). */
   snippetUse?: SnippetUse;
+  /** The personas behind `personas.*` (phase 20). */
+  personas?: Personas;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -512,6 +515,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function snippets(): Snippets {
     if (!opts.snippets) throw new FlightdeckError("invalid_state", "snippets desativados");
     return opts.snippets;
+  }
+
+  function personas(): Personas {
+    if (!opts.personas) throw new FlightdeckError("invalid_state", "personas desativadas");
+    return opts.personas;
   }
 
   function snippetUse(): SnippetUse {
@@ -1187,6 +1195,18 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
         return ok(command.type, { ...preview, ...done });
       }
+      case "personas.list":
+        return ok(command.type, personas().list(command.payload));
+      case "personas.save":
+        return ok(command.type, personas().save(command.payload));
+      case "personas.remove":
+        personas().remove(command.payload.scope, command.payload.id, command.payload.projectPath);
+        return ok(command.type);
+      case "personas.trust":
+        return ok(
+          command.type,
+          personas().trust(command.payload.projectPath, command.payload.id, command.payload.hash),
+        );
       case "snippets.render":
         return ok(command.type, await snippetUse().render(command.payload));
       case "snippets.use":

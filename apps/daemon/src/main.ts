@@ -52,6 +52,7 @@ import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
+import { Personas } from "./personas/store.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -686,6 +687,11 @@ export async function startDaemon(
     sshConnect,
     askpass,
     snippets,
+    personas: new Personas({
+      db: store.db,
+      allowedRoots: config.allowedRoots,
+      scanner: snippetScanner,
+    }),
     snippetUse: new SnippetUse({
       snippets,
       terminals,

@@ -841,6 +841,57 @@ const SnippetUseContext = z
   })
   .strict();
 
+const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
+
+/** What the form sends for a persona (phase 20): a role the Claude takes, with its suggestions. */
+export const PersonaInput = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    icon: z.string().optional(),
+    model: z.string().optional(),
+    effort: PersonaEffort.optional(),
+    /** Only restricts: the tools the persona may use; absent means the session's own. */
+    tools: z.array(z.string()).optional(),
+    /** A suggestion, never above the session's mode. */
+    permissionMode: PermissionMode.optional(),
+    /** The text added to the system prompt, at most 8 KB and with no secret. */
+    body: z.string(),
+  })
+  .strict();
+export type PersonaInput = z.infer<typeof PersonaInput>;
+
+/** A persona in its normal form: every optional field is `null` when absent. */
+export const PersonaFields = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  model: z.string().nullable(),
+  effort: PersonaEffort.nullable(),
+  tools: z.array(z.string()).nullable(),
+  permissionMode: PermissionMode.nullable(),
+  body: z.string(),
+});
+export type PersonaFields = z.infer<typeof PersonaFields>;
+
+/** A persona of this host: where it lives, the hash of a versioned file and whether it is trusted. */
+export const Persona = PersonaFields.extend({
+  scope: z.enum(["pack", "host", "project"]),
+  /** The SHA-256 of the project's file; `null` for the others. */
+  hash: z.string().nullable(),
+  /** A project persona is trusted once its hash is; the others always are. */
+  trusted: z.boolean(),
+  /** A pack persona the host has edited. */
+  modified: z.boolean(),
+});
+export type Persona = z.infer<typeof Persona>;
+
+/** The project's `.flightdeck/personas` folder and the files in it that were left out. */
+export const PersonaProjectInfo = z.object({ path: z.string(), errors: z.array(z.string()) });
+export type PersonaProjectInfo = z.infer<typeof PersonaProjectInfo>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1990,6 +2041,44 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** The personas of the host and, with `projectPath`, of that project. */
+  cmd(
+    "personas.list",
+    z
+      .object({
+        scope: z.enum(["host", "project", "all"]).optional(),
+        projectPath: z.string().optional(),
+        /** The language of the pack personas that are shown (`pt-BR` when absent). */
+        language: z.enum(["pt-BR", "en"]).optional(),
+      })
+      .strict(),
+  ),
+  /** Creates or edits a persona; a secret in it is refused with `persona_secret`. */
+  cmd(
+    "personas.save",
+    z
+      .object({
+        scope: z.enum(["host", "project"]),
+        projectPath: z.string().optional(),
+        persona: PersonaInput,
+      })
+      .strict(),
+  ),
+  cmd(
+    "personas.remove",
+    z
+      .object({
+        scope: z.enum(["host", "project"]),
+        id: z.string(),
+        projectPath: z.string().optional(),
+      })
+      .strict(),
+  ),
+  /** Trusts a project's versioned persona, by the hash `personas.list` showed. */
+  cmd(
+    "personas.trust",
+    z.object({ projectPath: z.string(), id: z.string(), hash: z.string() }).strict(),
+  ),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -2402,6 +2491,10 @@ export interface CommandResults {
   "snippets.favorite": Snippet;
   "snippets.parse": { snippets: SnippetInput[]; errors: string[] };
   "snippets.importHistory": SnippetHistoryResult;
+  "personas.list": { personas: Persona[]; project: PersonaProjectInfo | null };
+  "personas.save": Persona;
+  "personas.remove": undefined;
+  "personas.trust": Persona;
   "snippets.render": { text: string; fields: SnippetField[] };
   "snippets.use": { text: string; terminal: TerminalInfo | null };
   "askpass.watch": undefined;
@@ -2463,6 +2556,10 @@ export const ErrorCode = z.enum([
   "hostkey_changed",
   /** Running a command from a project's versioned snippets file that is not trusted (phase 18). */
   "snippet_untrusted",
+  /** A persona with a secret in it (phase 20). */
+  "persona_secret",
+  /** Using a persona from a project's versioned files that is not trusted yet (phase 20). */
+  "persona_untrusted",
   /** A snippet with a secret in it; the app offers "Transformar em ação" (phase 18). */
   "snippet_secret",
 ]);
