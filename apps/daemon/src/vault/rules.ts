@@ -4,7 +4,7 @@
  * can loosen a default but never past the ceiling (no `allow` for `run_with_secret`, none for
  * `prod` without a time window), and a use the risk classifier calls high is always asked.
  */
-import type { VaultRequester } from "@flightdeck/protocol";
+import { isProdTag, type VaultRequester } from "@flightdeck/protocol";
 
 export type Decision = "allow" | "ask" | "deny";
 export type Purpose = "ssh" | "action" | "run_with_secret";
@@ -126,8 +126,6 @@ function clock(text: unknown, allowEnd: boolean): number | null {
   const match = typeof text === "string" ? CLOCK.exec(text) : null;
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
-
-const isProdTag = (tag: string) => tag.toLowerCase() === "prod" || tag.toLowerCase() === "produção";
 
 const MATCH_KEYS = new Set([
   "requester",

@@ -2739,8 +2739,10 @@ export * from "./snippets.ts";
  * Phase 19: the one rule for a production tag, shared by the daemon's rules and the app's
  * warnings: `prod`, `produção` or `producao`, in any case.
  */
-export function isProdTag(_tag: string): boolean {
-  return false;
+const PROD_TAGS: ReadonlySet<string> = new Set(["prod", "produ\u00e7\u00e3o", "producao"]);
+
+export function isProdTag(tag: string): boolean {
+  return PROD_TAGS.has(tag.toLowerCase());
 }
 
 /** Whether any of the tags marks production. */

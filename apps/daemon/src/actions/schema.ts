@@ -102,12 +102,8 @@ export function approvalOf(action: ActionDef): ApprovalMode {
   return values.length + files.length > 0 ? "first-per-session" : "never";
 }
 
-/** Whether the tags mark production. */
-export function isProd(tags: readonly string[] | undefined): boolean {
-  return (tags ?? []).some(
-    (tag) => tag.toLowerCase() === "prod" || tag.toLowerCase() === "produção",
-  );
-}
+/** Whether the tags mark production (the protocol's one rule). */
+export { isProd } from "@flightdeck/protocol";
 
 const TAG = /^[\p{L}\p{N}-]{1,32}$/u;
 const MAX_TAGS = 8;

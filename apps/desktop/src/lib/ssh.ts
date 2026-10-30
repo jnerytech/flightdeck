@@ -1,10 +1,7 @@
 import type { SshTarget } from "@flightdeck/protocol";
 
-/** The tags that mark a ssh destino as production, whatever their case. */
-const PROD_TAGS: ReadonlySet<string> = new Set(["prod", "produ\u00e7\u00e3o", "producao"]);
-
-export const isProd = (tags: readonly string[]): boolean =>
-  tags.some((tag) => PROD_TAGS.has(tag.toLowerCase()));
+/** The tags that mark production: the protocol's one rule, the daemon's too. */
+export { isProd } from "@flightdeck/protocol";
 
 /** The payload of `ssh.save` for a destino, whether it comes from the form or from a duplicate. */
 export function savePayload(target: SshTarget, name: string) {
