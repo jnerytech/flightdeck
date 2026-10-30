@@ -23,7 +23,8 @@ async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
   while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
 }
 
-async function open() {
+/** `app: false` leaves the App out: unmounting it disposes the store. */
+async function open(app = true) {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await personasHost(cleanups, store);
@@ -33,7 +34,7 @@ async function open() {
     description: "Do app",
     body: "Seja breve.",
   });
-  render(<App store={store} />);
+  if (app) render(<App store={store} />);
   await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("personas") === true);
   return { store, ...h };
 }
@@ -140,14 +141,9 @@ describe("personas-ui: choosing a persona when a session opens", () => {
   });
 
   test("Claude aqui runs flightdeckd claude --persona with the persona chosen; the app's own are not offered there", async () => {
-    const { store, hostId, d, repo } = await open();
-    await act(async () => {
-      store.router.push({ name: "host", host: hostId });
-    });
-    await act(() => Bun.sleep(200));
+    const { store, hostId, d, repo } = await open(false);
     const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
     const { TContext } = await import("../src/i18n/context.tsx");
-    cleanup();
     render(
       <TContext.Provider value={store.i18n.t}>
         <TerminalButton
