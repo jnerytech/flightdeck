@@ -16,6 +16,7 @@ import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
+import { MessagingRulesSection } from "./MessagingRulesSection.tsx";
 
 /**
  * App preferences: close-to-tray (on by default), start with Windows (off by default) and the
@@ -190,6 +191,18 @@ export function Settings(props: {
               hostId={h.id}
               hostName={h.name}
               budgets={props.state.budgets[h.id] ?? []}
+            />
+          ))}
+        {props.state.hosts
+          .filter(
+            (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
+          )
+          .map((h) => (
+            <MessagingRulesSection
+              key={`messaging/${h.id}`}
+              store={props.store}
+              hostId={h.id}
+              hostName={h.name}
             />
           ))}
       </div>
