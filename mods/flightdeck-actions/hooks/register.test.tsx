@@ -151,3 +151,29 @@ test("a flightdeckd that cannot start is an error for the model, not a crash", a
     expect((answer as { deny?: string }).deny).toContain("flightdeckd");
   }
 });
+
+test("/flightdeck-actions lists each trusted action with its description and approval", async ($, on) => {
+  const argvs: string[][] = [];
+  on("process.run", (_, e) => {
+    argvs.push([...e.argv]);
+    return { value: RESULT({ stdout: LISTED }) };
+  });
+
+  const done = await $.command.run({ command: "flightdeck-actions" });
+
+  expect(argvs).toEqual([["flightdeckd", "action", "list"]]);
+  expect(done.text).toBe("deploy-staging: Deploy the branch to staging (first-per-session)");
+});
+
+test("/flightdeck-actions says when no action is trusted, and shows flightdeckd's error", async ($, on) => {
+  let reply = RESULT({ stdout: JSON.stringify({ actions: [] }) });
+  on("process.run", () => ({ value: reply }));
+
+  expect((await $.command.run({ command: "flightdeck-actions" })).text).toBe(
+    "No Flightdeck actions are trusted on this host.",
+  );
+  reply = RESULT({ exitCode: 1, stderr: "could not connect\n" });
+  expect((await $.command.run({ command: "flightdeck-actions" })).text).toBe(
+    "flightdeck-actions: could not connect",
+  );
+});
