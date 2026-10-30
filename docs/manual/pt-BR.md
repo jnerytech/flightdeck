@@ -69,6 +69,11 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Preços](#preços)
   - [Orçamentos](#orçamentos)
   - [Histórico da cota](#histórico-da-cota)
+- [Abas e terminal embutido](#abas-e-terminal-embutido)
+  - [Abas](#abas)
+  - [Tela dividida](#tela-dividida)
+  - [Terminal embutido](#terminal-embutido)
+  - [Claude aqui](#claude-aqui)
 - [Uso diário](#uso-diário)
   - [Precisa de você, página do host e notificações](#precisa-de-você-página-do-host-e-notificações)
   - [Bandeja](#bandeja)
@@ -1125,6 +1130,86 @@ de 5 minutos viram uma só.
 - **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
 - **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
   de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
+
+## Abas e terminal embutido
+
+### Abas
+
+Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico de voltar e avançar.
+
+- **Abrir:** o clique normal troca a aba atual. `Ctrl+clique`, o botão do meio do mouse ou **Abrir
+  em nova aba** (no menu do host e no menu de uma linha de sessão) abre uma nova. O botão **+** no
+  fim da barra abre uma aba nova na paleta `Ctrl+K`.
+- **A barra:** cada aba mostra o ícone do tipo e o título, e um selo quando uma sessão nela
+  precisa de você, está rodando ou respondeu sem nenhuma aba mostrando (**Não lida**). **Fixar**
+  deixa a aba à esquerda, só com o ícone. Arraste uma aba sobre outra para reordenar.
+- **Atalhos:**
+
+  | Atalho | Ação |
+  | --- | --- |
+  | `Ctrl+T` | aba nova, na paleta |
+  | `Ctrl+W` | fecha a aba |
+  | `Ctrl+Shift+T` | reabre a última fechada (guarda as últimas 20) |
+  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima e anterior |
+  | `Ctrl+1`…`Ctrl+9` | vai para aquela aba (`Ctrl+9` é a última) |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move a aba para a esquerda ou a direita |
+  | `Ctrl+\` | divide a tela ou junta as áreas |
+
+  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W` e `Ctrl+Shift+T`: lá, use os
+  botões.
+- **Guardadas entre aberturas:** as abas, quais estão fixas, a aba ativa, a divisão e o divisor
+  voltam quando o app abre de novo. Cada aba volta na sua tela, sem o histórico. O formulário de
+  host nunca é guardado, porque pode ter um token. A aba de um host que ainda não conectou mostra
+  **Conectando a <host>…** até conectar.
+
+### Tela dividida
+
+`Ctrl+\` ou **Dividir a tela** (no fim da primeira barra de abas) divide a janela em duas áreas,
+lado a lado; **Dividir na horizontal** as empilha, e **Juntar as áreas** devolve todas as abas a
+uma só. Cada área tem a sua barra de abas.
+
+- A área nova começa na tela da aba ativa.
+- Um clique numa área a deixa em foco: o que você abre pela barra lateral, pela paleta ou por um
+  link vai para ela.
+- Arraste o divisor, ou dê foco a ele e use as setas, para dar a uma área de 20% a 80% da janela.
+- **Mover a aba para a outra área** leva a aba para o outro lado; a área que fica vazia fecha.
+
+### Terminal embutido
+
+O daemon a partir da versão 0.14 abre terminais de verdade (um PTY) no host, e o app os mostra
+numa aba, sem SSH.
+
+- **Ligado ou desligado:** um terminal é um shell completo no host, com o usuário do daemon. Ele
+  vem ligado só quando o daemon escuta em loopback; com `bind` aberto a outras redes, vem
+  desligado. O painel **Terminal** da página do host liga (pergunta antes) ou desliga (encerra os
+  terminais abertos); o daemon grava a escolha em `terminal.enabled` da config.
+- **Abrir:** **Novo terminal** na página do host, ou **Novo terminal em <host>** na paleta, abre o
+  shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
+  primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
+- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` (`Ctrl+C` vai para o processo),
+  buscar com `Ctrl+Shift+F` (Enter para a próxima, Shift+Enter para a anterior, Esc fecha). Links
+  abrem no navegador. A fonte é a monoespaçada do sistema; o tamanho fica nas Configurações
+  (**Tamanho da fonte do terminal**, de 10 a 24).
+- **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
+  de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
+  continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
+- **Limites:** 10 terminais vivos por host (`terminal.max`), e um terminal sem ninguém anexado é
+  encerrado depois de 120 minutos (`terminal.idleMinutes`). Os terminais não sobrevivem a
+  reiniciar ou atualizar o daemon. O conteúdo nunca vai para o log nem para o banco.
+
+### Claude aqui
+
+Com os terminais do host ligados, todo botão **Abrir no terminal** (sessão, card, projeto,
+checkpoint) ganha um companheiro:
+
+- **Abrir Claude aqui (terminal)** abre o `flightdeckd claude` na pasta (a worktree, num card)
+  numa aba de terminal. A sessão nasce na central, controlável: você aprova e manda mensagens pelo
+  app enquanto vê o terminal.
+- **Continuar no terminal** retoma uma sessão com `flightdeckd claude --resume <id>`.
+- A aba de terminal dessa sessão tem **Ver como sessão**, e a sessão tem **Ver terminal**: as duas
+  são o mesmo Claude, ligadas pelo id do lançamento.
+
+O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
 ## Uso diário
 

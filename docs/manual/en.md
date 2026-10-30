@@ -69,6 +69,11 @@ are written in Portuguese.
   - [Prices](#prices)
   - [Budgets](#budgets)
   - [Quota history](#quota-history)
+- [Tabs and embedded terminal](#tabs-and-embedded-terminal)
+  - [Tabs](#tabs)
+  - [Split view](#split-view)
+  - [Embedded terminal](#embedded-terminal)
+  - [Claude here](#claude-here)
 - [Daily use](#daily-use)
   - [Needs you, host page and notifications](#needs-you-host-page-and-notifications)
   - [Tray](#tray)
@@ -1147,6 +1152,89 @@ Every quota reading from a managed session is kept for 30 days. Identical readin
 - **Who used the window:** each project's share of the estimated cost since the start of the
   current 5-hour window. It is an approximate attribution, because the plan does not say who used
   the quota.
+
+## Tabs and embedded terminal
+
+### Tabs
+
+Every screen opens in a tab, as in a browser. Each tab keeps its own back and forward history.
+
+- **Opening:** a normal click changes the current tab. `Ctrl+click`, the middle mouse button or
+  **Open in new tab** (in the host's menu and in a session row's menu) opens a new one. The **+**
+  button at the end of the bar opens a new tab on the `Ctrl+K` palette.
+- **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
+  you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
+  left with its icon only. Drag a tab onto another to reorder it.
+- **Shortcuts:**
+
+  | Shortcut | Action |
+  | --- | --- |
+  | `Ctrl+T` | new tab, on the palette |
+  | `Ctrl+W` | close the tab |
+  | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
+  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
+  | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move the tab left or right |
+  | `Ctrl+\` | split the window or join the areas |
+
+  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
+  the buttons there.
+- **Kept between starts:** the tabs, which ones are pinned, the active tab, the split and the
+  divider come back when the app opens again. Each tab comes back on its screen, without its
+  history. The host form is never kept, since it can hold a token. A tab of a host that is not
+  connected yet shows **Connecting to <host>…** until it is.
+
+### Split view
+
+`Ctrl+\` or **Split the screen** (at the end of the first tab bar) divides the window in two
+areas, side by side; **Split horizontally** stacks them instead, and **Join the areas** puts every
+tab back in one. Each area has its own tab bar.
+
+- The new area starts on the screen of the active tab.
+- A click in an area makes it the focused one: what you open from the sidebar, the palette or a
+  link goes there.
+- Drag the divider, or focus it and use the arrows, to give an area between 20% and 80% of the
+  window.
+- **Move tab to the other area** sends a tab across; an area left empty closes.
+
+### Embedded terminal
+
+A daemon from version 0.14 opens real terminals (a PTY) on its host, and the app shows them in a
+tab, with no SSH.
+
+- **On or off:** a terminal is a full shell on the host, as the daemon's user. It is on by itself
+  only when the daemon listens on loopback; with `bind` open to other networks it is off. The
+  host page's **Terminal** panel turns it on (it asks first) or off (which ends the open
+  terminals); the daemon writes the choice to `terminal.enabled` in its config.
+- **Opening:** **New terminal** on the host page, or **New terminal on <host>** in the palette,
+  opens the host's default shell (`pwsh` or `powershell` on Windows; `$SHELL`, `bash` or `sh` on
+  Linux) in its first allowed folder. The panel also lists the live terminals, each with
+  **Open**.
+- **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` (`Ctrl+C` goes to the
+  process), search with `Ctrl+Shift+F` (Enter for the next match, Shift+Enter for the previous,
+  Esc to close). Links open in the browser. The font is the system monospace; its size is in
+  Settings (**Terminal font size**, 10 to 24).
+- **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
+  attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
+  keeps running on the host) or **End process**. A terminal shown as detached or ended has
+  **Reopen**.
+- **Limits:** 10 live terminals per host (`terminal.max`), and a terminal nobody is attached to is
+  ended after 120 minutes (`terminal.idleMinutes`). Terminals do not survive a restart or an
+  update of the daemon. Their content never goes to the log or to the database.
+
+### Claude here
+
+When the host's terminals are on, every **Open in terminal** button (session, card, project,
+checkpoint) gets a companion:
+
+- **Open Claude here (terminal)** opens `flightdeckd claude` in the folder (the card's worktree
+  for a card) in a terminal tab. The session is born in the central, controllable: you approve
+  and send messages from the app while you watch the terminal.
+- **Continue in the terminal** resumes a session with `flightdeckd claude --resume <id>`.
+- The terminal tab of such a session has **View as session**, and the session has **View
+  terminal**: both are the same Claude, tied by the launch id.
+
+The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 
 ## Daily use
 

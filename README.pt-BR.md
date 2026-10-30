@@ -63,6 +63,11 @@ sessões num lugar só, sem abrir cada máquina.
 
 **Desktop**
 
+- Abas com histórico próprio, fixadas, reordenadas e guardadas entre aberturas, e tela dividida em
+  duas áreas, lado a lado ou empilhadas.
+- Terminal embutido em qualquer host, numa aba, sem SSH: sobrevive ao app e reanexa com o
+  scrollback. "Abrir Claude aqui" roda o `flightdeckd claude` nele, e a sessão é aprovável pelo
+  app.
 - Menu da bandeja para aprovar pedidos sem abrir a janela e paleta `Ctrl+K`.
 - Atualização automática assinada, do app e dos daemons.
 - Temas claro e escuro; português e inglês.
@@ -170,6 +175,9 @@ só. Os hosts são independentes: nada é copiado entre eles.
   quando você pede (`flightdeckd hooks install`). Ele guarda uma cópia, e o `hooks uninstall` as
   remove. Os transcripts são só lidos. "Sempre neste projeto" grava no
   `.claude/settings.local.json` do próprio projeto, não no `~/.claude`.
+- **Terminais.** Um terminal embutido é um shell completo no host. Ele vem ligado só quando o
+  daemon escuta em loopback; ligá-lo num host alcançável por outras redes pede confirmação. O
+  conteúdo nunca vai para o log nem para o banco.
 - **Nada é aprovado sem um clique.** Os comandos `check` de um workflow só rodam se você confiou
   no workflow, e um arquivo alterado pede confiança de novo.
 - **Atualizações assinadas.** O app e o daemon só instalam atualizações assinadas com a chave do

@@ -1763,6 +1763,8 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
 
+# Phase 14 decisions: the daemon (embedded terminal)
+
 ## Terminal embutido (daemon)
 
 - **Backpressure vira `terminal.resync`:** a spec dizia "pausar a leitura do PTY" quando o cliente não acompanha. O Bun não tem pausa de leitura (o `drain` do `terminal` é do lado da escrita), então a leitura nunca para.
@@ -1790,3 +1792,48 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **PTY falso nos testes:** só o `smoke:terminal` abre um PTY de verdade, com um script fixo do bun (imprime os pids e ecoa as linhas). Os testes usam um PTY falso, e os de ponta a ponta do Claude aqui usam um executor por pipes que recusa qualquer argv que não seja o `flightdeckd`, para um vermelho nunca abrir um shell.
 - **Vermelho do `smoke:terminal`:** rodado numa cópia da base `c11f234`, com `SMOKE TERMINAL FAIL no passo "abrir o terminal"` (o `terminal.open` não existe) e código 1.
 - **Linux:** o smoke e os testes do terminal rodaram também num contêiner `oven/bun:1.4.4`, com o PTY de verdade do Linux.
+
+# Phase 14 decisions: the interface
+
+## Tabs (`abas`)
+
+- **The router became the active tab's:** each tab owns a `Router` with its own history, and `store.router` is a facade over the focused area's active tab. No screen changed: they keep calling `store.router` and `go`.
+- **"Open in a new tab" without touching every list:** `Ctrl+click` and the middle button set a one-event flag on the focused tabs (`openNextInNewTab`), and the next navigation opens a tab instead of replacing the current one. The middle button fires no `click`, so the capture listener clicks the item itself.
+- **Menu entry:** **Abrir em nova aba** is in the host's menu (sidebar) and in a session row's menu. The board card's menu has only **Iniciar**, and cards open in a new tab by `Ctrl+click` or the middle button.
+- **The plus button:** the spec opens a new tab with `Ctrl+T`. Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself, so the web entry (the demo and the e2e) needs a button: **Nova aba**, at the end of the bar, opens a tab on the palette like `Ctrl+T`.
+- **Unread:** a session tab gets **Não lida** when the session goes from running to idle while no area's active tab shows it, and loses it when it is shown.
+- **Closed tabs:** the last 20 are kept with their screen only (not their history).
+
+## Split view (`divisao`)
+
+- **Two areas at most,** each with its own `Tabs`. Splitting opens the second area on the screen of the active tab and focuses it; joining appends the second area's tabs to the first.
+- **Focus by pointer:** a pointer down inside an area focuses it before the click runs, so navigation from that area stays there.
+- **Divider:** a share of the window, kept between 20% and 80%, by the pointer or by the arrows (5% a step).
+- **Buttons:** **Dividir a tela** / **Juntar as áreas** and **Dividir na horizontal** / **Dividir na vertical** at the end of the first area's bar, next to `Ctrl+\`.
+
+## Persistence (`persistencia-abas`)
+
+- **What is kept:** each area's tabs (the current route and whether it is pinned), the active tab, the split, the focus and the divider, in `flightdeck.workspace`, on every change.
+- **What is not kept:** histories, and the `add-host` route, whose draft can hold a token.
+- **Unreadable data** (another version, unknown route names, an empty area) gives a fresh window or drops the bad tab; numbers out of range are clamped.
+- **Offline host:** the restored tab uses the existing "Conectando a <host>…" state of the screens that wait for their host; a host removed meanwhile sends the screen to the hub, as before.
+
+## Terminal in the app (`terminal-ui`)
+
+- **Colors:** xterm reads sRGB colors and the theme tokens are oklch, so the terminal has a light and a dark palette written in hex next to the tokens, not read from them.
+- **xterm 6.0.0** with `fit`, `web-links`, `search` and `unicode11`, pinned. `unicode11` is a proposed API, so the terminal is built with `allowProposedApi`. xterm loads only when a terminal opens (dynamic import).
+- **Tests:** xterm does not render in happy-dom. The screen talks to xterm through a small adapter (`createXtermScreen`) built from injected factories, and the tests drive a fake one; the real factories are only checked to build a terminal.
+- **Font size** in Settings, 10 to 24 px, 13 by default; the family is `"Cascadia Mono", Consolas, monospace`.
+- **Opening:** the host page's **Terminal** panel (new or live terminals, turning them on or off) and **Novo terminal em <host>** in the palette. The terminal opens in the host's first allowed folder.
+- **Closing:** the tab's close button, `Ctrl+W` and the screen's own **Fechar terminal** all ask **Desanexar** (the default) or **Encerrar processo**; the screen's close now closes its tab instead of going back.
+
+## Claude here in the app (`claude-aqui`)
+
+- **Where:** every `TerminalButton` (session, card, project, checkpoints, terminal session) adds **Abrir Claude aqui (terminal)** or **Continuar no terminal** when the host's terminals are on, and the palette's terminal action prefers the embedded terminal.
+- **The outside terminal keeps its labels:** the spec renames it to "Abrir no Windows Terminal". The button also copies a command for remote hosts and other suites assert on its text, so it keeps "Abrir no terminal" / "Copiar comando" and sits next to the new one.
+- **Linking the two views:** the terminal tab finds its launch id through `terminal.list` and shows **Ver como sessão** when an external session of the same host has that launch id; the session shows **Ver terminal** when a live terminal of its host has its launch id.
+
+## e2e (`e2e-abas-terminal`)
+
+- **Buttons, not keys:** the journey opens the second tab with **Nova aba** and splits with **Dividir a tela**, since Chromium keeps the tab keys.
+- **A real shell:** the demo daemons listen on loopback, so their terminals are on with the host's real shell. The journey types an `echo` of a unique marker, detaches, attaches again from the host page and finds the marker in the scrollback.

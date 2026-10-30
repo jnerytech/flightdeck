@@ -62,6 +62,11 @@ sessions from one place, without opening each machine.
 
 **Desktop**
 
+- Tabs with their own history, pinned, reordered and kept between starts, and a split view with
+  two areas side by side or stacked.
+- An embedded terminal on any host, in a tab, with no SSH: it survives the app and reattaches
+  with its scrollback. "Open Claude here" runs `flightdeckd claude` in it, and the session is
+  approvable from the app.
 - Tray menu to approve requests without opening the window, and a `Ctrl+K` palette.
 - Signed auto-update for the app and for the daemons.
 - Light and dark themes; English and Portuguese.
@@ -167,6 +172,9 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
   when you ask (`flightdeckd hooks install`). It keeps a backup and `hooks uninstall` removes
   them. Transcripts are only read. "Always in this project" writes to the project's own
   `.claude/settings.local.json`, not to `~/.claude`.
+- **Terminals.** An embedded terminal is a full shell on the host. It is on by itself only when
+  the daemon listens on loopback; turning it on for a host reachable from other networks asks
+  for confirmation. Its content never goes to the log or to the database.
 - **Nothing is approved without a click.** Workflow `check` commands run only if you trusted the
   workflow, and a changed file asks for trust again.
 - **Signed updates.** The app and the daemon install only updates signed with the project's key

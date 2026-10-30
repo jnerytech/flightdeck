@@ -33,6 +33,13 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | automação | automation | Um gatilho (horário, comentário no PR, checks do PR que falharam, issue com rótulo) que dispara uma ação; nasce desligada |
 | arena | arena | O mesmo pedido de um card rodando em 2 a 4 variantes, para comparar e escolher |
 | variante | variant | Uma das execuções de uma arena, com a própria worktree, branch, modelo e esforço |
+| aba | tab | A screen open in the window, with its own back and forward history; it can be pinned and moved to the other area |
+| área | area | One of the two halves of a split window, each with its own tab bar |
+| Não lida | Unread | The badge of a session tab that answered while no tab showed it |
+| terminal embutido | embedded terminal | A real shell on the host, opened by the daemon and shown in a tab, with no SSH |
+| Desanexar | Detach | Closes the terminal's tab and leaves the process running on the host |
+| Encerrar processo | End process | Closes the terminal's tab and ends the process |
+| Claude aqui | Claude here | `flightdeckd claude` in a terminal tab, in a folder, a project or a card's worktree; the session is controllable from the app |
 
 ## Estados de uma sessão
 
