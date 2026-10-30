@@ -1905,12 +1905,27 @@ export class AppStore {
   }
 
   /**
-   * The vault's values long enough to tell apart from ordinary text (6+ characters), for a scan
-   * that runs in the app: they are compared here and never sent (phase 18's history import).
+   * The vault's values, line by line and an env set's variable by variable, long enough to tell
+   * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
+   * by the caller, never sent and never kept here (phase 18's history import).
    */
   async vaultValuesForScan(): Promise<string[]> {
-    const values = await Promise.all(this.vault.list().map((s) => this.vault.value(s.id)));
-    return values.filter((v): v is string => v !== null && v.length >= 6);
+    const pieces: string[] = [];
+    for (const secret of this.vault.list()) {
+      const value = await this.vault.value(secret.id);
+      if (value === null) continue;
+      // A whole value can be long and many-lined: what a history line would carry is one line,
+      // and of an env set, one variable's value.
+      for (const line of value.split(/\r?\n/)) {
+        const assigned =
+          secret.type === "env" ? line.match(/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/) : null;
+        const piece = (assigned ? (assigned[1] as string) : line)
+          .trim()
+          .replace(/^(["'])(.*)\1$/, "$2");
+        if (piece.length >= 6) pieces.push(piece);
+      }
+    }
+    return pieces;
   }
 
   /** Edits a secret's name, description, tags and allowed hosts; its value is not touched. */
