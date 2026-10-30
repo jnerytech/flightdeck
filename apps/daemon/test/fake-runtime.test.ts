@@ -29,6 +29,41 @@ async function collectUntil(
 const isResult = (e: RuntimeEvent) => e.type === "turn.result";
 
 describe("FakeRuntime", () => {
+  test("[persona] diz o papel com que a sessão abriu: a primeira linha do corpo, o esforço, as ferramentas e os agentes", async () => {
+    const reply = async (extra: Partial<StartOptions>) => {
+      const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, extra));
+      const it = run.events[Symbol.asyncIterator]();
+      run.send("[persona] quem é você?");
+      const events = await collectUntil(it, isResult);
+      await run.close();
+      const assistant = events.find((e) => e.type === "message.assistant");
+      return assistant?.type === "message.assistant" && assistant.blocks[0]?.type === "text"
+        ? assistant.blocks[0].text
+        : "";
+    };
+    const withRole = await reply({
+      persona: {
+        append: "Você atua como QA.\nTeste primeiro.",
+        effort: "high",
+        tools: ["Read", "Grep"],
+      },
+      agents: { "persona-qa": { description: "d", prompt: "p" } },
+    });
+    expect(withRole).toContain(
+      "Persona: Você atua como QA. | esforço=high | ferramentas=Read,Grep | agentes=persona-qa",
+    );
+    expect(await reply({})).toContain(
+      "Persona: nenhuma | esforço=- | ferramentas=todas | agentes=nenhum",
+    );
+    // Without the marker nothing changes.
+    const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, { persona: { append: "x" } }));
+    const it = run.events[Symbol.asyncIterator]();
+    run.send("oi");
+    const plain = await collectUntil(it, isResult);
+    await run.close();
+    expect(JSON.stringify(plain)).not.toContain("Persona:");
+  });
+
   test("turno simples: init, deltas, message.assistant e turn.result", async () => {
     const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll));
     const it = run.events[Symbol.asyncIterator]();
