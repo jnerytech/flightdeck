@@ -24,6 +24,9 @@ import {
   workerInstructions,
 } from "./instructions.ts";
 
+/** The persona of phase 20's pack a coordinator opens in by default. */
+export const COORDINATOR_PERSONA = "coordenador";
+
 /** The personas of phase 20 plug in here. */
 export interface TeamPersonas {
   resolve(id: string): { id: string; name: string } | null;
@@ -279,7 +282,11 @@ export class Teams {
         `a cota do plano está acima do limite até ${until}: crie o time depois, senão ele nasce parado`,
       );
     }
-    const coordinatorPersona = this.checkPersona(input.coordinatorPersona);
+    // The spec's coordinator is the pack's `coordenador` (phase 20) when none is asked for.
+    const coordinatorPersona = this.checkPersona(
+      input.coordinatorPersona ??
+        (this.opts.personas?.resolve(COORDINATOR_PERSONA) ? COORDINATOR_PERSONA : undefined),
+    );
     const workerPersonas = (input.workerPersonas ?? []).map((p) => this.checkPersona(p));
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
