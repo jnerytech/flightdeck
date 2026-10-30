@@ -40,7 +40,7 @@ const TONES: Record<HubState, StateTone> = {
 
 /** Native selects: the filters stay light, and keyboard and screen readers work as they are. */
 const SELECT_CLASS =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * The main screen: every session of every online host (managed, opened in the terminal, or from
@@ -124,7 +124,7 @@ export function SessionsHub(props: {
         placeholder="Filtrar"
         value={filter.text}
         onChange={(e) => set({ text: e.target.value })}
-        className="w-48"
+        className="h-8 w-full text-xs"
       />
       <select
         aria-label="Host"
@@ -165,6 +165,7 @@ export function SessionsHub(props: {
         <option value="ended">Encerrada</option>
       </select>
       <Button
+        size="sm"
         variant="outline"
         aria-pressed={filter.pinnedOnly}
         onClick={() => set({ pinnedOnly: !filter.pinnedOnly })}
@@ -172,6 +173,7 @@ export function SessionsHub(props: {
         Só fixadas
       </Button>
       <Button
+        size="sm"
         variant="outline"
         aria-pressed={filter.showArchived}
         onClick={() => set({ showArchived: !filter.showArchived })}
@@ -222,8 +224,8 @@ export function SessionsHub(props: {
                     aria-current={props.isOpen(row) ? "true" : undefined}
                     data-active={listed[cursor]?.key === row.key}
                     className={cn(
-                      "group flex items-center gap-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
-                      props.density === "compact" ? "h-8" : "min-h-10 py-1",
+                      "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
+                      props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
                     )}
                   >
                     <StatusDot tone={TONES[row.state]} label={STATE_LABELS[row.state]} />
@@ -233,11 +235,11 @@ export function SessionsHub(props: {
                         setCursor(listed.findIndex((r) => r.key === row.key));
                         props.onOpen(row);
                       }}
-                      className="min-w-0 max-w-[60%] truncate text-left font-medium text-sm"
+                      className="min-w-0 flex-1 truncate text-left font-medium text-sm"
                     >
                       {row.title}
                     </button>
-                    <span className="shrink-0 text-muted-foreground text-xs">
+                    <span className="max-w-[40%] shrink-0 truncate text-muted-foreground text-xs">
                       {origin ? `${row.hostName} · ${origin}` : row.hostName}
                     </span>
                     {row.controllable && (
@@ -249,9 +251,6 @@ export function SessionsHub(props: {
                         <span className="sr-only">controlável</span>
                       </>
                     )}
-                    <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">
-                      {line}
-                    </span>
                     {cost !== undefined && (
                       <output
                         aria-label={`Custo de ${row.title}`}
@@ -262,9 +261,10 @@ export function SessionsHub(props: {
                     )}
                     <time
                       dateTime={new Date(row.lastActivity).toISOString()}
+                      title={store.formatDateTime(row.lastActivity)}
                       className="shrink-0 text-muted-foreground text-xs tabular-nums"
                     >
-                      {store.formatDateTime(row.lastActivity)}
+                      {store.formatWhen(row.lastActivity)}
                     </time>
                     {row.claudeSessionId && (
                       <DropdownMenu>
@@ -305,6 +305,15 @@ export function SessionsHub(props: {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
+                    <span
+                      data-slot="summary"
+                      className={cn(
+                        "truncate text-muted-foreground text-xs",
+                        props.density === "compact" ? "sr-only" : "basis-full pl-4",
+                      )}
+                    >
+                      {line}
+                    </span>
                   </li>
                 );
               })}

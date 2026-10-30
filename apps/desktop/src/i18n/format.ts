@@ -23,8 +23,20 @@ export function formatDateTime(iso: string, lang: Lang, timeZone?: string): stri
 }
 
 /** A list's short time: HH:MM today, the day and month before. */
-export function formatWhen(_iso: string, _nowMs: number, _lang: Lang, _timeZone?: string): string {
-  return "";
+export function formatWhen(iso: string, nowMs: number, lang: Lang, timeZone?: string): string {
+  const day = (ms: number) =>
+    new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone,
+    }).format(ms);
+  if (day(Date.parse(iso)) === day(nowMs)) return formatTime(iso, lang, timeZone);
+  return plain(
+    new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", timeZone }).format(
+      new Date(iso),
+    ),
+  );
 }
 
 /** "2 h 5 min", "2 h", "3 min" or "45 s" (seconds only under a minute). */

@@ -28,7 +28,7 @@ import type {
   SessionSummary,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { formatDateTime, formatTime } from "../i18n/format.ts";
+import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { budgetLabel } from "./budgets.ts";
@@ -465,6 +465,13 @@ export class AppStore {
     return Number.isNaN(Date.parse(iso))
       ? ""
       : formatDateTime(iso, this.i18n.lang, this.options.timeZone);
+  }
+
+  /** A list's short time: HH:MM today, the day and month before (phase 10). */
+  formatWhen(iso: string): string {
+    return Number.isNaN(Date.parse(iso))
+      ? ""
+      : formatWhen(iso, this.now(), this.i18n.lang, this.options.timeZone);
   }
 
   /** The hub's saved filters (phase 10). */
