@@ -1,4 +1,4 @@
-import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
+import type { Arena, ArenaVariant, StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -13,6 +13,8 @@ import { usd } from "../lib/costs.ts";
 import { issueLabel, issueUrl } from "../lib/issues.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ArenaStartForm, type ArenaVariantInput } from "./ArenaStartForm.tsx";
+import { ArenaView, variantBusy } from "./ArenaView.tsx";
 import { CardReview } from "./CardReview.tsx";
 import { ChangesPanel } from "./ChangesPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -43,11 +45,16 @@ export function CardDetail(props: {
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  /** Phase 13: the arena's comparison, the start form and the variant being chosen. */
+  const [arena, setArena] = useState<Arena | null>(null);
+  const [arenaForm, setArenaForm] = useState(false);
+  const [choosing, setChoosing] = useState<ArenaVariant | null>(null);
   const sessionId = card?.sessionId ?? null;
   const host = props.state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
   const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
   const withReview = hasFeature(host?.hostInfo?.features, "review", false);
+  const withArena = hasFeature(host?.hostInfo?.features, "arena", false);
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -78,6 +85,19 @@ export function CardDetail(props: {
         .then((r) => setRunCost(r?.costUsd ?? null));
     }
   }, [store, hostId, cardId, runId, withCosts, cardMoment]);
+
+  // The comparison follows the card: again whenever it moves on while it has variants.
+  const variants = card?.arenaVariants ?? 0;
+  // The variants run on their own and the card does not change with them: read the comparison
+  // again every so often until none of them is still working.
+  const arenaBusy = arena === null || arena.variants.some(variantBusy);
+  useEffect(() => {
+    if (!withArena || variants === 0 || !cardMoment || !arenaBusy) return;
+    const load = () => void store.hostCommand(hostId, "card.arena", { cardId }).then(setArena);
+    load();
+    const timer = setInterval(load, 1000);
+    return () => clearInterval(timer);
+  }, [store, hostId, cardId, withArena, variants, cardMoment, arenaBusy]);
 
   useEffect(() => {
     // The project is known once the card is (a direct route loads it).
@@ -123,6 +143,23 @@ export function CardDetail(props: {
       const discarded = await store.hostCommand(hostId, "card.discard", { cardId, confirm: true });
       if (discarded) props.onBack();
     }
+  };
+
+  const startArena = async (list: ArenaVariantInput[]) => {
+    setArenaForm(false);
+    setArena(await store.hostCommand(hostId, "card.startArena", { cardId, variants: list }));
+  };
+
+  const chooseVariant = async () => {
+    const variant = choosing;
+    setChoosing(null);
+    if (!variant) return;
+    const chosen = await store.hostCommand(hostId, "card.chooseVariant", {
+      cardId,
+      variantId: variant.id,
+      confirm: true,
+    });
+    if (chosen) setArena(null);
   };
 
   const sendAdjustment = () => {
@@ -263,6 +300,16 @@ export function CardDetail(props: {
           >
             {t("cardUi.complete")}
           </Button>
+          {withArena &&
+            variants === 0 &&
+            !card.arenaOf &&
+            !card.worktreePath &&
+            !card.queued &&
+            !arena && (
+              <Button variant="outline" onClick={() => setArenaForm(true)}>
+                {t("arenaUi.start")}
+              </Button>
+            )}
           <Button variant="destructive" onClick={() => void askDiscard()}>
             {t("cardUi.discard")}
           </Button>
@@ -283,6 +330,28 @@ export function CardDetail(props: {
             destructive={confirming.kind === "discard"}
             onConfirm={() => void confirm()}
             onCancel={() => setConfirming(null)}
+          />
+        )}
+        {arenaForm && (
+          <ArenaStartForm
+            onStart={(list) => void startArena(list)}
+            onClose={() => setArenaForm(false)}
+          />
+        )}
+        {choosing && (
+          <ConfirmDialog
+            message={t("arenaUi.chooseMessage", { name: choosing.label })}
+            confirmLabel={t("arenaUi.chooseConfirm")}
+            destructive
+            onConfirm={() => void chooseVariant()}
+            onCancel={() => setChoosing(null)}
+          />
+        )}
+        {arena && (
+          <ArenaView
+            arena={arena}
+            loadDiff={(variantId) => store.hostCommand(hostId, "card.diff", { cardId: variantId })}
+            onChoose={setChoosing}
           />
         )}
         <div className="flex items-start gap-2">
