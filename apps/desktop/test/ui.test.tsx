@@ -249,8 +249,8 @@ describe("desktop: tela de sessão", () => {
     render(<SessionView title="demo" session={session} actions={actions} />);
     expect(screen.getByText("parcial…")).toBeTruthy();
     expect(screen.getByText("expirado")).toBeTruthy();
-    expect(screen.getByText(/1\.5 s · US\$ 0\.0123/)).toBeTruthy();
-    expect(screen.getByText(/error_during_execution/)).toBeTruthy();
+    expect(screen.getByText(/turno concluído · 1\.5 s · US\$ 0\.0123/)).toBeTruthy();
+    expect(screen.getByText(/turno com erro · 0\.0 s/)).toBeTruthy();
     expect(screen.getByText("runtime: explodiu")).toBeTruthy();
     expect(screen.getByText("daemon reiniciado")).toBeTruthy();
     expect(screen.getByText("falhou feio")).toBeTruthy();
