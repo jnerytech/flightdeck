@@ -280,3 +280,21 @@ describe("risco-ui: aprovado automaticamente", () => {
     expect(screen.queryByText(/automaticamente/)).toBeNull();
   });
 });
+
+describe("risco-ui: an automatic approval without a model", () => {
+  test("an AI decision that names no model reads just AI", () => {
+    render(
+      <ApprovalCard
+        request={{ ...base, risk: "medium" }}
+        t={pt}
+        nowMs={NOW}
+        resolution={{
+          decision: "allow",
+          auto: { by: "ai", reason: "reads the folder", model: null },
+        }}
+        onRespond={() => {}}
+      />,
+    );
+    expect(screen.getByText("Aprovado automaticamente (IA): reads the folder")).toBeTruthy();
+  });
+});
