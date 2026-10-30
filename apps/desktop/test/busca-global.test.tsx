@@ -68,7 +68,11 @@ async function fleet(searchTimeoutMs = 3000) {
   ]);
   const b = historyHost([["b1", "flamingo do host B", "2026-09-05T10:00:00.000Z"]]);
   const mem = memoryPlatform();
-  const store = new AppStore(mem.platform, { searchTimeoutMs, baseDelayMs: 60_000 });
+  const store = new AppStore(mem.platform, {
+    searchTimeoutMs,
+    baseDelayMs: 60_000,
+    timeZone: "America/Sao_Paulo",
+  });
   render(<App store={store} />);
   await act(async () => {
     await store.addHost({ name: "alfa", url: a.url, token: TOKEN });
@@ -136,7 +140,8 @@ describe("busca-global", () => {
     await search("azul");
     await settle(() => resultTexts().length === 1);
     expect(resultTexts()[0]?.startsWith("alfa · p")).toBe(true);
-    expect(resultTexts()[0]).toContain("2026-09-01");
+    // Local time, in the language of the app.
+    expect(resultTexts()[0]).toMatch(/01\/09\/2026, \d{2}:\d{2}/);
     await act(async () => {
       fireEvent.keyDown(screen.queryByRole("dialog") as HTMLElement, { key: "Escape" });
     });
