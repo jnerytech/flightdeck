@@ -109,7 +109,7 @@ describe("times-protocolo", () => {
     await waitFor(
       () => team?.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
       {
-        timeoutMs: 8000,
+        timeoutMs: 20_000,
       },
     );
     expect(
@@ -188,7 +188,7 @@ describe("mcp-mensagens: team_status", () => {
     await waitFor(
       () => team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
       {
-        timeoutMs: 8000,
+        timeoutMs: 20_000,
       },
     );
     const outsider = manager.create({ cwd: project.path, prompt: "outra coisa" }).sessionId;

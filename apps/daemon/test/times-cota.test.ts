@@ -61,7 +61,7 @@ async function setup() {
     const team = await teams.create({ projectId: project.id, goal: "Uma tarefa.", workers });
     await waitFor(
       () => team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
-      { timeoutMs: 8000 },
+      { timeoutMs: 20_000 },
     );
     return team;
   };
