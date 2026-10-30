@@ -271,3 +271,33 @@ describe("issues-ui: a conexão com o provedor", () => {
     expect(screen.queryByRole("button", { name: "Issues" })).toBeNull();
   });
 });
+
+describe("issues-ui: abrir um link", () => {
+  test("openLink abre só http e https; file:, javascript:, data: e caminho sem esquema são recusados", () => {
+    const mem = memoryPlatform();
+    const opened: string[] = [];
+    mem.win.open = (url) => {
+      opened.push(String(url));
+      return null;
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    for (const url of [
+      "https://github.com/Acme/App/issues/1",
+      "http://exemplo.test/a",
+      "HTTPS://exemplo.test/b",
+      "file:///C:/Windows/System32/calc.exe",
+      "javascript:alert(1)",
+      "data:text/html,<script>1</script>",
+      "/etc/passwd",
+      "github.com/Acme/App",
+      "",
+    ]) {
+      store.openLink(url);
+    }
+    expect(opened).toEqual([
+      "https://github.com/Acme/App/issues/1",
+      "http://exemplo.test/a",
+      "HTTPS://exemplo.test/b",
+    ]);
+  });
+});
