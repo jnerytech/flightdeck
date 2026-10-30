@@ -147,7 +147,7 @@ describe("cofre-ui: backup", () => {
     await click("Aplicar");
     expect(store.getState().secrets.map((s) => s.name)).toEqual(["github"]);
     expect(await store.vault.value("shared-id")).toBe(VALUE);
-    expect(screen.queryByText("1 adicionados, 0 substituídos, 0 mantidos.")).not.toBeNull();
+    expect(screen.queryByText("Adicionados: 1, substituídos: 0, mantidos: 0.")).not.toBeNull();
   });
 
   test("a conflict keeps the local secret by default and takes the backup's when asked", async () => {
