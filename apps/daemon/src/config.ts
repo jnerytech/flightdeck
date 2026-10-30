@@ -135,6 +135,8 @@ export const Config = z.object({
       extraHigh: z.array(z.string().refine(validRegex, "regex inválida")).default([]),
     })
     .default(() => ({ extraHigh: [] })),
+  /** The ssh the destinos run (phase 15); the system one when absent. */
+  ssh: z.object({ path: z.string().min(1).optional() }).default(() => ({})),
   /** Written by `service install`: services do not inherit the shell PATH. */
   claude: z.object({ executablePath: z.string().min(1).optional() }).optional(),
 });

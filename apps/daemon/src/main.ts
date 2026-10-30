@@ -538,7 +538,9 @@ export async function startDaemon(
     hostKeys: sshHostKeys,
     terminals,
     dir: sshDir,
-    sshPath: resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
+    sshPath:
+      config.ssh.path ??
+      resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
     run: processRun(),
     ...(sshAskpass ? { askpass: sshAskpass } : {}),
     // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
