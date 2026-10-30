@@ -258,7 +258,7 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     const own = startsOf(fake)[0]?.args ?? [];
     expect(own.filter((a) => a === "--agents")).toHaveLength(1);
     expect(own[own.indexOf("--agents") + 1]).toBe("{}");
-    await run([`--agents={"a":{}}`], host, project);
+    await run(["--agents={}"], host, project);
     expect((startsOf(fake)[1]?.args ?? []).filter((a) => a.startsWith("--agents"))).toHaveLength(1);
     const down = join(tempDir(), "config.json");
     writeFileSync(
