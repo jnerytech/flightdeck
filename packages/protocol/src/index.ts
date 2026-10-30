@@ -1955,6 +1955,11 @@ export const Command = z.discriminatedUnion("type", [
               .string()
               .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "id de sessão inválido")
               .optional(),
+            /** Phase 20: `--persona <id>` (a persona of the host, the project or the pack). */
+            persona: z
+              .string()
+              .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+              .optional(),
           })
           .optional(),
         cols: TerminalCols,

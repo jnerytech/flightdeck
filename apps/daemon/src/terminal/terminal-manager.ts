@@ -53,7 +53,7 @@ export interface OpenRequest {
   cwd: string;
   /** An argv, never run through a shell; the host's default shell when absent. */
   command?: string[];
-  /** "Claude aqui": `flightdeckd claude` in the cwd, optionally `--resume <id>`. */
+  /** "Claude aqui": `flightdeckd claude` in the cwd, optionally `--resume <id>` and `--persona <id>`. */
   claude?: { resume?: string; persona?: string };
   /** Variables added to the process environment. For code of the daemon, not for clients. */
   env?: Record<string, string>;
@@ -245,6 +245,8 @@ export class TerminalManager {
         ...claude.self,
         "claude",
         ...(req.claude.resume ? ["--resume", req.claude.resume] : []),
+        // Phase 20: the wrapper asks the daemon for the persona and appends it to the system prompt.
+        ...(req.claude.persona ? ["--persona", req.claude.persona] : []),
       ];
       extraEnv = { FLIGHTDECK_CONFIG: claude.configFile, [TERMINAL_LAUNCH_VAR]: launchId };
     } else {
