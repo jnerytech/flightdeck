@@ -179,7 +179,11 @@ export function BoardView(props: {
             }
           />
         )}
-        <div className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
+        <div
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
+          tabIndex={0}
+          className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
+        >
           {COLUMNS.map(({ id, label }) => (
             <section
               key={id}

@@ -7,11 +7,15 @@ export interface AxeViolation {
 }
 
 /** The violations that fail the build. */
-export function blocking(_violations: AxeViolation[]): AxeViolation[] {
-  return [];
+export function blocking(violations: AxeViolation[]): AxeViolation[] {
+  return violations.filter((v) => v.impact === "serious" || v.impact === "critical");
 }
 
 /** One line per violation: where, which rule, how bad, and the first elements. */
-export function describeViolation(_screen: string, _violation: AxeViolation): string {
-  return "";
+export function describeViolation(screen: string, violation: AxeViolation): string {
+  const targets = violation.nodes
+    .slice(0, 3)
+    .map((node) => node.target.join(" "))
+    .join(", ");
+  return `${screen}: ${violation.id} (${violation.impact}): ${violation.help} [${targets}]`;
 }

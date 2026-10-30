@@ -5,10 +5,12 @@
  * Files land in apps/desktop/screenshots/<theme>-<lang>/<screen>.png (ignored by git).
  */
 import { mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
+import { type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
 
@@ -98,6 +100,9 @@ function shots(ids: DemoIds): Shot[] {
   ];
 }
 
+/** axe-core's browser bundle. */
+const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
+
 export async function takeShots(
   url: string,
   ids: DemoIds,
@@ -108,6 +113,7 @@ export async function takeShots(
   const browser = await chromium
     .launch({ channel: "chrome", headless: true, env })
     .catch(() => chromium.launch({ channel: "msedge", headless: true, env }));
+  const problems: string[] = [];
   try {
     for (const theme of ["light", "dark"] as const) {
       for (const lang of ["pt-BR", "en"] as const) {
@@ -122,6 +128,20 @@ export async function takeShots(
           await page.waitForTimeout(1500);
           await shot.prepare?.(page);
           await page.screenshot({ path: join(dir, `${shot.name}.png`) });
+          // The same screen, checked for accessibility: serious and critical violations fail.
+          await page.addScriptTag({ path: AXE });
+          const found = await page.evaluate(() =>
+            (
+              globalThis as unknown as {
+                axe: { run(): Promise<{ violations: AxeViolation[] }> };
+              }
+            ).axe
+              .run()
+              .then((result) => result.violations),
+          );
+          for (const violation of blocking(found)) {
+            problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
+          }
           await page.close();
         }
         await context.close();
@@ -130,6 +150,11 @@ export async function takeShots(
     }
   } finally {
     await browser.close();
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      `axe: ${problems.length} violações serious ou critical\n${problems.join("\n")}`,
+    );
   }
   return SHOTS_DIR;
 }

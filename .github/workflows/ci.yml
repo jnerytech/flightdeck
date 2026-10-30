@@ -81,3 +81,46 @@ jobs:
         run: |
           bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+  # The prints of every screen in both themes and languages, the axe check on them and the five
+  # end-to-end journeys, all against the seeded demo (fake runtime: no real Claude, no network).
+  screenshots:
+    name: screenshots (prints, axe e e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # The demo seeds repositories and commits in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # The runner already has Chrome; the scripts drive it through playwright-core.
+      - name: Chrome do runner
+        run: google-chrome --version
+
+      - name: Prints (2 temas, 2 idiomas) e axe
+        run: bun run demo:shots
+
+      - name: Jornadas e2e (2 idiomas)
+        run: bun run e2e
+
+      - name: Publicar os prints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prints
+          path: apps/desktop/screenshots
+          if-no-files-found: ignore
