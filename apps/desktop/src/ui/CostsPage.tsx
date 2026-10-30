@@ -10,12 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
+import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { daysBetween, PERIOD_LABELS, type Period, periodRange, usd } from "../lib/costs.ts";
+import {
+  daysBetween,
+  PERIOD_LABELS,
+  type Period,
+  periodRange,
+  projectLabel,
+  usd,
+} from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
+
+/** A tint of the accent per project in a day's bar, so the stack reads. */
+const SEGMENTS = ["bg-brand", "bg-brand/70", "bg-brand/50", "bg-brand/35"];
 
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
@@ -159,7 +170,7 @@ export function CostsPage(props: {
             <option value="">{t("costsUi.allProjects")}</option>
             {(all?.byProject ?? []).map((p) => (
               <option key={p.projectKey} value={p.projectKey}>
-                {p.projectKey}
+                {projectLabel(p.projectKey)}
               </option>
             ))}
           </select>
@@ -259,12 +270,15 @@ export function CostsPage(props: {
                     >
                       {byDay
                         .filter((row) => row.day === day)
-                        .map((row) => (
+                        .map((row, i) => (
                           <div
                             key={row.projectKey}
                             role="img"
-                            aria-label={`${day} · ${row.projectKey}: ${usd(row.costUsd)}`}
-                            className="border-card border-t bg-brand first:rounded-t-sm"
+                            aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
+                            className={cn(
+                              "border-card border-t first:rounded-t-sm",
+                              SEGMENTS[i % SEGMENTS.length],
+                            )}
                             style={{
                               height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%`,
                             }}
@@ -278,7 +292,10 @@ export function CostsPage(props: {
             <div className="grid gap-4 md:grid-cols-3">
               <Breakdown
                 name={t("costsUi.byProject")}
-                rows={summary.byProject.map((p) => ({ label: p.projectKey, costUsd: p.costUsd }))}
+                rows={summary.byProject.map((p) => ({
+                  label: projectLabel(p.projectKey),
+                  costUsd: p.costUsd,
+                }))}
               />
               <Breakdown
                 name={t("costsUi.byModel")}
@@ -301,7 +318,7 @@ export function CostsPage(props: {
                         className="h-auto w-full justify-start whitespace-normal py-1 text-left"
                         onClick={() => props.onOpenSession(hostId, s)}
                       >
-                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${s.projectKey} · ${usd(s.costUsd)}`}
+                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectLabel(s.projectKey)} · ${usd(s.costUsd)}`}
                       </Button>
                     </li>
                   ))}

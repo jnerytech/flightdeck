@@ -1,3 +1,5 @@
+import { basename } from "./paths.ts";
+
 const DAY_MS = 86_400_000;
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -42,7 +44,8 @@ export function periodRange(
 /** `US$ 1.23`. */
 export const usd = (value: number) => `US$ ${value.toFixed(2)}`;
 
-/** A project key as a person reads it (stub: filled in with the implementation). */
+/** A project key as a person reads it: a folder's key (`host:alfa:C:\x\app`) shows as `app`. */
 export function projectLabel(key: string): string {
-  return key;
+  const folder = /^host:[^:]+:(.+)$/.exec(key)?.[1];
+  return folder ? basename(folder) : key;
 }
