@@ -33,6 +33,7 @@ import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
+import { DensityController } from "./density.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
@@ -434,6 +435,7 @@ export class AppStore {
 
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
+  readonly density = new DensityController();
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
