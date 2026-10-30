@@ -5,7 +5,8 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
-const IMPORT_TAG = "histórico";
+// The daemon's tag for imported lines (data, not text on screen), so both tag the same way.
+const IMPORT_TAG = "hist\u00f3rico";
 /** The vault's kind in the hidden-line note; the daemon names the pattern kinds. */
 const VAULT_KIND = "valor do cofre";
 
