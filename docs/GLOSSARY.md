@@ -56,6 +56,16 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | regra de uso | usage rule | One rule of a secret: who, for what and when it may be used; the first that matches decides |
 | teto | ceiling | What no rule may loosen: allow for run_with_secret, or allow for a prod secret without a window |
 | janela | window | Days and hours, on this computer's clock, when a rule decides; outside it another decision holds |
+| Conversas | Conversations | The screen with the messages between sessions, of every host with messaging |
+| Mensagens | Messages | A session's tab with what it sent to and received from other sessions |
+| time | team | A coordinator session and its workers, each worker in a card; the screen is Times / Teams |
+| coordenadora | coordinator | The session of a team that splits the goal, dispatches, checks and integrates |
+| executora | worker | A session of a team that does one task in its own card |
+| nome padrão | standard name | `project · persona · number`, the name every session gets; the number is never reused |
+| apelido | alias | `project-persona-number`, the address of a session in messages; a rename adds one and keeps the old |
+| laço | loop | A pair of sessions messaging back and forth too fast; the host pauses the pair and tells you |
+| Soltar o par | Free the pair | Lets a pair paused for a loop talk again, in Needs you and in Settings |
+| exceção | exception | A pair (by session, project, team or host) allowed to talk beyond the default, one way or both |
 
 ## Estados de uma sessão
 

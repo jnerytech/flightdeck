@@ -62,6 +62,10 @@ are written in Portuguese.
   - [Arena](#arena)
 - [Risk-graded approval](#risk-graded-approval)
 - [Actions: Claude uses a secret without seeing it](#actions-claude-uses-a-secret-without-seeing-it)
+- [Teams and messages between sessions](#teams-and-messages-between-sessions)
+  - [Standard session names](#standard-session-names)
+  - [Who may message whom](#who-may-message-whom)
+  - [Teams](#teams)
 - [Costs, budgets and quota](#costs-budgets-and-quota)
   - [Plan quota](#plan-quota)
   - [Quota queue](#quota-queue)
@@ -1175,9 +1179,11 @@ and an expiry. Move a rule with **Move up**, **Move down** or by dragging.
   a command written by Claude itself, with the secrets in its environment: it **always** asks for
   your approval, with the command, the secret names and the host, and it is never automatic, not
   even with automatic approval. It has no "allow always".
-- **The `flightdeck-actions` mod** (`mods/flightdeck-actions`, install it with
-  `/plugin install`) registers the same two tools for terminal sessions without the MCP, shows an
-  "action running" band and the `/flightdeck-actions` command.
+- **The `flightdeck` mod** (`mods/flightdeck`, install it with `/plugin install`) registers the
+  same tools for terminal sessions without the MCP, shows an "action running" band and the
+  `/flightdeck` command. Its tools are `mcp__flightdeck__*`, the same prefix as an MCP server
+  added as `flightdeck`, so turn on only one of the two in a session. (Before phase 21 it was
+  called `flightdeck-actions`.)
 - **The mask** replaces the delivered value, each line of a multi-line value, and its base64,
   URL-encoded and hex forms. A secret transformed another way (a hash, a cut in the middle) is not
   caught, which is why a declared action is the safe path and a free command is not.
@@ -1191,7 +1197,7 @@ process of the same operating-system user, and a Claude session with Bash on the
 read them. Keep production secrets in `ssh:` actions.
 
 In a terminal, an action is masked when it runs through `flightdeckd action run` (what the
-`flightdeck-actions` mod uses): what it prints is the daemon's masked result. Anything else a
+`flightdeck` mod uses): what it prints is the daemon's masked result. Anything else a
 terminal shows is not masked.
 
 ## Snippets
@@ -1266,6 +1272,92 @@ Using one:
 - The project form has a **Default persona** per board column: a card that starts from that column
   opens in it, unless you chose another.
 - The session list shows each session's persona and filters by it; **Costs** has **By persona**.
+
+## Teams and messages between sessions
+
+Claude Code sessions can message each other through Flightdeck, on the same host or across hosts.
+
+- **The tools** come from the MCP (`flightdeckd mcp`) or the `flightdeck` mod:
+  - `list_sessions`: the sessions this one may see, with their address (`host/id` or the alias);
+  - `send_to_session`: the answer is delivered, queued or refused with the reason;
+  - `notify_when_idle`: one notice when the other session ends its turn;
+  - `read_session`: read only;
+  - `team_status`: the state of a team.
+- **Who is sending** comes from the session's environment: `FLIGHTDECK_SESSION` in managed
+  sessions, `FLIGHTDECK_LAUNCH_ID` in those opened by `flightdeckd claude`.
+- **Delivery on one host** needs no app:
+  - a managed session in the middle of a turn gets the message when the turn ends;
+  - a terminal waiting for a permission gets it after that.
+- **Delivery across hosts** goes through the app, which carries the message from one daemon to the
+  other. With the app closed, the message waits up to 24 hours. A plain `claude` (no channel)
+  receives nothing.
+- **Known limit:** only session messages cross hosts. STOP, resume and the idle notice work on the
+  team's host, and `read_session` and `notify_when_idle` only see sessions of the same host.
+- **In the app:**
+  - **Conversations** (sidebar) lists the messages newest first, with filters by state and team;
+  - each session has a **Messages** tab with what it sent and received;
+  - from that tab, **Send to another session…** sends a message from the session to another one.
+
+### Standard session names
+
+- **Every session gets a name** when it appears: `project · persona · number`, for example
+  `flightdeck · revisor · 3`.
+  - Without a persona, the persona is `geral`.
+  - A card's session takes the card's number: `flightdeck · autor · card 42`.
+- **Every session also gets an alias:** `project-persona-number`, for example
+  `flightdeck-revisor-3`. The alias addresses the session, alone or as `host/alias` across hosts.
+- **A number is never reused**, not even after the session is gone.
+- **Renaming a session** changes its name and adds an alias. The old alias keeps working.
+- **In Sessions:**
+  - a host that has names shows them;
+  - inside each project, sessions are sorted by name, after the ones that need you and the pinned
+    ones;
+  - **Filters → Persona** keeps one persona;
+  - a name you gave a session still wins.
+
+### Who may message whom
+
+- **The default:** only sessions of the same project or of the same team talk.
+- **Settings → Messages between sessions on <host>:**
+  - adds exceptions by session, project, team or host, one way or both ways (**Both ways**);
+  - sets the **retention** of the history (30 days by default);
+  - lists the **pairs paused for a loop**, with **Free**.
+  - If the host refuses a change, the section says why.
+- **Limits:**
+  - 20 messages per hour per pair, and 100 per hour per session;
+  - 32 KB per message.
+- **A loop pauses the pair:** more than 10 messages back and forth in 10 minutes.
+  - You get a notification, and the pair waits in **Needs you**.
+  - **Free the pair** lets the pair talk again.
+- **A message is never an approval:**
+  - its header says it comes from another session, not from you;
+  - no message answers a permission request.
+- **Third-party content:** a session that received third-party content passes that mark on, and
+  automatic approval stays off for whoever it messages.
+
+### Teams
+
+- **A team** is a coordinator session and its workers. Each worker runs in a card, with its own
+  worktree.
+- **Teams** (sidebar) creates a team: the project, the goal, a name, the number of workers and,
+  if you want, the coordinator's persona.
+- **The coordinator's cycle:**
+  1. split the goal into tasks, each with what "done" means;
+  2. send one task to each worker, and ask to hear when it goes idle;
+  3. check the work itself, with the project's checks or the team's commands, in the worker's
+     worktree;
+  4. accept only a green commit;
+  5. integrate in the agreed order;
+  6. tell you when something is your decision.
+- **From the team's row you can:**
+  - pause it (STOP to every member) and resume it;
+  - send a message to everyone;
+  - change a member's persona;
+  - add a worker, or take a member out (its card stays on the board);
+  - close the team, with a confirmation.
+- **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
+  itself. You get a notification, and the row says "paused by the quota". When the window
+  restarts, the team resumes and tells you.
 
 ## Costs, budgets and quota
 

@@ -47,8 +47,16 @@ sessions from one place, without opening each machine.
 - A vault for secrets (SSH keys, passwords, tokens, env sets): values live in the system credential
   store, are revealed only after you type a word, and leave in an encrypted backup you choose.
 - Actions: you declare a command with places for vault secrets and parameters, and Claude calls it
-  by name (MCP tools `list_actions` and `run_action`, or the `flightdeck-actions` mod) without ever
+  by name (MCP tools `list_actions` and `run_action`, or the `flightdeck` mod) without ever
   receiving the secret. It gets the exit code and the output (up to 32 KB) with the secret masked.
+- Messages between sessions, on any host: a session lists the others it may see, sends to one
+  (`send_to_session`), asks to hear when one goes idle and reads one (MCP tools or the `flightdeck`
+  mod). Across hosts the app carries them, and a message waits up to 24 hours for it. Every session
+  gets a standard name, `project · persona · number` (`flightdeck · revisor · 3`), and an alias
+  that addresses it (`flightdeck-revisor-3`).
+- Teams: a coordinator session splits a goal into tasks, dispatches each to a worker in its own
+  card, checks the work itself and accepts only a green commit. The app has Conversas, Times and a
+  Mensagens tab per session; a team pauses by itself when the plan quota crosses the limit.
 - Snippets: saved commands and prompts (global, per host or versioned in the project), used from
   Ctrl+K, a terminal tab or `/` in a session, imported from the shell history with secrets hidden.
 - Personas: engineering roles Claude takes in a session (a pack of ten, plus your own per host,
@@ -201,6 +209,11 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
 - **Usage rules per secret.** Each secret has ordered rules (who, for what, when, how often) over
   safe defaults; no rule can allow `run_with_secret` or a `prod` secret outside a time window, and
   a high-risk use always asks.
+- **A message is never an approval.** Its header says it comes from another session, not from
+  you, and no message answers a permission request. By default only sessions of the same project
+  or team talk (exceptions in Settings), with limits per pair and per session; a loop pauses the
+  pair and tells you. A session that received third-party content passes that mark on, and
+  automatic approval stays off for whoever it messages.
 - **Signed updates.** The app and the daemon install only updates signed with the project's key
   ([`release/flightdeck.pub`](release/flightdeck.pub)). The Windows installer itself is not
   code-signed.

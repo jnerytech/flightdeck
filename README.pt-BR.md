@@ -48,9 +48,18 @@ sessões num lugar só, sem abrir cada máquina.
 - Cofre de segredos (chaves SSH, senhas, tokens e variáveis de ambiente): os valores ficam no cofre
   de credenciais do sistema, só aparecem depois de você digitar uma palavra e saem num backup cifrado.
 - Ações: você declara um comando com lugares para segredos do cofre e para parâmetros, e o Claude
-  o chama pelo nome (ferramentas MCP `list_actions` e `run_action`, ou o mod `flightdeck-actions`)
+  o chama pelo nome (ferramentas MCP `list_actions` e `run_action`, ou o mod `flightdeck`)
   sem nunca receber o segredo. Ele recebe o código de saída e a saída (até 32 KB) com o segredo
   mascarado.
+- Mensagens entre sessões, em qualquer host: uma sessão lista as outras que pode ver, manda para
+  uma (`send_to_session`), pede um aviso quando outra ficar ociosa e lê outra (ferramentas MCP ou o
+  mod `flightdeck`). Entre hosts o app repassa, e a mensagem espera por ele até 24 horas. Toda
+  sessão ganha um nome padrão, `projeto · persona · número` (`flightdeck · revisor · 3`), e um
+  apelido que a endereça (`flightdeck-revisor-3`).
+- Times: uma sessão coordenadora quebra um objetivo em tarefas, despacha cada uma para uma
+  executora num card próprio, confere o trabalho por conta própria e só aceita commit verde. O app
+  tem Conversas, Times e a aba Mensagens de cada sessão; um time pausa sozinho quando a cota do
+  plano passa do limite.
 - Snippets: comandos e prompts salvos (globais, por host ou versionados no projeto), usados pelo
   Ctrl+K, numa aba de terminal ou com `/` numa sessão, importados do histórico do shell com os
   segredos ocultos.
@@ -207,6 +216,11 @@ só. Os hosts são independentes: nada é copiado entre eles.
 - **Regras de uso por segredo.** Cada segredo tem regras em ordem (quem, para quê, quando, quantas
   vezes) sobre padrões seguros; nenhuma regra permite `run_with_secret` nem um segredo `prod` fora
   de uma janela de horário, e um uso de risco alto sempre pergunta.
+- **Mensagem nunca é aprovação.** O cabeçalho diz que ela vem de outra sessão, não de você, e
+  nenhuma mensagem responde a um pedido de permissão. Por padrão só falam sessões do mesmo projeto
+  ou time (exceções em Configurações), com limites por par e por sessão; um laço pausa o par e
+  avisa você. Uma sessão que recebeu conteúdo de terceiros passa essa marca adiante, e a aprovação
+  automática fica desligada também em quem recebe dela.
 - **Atualizações assinadas.** O app e o daemon só instalam atualizações assinadas com a chave do
   projeto ([`release/flightdeck.pub`](release/flightdeck.pub)). O instalador do Windows em si não
   tem assinatura de código.

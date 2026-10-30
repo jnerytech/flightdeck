@@ -62,6 +62,10 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Arena](#arena)
 - [Aprovação graduada por risco](#aprovação-graduada-por-risco)
 - [Ações: o Claude usa um segredo sem vê-lo](#ações-o-claude-usa-um-segredo-sem-vê-lo)
+- [Times e mensagens entre sessões](#times-e-mensagens-entre-sessões)
+  - [Nomes padronizados de sessão](#nomes-padronizados-de-sessão)
+  - [Quem pode falar com quem](#quem-pode-falar-com-quem)
+  - [Times](#times)
 - [Custos, orçamentos e cota](#custos-orçamentos-e-cota)
   - [Cota do plano](#cota-do-plano)
   - [Fila por cota](#fila-por-cota)
@@ -1158,9 +1162,11 @@ por dia, e uma expiração. Mude a ordem com **Subir**, **Descer** ou arrastando
   comando escrito pelo próprio Claude, com os segredos no ambiente: **sempre** pede a sua
   aprovação, com o comando, os nomes dos segredos e o host, e nunca é automática, nem com a
   aprovação automática. Não existe "permitir sempre" aqui.
-- **O mod `flightdeck-actions`** (`mods/flightdeck-actions`, instale com `/plugin install`)
-  registra as mesmas duas ferramentas para sessões do terminal sem o MCP, mostra uma faixa "ação
-  rodando" e o comando `/flightdeck-actions`.
+- **O mod `flightdeck`** (`mods/flightdeck`, instale com `/plugin install`) registra as mesmas
+  ferramentas para sessões do terminal sem o MCP, mostra uma faixa "ação rodando" e o comando
+  `/flightdeck`. As ferramentas são `mcp__flightdeck__*`, o mesmo prefixo de um servidor MCP
+  adicionado como `flightdeck`; ligue só um dos dois numa sessão. (Antes da Fase 21 ele se
+  chamava `flightdeck-actions`.)
 - **A máscara** troca o valor entregue, cada linha de um valor de várias linhas e as formas dele em
   base64, URL-encode e hex. Um segredo transformado de outro jeito (um hash, um corte no meio) não
   é pego; por isso a ação declarada é o caminho seguro, e o comando livre não.
@@ -1174,7 +1180,7 @@ usuário do sistema operacional, e uma sessão do Claude com Bash no **mesmo hos
 Segredos de produção ficam em ações `ssh:`.
 
 Num terminal, uma ação sai mascarada quando roda por `flightdeckd action run` (o que o mod
-`flightdeck-actions` usa): o que ela imprime é o resultado já mascarado pelo daemon. O resto do que
+`flightdeck` usa): o que ela imprime é o resultado já mascarado pelo daemon. O resto do que
 um terminal mostra não é mascarado.
 
 ## Snippets
@@ -1248,6 +1254,94 @@ Para usar:
 - O formulário do projeto tem uma **Persona padrão** por coluna do board: um card que inicia daquela
   coluna abre nela, a não ser que você escolha outra.
 - A lista de sessões mostra a persona de cada uma e filtra por ela; **Custos** tem **Por persona**.
+
+## Times e mensagens entre sessões
+
+Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou entre hosts.
+
+- **As ferramentas** vêm do MCP (`flightdeckd mcp`) ou do mod `flightdeck`:
+  - `list_sessions`: as sessões que esta pode ver, com o endereço (`host/id` ou o apelido);
+  - `send_to_session`: a resposta é entregue, na fila ou recusada com o motivo;
+  - `notify_when_idle`: um aviso, uma vez, quando a outra sessão terminar o turno;
+  - `read_session`: só leitura;
+  - `team_status`: o estado de um time.
+- **Quem manda** vem do ambiente da sessão: `FLIGHTDECK_SESSION` nas gerenciadas,
+  `FLIGHTDECK_LAUNCH_ID` nas abertas por `flightdeckd claude`.
+- **No mesmo host** a entrega não precisa do app:
+  - uma sessão gerenciada no meio de um turno recebe quando o turno termina;
+  - um terminal esperando uma permissão recebe depois disso.
+- **Entre hosts** a entrega passa pelo app, que leva a mensagem de um daemon ao outro. Com o app
+  fechado, a mensagem espera até 24 horas. O `claude` puro (sem canal) não recebe nada.
+- **Limite conhecido:** só as mensagens de sessão atravessam os hosts. O STOP, o resume e o aviso
+  de ocioso valem no host do time, e o `read_session` e o `notify_when_idle` só olham sessões do
+  mesmo host.
+- **No app:**
+  - **Conversas** (barra lateral) lista as mensagens, a mais nova primeiro, com filtros por estado
+    e por time;
+  - cada sessão tem a aba **Mensagens**, com o que ela mandou e recebeu;
+  - nessa aba, **Mandar para outra sessão…** manda uma mensagem da sessão para outra.
+
+### Nomes padronizados de sessão
+
+- **Toda sessão ganha um nome** quando aparece: `projeto · persona · número`, por exemplo
+  `flightdeck · revisor · 3`.
+  - Sem persona, a persona é `geral`.
+  - A sessão de um card leva o número do card: `flightdeck · autor · card 42`.
+- **Toda sessão ganha também um apelido:** `projeto-persona-número`, por exemplo
+  `flightdeck-revisor-3`. O apelido endereça a sessão, sozinho ou como `host/apelido` entre hosts.
+- **Um número nunca é reaproveitado**, nem depois que a sessão some.
+- **Renomear uma sessão** troca o nome e acrescenta um apelido. O apelido antigo continua valendo.
+- **Em Sessões:**
+  - um host com nomes mostra os nomes;
+  - dentro de cada projeto, as sessões ficam em ordem de nome, depois das que precisam de você e
+    das fixadas;
+  - **Filtros → Persona** deixa só uma persona;
+  - um nome que você deu a uma sessão continua valendo.
+
+### Quem pode falar com quem
+
+- **O padrão:** só falam sessões do mesmo projeto ou do mesmo time.
+- **Configurações → Mensagens entre sessões em <host>:**
+  - acrescenta exceções por sessão, projeto, time ou host, num sentido ou nos dois (**Nos dois
+    sentidos**);
+  - define a **retenção** do histórico (30 dias por padrão);
+  - lista os **pares pausados por laço**, com **Soltar**.
+  - Se o host recusa uma mudança, a seção diz por quê.
+- **Limites:**
+  - 20 mensagens por hora por par e 100 por hora por sessão;
+  - 32 KB por mensagem.
+- **Um laço pausa o par:** mais de 10 mensagens de ida e volta em 10 minutos.
+  - Você recebe uma notificação, e o par espera em **Precisa de você**.
+  - **Soltar o par** deixa o par falar de novo.
+- **Mensagem nunca é aprovação:**
+  - o cabeçalho diz que ela vem de outra sessão, não de você;
+  - nenhuma mensagem responde a um pedido de permissão.
+- **Conteúdo de terceiros:** uma sessão que recebeu conteúdo de terceiros passa essa marca
+  adiante, e a aprovação automática fica desligada também em quem recebe dela.
+
+### Times
+
+- **Um time** é uma sessão coordenadora e as executoras. Cada executora roda num card, com a
+  própria worktree.
+- **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome, o número de executoras e,
+  se quiser, a persona da coordenadora.
+- **O ciclo da coordenadora:**
+  1. quebrar o objetivo em tarefas, cada uma com o que significa "pronto";
+  2. mandar uma tarefa para cada executora e pedir um aviso quando ela ficar ociosa;
+  3. conferir o trabalho por conta própria, com os checks do projeto ou os comandos do time, na
+     worktree da executora;
+  4. aceitar só commit verde;
+  5. integrar na ordem combinada;
+  6. avisar você quando algo for decisão sua.
+- **Na linha do time dá para:**
+  - pausar (STOP a todos os membros) e retomar;
+  - mandar uma mensagem a todos;
+  - trocar a persona de um membro;
+  - acrescentar uma executora ou tirar um membro (o card fica no board);
+  - encerrar o time, com confirmação.
+- **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
+  recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
+  retoma e avisa.
 
 ## Custos, orçamentos e cota
 
