@@ -305,6 +305,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.ssh ? ["ssh"] : []),
     // Phase 17: the actions that use a vault secret without Claude seeing it.
     ...(opts.actions ? ["actions"] : []),
+    // Phase 18: saved commands and prompts of the host and its projects.
+    ...(opts.snippets ? ["snippets"] : []),
   ];
   let pingSeq = 0;
 
