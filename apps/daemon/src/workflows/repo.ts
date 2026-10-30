@@ -29,7 +29,8 @@ export async function workflowSources(repo: string, base: string): Promise<Workf
   const paths = listed.stdout
     .split("\0")
     .filter((path) => path.endsWith(".yaml"))
-    .sort();
+    // Pinned locale: the order must not depend on the host the daemon runs on.
+    .sort((a, b) => a.localeCompare(b, "en"));
   const sources: WorkflowSource[] = [];
   for (const path of paths) {
     const { stdout: source } = must(await git(repo, "show", `${base}:${path}`), "git show");
