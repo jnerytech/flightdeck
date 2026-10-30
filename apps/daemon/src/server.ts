@@ -294,6 +294,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.autoApprove ? ["autoapprove"] : []),
     // Phase 15: the app shows Conexões for hosts that keep ssh destinos.
     ...(opts.ssh ? ["ssh"] : []),
+    // Phase 17: the actions that use a vault secret without Claude seeing it.
+    ...(opts.actions ? ["actions"] : []),
   ];
   let pingSeq = 0;
 
