@@ -87,8 +87,33 @@ async function copyLocalSettings(repo: string, worktree: string): Promise<void> 
   copyFileSync(source, join(worktree, LOCAL_SETTINGS));
 }
 
-/** `git worktree add <repo>/.flightdeck/worktrees/<slug> -b fd/<slug> <base>`. */
-export async function addWorktree(
+/** The tail of the line of worktrees being added, per repository. */
+const adding = new Map<string, Promise<unknown>>();
+
+/**
+ * `git worktree add <repo>/.flightdeck/worktrees/<slug> -b fd/<slug> <base>`. One at a time per
+ * repository: two at once read each other's half-made admin folder in `.git/worktrees` and fail,
+ * and two cards with the same title would pick the same free slug.
+ */
+export function addWorktree(
+  repo: string,
+  title: string,
+  base: string,
+): Promise<{ slug: string; branch: string; path: string }> {
+  const key = resolve(repo);
+  const job = (adding.get(key) ?? Promise.resolve()).then(() => create(repo, title, base));
+  const tail = job.then(
+    () => undefined,
+    () => undefined,
+  );
+  adding.set(key, tail);
+  void tail.then(() => {
+    if (adding.get(key) === tail) adding.delete(key);
+  });
+  return job;
+}
+
+async function create(
   repo: string,
   title: string,
   base: string,
