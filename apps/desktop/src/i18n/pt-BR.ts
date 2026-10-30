@@ -86,6 +86,11 @@ export const ptBR = {
       imported: "Importados: {n}",
     },
     file: {
+      open: "Importar de arquivo",
+      choose: "Arquivo de snippets (YAML ou JSON)",
+      found: "Snippets do arquivo",
+      target: "Importar o arquivo para",
+      import: "Importar do arquivo",
       path: "Arquivo versionado: {path}",
       untrusted: "Não confiável: os comandos do arquivo só colam, sem rodar.",
       trusted: "Confiável: os comandos do arquivo podem rodar.",

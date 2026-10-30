@@ -84,6 +84,11 @@ export const en: Dictionary = {
       imported: "Imported: {n}",
     },
     file: {
+      open: "Import from a file",
+      choose: "Snippets file (YAML or JSON)",
+      found: "Snippets in the file",
+      target: "Import the file to",
+      import: "Import from the file",
       path: "Versioned file: {path}",
       untrusted: "Not trusted: the file's commands only paste, they do not run.",
       trusted: "Trusted: the file's commands can run.",
