@@ -167,7 +167,7 @@ describe("arena-ui", () => {
     await settle(() => comparison() !== null && idle());
     await click("Escolher a variante b", variantRegion("b"));
     expect(screen.queryByRole("alertdialog")).not.toBeNull();
-    expect(screen.queryByRole("alertdialog")?.textContent).toContain("as outras variantes");
+    expect(screen.queryByRole("alertdialog")?.textContent).toContain("As outras variantes");
     await click("Cancelar");
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect((await board.arena(card.id)).variants).toHaveLength(2);
