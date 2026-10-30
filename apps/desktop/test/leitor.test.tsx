@@ -165,11 +165,12 @@ describe("leitor", () => {
         target: { hostId, claudeSessionId: "com-resumo" },
       });
     });
-    await settle(() => screen.queryByText("Resumo da conversa") !== null);
-    const note = screen.queryByText("Resumo da conversa");
+    const log = () => screen.queryByRole("log", { name: "Transcript" }) as HTMLElement;
+    await settle(() => log() !== null && within(log()).queryByText("Resumo da conversa") !== null);
+    const note = within(log()).queryByText("Resumo da conversa");
     expect(note).not.toBeNull();
     expect(note?.className ?? "").toContain("text-center");
     expect(note?.className ?? "").not.toContain("bg-secondary");
-    expect(screen.queryByText("primeira")?.className ?? "").toContain("bg-secondary");
+    expect(within(log()).queryByText("primeira")?.className ?? "").toContain("bg-secondary");
   });
 });
