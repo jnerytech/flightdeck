@@ -2,7 +2,7 @@
 
 English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.md)
 
-Complete Flightdeck reference, organized by topic. It applies to version 0.13.0. The roadmap is
+Complete Flightdeck reference, organized by topic. It applies to version 0.14.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
 [`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
@@ -1363,7 +1363,7 @@ screenshots.
 
 ### Versions and compatibility
 
-- **One version:** the app, the daemon and the protocol ship with the same version (0.13.0 in
+- **One version:** the app, the daemon and the protocol ship with the same version (0.14.0 in
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the

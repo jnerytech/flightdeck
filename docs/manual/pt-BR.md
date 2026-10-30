@@ -2,7 +2,7 @@
 
 [English](en.md) | Português (Brasil) · [Voltar ao README](../../README.pt-BR.md)
 
-Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.13.0. O roadmap
+Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.14.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
 [`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
@@ -1330,7 +1330,7 @@ pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os pr
 
 ### Versões e compatibilidade
 
-- **Uma versão só:** o app, o daemon e o protocolo saem com a mesma versão (0.13.0 nesta
+- **Uma versão só:** o app, o daemon e o protocolo saem com a mesma versão (0.14.0 nesta
   documentação). `flightdeckd --version` imprime `flightdeckd <versão> (protocolo 1)`.
 - **No app:** a página do host mostra a versão do daemon, a do app e a do `claude`. Um daemon de
   outra versão ganha o selo **≠** ("versão diferente") na barra lateral: funciona, mas atualize
