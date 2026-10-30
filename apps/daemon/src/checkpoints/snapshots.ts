@@ -8,6 +8,7 @@ import type { Database } from "bun:sqlite";
 import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 
 export interface SnapshotRow {
@@ -52,6 +53,15 @@ export function snapshotForHook(
     ...(typeof payload.prompt === "string" ? { prompt: payload.prompt } : {}),
   };
 }
+
+/** What a turn changed in the files: git's letters as words, and the lines added and removed. */
+export interface TurnFiles {
+  files: Array<{ path: string; change: string }>;
+  insertions: number;
+  deletions: number;
+}
+
+const CHANGES: Record<string, string> = { M: "modified", A: "created", D: "deleted" };
 
 export type SnapshotResult = { row: SnapshotRow } | { skipped: string };
 
@@ -179,6 +189,45 @@ export class Snapshots {
   /** Queues a snapshot and returns at once; snapshots run one at a time, failures are dropped. */
   enqueue(input: SnapshotInput): void {
     this.queue = this.queue.then(() => this.take(input)).catch(() => {});
+  }
+
+  /**
+   * What turn `n` (a `before` snapshot) changed: the difference between its tree and the `after`
+   * one's, read from git objects only. A turn that has no `after` yet has no files.
+   */
+  async files(claudeSessionId: string, n: number): Promise<TurnFiles> {
+    const rows = this.list(claudeSessionId);
+    const start = rows.find((row) => row.n === n && row.kind === "before");
+    if (!start) throw new FlightdeckError("not_found", `turno ${n} sem snapshot nesta sessão`);
+    const end = rows.find((row) => row.n > n && row.kind !== "safety");
+    if (end?.kind !== "after") return { files: [], insertions: 0, deletions: 0 };
+    const diff = (flag: string) =>
+      must(start.repo, [
+        "-c",
+        "core.quotepath=false",
+        "diff-tree",
+        "-r",
+        "--no-renames",
+        flag,
+        start.tree,
+        end.tree,
+      ]);
+    const names = await diff("--name-status");
+    const files = names
+      ? names.split("\n").map((line) => {
+          const [status, path] = line.split("\t") as [string, string];
+          return { path, change: CHANGES[status] ?? "modified" };
+        })
+      : [];
+    const counts = await diff("--numstat");
+    let insertions = 0;
+    let deletions = 0;
+    for (const line of counts ? counts.split("\n") : []) {
+      const [added, removed] = line.split("\t");
+      insertions += Number(added) || 0;
+      deletions += Number(removed) || 0;
+    }
+    return { files, insertions, deletions };
   }
 
   /** Resolves once everything queued so far is done. */

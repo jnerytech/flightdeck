@@ -496,6 +496,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, {
           snapshots: opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
         });
+      case "snapshots.files": {
+        if (!opts.snapshots) throw new FlightdeckError("invalid_state", "snapshots indisponíveis");
+        const { claudeSessionId, n } = command.payload;
+        return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
+      }
       case "mcp.list":
         return ok(command.type, { servers: mcp().list(projectPath(command.payload.projectId)) });
       case "mcp.test": {

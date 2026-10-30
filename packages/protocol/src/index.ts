@@ -986,6 +986,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
+  /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
+  cmd("snapshots.files", z.object({ claudeSessionId: z.string().min(1), n: z.number().int() })),
   /** Phase 12: what going back to before turn `turn` (a `before` snapshot's n) changes. */
   cmd("rewind.preview", z.object({ claudeSessionId: z.string().min(1), turn: z.number().int() })),
   cmd(
@@ -1196,6 +1198,14 @@ export const SnapshotInfo = z.object({
   repo: z.string(),
 });
 export type SnapshotInfo = z.infer<typeof SnapshotInfo>;
+
+/** Phase 12: the files one turn changed, and the lines added and removed. */
+export const SnapshotFiles = z.object({
+  files: z.array(z.object({ path: z.string(), change: z.string() })),
+  insertions: z.number().int(),
+  deletions: z.number().int(),
+});
+export type SnapshotFiles = z.infer<typeof SnapshotFiles>;
 
 /** Phase 12: what a rewind changes, by the SDK's checkpoint or by the snapshot. */
 export const RewindPreview = z.object({
@@ -1409,6 +1419,7 @@ export interface CommandResults {
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
   "snapshots.list": { snapshots: SnapshotInfo[] };
+  "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;
   "rewind.apply": RewindPreview;
   "rewind.undo": RewindPreview;
