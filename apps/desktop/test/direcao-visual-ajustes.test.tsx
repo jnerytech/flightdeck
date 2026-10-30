@@ -281,4 +281,19 @@ describe("direcao-visual: ajustes finos", () => {
     await settle(() => document.querySelector("[class*='grid-flow-col']") !== null);
     expect(document.querySelector("[class*='grid-flow-col']")?.getAttribute("tabindex")).toBe("0");
   });
+
+  test("o caminho de um board aberto direto traz o nome do projeto, não o id", async () => {
+    const { store } = await setup({ projects: 1 });
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const project = (await store.hostCommand(hostId, "project.list", {}))?.projects[0];
+    expect(project?.name).toBe("repo0");
+    // A fresh state: the projects list was never opened.
+    expect(store.getState().projects[hostId]).toBeUndefined();
+    await act(async () => {
+      store.router.push({ name: "board", host: hostId, projectId: project?.id ?? "" });
+    });
+    const path = () => screen.queryByRole("navigation", { name: "Você está em" })?.textContent;
+    await settle(() => path() === "alfaBoardrepo0");
+    expect(path()).toBe("alfaBoardrepo0");
+  });
 });
