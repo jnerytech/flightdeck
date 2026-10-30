@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { statSync } from "node:fs";
 
-import type { ExternalSession, ExternalStatus } from "@flightdeck/protocol";
+import type { ExternalSession, ExternalStatus, SessionPersona } from "@flightdeck/protocol";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -34,6 +34,8 @@ interface Row {
   started_at: string;
   last_event_at: string;
   ended_at: string | null;
+  persona_open: string | null;
+  persona_applied: string | null;
 }
 
 /** State after each hook event (docs/SPEC-fase-5.md); Notification depends on its type. */
@@ -68,6 +70,10 @@ const toSession = (row: Row): ExternalSession => ({
   startedAt: row.started_at,
   lastEventAt: row.last_event_at,
   endedAt: row.ended_at,
+  // What was applied to the open session, else what it was opened with.
+  ...(row.persona_applied || row.persona_open
+    ? { persona: JSON.parse((row.persona_applied ?? row.persona_open) as string) as SessionPersona }
+    : {}),
 });
 
 /** Last modification of a transcript, or 0 when it is unreadable. */
@@ -189,6 +195,25 @@ export class ExternalSessions {
       .query("UPDATE external_sessions SET channel_connected = ? WHERE claude_session_id = ?")
       .run(connected ? 1 : 0, id);
     this.emit(id);
+  }
+
+  /** The persona applied to the session (a badge), or `null` after leaving it; announced like any change. */
+  setPersona(claudeSessionId: string, badge: SessionPersona | null): ExternalSession | null {
+    if (!this.get(claudeSessionId)) return null;
+    this.db
+      .query("UPDATE external_sessions SET persona_applied = ? WHERE claude_session_id = ?")
+      .run(badge ? JSON.stringify(badge) : null, claudeSessionId);
+    return this.emit(claudeSessionId);
+  }
+
+  /** The persona applied to the session, whole; `null` for none. */
+  appliedPersona(claudeSessionId: string): SessionPersona | null {
+    const row = this.db
+      .query<{ persona_applied: string | null }, [string]>(
+        "SELECT persona_applied FROM external_sessions WHERE claude_session_id = ?",
+      )
+      .get(claudeSessionId);
+    return row?.persona_applied ? (JSON.parse(row.persona_applied) as SessionPersona) : null;
   }
 
   /** Ends sessions with no event and no transcript change for `staleAfterS`. */

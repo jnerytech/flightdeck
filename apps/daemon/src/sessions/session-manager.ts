@@ -8,6 +8,7 @@ import type {
   PermissionUpdate,
   SessionEvent,
   SessionEventOf,
+  SessionPersona,
   SessionStatus,
   SessionSummary,
 } from "@flightdeck/protocol";
@@ -379,6 +380,22 @@ export class SessionManager {
   }
 
   // -- internals ------------------------------------------------------------
+
+  /** The persona applied to the open session, if any. */
+  appliedPersona(sessionId: string): SessionPersona | null {
+    this.get(sessionId);
+    return this.store.appliedPersona(sessionId);
+  }
+
+  /** Records that a persona was applied (or, with `null`, left): the timeline and the badge. */
+  markPersona(sessionId: string, badge: SessionPersona | null): void {
+    const before = this.store.appliedPersona(sessionId);
+    this.store.setAppliedPersona(sessionId, badge);
+    const shown = badge ?? before;
+    if (shown)
+      this.emit(sessionId, { type: badge ? "persona.applied" : "persona.cleared", persona: shown });
+    this.emitSummary(sessionId);
+  }
 
   private resolvePersona(ref: PersonaRef, cwd: string): ResolvedPersona {
     if (!this.opts.personas) {

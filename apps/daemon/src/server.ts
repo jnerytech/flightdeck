@@ -57,6 +57,7 @@ import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
+import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
@@ -166,6 +167,8 @@ export interface ServerOptions {
   snippetUse?: SnippetUse;
   /** The personas behind `personas.*` (phase 20). */
   personas?: Personas;
+  /** Applying a persona to an open session, behind `session.applyPersona` and `session.clearPersona` (phase 20). */
+  personaSessions?: OpenSessionPersonas;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -515,6 +518,13 @@ export function startServer(opts: ServerOptions): RunningServer {
   function snippets(): Snippets {
     if (!opts.snippets) throw new FlightdeckError("invalid_state", "snippets desativados");
     return opts.snippets;
+  }
+
+  function personaSessions(): OpenSessionPersonas {
+    if (!opts.personaSessions) {
+      throw new FlightdeckError("invalid_state", "personas em sessões abertas desativadas");
+    }
+    return opts.personaSessions;
   }
 
   function personas(): Personas {
@@ -1199,6 +1209,15 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, personas().list(command.payload));
       case "personas.save":
         return ok(command.type, personas().save(command.payload));
+      case "session.applyPersona": {
+        const { sessionId, claudeSessionId, persona } = command.payload;
+        return ok(
+          command.type,
+          await personaSessions().apply({ sessionId, claudeSessionId, persona }),
+        );
+      }
+      case "session.clearPersona":
+        return ok(command.type, await personaSessions().clear(command.payload));
       case "personas.resolve": {
         const { ref, projectPath } = command.payload;
         const store = personas();

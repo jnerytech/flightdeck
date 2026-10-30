@@ -283,6 +283,10 @@ export const SessionEvent = z.discriminatedUnion("type", [
     tools: z.array(z.string()),
   }),
   z.object({ type: z.literal("message.user"), text: z.string() }),
+  /** A persona was applied to the session (it is conversation instruction, not system prompt). */
+  z.object({ type: z.literal("persona.applied"), persona: SessionPersona }),
+  /** The role was left: back to normal behavior. */
+  z.object({ type: z.literal("persona.cleared"), persona: SessionPersona }),
   z.object({ type: z.literal("message.assistant"), blocks: z.array(AssistantBlock) }),
   z.object({ type: z.literal("message.delta"), text: z.string() }),
   z.object({
@@ -917,6 +921,10 @@ export const Persona = PersonaFields.extend({
 });
 export type Persona = z.infer<typeof Persona>;
 
+/** What applying or leaving a persona answers: the persona and the message that was sent. */
+export const PersonaSwitchResult = z.object({ persona: SessionPersona, text: z.string() });
+export type PersonaSwitchResult = z.infer<typeof PersonaSwitchResult>;
+
 /** A persona ready to use, with where it came from. */
 export const ResolvedPersonaResult = z.object({
   persona: PersonaFields,
@@ -1388,6 +1396,8 @@ export const ExternalSession = z.object({
   startedAt: z.string(),
   lastEventAt: z.string(),
   endedAt: z.string().nullable(),
+  /** The persona applied to it, else the one it was opened with (phase 20). */
+  persona: SessionPersona.optional(),
   meta: SessionMeta.optional(),
   summary: SessionLine.optional(),
 });
@@ -2112,6 +2122,34 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Applies a persona to an open session, managed (`sessionId`) or from a terminal (`claudeSessionId`). */
+  cmd(
+    "session.applyPersona",
+    z
+      .object({
+        sessionId: z.string().optional(),
+        claudeSessionId: z.string().optional(),
+        persona: PersonaRef,
+      })
+      .strict()
+      .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
+        message: "informe sessionId ou claudeSessionId, um dos dois",
+      }),
+  ),
+  /** Leaves the role that was applied: back to normal. */
+  cmd(
+    "session.clearPersona",
+    z
+      .object({
+        sessionId: z.string().optional(),
+        claudeSessionId: z.string().optional(),
+        language: z.enum(["pt-BR", "en"]).optional(),
+      })
+      .strict()
+      .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
+        message: "informe sessionId ou claudeSessionId, um dos dois",
+      }),
+  ),
   /** The persona to use, as `session.create` and `flightdeckd claude --persona` would resolve it. */
   cmd(
     "personas.resolve",
@@ -2544,6 +2582,8 @@ export interface CommandResults {
   "personas.remove": undefined;
   "personas.reset": Persona;
   "personas.resolve": ResolvedPersonaResult;
+  "session.applyPersona": PersonaSwitchResult;
+  "session.clearPersona": PersonaSwitchResult;
   "personas.trust": Persona;
   "snippets.render": { text: string; fields: SnippetField[] };
   "snippets.use": { text: string; terminal: TerminalInfo | null };

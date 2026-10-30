@@ -529,4 +529,11 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE sessions ADD COLUMN persona TEXT;
   `,
+  // Phase 20: the persona applied to an open session (a badge, not a prompt), and, for a terminal
+  // session, the one it was opened with.
+  `
+  ALTER TABLE sessions ADD COLUMN applied_persona TEXT;
+  ALTER TABLE external_sessions ADD COLUMN persona_open TEXT;
+  ALTER TABLE external_sessions ADD COLUMN persona_applied TEXT;
+  `,
 ];

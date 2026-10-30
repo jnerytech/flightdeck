@@ -47,6 +47,7 @@ interface SessionRow {
   permission_mode: PermissionMode;
   model: string | null;
   persona: string | null;
+  applied_persona: string | null;
   last_seq: number;
   created_at: string;
   updated_at: string;
@@ -84,7 +85,12 @@ function toSummary(row: SessionRow): SessionSummary {
     lastSeq: row.last_seq,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    ...(row.persona ? { persona: personaBadge(JSON.parse(row.persona) as PersonaSnapshot) } : {}),
+    // What was applied to the open session, else what it was opened with.
+    ...(row.applied_persona
+      ? { persona: JSON.parse(row.applied_persona) as SessionPersona }
+      : row.persona
+        ? { persona: personaBadge(JSON.parse(row.persona) as PersonaSnapshot) }
+        : {}),
   };
 }
 
@@ -165,6 +171,20 @@ export class EventStore {
         .run(JSON.stringify(session.persona), session.id);
     }
     return this.requireSession(session.id);
+  }
+
+  /** The persona applied to the open session (a badge); `null` for none. */
+  appliedPersona(id: string): SessionPersona | null {
+    const row = this.db.query("SELECT applied_persona FROM sessions WHERE id = ?").get(id) as {
+      applied_persona: string | null;
+    } | null;
+    return row?.applied_persona ? (JSON.parse(row.applied_persona) as SessionPersona) : null;
+  }
+
+  setAppliedPersona(id: string, badge: SessionPersona | null): void {
+    this.db
+      .query("UPDATE sessions SET applied_persona = ? WHERE id = ?")
+      .run(badge ? JSON.stringify(badge) : null, id);
   }
 
   /** The persona the session was opened with, whole; `null` for one without. */
