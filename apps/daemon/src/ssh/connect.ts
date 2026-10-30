@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SshTarget, TerminalInfo } from "@flightdeck/protocol";
+import { envInput, remoteCommand } from "../actions/ssh-command.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
 import type { TerminalManager } from "../terminal/terminal-manager.ts";
@@ -47,7 +48,28 @@ export type ExecSsh = (
 ) => Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean }>;
 
 export function processExec(): ExecSsh {
-  return async () => ({ code: 0, stdout: "", stderr: "", timedOut: false });
+  return async (argv, env, input, timeoutMs) => {
+    const proc = Bun.spawn(argv, {
+      env: { ...process.env, ...env },
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+    }, timeoutMs);
+    proc.stdin.write(input);
+    await proc.stdin.end();
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    clearTimeout(timer);
+    return { code, stdout, stderr, timedOut };
+  };
 }
 
 /**
@@ -99,6 +121,9 @@ const realTimers: Timers = {
   set: (fn, ms) => setTimeout(fn, ms),
   clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
+
+/** A terminal for the person, a reachability test, or an `ssh:` action (phase 17). */
+type Mode = "connect" | "test" | "exec";
 
 interface Plan {
   argv: string[];
@@ -187,14 +212,43 @@ export class SshConnector {
    * remote command and the environment goes over stdin; a key from the vault is delivered for
    * this one run.
    */
-  async exec(_req: {
+  async exec(req: {
     target: string;
     argv: string[];
     env: Record<string, string>;
     timeoutS: number;
     privateKey?: string;
   }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
-    return { exitCode: 0, stdout: "", stderr: "", timedOut: false };
+    const named = this.opts.targets.list().filter((t) => t.name === req.target);
+    if (named.length === 0) {
+      throw new FlightdeckError("not_found", `destino ${req.target} não encontrado`);
+    }
+    if (named.length > 1) {
+      throw new FlightdeckError("invalid_state", `há mais de um destino chamado ${req.target}`);
+    }
+    const target = named[0] as SshTarget;
+    if (target.auth === "password") {
+      throw new FlightdeckError(
+        "invalid_state",
+        `${target.name} usa senha: uma ação ssh roda sem ninguém para digitá-la`,
+      );
+    }
+    const run = this.opts.exec;
+    if (!run) throw new FlightdeckError("invalid_state", "este daemon não roda ações ssh");
+    // Checked before a key is delivered: a bad variable stops here.
+    const input = envInput(req.env);
+    const plan = await this.plan(target, req.privateKey, "exec", req.argv);
+    try {
+      const done = await run(plan.argv, plan.env, input, req.timeoutS * 1000);
+      return {
+        exitCode: done.code,
+        stdout: done.stdout,
+        stderr: done.stderr,
+        timedOut: done.timedOut,
+      };
+    } finally {
+      plan.release();
+    }
   }
 
   /** Takes away every key still delivered. */
@@ -211,7 +265,8 @@ export class SshConnector {
   private async plan(
     target: SshTarget,
     privateKey: string | undefined,
-    mode: "connect" | "test",
+    mode: Mode,
+    remote: string[] = [],
   ): Promise<Plan> {
     const { targets } = this.opts;
     if (target.auth === "vault-key" && !privateKey) {
@@ -256,7 +311,7 @@ export class SshConnector {
     };
     try {
       const { config, knownHosts } = this.files(members, hops, mode);
-      plan.argv = this.argv(target, hops, delivered, { config, knownHosts }, mode);
+      plan.argv = this.argv(target, hops, delivered, { config, knownHosts }, mode, remote);
       plan.env = { ...delivered?.env, ...this.askpassEnv(target, mode) };
     } catch (error) {
       plan.release();
@@ -304,14 +359,14 @@ export class SshConnector {
   }
 
   /** Writes (once) the known_hosts and the ssh config, each named by the hash of its content. */
-  private files(members: SshTarget[], hops: SshTarget[], mode: "connect" | "test") {
+  private files(members: SshTarget[], hops: SshTarget[], mode: Mode) {
     const known = `${members
       .flatMap((m) => knownHostsLines(m.host, m.port, this.opts.targets.pinned(m.id)?.keys ?? []))
       .join("\n")}\n`;
     const knownHosts = this.named("kh-", known);
     const lines = [
       "Host *",
-      `  BatchMode ${mode === "test" ? "yes" : "no"}`,
+      `  BatchMode ${mode === "connect" ? "no" : "yes"}`,
       "  StrictHostKeyChecking yes",
       `  UserKnownHostsFile ${this.value(knownHosts)}`,
       `  GlobalKnownHostsFile ${this.nul}`,
@@ -341,7 +396,8 @@ export class SshConnector {
     hops: SshTarget[],
     delivered: DeliveredKey | null,
     files: { config: string; knownHosts: string },
-    mode: "connect" | "test",
+    mode: Mode,
+    remote: string[],
   ): string[] {
     const usesFile = target.auth === "key-file" || delivered?.identityFile;
     const identitiesOnly = usesFile || target.auth === "password" ? "yes" : "no";
@@ -351,7 +407,7 @@ export class SshConnector {
       "-F",
       this.win ? files.config.replaceAll("\\", "/") : files.config,
       "-o",
-      `BatchMode=${mode === "test" ? "yes" : "no"}`,
+      `BatchMode=${mode === "connect" ? "no" : "yes"}`,
       "-o",
       `IdentitiesOnly=${identitiesOnly}`,
       "-o",
@@ -388,17 +444,20 @@ export class SshConnector {
         `${h.user}@${h.host.includes(":") ? `[${h.host}]` : h.host}:${h.port}`;
       argv.push("-J", hops.map(hop).join(","));
     }
-    if (mode === "test") argv.push("-o", "ConnectTimeout=10");
+    if (mode !== "connect") argv.push("-o", "ConnectTimeout=10");
+    // An action has no terminal: its output is read, and its stdin carries the environment.
+    if (mode === "exec") argv.push("-T");
     argv.push("-p", String(target.port), "--", `${target.user}@${target.host}`);
     if (mode === "test") argv.push("exit", "0");
+    if (mode === "exec") argv.push(remoteCommand(remote));
     return argv;
   }
 
   /** Passwords and key passphrases come from the vault through SSH_ASKPASS, with a ticket. */
-  private askpassEnv(target: SshTarget, mode: "connect" | "test"): Record<string, string> {
+  private askpassEnv(target: SshTarget, mode: Mode): Record<string, string> {
     const askpass = this.opts.askpass;
-    // BatchMode=yes never asks, so a test has nothing to answer.
-    if (!askpass || target.auth === "agent" || mode === "test") return {};
+    // BatchMode=yes never asks, so a test or an action has nothing to answer.
+    if (!askpass || target.auth === "agent" || mode !== "connect") return {};
     const password = target.auth === "password";
     return {
       SSH_ASKPASS: askpass.script,
