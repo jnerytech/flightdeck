@@ -135,4 +135,17 @@ describe("terminal-ui: abrir um terminal", () => {
     await waitFor(() => expect(store.router.current.name).toBe("terminal"));
     expect(store.tabs.tabs).toHaveLength(2);
   });
+
+  test("the host page's list follows terminals opened and ended elsewhere", async () => {
+    const { store, hostId, root } = await setup();
+    await waitFor(() => expect(screen.queryByText("Nenhum terminal aberto.")).not.toBeNull());
+    const { terminalId } = await store.terminalHost(hostId).open(root, 80, 24);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: `Abrir o terminal em ${root}` })).not.toBeNull(),
+    );
+    await store.terminalHost(hostId).close(terminalId, true);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: `Abrir o terminal em ${root}` })).toBeNull(),
+    );
+  });
 });
