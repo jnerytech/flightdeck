@@ -529,6 +529,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
         return ok(command.type, { servers: mcp().list(path) });
       }
+      case "mcp.status":
+        return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
         return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });

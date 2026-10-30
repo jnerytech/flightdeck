@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AssistantBlock } from "@flightdeck/protocol";
+import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
@@ -18,6 +18,8 @@ export interface FakeRuntimeOptions {
   delayMs?: number;
   /** What `rewindFiles` answers (phase 12); without it, the fake has no checkpoint. */
   rewind?: (userMessageId: string, dryRun: boolean) => RewindFilesResult;
+  /** The MCP servers a live run reports (phase 12). */
+  mcpServers?: string[];
 }
 
 class Interrupted extends Error {}
@@ -40,9 +42,11 @@ export class FakeRuntime implements AgentRuntime {
   constructor(options: FakeRuntimeOptions = {}) {
     this.delayMs = options.delayMs ?? 10;
     this.rewind = options.rewind;
+    this.mcpServers = options.mcpServers ?? [];
   }
 
   private readonly rewind: FakeRuntimeOptions["rewind"];
+  private readonly mcpServers: string[];
 
   /** MCP servers turned on or off in live runs (phase 12). */
   readonly mcpToggles: Array<{ name: string; enabled: boolean }> = [];
@@ -57,7 +61,14 @@ export class FakeRuntime implements AgentRuntime {
 
   start(opts: StartOptions): AgentRun {
     this.starts.push(opts);
-    return new FakeRun(opts, this.delayMs, this.costs, this.rewind, this.mcpToggles);
+    return new FakeRun(
+      opts,
+      this.delayMs,
+      this.costs,
+      this.rewind,
+      this.mcpToggles,
+      this.mcpServers,
+    );
   }
 }
 
@@ -76,12 +87,24 @@ class FakeRun implements AgentRun {
     private readonly costs: Map<string, number>,
     private readonly rewind?: FakeRuntimeOptions["rewind"],
     private readonly toggles: Array<{ name: string; enabled: boolean }> = [],
+    private readonly mcpServers: string[] = [],
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
   }
 
   async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
     this.toggles.push({ name, enabled });
+  }
+
+  /** Connected, unless the last toggle of the server turned it off. */
+  async mcpServerStatus(): Promise<McpLiveStatus[]> {
+    return this.mcpServers.map((name) => ({
+      name,
+      status:
+        this.toggles.filter((t) => t.name === name).at(-1)?.enabled === false
+          ? "disabled"
+          : "connected",
+    }));
   }
 
   async rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {

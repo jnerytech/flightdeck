@@ -1,4 +1,5 @@
 import type {
+  McpLiveStatus,
   PermissionMode,
   PermissionUpdate,
   SessionEvent,
@@ -65,6 +66,8 @@ export interface AgentRun {
   rewindFiles?(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult>;
   /** Phase 12: turns an MCP server of the live session on or off. */
   toggleMcpServer?(name: string, enabled: boolean): Promise<void>;
+  /** Phase 12: the live status of the session's MCP servers. */
+  mcpServerStatus?(): Promise<McpLiveStatus[]>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
 }

@@ -894,6 +894,14 @@ export const McpServerView = McpServerInput.extend({
 });
 export type McpServerView = z.infer<typeof McpServerView>;
 
+/** Phase 12: the live state of one MCP server of a managed session. */
+export const McpLiveStatus = z.object({
+  name: z.string(),
+  status: z.enum(["connected", "failed", "needs-auth", "pending", "disabled"]),
+  error: z.string().optional(),
+});
+export type McpLiveStatus = z.infer<typeof McpLiveStatus>;
+
 /** Phase 12: what `agentcfg.*` edits. */
 export const AgentCfgKind = z.enum(["claudemd", "agent", "skill"]);
 const AgentCfgOrigin = z.enum(["project", "user"]);
@@ -1039,6 +1047,8 @@ export const Command = z.discriminatedUnion("type", [
       sessionId: z.string().optional(),
     }),
   ),
+  /** Phase 12: the MCP servers of a live managed session, as its runtime reports them. */
+  cmd("mcp.status", z.object({ sessionId: z.string() })),
   /** Phase 12: the project's CLAUDE.md files, agents and skills; writes only inside the project. */
   cmd("agentcfg.list", z.object({ projectId: z.string(), kind: AgentCfgKind })),
   cmd(
@@ -1431,6 +1441,7 @@ export interface CommandResults {
   "mcp.save": { servers: McpServerView[] };
   "mcp.remove": { servers: McpServerView[] };
   "mcp.toggle": { servers: McpServerView[] };
+  "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
   "agentcfg.read": AgentCfgItem & { content: string };
   "agentcfg.write": { hash: string };

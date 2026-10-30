@@ -1,4 +1,5 @@
 import {
+  type McpServerStatus,
   type Options,
   type PermissionResult,
   type SDKMessage,
@@ -26,6 +27,7 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   close(): void;
   rewindFiles?(userMessageId: string, opts?: { dryRun?: boolean }): Promise<RewindFilesResult>;
   toggleMcpServer?(name: string, enabled: boolean): Promise<void>;
+  mcpServerStatus?(): Promise<McpServerStatus[]>;
 }
 
 export type QueryFn = (params: {
@@ -234,6 +236,11 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       },
       toggleMcpServer: (name, enabled) =>
         (handle.toggleMcpServer as NonNullable<QueryHandle["toggleMcpServer"]>)(name, enabled),
+      // Only what the screen shows: the SDK adds server info and configuration.
+      mcpServerStatus: async () =>
+        (await (handle.mcpServerStatus as NonNullable<QueryHandle["mcpServerStatus"]>)()).map(
+          ({ name, status, error }) => ({ name, status, ...(error ? { error } : {}) }),
+        ),
       rewindFiles: (userMessageId, opts) =>
         (handle.rewindFiles as NonNullable<QueryHandle["rewindFiles"]>)(userMessageId, opts),
       async interrupt() {

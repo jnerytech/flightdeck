@@ -1,6 +1,7 @@
 import type {
   CommandPayload,
   EventEnvelope,
+  McpLiveStatus,
   PendingPermission,
   PermissionMode,
   PermissionUpdate,
@@ -434,6 +435,18 @@ export class SessionManager {
       );
     }
     await run.toggleMcpServer(name, enabled);
+  }
+
+  /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
+  async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
+    const run = this.live.get(sessionId)?.run;
+    if (!run?.mcpServerStatus) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "a sessão não está viva para consultar os servidores MCP",
+      );
+    }
+    return run.mcpServerStatus();
   }
 
   /** Phase 12: a turn is running (or waiting for a permission) in this Claude session. */
