@@ -1104,7 +1104,10 @@ side and hands Claude the exit code and the output (up to 32 KB) with the secret
   show in the process list.
 - Each parameter must match its whole `pattern`, and a `{{param.*}}` cannot sit where an
   interpreter reads code (after `-c`, `-e`, `/c`, `-Command`, `-EncodedCommand` or `eval`).
-- `ssh: <destination>` runs the action on a remote host, where Claude has no shell.
+- `ssh: <destination>` runs the action on a phase 15 SSH destination of that name, where Claude has
+  no shell. The command arrives quoted word by word and the environment goes over stdin; a
+  destination that logs in with a key from the vault gets it for that run only. A destination
+  with a password cannot run actions.
 - `approval` defaults to `first-per-session` for an action with a secret and `never` for one
   without.
 
@@ -1163,6 +1166,10 @@ Flightdeck. It is not isolation from a hostile process of the same user: while a
 its environment (`/proc/<pid>/environ` on Linux) and its temporary file can be read by another
 process of the same operating-system user, and a Claude session with Bash on the **same host** can
 read them. Keep production secrets in `ssh:` actions.
+
+In a terminal, an action is masked when it runs through `flightdeckd action run` (what the
+`flightdeck-actions` mod uses): what it prints is the daemon's masked result. Anything else a
+terminal shows is not masked.
 
 ## Costs, budgets and quota
 

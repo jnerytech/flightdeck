@@ -1958,7 +1958,7 @@ O que a spec da Fase 16 (cofre de segredos) deixou aberto, ou o que mudou na imp
 
 # Decisões e divergências da Fase 17 (daemon, protocolo, MCP e smoke)
 
-O que a spec da Fase 17 (o Claude usa o segredo sem vê-lo) deixou aberto, ou o que mudou na implementação. Nesta rodada entrou o lado do daemon: `acoes-schema`, `acoes-execucao`, `acoes-confianca`, `mascara`, `mcp-acoes` e o `smoke:actions`. O mod `flightdeck-actions` está descrito abaixo; a tela de ações (`acoes-ui`) e o aviso de segredo `prod` esperam a Fase 10.
+O que a spec da Fase 17 (o Claude usa o segredo sem vê-lo) deixou aberto, ou o que mudou na implementação. Nesta rodada entrou o lado do daemon: `acoes-schema`, `acoes-execucao`, `acoes-confianca`, `mascara`, `mcp-acoes` e o `smoke:actions`. O mod `flightdeck-actions` está descrito abaixo. The actions screen (`acoes-ui`) and the `prod` warning were delivered later; see "Phase 17 decisions: the interface".
 
 ## Onde moram as ações
 
@@ -1990,7 +1990,7 @@ O que a spec da Fase 17 (o Claude usa o segredo sem vê-lo) deixou aberto, ou o 
 
 - **Sempre pede:** o frame leva `approval: "always"`, o comando exato, os nomes dos segredos e o host. O daemon só executa depois da entrega do app, e o risco do classificador para uma ferramenta MCP chamada `run_with_secret`, de qualquer servidor, é `high` e rede: a aprovação automática da Fase 13 nunca a aceita. Não existe "permitir sempre" aqui.
 - **O comando:** vai para `sh -c`; no Windows, para um `.cmd` temporário (o `cmd /c` não desfaz as aspas que o Bun escapa no argv), apagado ao fim. Os segredos vão no ambiente como `NOME_EM_MAIUSCULAS` (`deploy-token` vira `DEPLOY_TOKEN`), nunca na linha.
-- **Host:** só "este" (ausente ou `local`). Outro host é `invalid_state` dizendo que depende dos destinos SSH da Fase 15.
+- **Host:** absent or `local` is this host. Any other value is the name of a phase 15 ssh destino: the command runs there as `sh -c <command>`, with the secrets on stdin and the destino's vault key asked like the other secrets (see "Ações `ssh:`"). A daemon without destinos refuses it before asking the app anything.
 - **Quem pode pedir:** só `claude`, `automation` e `workflow`. O protocolo nem aceita `you`.
 - **Colisão de nomes:** dois segredos cujos nomes dão a mesma variável (`a-b` e `a_b`) escrevem na mesma variável. O pedido mostra os nomes dos segredos, não o das variáveis; fica como limite.
 
@@ -2002,11 +2002,18 @@ O que a spec da Fase 17 (o Claude usa o segredo sem vê-lo) deixou aberto, ou o 
 
 ## O mesmo usuário do sistema operacional
 
-A garantia é que o segredo **nunca chega ao transcript nem ao contexto do modelo pelo Flightdeck**. Não é isolamento contra um processo hostil do mesmo usuário: enquanto a ação roda, as variáveis de ambiente (`/proc/<pid>/environ` no Linux) e o arquivo temporário do `{{secretFile.x}}` (qualquer ACL) podem ser lidos por outro processo do mesmo usuário, e uma sessão do Claude com Bash no mesmo host consegue. Segredos de produção devem ficar em ações `ssh:`, que rodam num host remoto sem shell para o Claude. O app mostra um aviso quando uma ação com segredo de tag `prod` roda no mesmo host de uma sessão do Claude com Bash (tela da Fase 10).
+A garantia é que o segredo **nunca chega ao transcript nem ao contexto do modelo pelo Flightdeck**. Não é isolamento contra um processo hostil do mesmo usuário: enquanto a ação roda, as variáveis de ambiente (`/proc/<pid>/environ` no Linux) e o arquivo temporário do `{{secretFile.x}}` (qualquer ACL) podem ser lidos por outro processo do mesmo usuário, e uma sessão do Claude com Bash no mesmo host consegue. Segredos de produção devem ficar em ações `ssh:`, que rodam num host remoto sem shell para o Claude. O app mostra um aviso quando uma ação com segredo de tag `prod` roda no mesmo host de uma sessão do Claude com Bash (on the actions screen).
 
 ## Ações `ssh:`
 
-O schema aceita `ssh: <destino>` (e recusa `{{secretFile}}` nelas) e o `runAction` chama um `SshExecutor` injetado, que a Fase 15 registra com `ssh <destino> -- <argv>`. Até lá uma ação `ssh:` falha com `invalid_state` e diz que depende da Fase 15, e o `smoke:actions` não a cobre.
+O schema aceita `ssh: <destino>` (e recusa `{{secretFile}}` nelas) e o `runAction` chama um `SshExecutor` injetado. With phase 15 in place, the daemon wires `SshConnector.exec` into it:
+
+- **The destino is found by name.** An unknown name is `not_found`, a name two destinos share is `invalid_state`, and a destino that logs in with a password is refused, since nobody is there to type it.
+- **ssh does not keep argv as a list:** it joins the words of the remote command for the login shell. So the remote command is `sh -c '<prelude>' flightdeck-action <argv…>` with every word single-quoted (`'` becomes `'\''`), and it is passed to the local ssh as one argument. A round trip through `sh` shows `; rm -rf ~`, `$(id)`, backticks, spaces and quotes arriving as one literal word each. A login shell that is not POSIX-like (fish, for one) may read the quoting differently.
+- **The environment goes over stdin**, never on a command line where it would show in the process list, here or on the remote host, and not through `SendEnv`, which stock `sshd` limits to `LANG` and `LC_*`. The prelude reads `NAME=value` lines up to an empty one, exports them and `exec`s the program. Names must be shell names, and a value with a line break, CR or NUL is refused for an ssh action.
+- **ssh runs with** the pinned host keys of phase 15, `BatchMode=yes`, `ConnectTimeout=10` and `-T`. The action's timeout kills it.
+- **A `vault-key` destino's key** is added to the secrets the run asks for, through the same `vault.request` and `vault.deliver`, so the delivery rules and the transport check (loopback or Tailscale only) apply. No other path carries a key. It is handed to the connector for that one run, taken away afterwards (also when ssh fails), and masked in the output like a secret.
+- `smoke:actions` still has no ssh case: it would need a real sshd.
 
 ## MCP
 
@@ -2020,7 +2027,7 @@ O schema aceita `ssh: <destino>` (e recusa `{{secretFile}}` nelas) e o `runActio
 - **Ramos revelados pela cobertura (regra 7):** a segunda conferência de confiança, antes de executar.
 - **`smoke:actions`:** foi escrito depois das áreas. O vermelho veio por mutação, duas vezes: tirando a máscara (o valor aparecia na saída do `run_action`) e fazendo o pedido do comando livre devolver um valor sem esperar o app (`SMOKE ACTIONS FAIL no passo "run_with_secret sem aprovação não roda"`). Roda como o Claude Code roda: um `flightdeckd mcp` de verdade por stdio, com um cliente JSON-RPC mínimo no lugar do Claude.
 - **Migração:** uma, no fim (`actions`, `action_trust` e `action_runs`). Nenhum teste fixa o índice dela.
-- **Áreas do app que esperam a Fase 10:** `acoes-ui` (tela de ações por projeto e host, seletor de segredo, histórico, confiar a versionada) e o aviso do segredo `prod`.
+- **App areas:** `acoes-ui` and the `prod` warning were delivered later, in the phase 17 interface round.
 
 # Phase 17 decisions: the interface (`acoes-ui`)
 
@@ -2035,3 +2042,6 @@ What the Phase 17 interface settled or left open. The text of this section is in
 - **Where the question shows:** a request joins **Needs you** as a card of its own (who asked, the action and its parameters, or the command, the secrets and the host), with a notification. A `run_with_secret` is a high-risk card: approved only by holding the button, and the tray only opens it. It has no session, so it offers no **Open session** and a notification link opens the queue. Every request that is not delivered (denied by the user, by the policy or by the delivery rules) sends `vault.deny`, so the run fails at once instead of at the daemon's deadline; the app now sends `vault.watch` on connect.
 - **The prod-tag warning** is shown on the action's row, not when it runs: an action without `ssh` that uses a secret tagged `prod`, `produção` or `producao` says that a Claude session with Bash on this host can read it, and points to an `ssh:` action. The app cannot know whether a session on the host has Bash, so the warning is unconditional.
 - **The form (`acoes-ui-form`)** writes an app action: the command one argument per line, an optional ssh destination, folder, time limit and approval, environment variables fed by the vault's secret picker (`{{secret.<id>}}`), and parameters with their pattern and initial value. The name is locked when editing, since it is the action's key. Fixed environment values and `{{secretFile.x}}` of an action made elsewhere are kept as they are, not edited here. Rows added and left blank are not saved. What the daemon refuses shows in the open form; the app does not repeat the daemon's validation. Versioned actions are not edited in the app.
+- **The mask in the terminal (spec line 79):** an action reaches a terminal only through `flightdeckd action run` (the bridge the `flightdeck-actions` mod uses, or a person typing it in a phase 14 terminal tab). What it prints is the daemon's result, already masked (`acoes-cli.test.ts`, the run with a secret). This is how "the same mask applies to the terminal tab when an action runs in it" is met. Other output of a terminal is not masked: that would mean keeping the vault's values in memory for the whole session, against the delivery that lasts at most 60 s. The manuals say so.
+- **The same-user limit** is stated on the Actions screen in general, besides the `prod` warning on a row.
+- **`/flightdeck-actions`:** the mod's kit test covers the command's listing, but it runs only under `claude plugin test`, outside the bun suite and the coverage gate; it was not run on the machine where it was written.

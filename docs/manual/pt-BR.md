@@ -1088,7 +1088,10 @@ tenha: o botão **Ações de <projeto>** só aparece nesse caso.
   argumento aparece na lista de processos.
 - Cada parâmetro precisa casar o `pattern` inteiro, e um `{{param.*}}` não pode ocupar a posição de
   código de um interpretador (depois de `-c`, `-e`, `/c`, `-Command`, `-EncodedCommand` ou `eval`).
-- `ssh: <destino>` roda a ação num host remoto, onde o Claude não tem shell.
+- `ssh: <destino>` roda a ação no destino SSH (Fase 15) com esse nome, onde o Claude não tem shell.
+  O comando chega com cada palavra entre aspas e o ambiente vai pela entrada padrão; um destino que
+  entra com uma chave do cofre a recebe só para aquela execução. Um destino com senha não roda
+  ações.
 - `approval` vale `first-per-session` por padrão para uma ação com segredo e `never` para uma sem.
 
 ### A tela Ações
@@ -1146,6 +1149,10 @@ A garantia é que o segredo nunca chega ao transcript nem ao contexto do modelo 
 (`/proc/<pid>/environ` no Linux) e o arquivo temporário podem ser lidos por outro processo do mesmo
 usuário do sistema operacional, e uma sessão do Claude com Bash no **mesmo host** consegue lê-los.
 Segredos de produção ficam em ações `ssh:`.
+
+Num terminal, uma ação sai mascarada quando roda por `flightdeckd action run` (o que o mod
+`flightdeck-actions` usa): o que ela imprime é o resultado já mascarado pelo daemon. O resto do que
+um terminal mostra não é mascarado.
 
 ## Custos, orçamentos e cota
 
