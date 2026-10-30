@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RulesPreview } from "@/components/vault/rules-preview";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import type { SecretMeta } from "@/lib/vault";
@@ -185,6 +186,7 @@ export function RulesEditor(props: { store: AppStore; secret: SecretMeta; onClos
           </fieldset>
         );
       })}
+      <RulesPreview store={store} secretId={secret.id} />
       {error && (
         <p role="alert" className="text-status-error">
           {error}

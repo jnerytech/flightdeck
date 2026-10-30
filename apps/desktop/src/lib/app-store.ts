@@ -236,6 +236,7 @@ export type HostCommandType = Extract<
   | "vault.deny"
   | "vault.approve"
   | "vault.rules.set"
+  | "vault.rules.preview"
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
@@ -2080,10 +2081,19 @@ export class AppStore {
    * host the secret may go to; null when there is none.
    */
   async previewVaultUse(
-    _secretId: string,
-    _use: Omit<CommandPayload<"vault.rules.preview">, "secretId" | "tags">,
+    secretId: string,
+    use: Omit<CommandPayload<"vault.rules.preview">, "secretId" | "tags">,
   ): Promise<VaultVerdict | null> {
-    return null;
+    const secret = this.vault.list().find((s) => s.id === secretId);
+    const host = this.state.hosts.find(
+      (h) => h.status === "online" && secret?.allowedHosts.includes(h.id),
+    );
+    if (!secret || !host) return null;
+    return this.hostCommand(host.id, "vault.rules.preview", {
+      secretId,
+      ...use,
+      tags: secret.tags,
+    });
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
