@@ -41,20 +41,24 @@ function gitInvocations(command: string): { sub: string; args: string[] }[] {
   return invocations;
 }
 
+/** A cluster of short options (`-vA`) that includes one of `letters`. */
+function hasShortFlag(arg: string, letters: string): boolean {
+  return /^-[a-zA-Z]+$/.test(arg) && [...arg.slice(1)].some((letter) => letters.includes(letter));
+}
+
 /** Why a shell command is blocked (docs/TDD.md: stage by explicit path), or null. */
 export function commandViolation(command: string): string | null {
   for (const { sub, args } of gitInvocations(command)) {
     if (sub === "add") {
       const wide = args.find(
-        (a) =>
-          [".", "*", ":/", "--all", "--update"].includes(a) || /^-[a-zA-Z]*[Au][a-zA-Z]*$/.test(a),
+        (a) => [".", "*", ":/", "--all", "--update"].includes(a) || hasShortFlag(a, "Au"),
       );
       if (wide) {
         return `git add ${wide} is blocked: stage files by explicit path and check git status --short first (docs/TDD.md).`;
       }
     }
     if (sub === "commit") {
-      const all = args.find((a) => a === "--all" || /^-[a-zA-Z]*a[a-zA-Z]*$/.test(a));
+      const all = args.find((a) => a === "--all" || hasShortFlag(a, "a"));
       if (all) {
         return `git commit ${all} is blocked: stage files by explicit path with git add <files> (docs/TDD.md).`;
       }
