@@ -223,16 +223,16 @@ async function daemon() {
   const helper = async (env: Record<string, string | undefined>, ...prompt: string[]) => {
     const out: string[] = [];
     const errors: string[] = [];
-    let exitCode: number | null = null;
+    const exit = { code: null as number | null };
     await runCli(["askpass", ...prompt], {
       env,
       log: { log: (m: string) => out.push(m), error: (m: string) => errors.push(m) },
       exit: (c) => {
-        exitCode = c;
+        exit.code = c;
       },
       onSignal: () => {},
     });
-    return { out, errors, exitCode };
+    return { out, errors, exitCode: exit.code };
   };
   return { broker, target, app, file, helper };
 }
