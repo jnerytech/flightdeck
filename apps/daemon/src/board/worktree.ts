@@ -160,9 +160,12 @@ export function addWorktree(
   repo: string,
   title: string,
   base: string,
-): Promise<{ slug: string; branch: string; path: string }> {
+  includeLimit = WORKTREE_INCLUDE_LIMIT,
+): Promise<{ slug: string; branch: string; path: string; skipped: string[] }> {
   const key = resolve(repo);
-  const job = (adding.get(key) ?? Promise.resolve()).then(() => create(repo, title, base));
+  const job = (adding.get(key) ?? Promise.resolve()).then(() =>
+    create(repo, title, base, includeLimit),
+  );
   const tail = job.then(
     () => undefined,
     () => undefined,
