@@ -115,4 +115,24 @@ describe("snapshots-arquivos", () => {
       await client.request("snapshots.files", { claudeSessionId: "s1", n: 999 }),
     ).toMatchObject({ ok: false, error: { code: "not_found" } });
   });
+
+  test("protocolo: um daemon sem snapshots responde invalid_state", async () => {
+    const { manager } = newManager();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    expect(await client.request("snapshots.files", { claudeSessionId: "s1", n: 1 })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+  });
 });
