@@ -3085,10 +3085,12 @@ export const MessagesUpdatedFrame = z.object({
   type: z.literal("messages.updated"),
   message: MessageInfo,
 });
+export type MessagesUpdatedFrame = z.infer<typeof MessagesUpdatedFrame>;
 export const MessagesRelayFrame = z.object({
   type: z.literal("messages.relay"),
   message: RelayMessage,
 });
+export type MessagesRelayFrame = z.infer<typeof MessagesRelayFrame>;
 export const MessagingAlertFrame = z.object({
   type: z.literal("messaging.alert"),
   kind: z.literal("loop"),
@@ -3097,12 +3099,14 @@ export const MessagingAlertFrame = z.object({
   message: z.string(),
   at: z.string(),
 });
+export type MessagingAlertFrame = z.infer<typeof MessagingAlertFrame>;
 export const IdleFiredFrame = z.object({
   type: z.literal("idle.fired"),
   watcher: z.string(),
   session: z.string(),
   at: z.string(),
 });
+export type IdleFiredFrame = z.infer<typeof IdleFiredFrame>;
 
 /** Phase 19: a warning for the app, even where a rule lets the use through. */
 export const VaultAlertFrame = z.object({

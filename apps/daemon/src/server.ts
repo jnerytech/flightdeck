@@ -17,6 +17,10 @@ import {
   type ExternalStatus,
   type ExternalUpdated,
   type HistoryChanged,
+  type IdleFiredFrame,
+  type MessagesRelayFrame,
+  type MessagesUpdatedFrame,
+  type MessagingAlertFrame,
   MIN_PROTOCOL_VERSION,
   type Ping,
   Pong,
@@ -228,6 +232,8 @@ interface Connection {
   terminalSink?: TerminalSink;
   /** Stops the `vault.watch` stream, when active. */
   unwatchVault?: () => void;
+  /** Stops the `messages.watch` stream, when active. */
+  unwatchMessages?: () => void;
   lastRttMs?: number;
 }
 
@@ -258,7 +264,11 @@ type Outgoing =
   | AskpassRequest
   | VaultUsed
   | VaultRequestFrame
-  | VaultAlertFrame;
+  | VaultAlertFrame
+  | MessagesUpdatedFrame
+  | MessagesRelayFrame
+  | MessagingAlertFrame
+  | IdleFiredFrame;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -786,19 +796,52 @@ export function startServer(opts: ServerOptions): RunningServer {
         actions().deny(command.payload.requestId);
         return ok(command.type);
       case "messages.send":
+        return ok(command.type, messaging().send(command.payload));
       case "messages.list":
+        return ok(command.type, { messages: messaging().list(command.payload) });
       case "messages.sessions":
-      case "messages.read":
+        return ok(command.type, { sessions: messaging().sessions(command.payload.as) });
+      case "messages.read": {
+        const { as, session, last } = command.payload;
+        return ok(command.type, messaging().read(as, session, last));
+      }
       case "messages.relay":
-      case "messages.relayed":
+        return ok(command.type, messaging().relay(command.payload.message));
+      case "messages.relayed": {
+        const { id, ...result } = command.payload;
+        messaging().relayed(id, result);
+        return ok(command.type);
+      }
       case "messages.peers":
-      case "messages.watch":
+        messaging().setPeers(command.payload.host, command.payload.sessions);
+        return ok(command.type);
+      case "messages.watch": {
+        const service = messaging();
+        const watched = idle();
+        ws.data.unwatchMessages?.();
+        const stopMessages = service.watch((frame) => send(ws, frame));
+        const stopIdle = watched.watch((frame) => send(ws, frame));
+        ws.data.unwatchMessages = () => {
+          stopMessages();
+          stopIdle();
+        };
+        return ok(command.type);
+      }
       case "idle.subscribe":
+        return ok(command.type, idle().subscribe(command.payload));
       case "messaging.rules.get":
-      case "messaging.rules.set":
-        messaging();
-        idle();
-        throw new FlightdeckError("invalid_state", "ainda não implementado");
+        return ok(command.type, {
+          policy: messaging().getPolicy() as unknown as Record<string, unknown>,
+          paused: messaging().pausedPairs(),
+        });
+      case "messaging.rules.set": {
+        const { policy, unpause } = command.payload;
+        const set = messaging().setPolicy(policy, unpause);
+        return ok(command.type, {
+          policy: set.policy as unknown as Record<string, unknown>,
+          paused: set.paused,
+        });
+      }
       case "vault.rules.set": {
         const { secretId, tags, rules } = command.payload;
         return ok(command.type, { rules: actions().setRules(secretId, tags ?? [], rules) });
@@ -1476,6 +1519,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         for (const stop of ws.data.changeWatchers.values()) stop();
         ws.data.changeWatchers.clear();
         ws.data.unwatchVault?.();
+        ws.data.unwatchMessages?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },

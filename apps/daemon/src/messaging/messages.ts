@@ -9,6 +9,7 @@ import type {
   MessageInfo,
   MessageKind,
   MessagingSession,
+  ReadSessionResult,
   RelayMessage,
   SendResult,
   SessionIdentity,
@@ -301,6 +302,20 @@ export class Messaging {
     const allowed = access(sender, target.party, this.policy);
     if (!allowed.ok) throw new FlightdeckError("invalid_state", allowed.reason);
     return { sender, target: target.party, info: target.local };
+  }
+
+  /** `read_session`: the summary and the last messages of a session this one may see. */
+  read(as: SessionIdentity, address: string, last = 10): ReadSessionResult {
+    const { info } = this.inspect(as, address);
+    if (!info) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "a sessão é de outro host: o read_session só lê sessões deste host",
+      );
+    }
+    const read = this.opts.endpoints.read(info.id, last);
+    if (!read) throw notFound(`sessão ${address} não encontrada`);
+    return read;
   }
 
   // --- the history the limits count ---

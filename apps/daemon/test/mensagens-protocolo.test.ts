@@ -224,3 +224,52 @@ describe("mensagens-protocolo", () => {
     ).toMatchObject({ status: "delivered" });
   });
 });
+
+describe("mensagens-protocolo: ler uma sessão", () => {
+  test("a sessão de outro host e a que o transcript não conhece não se leem", async () => {
+    const { server, messaging, endpoints } = boot();
+    const client = await connect(server.url);
+    messaging.setPeers("wsl", [
+      {
+        id: "w1",
+        name: null,
+        persona: null,
+        projectKey: PROJECT,
+        teamId: null,
+        state: "idle",
+        kind: "managed",
+        receives: true,
+        reason: null,
+      },
+    ]);
+    expect(
+      await client.request("messages.read", { as: { session: "s1" }, session: "wsl/w1" }),
+    ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+    const original = endpoints.read.bind(endpoints);
+    endpoints.read = () => null;
+    expect(
+      await client.request("messages.read", { as: { session: "s1" }, session: "pc/s2" }),
+    ).toMatchObject({ ok: false, error: { code: "not_found" } });
+    endpoints.read = original;
+    // A session with no transcript yet reads as empty, and last defaults to 10.
+    expect(await client.data("messages.read", { as: { session: "s1" }, session: "pc/s2" })).toEqual(
+      { summary: null, messages: [] },
+    );
+  });
+
+  test("parar o aviso de quem assistia solta os dois fluxos", async () => {
+    const { server, endpoints } = boot();
+    const app = await connect(server.url);
+    await app.request("messages.watch", {});
+    // Watching twice replaces the first stream instead of doubling the frames.
+    await app.request("messages.watch", {});
+    const other = await connect(server.url);
+    await other.data("messages.send", { as: { session: "s1" }, to: "pc/s2", text: "um" });
+    await poll(() => app.frames.find((f) => f.type === "messages.updated"), 2000);
+    expect(app.frames.filter((f) => f.type === "messages.updated")).toHaveLength(1);
+    app.close();
+    await Bun.sleep(50);
+    await other.data("messages.send", { as: { session: "s1" }, to: "pc/s2", text: "dois" });
+    expect(endpoints.sent).toHaveLength(2);
+  });
+});
