@@ -42,7 +42,7 @@ export const en: Dictionary = {
     emptyProjects: "No projects yet.",
     addProject: "Add project",
     emptyCards: "No cards in this project.",
-    newCard: "New card",
+    newCard: "Create the first card",
   },
   board: { cardActions: "Actions for {title}", startCard: "Start card" },
   shell: {
@@ -366,6 +366,7 @@ export const en: Dictionary = {
     titlePlaceholder: "Title",
     descriptionLabel: "Card description",
     descriptionPlaceholder: "Description",
+    newCard: "New card",
     create: "Create card",
   },
   cardUi: {

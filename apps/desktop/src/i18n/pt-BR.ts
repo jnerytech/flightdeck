@@ -44,7 +44,7 @@ export const ptBR = {
     emptyProjects: "Nenhum projeto cadastrado.",
     addProject: "Adicionar projeto",
     emptyCards: "Nenhum card neste projeto.",
-    newCard: "Novo card",
+    newCard: "Criar o primeiro card",
   },
   board: { cardActions: "Ações de {title}", startCard: "Iniciar card" },
   shell: {
@@ -369,6 +369,7 @@ export const ptBR = {
     titlePlaceholder: "Título",
     descriptionLabel: "Descrição do card",
     descriptionPlaceholder: "Descrição",
+    newCard: "Novo card",
     create: "Criar card",
   },
   cardUi: {

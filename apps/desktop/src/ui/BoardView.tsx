@@ -1,12 +1,20 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
-import { Columns3, MoreHorizontal } from "lucide-react";
+import { Columns3, MoreHorizontal, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,15 +22,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
-import { StatusBadge } from "./StatusBadge.tsx";
+import { statusTone } from "../lib/status.ts";
 
 function CardTile(props: {
   card: Card;
+  /** The name of the workflow the card is running, when known. */
+  workflow?: string | undefined;
   formatTime(iso: string): string;
   labels: { actions: string; start: string };
   onOpen(): void;
@@ -33,6 +44,8 @@ function CardTile(props: {
 }) {
   const t = useT();
   const { card } = props;
+  /** The workflow (when its run is known) and the branch, when there are any. */
+  const meta = [props.workflow, card.branch].filter(Boolean).join(" · ");
   return (
     <li
       draggable
@@ -45,9 +58,18 @@ function CardTile(props: {
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <button type="button" className="min-w-0 text-left font-medium" onClick={props.onOpen}>
-          {card.title}
-        </button>
+        <span className="flex min-w-0 items-start gap-2">
+          {card.sessionStatus && (
+            <StatusDot
+              tone={statusTone(card.sessionStatus)}
+              label={t(`status.${card.sessionStatus}` as Key)}
+              className="mt-1.5"
+            />
+          )}
+          <button type="button" className="min-w-0 text-left font-medium" onClick={props.onOpen}>
+            {card.title}
+          </button>
+        </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -64,8 +86,12 @@ function CardTile(props: {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {meta && (
+        <p data-slot="card-meta" className="truncate text-muted-foreground text-xs">
+          {meta}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
         {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
         {card.queueReason === "quota" && (
           <Badge variant="outline" className="text-status-needs-you">
@@ -103,7 +129,8 @@ export function BoardView(props: {
    */
   const dragging = useRef<string | null>(null);
   const loading = useMinLoading(project === null);
-  const titleField = useRef<HTMLInputElement>(null);
+  /** The new-card dialog. */
+  const [creating, setCreating] = useState(false);
   const { t } = store.i18n;
 
   useEffect(() => {
@@ -131,6 +158,11 @@ export function BoardView(props: {
   const create = () => {
     if (!title.trim()) return;
     void store.hostCommand(hostId, "card.create", { projectId, title: title.trim(), description });
+    close();
+  };
+  /** Closes the dialog and forgets what was typed. */
+  const close = () => {
+    setCreating(false);
     setTitle("");
     setDescription("");
   };
@@ -147,23 +179,9 @@ export function BoardView(props: {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <Input
-            ref={titleField}
-            aria-label={t("kanban.titleLabel")}
-            placeholder={t("kanban.titlePlaceholder")}
-            className="h-8 w-48 text-xs"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Input
-            aria-label={t("kanban.descriptionLabel")}
-            placeholder={t("kanban.descriptionPlaceholder")}
-            className="h-8 min-w-48 flex-1 text-xs"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <Button size="sm" onClick={create}>
-            {t("kanban.create")}
+          <Button size="sm" onClick={() => setCreating(true)}>
+            <Plus aria-hidden="true" />
+            {t("kanban.newCard")}
           </Button>
         </Toolbar>
       }
@@ -174,9 +192,7 @@ export function BoardView(props: {
           <EmptyState
             icon={Columns3}
             title={t("states.emptyCards")}
-            action={
-              <Button onClick={() => titleField.current?.focus()}>{t("states.newCard")}</Button>
-            }
+            action={<Button onClick={() => setCreating(true)}>{t("states.newCard")}</Button>}
           />
         )}
         <div
@@ -200,6 +216,11 @@ export function BoardView(props: {
                     <CardTile
                       key={card.id}
                       card={card}
+                      workflow={
+                        card.workflowRunId
+                          ? props.state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
+                          : undefined
+                      }
                       formatTime={(iso) => store.formatTime(iso)}
                       labels={{
                         actions: store.i18n.t("board.cardActions", { title: card.title }),
@@ -220,6 +241,31 @@ export function BoardView(props: {
           ))}
         </div>
       </div>
+      <Dialog open={creating} onOpenChange={(open) => (open ? setCreating(true) : close())}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>{t("kanban.newCard")}</DialogTitle>
+          </DialogHeader>
+          <Input
+            aria-label={t("kanban.titleLabel")}
+            placeholder={t("kanban.titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Textarea
+            aria-label={t("kanban.descriptionLabel")}
+            placeholder={t("kanban.descriptionPlaceholder")}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={close}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={create}>{t("kanban.create")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Page>
   );
 }
