@@ -58,7 +58,12 @@ export function Notices(props: { store: AppStore; state: AppState }) {
   // sonner keeps its toasts per module: ids carry this instance's prefix, so another store's
   // notices (numbered from 1 too) never take over these, and leaving clears them.
   const [prefix] = useState(() => `n${++instances}-`);
-  useEffect(() => () => void toast.dismiss(), []);
+  useEffect(
+    () => () => {
+      toast.dismiss();
+    },
+    [],
+  );
   useEffect(() => {
     for (const notice of state.notices) {
       if (shown.current.has(notice.id)) continue;
