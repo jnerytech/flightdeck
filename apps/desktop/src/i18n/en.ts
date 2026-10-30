@@ -53,9 +53,12 @@ export const en: Dictionary = {
       authOption: {
         agent: "Host SSH agent",
         keyFile: "Key file",
+        vaultKey: "Vault key",
         password: "Password (asked on connect)",
       },
       keyFile: "Key file path",
+      vaultKey: "Vault key",
+      vaultPassword: "Password in the vault",
       via: "Opened by host",
       jump: "Jump (ProxyJump)",
       noJump: "None",
@@ -95,6 +98,12 @@ export const en: Dictionary = {
     },
   },
   vault: {
+    refused: {
+      "not-found": "The vault has no such secret.",
+      "not-allowed": "The secret is not allowed for this host.",
+      transport: "The vault only delivers over localhost or Tailscale.",
+      "no-value": "The secret's value is not in the system vault.",
+    },
     picker: { none: "No secret" },
     title: "Vault",
     subtitle: "Secrets kept in the system vault. A value never shows here unless you ask.",

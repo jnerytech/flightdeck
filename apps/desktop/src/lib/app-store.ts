@@ -78,6 +78,8 @@ import {
 } from "./vault-backup.ts";
 import {
   answerVaultRequest,
+  checkDelivery,
+  type DeliveryRefusal,
   denyAllPolicy,
   type VaultOutcome,
   type VaultPolicy,
@@ -1462,9 +1464,7 @@ export class AppStore {
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
-      onAskpass: (request) => {
-        this.update({ askpass: [...this.state.askpass, { hostId: config.id, request }] });
-      },
+      onAskpass: (request) => void this.onAskpass(config.id, request),
     });
     this.connections.set(config.id, conn);
     // A session selected before its host had a connection (a route opened at start-up).
@@ -1733,12 +1733,62 @@ export class AppStore {
     await this.hostCommand(hostId, "askpass.answer", { requestId, secret });
   }
 
-  /** Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused. */
-  async sshConnect(hostId: string, target: SshTarget): Promise<string | null> {
+  /**
+   * A secret of the vault for a use the app itself starts (ssh): the delivery rules are checked
+   * for the host that will use it and the use is logged, as "you". The value is handed to the
+   * caller and kept nowhere.
+   */
+  async vaultSecretFor(
+    hostId: string,
+    secretId: string,
+    purpose: string,
+  ): Promise<{ ok: true; value: string } | { ok: false; code: DeliveryRefusal }> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const check = await checkDelivery(secretId, {
+      hostId,
+      hostUrl: host?.url ?? "",
+      vault: this.vault,
+    });
+    this.usage.recordOutcome({
+      hostId,
+      secretId,
+      purpose,
+      requester: "you",
+      delivered: check.ok,
+      reason: check.ok ? "" : check.reason,
+    });
+    this.keepUsage();
+    return check.ok ? { ok: true, value: check.value } : { ok: false, code: check.code };
+  }
+
+  /**
+   * ssh asks for a password: when its destino points at a secret of the vault that can be
+   * delivered to the host, that answers; otherwise the person is asked.
+   */
+  private async onAskpass(hostId: string, request: AskpassRequest): Promise<void> {
+    if (request.secretRef && this.vault.list().some((s) => s.id === request.secretRef)) {
+      const got = await this.vaultSecretFor(hostId, request.secretRef, "ssh");
+      if (got.ok) {
+        await this.hostCommand(hostId, "askpass.answer", {
+          requestId: request.requestId,
+          secret: got.value,
+        });
+        return;
+      }
+    }
+    this.update({ askpass: [...this.state.askpass, { hostId, request }] });
+  }
+
+  /**
+   * Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused.
+   * `privateKey` is the vault key of a `vault-key` destino, for this connection only.
+   */
+  async sshConnect(hostId: string, target: SshTarget, privateKey?: string): Promise<string | null> {
     const info = await this.hostCommand(hostId, "ssh.connect", {
       targetId: target.id,
       cols: 80,
       rows: 24,
+      ...(privateKey ? { privateKey } : {}),
     });
     if (!info) return null;
     this.sshTerminals.set(`${hostId}/${info.terminalId}`, { name: target.name, tags: target.tags });

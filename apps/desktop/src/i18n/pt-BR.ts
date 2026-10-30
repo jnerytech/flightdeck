@@ -55,9 +55,12 @@ export const ptBR = {
       authOption: {
         agent: "Agente SSH do host",
         keyFile: "Chave em arquivo",
+        vaultKey: "Chave do cofre",
         password: "Senha (pedida ao conectar)",
       },
       keyFile: "Arquivo de chave",
+      vaultKey: "Chave do cofre",
+      vaultPassword: "Senha no cofre",
       via: "Aberto pelo host",
       jump: "Salto (ProxyJump)",
       noJump: "Nenhum",
@@ -97,6 +100,12 @@ export const ptBR = {
     },
   },
   vault: {
+    refused: {
+      "not-found": "O cofre não tem esse segredo.",
+      "not-allowed": "O segredo não está liberado para este host.",
+      transport: "O cofre só entrega por localhost ou Tailscale.",
+      "no-value": "O valor do segredo não está no cofre do sistema.",
+    },
     picker: { none: "Nenhum segredo" },
     title: "Cofre",
     subtitle: "Segredos guardados no cofre do sistema. O valor nunca aparece aqui sem você pedir.",

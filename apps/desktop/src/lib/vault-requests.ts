@@ -63,6 +63,40 @@ export function transportAllowed(url: string): boolean {
   return first === 127 || (first === 100 && second >= 64 && second <= 127);
 }
 
+export type DeliveryRefusal = "not-found" | "not-allowed" | "transport" | "no-value";
+
+export type DeliveryCheck =
+  | { ok: true; value: string }
+  | { ok: false; code: DeliveryRefusal; reason: string };
+
+const REFUSALS: Record<DeliveryRefusal, string> = {
+  "not-found": "the vault has no such secret",
+  "not-allowed": "the secret is not allowed for this host",
+  transport: "the vault only delivers over loopback or Tailscale, which WireGuard encrypts",
+  "no-value": "the secret's value is missing from the system vault",
+};
+
+/**
+ * The rules a delivery always obeys, whoever asks: the secret exists, it is allowed for this
+ * host (by id), the connection is loopback or Tailscale, and its value is in the system vault.
+ */
+export async function checkDelivery(
+  secretId: string,
+  deps: Pick<AnswerDeps, "hostId" | "hostUrl" | "vault">,
+): Promise<DeliveryCheck> {
+  const refuse = (code: DeliveryRefusal): DeliveryCheck => ({
+    ok: false,
+    code,
+    reason: REFUSALS[code],
+  });
+  const secret = deps.vault.list().find((s) => s.id === secretId);
+  if (!secret) return refuse("not-found");
+  if (!secret.allowedHosts.includes(deps.hostId)) return refuse("not-allowed");
+  if (!transportAllowed(deps.hostUrl)) return refuse("transport");
+  const value = await deps.vault.value(secret.id);
+  return value === null ? refuse("no-value") : { ok: true, value };
+}
+
 /**
  * Answers a `vault.request` frame. A requester outside claude, automation and workflow (`you`
  * included: any local process can speak the protocol) is unknown and denied before the policy is
@@ -85,22 +119,12 @@ export async function answerVaultRequest(
   const secret = deps.vault.list().find((s) => s.id === request.secretId) ?? null;
   const decision = await deps.policy({ request, hostId: deps.hostId, secret });
   if (decision.kind === "deny") return outcome(false, decision.reason);
-  if (!secret) return outcome(false, "the vault has no such secret");
-  if (!secret.allowedHosts.includes(deps.hostId)) {
-    return outcome(false, "the secret is not allowed for this host");
-  }
-  if (!transportAllowed(deps.hostUrl)) {
-    return outcome(
-      false,
-      "the vault only delivers over loopback or Tailscale, which WireGuard encrypts",
-    );
-  }
-  const value = await deps.vault.value(secret.id);
-  if (value === null) return outcome(false, "the secret's value is missing from the system vault");
+  const check = await checkDelivery(request.secretId, deps);
+  if (!check.ok) return outcome(false, check.reason);
   try {
     await deps.deliver({
-      secretId: secret.id,
-      value,
+      secretId: request.secretId,
+      value: check.value,
       purpose: request.purpose,
       expiresAt: deps.now() + DELIVERY_TTL_MS,
       requester: request.requester,

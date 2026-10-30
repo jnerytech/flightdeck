@@ -3,14 +3,20 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SecretPicker } from "@/components/vault/secret-picker";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
-const AUTHS: SshAuth[] = ["agent", "key-file", "password"];
+const AUTHS: SshAuth[] = ["agent", "key-file", "vault-key", "password"];
 /** The dictionary key of each authentication the form offers. */
-const AUTH_KEY = { agent: "agent", "key-file": "keyFile", password: "password" } as const;
+const AUTH_KEY = {
+  agent: "agent",
+  "key-file": "keyFile",
+  "vault-key": "vaultKey",
+  password: "password",
+} as const;
 
 const split = (text: string, separator: string): string[] =>
   text
@@ -41,6 +47,11 @@ export function TargetForm(props: {
   const [keyFile, setKeyFile] = useState(
     target?.auth === "key-file" ? (target.secretRef ?? "") : "",
   );
+  const [secretId, setSecretId] = useState(
+    target && (target.auth === "vault-key" || target.auth === "password")
+      ? (target.secretRef ?? "")
+      : "",
+  );
   const [via, setVia] = useState(target?.viaHost ?? "");
   const [jump, setJump] = useState(target?.jump ?? "");
   const [tags, setTags] = useState((target?.tags ?? []).join(", "));
@@ -52,7 +63,11 @@ export function TargetForm(props: {
   const [hostKey, setHostKey] = useState(target?.hostKey ?? null);
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const ready = name.trim() !== "" && host.trim() !== "" && user.trim() !== "";
+  const ready =
+    name.trim() !== "" &&
+    host.trim() !== "" &&
+    user.trim() !== "" &&
+    (auth !== "vault-key" || secretId !== "");
 
   const save = async () => {
     const interval = Number(alive);
@@ -70,7 +85,12 @@ export function TargetForm(props: {
       user: user.trim(),
       viaHost: via === "" ? null : via,
       auth,
-      secretRef: auth === "key-file" && keyFile.trim() !== "" ? keyFile.trim() : null,
+      secretRef:
+        auth === "key-file"
+          ? keyFile.trim() || null
+          : auth === "vault-key" || auth === "password"
+            ? secretId || null
+            : null,
       jump: jump === "" ? null : jump,
       options,
       tags: split(tags, ","),
@@ -87,7 +107,16 @@ export function TargetForm(props: {
 
   const test = async () => {
     if (!target) return;
-    const result = await store.hostCommand(hostId, "ssh.test", { targetId: target.id });
+    let privateKey: string | undefined;
+    if (auth === "vault-key" && secretId) {
+      const got = await store.vaultSecretFor(hostId, secretId, "ssh");
+      if (!got.ok) return setTestResult(t(`vault.refused.${got.code}`));
+      privateKey = got.value;
+    }
+    const result = await store.hostCommand(hostId, "ssh.test", {
+      targetId: target.id,
+      ...(privateKey ? { privateKey } : {}),
+    });
     if (result) setTestResult(result.ok ? t("connections.form.testOk") : (result.error ?? ""));
   };
 
@@ -141,6 +170,24 @@ export function TargetForm(props: {
         field("key", t("connections.form.keyFile"), (fid) => (
           <Input id={fid} value={keyFile} onChange={(event) => setKeyFile(event.target.value)} />
         ))}
+      {auth === "vault-key" && (
+        <SecretPicker
+          label={t("connections.form.vaultKey")}
+          secrets={state.secrets}
+          types={["ssh-key"]}
+          value={secretId}
+          onChange={setSecretId}
+        />
+      )}
+      {auth === "password" && (
+        <SecretPicker
+          label={t("connections.form.vaultPassword")}
+          secrets={state.secrets}
+          types={["password"]}
+          value={secretId}
+          onChange={setSecretId}
+        />
+      )}
       {field("via", t("connections.form.via"), (fid) => (
         <select
           id={fid}

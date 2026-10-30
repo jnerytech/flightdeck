@@ -74,7 +74,14 @@ export function ConnectionsPage(props: {
   }, [reload]);
 
   const open = async (runner: string, target: SshTarget) => {
-    const terminalId = await store.sshConnect(runner, target);
+    // A vault key goes to the host that runs ssh now, in the connect command and nowhere else.
+    let privateKey: string | undefined;
+    if (target.auth === "vault-key" && target.secretRef) {
+      const got = await store.vaultSecretFor(runner, target.secretRef, "ssh");
+      if (!got.ok) return setError(t(`vault.refused.${got.code}`));
+      privateKey = got.value;
+    }
+    const terminalId = await store.sshConnect(runner, target, privateKey);
     if (terminalId) props.go({ name: "terminal", host: runner, terminalId });
   };
 
