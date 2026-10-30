@@ -154,7 +154,7 @@ describe("direcao-visual: ajustes finos", () => {
     await settle(() => store.router.current.name === "workflows");
     expect(store.router.current.name).toBe("workflows");
     cleanup();
-    await setup({ projects: 2 });
+    const { store: store2 } = await setup({ projects: 2 });
     await click(screen.queryByRole("button", { name: "Board" }));
     await settle(() => screen.queryByRole("heading", { name: "Board de alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Board de alfa" })).not.toBeNull();
@@ -164,6 +164,13 @@ describe("direcao-visual: ajustes finos", () => {
     await settle(() => screen.queryByRole("heading", { name: "Workflows de alfa" }) !== null);
     expect(screen.queryAllByRole("button", { name: /^Workflows de/ })).toHaveLength(2);
     expect(screen.queryAllByRole("button", { name: /^Abrir board de/ })).toHaveLength(0);
+    // Each project opens the screen asked for.
+    await click(screen.queryAllByRole("button", { name: /^Workflows de repo/ })[0] ?? null);
+    expect(store2.router.current.name).toBe("workflows");
+    await click(screen.queryByRole("button", { name: "Board" }));
+    await settle(() => screen.queryByRole("heading", { name: "Board de alfa" }) !== null);
+    await click(screen.queryAllByRole("button", { name: /^Abrir board de/ })[0] ?? null);
+    expect(store2.router.current.name).toBe("board");
   });
 
   test("em inglês, a lista inteira fala inglês: filtros, estados, menu e títulos", async () => {
