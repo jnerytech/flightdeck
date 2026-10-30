@@ -35,9 +35,13 @@ export type Route =
 
 /** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */
 export class Router {
-  private stack: Route[] = [{ name: "home" }];
+  private stack: Route[];
   private index = 0;
   private readonly listeners = new Set<() => void>();
+
+  constructor(initial: Route = { name: "home" }) {
+    this.stack = [initial];
+  }
 
   get current(): Route {
     return this.stack[this.index] as Route;
