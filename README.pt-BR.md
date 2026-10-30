@@ -41,6 +41,8 @@ sessões num lugar só, sem abrir cada máquina.
 - Workflows em YAML com agentes, checks, gates de aprovação, loops, etapas em paralelo e
   orçamentos.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
+- Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
+  reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.
 
 **Custo e cota**
 

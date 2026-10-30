@@ -40,6 +40,8 @@ sessions from one place, without opening each machine.
   and Azure DevOps.
 - YAML workflows with agents, checks, approval gates, loops, parallel steps and budgets.
 - Search the history of every host, including sessions that were not started in Flightdeck.
+- Review what a session or a card changed: comment on diff lines and send the review to the agent,
+  revert or edit files, bring the PR comments to the agent and merge the card locally.
 
 **Cost and quota**
 
