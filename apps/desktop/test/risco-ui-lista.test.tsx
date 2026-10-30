@@ -71,7 +71,7 @@ async function setup(features?: string[]) {
   await act(async () => {
     await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
   });
-  await settle(() => store.getState().hosts[0]?.status === "online");
+  await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     store.router.push({ name: "host", host: store.getState().hosts[0]?.id as string });
   });
@@ -149,7 +149,7 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
     await act(async () => {
       await store.addHost({ name: "alfa", url: d.server.url, token: TOKEN });
     });
-    await settle(() => store.getState().hosts[0]?.status === "online");
+    await settle(() => store.getState().hosts[0]?.hostInfo != null);
     await act(async () => {
       store.router.push({ name: "host", host: store.getState().hosts[0]?.id as string });
     });
