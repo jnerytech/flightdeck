@@ -20,6 +20,7 @@ import type {
   HistorySessionSummary,
   HostInfoResult,
   MessageInfo,
+  MessagingAlertFrame,
   PendingPermission,
   PermissionUpdate,
   PersonaRef,
@@ -172,6 +173,8 @@ export interface AppState {
   vaultUsage: UsageEntry[];
   /** Phase 17: the daemon's requests for a secret, waiting for the user; they join the queue. */
   vaultApprovals: PendingItem[];
+  /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */
+  loopAlerts: LoopAlert[];
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -248,6 +251,8 @@ export type HostCommandType = Extract<
   | "vault.rules.set"
   | "vault.rules.preview"
   | "messages.watch"
+  | "messaging.rules.get"
+  | "messaging.rules.set"
   | "messages.list"
   | `teams.${string}`
   | "messages.sessions"
@@ -357,6 +362,19 @@ export interface Notice {
   code: string;
   text: string;
 }
+
+/** Phase 21: a pair of sessions a host paused because they kept answering each other. */
+export interface LoopAlert {
+  hostId: string;
+  from: string;
+  to: string;
+  message: string;
+  at: string;
+}
+
+/** The daemon's key for a pair of sessions, the same in both directions. */
+export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
+  [alert.from, alert.to].sort().join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -585,6 +603,7 @@ export class AppStore {
       snippets: {},
       snippetChoice: null,
       personas: {},
+      loopAlerts: [],
       askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
@@ -1540,7 +1559,14 @@ export class AppStore {
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
       onTeams: (frame) => {
         for (const listener of this.teamListeners) listener(config.id, frame);
+        if (frame.reason) {
+          void this.platform.notify({
+            title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
+            body: frame.reason,
+          });
+        }
       },
+      onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
       onMessages: (frame) => {
         if (frame.type === "messages.updated") {
           for (const listener of this.messageListeners) listener(config.id, frame.message);
@@ -2135,6 +2161,39 @@ export class AppStore {
   private peersTimer: ReturnType<typeof setInterval> | null = null;
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
+
+  /** Phase 21: a paused loop waits in "Precisa de você" (once per pair) and the OS shows it. */
+  private onLoopAlert(hostId: string, frame: MessagingAlertFrame): void {
+    const alert: LoopAlert = {
+      hostId,
+      from: frame.from,
+      to: frame.to,
+      message: frame.message,
+      at: frame.at,
+    };
+    const others = this.state.loopAlerts.filter(
+      (a) => a.hostId !== hostId || loopPairKey(a) !== loopPairKey(alert),
+    );
+    this.update({ loopAlerts: [...others, alert] });
+    void this.platform.notify({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+  }
+
+  /** Phase 21: frees a paused pair, keeping the host's messaging policy as it is. */
+  async releaseLoop(alert: LoopAlert): Promise<void> {
+    const rules = await this.hostCommand(alert.hostId, "messaging.rules.get", {});
+    if (!rules) return;
+    const key = loopPairKey(alert);
+    const done = await this.hostCommand(alert.hostId, "messaging.rules.set", {
+      policy: rules.policy,
+      unpause: [key],
+    });
+    if (!done) return;
+    this.update({
+      loopAlerts: this.state.loopAlerts.filter(
+        (a) => a.hostId !== alert.hostId || loopPairKey(a) !== key,
+      ),
+    });
+  }
 
   /** Phase 21: told each time a team of a host changes. */
   onTeamsUpdated(listener: (hostId: string, frame: TeamsUpdatedFrame) => void): () => void {

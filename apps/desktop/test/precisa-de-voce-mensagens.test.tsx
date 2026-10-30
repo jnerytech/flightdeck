@@ -74,6 +74,22 @@ describe("precisa-de-voce: a paused loop and a team the quota paused", () => {
     expect(screen.queryByRole("button", { name: /Laço pausado/ })).toBeNull();
   });
 
+  test("a pair paused again waits once, and freeing it leaves the other pairs waiting", async () => {
+    const { store, daemon } = await open();
+    await act(async () => {
+      daemon.push(LOOP);
+      daemon.push({ ...LOOP, from: "h/s2", to: "h/s1" });
+      daemon.push({ ...LOOP, from: "h/s3", to: "h/s4", message: "outro laço" });
+    });
+    await settle(() => store.getState().loopAlerts.length === 2);
+    expect(store.getState().loopAlerts.map((a) => `${a.from}>${a.to}`)).toEqual([
+      "h/s2>h/s1",
+      "h/s3>h/s4",
+    ]);
+    await act(() => store.releaseLoop(store.getState().loopAlerts[0] as never));
+    expect(store.getState().loopAlerts.map((a) => a.from)).toEqual(["h/s3"]);
+  });
+
   test("a team the quota paused notifies with the reason, and Times says it was the quota", async () => {
     const { store, daemon, mem } = await open();
     const team = {

@@ -433,6 +433,9 @@ export const en: Dictionary = {
     seeSessions: "See the sessions",
     choose: "Choose a request to see its details.",
     resize: "Resize the list",
+    loopTitle: "Loop paused",
+    loopRow: "Loop paused: {from} and {to}",
+    release: "Free the pair",
   },
   hub: {
     pick: "Choose a session to see the conversation.",
@@ -1110,6 +1113,7 @@ export const en: Dictionary = {
     received: "Received",
   },
   teamsUi: {
+    notifyTitle: "Team {name}",
     title: "Teams",
     subtitle: "A coordinator session and its workers, each in a card",
     host: "Host",

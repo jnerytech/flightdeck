@@ -14,6 +14,7 @@ import {
   type HistoryChanged,
   type MessagesRelayFrame,
   type MessagesUpdatedFrame,
+  type MessagingAlertFrame,
   PROTOCOL_VERSION,
   parseServerMessage,
   type QuotaState,
@@ -77,6 +78,8 @@ export interface HostConnectionOptions {
   onMessages?(frame: MessagesRelayFrame | MessagesUpdatedFrame): void;
   /** Phase 21: a team changed (and why, when the daemon paused or resumed it). */
   onTeams?(frame: TeamsUpdatedFrame): void;
+  /** Phase 21: the daemon paused a pair of sessions caught in a loop. */
+  onMessagingAlert?(alert: MessagingAlertFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
@@ -181,6 +184,7 @@ export class HostConnection {
       if (message.type === "vault.used") return this.opts.onVaultUsed?.(message);
       if (message.type === "vault.alert") return this.opts.onVaultAlert?.(message);
       if (message.type === "teams.updated") return this.opts.onTeams?.(message);
+      if (message.type === "messaging.alert") return this.opts.onMessagingAlert?.(message);
       if (message.type === "messages.relay" || message.type === "messages.updated") {
         return this.opts.onMessages?.(message);
       }

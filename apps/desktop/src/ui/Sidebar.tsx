@@ -118,7 +118,7 @@ export function Sidebar(props: {
     (state.selected && state.hosts.find((h) => h.id === state.selected?.hostId)) ||
     state.hosts.find((h) => h.status === "online") ||
     state.hosts[0];
-  const pending = needsYou(state).length + budgetAlerts(state).length;
+  const pending = needsYou(state).length + budgetAlerts(state).length + state.loopAlerts.length;
   const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
   const [hostsOpen, setHostsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(true);

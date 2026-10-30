@@ -431,6 +431,9 @@ export const ptBR = {
     seeSessions: "Ver as sessões",
     choose: "Escolha um pedido para ver os detalhes.",
     resize: "Redimensionar a lista",
+    loopTitle: "Laço pausado",
+    loopRow: "Laço pausado: {from} e {to}",
+    release: "Soltar o par",
   },
   hub: {
     pick: "Escolha uma sessão para ver a conversa.",
@@ -1108,6 +1111,7 @@ export const ptBR = {
     received: "Recebida",
   },
   teamsUi: {
+    notifyTitle: "Time {name}",
     title: "Times",
     subtitle: "Uma sessão coordenadora e as executoras, cada uma num card",
     host: "Host",
