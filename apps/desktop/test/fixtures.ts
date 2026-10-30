@@ -1,8 +1,13 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
+import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";
+import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
+import { Forker } from "../../daemon/src/checkpoints/fork.ts";
+import { Rewinder } from "../../daemon/src/checkpoints/rewind.ts";
+import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
 import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
@@ -60,6 +65,10 @@ export function daemon(
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
     /** The review of changes (phase 11: `changes.*`, `review.*`, `file.*`, `files.sessions`); on unless `false`. */
     review?: boolean;
+    /** Git snapshots per turn, rewind and fork (phase 12), over this daemon's database. */
+    checkpoints?: boolean;
+    /** The project's MCP servers, CLAUDE.md, agents and skills (phase 12), in this daemon's root. */
+    agentcfg?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -74,7 +83,21 @@ export function daemon(
   const quota = options.quota ?? new Quota({ pauseAt: 0.9 });
   cleanups.push(() => quota.stop());
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => cwd });
+  // Phase 12: a snapshot at the edges of every turn, like main.ts wires it.
+  const snapshots = options.checkpoints ? new Snapshots({ db: store.db }) : undefined;
   const manager = new SessionManager({
+    ...(snapshots
+      ? {
+          onTurnEdge: (edge) =>
+            snapshots.enqueue({
+              cwd: edge.cwd,
+              claudeSessionId: edge.claudeSessionId,
+              kind: edge.kind,
+              ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
+              ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
+            }),
+        }
+      : {}),
     onQuota: (readings) => quota.record(readings),
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
@@ -84,6 +107,15 @@ export function daemon(
     allowApiKey: options.allowApiKey ?? false,
     baseEnv: options.baseEnv ?? {},
   });
+  const rewinder = snapshots ? new Rewinder({ snapshots, sessions: manager }) : undefined;
+  const forker = rewinder ? new Forker({ runtime, manager, rewinder }) : undefined;
+  // The user's own ~/.claude.json and ~/.claude stay untouched: both live in this daemon's root.
+  const mcp = options.agentcfg
+    ? new McpConfig({ userConfigPath: join(root, "claude.json"), timeoutMs: 5000 })
+    : undefined;
+  const agentcfg = options.agentcfg
+    ? new AgentConfig({ claudeDir: join(root, "claude-home") })
+    : undefined;
   const board = new Board({ db: store.db, manager, allowedRoots: [root], quota });
   cleanups.push(() => board.stop());
   // Hooks go to a settings.json of this daemon only, never the home of the test process.
@@ -91,6 +123,7 @@ export function daemon(
   const configFile = join(root, "config.json");
   writeFileSync(configFile, JSON.stringify({ token: TOKEN }));
   const central = new Central({
+    ...(snapshots ? { snapshots } : {}),
     db: store.db,
     manager,
     hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
@@ -144,6 +177,8 @@ export function daemon(
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
+      ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
+      ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
@@ -166,6 +201,9 @@ export function daemon(
     historyRoot,
     runtime,
     board,
+    snapshots,
+    mcp,
+    agentcfg,
     central,
     maintenance,
     settingsFile,

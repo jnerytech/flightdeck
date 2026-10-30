@@ -136,7 +136,7 @@ export interface AppUpdateState {
 /** How often the app looks for its own update while open. */
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
-/** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5). */
+/** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
 export type HostCommandType = Extract<
   CommandType,
   | `project.${string}`
@@ -160,6 +160,11 @@ export type HostCommandType = Extract<
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
+  | `snapshots.${string}`
+  | `rewind.${string}`
+  | "session.fork"
+  | `mcp.${string}`
+  | `agentcfg.${string}`
 >;
 
 /** A command's answer kept apart from the error banner: the caller decides what to show. */
