@@ -1,0 +1,152 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { AppStore } from "../src/lib/app-store.ts";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { fakeXterm } from "./terminal-fakes.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { TerminalPage } = await import("../src/ui/TerminalPage.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
+
+setDefaultTimeout(30_000);
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function setup() {
+  const d = makeDaemon(cleanups, { terminals: true });
+  const server = d.listen();
+  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
+    baseDelayMs: 10,
+    maxDelayMs: 20,
+  });
+  cleanups.push(() => store.dispose());
+  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
+  const { terminalId } = await store.terminalHost(hostId).open(d.project, 80, 24);
+  const x = fakeXterm();
+  const closed: number[] = [];
+  render(
+    <TContext.Provider value={store.i18n.t}>
+      <TerminalPage
+        store={store}
+        hostId={hostId}
+        terminalId={terminalId}
+        deps={x.deps}
+        onClosed={() => void closed.push(1)}
+      />
+    </TContext.Provider>,
+  );
+  return { ...d, server, store, hostId, terminalId, x, closed };
+}
+
+const state = (name: string) => screen.queryByText(name);
+const button = (name: string) => screen.queryByRole("button", { name });
+const click = async (name: string) => {
+  const target = button(name);
+  expect(target).not.toBeNull();
+  await act(async () => {
+    if (target) fireEvent.click(target);
+  });
+};
+const settle = (check: () => unknown) => waitFor(() => check()).catch(() => null);
+
+describe("terminal-ui: the terminal screen", () => {
+  test("attaches, shows it live and draws the host's output and the keys' echo", async () => {
+    const { x, ptys } = await setup();
+    await settle(() => state("Ao vivo"));
+    expect(state("Ao vivo")).not.toBeNull();
+    ptys.spawned[0]?.emit("saída\r\n");
+    await settle(() => x.drawn.includes("saída\r\n"));
+    expect(x.drawn).toContain("saída\r\n");
+    act(() => x.type("ls\r"));
+    await settle(() => ptys.spawned[0]?.written.includes("ls\r"));
+    expect(ptys.spawned[0]?.written).toContain("ls\r");
+  });
+
+  test("a terminal that ends shows its code and Reabrir attaches it again", async () => {
+    const { x, ptys } = await setup();
+    await settle(() => state("Ao vivo"));
+    ptys.spawned[0]?.exit(2);
+    await settle(() => state("Encerrado (código 2)"));
+    expect(state("Encerrado (código 2)")).not.toBeNull();
+    const before = x.drawn.filter((entry) => entry === "<reset>").length;
+    await click("Reabrir");
+    await settle(() => x.drawn.filter((entry) => entry === "<reset>").length > before);
+    expect(x.drawn.filter((entry) => entry === "<reset>").length).toBeGreaterThan(before);
+  });
+
+  test("losing the host shows it detached, with Reabrir", async () => {
+    const { server } = await setup();
+    await settle(() => state("Ao vivo"));
+    server.stop();
+    await settle(() => state("Desanexado"));
+    expect(state("Desanexado")).not.toBeNull();
+    expect(button("Reabrir")).not.toBeNull();
+  });
+
+  test("Ctrl+Shift+F opens the search: Enter goes to the next match, Shift+Enter to the previous, Esc closes", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" });
+    expect(box).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(box as HTMLElement, { target: { value: "erro" } });
+      fireEvent.keyDown(box as HTMLElement, { key: "Enter" });
+      fireEvent.keyDown(box as HTMLElement, { key: "Enter", shiftKey: true });
+    });
+    expect(x.finds).toContain("next:erro");
+    expect(x.finds).toContain("prev:erro");
+    await act(async () => {
+      fireEvent.keyDown(box as HTMLElement, { key: "Escape" });
+    });
+    expect(screen.queryByRole("searchbox", { name: "Buscar no terminal" })).toBeNull();
+    expect(x.finds.at(-1)).toBe("clear");
+  });
+
+  test("closing asks: Desanexar keeps the process, Encerrar processo ends it, Cancelar does nothing", async () => {
+    const { x, ptys, closed } = await setup();
+    await settle(() => state("Ao vivo"));
+    await click("Fechar terminal");
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    await click("Cancelar");
+    expect(closed).toEqual([]);
+    await click("Fechar terminal");
+    await click("Desanexar");
+    await settle(() => closed.length === 1);
+    expect(closed).toEqual([1]);
+    expect(ptys.spawned[0]?.killed).toBe(false);
+    expect(x.disposed()).toBe(false);
+  });
+
+  test("Encerrar processo kills it", async () => {
+    const { ptys, closed } = await setup();
+    await settle(() => state("Ao vivo"));
+    await click("Fechar terminal");
+    await click("Encerrar processo");
+    await settle(() => closed.length === 1);
+    expect(ptys.spawned[0]?.killed).toBe(true);
+    expect(closed).toEqual([1]);
+  });
+
+  test("leaving the screen releases xterm", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    cleanup();
+    expect(x.disposed()).toBe(true);
+  });
+
+  test("the font size comes from the settings and follows them", async () => {
+    const { x, store } = await setup();
+    await settle(() => state("Ao vivo"));
+    expect(x.fonts()).toEqual([13]);
+    act(() => store.terminalFont.set(18));
+    await settle(() => x.terminal.options.fontSize === 18);
+    expect(x.terminal.options.fontSize).toBe(18);
+  });
+});
