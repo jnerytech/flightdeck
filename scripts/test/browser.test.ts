@@ -9,30 +9,39 @@ afterEach(() => {
   process.env.PATH = realPath;
 });
 
-/** A PATH made of one folder holding empty executables with these names (nothing is launched). */
-function onlyOnPath(...names: string[]): string {
+/** On Windows only a name with a PATHEXT extension is found, so the fakes are `.cmd` files there. */
+const EXT = process.platform === "win32" ? ".cmd" : "";
+
+/**
+ * A PATH made of one folder holding empty executables with these names (nothing is launched);
+ * returns the path each one is found at.
+ */
+function onlyOnPath(...names: string[]): (name: string) => string {
   const dir = mkdtempSync(join(tmpdir(), "fd-browser-"));
   for (const name of names) {
-    writeFileSync(join(dir, name), "#!/bin/sh\n");
-    chmodSync(join(dir, name), 0o755);
+    writeFileSync(
+      join(dir, name + EXT),
+      process.platform === "win32" ? "@echo off\r\n" : "#!/bin/sh\n",
+    );
+    chmodSync(join(dir, name + EXT), 0o755);
   }
   process.env.PATH = dir;
-  return dir;
+  return (name) => join(dir, name + EXT);
 }
 
 describe("browser: where the demo scripts get a Chromium", () => {
   test("tries Chrome, then Edge, and the distribution's Chromium last when it is on the PATH", () => {
-    const dir = onlyOnPath("chromium-browser");
+    const at = onlyOnPath("chromium-browser");
     expect(browserAttempts()).toEqual([
       { channel: "chrome" },
       { channel: "msedge" },
-      { executablePath: join(dir, "chromium-browser") },
+      { executablePath: at("chromium-browser") },
     ]);
   });
 
   test("prefers `chromium` over `chromium-browser`", () => {
-    const dir = onlyOnPath("chromium-browser", "chromium");
-    expect(browserAttempts().at(-1)).toEqual({ executablePath: join(dir, "chromium") });
+    const at = onlyOnPath("chromium-browser", "chromium");
+    expect(browserAttempts().at(-1)).toEqual({ executablePath: at("chromium") });
   });
 
   test("without a Chromium on the PATH there are only the two channels", () => {
