@@ -43,7 +43,7 @@ async function open() {
       "git status",
       "bun test",
       VAULT_LINE,
-      "ls -la",
+      "docker compose up -d",
     ].join("\n"),
   );
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
@@ -82,7 +82,7 @@ describe("snippets-ui: import from the shell history", () => {
     expect(texts[0]).toContain("3×");
     expect(texts[1]).toContain("bun test");
     expect(screen.queryByLabelText("git status")).not.toBeNull();
-    expect(screen.queryByText("Linha oculta: token do GitHub, senha na linha")).not.toBeNull();
+    expect(screen.queryByText("Linha oculta: token do GitHub")).not.toBeNull();
     expect(screen.queryByText("Linha oculta: valor do cofre")).not.toBeNull();
     expect(lines().filter((li) => li.querySelector("input[type=checkbox]") === null)).toHaveLength(
       2,
@@ -95,14 +95,14 @@ describe("snippets-ui: import from the shell history", () => {
     const { store, hostId } = await open();
     await act(async () => {
       fireEvent.click(screen.queryByLabelText("git status") as HTMLElement);
-      fireEvent.click(screen.queryByLabelText("ls -la") as HTMLElement);
+      fireEvent.click(screen.queryByLabelText("docker compose up -d") as HTMLElement);
     });
     await click("Importar selecionados");
     expect(screen.queryByText("Importados: 2")).not.toBeNull();
     const listed = await store.hostCommand(hostId, "snippets.list", {});
     expect(listed?.snippets.map((s) => [s.run, s.tags]).sort()).toEqual([
+      ["docker compose up -d", ["histórico"]],
       ["git status", ["histórico"]],
-      ["ls -la", ["histórico"]],
     ]);
   });
 
