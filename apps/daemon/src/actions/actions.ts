@@ -67,6 +67,8 @@ export interface ActionsOptions {
   ssh?: SshExecutor | undefined;
   /** The vault secret that holds a destino's key (`vault-key`), or null when it has none. */
   sshKey?: ((target: string) => string | null) | undefined;
+  /** Phase 19: the tags of an ssh destino (phase 15), which count in a use's tags. */
+  sshTags?: ((target: string) => string[]) | undefined;
   /** How long a request waits for the app, and then is denied (10 minutes when absent). */
   requestTimeoutMs?: number | undefined;
   /** Phase 19: the rules of each secret; without them the requests of phase 17 apply. */

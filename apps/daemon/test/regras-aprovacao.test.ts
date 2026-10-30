@@ -381,6 +381,32 @@ describe("regras-aprovacao: aprovar", () => {
 });
 
 describe("regras-aprovacao: prod e risco alto", () => {
+  test("an ssh action on a destino tagged prod, and a free command there, ask at every use, held, though neither the action nor the secret says prod", async () => {
+    const t = setup({
+      ssh: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+      sshTags: (target: string) => (target === "prod-api" ? ["prod"] : []),
+    });
+    await t.actions.save({
+      projectId: "p1",
+      definition: echoDef({ ssh: "prod-api", run: ["uptime"] }),
+    });
+    const action = t.run();
+    const a = await t.frame(0);
+    expect(a).toMatchObject({ decision: "ask", once: false, needsHold: true });
+    t.approveAndDeliver(a, { via: "app", heldMs: 2000 });
+    await action;
+    const free = t.actions.runFree({
+      command: "uptime",
+      secrets: ["token"],
+      host: "prod-api",
+      requestedBy: "claude",
+    });
+    const b = await t.frame(1);
+    expect(b).toMatchObject({ decision: "ask", needsHold: true });
+    t.approveAndDeliver(b, { via: "app", heldMs: 2000 });
+    await free;
+  });
+
   test("a session approval of a use that is not prod never lets a prod use of the same secret through: it still asks, held", async () => {
     const t = setup();
     await t.actions.save({ projectId: "p1", definition: echoDef() });
