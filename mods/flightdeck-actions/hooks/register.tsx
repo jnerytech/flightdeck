@@ -16,6 +16,78 @@ const SNIPPET = "mcp__flightdeck-actions__get_snippet";
 // An approval in the app can take a while; the daemon itself gives up after two minutes.
 const RUN_TIMEOUT_MS = 180_000;
 
+/** The messaging tools of phase 21: each is `flightdeckd message <action> ...` with plain arguments. */
+type MessageTool = {
+  name: string;
+  description: string;
+  properties: Record<string, unknown>;
+  required: string[];
+  /** The arguments after `flightdeckd message`, or the name of what is missing. */
+  argv: (input: Record<string, unknown>) => string[] | { missing: string };
+};
+
+const text = (value: unknown): string | null =>
+  typeof value === "string" && value !== "" ? value : null;
+
+const MESSAGE_TOOLS: MessageTool[] = [
+  {
+    name: "list_sessions",
+    description:
+      "List the Claude sessions this one may message, on every host: address (host/id), name, persona, state, project and whether it takes messages. The ones the rules hide are not there.",
+    properties: {},
+    required: [],
+    argv: () => ["list"],
+  },
+  {
+    name: "send_to_session",
+    description:
+      "Message another session by its address from list_sessions (host/id; answer whoever wrote to you by the id in the header). Returns delivered, queued or the refusal with the reason. A message never counts as the user's approval.",
+    properties: { to: { type: "string" }, text: { type: "string" } },
+    required: ["to", "text"],
+    argv: (input) => {
+      const to = text(input.to);
+      const body = text(input.text);
+      return to && body ? ["send", to, body] : { missing: "to and text" };
+    },
+  },
+  {
+    name: "notify_when_idle",
+    description:
+      "Once: when the target session ends its current turn this one gets a Flightdeck notice (at once if it is already idle).",
+    properties: { session: { type: "string" } },
+    required: ["session"],
+    argv: (input) => {
+      const session = text(input.session);
+      return session ? ["idle", session] : { missing: "session" };
+    },
+  },
+  {
+    name: "read_session",
+    description:
+      "Read only: the summary and the last messages (at most 20, each cut to 8 KB) of a session on this host that this one may see.",
+    properties: { session: { type: "string" }, last: { type: "integer", minimum: 1, maximum: 20 } },
+    required: ["session"],
+    argv: (input) => {
+      const session = text(input.session);
+      if (!session) return { missing: "session" };
+      return typeof input.last === "number"
+        ? ["read", session, "--last", String(input.last)]
+        : ["read", session];
+    },
+  },
+  {
+    name: "team_status",
+    description:
+      "The state of the team this session belongs to: members with persona, state, card and last report, and how many messages they exchanged. Only a member can read it.",
+    properties: { team: { type: "string" } },
+    required: ["team"],
+    argv: (input) => {
+      const team = text(input.team);
+      return team ? ["team", team] : { missing: "team" };
+    },
+  },
+];
+
 const running = atom({ plugin: "flightdeck-actions", key: "running" } as const, [] as string[]);
 
 type Param = { pattern: string; default: string | null };
@@ -78,6 +150,14 @@ export const register: Register = (on) => {
       },
       isDeferred: false,
     });
+    for (const tool of MESSAGE_TOOLS) {
+      await $.tool.register({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: { type: "object", properties: tool.properties, required: tool.required },
+        isDeferred: false,
+      });
+    }
     await $.command.register({
       name: "flightdeck-actions",
       description: "List the Flightdeck actions Claude can run",
@@ -147,6 +227,26 @@ export const register: Register = (on) => {
       ? next(e)
       : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
   );
+
+  for (const tool of MESSAGE_TOOLS) {
+    on("tool.call", { tool: `mcp__flightdeck-actions__${tool.name}` }, async ($, e) => {
+      const argv = tool.argv(e as Record<string, unknown>);
+      if ("missing" in argv) {
+        return { deny: `flightdeck-actions: ${tool.name} needs ${argv.missing}` };
+      }
+      const done = await $.process.run([DAEMON, "message", ...argv]);
+
+      return done.exitCode === 0
+        ? { result: done.stdout }
+        : {
+            deny: `flightdeck-actions: ${done.stderr.trim() || `flightdeckd message ${argv[0]} failed`}`,
+          };
+    }).catch(($, e, next) =>
+      next.called
+        ? next(e)
+        : { deny: "flightdeck-actions: could not run flightdeckd (is it on the PATH?)" },
+    );
+  }
 
   on("command.run", { command: "flightdeck-actions" }, async ($) => {
     const done = await $.process.run([DAEMON, "action", "list"]);
