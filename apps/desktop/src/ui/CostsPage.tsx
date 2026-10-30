@@ -1,11 +1,14 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
+import { Coins } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Toolbar } from "@/components/layout/stack";
+import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -56,7 +59,9 @@ export function CostsPage(props: {
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
   );
-  const [hostId, setHostId] = useState(hosts[0]?.id ?? "");
+  /** The host the user picked; until then (or if it left), the first one that announces costs. */
+  const [chosen, setChosen] = useState("");
+  const hostId = hosts.some((h) => h.id === chosen) ? chosen : (hosts[0]?.id ?? "");
   const [period, setPeriod] = useState<Period>("7d");
   const today = store.today();
   const [range, setRange] = useState(periodRange("7d", today));
@@ -93,6 +98,8 @@ export function CostsPage(props: {
   for (const row of byDay) dayTotals.set(row.day, (dayTotals.get(row.day) ?? 0) + row.costUsd);
   const highest = Math.max(0, ...dayTotals.values());
 
+  const loading = useMinLoading(hostId !== "" && summary === null);
+  const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
   const select =
     "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
@@ -105,7 +112,7 @@ export function CostsPage(props: {
             aria-label={t("costsUi.host")}
             className={select}
             value={hostId}
-            onChange={(e) => setHostId(e.target.value)}
+            onChange={(e) => setChosen(e.target.value)}
           >
             {hosts.map((h) => (
               <option key={h.id} value={h.id}>
@@ -191,12 +198,35 @@ export function CostsPage(props: {
       <div className="flex flex-col gap-5">
         {status && status.divergences.length > 0 && (
           <InlineNotice>
-            {`tabela de preços pode estar desatualizada: ${status.divergences
-              .map((d) => `${d.model} (calculado ${usd(d.computedUsd)}, SDK ${usd(d.sdkUsd)})`)
-              .join("; ")}`}
+            {t("costsUi.divergence", {
+              models: status.divergences
+                .map((d) =>
+                  t("costsUi.divergenceItem", {
+                    model: d.model,
+                    computed: usd(d.computedUsd),
+                    sdk: usd(d.sdkUsd),
+                  }),
+                )
+                .join("; "),
+            })}
           </InlineNotice>
         )}
-        {summary && (
+        {hosts.length === 0 && <EmptyState icon={Coins} title={t("costsUi.noHost")} />}
+        {loading && <LoadingState label={t("costsUi.loading")} />}
+        {empty && (
+          <EmptyState
+            icon={Coins}
+            title={t("costsUi.empty")}
+            action={
+              period === "today" || period === "7d" ? (
+                <Button variant="outline" onClick={() => setPeriod("30d")}>
+                  {t("costsUi.emptyAction")}
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
+        {summary && !empty && (
           <>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
               {[
