@@ -158,4 +158,17 @@ describe("abas", () => {
     expect(tabs.activeId).toBe("t1");
     expect(seen).toEqual([]);
   });
+
+  test("a pinned tab closed comes back pinned, among the pinned ones", () => {
+    const { tabs, ids } = setup();
+    tabs.open(hub);
+    tabs.open(costs);
+    tabs.pin("t3", true);
+    tabs.pin("t2", true);
+    tabs.close("t3");
+    const back = tabs.reopen();
+    expect(back?.pinned).toBe(true);
+    expect(ids().slice(0, 2).sort()).toEqual(["t2", back?.id as string].sort());
+    expect(ids().at(-1)).toBe("t1");
+  });
 });
