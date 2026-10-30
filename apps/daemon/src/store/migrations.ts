@@ -600,4 +600,36 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX teams_project ON teams (project_id, created_at);
   `,
+  // Phase 21, standard session names: the counters only go up (a number is never given twice, and
+  // the retention does not touch these tables), and every alias, old ones included, is unique.
+  `
+  CREATE TABLE session_name_counters (
+    project TEXT NOT NULL,
+    scope   TEXT NOT NULL,
+    last    INTEGER NOT NULL,
+    PRIMARY KEY (project, scope)
+  );
+
+  CREATE TABLE session_card_numbers (
+    card_id TEXT PRIMARY KEY,
+    number  INTEGER NOT NULL
+  );
+
+  CREATE TABLE session_names (
+    session_id  TEXT PRIMARY KEY,
+    display     TEXT NOT NULL,
+    project     TEXT NOT NULL,
+    persona     TEXT NOT NULL,
+    number      INTEGER NOT NULL,
+    card_number INTEGER,
+    created_at  TEXT NOT NULL
+  );
+
+  CREATE TABLE session_aliases (
+    alias      TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL
+  );
+
+  CREATE INDEX session_aliases_session ON session_aliases (session_id);
+  `,
 ];
