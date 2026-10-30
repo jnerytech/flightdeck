@@ -97,6 +97,21 @@ export type PersonaRef = z.infer<typeof PersonaRef>;
 export const ToolInput = z.record(z.string(), z.unknown());
 export type ToolInput = z.infer<typeof ToolInput>;
 
+/** The standard name of a session of the host (phase 21): `project · persona · number`. */
+export const SessionNameInfo = z.object({
+  /** The managed id, or the Claude session id of a terminal. */
+  sessionId: z.string(),
+  display: z.string(),
+  /** The alias that came with the session; `aliases` has it first. */
+  alias: z.string(),
+  aliases: z.array(z.string()),
+  project: z.string(),
+  persona: z.string(),
+  number: z.number().int(),
+  cardNumber: z.number().int().nullable(),
+});
+export type SessionNameInfo = z.infer<typeof SessionNameInfo>;
+
 /** Name, pinned and archived of a session (phase 5), set with `session.meta.set`. */
 export const SessionMeta = z.object({
   name: z.string().nullable(),
@@ -1938,6 +1953,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   /** This host's sessions as the app hands them to the other daemons (`messages.peers`). */
   cmd("messages.directory", z.object({}).strict()),
+  /** The standard names of this host's sessions: the app's list and palette address by alias. */
+  cmd("names.list", z.object({}).strict()),
   /** The app describes the sessions of another host (what `list_sessions` shows of it). */
   cmd(
     "messages.peers",
@@ -2859,6 +2876,7 @@ export interface CommandResults {
   "messages.relayed": undefined;
   "messages.peers": undefined;
   "messages.directory": { host: string; sessions: MessagingPeer[] };
+  "names.list": { names: SessionNameInfo[] };
   "messages.watch": undefined;
   "idle.subscribe": { fired: boolean };
   "messaging.rules.get": { policy: Record<string, unknown>; paused: string[] };

@@ -62,6 +62,7 @@ import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
+import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
@@ -121,6 +122,8 @@ export interface ServerOptions {
   teams?: Teams;
   /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
   messaging?: Messaging;
+  /** Phase 21: the standard names of the sessions (`names.list`, and the rename of a session). */
+  names?: Names;
   /** Phase 21: the one-shot idle notices (`idle.subscribe`). */
   idle?: Idle;
   /** Phase 17: actions that use a secret without Claude seeing it (`actions.*`, `vault.watch`). */
@@ -854,6 +857,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "messages.directory":
         return ok(command.type, { host: opts.hostName, sessions: messaging().directory() });
+      case "names.list":
+        return ok(command.type, { names: [] });
       case "messages.peers":
         messaging().setPeers(command.payload.host, command.payload.sessions);
         return ok(command.type);
