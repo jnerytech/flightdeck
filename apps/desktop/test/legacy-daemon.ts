@@ -5,13 +5,19 @@
  */
 export function legacyDaemon(cleanups: Array<() => unknown>) {
   const asked: string[] = [];
+  /** Every command with its payload, in order. */
+  const commands: Array<{ type: string; payload: unknown }> = [];
+  const sockets = new Set<{ send(data: string): unknown }>();
   const server = Bun.serve({
     port: 0,
     fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("", { status: 426 })),
     websocket: {
+      open: (ws) => void sockets.add(ws),
+      close: (ws) => void sockets.delete(ws),
       message(ws, raw) {
-        const { id, type } = JSON.parse(String(raw));
+        const { id, type, payload } = JSON.parse(String(raw));
         asked.push(type);
+        commands.push({ type, payload });
         const ack = (data?: unknown) => {
           ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
         };
@@ -32,6 +38,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           "project.list": { projects: [], maxParallelRuns: 2 },
         };
         if (type in known) return ack(known[type]);
+        if (type === "vault.deliver") return ack({ expiresAt: 0 });
         if (type.endsWith(".watch")) return ack();
         ws.send(
           JSON.stringify({
@@ -45,5 +52,13 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     },
   });
   cleanups.push(() => server.stop(true));
-  return { url: `ws://127.0.0.1:${server.port}/`, asked };
+  return {
+    url: `ws://127.0.0.1:${server.port}/`,
+    asked,
+    commands,
+    /** Sends a frame to every connected client, as the daemon does on its own. */
+    push: (frame: unknown) => {
+      for (const ws of sockets) ws.send(JSON.stringify(frame));
+    },
+  };
 }
