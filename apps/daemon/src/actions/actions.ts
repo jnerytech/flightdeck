@@ -401,6 +401,7 @@ export class Actions {
       ),
       timeoutS: action.timeoutS,
       approval: approvalOf(action),
+      tags: [],
       secrets: secretsOf(action),
       trusted: trusted !== undefined && changed.length === 0,
       changed,

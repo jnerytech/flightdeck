@@ -103,9 +103,14 @@ export function approvalOf(action: ActionDef): ApprovalMode {
 }
 
 /** Whether the tags mark production. */
-export function isProd(_tags: readonly string[] | undefined): boolean {
-  return false;
+export function isProd(tags: readonly string[] | undefined): boolean {
+  return (tags ?? []).some(
+    (tag) => tag.toLowerCase() === "prod" || tag.toLowerCase() === "produção",
+  );
 }
+
+const TAG = /^[\p{L}\p{N}-]{1,32}$/u;
+const MAX_TAGS = 8;
 
 /** The mistakes of one action, or the action once it is valid. */
 export function validateAction(
@@ -182,6 +187,20 @@ export function validateAction(
     bad("approval é always, never ou first-per-session");
   }
 
+  let tags: string[] | undefined;
+  if (raw.tags !== undefined) {
+    const given = raw.tags;
+    if (
+      !Array.isArray(given) ||
+      given.length > MAX_TAGS ||
+      !given.every((tag) => isText(tag) && TAG.test(tag))
+    ) {
+      bad(`tags é uma lista de até ${MAX_TAGS} rótulos curtos, sem espaço (como prod)`);
+    } else {
+      tags = [...new Set((given as string[]).map((tag) => tag.toLowerCase()))];
+    }
+  }
+
   if (argv) {
     for (const [i, arg] of argv.entries()) {
       if (referencesIn(arg).some((r) => r.kind === "secret")) {
@@ -241,6 +260,7 @@ export function validateAction(
     ...(isText(raw.ssh) ? { ssh: raw.ssh } : {}),
     ...(isText(raw.cwd) ? { cwd: raw.cwd } : {}),
     ...(raw.approval ? { approval: raw.approval as ApprovalMode } : {}),
+    ...(tags ? { tags } : {}),
   };
   return { action, errors };
 }

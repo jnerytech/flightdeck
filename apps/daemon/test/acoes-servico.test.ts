@@ -143,6 +143,24 @@ describe("acoes-servico: ações do app", () => {
     expect((await actions.remove(undefined, "hora")).actions).toEqual([]);
   });
 
+  test("as tags da ação aparecem para o app, e mudar uma tag muda o que foi confiado", async () => {
+    const { actions } = setup();
+    const saved = await actions.save({
+      projectId: "p1",
+      definition: echoDef({ tags: ["prod"] }),
+    });
+    expect(saved.tags).toEqual(["prod"]);
+    expect(saved.trusted).toBe(true);
+    const plain = await actions.save({ projectId: "p1", definition: echoDef({ name: "outra" }) });
+    expect(plain.tags).toEqual([]);
+    // The tags are part of the declaration: a different one is a different hash.
+    const retagged = await actions.save({
+      projectId: "p1",
+      definition: echoDef({ tags: ["staging"] }),
+    });
+    expect(retagged.hash).not.toBe(saved.hash);
+  });
+
   test("salvar de novo troca a definição; parâmetros e padrão aparecem para o app", async () => {
     const { actions } = setup();
     await actions.save({ projectId: "p1", definition: echoDef() });

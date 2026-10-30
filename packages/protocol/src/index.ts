@@ -1377,6 +1377,8 @@ export const ActionInfo = z.object({
   timeoutS: z.number().int(),
   /** The effective mode: the declared one, or the default for its kind. */
   approval: ActionApproval,
+  /** Labels such as prod, from the action. */
+  tags: z.array(z.string()),
   secrets: z.object({ values: z.array(z.string()), files: z.array(z.string()) }),
   trusted: z.boolean(),
   /** What differs from what was trusted: "declaração" and/or file paths. */
