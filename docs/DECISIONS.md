@@ -1958,7 +1958,7 @@ O que a spec da Fase 16 (cofre de segredos) deixou aberto, ou o que mudou na imp
 
 # Decisões e divergências da Fase 17 (daemon, protocolo, MCP e smoke)
 
-O que a spec da Fase 17 (o Claude usa o segredo sem vê-lo) deixou aberto, ou o que mudou na implementação. Nesta rodada entrou o lado do daemon: `acoes-schema`, `acoes-execucao`, `acoes-confianca`, `mascara`, `mcp-acoes` e o `smoke:actions`. O mod `flightdeck-actions` está descrito abaixo. The actions screen (`acoes-ui`) and the `prod` warning were delivered later; see "Phase 17 decisions: the interface".
+O que a spec da Fase 17 (o Claude usa o segredo sem vê-lo) deixou aberto, ou o que mudou na implementação. Nesta rodada entrou o lado do daemon: `acoes-schema`, `acoes-execucao`, `acoes-confianca`, `mascara`, `mcp-acoes` e o `smoke:actions`. The `flightdeck-actions` mod is described in "Phase 17 decisions: the interface". The actions screen (`acoes-ui`) and the `prod` warning were delivered later; see "Phase 17 decisions: the interface".
 
 ## Onde moram as ações
 
