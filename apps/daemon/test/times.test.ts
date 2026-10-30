@@ -115,6 +115,28 @@ describe("times: criar", () => {
     expect(first).toContain("`bun test`");
   });
 
+  test("um nome de time longo não repete a branch das executoras: o nome dos cards é cortado antes do número", async () => {
+    const { teams, project, board } = await setup();
+    const team = await teams.create({
+      ...NEW,
+      projectId: project.id,
+      name: "Implementar o login com e-mail e senha, com testes completos",
+    });
+    await waitFor(
+      () => team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
+      {
+        timeoutMs: 8000,
+      },
+    );
+    const branches = team.members.slice(1).map((m) => board.getCard(m.cardId as string).branch);
+    expect(new Set(branches).size).toBe(2);
+    expect(team.members.map((m) => m.name)).toEqual([
+      "Implementar o login com · coordenadora",
+      "Implementar o login com · executora 1",
+      "Implementar o login com · executora 2",
+    ]);
+  });
+
   test("as personas passam por quem as resolve: a que não existe é recusada sem criar nada, a conhecida vai para a sessão", async () => {
     const started: Array<{ persona: string | null; name?: string; cardId?: string }> = [];
     const { teams, project, board, manager } = await setup({
@@ -183,7 +205,7 @@ describe("times: os membros se falam", () => {
 describe("times: os controles", () => {
   async function running() {
     const ctx = await setup();
-    const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id });
+    const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id, name: "time" });
     await waitFor(
       () => team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
       { timeoutMs: 8000 },
@@ -279,6 +301,12 @@ describe("times: os controles", () => {
     });
     expect(changed).toMatchObject({ goal: "novo objetivo", checks: ["bun test"] });
     expect(messaging.list({}).some((m) => m.text.includes("novo objetivo"))).toBe(true);
+    // Clearing the checks goes back to the project's own, and says so.
+    const cleared = await teams.update({ team: team.id, checks: [] });
+    expect(cleared.checks).toEqual([]);
+    expect(
+      messaging.list({}).some((m) => m.text.includes("voltaram a ser os checks do projeto")),
+    ).toBe(true);
   });
 
   test("encerrar pede confirmação, avisa os membros e o time deixa de aceitar controles", async () => {
@@ -350,5 +378,18 @@ describe("times: guardar", () => {
     expect(again.list(ctx.project.id)).toHaveLength(1);
     expect(again.get(team.id)).toMatchObject({ state: "paused", pausedBy: "user", goal: NEW.goal });
     expect(again.list("outro-projeto")).toEqual([]);
+  });
+});
+
+describe("times: acompanhar", () => {
+  test("quem assiste recebe cada mudança e pode parar de assistir", async () => {
+    const ctx = await setup();
+    const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id });
+    const seen: string[] = [];
+    const off = ctx.teams.watch((frame) => seen.push(frame.team.state));
+    ctx.teams.pause(team.id);
+    off();
+    ctx.teams.resume(team.id);
+    expect(seen).toEqual(["paused"]);
   });
 });
