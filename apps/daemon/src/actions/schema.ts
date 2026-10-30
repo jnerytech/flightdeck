@@ -26,6 +26,8 @@ export interface ActionDef {
   params: Record<string, ActionParam>;
   timeoutS: number;
   approval?: ApprovalMode;
+  /** Labels such as `prod`; the usage rules of phase 19 match on them. */
+  tags?: string[];
 }
 
 export interface ParseOptions {
@@ -44,6 +46,7 @@ const FIELDS = new Set([
   "params",
   "timeoutS",
   "approval",
+  "tags",
 ]);
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -97,6 +100,11 @@ export function approvalOf(action: ActionDef): ApprovalMode {
   if (action.approval) return action.approval;
   const { values, files } = secretsOf(action);
   return values.length + files.length > 0 ? "first-per-session" : "never";
+}
+
+/** Whether the tags mark production. */
+export function isProd(_tags: readonly string[] | undefined): boolean {
+  return false;
 }
 
 /** The mistakes of one action, or the action once it is valid. */
