@@ -170,6 +170,8 @@ describe("cofre-ui: backup", () => {
     expect(screen.queryByText("Conflitantes: 1")).not.toBeNull();
     await click("Aplicar");
     expect(await store.vault.value("shared-id")).toBe("local-value");
+    // The panel forgets the passphrase once the import is applied.
+    await fill("Frase-senha do arquivo", PASS);
     await click("Importar cofre");
     const replace = screen.queryByLabelText("Substituir pelo backup");
     expect(replace).not.toBeNull();
