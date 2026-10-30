@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -67,7 +69,7 @@ async function atGate() {
 }
 
 async function openCard() {
-  await click("Projetos de alfa");
+  await sidebar.hostAction("Projetos", "alfa");
   await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
   await click("Abrir board de repo");
   await settle(() => screen.queryByLabelText("Card Somar") !== null);
@@ -110,18 +112,19 @@ describe("gate-ui", () => {
       hostId: ctx.store.getState().hosts[0]?.id ?? "",
     }));
     const label = "alfa · Somar: gate approve";
-    expect(screen.queryByRole("heading", { name: "Precisa de você (1)" })).not.toBeNull();
+    await sidebar.openQueue();
+    expect(screen.queryByRole("heading", { name: "Precisa de você" })).not.toBeNull();
     expect(needsYou(store.getState())[0]).toMatchObject({
       hostId,
       sessionName: "Somar",
       toolName: "gate approve",
     });
     // The queue expands the gate: "Abrir card" opens the card; Aprovar answers from the queue.
-    await click(label);
+    await sidebar.queueItem(label);
     await click("Abrir card");
     await settle(() => screen.queryByRole("region", { name: "Gate approve" }) !== null);
     expect(screen.queryByRole("heading", { name: "Somar" })).not.toBeNull();
-    await click(label);
+    await sidebar.queueItem(label);
     const card = screen.queryByRole("group", { name: "Pedido de gate approve" });
     expect(card).not.toBeNull();
     const approve = card ? within(card).queryByRole("button", { name: "Aprovar" }) : null;
@@ -132,12 +135,13 @@ describe("gate-ui", () => {
     await settle(() => run().status === "completed");
     expect(run().steps[1]?.status).toBe("approved");
     await settle(() => needsYou(store.getState()).length === 0);
-    expect(screen.queryByRole("heading", { name: /Precisa de você/ })).toBeNull();
+    // Nothing waits any more: the screen says so.
+    expect(screen.queryByText("Nada espera por você.")).not.toBeNull();
   });
 
   test("recusar pela fila encerra a execução", async () => {
     const { run } = await atGate();
-    await click("alfa · Somar: gate approve");
+    await sidebar.queueItem("alfa · Somar: gate approve");
     await click("Negar");
     await click("Negar");
     await settle(() => run().status === "rejected");

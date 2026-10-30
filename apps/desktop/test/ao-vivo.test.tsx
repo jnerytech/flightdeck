@@ -6,11 +6,13 @@ import { tempDir } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -115,11 +117,7 @@ describe("ao-vivo: o leitor", () => {
       while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
     };
     await settle(() => store.getState().hosts[0]?.status === "online");
-    const history = screen.queryByRole("button", { name: "Histórico de alfa" });
-    expect(history).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(history as HTMLElement);
-    });
+    await sidebar.hostAction("Histórico");
     const firstRow = () =>
       screen.queryByRole("list", { name: "Sessões do histórico" })?.querySelector("button") ?? null;
     await settle(() => firstRow() !== null);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -13,6 +14,7 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 
 /** The confirmation's button with `name` (the dialog is an alertdialog), clicked. */
 async function confirmWith(name: string) {
@@ -76,7 +78,7 @@ async function addHost(url: string) {
 }
 
 async function newSession(prompt: string, name = "minha sessão") {
-  fireEvent.click(screen.getByRole("button", { name: "Nova sessão em meu pc" }));
+  await sidebar.hostAction("Nova sessão", "meu pc");
   const folder = screen.getByLabelText("Pasta") as HTMLSelectElement;
   fireEvent.change(folder, { target: { value: folder.options[0]?.value } });
   type("Subpasta", "p");
@@ -154,10 +156,11 @@ describe("desktop: interface", () => {
     });
     await waitFor(() => expect(screen.getByRole("button", { name: "Encerrar" })).toBeTruthy());
 
-    // Selecting another session from the sidebar and back.
-    fireEvent.click(screen.getByRole("button", { name: "Nova sessão em meu pc" }));
+    // The new-session form from the host's menu, and back to the session from Sessões.
+    await sidebar.hostAction("Nova sessão", "meu pc");
     expect(screen.getByRole("button", { name: "Criar sessão" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /minha sessão/ }));
+    await sidebar.openHub();
+    fireEvent.click(screen.getByRole("button", { name: "minha sessão" }));
     expect(screen.getByRole("heading", { name: "minha sessão" })).toBeTruthy();
 
     await act(async () => {

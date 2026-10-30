@@ -4,12 +4,14 @@ import { Quota } from "../../daemon/src/quota/quota.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -62,7 +64,7 @@ async function cardAtGate() {
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await settle(() => d.board.workflows.getRun(runId).status === "waiting");
-  await click("Projetos de alfa");
+  await sidebar.hostAction("Projetos", "alfa");
   await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
   await click("Abrir board de repo");
   await settle(() => screen.queryByLabelText("Card Somar") !== null);
@@ -149,7 +151,7 @@ describe("run-ui", () => {
     const request = d.eventStore.pendingPermissions(sessionId ?? "")[0]?.id ?? "";
     d.manager.respondPermission({ requestId: request, decision: "allow" });
     await settle(() => d.board.workflows.getRun(runId).quotaUntil !== null);
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
     await click("Abrir board de repo");
     await settle(() => screen.queryByLabelText("Card Cota") !== null);

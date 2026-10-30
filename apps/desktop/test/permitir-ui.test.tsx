@@ -6,11 +6,13 @@ import { git } from "../../daemon/test/board-helpers.ts";
 import { poll, record } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -141,9 +143,10 @@ describe("permitir-ui", () => {
       tool_input: {},
       permission_suggestions: [],
     });
+    await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: "alfa · p: Read" }) !== null);
-    // The queue expands the request; "Abrir sessão" opens the terminal session's view.
-    await click("alfa · p: Read");
+    // The queue shows the request; "Abrir sessão" opens the terminal session's view.
+    await sidebar.queueItem("alfa · p: Read");
     await click("Abrir sessão");
     await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
     expect(screen.queryByRole("button", { name: "Permitir nesta sessão" })).toBeNull();
@@ -178,7 +181,7 @@ describe("permitir-ui", () => {
       JSON.stringify({ permissions: { allow: ["Read", "Bash(npm test:*)"] }, outra: 1 }),
     );
     await board.addProject({ path: repo, promptTemplate: "" });
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Editar repo" }) !== null);
     await click("Editar repo");
     const rules = () =>
@@ -233,7 +236,7 @@ describe("permitir-ui", () => {
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Sempre neste projeto" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Permitir nesta sessão" })).toBeNull();
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Editar repo" }) !== null);
     await click("Editar repo");
     await act(() => Bun.sleep(100));

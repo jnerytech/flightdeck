@@ -4,12 +4,14 @@ import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import type { QuotaReading } from "../../daemon/src/runtime/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -178,7 +180,7 @@ describe("cota-ui-historico", () => {
     });
     await settle(() => cost("Custo da sessão") !== "");
     expect(cost("Custo da sessão")).toBe("US$ 1.25");
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
     await click("Abrir board de repo");
     await settle(() => screen.queryByLabelText("Card Somar") !== null);
@@ -200,7 +202,7 @@ describe("cota-ui-historico", () => {
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
     // "+" leaves the Sessões screen, whose list never sees the new session.
-    await click("Nova sessão em alfa");
+    await sidebar.hostAction("Nova sessão", "alfa");
     const hostId = store.getState().hosts[0]?.id ?? "";
     let sessionId = "";
     await act(async () => {

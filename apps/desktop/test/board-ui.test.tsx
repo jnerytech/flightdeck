@@ -4,11 +4,13 @@ import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -72,7 +74,7 @@ async function setup() {
 
 /** Registers the repo through the Projects screen and opens its board. */
 async function openBoard(repo: string) {
-  await click("Projetos de alfa");
+  await sidebar.hostAction("Projetos", "alfa");
   await type("Caminho do repositório", repo);
   await type("Modelo de instruções", "");
   await click("Cadastrar projeto");
@@ -113,7 +115,7 @@ const dialog = () => screen.queryByRole("alertdialog");
 describe("board-ui", () => {
   test("Projetos: cadastra o repositório, edita o projeto e ajusta o limite do host", async () => {
     const { repo, board } = await setup();
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     expect(screen.queryByRole("heading", { name: "Projetos de alfa" })).not.toBeNull();
     await type("Caminho do repositório", repo);
     await type("Nome", "Meu repo");

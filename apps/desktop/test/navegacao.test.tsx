@@ -10,11 +10,13 @@ import { seedDemoHosts } from "../src/demo/boot.ts";
 import { Router } from "../src/lib/router.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 
 /** The confirmation's button with `name` (the dialog is an alertdialog), clicked. */
 async function confirmWith(name: string) {
@@ -85,7 +87,8 @@ async function setup() {
   await act(async () => {
     await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
-  await settle(() => screen.queryByRole("button", { name: "alfa · Pedinte: Bash" }) !== null);
+  // The request reaches the counter of Precisa de você.
+  await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?1$/ }) !== null);
   return { d, store, mem, card, sessionId };
 }
 
@@ -135,8 +138,8 @@ describe("navegacao", () => {
     await setup();
     await click("Configurações");
     expect(heading("Configurações")).toBe(true);
-    // The queue expands the request; "Abrir sessão" opens it (and leaves Settings).
-    await click("alfa · Pedinte: Bash");
+    // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
+    await sidebar.queueItem("alfa · Pedinte: Bash");
     await click("Abrir sessão");
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);
@@ -144,7 +147,7 @@ describe("navegacao", () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: "ArrowLeft", altKey: true });
     });
-    expect(heading("Configurações")).toBe(true);
+    expect(heading("Precisa de você")).toBe(true);
     await act(async () => {
       fireEvent.keyDown(window, { key: "ArrowRight", altKey: true });
     });
@@ -153,14 +156,14 @@ describe("navegacao", () => {
     await act(async () => {
       fireEvent.mouseUp(window, { button: 3 });
     });
-    expect(heading("Configurações")).toBe(true);
+    expect(heading("Precisa de você")).toBe(true);
     await act(async () => {
       fireEvent.mouseUp(window, { button: 4 });
     });
     expect(heading("Pedinte")).toBe(true);
     // The header's own buttons.
     await click("Voltar");
-    expect(heading("Configurações")).toBe(true);
+    expect(heading("Precisa de você")).toBe(true);
     await click("Avançar");
     expect(heading("Pedinte")).toBe(true);
   });
@@ -201,7 +204,7 @@ describe("navegacao", () => {
 
   test("Iniciar card pelo menu do card no board e pela paleta", async () => {
     const { d, card } = await setup();
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
     await click("Abrir board de repo");
     await settle(() => screen.queryByLabelText("Card Ajuste") !== null);
@@ -258,7 +261,7 @@ describe("navegacao", () => {
       await store.addHost({ name: "beta", url: beta.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
-    await click("Nova sessão em beta");
+    await sidebar.hostAction("Nova sessão", "beta");
     expect(heading("Nova sessão em beta")).toBe(true);
     await openHostMenu("beta");
     const remove = screen.queryByRole("menuitem", { name: "Remover host" });
@@ -420,10 +423,9 @@ describe("navegacao", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     void hook("PermissionRequest", { tool_name: "Bash", tool_input: { command: "ls" } });
-    await settle(
-      () => screen.queryByRole("button", { name: "alfa · Corrigir o import: Bash" }) !== null,
-    );
+    await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?1$/ }) !== null);
+    // The counter says so; the screen in use stays where it was.
     expect(store.router.current.name).toBe("settings");
-    expect(screen.queryByRole("button", { name: "alfa · Corrigir o import: Bash" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /^Precisa de você ?1$/ })).not.toBeNull();
   });
 });

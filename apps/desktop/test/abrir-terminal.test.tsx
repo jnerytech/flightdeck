@@ -14,11 +14,13 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { isLocalUrl, terminalLaunch } from "../src/lib/terminal.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
@@ -346,7 +348,7 @@ describe("abrir-terminal", () => {
     expect(opened[0]).toEqual(expected(d.project, managed) as [string, string[]]);
 
     // The project.
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir repo no terminal" }) !== null);
     await click("Abrir repo no terminal");
     await settle(() => opened.length === 2);

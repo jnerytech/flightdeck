@@ -3,6 +3,7 @@ import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import pkg from "../package.json";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -15,6 +16,7 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { APP_VERSION } = await import("../src/lib/version.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -158,13 +160,13 @@ describe("versoes-ui", () => {
     await openHost();
     await waitFor(() => expect(text()).toContain("flightdeckd 0.6.0"));
     expect(screen.queryByLabelText("Hooks do Claude Code")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Projetos de pc" })).toBeNull();
+    expect(await sidebar.hostMenuItems("pc")).not.toContain("Projetos");
     cleanup();
     const legacy = fakeDaemon({ info: { features: undefined } });
     await connect(legacy.url, "online");
     await openHost();
     await waitFor(() => expect(text()).toContain("flightdeckd 0.6.0"));
     expect(screen.queryByLabelText("Hooks do Claude Code")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Projetos de pc" })).not.toBeNull();
+    expect(await sidebar.hostMenuItems("pc")).toContain("Projetos");
   });
 });

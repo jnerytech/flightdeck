@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -13,6 +14,7 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore, needsYou, sessionKey } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -105,11 +107,11 @@ describe("fila-pendencias", () => {
   test("clicar no pedido da fila abre a sessão no card de aprovação", async () => {
     const { store, first, hostA } = await fleet();
     render(<App store={store} />);
-    await rtlWaitFor(() => expect(screen.queryByText("Precisa de você (2)")).not.toBeNull());
-    // The click expands the card in the queue; "Abrir sessão" opens the session.
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "pc · s-a: Write" }));
-    });
+    await rtlWaitFor(() =>
+      expect(screen.queryByRole("button", { name: /^Precisa de você ?2$/ })).not.toBeNull(),
+    );
+    // The click shows the card in the queue; "Abrir sessão" opens the session.
+    await sidebar.queueItem("pc · s-a: Write");
     const open = screen.queryByRole("button", { name: "Abrir sessão" });
     expect(open).not.toBeNull();
     await act(async () => {
@@ -128,15 +130,14 @@ describe("fila-pendencias", () => {
   test("permitir e negar direto na fila respondem no host de cada pedido", async () => {
     const { store, a, b, first, second, win } = await fleet();
     render(<App store={store} />);
-    await rtlWaitFor(() => expect(screen.queryByText("Precisa de você (2)")).not.toBeNull());
-    // Each request expands in the queue, where its card answers it.
+    await rtlWaitFor(() =>
+      expect(screen.queryByRole("button", { name: /^Precisa de você ?2$/ })).not.toBeNull(),
+    );
+    // Each request shows its card in the queue, where it is answered.
     const inQueue = async (label: string, ...buttons: string[]) => {
-      const item = screen.queryByRole("button", { name: label });
-      expect(item).not.toBeNull();
-      await act(async () => {
-        fireEvent.click(item as HTMLElement);
-      });
-      const card = item?.closest("li") as HTMLElement;
+      await sidebar.queueItem(label);
+      const card = screen.queryByRole("group", { name: /^Pedido de/ }) as HTMLElement;
+      expect(card).not.toBeNull();
       for (const name of buttons) {
         const button = within(card).queryByRole("button", { name });
         expect(button).not.toBeNull();

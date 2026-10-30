@@ -3,11 +3,13 @@ import { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -122,13 +124,14 @@ describe("orcamentos-ui", () => {
       { title: "Orçamento", body: "alfa: orçamento do host (dia) em 50% de US$ 10.00" },
     ]);
     const alert = "alfa · orçamento do host (dia): 60% de US$ 10.00";
+    await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: alert }) !== null);
-    expect(screen.queryByText("Precisa de você (1)")).not.toBeNull();
+    expect(screen.queryByRole("heading", { name: "Precisa de você" })).not.toBeNull();
     spend(3);
     await act(async () => budgets.evaluate());
     await settle(() => mem.notifications.length > 1);
     expect(mem.notifications[1]?.body).toBe("alfa: orçamento do host (dia) em 80% de US$ 10.00");
-    await click("alfa · orçamento do host (dia): 90% de US$ 10.00");
+    await sidebar.queueItem("alfa · orçamento do host (dia): 90% de US$ 10.00");
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
   });

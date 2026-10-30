@@ -7,11 +7,13 @@ import { manualTime } from "../../daemon/test/time-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -197,7 +199,7 @@ describe("cota-ui", () => {
     ]);
     const card = board.createCard(project.id, { title: "Espera", description: "oi" });
     await board.startCard(card.id);
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
     await click("Abrir board de repo");
     await settle(() =>
@@ -222,7 +224,7 @@ describe("cota-ui", () => {
     quota.record([{ window: "five_hour", utilization: 1, status: "rejected", resetsAt: null }]);
     const card = board.createCard(project.id, { title: "Sem hora", description: "oi" });
     await board.startCard(card.id);
-    await click("Projetos de alfa");
+    await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
     await click("Abrir board de repo");
     await settle(() =>

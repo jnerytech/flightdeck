@@ -4,11 +4,13 @@ import { join } from "node:path";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -73,11 +75,7 @@ const rows = () =>
   ].map((li) => li.textContent ?? "");
 
 async function openHistory() {
-  const button = screen.queryByRole("button", { name: "Histórico de alfa" });
-  expect(button).not.toBeNull();
-  await act(async () => {
-    fireEvent.click(button as HTMLElement);
-  });
+  await sidebar.hostAction("Histórico");
   await settle(() => rows().length > 0);
 }
 

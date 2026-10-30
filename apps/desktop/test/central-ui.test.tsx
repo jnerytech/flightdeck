@@ -8,11 +8,13 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -195,10 +197,11 @@ describe("central-ui", () => {
       tool_name: "Write",
       tool_input: { file_path: "a" },
     });
+    await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: "alfa · repo: Write" }) !== null);
     expect(notifications.map((n) => n.title)).toContain("Precisa de você");
-    // The queue expands the request and its card answers it.
-    await click("alfa · repo: Write");
+    // The queue shows the request and its card answers it.
+    await sidebar.queueItem("alfa · repo: Write");
     await click("Aprovar");
     expect(JSON.parse(await answer)).toEqual({
       hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow" } },
@@ -239,8 +242,9 @@ describe("central-ui", () => {
     await settle(() => screen.queryByRole("log", { name: "Transcript" }) !== null);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
     void hook("PermissionRequest", { tool_name: "Read", tool_input: {} });
+    await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: "alfa · repo: Read" }) !== null);
-    await click("alfa · repo: Read");
+    await sidebar.queueItem("alfa · repo: Read");
     await click("Abrir sessão");
     await settle(() => screen.queryByRole("heading", { name: "repo" }) !== null);
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();

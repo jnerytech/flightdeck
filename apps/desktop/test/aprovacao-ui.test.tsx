@@ -315,20 +315,20 @@ describe("aprovacao-ui", () => {
     expect(group("Bash")).not.toBeNull();
 
     // The queue: host and session, tool and summary, age; a click expands the card right there.
-    await act(async () => store.router.push({ name: "hub" }));
-    const sidebar = screen.queryByRole("complementary", { name: "Barra lateral" });
-    const item = sidebar
-      ? within(sidebar).queryByRole("button", { name: "alfa · Pedinte: Bash" })
+    await act(async () => store.router.push({ name: "needs-you" }));
+    const queue = screen.queryByRole("main");
+    const item = queue
+      ? within(queue).queryByRole("button", { name: "alfa · Pedinte: Bash" })
       : null;
     expect(item).not.toBeNull();
-    expect(item?.getAttribute("aria-expanded")).toBe("false");
+    expect(item?.getAttribute("aria-pressed")).toBe("false");
     expect(item?.closest("li")?.textContent ?? "").toContain("npm test --silent");
     expect(item?.closest("li")?.textContent ?? "").toMatch(/agora|há \d+/);
-    expect(group("Bash", sidebar)).toBeNull();
+    expect(group("Bash", queue)).toBeNull();
     await act(async () => {
       fireEvent.click(item as HTMLElement);
     });
-    const expanded = group("Bash", sidebar);
+    const expanded = group("Bash", queue);
     expect(expanded).not.toBeNull();
     expect(inGroup(expanded, "Abrir sessão")).not.toBeNull();
     await act(async () => {
@@ -426,9 +426,10 @@ describe("aprovacao-ui", () => {
       tool_input: { repo: "acme/flightdeck-web", title: "Login falha" },
     });
     await settle(() => Object.keys(store.getState().externalRequests).length === 1);
-    const sidebar = screen.queryByRole("complementary", { name: "Barra lateral" });
-    const item = sidebar
-      ? within(sidebar).queryByRole("button", { name: /mcp__github__create_issue/ })
+    await act(async () => store.router.push({ name: "needs-you" }));
+    const queue = screen.queryByRole("main");
+    const item = queue
+      ? within(queue).queryByRole("button", { name: /mcp__github__create_issue/ })
       : null;
     expect(item).not.toBeNull();
     expect(item?.textContent ?? "").toContain("repo: acme/flightdeck-web · title: Login falha");

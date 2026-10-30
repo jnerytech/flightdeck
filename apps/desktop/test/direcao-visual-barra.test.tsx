@@ -156,7 +156,7 @@ describe("direcao-visual: barra lateral", () => {
     expect(inAside().queryByRole("button", { name: "Fixadas" })).toBeNull();
     const row = hubRows(store.getState()).find((r) => r.title === "Gerenciada");
     await act(async () => {
-      await store.setMeta("alfa", row?.claudeSessionId as string, { pinned: true });
+      await store.setMeta(row?.hostId as string, row?.claudeSessionId as string, { pinned: true });
     });
     await settle(() => inAside().queryByRole("button", { name: "Fixadas" }) !== null);
     expect(inAside().queryByRole("button", { name: "Fixadas" })).not.toBeNull();
@@ -294,20 +294,20 @@ describe("direcao-visual: Precisa de você", () => {
     const main = screen.queryByRole("main") as HTMLElement;
     // Nothing chosen yet: the right side says what to do.
     expect(within(main).queryByText("Escolha um pedido para ver os detalhes.")).not.toBeNull();
-    expect(within(main).queryByRole("region", { name: "Pedido de Bash" })).toBeNull();
+    expect(within(main).queryByRole("group", { name: "Pedido de Bash" })).toBeNull();
     const row = within(main).queryByRole("button", { name: rowName });
     expect(row?.getAttribute("aria-pressed")).toBe("false");
     await click(row);
     expect(row?.getAttribute("aria-pressed")).toBe("true");
-    expect(within(main).queryByRole("region", { name: "Pedido de Bash" })).not.toBeNull();
+    expect(within(main).queryByRole("group", { name: "Pedido de Bash" })).not.toBeNull();
     expect(within(main).queryByRole("button", { name: "Abrir sessão" })).not.toBeNull();
     // Esc closes the detail and the list stays.
     await act(async () => {
-      fireEvent.keyDown(within(main).queryByRole("region", { name: "Pedido de Bash" }) as Element, {
+      fireEvent.keyDown(within(main).queryByRole("group", { name: "Pedido de Bash" }) as Element, {
         key: "Escape",
       });
     });
-    expect(within(main).queryByRole("region", { name: "Pedido de Bash" })).toBeNull();
+    expect(within(main).queryByRole("group", { name: "Pedido de Bash" })).toBeNull();
     expect(within(main).queryByRole("button", { name: rowName })).not.toBeNull();
     // Choosing again and approving answers the daemon.
     await click(within(main).queryByRole("button", { name: rowName }));
@@ -331,6 +331,6 @@ describe("direcao-visual: Precisa de você", () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
-    expect(within(main).queryByRole("region", { name: "Pedido de Bash" })).not.toBeNull();
+    expect(within(main).queryByRole("group", { name: "Pedido de Bash" })).not.toBeNull();
   });
 });
