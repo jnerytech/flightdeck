@@ -1019,8 +1019,12 @@ caminho de um arquivo de chave).
 
 Um destino também pode usar a autenticação por **Senha**: quando o ssh pergunta, o app abre uma
 janela com o campo mascarado (ou uma para a frase de uma chave). A resposta vai ao host uma vez,
-nunca é guardada nem registrada, e **Cancelar** faz o ssh falhar na hora. As chaves guardadas no
-cofre chegam com o Cofre (fase 16) por cima desta fase.
+nunca é guardada nem registrada, e **Cancelar** faz o ssh falhar na hora. Com o Cofre, a
+autenticação por **Chave do cofre** escolhe uma chave SSH do cofre (e **Senha** pode apontar para
+uma senha do cofre, que então responde ao ssh sem janela). A chave vai ao host que roda o ssh, no
+comando de conexão e em mais nenhum lugar, só se o segredo estiver liberado para esse host e a
+conexão for `localhost` ou Tailscale; cada uso aparece na aba **Uso** do cofre com a finalidade
+`ssh`, pedido por **Você**.
 
 Um destino com **host que o abre** diferente do que o guarda roda o ssh lá (por exemplo uma VPS,
 para alcançar a rede interna dela): o Flightdeck guarda uma cópia do destino nesse host e avisa na

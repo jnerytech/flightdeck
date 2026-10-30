@@ -1947,3 +1947,10 @@ O que a spec da Fase 16 (cofre de segredos) deixou aberto, ou o que mudou na imp
 - **`vault_remove_file` deletes only the file `vault_pick_file` returned last,** and `vault_pick_file` forgets the previous pick first. The frontend therefore cannot delete an arbitrary path through the vault. The pick reads at most 1 MiB.
 - **`vault_generate_key` runs on a worker thread** (`spawn_blocking`) so a slow or missing `ssh-keygen` does not freeze the window. The key is made in a temporary folder (mode 0700 on Unix) that is deleted on success and on error; the private key never stays on disk.
 - **The version is 0.16.0 on this branch** (`test(versao)` cycle). Phases 14 and 15 bump nothing yet; at integration they come first and the version conflict resolves to the highest number.
+
+## Phase 15 and 16 together
+
+- **An ssh destino uses the vault without `vault.deliver`.** `ssh.connect` and `ssh.test` already take the key as `privateKey` and hand it to the connection (agent or temporary file) themselves, so the app sends it there. The app obeys the same delivery rules first (`checkDelivery`: the secret exists, its allowed hosts include the host that runs ssh, the connection is loopback or Tailscale, the value is in the system vault) and logs the use as `ssh`, requester `you`, delivered or denied with the reason. The key is in no other command, in no state, no storage and no log.
+- **The host that runs ssh is the one that must be allowed.** For a destino opened by another host, that is the via host's id; a secret made on the Cofre screen starts with `["local"]` and needs Editar to allow a host.
+- **A destino's `secretRef` is the vault secret's id** for `vault-key` and for `password` (the latter optional: without it the app asks). `ssh`'s prompt is answered from the vault only when the reference is a secret of the vault that passes the same rules; otherwise the dialog opens.
+- **Askpass answers are logged as uses** too, so the Uso tab shows each password ssh was given.

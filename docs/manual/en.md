@@ -1038,8 +1038,11 @@ one (a key file path).
 
 A destination can also use **Password** authentication: when ssh asks, the app opens a masked
 dialog (or one for a key passphrase). The answer goes to the host once, is never stored or logged,
-and **Cancel** makes ssh fail at once. Keys kept in the vault come with the Vault (phase 16) on top
-of this phase.
+and **Cancel** makes ssh fail at once. With the Vault, **Vault key** authentication picks an SSH key of the vault
+(and **Password** may point at a password of the vault, which then answers ssh without a dialog).
+The key goes to the host that runs ssh, in the connect command and nowhere else, only if the
+secret is allowed for that host and the connection is `localhost` or Tailscale; each use shows in
+the vault's **Usage** tab as purpose `ssh`, asked by **You**.
 
 A destination with a **host that opens it** other than the one that keeps it runs ssh there (for
 example a VPS, to reach its internal network): Flightdeck keeps a copy of the destination on that
