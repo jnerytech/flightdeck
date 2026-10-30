@@ -1,75 +1,63 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { AppStore } from "../src/lib/app-store.ts";
+import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { fakeXterm } from "./terminal-fakes.ts";
+import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TerminalPage } = await import("../src/ui/TerminalPage.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
 
-setDefaultTimeout(30_000);
-const cleanups: Array<() => unknown> = [];
-afterEach(async () => {
-  cleanup();
-  for (const fn of cleanups.splice(0).reverse()) await fn();
-});
+afterEach(cleanup);
 
-/** A terminal screen; `ssh` says it was opened from a ssh destino with those tags. */
+/**
+ * The app with its first tab active and a second tab on the terminal of a host that is not
+ * connected; `ssh` says that terminal was opened from a ssh destino with those tags.
+ */
 async function setup(ssh?: { name: string; tags: string[] }) {
-  const d = makeDaemon(cleanups, { terminals: true });
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
-    baseDelayMs: 10,
-    maxDelayMs: 20,
+  const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+  if (ssh) store.sshTerminals.set("h1/term-1", ssh);
+  render(<App store={store} />);
+  await act(async () => {
+    store.tabs.open({ name: "terminal", host: "h1", terminalId: "term-1" });
+    store.tabs.activate(store.tabs.tabs[0]?.id as string);
   });
-  cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
-  await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
-  const { terminalId } = await store.terminalHost(hostId).open(d.project, 80, 24);
-  if (ssh) store.sshTerminals.set(`${hostId}/${terminalId}`, ssh);
-  render(
-    <TContext.Provider value={store.i18n.t}>
-      <TerminalPage
-        store={store}
-        hostId={hostId}
-        terminalId={terminalId}
-        deps={fakeXterm().deps}
-        onClosed={() => {}}
-      />
-    </TContext.Provider>,
-  );
+  return store;
 }
 
-const marked = () => screen.queryByTestId("ssh-terminal");
+const sshTab = () => screen.queryByRole("tab", { name: /^SSH · / });
+const wrapper = () => sshTab()?.parentElement ?? null;
 
-describe("conexoes-ui: the SSH terminal", () => {
-  test("a terminal opened from a destino carries a badge with its name and its tags", async () => {
+describe("conexoes-ui: the tab of a SSH terminal", () => {
+  test("the tab is named after the destino and carries its tags", async () => {
     await setup({ name: "vps", tags: ["staging", "cliente X"] });
-    expect(screen.queryByText("SSH · vps")).not.toBeNull();
-    expect(screen.queryByText("staging")).not.toBeNull();
-    expect(screen.queryByText("cliente X")).not.toBeNull();
+    expect(sshTab()).not.toBeNull();
+    expect(sshTab()?.textContent).toContain("SSH · vps");
+    expect(sshTab()?.textContent).toContain("staging");
+    expect(sshTab()?.textContent).toContain("cliente X");
   });
 
-  test("the prod and produção tags give the screen a red border", async () => {
+  test("the prod and produção tags give the tab a red border", async () => {
     await setup({ name: "vps", tags: ["prod"] });
-    expect(marked()?.getAttribute("data-prod")).toBe("true");
-    expect(marked()?.className).toContain("border-destructive");
+    expect(wrapper()?.getAttribute("data-prod")).toBe("true");
+    expect(wrapper()?.className).toContain("border-destructive");
     cleanup();
     await setup({ name: "vps", tags: ["Produção"] });
-    expect(marked()?.getAttribute("data-prod")).toBe("true");
+    expect(wrapper()?.getAttribute("data-prod")).toBe("true");
   });
 
   test("another tag leaves the border alone", async () => {
     await setup({ name: "lab", tags: ["staging"] });
-    expect(marked()?.getAttribute("data-prod")).toBe("false");
-    expect(marked()?.className).not.toContain("border-destructive");
+    expect(wrapper()?.getAttribute("data-prod")).toBe("false");
+    expect(wrapper()?.className).not.toContain("border-destructive");
   });
 
-  test("a terminal that did not come from a destino has no badge and no mark", async () => {
+  test("a terminal tab that did not come from a destino has no badge and no mark", async () => {
     await setup();
-    expect(screen.queryByText(/^SSH · /)).toBeNull();
-    expect(marked()).toBeNull();
+    expect(sshTab()).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Terminal" })).not.toBeNull();
+    expect(
+      screen.queryByRole("tab", { name: "Terminal" })?.parentElement?.getAttribute("data-prod"),
+    ).toBeNull();
   });
 });
