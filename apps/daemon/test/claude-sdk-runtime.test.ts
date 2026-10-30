@@ -290,7 +290,7 @@ describe("ClaudeSdkRuntime", () => {
       env: {},
       canUseTool: async () => ({ behavior: "allow", updatedInput: { b: 2 } }),
     });
-    expect(run.events[Symbol.asyncIterator]().next()).rejects.toThrow("cli morreu");
+    await expect(run.events[Symbol.asyncIterator]().next()).rejects.toThrow("cli morreu");
     expect(options?.resume).toBeUndefined();
     expect(options?.model).toBeUndefined();
     expect(options?.pathToClaudeCodeExecutable).toBeUndefined();
