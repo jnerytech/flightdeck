@@ -27,6 +27,8 @@ export function joinPath(root: string, sub: string): string {
 export function NewSessionForm(props: {
   host: HostView;
   onCreate(payload: CommandPayload<"session.create">): void;
+  /** The first prompt, filled in (a snippet, phase 18). */
+  prompt?: string;
 }) {
   const t = useT();
   const id = useId();
@@ -35,7 +37,7 @@ export function NewSessionForm(props: {
   const [sub, setSub] = useState("");
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(props.prompt ?? "");
   const field = "flex flex-col gap-1 text-sm";
   const select =
     "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";

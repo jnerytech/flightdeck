@@ -78,6 +78,14 @@ export function SnippetUse(props: {
       ? route
       : null;
 
+  // Or to the controllable terminal session on screen.
+  const external =
+    route.name === "external" &&
+    state.externals[`${route.host}/${route.claudeSessionId}`]?.controllable &&
+    (choice.hostId === null || route.host === choice.hostId)
+      ? route
+      : null;
+
   const done = () => props.onClose();
   const fail = (message: string) => setError(message);
 
@@ -132,21 +140,49 @@ export function SnippetUse(props: {
   };
 
   const send = async () => {
-    if (!session) return;
+    if (!session && !external) return;
     if (choice.hostId === null) {
       const text = fillGlobal();
       if (text === null) return;
-      await store.send(text);
+      if (external) {
+        await store.hostCommand(external.host, "external.message", {
+          claudeSessionId: external.claudeSessionId,
+          text,
+        });
+      } else await store.send(text);
       return done();
     }
     const result = await store.hostRequest(choice.hostId, "snippets.use", {
       id: snippet.id,
       action: "send",
-      sessionId: session.id,
+      ...(external ? { claudeSessionId: external.claudeSessionId } : { sessionId: session?.id }),
       values: own,
       context,
     });
     return result.ok ? done() : fail(result.message);
+  };
+
+  /** A new session on the snippet's host (a global one: the host on screen, else the first online). */
+  const newSession = async () => {
+    const hostId =
+      choice.hostId ??
+      ("host" in route ? route.host : undefined) ??
+      state.hosts.find((h) => h.status === "online")?.id;
+    if (!hostId) return;
+    let text: string | null;
+    if (choice.hostId === null) text = fillGlobal();
+    else {
+      const result = await store.hostRequest(choice.hostId, "snippets.render", {
+        id: snippet.id,
+        values: own,
+        context,
+      });
+      // A field still to fill: the prompt goes as written, for the person to complete.
+      text = result.ok ? result.data.text : (snippet.text ?? "");
+    }
+    if (text === null) return;
+    store.router.push({ name: "new-session", host: hostId, prompt: text });
+    done();
   };
 
   const copy = async () => {
@@ -234,8 +270,13 @@ export function SnippetUse(props: {
               {t("snippets.use.run")}
             </Button>
           )}
-          {!isCommand && session && (
+          {!isCommand && (session || external) && (
             <Button onClick={() => void send()}>{t("snippets.use.send")}</Button>
+          )}
+          {!isCommand && (
+            <Button variant="outline" onClick={() => void newSession()}>
+              {t("snippets.use.newSession")}
+            </Button>
           )}
           <Button variant="outline" onClick={() => void copy()}>
             {t("snippets.use.copy")}

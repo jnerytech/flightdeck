@@ -2,6 +2,7 @@ import { Radio } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { Composer, SessionHeader, SessionPane } from "@/components/session/parts";
+import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -31,6 +32,8 @@ export function ExternalView(props: {
   hostName: string;
   claudeSessionId: string;
   onResumed(): void;
+  /** Phase 18: the prompt snippets `/` offers in the message box. */
+  prompts?: PromptSnippets;
 }) {
   const t = props.store.i18n.t;
   const { store, state, hostId, claudeSessionId: id } = props;
@@ -123,6 +126,14 @@ export function ExternalView(props: {
             />
           ))}
         </div>
+      )}
+      {session?.controllable && (
+        <PromptMenu
+          prompts={props.prompts}
+          text={text}
+          label={t("session.snippets")}
+          onFill={setText}
+        />
       )}
       {session?.controllable && (
         <Composer>

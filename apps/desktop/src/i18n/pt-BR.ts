@@ -72,6 +72,7 @@ export const ptBR = {
       run: "Rodar numa aba nova",
       copy: "Copiar",
       send: "Enviar à sessão",
+      newSession: "Nova sessão com este prompt",
     },
     history: {
       open: "Importar do histórico do shell",

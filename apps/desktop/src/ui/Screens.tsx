@@ -410,7 +410,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "new-session": {
       // A host removed while its form is open: back to the hub.
       const host = hostOf(route.host);
-      return host ? <NewSession store={store} host={host} /> : null;
+      return host ? <NewSession store={store} host={host} prompt={route.prompt} /> : null;
     }
     case "external":
       return (
@@ -428,6 +428,14 @@ function routeScreen(props: ScreenProps): ReactNode {
             hostName={hostOf(route.host)?.name ?? route.host}
             claudeSessionId={route.claudeSessionId}
             onResumed={() => go({ name: "home" })}
+            {...(hasFeature(hostOf(route.host)?.hostInfo?.features, "snippets", false)
+              ? {
+                  prompts: store.promptSnippets(
+                    route.host,
+                    state.externals[`${route.host}/${route.claudeSessionId}`]?.cwd ?? "",
+                  ),
+                }
+              : {})}
           />
         </SessionTabs>
       );
@@ -590,12 +598,13 @@ function routeScreen(props: ScreenProps): ReactNode {
 }
 
 /** The new-session form of a host; the created session opens. */
-function NewSession(props: { store: AppStore; host: HostView }) {
+function NewSession(props: { store: AppStore; host: HostView; prompt?: string | undefined }) {
   const { host } = props;
   return (
     <NewSessionForm
-      key={host.id}
+      key={`${host.id}/${props.prompt ?? ""}`}
       host={host}
+      {...(props.prompt ? { prompt: props.prompt } : {})}
       // The created session opens by itself (AppStore.createSession).
       onCreate={(payload) => void props.store.createSession(host.id, payload)}
     />

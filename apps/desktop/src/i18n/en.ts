@@ -70,6 +70,7 @@ export const en: Dictionary = {
       run: "Run in a new tab",
       copy: "Copy",
       send: "Send to the session",
+      newSession: "New session with this prompt",
     },
     history: {
       open: "Import from the shell history",
