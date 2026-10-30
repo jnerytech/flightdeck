@@ -1,5 +1,6 @@
 import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
+import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
 import { basename } from "./paths.ts";
 import type { TerminalTarget } from "./terminal.ts";
@@ -23,7 +24,9 @@ export type PaletteTarget =
   | { kind: "switch-language" }
   | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" }
-  | { kind: "connect-ssh"; hostId: string; targetId: string };
+  | { kind: "connect-ssh"; hostId: string; targetId: string }
+  /** A snippet to fill and use: a host's, or a global one of the app (`hostId` null). */
+  | { kind: "snippet"; hostId: string | null; snippetId: string };
 
 export interface PaletteAction {
   label: string;
@@ -39,6 +42,8 @@ export interface PaletteItem {
   target: PaletteTarget;
   /** Tab: what else can be done with it. */
   actions: PaletteAction[];
+  /** More text the query also matches, besides the label (a snippet's tags and content). */
+  keywords?: string;
 }
 
 export interface PaletteSection {
@@ -56,7 +61,7 @@ const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_perm
 export function paletteSections(
   state: AppState,
   query: string,
-  options: { costs: boolean; t: T },
+  options: { costs: boolean; t: T; globalSnippets?: AppSnippet[] },
 ): PaletteSection[] {
   const { t } = options;
   const online = state.hosts.filter((h) => h.status === "online");
@@ -212,14 +217,35 @@ export function paletteSections(
     }),
   );
 
+  const snippetItem = (snippet: AppSnippet, hostId: string | null, where: string): PaletteItem => {
+    const target: PaletteTarget = { kind: "snippet", hostId, snippetId: snippet.id };
+    return {
+      id: `snippet:${hostId ?? "global"}/${snippet.id}`,
+      label: t("palette.snippet", { name: snippet.name }),
+      detail: t("palette.snippetDetail", { type: t(`snippets.kind.${snippet.type}`), where }),
+      target,
+      actions: [{ label: t("palette.useSnippet"), target }],
+      keywords: [...snippet.tags, snippet.run ?? snippet.text ?? ""].join("\n"),
+    };
+  };
+  const snippets = [
+    ...online.flatMap((host) =>
+      (state.snippets?.[host.id] ?? []).map((s) => snippetItem(s, host.id, host.name)),
+    ),
+    ...(options.globalSnippets ?? []).map((s) => snippetItem(s, null, t("snippets.origin.global"))),
+  ];
+
   const needle = query.trim().toLowerCase();
-  const matches = (item: PaletteItem) => item.label.toLowerCase().includes(needle);
+  const matches = (item: PaletteItem) =>
+    item.label.toLowerCase().includes(needle) ||
+    (item.keywords?.toLowerCase().includes(needle) ?? false);
   return [
     { title: t("palette.sectionSessions"), items: sessions },
     { title: t("palette.sectionCards"), items: cards },
     { title: t("palette.sectionProjects"), items: projects },
     { title: t("palette.sectionHosts"), items: hosts },
     { title: t("palette.sectionConnections"), items: connections },
+    { title: t("palette.sectionSnippets"), items: snippets },
     { title: t("palette.sectionActions"), items: actions },
   ]
     .map((section) => ({ ...section, items: section.items.filter(matches) }))

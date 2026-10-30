@@ -1,10 +1,11 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { type SnippetChoice, SnippetUse } from "@/components/snippets/snippet-use";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TContext } from "@/i18n/context";
@@ -20,7 +21,13 @@ import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
-type InPlace = "terminal" | "new-terminal" | "toggle-theme" | "switch-language" | "start-card";
+type InPlace =
+  | "terminal"
+  | "new-terminal"
+  | "toggle-theme"
+  | "switch-language"
+  | "start-card"
+  | "snippet";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -228,6 +235,8 @@ export function App({ store }: { store: AppStore }) {
     });
   };
 
+  const [snippetChoice, setSnippetChoice] = useState<SnippetChoice | null>(null);
+
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
@@ -239,6 +248,8 @@ export function App({ store }: { store: AppStore }) {
     else if (target.kind === "toggle-theme") store.theme.toggle();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
+    } else if (target.kind === "snippet") {
+      setSnippetChoice({ hostId: target.hostId, snippetId: target.snippetId });
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else go(paletteRoute(target));
@@ -318,6 +329,14 @@ export function App({ store }: { store: AppStore }) {
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}
           <AskpassPrompt store={store} state={state} />
+          {snippetChoice && (
+            <SnippetUse
+              store={store}
+              state={state}
+              choice={snippetChoice}
+              onClose={() => setSnippetChoice(null)}
+            />
+          )}
           {state.searchOpen && (
             <GlobalSearch
               state={state}

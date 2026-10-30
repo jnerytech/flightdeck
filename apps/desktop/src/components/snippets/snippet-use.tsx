@@ -1,0 +1,220 @@
+import type { SnippetContext } from "@flightdeck/protocol";
+import { useId, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/context";
+import type { AppState, AppStore } from "@/lib/app-store";
+import type { AppSnippet } from "@/lib/global-snippets";
+
+const SELECT = "h-9 rounded-md border bg-transparent px-2";
+
+/** Which snippet the palette chose: one of a host's (`hostId`), or a global one of the app. */
+export interface SnippetChoice {
+  hostId: string | null;
+  snippetId: string;
+}
+
+/** The snippet a choice names, from the host's list the palette read or from the app's globals. */
+export function chosenSnippet(
+  store: AppStore,
+  state: AppState,
+  choice: SnippetChoice,
+): AppSnippet | undefined {
+  return choice.hostId
+    ? state.snippets[choice.hostId]?.find((s) => s.id === choice.snippetId)
+    : store.globalSnippets.list().find((s) => s.id === choice.snippetId);
+}
+
+/**
+ * Phase 18: fills a snippet's fields and uses it: pasted into the terminal on screen (with Enter
+ * or not), run in a new terminal tab at a folder, or copied. A command of an untrusted versioned
+ * file only pastes.
+ */
+export function SnippetUse(props: {
+  store: AppStore;
+  state: AppState;
+  choice: SnippetChoice;
+  onClose(): void;
+}) {
+  const t = useT();
+  const id = useId();
+  const { store, state, choice } = props;
+  const snippet = chosenSnippet(store, state, choice);
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (snippet?.fields ?? []).map((f) => [f.name, f.default ?? f.options[0] ?? ""]),
+    ),
+  );
+  const [folder, setFolder] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  if (!snippet) return null;
+
+  const route = store.router.current;
+  // A global snippet pastes into any host's terminal; a host's, only into that host's.
+  const terminal =
+    route.name === "terminal" && (choice.hostId === null || route.host === choice.hostId)
+      ? route
+      : null;
+  const isCommand = snippet.type === "command";
+  const own = Object.fromEntries(
+    snippet.fields.filter((f) => !f.special).map((f) => [f.name, values[f.name] ?? ""]),
+  );
+  const context: SnippetContext = Object.fromEntries(
+    snippet.fields
+      .filter((f) => f.special && f.name !== "branch" && (values[f.name] ?? "") !== "")
+      .map((f) => [f.name, values[f.name] as string]),
+  );
+
+  const done = () => props.onClose();
+  const fail = (message: string) => setError(message);
+
+  const paste = async (enter: boolean) => {
+    if (!terminal) return;
+    if (choice.hostId === null) {
+      const text = fillGlobal();
+      if (text === null) return;
+      await store
+        .terminalHost(terminal.host)
+        .write(terminal.terminalId, enter ? `${text}\r` : text);
+      return done();
+    }
+    const result = await store.hostRequest(choice.hostId, "snippets.use", {
+      id: snippet.id,
+      action: "paste",
+      terminalId: terminal.terminalId,
+      values: own,
+      context,
+      enter,
+    });
+    return result.ok ? done() : fail(result.message);
+  };
+
+  const runInNewTab = async () => {
+    if (!choice.hostId) return;
+    const result = await store.hostRequest(choice.hostId, "snippets.use", {
+      id: snippet.id,
+      action: "run",
+      values: own,
+      context: { ...context, cwd: folder },
+    });
+    if (!result.ok) return fail(result.message);
+    if (result.data.terminal) {
+      store.tabs.open({
+        name: "terminal",
+        host: choice.hostId,
+        terminalId: result.data.terminal.terminalId,
+      });
+    }
+    done();
+  };
+
+  /** A global snippet is filled by the app itself; the use counts. */
+  const fillGlobal = (): string | null => {
+    try {
+      return store.globalSnippets.use(snippet.id, own, context);
+    } catch (thrown) {
+      fail((thrown as Error).message);
+      return null;
+    }
+  };
+
+  const copy = async () => {
+    let text: string | null;
+    if (choice.hostId === null) text = fillGlobal();
+    else {
+      const result = await store.hostRequest(choice.hostId, "snippets.render", {
+        id: snippet.id,
+        values: own,
+        context,
+      });
+      if (!result.ok) return fail(result.message);
+      text = result.data.text;
+    }
+    if (text === null) return;
+    await store.copyText(text);
+    done();
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && props.onClose()}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t("snippets.use.title", { name: snippet.name })}</DialogTitle>
+        </DialogHeader>
+        <p className="break-all font-mono text-muted-foreground text-sm">
+          {snippet.run ?? snippet.text}
+        </p>
+        {snippet.fields.map((field) => (
+          <div key={field.name} className="flex flex-col gap-1 text-sm">
+            <label htmlFor={`${id}-${field.name}`}>
+              {field.special ? t("snippets.editor.special", { name: field.name }) : field.name}
+            </label>
+            {field.options.length > 0 ? (
+              <select
+                id={`${id}-${field.name}`}
+                className={SELECT}
+                value={values[field.name] ?? ""}
+                onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+              >
+                {field.options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                id={`${id}-${field.name}`}
+                value={values[field.name] ?? ""}
+                onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+              />
+            )}
+          </div>
+        ))}
+        {isCommand && choice.hostId && (
+          <div className="flex flex-col gap-1 text-sm">
+            <label htmlFor={`${id}-folder`}>{t("snippets.use.folder")}</label>
+            <Input id={`${id}-folder`} value={folder} onChange={(e) => setFolder(e.target.value)} />
+          </div>
+        )}
+        {!snippet.runnable && <p className="text-sm">{t("snippets.use.untrusted")}</p>}
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+        <DialogFooter className="flex-wrap">
+          {isCommand && terminal && (
+            <>
+              <Button variant="outline" onClick={() => void paste(false)}>
+                {t("snippets.use.paste")}
+              </Button>
+              <Button disabled={!snippet.runnable} onClick={() => void paste(true)}>
+                {t("snippets.use.pasteRun")}
+              </Button>
+            </>
+          )}
+          {isCommand && choice.hostId && (
+            <Button
+              variant="outline"
+              disabled={!snippet.runnable || folder.trim() === ""}
+              onClick={() => void runInNewTab()}
+            >
+              {t("snippets.use.run")}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => void copy()}>
+            {t("snippets.use.copy")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

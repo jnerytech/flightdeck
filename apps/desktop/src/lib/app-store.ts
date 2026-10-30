@@ -29,6 +29,7 @@ import type {
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
+  Snippet,
   SshTarget,
   TerminalInfo,
   VaultRequestFrame,
@@ -149,6 +150,8 @@ export interface AppState {
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
   ssh: Record<string, SshTarget[]>;
+  /** The snippets of each host that keeps them, by host id; read when the palette opens (phase 18). */
+  snippets: Record<string, Snippet[]>;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
   /** Phase 16: the vault's usage log, newest first; never holds a value. */
@@ -540,6 +543,7 @@ export class AppStore {
       quota: {},
       budgets: {},
       ssh: {},
+      snippets: {},
       askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
@@ -881,7 +885,17 @@ export class AppStore {
         const listed = await quiet(this.dispatch(host.id, "ssh.list", {}));
         if (listed) this.update({ ssh: { ...this.state.ssh, [host.id]: listed.targets } });
       });
-    await Promise.all([this.refreshHub(), ...boards, ...targets]);
+    const snippets = this.state.hosts
+      .filter(
+        (host) =>
+          host.status === "online" && hasFeature(host.hostInfo?.features, "snippets", false),
+      )
+      .map(async (host) => {
+        const listed = await quiet(this.dispatch(host.id, "snippets.list", {}));
+        if (listed)
+          this.update({ snippets: { ...this.state.snippets, [host.id]: listed.snippets } });
+      });
+    await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets]);
   }
 
   openSearch(): void {
