@@ -733,7 +733,7 @@ export async function startDaemon(
     nameOf: (claudeSessionId) => central.meta.get(claudeSessionId).name,
     projectKey: (cwd) => keys.keyFor(cwd),
     cardOf: (sessionId) => board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null,
-    sendToLaunch: (launchId, text) => central.receptor?.sendToLaunch(launchId, text) ?? false,
+    sendToLaunch: central.sendToLaunch.bind(central),
     autoApprove,
   });
   // The messaging service asks the teams who is on one, and the teams need the messaging service.
@@ -746,7 +746,7 @@ export async function startDaemon(
   });
   teams = new Teams({ db: store.db, board, manager, messaging, host: config.hostName, quota });
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
-  const messagingSweep = setInterval(() => messaging.sweep(), 5 * 60_000);
+  const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({
     manager,
     messaging,

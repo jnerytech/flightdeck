@@ -82,8 +82,8 @@ export class Central {
   }
 
   /** Writes to the channel of a terminal launch; false when the receptor is down or there is none. */
-  sendToLaunch(_launchId: string, _text: string): boolean {
-    return true;
+  sendToLaunch(launchId: string, text: string): boolean {
+    return this.server?.sendToLaunch(launchId, text) ?? false;
   }
 
   /** Group of the session in the app's list; see project-key.ts. */
