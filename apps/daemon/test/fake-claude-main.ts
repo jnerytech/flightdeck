@@ -28,6 +28,12 @@ const appended =
   args.includes("--append-system-prompt-file") && appendedPath && existsSync(appendedPath)
     ? readFileSync(appendedPath, "utf8")
     : null;
+// The subagents the wrapper hands over travel in a file too (nine bodies do not fit on a Windows command line).
+const agentsPath = args[args.indexOf("--agents") + 1] ?? null;
+const agents =
+  args.includes("--agents") && agentsPath && existsSync(agentsPath)
+    ? JSON.parse(readFileSync(agentsPath, "utf8"))
+    : null;
 log({
   type: "start",
   args,
@@ -35,6 +41,8 @@ log({
   mcpConfig,
   appended,
   appendedPath: appended === null ? null : appendedPath,
+  agents,
+  agentsPath: agents === null ? null : agentsPath,
 });
 
 interface HookEntry {

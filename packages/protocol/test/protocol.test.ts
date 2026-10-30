@@ -278,6 +278,13 @@ const validCommands: Record<CommandType, unknown> = {
   "personas.remove": { scope: "project", id: "seguranca", projectPath: "/w/app" },
   "session.applyPersona": { sessionId: "s", persona: { id: "seguranca", language: "en" } },
   "session.clearPersona": { claudeSessionId: "c" },
+  "personas.subagents": { projectPath: "/w/app", language: "en" },
+  "personas.publishAgent": {
+    id: "seguranca",
+    projectPath: "/w/app",
+    language: "en",
+    confirm: true,
+  },
   "personas.resolve": { ref: { id: "qa", language: "en" }, projectPath: "/w/app" },
   "personas.reset": { id: "seguranca", language: "en" },
   "personas.trust": { projectPath: "/w/app", id: "seguranca", hash: "abc" },
