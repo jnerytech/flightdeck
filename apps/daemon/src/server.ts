@@ -37,6 +37,7 @@ import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
+import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
@@ -494,7 +495,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, maintenance().prune(command.payload.dryRun === true));
       case "snapshots.list":
         return ok(command.type, {
-          snapshots: opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
+          // A terminal turn's uuid is found in the indexed transcript, when it can be told.
+          snapshots: withTurnUuids(
+            opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
+            opts.history?.userPrompts(command.payload.claudeSessionId) ?? [],
+          ),
         });
       case "snapshots.files": {
         if (!opts.snapshots) throw new FlightdeckError("invalid_state", "snapshots indisponíveis");

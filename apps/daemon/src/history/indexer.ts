@@ -287,6 +287,16 @@ export class HistoryIndexer {
     };
   }
 
+  /** What the user wrote in a transcript, message by message in file order (phase 12). */
+  userPrompts(claudeSessionId: string): Array<{ uuid: string; text: string }> {
+    return this.db
+      .query(
+        `SELECT uuid, text FROM history_messages
+         WHERE claude_session_id = ? AND role = 'user' AND kind = 'message' ORDER BY rowid`,
+      )
+      .all(claudeSessionId) as Array<{ uuid: string; text: string }>;
+  }
+
   /** The `get` cursor whose page starts at `uuid`. */
   cursorFor(claudeSessionId: string, uuid: string): string {
     const row = this.db
