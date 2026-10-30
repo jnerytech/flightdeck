@@ -23,6 +23,9 @@ function fakePlatform() {
         delete: async (id: string) => {
           keyring.delete(id);
         },
+        generateKey: async () => ({ privateKey: "", publicKey: "" }),
+        pickFile: async () => null,
+        removeFile: async () => {},
       },
     },
   };
