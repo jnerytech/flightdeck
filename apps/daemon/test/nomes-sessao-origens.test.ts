@@ -97,6 +97,26 @@ describe("nomes-sessao: as origens", () => {
     expect(display(names, "t1")).toBe("loja · geral · 1");
   });
 
+  test("um erro ao nomear não derruba o evento da sessão: ele se aplica e o próximo evento nomeia", () => {
+    let fail = true;
+    const { names, external, start, create } = rig({
+      personaOf: () => {
+        if (fail) throw new Error("persona indisponível");
+        return null;
+      },
+    });
+    start();
+    create();
+    expect(() =>
+      external.apply("SessionStart", { session_id: "t1", cwd: "/work/loja" }),
+    ).not.toThrow();
+    expect(external.get("t1")?.status).toBe("idle");
+    expect(names.list()).toHaveLength(0);
+    fail = false;
+    external.apply("Stop", { session_id: "t1", cwd: "/work/loja" });
+    expect(display(names, "t1")).toBe("loja · geral · 1");
+  });
+
   test("parado, o rastreio não nomeia mais nada", () => {
     const { names, external, start, create } = rig();
     const stop = start();
