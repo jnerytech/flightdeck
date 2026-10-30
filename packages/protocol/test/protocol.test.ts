@@ -187,6 +187,9 @@ const validCommands: Record<CommandType, unknown> = {
   "ssh.remove": { id: "t", confirm: true },
   "ssh.import.preview": {},
   "ssh.import.apply": { aliases: ["vps", "db"] },
+  "ssh.hostkey.check": { targetId: "t" },
+  "ssh.hostkey.confirm": { targetId: "t", fingerprint: "SHA256:abc" },
+  "ssh.hostkey.forget": { targetId: "t" },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
