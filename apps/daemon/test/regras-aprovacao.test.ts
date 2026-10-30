@@ -597,3 +597,25 @@ describe("regras-aprovacao: as regras de um segredo", () => {
     expect(rules.rulesFor("tok")).toEqual(ruleList);
   });
 });
+
+describe("regras-aprovacao: as tags do uso", () => {
+  test("as tags da ação e as do segredo juntam sem repetir, no frame e na decisão", async () => {
+    const t = setup();
+    await t.actions.save({ projectId: "p1", definition: echoDef({ tags: ["prod", "api"] }) });
+    t.setRules([], ["prod", "pci"]);
+    const running = t.run();
+    const f = await t.frame();
+    expect(f.tags).toEqual(["prod", "api", "pci"]);
+    expect(f.needsHold).toBe(true);
+    t.approveAndDeliver(f, { via: "app", heldMs: 2000 });
+    await running;
+    expect(
+      t.actions.preview({
+        secretId: "token",
+        requester: "claude",
+        purpose: "action",
+        tags: ["api"],
+      }),
+    ).toMatchObject({ decision: "ask", needsHold: true });
+  });
+});
