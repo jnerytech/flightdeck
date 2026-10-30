@@ -197,6 +197,7 @@ const validCommands: Record<CommandType, unknown> = {
   },
   "messages.watch": {},
   "messages.directory": {},
+  "names.list": {},
   "idle.subscribe": { as: { session: "s1" }, session: "pc/s2" },
   "messaging.rules.get": {},
   "messaging.rules.set": { policy: { perPairPerHour: 5 }, unpause: ["pc/a|pc/b"] },
