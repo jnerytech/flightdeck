@@ -6,7 +6,7 @@ import type { PersonaInput } from "@flightdeck/protocol";
 import { ExternalSessions } from "../src/central/external.ts";
 import { type Receptor, startReceptor } from "../src/central/receptor.ts";
 import { RECEPTOR_FILE } from "../src/central/wrapper.ts";
-import { runCli } from "../src/main.ts";
+import { runCli, startDaemon } from "../src/main.ts";
 import { packPersonas } from "../src/personas/pack.ts";
 import { Personas } from "../src/personas/store.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
@@ -612,5 +612,48 @@ describe("personas-sessao-nova: pelo protocolo", () => {
     expect(
       await code("session.create", { cwd: project, prompt: "oi", persona: { id: "qa" } }),
     ).toBe("invalid_state");
+  });
+});
+
+describe("personas-sessao-nova: o daemon inteiro", () => {
+  test("o daemon liga as personas às sessões: abrir com uma persona do pacote dá o selo, e uma que não existe é recusada", async () => {
+    const dir = tempDir();
+    const { root, project } = workspace();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        allowedRoots: [root],
+        history: { roots: [join(dir, "nada")] },
+      }),
+    );
+    const running = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => running.stop());
+    const client = new FrameClient(`ws://127.0.0.1:${new URL(running.url).port}/v1/ws`);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const created = await client.data<{ sessionId: string }>("session.create", {
+      cwd: project,
+      prompt: "oi",
+      persona: { id: "qa" },
+    });
+    const listed = await client.data<{ sessions: Array<{ id: string; persona?: { id: string } }> }>(
+      "session.list",
+      {},
+    );
+    expect(listed?.sessions.find((s) => s.id === created?.sessionId)?.persona?.id).toBe("qa");
+    const missing = await client.request("session.create", {
+      cwd: project,
+      prompt: "oi",
+      persona: { id: "nao-existe" },
+    });
+    expect((missing.error as { code?: string } | undefined)?.code).toBe("not_found");
   });
 });
