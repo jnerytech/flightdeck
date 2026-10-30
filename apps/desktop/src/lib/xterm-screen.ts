@@ -64,6 +64,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     fontSize: options.fontSize,
     fontFamily: options.fontFamily,
     cursorBlink: true,
+    allowProposedApi: true,
   });
   const fit = deps.fit();
   const search = deps.search();
