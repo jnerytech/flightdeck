@@ -19,6 +19,7 @@ const STATE = {
   meta: {},
   cards: { "h1/c1": { id: "c1", projectId: "p1", title: "Meu card" } },
   projects: { h1: [{ id: "p1", name: "repo", path: "/p/repo" }] },
+  ssh: {},
 } as unknown as AppState;
 
 /** Every text of the palette, in order: titles, labels, details and the Tab actions. */
