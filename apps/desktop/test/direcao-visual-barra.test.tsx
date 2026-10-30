@@ -160,6 +160,13 @@ describe("direcao-visual: barra lateral", () => {
     });
     await settle(() => inAside().queryByRole("button", { name: "Fixadas" }) !== null);
     expect(inAside().queryByRole("button", { name: "Fixadas" })).not.toBeNull();
+    // The section folds, and unfolds.
+    const section = inAside().queryByRole("button", { name: "Fixadas" });
+    expect(section?.getAttribute("aria-expanded")).toBe("true");
+    await click(section);
+    expect(section?.getAttribute("aria-expanded")).toBe("false");
+    expect(inAside().queryByRole("button", { name: "Gerenciada" })).toBeNull();
+    await click(section);
     await click(inAside().queryByRole("button", { name: "Gerenciada" }));
     expect(store.router.current.name).toBe("session");
   });
