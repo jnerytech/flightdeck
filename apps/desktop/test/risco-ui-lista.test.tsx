@@ -49,6 +49,7 @@ const rows = () =>
 
 const low = { level: "low", reason: "leitura dentro do projeto", network: false } as const;
 const high = { level: "high", reason: "apaga arquivos", network: false } as const;
+const medium = { level: "medium", reason: "busca", network: false } as const;
 
 /** A host with a project that has the automatic approval on, two decisions already taken. */
 async function setup(features?: string[]) {
@@ -60,7 +61,7 @@ async function setup(features?: string[]) {
     cwd: string,
     requestId: string,
     toolName: string,
-    risk: typeof low | typeof high,
+    risk: typeof low | typeof medium | typeof high,
   ) => approver.decide({ sessionKey: "s1", requestId, toolName, input: {}, cwd, risk });
   await decide(d.repo, "r1", "Read", low);
   await Bun.sleep(5);
@@ -106,7 +107,7 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
   test("uma decisão da IA mostra o modelo que decidiu", async () => {
     const d = await setup();
     d.runtime.judgePermission = async () => ({ decision: "allow", reason: "só lê um arquivo" });
-    await d.decide(d.repo, "r3", "Grep", { level: "medium", reason: "busca", network: false });
+    await d.decide(d.repo, "r3", "Grep", medium);
     await click("Aprovações automáticas");
     await settle(() => rows().length === 3);
     expect(rows()[0]).toContain("IA (");
