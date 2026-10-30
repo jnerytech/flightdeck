@@ -16,8 +16,10 @@ const COLOR_CLASS = new RegExp(
 );
 /** A color written in an SVG or HTML attribute. */
 const COLOR_ATTRIBUTE = /\b(?:fill|stroke|color)="#[\da-fA-F]{3,8}"/g;
+const NUMBER = String.raw`\d+(?:\.\d+)?`;
+const UNIT = "(?:px|rem|em|%|vh|vw)";
 /** `key: 240` or `key: "12px"` inside `style={{ … }}`; custom properties (`--x`) are fine. */
-const MEASURE = /([A-Za-z]\w*)\s*:\s*(\d+(?:\.\d+)?|(["'])\d+(?:\.\d+)?(?:px|rem|em|%|vh|vw)\3)/g;
+const MEASURE = new RegExp(`\\b[A-Za-z]\\w*\\s*:\\s*(?:${NUMBER}|(["'])${NUMBER}${UNIT}\\1)`, "g");
 
 /** Inline styles with fixed measures and color classes outside the theme tokens, in a TSX source. */
 export function styleViolations(source: string): StyleViolation[] {
