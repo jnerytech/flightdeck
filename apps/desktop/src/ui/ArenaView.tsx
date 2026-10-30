@@ -120,13 +120,28 @@ function VariantColumn(props: {
         </Button>
       </div>
       {shown && diff && (
-        <DiffView
-          files={diff.files}
-          mode="unified"
-          selection={null}
-          onPick={() => {}}
-          composer={null}
-        />
+        <div className="flex flex-col gap-3">
+          <ul aria-label={t("diff.changedFiles")} className="flex flex-col gap-1 text-sm">
+            {diff.files.map((file) => (
+              <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
+                <span className="font-mono text-xs">{file.path}</span>
+                <span className="text-muted-foreground text-xs tabular-nums">{`+${file.additions} −${file.deletions}`}</span>
+                {file.uncommitted && (
+                  <Badge variant="outline" className="text-status-needs-you">
+                    {t("diff.uncommitted")}
+                  </Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+          <DiffView
+            files={diff.files}
+            mode="unified"
+            selection={null}
+            onPick={() => {}}
+            composer={null}
+          />
+        </div>
       )}
     </section>
   );

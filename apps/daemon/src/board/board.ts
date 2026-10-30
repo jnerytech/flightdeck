@@ -1004,7 +1004,7 @@ export class Board {
   private async fetchPrComments(id: string): Promise<PrComment[]> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
-    const provider = prProvider(project.prProvider);
+    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
     if (!provider) throw new FlightdeckError("invalid_state", "projeto sem provedor de PR");
     const comments = await provider.comments({ cwd: project.path, url: card.prUrl as string });
     this.prCommentCache.set(id, comments);
