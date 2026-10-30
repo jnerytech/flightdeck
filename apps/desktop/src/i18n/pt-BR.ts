@@ -117,6 +117,10 @@ export const ptBR = {
     revealMessage: "O valor de {name} aparece por {seconds} s e some.",
     copy: "Copiar",
     copyFor: "Copiar {name}",
+    remove: "Remover",
+    removeFor: "Remover {name}",
+    removePrompt: "Digite {word} para confirmar",
+    removeMessage: "Remover {name} apaga o valor do cofre do sistema. Isso não pode ser desfeito.",
   },
   approval: {
     label: "Pedido de {tool}",

@@ -25,6 +25,7 @@ function SecretRow(props: {
   revealed: string | null;
   onReveal(): void;
   onCopy(): void;
+  onRemove(): void;
 }) {
   const t = useT();
   const { secret, info } = props;
@@ -61,6 +62,14 @@ function SecretRow(props: {
         >
           {t("vault.copy")}
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("vault.removeFor", { name: secret.name })}
+          onClick={props.onRemove}
+        >
+          {t("vault.remove")}
+        </Button>
       </div>
     </li>
   );
@@ -81,6 +90,7 @@ export function VaultPage(props: {
   const revealMs = props.revealMs ?? REVEAL_MS;
   const clearMs = props.clearMs ?? CLEAR_MS;
   const [asking, setAsking] = useState<SecretMeta | null>(null);
+  const [removing, setRemoving] = useState<SecretMeta | null>(null);
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
 
   useEffect(() => {
@@ -124,6 +134,7 @@ export function VaultPage(props: {
               revealed={shown?.id === secret.id ? shown.value : null}
               onReveal={() => setAsking(secret)}
               onCopy={() => void store.copySecret(secret.id, clearMs)}
+              onRemove={() => setRemoving(secret)}
             />
           ))}
         </ul>
@@ -139,6 +150,20 @@ export function VaultPage(props: {
           confirmLabel={t("vault.reveal")}
           onConfirm={() => void reveal(asking)}
           onCancel={() => setAsking(null)}
+        />
+      )}
+      {removing && (
+        <TypedConfirm
+          message={t("vault.removeMessage", { name: removing.name })}
+          word={removing.name}
+          inputLabel={t("vault.removePrompt", { word: removing.name })}
+          confirmLabel={t("vault.remove")}
+          destructive
+          onConfirm={() => {
+            void store.removeSecret(removing.id);
+            setRemoving(null);
+          }}
+          onCancel={() => setRemoving(null)}
         />
       )}
     </Page>

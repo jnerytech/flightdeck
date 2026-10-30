@@ -115,6 +115,11 @@ export const en: Dictionary = {
     revealMessage: "The value of {name} shows for {seconds} s, then hides.",
     copy: "Copy",
     copyFor: "Copy {name}",
+    remove: "Remove",
+    removeFor: "Remove {name}",
+    removePrompt: "Type {word} to confirm",
+    removeMessage:
+      "Removing {name} deletes its value from the system vault. This cannot be undone.",
   },
   approval: {
     label: "Request for {tool}",
