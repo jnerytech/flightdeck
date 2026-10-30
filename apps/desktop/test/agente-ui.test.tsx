@@ -276,12 +276,18 @@ describe("agente-ui", () => {
     await act(async () => {
       store.router.push({ name: "agent", host: hostId, projectId: "nenhum", projectName: "x" });
     });
-    await settle(() => screen.queryByRole("alert") !== null);
+    await settle(
+      () => screen.queryByText("Não foi possível carregar a configuração deste projeto.") !== null,
+    );
     expect(
       screen.queryByText("Não foi possível carregar a configuração deste projeto."),
     ).not.toBeNull();
     await click("Tentar de novo");
-    await settle(() => screen.queryByRole("alert") !== null);
-    expect(screen.queryByRole("alert")).not.toBeNull();
+    await settle(
+      () => screen.queryByText("Não foi possível carregar a configuração deste projeto.") !== null,
+    );
+    expect(
+      screen.queryByText("Não foi possível carregar a configuração deste projeto."),
+    ).not.toBeNull();
   });
 });
