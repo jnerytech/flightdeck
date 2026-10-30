@@ -101,6 +101,30 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "reader", target: { hostId: ALFA, claudeSessionId: "hist-longo" } },
     },
     { name: "host", route: { name: "host", host: ALFA } },
+    {
+      // Phase 14: two tabs, the second on alfa's page, and the window split in two areas.
+      name: "abas-divididas",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /^(Abrir host alfa|Open host alfa)$/ })
+          .click({ modifiers: ["Control"] });
+        await page.getByRole("button", { name: /^(Dividir a tela|Split the screen)$/ }).click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      // Phase 14: an embedded terminal on alfa, live, after an echo.
+      name: "terminal",
+      route: { name: "host", host: ALFA },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Novo terminal|New terminal)$/ }).click();
+        await page.getByText(/^(Ao vivo|Live)$/).waitFor({ timeout: 15_000 });
+        await page.locator(".xterm").first().click();
+        await page.keyboard.type("echo flightdeck\n");
+        await page.waitForTimeout(1000);
+      },
+    },
     // The Agente screen of a project: its four tabs, with a file of each open.
     { name: "agente-mcp", route: agentRoute(ids) },
     {
