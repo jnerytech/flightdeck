@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
-import type { StateTone } from "@/components/status/state-badge";
+import type { StateTone } from "@/components/status/status-dot";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

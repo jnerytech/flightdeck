@@ -1,5 +1,5 @@
 import type { SessionStatus } from "@flightdeck/protocol";
-import type { StateTone } from "@/components/status/state-badge";
+import type { StateTone } from "@/components/status/status-dot";
 
 export const STATUS_LABELS: Record<SessionStatus, string> = {
   starting: "iniciando",

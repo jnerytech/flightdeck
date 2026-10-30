@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
-import type { StateTone } from "./state-badge";
+
+/** The five tones a status takes, shared by the dot, the text and the lists. */
+export type StateTone = "running" | "needs-you" | "idle" | "ended" | "error";
 
 // Whole class names, so Tailwind finds them. An ended session fades; a hollow dot is a ring.
 const TONE: Record<StateTone, string> = {

@@ -1,4 +1,4 @@
-import type { StateTone } from "./state-badge";
+import type { StateTone } from "./status-dot";
 import { StatusDot } from "./status-dot";
 
 /** A state as its dot and its word, side by side (the word is the dot's name). */
