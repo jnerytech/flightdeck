@@ -975,6 +975,13 @@ podem ser rebaixados.
 - Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
   "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede
   sempre vem para você.
+- Em um host cujo daemon tem a aprovação automática, a página do host tem o botão **Aprovações
+  automáticas**. A tela lista o que o daemon decidiu, da mais nova para a mais antiga: a ferramenta, o
+  risco, se **Aprovou** ou **Perguntou a você**, quem decidiu (a regra ou a IA e o modelo) e o motivo.
+  Filtre por projeto, ou por ferramenta ou motivo em **Filtrar decisões**. **Sessões suspensas** lista as
+  sessões em que a aprovação automática parou porque chegou conteúdo de terceiro, com o motivo;
+  **Reativar** pede confirmação antes de ligar de novo.
+- O texto da bandeja soma quantas aprovações automáticas o app viu.
 
 ## Custos, orçamentos e cota
 

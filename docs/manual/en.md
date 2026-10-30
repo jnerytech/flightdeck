@@ -994,6 +994,13 @@ be lowered.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
   reaches the network always comes to you.
+- On a host whose daemon has automatic approval, the host page has an **Automatic approvals**
+  button. The screen lists what the daemon decided, newest first: the tool, the risk, whether it
+  **Approved** or **Asked you**, who decided (the rule or the AI and its model) and why. Filter by
+  project, or by tool or reason in **Filter decisions**. **Suspended sessions** lists the sessions
+  where automatic approval stopped because third-party content arrived, with the reason; **Resume**
+  asks for confirmation before turning it back on.
+- The tray tooltip adds how many automatic approvals the app has seen.
 
 ## Costs, budgets and quota
 
