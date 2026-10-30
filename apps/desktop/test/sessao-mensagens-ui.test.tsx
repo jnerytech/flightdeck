@@ -53,6 +53,21 @@ async function open(features = ["messaging"]) {
   ];
   daemon.messaging.sessions = [
     {
+      address: "h/s8",
+      id: "s8",
+      host: "h",
+      name: "app · qa · 1",
+      alias: "app-qa-1",
+      aliases: ["app-qa-1"],
+      persona: "qa",
+      state: "idle",
+      projectKey: "k",
+      teamId: null,
+      kind: "managed",
+      receives: true,
+      reason: null,
+    },
+    {
       address: "h/s9",
       id: "s9",
       host: "h",
@@ -92,6 +107,17 @@ describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
     const list = () => screen.queryByRole("list", { name: "Mensagens desta sessão" });
     await settle(() => (list()?.children.length ?? 0) === 1);
     expect(list()?.textContent).toContain("a revisão está pronta");
+    expect(list()?.textContent).toContain("Recebida");
+    // A new message of the session arrives while the tab is open.
+    daemon.messaging.messages = [
+      ...daemon.messaging.messages,
+      { ...(daemon.messaging.messages[0] as object), id: "m7", text: "outra" },
+    ];
+    await act(async () => {
+      daemon.push({ type: "messages.updated", message: daemon.messaging.messages[1] });
+    });
+    await settle(() => (list()?.children.length ?? 0) === 2);
+    expect(list()?.children.length).toBe(2);
     expect(daemon.commands.find((c) => c.type === "messages.list")?.payload).toEqual({
       session: "c1",
     });
@@ -102,8 +128,12 @@ describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
     await click("Mensagens");
     await click("Mandar para outra sessão…");
     await settle(
-      () => (screen.queryByLabelText("Para") as HTMLSelectElement | null)?.options.length === 1,
+      () => (screen.queryByLabelText("Para") as HTMLSelectElement | null)?.options.length === 2,
     );
+    // The first session it may see is chosen; the user picks the other.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Para"), { target: { value: "h/s9" } });
+    });
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Texto da mensagem"), {
         target: { value: "pode revisar?" },
@@ -129,5 +159,19 @@ describe("sessao-mensagens-ui: the Mensagens tab of a session", () => {
     expect(screen.queryByRole("status", { name: "Resultado do envio" })?.textContent).toContain(
       "Recusada",
     );
+  });
+
+  test("a sent message reads as sent, and Cancelar closes the form", async () => {
+    const { daemon } = await open();
+    daemon.messaging.messages = [
+      { ...(daemon.messaging.messages[0] as object), id: "m5", fromSession: "c1", toSession: "s9" },
+    ];
+    await click("Mensagens");
+    const list = () => screen.queryByRole("list", { name: "Mensagens desta sessão" });
+    await settle(() => (list()?.children.length ?? 0) === 1);
+    expect(list()?.textContent).toContain("Enviada");
+    await click("Mandar para outra sessão…");
+    await click("Cancelar");
+    expect(screen.queryByLabelText("Texto da mensagem")).toBeNull();
   });
 });
