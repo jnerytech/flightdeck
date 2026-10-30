@@ -9,7 +9,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { Persona, PersonaInput, PersonaProjectInfo } from "@flightdeck/protocol";
+import type {
+  Persona,
+  PersonaAgent,
+  PersonaInput,
+  PersonaProjectInfo,
+  PersonaSubagents,
+} from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SecretScanner } from "../snippets/model.ts";
@@ -29,6 +35,15 @@ export interface PersonasOptions {
   now?: () => number;
   /** The personas that come ready, in a language (phase 20's pack). */
   pack?: (language: Language) => PersonaDef[];
+  /** The project agent editor (phase 12), which writes `.claude/agents`; the integration plugs it in. */
+  publisher?: { publish(request: AgentPublishRequest): { path: string } };
+}
+
+/** A persona as a project agent file. */
+export interface AgentPublishRequest extends PersonaAgent {
+  projectPath: string;
+  /** `persona-<id>`: the name of the agent and of its file. */
+  name: string;
 }
 
 /** What names a persona: its id in the host's or the project's list, or a definition from the app. */
@@ -55,6 +70,16 @@ export interface ResolvedPersona {
 interface LoadedProject {
   info: PersonaProjectInfo;
   views: Persona[];
+}
+
+/** The persona as an agent definition: the tools and the model only when it names them. */
+function agentOf(persona: PersonaDef): PersonaAgent {
+  return {
+    description: persona.description,
+    prompt: persona.body,
+    ...(persona.tools ? { tools: persona.tools } : {}),
+    ...(persona.model ? { model: persona.model } : {}),
+  };
 }
 
 const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -126,6 +151,56 @@ export class Personas {
     return this.get(persona.id, { projectPath: project });
   }
 
+  /**
+   * Every persona that holds in the project as an agent `persona-<id>`: the pack's, the host's
+   * and the project's trusted ones, the project's winning. A versioned one without trust is left
+   * out, and does not stand in for another of the same id.
+   */
+  subagents(ctx: PersonaContext): PersonaSubagents {
+    const project = this.optionalProject(ctx.projectPath);
+    const loaded = project ? this.loadProject(project) : null;
+    const views = [
+      ...this.hostViews(ctx.language),
+      ...(loaded?.views.filter((view) => view.trusted) ?? []),
+    ];
+    const agents: Record<string, PersonaAgent> = {};
+    for (const view of views) agents[`persona-${view.id}`] = agentOf(view);
+    const untrusted = (loaded?.views ?? []).filter((view) => !view.trusted).map((view) => view.id);
+    return { agents, untrusted: untrusted.sort() };
+  }
+
+  /** Writes the persona as the project's agent `persona-<id>`, through the agent editor. */
+  publishAgent(request: {
+    id: string;
+    projectPath: string;
+    language?: Language | undefined;
+    confirm: boolean;
+  }): { path: string } {
+    if (!request.confirm) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "publicar como agente do projeto pede confirm: true",
+      );
+    }
+    const publisher = this.opts.publisher;
+    if (!publisher) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "o editor de agentes do projeto não está disponível",
+      );
+    }
+    const projectPath = this.project(request.projectPath);
+    const { persona } = this.resolve(
+      { id: request.id },
+      { projectPath, language: request.language },
+    );
+    return publisher.publish({
+      projectPath,
+      name: `persona-${persona.id}`,
+      ...agentOf(persona),
+    });
+  }
+
   /** Puts a pack persona back as it came: the host's edit goes away. */
   reset(id: string, ctx: PersonaContext): Persona {
     if (!this.pack(ctx.language).some((persona) => persona.id === id)) {
@@ -195,6 +270,17 @@ export class Personas {
 
   private project(path: string): string {
     return resolveAllowedCwd(path, this.opts.allowedRoots);
+  }
+
+  /** A folder the daemon does not allow has no personas of its own. */
+  private optionalProject(path: string | undefined): string | null {
+    if (!path) return null;
+    try {
+      return this.project(path);
+    } catch {
+      // resolveAllowedCwd only ever refuses with forbidden_cwd.
+      return null;
+    }
   }
 
   private requireProject(path: string | undefined): string {

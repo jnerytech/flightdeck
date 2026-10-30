@@ -1218,6 +1218,12 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
+      case "personas.subagents": {
+        const { projectPath, language } = command.payload;
+        return ok(command.type, personas().subagents({ projectPath, language }));
+      }
+      case "personas.publishAgent":
+        return ok(command.type, personas().publishAgent(command.payload));
       case "personas.resolve": {
         const { ref, projectPath } = command.payload;
         const store = personas();

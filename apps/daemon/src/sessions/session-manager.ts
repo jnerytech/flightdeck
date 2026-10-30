@@ -6,6 +6,7 @@ import type {
   PendingPermission,
   PermissionMode,
   PermissionUpdate,
+  PersonaSubagents,
   SessionEvent,
   SessionEventOf,
   SessionPersona,
@@ -54,7 +55,11 @@ export interface SessionManagerOptions {
   /** Phase 13: the projects' automatic approval. */
   autoApprove?: Pick<AutoApprover, "decide">;
   /** The personas a session can be opened in (phase 20). */
-  personas?: { resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona };
+  personas?: {
+    resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona;
+    /** The personas that hold in a folder, as agents the session can call. */
+    subagents(ctx: PersonaContext): PersonaSubagents;
+  };
 }
 
 export interface TurnEdge {
@@ -408,6 +413,7 @@ export class SessionManager {
     const session = this.get(sessionId);
     // The persona the session opened with, as it was then: the prompt it appends is in no transcript.
     const persona = this.store.sessionPersona(sessionId);
+    const agents = this.opts.personas?.subagents({ projectPath: session.cwd }).agents;
     const run = this.opts.runtime.start({
       cwd: session.cwd,
       permissionMode: session.permissionMode,
@@ -431,6 +437,7 @@ export class SessionManager {
         ? { effort: this.efforts.get(sessionId) as EffortLevel }
         : {}),
       ...(persona ? { persona: personaOf(persona) } : {}),
+      ...(agents ? { agents } : {}),
     });
     const live: LiveSession = { run, queue: [], closing: false };
     this.live.set(sessionId, live);

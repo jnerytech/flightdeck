@@ -3,6 +3,7 @@ import type {
   McpLiveStatus,
   PermissionMode,
   PermissionUpdate,
+  PersonaAgent,
   PersonaFields,
   SessionEvent,
   ToolInput,
@@ -55,6 +56,8 @@ export interface StartOptions {
    * The role the session plays (phase 20): `append` is added to the system prompt, `tools` is the
    * set of tools available (it only restricts; `null` leaves the session's own).
    */
+  /** Subagents the session can call (the personas as `persona-<id>`). */
+  agents?: Record<string, PersonaAgent>;
   persona?: {
     append: string;
     effort?: NonNullable<PersonaFields["effort"]>;

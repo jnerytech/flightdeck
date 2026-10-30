@@ -268,6 +268,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       },
       // `tools` is the set that is available, so a persona can only take away; `allowedTools`
       // would pre-approve tools, which a persona never does.
+      ...(opts.agents ? { agents: opts.agents } : {}),
       ...(opts.persona?.effort ? { effort: opts.persona.effort } : {}),
       ...(opts.persona?.tools ? { tools: opts.persona.tools } : {}),
       canUseTool: async (toolName, input, ctx): Promise<PermissionResult> => {

@@ -921,6 +921,22 @@ export const Persona = PersonaFields.extend({
 });
 export type Persona = z.infer<typeof Persona>;
 
+/** A persona as a subagent: what the SDK's `agents` and claude's `--agents` take. */
+export const PersonaAgent = z.object({
+  description: z.string(),
+  prompt: z.string(),
+  tools: z.array(z.string()).optional(),
+  model: z.string().optional(),
+});
+export type PersonaAgent = z.infer<typeof PersonaAgent>;
+
+/** The agents `persona-<id>` of a project, and the versioned personas left out for lack of trust. */
+export const PersonaSubagents = z.object({
+  agents: z.record(z.string(), PersonaAgent),
+  untrusted: z.array(z.string()),
+});
+export type PersonaSubagents = z.infer<typeof PersonaSubagents>;
+
 /** What applying or leaving a persona answers: the persona and the message that was sent. */
 export const PersonaSwitchResult = z.object({ persona: SessionPersona, text: z.string() });
 export type PersonaSwitchResult = z.infer<typeof PersonaSwitchResult>;
@@ -2150,6 +2166,28 @@ export const Command = z.discriminatedUnion("type", [
         message: "informe sessionId ou claudeSessionId, um dos dois",
       }),
   ),
+  /** The personas that hold in the project, as the agents `persona-<id>` a session can call. */
+  cmd(
+    "personas.subagents",
+    z
+      .object({
+        projectPath: z.string().optional(),
+        language: z.enum(["pt-BR", "en"]).optional(),
+      })
+      .strict(),
+  ),
+  /** Writes a persona as the project agent `.claude/agents/persona-<id>.md`; asks for `confirm`. */
+  cmd(
+    "personas.publishAgent",
+    z
+      .object({
+        id: z.string(),
+        projectPath: z.string(),
+        language: z.enum(["pt-BR", "en"]).optional(),
+        confirm: z.boolean(),
+      })
+      .strict(),
+  ),
   /** The persona to use, as `session.create` and `flightdeckd claude --persona` would resolve it. */
   cmd(
     "personas.resolve",
@@ -2582,6 +2620,8 @@ export interface CommandResults {
   "personas.remove": undefined;
   "personas.reset": Persona;
   "personas.resolve": ResolvedPersonaResult;
+  "personas.subagents": PersonaSubagents;
+  "personas.publishAgent": { path: string };
   "session.applyPersona": PersonaSwitchResult;
   "session.clearPersona": PersonaSwitchResult;
   "personas.trust": Persona;

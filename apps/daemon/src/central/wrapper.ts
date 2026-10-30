@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ResolvedPersonaResult } from "@flightdeck/protocol";
+import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { ulid } from "../ulid.ts";
@@ -155,22 +155,36 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
     );
   }
-  // The body travels in a file that only lives while claude runs.
-  let personaFile: string | null = null;
-  if (persona) {
-    const dir = join(opts.config.dataDir, "personas");
+  // The body and the subagents travel in files that only live while claude runs (nine bodies of
+  // 8 KB do not fit on a Windows command line).
+  const dir = join(opts.config.dataDir, "personas");
+  const files: string[] = [];
+  const write = (name: string, content: string) => {
     mkdirSync(dir, { recursive: true });
-    personaFile = join(dir, `${launchId}.md`);
-    writeFileSync(personaFile, persona.persona.body);
+    const file = join(dir, name);
+    writeFileSync(file, content);
+    files.push(file);
+    return file;
+  };
+  const added: string[] = [];
+  if (persona) {
+    added.push(
+      ...personaArgs(persona.persona, write(`${launchId}.md`, persona.persona.body), args),
+    );
+  }
+  // The personas of the project as agents to call; the user's own --agents wins, and without
+  // the daemon claude opens just the same.
+  const agents = passed(args, "--agents")
+    ? null
+    : await fetchAgents(opts.config, opts.cwd ?? process.cwd());
+  if (agents && Object.keys(agents).length > 0) {
+    added.push("--agents", write(`${launchId}-agents.json`, JSON.stringify(agents)));
   }
   try {
     const proc = Bun.spawn(
       buildClaudeLaunch({
         claude,
-        args:
-          persona && personaFile
-            ? [...personaArgs(persona.persona, personaFile, args), ...args]
-            : args,
+        args: [...added, ...args],
         mcpConfigPath,
       }),
       {
@@ -181,7 +195,28 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     return await proc.exited;
   } finally {
     if (mcpConfigPath) rmSync(mcpConfigPath, { force: true });
-    if (personaFile) rmSync(personaFile, { force: true });
+    for (const file of files) rmSync(file, { force: true });
+  }
+}
+
+/** The project's personas as agents, from the daemon of this host; `null` when it cannot be reached. */
+async function fetchAgents(
+  config: Config,
+  cwd: string,
+): Promise<PersonaSubagents["agents"] | null> {
+  try {
+    const daemon = await DaemonClient.connect(
+      daemonUrl(config),
+      config.token,
+      "flightdeckd-claude",
+    );
+    try {
+      return (await daemon.call("personas.subagents", { projectPath: cwd })).agents;
+    } finally {
+      daemon.close();
+    }
+  } catch {
+    return null;
   }
 }
 
