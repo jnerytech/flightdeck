@@ -81,6 +81,8 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       );
     case "auto-approvals":
       return path(host(route.host), { label: t("autoApprovalsUi.open") });
+    case "terminal":
+      return path(host(route.host), { label: t("terminalUi.title") });
     case "automations":
       return path(
         host(route.host),

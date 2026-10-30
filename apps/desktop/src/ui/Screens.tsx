@@ -37,6 +37,7 @@ import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
+import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 import { WorkflowsPage } from "./WorkflowsPage.tsx";
 
@@ -53,6 +54,7 @@ function hostToWait(route: Route): string | null {
     case "agent":
     case "automations":
     case "auto-approvals":
+    case "terminal":
       return route.host;
     default:
       return null;
@@ -517,6 +519,16 @@ function routeScreen(props: ScreenProps): ReactNode {
       );
     case "auto-approvals":
       return <AutoApprovalsPage key={route.host} store={store} hostId={route.host} />;
+    case "terminal":
+      return (
+        <TerminalPage
+          key={`${route.host}/${route.terminalId}`}
+          store={store}
+          hostId={route.host}
+          terminalId={route.terminalId}
+          onClosed={() => store.router.back()}
+        />
+      );
     case "workflows":
       return (
         <WorkflowsPage

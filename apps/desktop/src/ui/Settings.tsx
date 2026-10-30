@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -12,6 +12,7 @@ import type {
   Settings as SettingsState,
 } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
+import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
@@ -42,6 +43,10 @@ export function Settings(props: {
   t: T;
 }) {
   const { t } = props;
+  const terminalFont = useSyncExternalStore(
+    props.store.terminalFont.subscribe,
+    () => props.store.terminalFont.value,
+  );
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
@@ -77,6 +82,18 @@ export function Settings(props: {
               <option value="compact">{t("settings.densities.compact")}</option>
               <option value="comfortable">{t("settings.densities.comfortable")}</option>
             </select>
+          </div>
+          <div className="flex items-center justify-between gap-4 text-sm">
+            <span>{t("settings.terminalFont")}</span>
+            <Input
+              type="number"
+              className="h-8 w-20"
+              aria-label={t("settings.terminalFont")}
+              min={TERMINAL_FONT_MIN}
+              max={TERMINAL_FONT_MAX}
+              value={terminalFont}
+              onChange={(e) => props.store.terminalFont.set(Number(e.target.value))}
+            />
           </div>
           <div className="flex items-center justify-between gap-4 text-sm">
             <span>{t("settings.language")}</span>

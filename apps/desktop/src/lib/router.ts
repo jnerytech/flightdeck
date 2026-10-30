@@ -26,6 +26,8 @@ export type Route =
   | { name: "automations"; host: string; projectId: string; projectName: string }
   /** The automatic approvals' decisions and suspended sessions of a host (phase 13). */
   | { name: "auto-approvals"; host: string }
+  /** A host's embedded terminal (phase 14). */
+  | { name: "terminal"; host: string; terminalId: string }
   | { name: "settings" }
   /** The Custos screen (phase 8, track A). */
   | { name: "costs" }
