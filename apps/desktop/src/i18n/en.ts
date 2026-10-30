@@ -108,6 +108,13 @@ export const en: Dictionary = {
       env: "Environment variables",
     },
     fingerprint: "Fingerprint {value}",
+    reveal: "Reveal",
+    revealFor: "Reveal {name}",
+    revealWord: "reveal",
+    revealPrompt: "Type {word} to confirm",
+    revealMessage: "The value of {name} shows for {seconds} s, then hides.",
+    copy: "Copy",
+    copyFor: "Copy {name}",
   },
   approval: {
     label: "Request for {tool}",

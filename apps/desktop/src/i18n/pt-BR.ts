@@ -110,6 +110,13 @@ export const ptBR = {
       env: "Variáveis de ambiente",
     },
     fingerprint: "Impressão digital {value}",
+    reveal: "Revelar",
+    revealFor: "Revelar {name}",
+    revealWord: "revelar",
+    revealPrompt: "Digite {word} para confirmar",
+    revealMessage: "O valor de {name} aparece por {seconds} s e some.",
+    copy: "Copiar",
+    copyFor: "Copiar {name}",
   },
   approval: {
     label: "Pedido de {tool}",

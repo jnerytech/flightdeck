@@ -2,10 +2,15 @@ import { KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { Button } from "@/components/ui/button";
+import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { SecretMeta } from "../lib/vault.ts";
 import { describeSecret, type SecretInfo } from "../lib/vault-types.ts";
+
+const REVEAL_MS = 10_000;
+const CLEAR_MS = 30_000;
 
 /** What describes a secret on its row, without revealing it. */
 function infoText(info: SecretInfo, fingerprint: (value: string) => string): string {
@@ -13,7 +18,14 @@ function infoText(info: SecretInfo, fingerprint: (value: string) => string): str
   return info.hint ?? info.names?.join(", ") ?? "";
 }
 
-function SecretRow(props: { secret: SecretMeta; info: SecretInfo }) {
+function SecretRow(props: {
+  secret: SecretMeta;
+  info: SecretInfo;
+  /** The value, while it is revealed. */
+  revealed: string | null;
+  onReveal(): void;
+  onCopy(): void;
+}) {
   const t = useT();
   const { secret, info } = props;
   const detail = infoText(info, (value) => t("vault.fingerprint", { value }));
@@ -29,6 +41,27 @@ function SecretRow(props: { secret: SecretMeta; info: SecretInfo }) {
         ))}
       </div>
       {detail && <p className="font-mono text-muted-foreground text-sm">{detail}</p>}
+      {props.revealed !== null && (
+        <code className="break-all rounded bg-muted p-2 text-sm">{props.revealed}</code>
+      )}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("vault.revealFor", { name: secret.name })}
+          onClick={props.onReveal}
+        >
+          {t("vault.reveal")}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("vault.copyFor", { name: secret.name })}
+          onClick={props.onCopy}
+        >
+          {t("vault.copy")}
+        </Button>
+      </div>
     </li>
   );
 }
@@ -45,6 +78,22 @@ export function VaultPage(props: {
   const t = useT();
   const { store, state } = props;
   const [infos, setInfos] = useState<Record<string, SecretInfo>>({});
+  const revealMs = props.revealMs ?? REVEAL_MS;
+  const clearMs = props.clearMs ?? CLEAR_MS;
+  const [asking, setAsking] = useState<SecretMeta | null>(null);
+  const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
+
+  useEffect(() => {
+    if (!shown) return;
+    const timer = setTimeout(() => setShown(null), revealMs);
+    return () => clearTimeout(timer);
+  }, [shown, revealMs]);
+
+  const reveal = async (secret: SecretMeta) => {
+    setAsking(null);
+    const value = await store.vault.value(secret.id);
+    if (value !== null) setShown({ id: secret.id, value });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -68,9 +117,29 @@ export function VaultPage(props: {
       ) : (
         <ul aria-label={t("vault.list")} className="flex flex-col gap-2">
           {state.secrets.map((secret) => (
-            <SecretRow key={secret.id} secret={secret} info={infos[secret.id] ?? {}} />
+            <SecretRow
+              key={secret.id}
+              secret={secret}
+              info={infos[secret.id] ?? {}}
+              revealed={shown?.id === secret.id ? shown.value : null}
+              onReveal={() => setAsking(secret)}
+              onCopy={() => void store.copySecret(secret.id, clearMs)}
+            />
           ))}
         </ul>
+      )}
+      {asking && (
+        <TypedConfirm
+          message={t("vault.revealMessage", {
+            name: asking.name,
+            seconds: Math.max(1, Math.round(revealMs / 1000)),
+          })}
+          word={t("vault.revealWord")}
+          inputLabel={t("vault.revealPrompt", { word: t("vault.revealWord") })}
+          confirmLabel={t("vault.reveal")}
+          onConfirm={() => void reveal(asking)}
+          onCancel={() => setAsking(null)}
+        />
       )}
     </Page>
   );
