@@ -91,4 +91,27 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     expect(result).toEqual({ ok: false, message: "allow para run_with_secret nunca é permitido" });
     expect(store.vaultRules(here.id)).toEqual([]);
   });
+
+  test("when a second host refuses, the first gets the saved rules back, so no host keeps rules the app did not save", async () => {
+    const { store, daemon, here } = await setup();
+    await store.setVaultRules(here.id, ALLOW);
+    const other = legacyDaemon(cleanups);
+    other.features.push("actions");
+    const otherId = await store.addHost({ name: "pi", url: other.url, token: TOKEN });
+    await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
+    store.updateSecret(here.id, { allowedHosts: [store.getState().hosts[0]?.id ?? "", otherId] });
+    other.refuse.set("vault.rules.set", "regra inválida");
+    daemon.commands.length = 0;
+    const looser = [{ id: "r1", match: {}, decision: "allow" }];
+    expect(await store.setVaultRules(here.id, looser)).toEqual({
+      ok: false,
+      message: "regra inválida",
+    });
+    const sent = daemon.commands.filter((c) => c.type === "vault.rules.set").map((c) => c.payload);
+    expect(sent).toEqual([
+      { secretId: here.id, tags: ["staging"], rules: looser },
+      { secretId: here.id, tags: ["staging"], rules: ALLOW },
+    ]);
+    expect(store.vaultRules(here.id)).toEqual(ALLOW);
+  });
 });
