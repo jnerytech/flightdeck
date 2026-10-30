@@ -27,6 +27,7 @@
     "smoke:automation": "bun run scripts/smoke-automation.ts",
     "smoke:checkpoints": "bun run scripts/smoke-checkpoints.ts",
     "smoke:terminal": "bun run scripts/smoke-terminal.ts",
+    "smoke:ssh": "bun run scripts/smoke-ssh.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
