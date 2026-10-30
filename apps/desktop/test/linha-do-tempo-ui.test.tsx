@@ -265,14 +265,14 @@ describe("linha-do-tempo-ui", () => {
     expect(screen.queryByText(/Ainda não há turnos/)).not.toBeNull();
   });
 
-  test("Esc fecha a prévia e o formulário de bifurcar sem fazer nada, e Fechar esconde a linha do tempo", async () => {
+  test("fechar a prévia e o formulário de bifurcar não faz nada, e Fechar esconde a linha do tempo", async () => {
     const { repo, runtime } = await setup();
     await openTimeline();
-    const escape = async (name: string) => {
+    // The dialog's own close button (Esc would also reach the sheet under happy-dom).
+    const dismiss = async (name: string) => {
+      const dialog = within(screen.queryByRole("dialog", { name }) as HTMLElement);
       await act(async () => {
-        fireEvent.keyDown(screen.queryByRole("dialog", { name }) as HTMLElement, {
-          key: "Escape",
-        });
+        fireEvent.click(dialog.queryByRole("button", { name: "Close" }) as HTMLElement);
       });
       await settle(() => screen.queryByRole("dialog", { name }) === null);
       expect(screen.queryByRole("dialog", { name })).toBeNull();
@@ -281,15 +281,17 @@ describe("linha-do-tempo-ui", () => {
     await settle(
       () => screen.queryByRole("dialog", { name: "Voltar arquivos até o turno 2" }) !== null,
     );
-    await escape("Voltar arquivos até o turno 2");
+    await dismiss("Voltar arquivos até o turno 2");
+    await settle(() => screen.queryByRole("button", { name: "Bifurcar daqui (turno 2)" }) !== null);
     await click("Bifurcar daqui (turno 2)");
     await settle(
       () => screen.queryByRole("dialog", { name: "Bifurcar a partir do turno 2" }) !== null,
     );
-    await escape("Bifurcar a partir do turno 2");
+    await dismiss("Bifurcar a partir do turno 2");
     expect(text(join(repo, "README.md"))).toBe("v2\n");
     expect(runtime.forks).toHaveLength(0);
 
+    await settle(() => screen.queryByRole("button", { name: "Fechar" }) !== null);
     await click("Fechar");
     await settle(() => screen.queryByRole("dialog", { name: "Linha do tempo" }) === null);
     expect(screen.queryByRole("dialog", { name: "Linha do tempo" })).toBeNull();
