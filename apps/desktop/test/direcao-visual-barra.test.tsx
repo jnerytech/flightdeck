@@ -80,6 +80,8 @@ describe("direcao-visual: barra lateral", () => {
       "Board",
       "Workflows",
       "Custos",
+      // The vault is the app's (phase 16), so Cofre shows whatever the hosts offer.
+      "Cofre",
       "Histórico",
     ]);
     for (const item of items) expect(item.querySelector("svg")).not.toBeNull();
