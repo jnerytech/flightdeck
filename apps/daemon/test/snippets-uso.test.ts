@@ -45,6 +45,7 @@ function setup() {
   const external: Array<[string, string]> = [];
   let channel = true;
   const use = new SnippetUse({
+    allowedRoots: [root],
     snippets,
     terminals,
     manager: {
