@@ -49,6 +49,27 @@ As ferramentas ficam no MCP do Flightdeck (Fase 6) e no mod do Flightdeck para C
 | `read_session { session, last? }` | só leitura: o resumo (Fase 8) e as últimas N mensagens do transcript, com o máximo de 20 e cortadas em 8 KB |
 | `team_status { team }` | o estado do time (abaixo) |
 
+## Nomes de sessão padronizados (pedido do usuário, 30/10/2026)
+
+- **Formato de exibição:** `projeto · persona · número`, por exemplo `flightdeck · revisor · 3`.
+  - Sem persona, vale `geral`.
+  - O projeto é o nome do repositório (o fim da `projectKey` da Fase 5) ou o nome da pasta quando não há repositório.
+- **Número:** sequencial por par (projeto, persona) e por host. **Nunca é reaproveitado**: o contador fica numa tabela própria, que a retenção não apaga. Isso torna o nome único.
+- **Apelido:** `projeto-persona-número` em minúsculas, sem acento e com hífens, por exemplo `flightdeck-revisor-3`.
+  - É único por host.
+  - Serve de endereço no `send_to_session`, no `notify_when_idle`, no `read_session` e na paleta, junto com o `host/id`.
+  - Entre hosts, o endereço é `host/apelido`.
+- **Quando nasce:**
+  - sessão do app: ao criar;
+  - sessão do terminal (`flightdeckd claude`, inclusive o "Claude aqui"): no primeiro `SessionStart`;
+  - sessão de card: ao iniciar o card, com o número do card no lugar do sequencial (`flightdeck · revisor · card 42`);
+  - membros de time e sessões em segundo plano: ao criar.
+
+  Sessões do `claude` puro vistas pelos hooks também ganham nome, com a persona `geral`.
+- **Renomear:** o nome de exibição pode mudar. O apelido original continua valendo como atalho, e o novo nome gera um apelido extra se não colidir.
+- **Na central:** a lista ordena pelo nome dentro de cada grupo, e dá para filtrar por persona.
+- **Testes:** formato, sequência sem reuso depois de apagar, unicidade do apelido, colisão no renomear, endereço pelo apelido e cada origem.
+
 ## Regras e segurança
 
 - **Quem pode falar com quem:**
@@ -128,6 +149,7 @@ As ferramentas ficam no MCP do Flightdeck (Fase 6) e no mod do Flightdeck para C
 
 | Área | O que precisa passar |
 | --- | --- |
+| `nomes-sessao` | formato `projeto · persona · número`; sequência por projeto, persona e host sem reuso; apelido único e endereçável; card usa o número do card; cada origem ganha nome; renomear mantém o apelido |
 | `mensagens-entrega` | mesmo host sem app; entre hosts pelo app; fila de 24 h com o app fechado; gerenciada com fila durante o turno; card e terminal controlável; `claude` puro recusado com motivo; cabeçalho no formato |
 | `mensagens-regras` | só o mesmo projeto ou time por padrão; exceções; `list_sessions` esconde quem não pode; limites por par e por sessão; laço pausa o par e avisa; mensagem grande recusada |
 | `mensagens-seguranca` | mensagem nunca responde pedido de permissão; marca de terceiros se propaga e suspende a aprovação automática no destino; o texto de "não vale como aprovação" está no cabeçalho |
