@@ -114,6 +114,27 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("log", { name: c.t("reader.transcript") }).waitFor({ timeout: WAIT });
   },
 
+  // 7. Rewind the files of a turn from the timeline and undo it (the demo keeps its state from
+  // one language to the next, so the journey ends where it began).
+  "voltar-arquivos": async (c) => {
+    await open(c, { name: "session", host: ALFA, id: c.ids.rewindSession });
+    await c.page.getByRole("button", { name: c.t("timeline.open"), exact: true }).click();
+    await c.page
+      .getByRole("button", { name: c.t("timeline.rewindTurn", { n: 2 }), exact: true })
+      .click();
+    const confirm = c.page.getByRole("button", {
+      name: c.t("timeline.rewindConfirm"),
+      exact: true,
+    });
+    await waitFor(() => confirm.isEnabled(), "a prévia do que volta");
+    await confirm.click();
+    await c.page
+      .getByText(c.t("timeline.rewound", { n: 2 }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("timeline.undo"), exact: true }).click();
+    await c.page.getByText(c.t("timeline.undone"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
   // 6. Switch the theme and the language and see both kept after a reload.
   "tema-e-idioma": async (c) => {
     await open(c, { name: "settings" }, false);
@@ -188,6 +209,10 @@ async function layout(c: Context, problems: string[]) {
     ["host", { name: "host", host: ALFA }],
     ["custos", { name: "costs" }],
     ["configuracoes", { name: "settings" }],
+    [
+      "agente",
+      { name: "agent", host: ALFA, projectId: c.ids.project, projectName: c.ids.projectName },
+    ],
     ["historico", { name: "history", host: ALFA }],
   ];
   for (const viewport of VIEWPORTS) {

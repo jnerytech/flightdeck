@@ -23,6 +23,19 @@ interface Shot {
 
 const ALFA = "demo-alfa";
 
+const agentRoute = (ids: DemoIds): Route => ({
+  name: "agent",
+  host: ALFA,
+  projectId: ids.project,
+  projectName: ids.projectName,
+});
+
+/** The session's timeline sheet, open with its turns loaded. */
+async function openTimeline(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /^(Linha do tempo|Timeline)$/ }).click();
+  await page.waitForTimeout(1000);
+}
+
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
@@ -31,7 +44,20 @@ function shots(ids: DemoIds): Shot[] {
       name: "precisa-de-voce",
       route: { name: "needs-you" },
       prepare: async (page) => {
-        await page.getByRole("button", { name: /Testes do backend: Bash/ }).click();
+        // On a busy machine the first summaries can arrive before the host is known: load again.
+        const request = page.getByRole("button", { name: /Testes do backend: Bash/ });
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (
+            await request.waitFor({ timeout: 6000 }).then(
+              () => true,
+              () => false,
+            )
+          )
+            break;
+          await page.reload();
+          await page.waitForTimeout(1500);
+        }
+        await request.click();
         await page.waitForTimeout(500);
       },
     },
@@ -86,6 +112,68 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "reader", target: { hostId: ALFA, claudeSessionId: "hist-longo" } },
     },
     { name: "host", route: { name: "host", host: ALFA } },
+    // The Agente screen of a project: its four tabs, with a file of each open.
+    { name: "agente-mcp", route: agentRoute(ids) },
+    {
+      name: "agente-claude-md",
+      route: agentRoute(ids),
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: "CLAUDE.md" }).click();
+        await page
+          .getByRole("button", { name: /^CLAUDE\.md \(/ })
+          .first()
+          .click();
+        await page.waitForTimeout(600);
+      },
+    },
+    {
+      name: "agente-agentes",
+      route: agentRoute(ids),
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: /^(Agentes|Agents)$/ }).click();
+        await page.getByRole("button", { name: /^revisor \(/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
+    {
+      name: "agente-skills",
+      route: agentRoute(ids),
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: "Skills" }).click();
+        await page.getByRole("button", { name: /^deploy \(/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
+    // The timeline of a session, and its two dialogs.
+    {
+      name: "linha-do-tempo",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      prepare: openTimeline,
+    },
+    {
+      name: "linha-do-tempo-voltar",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByRole("button", { name: /\((turno|turn) 2\)$/ })
+          .first()
+          .click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "linha-do-tempo-bifurcar",
+      route: { name: "session", host: ALFA, id: ids.rewindSession },
+      prepare: async (page) => {
+        await openTimeline(page);
+        await page
+          .getByRole("button", { name: /^(Bifurcar daqui|Fork from here) \(/ })
+          .first()
+          .click();
+        await page.waitForTimeout(600);
+      },
+    },
     { name: "custos", route: { name: "costs" } },
     { name: "configuracoes", route: { name: "settings" } },
     {
@@ -144,8 +232,13 @@ export async function takeShots(
         const dir = join(SHOTS_DIR, `${theme}-${lang}`);
         mkdirSync(dir, { recursive: true });
         const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-        for (const shot of shots(ids)) {
+        for (const shot of shots(ids).filter((s) =>
+          s.name.includes(process.env.DEMO_SHOTS ?? ""),
+        )) {
           const page = await context.newPage();
+          page.on("pageerror", (error) =>
+            log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`),
+          );
           const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
           await page.goto(`${url}?${query}`);
           // The hosts connect and the screen loads its data.
@@ -156,7 +249,10 @@ export async function takeShots(
             .first()
             .waitFor({ timeout: 8000 })
             .catch(() => undefined);
-          await shot.prepare?.(page);
+          await shot.prepare?.(page).catch(async (error) => {
+            await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
+            throw error;
+          });
           await page.screenshot({ path: join(dir, `${shot.name}.png`) });
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });

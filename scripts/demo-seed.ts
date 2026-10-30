@@ -23,6 +23,56 @@ const FIXTURES = join(ROOT, "apps/daemon/test/fixtures/history");
 const LONG_TITLE =
   "Migrar a autenticação do painel administrativo para o provedor novo sem derrubar as sessões abertas nem perder os tokens de serviço";
 
+const ECO_SERVER = join(ROOT, "apps/daemon/test/fixtures/mcp/eco-server.ts");
+
+/** The project's MCP servers: a local one that can be tested and a remote one with a secret. */
+const MCP_JSON = JSON.stringify(
+  {
+    mcpServers: {
+      eco: { command: process.execPath, args: [ECO_SERVER] },
+      github: {
+        type: "http",
+        url: "https://mcp.example.com/github",
+        headers: { Authorization: "Bearer demo-token" },
+      },
+    },
+  },
+  null,
+  2,
+);
+
+const CLAUDE_MD = "# flightdeck-web\n\nUse TypeScript estrito. Rode os testes antes de commitar.\n";
+const AGENT_MD = `---
+name: revisor
+description: Revisa o diff antes do commit
+tools: Read, Grep
+model: sonnet
+---
+Você revisa código: aponte o risco antes do estilo.
+`;
+const SKILL_MD = `---
+name: deploy
+description: Publica o app em produção depois dos testes
+---
+1. Rode os testes.
+2. Gere o build.
+3. Publique.
+`;
+
+/** What the user keeps in ~/.claude and ~/.claude.json: the Agente screen shows it read-only. */
+function writeUserConfig(home: string): void {
+  mkdirSync(join(home, ".claude", "agents"), { recursive: true });
+  writeFileSync(join(home, ".claude", "CLAUDE.md"), "# Preferências\n\nResponda em português.\n");
+  writeFileSync(
+    join(home, ".claude", "agents", "pessoal.md"),
+    "---\nname: pessoal\ndescription: Meu estilo de resposta\n---\nSeja direto.\n",
+  );
+  writeFileSync(
+    join(home, ".claude.json"),
+    JSON.stringify({ mcpServers: { contexto: { command: "npx", args: ["-y", "contexto-mcp"] } } }),
+  );
+}
+
 /** Ids the prints open screens with. */
 export interface DemoIds {
   waitingSession: string;
@@ -32,6 +82,10 @@ export interface DemoIds {
   diffCard: string;
   /** A card whose workflow run waits at an open gate. */
   gateCard: string;
+  /** The project's name, as the Agente screen is opened with it. */
+  projectName: string;
+  /** A session with two turns that changed files: the timeline's rewind and fork. */
+  rewindSession: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -60,7 +114,10 @@ function repo(path: string, files: Record<string, string>): string {
   git(path, "config", "user.email", "demo@flightdeck.local");
   git(path, "config", "user.name", "Demo");
   git(path, "config", "commit.gpgsign", "false");
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(path, name), text);
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(path, name)), { recursive: true });
+    writeFileSync(join(path, name), text);
+  }
   git(path, "add", ".");
   git(path, "commit", "-q", "-m", "inicial");
   return path;
@@ -70,6 +127,8 @@ function repo(path: string, files: Record<string, string>): string {
 class Client {
   private readonly ws: WebSocket;
   private readonly acks = new Map<string, (ack: Ack) => void>();
+  /** The open permission request of each session, from the summaries (`sessions.watch`). */
+  readonly requests = new Map<string, string | undefined>();
   private seq = 0;
 
   private constructor(url: string) {
@@ -77,7 +136,10 @@ class Client {
     this.ws.addEventListener("message", (msg) => {
       const frame = parseServerMessage(String(msg.data));
       if (frame.type === "ack") this.acks.get(frame.id)?.(frame);
-      else if (frame.type === "ping") this.ws.send(JSON.stringify({ type: "pong", id: frame.id }));
+      else if (frame.type === "event" && frame.event.type === "session.summary") {
+        this.requests.set(frame.sessionId, frame.event.pendingPermissions[0]?.requestId);
+      } else if (frame.type === "ping")
+        this.ws.send(JSON.stringify({ type: "pong", id: frame.id }));
     });
   }
 
@@ -85,6 +147,7 @@ class Client {
     const client = new Client(url);
     await new Promise((ok) => client.ws.addEventListener("open", ok, { once: true }));
     await client.call("hello", { token, client: "flightdeck-demo-seed" });
+    await client.call("sessions.watch", {});
     return client;
   }
 
@@ -283,6 +346,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   mkdirSync(home, { recursive: true });
   process.env.HOME = home;
   process.env.USERPROFILE = home;
+  writeUserConfig(home);
 
   const alfa = await host(work, "alfa");
   const beta = await host(work, "beta");
@@ -293,6 +357,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const web = repo(join(alfa.projects, "flightdeck-web"), {
     "README.md": "# flightdeck-web\n",
     "app.ts": "export const versao = 1;\n",
+    ".mcp.json": MCP_JSON,
+    "CLAUDE.md": CLAUDE_MD,
+    ".claude/agents/revisor.md": AGENT_MD,
+    ".claude/skills/deploy/SKILL.md": SKILL_MD,
   });
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });
   commitWorkflow(web, "feature", WORKFLOW);
@@ -346,6 +414,49 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await until(async () => (await statusOf(bash.sessionId)) === "awaiting_permission", "Bash");
   await until(async () => (await statusOf(ended.sessionId)) === "idle", "sessão antiga");
   await client.call("session.close", { sessionId: ended.sessionId });
+
+  // Two turns that change files: each waits for a permission (the snapshot before it is taken by
+  // then), the seed edits the files as the agent would, and approving ends the turn.
+  const rewind = await session("Carrinho: soma do total", "[tool] Corrija a soma do carrinho.");
+  const claudeOf = async (sessionId: string) => {
+    const list = await client.call<{
+      sessions: Array<{ id: string; claudeSessionId: string | null }>;
+    }>("session.list", {});
+    return list.sessions.find((s) => s.id === sessionId)?.claudeSessionId;
+  };
+  const rewindClaude = (await until(() => claudeOf(rewind.sessionId), "id do carrinho")) as string;
+  const snapshotsOf = async () =>
+    (
+      await client.call<{ snapshots: Array<{ kind: string }> }>("snapshots.list", {
+        claudeSessionId: rewindClaude,
+      })
+    ).snapshots;
+  const editingTurn = async (edit: () => void, snapshotsAfter: number) => {
+    await until(
+      async () => (await snapshotsOf()).length >= snapshotsAfter - 1,
+      "snapshot do turno",
+    );
+    await until(async () => client.requests.get(rewind.sessionId), "pedido do carrinho");
+    edit();
+    await client.call("permission.respond", {
+      requestId: client.requests.get(rewind.sessionId),
+      decision: "allow",
+    });
+    await until(async () => (await snapshotsOf()).length >= snapshotsAfter, "fim do turno");
+  };
+  await editingTurn(() => writeFileSync(join(web, "app.ts"), "export const versao = 2;\n"), 2);
+  await client.call("session.send", {
+    sessionId: rewind.sessionId,
+    text: "[tool] Revise o arredondamento.",
+  });
+  await editingTurn(
+    () =>
+      writeFileSync(
+        join(web, "carrinho.ts"),
+        "export const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0);\n",
+      ),
+    4,
+  );
 
   // Terminal sessions (hooks): one running, one waiting for Edit, one for an MCP tool. The
   // seed watches the external sessions, so the receptor holds their requests open.
@@ -452,6 +563,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       emptyProject: empty.id,
       diffCard: diff.id,
       gateCard: gated.id,
+      projectName: "flightdeck-web",
+      rewindSession: rewind.sessionId,
     },
     stop: async () => {
       old.stop(true);

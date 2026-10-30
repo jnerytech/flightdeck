@@ -6,6 +6,7 @@ export const JOURNEYS: readonly string[] = [
   "revisao-comentar-e-enviar",
   "paleta-e-leitor",
   "tema-e-idioma",
+  "voltar-arquivos",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
