@@ -25,7 +25,14 @@ export type Route =
   /** A project's automations (phase 13). */
   | { name: "automations"; host: string; projectId: string; projectName: string }
   /** A project's actions that use a vault secret (phase 17). */
-  | { name: "actions"; host: string; projectId: string; projectName: string }
+  | {
+      name: "actions";
+      host: string;
+      projectId: string;
+      projectName: string;
+      /** Opens Nova ação filled with this (phase 18: a snippet turned into an action). */
+      draft?: { name: string; run: string[] };
+    }
   /** The automatic approvals' decisions and suspended sessions of a host (phase 13). */
   | { name: "auto-approvals"; host: string }
   /** A host's embedded terminal (phase 14). */

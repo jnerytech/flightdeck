@@ -215,4 +215,24 @@ describe("acoes-ui-form: criar, editar e remover uma ação do app", () => {
     expect(saved?.timeoutS).toBe(30);
     expect(saved?.approval).toBe("never");
   });
+
+  test("a route with a draft opens Nova ação already filled with its name and command (phase 18 hands over a snippet)", async () => {
+    const d = await online();
+    await act(async () => {
+      d.store.router.push({
+        name: "actions",
+        host: d.store.getState().hosts[0]?.id ?? "",
+        projectId: d.project.id,
+        projectName: "repo",
+        draft: { name: "limpar", run: ["rm", "-rf", "build"] },
+      });
+    });
+    await settle(() => dialog() !== null);
+    const name = screen.queryByLabelText("Nome da ação") as HTMLInputElement;
+    expect(name.value).toBe("limpar");
+    expect(name.disabled).toBe(false);
+    expect(
+      (screen.queryByLabelText("Comando, um argumento por linha") as HTMLInputElement).value,
+    ).toBe("rm\n-rf\nbuild");
+  });
 });
