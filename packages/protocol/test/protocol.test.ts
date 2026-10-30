@@ -245,6 +245,7 @@ const validCommands: Record<CommandType, unknown> = {
   "snippets.remove": { id: "s" },
   "snippets.trust": { projectPath: "/w/app", hash: "abc" },
   "snippets.favorite": { id: "s", favorite: true },
+  "snippets.importHistory": { limit: 20, reveal: false, select: ["abc"] },
   "askpass.ask": { ticket: "abc", prompt: "Password: " },
   "askpass.answer": { requestId: "r", secret: "s" },
   "review.list": { target: "card:k" },
