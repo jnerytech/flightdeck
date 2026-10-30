@@ -2,6 +2,8 @@ import type { MaintenanceStatus, PruneCounts } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/context";
+import type { Key, T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -12,15 +14,14 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const TABLE_LABELS: Record<string, string> = {
-  events: "eventos",
-  permission_requests: "pedidos de permissão",
-  external_sessions: "sessões externas",
-};
+const TABLES = ["events", "permission_requests", "external_sessions"];
 
-const describeCounts = (counts: PruneCounts) =>
+const describeCounts = (counts: PruneCounts, t: T) =>
   Object.entries(counts)
-    .map(([table, n]) => `${TABLE_LABELS[table] ?? table} ${n}`)
+    .map(
+      ([table, n]) =>
+        `${TABLES.includes(table) ? t(`maintenance.tables.${table}` as Key) : table} ${n}`,
+    )
     .join(", ");
 
 const when = (iso: string) => new Date(iso).toLocaleString();
@@ -30,6 +31,7 @@ const when = (iso: string) => new Date(iso).toLocaleString();
  * for real asks first; simulating only counts.
  */
 export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
+  const t = useT();
   const { store, hostId } = props;
   const [status, setStatus] = useState<MaintenanceStatus | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -46,59 +48,71 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
     const made = await store.hostCommand(hostId, "maintenance.backup", {});
     // Status first, so the message and the new numbers show up together.
     await refresh();
-    if (made) setResult(`backup criado: ${made.path}`);
+    if (made) setResult(t("maintenance.backupDone", { path: made.path }));
   };
   const prune = async (dryRun: boolean) => {
     setConfirming(false);
     const counts = await store.hostCommand(hostId, "maintenance.prune", { dryRun });
     await refresh();
     if (counts) {
-      setResult(`${dryRun ? "seriam apagados" : "apagados"}: ${describeCounts(counts)}`);
+      setResult(
+        t(dryRun ? "maintenance.wouldDelete" : "maintenance.deleted", {
+          counts: describeCounts(counts, t),
+        }),
+      );
     }
   };
 
   const last = status?.lastBackup;
   const cleanup = status?.lastPrune;
   return (
-    <section aria-label="Manutenção">
-      <Panel title="Manutenção">
+    <section aria-label={t("maintenance.title")}>
+      <Panel title={t("maintenance.title")}>
         {status ? (
           <ul className="flex flex-col gap-1 text-sm">
-            <li>{`banco: ${formatBytes(status.dbBytes)}`}</li>
+            <li>{t("maintenance.db", { size: formatBytes(status.dbBytes) })}</li>
             <li>
-              {`sessões: ${status.counts.sessions} · eventos: ${status.counts.events} · sessões externas: ${status.counts.externalSessions}`}
+              {t("maintenance.counts", {
+                sessions: status.counts.sessions,
+                events: status.counts.events,
+                external: status.counts.externalSessions,
+              })}
             </li>
             <li>
               {last
-                ? `último backup: ${when(last.at)} (${formatBytes(last.bytes)})`
-                : "último backup: nenhum ainda"}
+                ? t("maintenance.lastBackup", {
+                    when: when(last.at),
+                    size: formatBytes(last.bytes),
+                  })
+                : t("maintenance.noBackup")}
             </li>
             <li>
               {cleanup
-                ? `última limpeza: ${when(cleanup.at)}${cleanup.dryRun ? " (simulação)" : ""}`
-                : "última limpeza: nenhuma ainda"}
+                ? t("maintenance.lastCleanup", { when: when(cleanup.at) }) +
+                  (cleanup.dryRun ? t("maintenance.dryRun") : "")
+                : t("maintenance.noCleanup")}
             </li>
           </ul>
         ) : (
-          <p className="text-muted-foreground text-sm">consultando…</p>
+          <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
         )}
         {result && <p className="text-sm">{result}</p>}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void backup()}>
-            Fazer backup agora
+            {t("maintenance.backup")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => void prune(true)}>
-            Simular
+            {t("maintenance.dry")}
           </Button>
           <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
-            Limpar
+            {t("maintenance.clean")}
           </Button>
         </div>
       </Panel>
       {confirming && (
         <ConfirmDialog
-          message="Apagar os dados antigos deste host conforme a retenção configurada? Eventos de conversas encerradas e sessões externas antigas não voltam (a não ser por um backup)."
-          confirmLabel="Limpar"
+          message={t("maintenance.message")}
+          confirmLabel={t("maintenance.clean")}
           destructive
           onConfirm={() => void prune(false)}
           onCancel={() => setConfirming(false)}

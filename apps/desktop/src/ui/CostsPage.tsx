@@ -6,6 +6,8 @@ import { Panel } from "@/components/layout/panel";
 import { Toolbar } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/context";
+import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { daysBetween, PERIOD_LABELS, type Period, periodRange, usd } from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
@@ -49,6 +51,7 @@ export function CostsPage(props: {
   state: AppState;
   onOpenSession(hostId: string, session: TopSession): void;
 }) {
+  const t = useT();
   const { store, state } = props;
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
@@ -94,12 +97,12 @@ export function CostsPage(props: {
     "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
     <Page
-      title="Custos"
-      subtitle="equivalente em API, estimado; em assinatura, não é cobrado"
+      title={t("costsUi.title")}
+      subtitle={t("costsUi.subtitle")}
       toolbar={
-        <Toolbar label="Filtros dos custos">
+        <Toolbar label={t("costsUi.filters")}>
           <select
-            aria-label="Host dos custos"
+            aria-label={t("costsUi.host")}
             className={select}
             value={hostId}
             onChange={(e) => setHostId(e.target.value)}
@@ -119,21 +122,21 @@ export function CostsPage(props: {
               className="aria-pressed:bg-accent"
               onClick={() => setPeriod(p)}
             >
-              {PERIOD_LABELS[p]}
+              {t(`periods.${p}` as Key)}
             </Button>
           ))}
           {period === "range" && (
             <>
               <Input
                 type="date"
-                aria-label="De"
+                aria-label={t("costsUi.from")}
                 className="h-8 w-36 text-xs"
                 value={range.from}
                 onChange={(e) => setRange({ ...range, from: e.target.value })}
               />
               <Input
                 type="date"
-                aria-label="Até"
+                aria-label={t("costsUi.to")}
                 className="h-8 w-36 text-xs"
                 value={range.to}
                 onChange={(e) => setRange({ ...range, to: e.target.value })}
@@ -141,12 +144,12 @@ export function CostsPage(props: {
             </>
           )}
           <select
-            aria-label="Projeto"
+            aria-label={t("costsUi.project")}
             className={select}
             value={filters.projectKey ?? ""}
             onChange={(e) => setFilter("projectKey", e.target.value)}
           >
-            <option value="">Todos os projetos</option>
+            <option value="">{t("costsUi.allProjects")}</option>
             {(all?.byProject ?? []).map((p) => (
               <option key={p.projectKey} value={p.projectKey}>
                 {p.projectKey}
@@ -154,12 +157,12 @@ export function CostsPage(props: {
             ))}
           </select>
           <select
-            aria-label="Modelo"
+            aria-label={t("costsUi.model")}
             className={select}
             value={filters.model ?? ""}
             onChange={(e) => setFilter("model", e.target.value)}
           >
-            <option value="">Todos os modelos</option>
+            <option value="">{t("costsUi.allModels")}</option>
             {(all?.byModel ?? []).map((m) => (
               <option key={m.model} value={m.model}>
                 {m.model}
@@ -167,12 +170,12 @@ export function CostsPage(props: {
             ))}
           </select>
           <select
-            aria-label="Origem"
+            aria-label={t("costsUi.origin")}
             className={select}
             value={filters.origin ?? ""}
             onChange={(e) => setFilter("origin", e.target.value)}
           >
-            <option value="">Todas as origens</option>
+            <option value="">{t("costsUi.allOrigins")}</option>
             {ORIGINS.map((o) => (
               <option key={o} value={o}>
                 {o}
@@ -180,7 +183,7 @@ export function CostsPage(props: {
             ))}
           </select>
           <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
-            Exportar CSV
+            {t("costsUi.export")}
           </Button>
         </Toolbar>
       }
@@ -197,9 +200,9 @@ export function CostsPage(props: {
           <>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
               {[
-                ["Custo estimado", usd(summary.totals.costUsd)],
-                ["Tokens", String(tokensOf(summary.totals.tokens))],
-                ["Economia do cache", usd(summary.totals.cacheSavingsUsd)],
+                [t("costsUi.estimated"), usd(summary.totals.costUsd)],
+                [t("costsUi.tokens"), String(tokensOf(summary.totals.tokens))],
+                [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
                   <dt className="text-muted-foreground text-xs">{label}</dt>
@@ -210,13 +213,12 @@ export function CostsPage(props: {
               ))}
             </dl>
             {(status?.unpriced ?? []).map((u) => (
-              <p
-                key={u.model}
-                className="text-muted-foreground text-xs"
-              >{`sem preço: ${u.model}`}</p>
+              <p key={u.model} className="text-muted-foreground text-xs">
+                {t("costsUi.unpriced", { model: u.model })}
+              </p>
             ))}
-            <section aria-label="Custo por dia">
-              <Panel title="Custo por dia">
+            <section aria-label={t("costsUi.perDay")}>
+              <Panel title={t("costsUi.perDay")}>
                 <div className="flex h-40 items-end gap-1">
                   {daysBetween(days.from, days.to).map((day) => (
                     <div
@@ -245,21 +247,21 @@ export function CostsPage(props: {
             </section>
             <div className="grid gap-4 md:grid-cols-3">
               <Breakdown
-                name="Por projeto"
+                name={t("costsUi.byProject")}
                 rows={summary.byProject.map((p) => ({ label: p.projectKey, costUsd: p.costUsd }))}
               />
               <Breakdown
-                name="Por modelo"
+                name={t("costsUi.byModel")}
                 rows={summary.byModel.map((m) => ({ label: m.model, costUsd: m.costUsd }))}
               />
               <Breakdown
-                name="Por origem"
+                name={t("costsUi.byOrigin")}
                 rows={summary.byOrigin.map((o) => ({ label: o.origin, costUsd: o.costUsd }))}
               />
             </div>
             <QuotaCharts key={hostId} store={store} hostId={hostId} />
-            <section aria-label="Top sessões">
-              <Panel title="Top sessões">
+            <section aria-label={t("costsUi.top")}>
+              <Panel title={t("costsUi.top")}>
                 <ul className="flex flex-col">
                   {summary.topSessions.map((s) => (
                     <li key={s.claudeSessionId}>

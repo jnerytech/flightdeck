@@ -1,4 +1,5 @@
 import type { Budget } from "@flightdeck/protocol";
+import { type Key, type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { usd } from "./costs.ts";
 
@@ -7,16 +8,32 @@ export const ACTION_LABELS: Record<Budget["action"], string> = {
   queue: "segurar cards novos",
 };
 
-/** "orçamento do host (dia)", "orçamento de <projeto> (mês)". */
-export function budgetLabel(budget: Pick<Budget, "scope" | "projectKey" | "period">): string {
-  const scope = budget.scope === "host" ? "do host" : `de ${budget.projectKey}`;
-  return `orçamento ${scope} (${budget.period === "day" ? "dia" : "mês"})`;
+const PT = translator("pt-BR");
+
+/** "orçamento do host (dia)". */
+export function budgetLabel(
+  budget: Pick<Budget, "scope" | "projectKey" | "period">,
+  t: T = PT,
+): string {
+  const scope =
+    budget.scope === "host"
+      ? t("budgets.scopeHost")
+      : t("budgets.scopeProject", { project: budget.projectKey ?? "" });
+  return t("budgets.label", {
+    scope,
+    period: t(budget.period === "day" ? "budgets.day" : "budgets.month"),
+  });
 }
 
 /** "orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)". */
-export function budgetLine(budget: Budget): string {
-  const percent = Math.round(budget.fraction * 100);
-  return `${budgetLabel(budget)} · ${ACTION_LABELS[budget.action]} · ${usd(budget.spentUsd)} de ${usd(budget.limitUsd)} (${percent}%)`;
+export function budgetLine(budget: Budget, t: T = PT): string {
+  return t("budgets.line", {
+    label: budgetLabel(budget, t),
+    action: t(`budgets.${budget.action}` as Key),
+    spent: usd(budget.spentUsd),
+    limit: usd(budget.limitUsd),
+    percent: Math.round(budget.fraction * 100),
+  });
 }
 
 export interface BudgetAlert {
@@ -25,13 +42,18 @@ export interface BudgetAlert {
 }
 
 /** Budgets that crossed a threshold in their current period, for "Precisa de você". */
-export function budgetAlerts(state: AppState): BudgetAlert[] {
+export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
   return state.hosts.flatMap((host) =>
     (state.budgets[host.id] ?? [])
       .filter((b) => b.crossed.length > 0)
       .map((b) => ({
         hostId: host.id,
-        label: `${host.name} · ${budgetLabel(b)}: ${Math.round(b.fraction * 100)}% de ${usd(b.limitUsd)}`,
+        label: t("budgets.alert", {
+          host: host.name,
+          label: budgetLabel(b, t),
+          percent: Math.round(b.fraction * 100),
+          limit: usd(b.limitUsd),
+        }),
       })),
   );
 }

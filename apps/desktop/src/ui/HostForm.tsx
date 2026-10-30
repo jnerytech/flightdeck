@@ -4,6 +4,7 @@ import { Spinner, useBusy } from "@/components/feedback/busy";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/context";
 
 export interface HostDraft {
   name: string;
@@ -37,6 +38,7 @@ export function HostForm(props: {
   /** May return a promise: the form is busy until it settles (the connection is tested). */
   onSubmit(draft: HostDraft): unknown;
 }) {
+  const t = useT();
   const id = useId();
   const [busy, run] = useBusy();
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
@@ -53,12 +55,12 @@ export function HostForm(props: {
       onSubmit={(e) => {
         e.preventDefault();
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
-          setProblem("preencha nome, endereço, porta e token");
+          setProblem(t("hostForm.missing"));
           return;
         }
         const port = Number(draft.port);
         if (!/^\d+$/.test(draft.port) || port < 1 || port > 65535) {
-          setProblem("porta inválida");
+          setProblem(t("hostForm.badPort"));
           return;
         }
         setProblem(null);
@@ -69,7 +71,7 @@ export function HostForm(props: {
     >
       {props.notice && <InlineNotice>{props.notice}</InlineNotice>}
       <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-link`}>
-        Link de pareamento
+        {t("hostForm.link")}
         <Input
           id={`${id}-link`}
           value={link}
@@ -86,11 +88,16 @@ export function HostForm(props: {
       </label>
       {linkError && <small className="text-status-error text-xs">{linkError}</small>}
       <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-name`}>
-        Nome
-        <Input id={`${id}-name`} value={draft.name} onChange={set("name")} placeholder="meu pc" />
+        {t("hostForm.name")}
+        <Input
+          id={`${id}-name`}
+          value={draft.name}
+          onChange={set("name")}
+          placeholder={t("hostForm.namePlaceholder")}
+        />
       </label>
       <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-address`}>
-        Endereço
+        {t("hostForm.address")}
         <Input
           id={`${id}-address`}
           value={draft.address}
@@ -99,11 +106,11 @@ export function HostForm(props: {
         />
       </label>
       <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-port`}>
-        Porta
+        {t("hostForm.port")}
         <Input id={`${id}-port`} value={draft.port} onChange={set("port")} inputMode="numeric" />
       </label>
       <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-token`}>
-        Token
+        {t("hostForm.token")}
         <Input id={`${id}-token`} type="password" value={draft.token} onChange={set("token")} />
       </label>
       {error && (
@@ -113,7 +120,7 @@ export function HostForm(props: {
       )}
       <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
         {busy && <Spinner />}
-        Testar e adicionar
+        {t("hostForm.submit")}
       </Button>
     </form>
   );

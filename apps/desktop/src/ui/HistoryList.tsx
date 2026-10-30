@@ -73,18 +73,25 @@ export function HistoryList(props: {
   return (
     <section className="flex h-full min-h-0 flex-col">
       <div className="flex flex-col gap-2 border-b px-4 py-3">
-        <h2 className="font-semibold text-base">{`Histórico de ${props.hostName}`}</h2>
+        <h2 className="font-semibold text-base">
+          {t("historyUi.title", { host: props.hostName })}
+        </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <Input aria-label="Pasta" placeholder="Pasta" className="w-32" {...field("cwd")} />
-          <Input aria-label="De" type="date" className="w-36" {...field("from")} />
-          <Input aria-label="Até" type="date" className="w-36" {...field("to")} />
-          <select aria-label="Origem" className={SELECT_CLASS} {...field("origin")}>
-            <option value="">Todas as origens</option>
-            <option value="flightdeck">Flightdeck</option>
-            <option value="external">Externa</option>
+          <Input
+            aria-label={t("historyUi.folder")}
+            placeholder={t("historyUi.folder")}
+            className="w-32"
+            {...field("cwd")}
+          />
+          <Input aria-label={t("historyUi.from")} type="date" className="w-36" {...field("from")} />
+          <Input aria-label={t("historyUi.to")} type="date" className="w-36" {...field("to")} />
+          <select aria-label={t("historyUi.origin")} className={SELECT_CLASS} {...field("origin")}>
+            <option value="">{t("historyUi.allOrigins")}</option>
+            <option value="flightdeck">{t("historyUi.flightdeck")}</option>
+            <option value="external">{t("historyUi.external")}</option>
           </select>
           <Button variant="outline" onClick={() => setFilter(toFilter(draft))}>
-            Filtrar
+            {t("historyUi.filter")}
           </Button>
         </div>
       </div>
@@ -94,7 +101,7 @@ export function HistoryList(props: {
           <EmptyState icon={History} title={t("states.emptyHistory")} />
         )}
         {!loading && sessions && sessions.length > 0 && (
-          <ul aria-label="Sessões do histórico" className="flex flex-col">
+          <ul aria-label={t("historyUi.list")} className="flex flex-col">
             {sessions.map((s) => (
               <li
                 key={s.claudeSessionId}
@@ -119,7 +126,7 @@ export function HistoryList(props: {
                   </span>
                   {s.maybeActive && (
                     <span className="shrink-0 text-status-needs-you text-xs">
-                      possivelmente em uso
+                      {t("reader.maybeActive")}
                     </span>
                   )}
                 </button>

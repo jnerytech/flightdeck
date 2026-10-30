@@ -50,9 +50,9 @@ export function Settings(props: {
   /** A checkbox with its sentence on its right. */
   const check = "flex items-center gap-2 text-sm";
   return (
-    <Page title="Configurações">
+    <Page title={t("prefs.title")}>
       <div className="flex max-w-2xl flex-col gap-5">
-        <Panel title="Aparência">
+        <Panel title={t("prefs.appearance")}>
           <div className="flex items-center justify-between gap-4 text-sm">
             <span>{t("settings.theme")}</span>
             <select
@@ -94,14 +94,14 @@ export function Settings(props: {
             </select>
           </div>
         </Panel>
-        <Panel title="Janela">
+        <Panel title={t("prefs.window")}>
           <label className={check}>
             <input
               type="checkbox"
               checked={settings.closeToTray}
               onChange={(e) => props.onCloseToTray(e.target.checked)}
             />
-            Fechar a janela manda para a bandeja
+            {t("prefs.closeToTray")}
           </label>
           <label className={check}>
             <input
@@ -110,40 +110,37 @@ export function Settings(props: {
               disabled={!settings.autostartSupported}
               onChange={(e) => props.onAutostart(e.target.checked)}
             />
-            Iniciar com o Windows
+            {t("prefs.autostart")}
           </label>
           {!settings.autostartSupported && (
-            <small className="text-muted-foreground text-xs">indisponível nesta plataforma</small>
+            <small className="text-muted-foreground text-xs">{t("prefs.unavailable")}</small>
           )}
         </Panel>
         {settings.updaterSupported && (
-          <Panel title="Atualizações">
+          <Panel title={t("prefs.updates")}>
             <label className={check}>
               <input
                 type="checkbox"
-                aria-label="Avisar sobre atualizações"
+                aria-label={t("prefs.notifyUpdates")}
                 checked={settings.notifyUpdates}
                 onChange={(e) => props.onNotifyUpdates(e.target.checked)}
               />
-              Avisar sobre atualizações
+              {t("prefs.notifyUpdates")}
             </label>
             <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
-              Procurar atualização agora
+              {t("prefs.checkNow")}
             </Button>
             {props.appUpdate.upToDate && (
-              <p className="text-muted-foreground text-sm">Você está na versão mais recente</p>
+              <p className="text-muted-foreground text-sm">{t("prefs.upToDate")}</p>
             )}
           </Panel>
         )}
-        <Panel title="Atalho global">
-          <small className="text-muted-foreground text-xs">
-            Traz o Flightdeck para frente com a busca aberta, mesmo em segundo plano. Dentro do app,
-            Ctrl+K continua abrindo a busca.
-          </small>
+        <Panel title={t("prefs.shortcut")}>
+          <small className="text-muted-foreground text-xs">{t("prefs.shortcutNote")}</small>
           {settings.shortcutProblem && <InlineNotice>{settings.shortcutProblem}</InlineNotice>}
           <div className="flex items-center gap-2">
             <Input
-              aria-label="Atalho global"
+              aria-label={t("prefs.shortcut")}
               className="w-56"
               value={shortcut}
               disabled={shortcutOff}
@@ -154,7 +151,7 @@ export function Settings(props: {
               disabled={shortcutOff}
               onClick={() => props.onGlobalShortcut(shortcut)}
             >
-              Salvar atalho
+              {t("prefs.saveShortcut")}
             </Button>
           </div>
           {settings.shortcutError && (
@@ -162,7 +159,7 @@ export function Settings(props: {
           )}
           {shortcutOff && (
             <small className="text-muted-foreground text-xs">
-              atalho global indisponível nesta plataforma
+              {t("prefs.shortcutUnavailable")}
             </small>
           )}
         </Panel>

@@ -31,7 +31,7 @@ export function NeedsYou(props: {
   const { store, state, go } = props;
   const { t } = store.i18n;
   const entries: Entry[] = [
-    ...budgetAlerts(state).map((a) => ({
+    ...budgetAlerts(state, t).map((a) => ({
       kind: "alert" as const,
       key: `alert/${a.hostId}/${a.label}`,
       label: a.label,

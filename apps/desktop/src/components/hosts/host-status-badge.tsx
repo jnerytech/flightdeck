@@ -1,6 +1,7 @@
 import type { T } from "@/i18n/index";
 import type { ConnectionStatus } from "@/lib/host-connection";
 import { type HostTone, hostStatusView } from "@/lib/host-status";
+import { cn } from "@/lib/utils";
 
 // Whole class names, so Tailwind finds them; colors come from the state tokens.
 const TONE_CLASS: Record<HostTone, string> = {
@@ -14,5 +15,5 @@ const TONE_CLASS: Record<HostTone, string> = {
 /** A host's connection as colored text: offline and reconnecting never look alike. */
 export function HostStatusBadge(props: { status: ConnectionStatus; t: T }) {
   const { label, tone } = hostStatusView(props.status, props.t);
-  return <span className={`text-xs ${TONE_CLASS[tone]}`}>{label}</span>;
+  return <span className={cn("text-xs", TONE_CLASS[tone])}>{label}</span>;
 }

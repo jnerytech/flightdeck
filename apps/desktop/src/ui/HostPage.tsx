@@ -5,6 +5,7 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -29,6 +30,7 @@ export function HostPage(props: {
   onReconnect(): void;
   onRemove(): void;
 }) {
+  const t = useT();
   const { host } = props;
   const [name, setName] = useState(host.name);
   const nameId = useId();
@@ -59,7 +61,7 @@ export function HostPage(props: {
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">
-              <span>incompatível: atualize o daemon</span>
+              <span>{t("hostPage.incompatible")}</span>
               <span>{host.incompatibility}</span>
               <span>
                 No host, com o binário desta versão do app ({APP_VERSION}):{" "}
@@ -79,22 +81,28 @@ export function HostPage(props: {
             costs={hasFeature(info?.features, "costs", false)}
           />
         )}
-        <Panel title="Informações">
+        <Panel title={t("hostPage.info")}>
           {info ? (
             <ul className="flex flex-col gap-1 text-sm">
               <li>{`${info.os} · ${info.arch}`}</li>
-              <li>{`flightdeckd ${info.daemonVersion}`}</li>
-              <li>{`app ${APP_VERSION}`}</li>
+              <li>{t("hostPage.daemon", { version: info.daemonVersion })}</li>
+              <li>{t("hostPage.app", { version: APP_VERSION })}</li>
               {info.daemonVersion !== APP_VERSION && (
-                <li className="text-status-needs-you">versão diferente da do app</li>
+                <li className="text-status-needs-you">{t("hostPage.differs")}</li>
               )}
-              <li>{`claude: ${info.claudeVersion ?? "não informado"}`}</li>
-              <li>{`sessões ativas: ${info.activeSessions}`}</li>
-              <li>{`no ar há ${info.uptimeSec} s`}</li>
-              <li>{`latência: ${host.latencyMs === null ? "—" : `${host.latencyMs} ms`}`}</li>
+              <li>
+                {t("hostPage.claude", { version: info.claudeVersion ?? t("hostPage.unknown") })}
+              </li>
+              <li>{t("hostPage.active", { n: info.activeSessions })}</li>
+              <li>{t("hostPage.uptime", { n: info.uptimeSec })}</li>
+              <li>
+                {t("hostPage.latency", {
+                  value: host.latencyMs === null ? "—" : `${host.latencyMs} ms`,
+                })}
+              </li>
             </ul>
           ) : (
-            <p className="text-muted-foreground text-sm">informações indisponíveis</p>
+            <p className="text-muted-foreground text-sm">{t("hostPage.unavailable")}</p>
           )}
         </Panel>
         <DaemonUpdate store={store} host={host} />
@@ -105,15 +113,17 @@ export function HostPage(props: {
           </InlineNotice>
         )}
         {showHooks && (
-          <section aria-label="Hooks do Claude Code">
-            <Panel title="Hooks do Claude Code">
-              <p className="text-sm">{hooks ? HOOK_LABELS[hooks.status] : "consultando…"}</p>
+          <section aria-label={t("hostPage.hooks")}>
+            <Panel title={t("hostPage.hooks")}>
+              <p className="text-sm">
+                {hooks ? HOOK_LABELS[hooks.status] : t("hostPage.hooksAsking")}
+              </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setConfirming("install")}>
-                  Instalar hooks
+                  {t("hostPage.install")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setConfirming("uninstall")}>
-                  Remover hooks
+                  {t("hostPage.uninstall")}
                 </Button>
               </div>
             </Panel>
@@ -126,18 +136,20 @@ export function HostPage(props: {
           <ConfirmDialog
             message={
               confirming === "install"
-                ? `Gravar os hooks do Flightdeck em ${settingsPath}? As outras chaves e hooks continuam, e uma cópia vai para settings.json.flightdeck-backup.`
-                : `Remover os hooks do Flightdeck de ${settingsPath}? As outras entradas continuam.`
+                ? t("hostPage.installMessage", { path: settingsPath })
+                : t("hostPage.uninstallMessage", { path: settingsPath })
             }
-            confirmLabel={confirming === "install" ? "Instalar hooks" : "Remover hooks"}
+            confirmLabel={
+              confirming === "install" ? t("hostPage.install") : t("hostPage.uninstall")
+            }
             destructive={confirming === "uninstall"}
             onConfirm={() => void apply()}
             onCancel={() => setConfirming(null)}
           />
         )}
-        <Panel title="Host">
+        <Panel title={t("hostPage.host")}>
           <label className="flex flex-col gap-1 text-sm" htmlFor={nameId}>
-            Nome do host
+            {t("hostPage.nameLabel")}
             <Input id={nameId} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <Button
@@ -145,20 +157,20 @@ export function HostPage(props: {
             className="self-start"
             onClick={() => name.trim() && props.onRename(name.trim())}
           >
-            Salvar nome
+            {t("hostPage.saveName")}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={props.onReconnect}>
-              Reconectar
+              {t("hostPage.reconnect")}
             </Button>
             <Button variant="destructive" onClick={() => setRemoving(true)}>
-              Remover host
+              {t("hostPage.remove")}
             </Button>
           </div>
           {removing && (
             <ConfirmDialog
-              message={`Remover o host ${host.name}? As sessões dele saem da lista; o daemon continua rodando.`}
-              confirmLabel="Remover host"
+              message={t("sidebar.removeConfirm", { host: host.name })}
+              confirmLabel={t("hostPage.remove")}
               destructive
               onConfirm={() => {
                 setRemoving(false);

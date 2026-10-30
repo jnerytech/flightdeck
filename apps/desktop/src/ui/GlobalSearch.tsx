@@ -51,6 +51,7 @@ export function GlobalSearch(props: {
   onOpenHit(hit: GlobalHit): void;
   onGo(target: PaletteTarget): void;
 }) {
+  const t = props.store.i18n.t;
   const { search, hosts } = props.state;
   const { store } = props;
   const [query, setQuery] = useState(search?.query ?? "");
@@ -113,7 +114,7 @@ export function GlobalSearch(props: {
     <dialog
       open
       className="fixed top-20 left-1/2 z-50 m-0 flex max-h-[70vh] w-[min(40rem,92vw)] -translate-x-1/2 flex-col gap-3 overflow-y-auto rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg"
-      aria-label="Busca global"
+      aria-label={t("searchUi.label")}
       onKeyDown={(e) => {
         if (e.key === "Escape") props.onClose();
       }}
@@ -125,8 +126,8 @@ export function GlobalSearch(props: {
         }}
       >
         <Input
-          aria-label="Buscar no histórico"
-          placeholder="Sessões, cards, projetos, ações… (Enter busca no histórico)"
+          aria-label={t("searchUi.input")}
+          placeholder={t("searchUi.placeholder")}
           value={query}
           onKeyDown={onKeyDown}
           onChange={(e) => {
@@ -158,16 +159,18 @@ export function GlobalSearch(props: {
       ))}
       {search && (
         <section className="flex flex-col gap-1">
-          <h3 className="px-2 font-medium text-muted-foreground text-xs">Histórico</h3>
+          <h3 className="px-2 font-medium text-muted-foreground text-xs">
+            {t("searchUi.history")}
+          </h3>
           <ul className="flex flex-col px-2 text-muted-foreground text-xs">
             {search.waiting.map((id) => (
-              <li key={id}>{`${name(id)}: buscando…`}</li>
+              <li key={id}>{t("searchUi.searching", { host: name(id) })}</li>
             ))}
             {search.silent.map((id) => (
-              <li key={id}>{`${name(id)}: sem resposta`}</li>
+              <li key={id}>{t("searchUi.silent", { host: name(id) })}</li>
             ))}
           </ul>
-          <ul aria-label="Resultados da busca" className="flex flex-col">
+          <ul aria-label={t("searchUi.results")} className="flex flex-col">
             {search.hits.map((hit) => (
               <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
                 <button

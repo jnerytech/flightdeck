@@ -1,6 +1,7 @@
 import type { UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
+import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { periodRange, usd } from "../lib/costs.ts";
 
@@ -23,6 +24,7 @@ export function UsagePanel(props: {
   online: boolean;
   costs: boolean;
 }) {
+  const t = useT();
   const { store, hostId, online, costs } = props;
   const [rows, setRows] = useState<Row[]>([]);
   useEffect(() => {
@@ -53,21 +55,19 @@ export function UsagePanel(props: {
   }, [store, hostId, online, costs]);
 
   return (
-    <section aria-label="Uso dos últimos 7 dias">
-      <Panel title="Uso dos últimos 7 dias">
+    <section aria-label={t("usageUi.title")}>
+      <Panel title={t("usageUi.title")}>
         <p className="text-muted-foreground text-xs">
-          {costs
-            ? "Todas as sessões do host; custo estimado em preços de API."
-            : "Só sessões gerenciadas; o custo é a estimativa que o SDK informa."}
+          {costs ? t("usageUi.allSessions") : t("usageUi.managedOnly")}
         </p>
         <table className="w-full text-left text-sm tabular-nums">
           <thead className="text-muted-foreground text-xs">
             <tr>
-              <th className="py-1 font-medium">Dia</th>
-              <th className="py-1 font-medium">Projeto</th>
-              <th className="py-1 font-medium">Custo</th>
-              <th className="py-1 font-medium">Tokens</th>
-              {!costs && <th className="py-1 font-medium">Turnos</th>}
+              <th className="py-1 font-medium">{t("usageUi.day")}</th>
+              <th className="py-1 font-medium">{t("usageUi.project")}</th>
+              <th className="py-1 font-medium">{t("usageUi.cost")}</th>
+              <th className="py-1 font-medium">{t("usageUi.tokens")}</th>
+              {!costs && <th className="py-1 font-medium">{t("usageUi.turns")}</th>}
             </tr>
           </thead>
           <tbody>
