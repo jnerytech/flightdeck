@@ -50,7 +50,11 @@ export const en: Dictionary = {
       port: "Port",
       user: "User",
       auth: "Authentication",
-      authOption: { agent: "Host SSH agent", keyFile: "Key file" },
+      authOption: {
+        agent: "Host SSH agent",
+        keyFile: "Key file",
+        password: "Password (asked on connect)",
+      },
       keyFile: "Key file path",
       via: "Opened by host",
       jump: "Jump (ProxyJump)",
@@ -73,6 +77,11 @@ export const en: Dictionary = {
     viaNoSsh: "The host {host} does not have the SSH feature.",
     copySuffix: "{name} (copy)",
     removeMessage: "Remove the destination {name}? Its keys and passwords are not deleted.",
+    askpass: {
+      title: { password: "Password for {name}", passphrase: "Key passphrase for {name}" },
+      label: { password: "Password", passphrase: "Passphrase" },
+      send: "Send",
+    },
     hostKey: {
       confirmTitle: "Server key of {name}",
       confirmMessage: "First connection to {name}. Check the fingerprint before trusting this key.",

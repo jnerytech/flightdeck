@@ -1,6 +1,7 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
@@ -310,6 +311,7 @@ export function App({ store }: { store: AppStore }) {
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}
+          <AskpassPrompt store={store} state={state} />
           {state.searchOpen && (
             <GlobalSearch
               state={state}

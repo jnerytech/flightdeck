@@ -52,7 +52,11 @@ export const ptBR = {
       port: "Porta",
       user: "Usuário",
       auth: "Autenticação",
-      authOption: { agent: "Agente SSH do host", keyFile: "Chave em arquivo" },
+      authOption: {
+        agent: "Agente SSH do host",
+        keyFile: "Chave em arquivo",
+        password: "Senha (pedida ao conectar)",
+      },
       keyFile: "Arquivo de chave",
       via: "Aberto pelo host",
       jump: "Salto (ProxyJump)",
@@ -75,6 +79,11 @@ export const ptBR = {
     viaNoSsh: "O host {host} não tem o recurso de SSH.",
     copySuffix: "{name} (cópia)",
     removeMessage: "Remover o destino {name}? As chaves e senhas dele não são apagadas.",
+    askpass: {
+      title: { password: "Senha de {name}", passphrase: "Frase da chave de {name}" },
+      label: { password: "Senha", passphrase: "Frase" },
+      send: "Enviar",
+    },
     hostKey: {
       confirmTitle: "Chave do servidor de {name}",
       confirmMessage:

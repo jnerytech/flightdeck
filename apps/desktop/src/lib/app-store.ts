@@ -1,4 +1,5 @@
 import type {
+  AskpassRequest,
   Budget,
   BudgetInput,
   BudgetUpdated,
@@ -119,6 +120,8 @@ export interface AppState {
   quota: Record<string, QuotaState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
+  askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
   ssh: Record<string, SshTarget[]>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
@@ -488,6 +491,7 @@ export class AppStore {
       quota: {},
       budgets: {},
       ssh: {},
+      askpass: [],
       externals: {},
       externalRequests: {},
       meta: {},
@@ -1408,6 +1412,9 @@ export class AppStore {
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
+      onAskpass: (request) => {
+        this.update({ askpass: [...this.state.askpass, { hostId: config.id, request }] });
+      },
     });
     this.connections.set(config.id, conn);
     // A session selected before its host had a connection (a route opened at start-up).
@@ -1479,6 +1486,10 @@ export class AppStore {
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
       return { ...h, hostInfo, ...(done ? { daemonUpdate: null } : {}) };
     });
+    // ssh asks for passwords through the daemon: this app is who answers.
+    if (hasFeature(hostInfo?.features, "ssh", false)) {
+      void conn.request("askpass.watch", {}).catch(() => null);
+    }
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
@@ -1657,6 +1668,19 @@ export class AppStore {
       viaHost: null,
       jump,
     });
+  }
+
+  /**
+   * Answers a ssh prompt (`null` refuses, and ssh fails at once). The secret is sent and not
+   * kept: the request leaves the list, and nothing else holds the answer.
+   */
+  async answerAskpass(hostId: string, requestId: string, secret: string | null): Promise<void> {
+    this.update({
+      askpass: this.state.askpass.filter(
+        (item) => !(item.hostId === hostId && item.request.requestId === requestId),
+      ),
+    });
+    await this.hostCommand(hostId, "askpass.answer", { requestId, secret });
   }
 
   /** Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused. */

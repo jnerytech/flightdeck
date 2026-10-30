@@ -1,4 +1,5 @@
 import {
+  type AskpassRequest,
   type BudgetUpdated,
   type Card,
   type ChangesUpdated,
@@ -58,6 +59,7 @@ export interface HostConnectionOptions {
   onCardUpdated?(card: Card): void;
   /** A transcript of the host gained lines (after `watchHistory`). */
   onHistoryChanged?(change: HistoryChanged): void;
+  onAskpass?(request: AskpassRequest): void;
   /** An external session or one of its permission requests changed (after `watchExternal`). */
   onExternal?(frame: ExternalUpdated | ExternalPermissionFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
@@ -156,6 +158,7 @@ export class HostConnection {
       if (message.type === "event") return this.opts.onEvent(message);
       if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
       if (message.type === "history.changed") return this.opts.onHistoryChanged?.(message);
+      if (message.type === "askpass.request") return this.opts.onAskpass?.(message);
       if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });

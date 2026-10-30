@@ -8,7 +8,9 @@ import type { AppState, AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
-const AUTHS: SshAuth[] = ["agent", "key-file"];
+const AUTHS: SshAuth[] = ["agent", "key-file", "password"];
+/** The dictionary key of each authentication the form offers. */
+const AUTH_KEY = { agent: "agent", "key-file": "keyFile", password: "password" } as const;
 
 const split = (text: string, separator: string): string[] =>
   text
@@ -130,7 +132,7 @@ export function TargetForm(props: {
         >
           {AUTHS.map((option) => (
             <option key={option} value={option}>
-              {t(`connections.form.authOption.${option === "agent" ? "agent" : "keyFile"}`)}
+              {t(`connections.form.authOption.${AUTH_KEY[option as keyof typeof AUTH_KEY]}`)}
             </option>
           ))}
         </select>
