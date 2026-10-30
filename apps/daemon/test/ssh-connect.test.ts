@@ -6,6 +6,7 @@ import { processRun, resolveSshPath, SshConnector } from "../src/ssh/connect.ts"
 import { HostKeys } from "../src/ssh/hostkey.ts";
 import {
   type AgentOps,
+  chooseDelivery,
   createAgentDelivery,
   createFileDelivery,
   type DeliveredKey,
@@ -708,8 +709,80 @@ describe("ssh-connect: peças", () => {
     expect(cleaned).toBe(1);
   });
 
+  test("uma chave entregue como arquivo vai em -i (com barras no Windows) e IdentitiesOnly=yes", async () => {
+    const s = setup({ platform: "win32" });
+    const target = s.targets.save({
+      name: "cofre",
+      host: "vault.example.com",
+      user: "me",
+      auth: "vault-key",
+      secretRef: "x",
+    });
+    s.pin(target.id);
+    s.servers.set("vault.example.com", scan("vault.example.com", KEY));
+    const files = new SshConnector({
+      targets: s.targets,
+      hostKeys: new HostKeys({
+        targets: s.targets,
+        exec: async () => scan("vault.example.com", KEY),
+      }),
+      terminals: s.terminals,
+      dir: s.dir,
+      platform: "win32",
+      sshPath: "C:/ssh.exe",
+      run: async () => ({ code: 0, stderr: "" }),
+      delivery: {
+        kind: "file",
+        deliver: async () => ({
+          identityFile: "C:\\data\\ssh\\keys\\key-1",
+          env: {},
+          cleanup: () => {},
+        }),
+      },
+    });
+    cleanups.push(() => files.stop());
+    await files.connect({ targetId: target.id, cols: 80, rows: 24, privateKey: PRIVATE });
+    const { argv } = started(s);
+    expect(argv).toContain("IdentitiesOnly=yes");
+    expect(argv.slice(argv.indexOf("-i"), argv.indexOf("-i") + 2)).toEqual([
+      "-i",
+      "C:/data/ssh/keys/key-1",
+    ]);
+  });
+
+  test("se os arquivos do ssh não podem ser escritos, a chave entregue é desfeita e o erro sobe", async () => {
+    const s = setup({ dir: join(tempDir(), "arquivo") });
+    // A file where the folder should be.
+    await Bun.write(s.dir, "x");
+    const target = s.targets.save({
+      name: "cofre",
+      host: "vault.example.com",
+      user: "me",
+      auth: "vault-key",
+      secretRef: "x",
+    });
+    s.pin(target.id);
+    s.servers.set("vault.example.com", scan("vault.example.com", KEY));
+    await expect(s.open(target.id, { privateKey: PRIVATE })).rejects.toThrow();
+    expect(s.delivered[0]?.cleaned).toBe(1);
+    expect(s.ptys.spawned).toEqual([]);
+  });
+
+  test("a entrega certa por sistema: arquivo no Windows, agent nos outros", () => {
+    const common = {
+      keysDir: tempDir(),
+      sockDir: tempDir(),
+      user: "dev",
+      exec: async () => ({ code: 0, stdout: "" }),
+      ops: processOps(),
+    };
+    expect(chooseDelivery({ platform: "win32", ...common }).kind).toBe("file");
+    expect(chooseDelivery({ platform: "linux", ...common }).kind).toBe("agent");
+    expect(chooseDelivery({ platform: "darwin", ...common }).kind).toBe("agent");
+  });
+
   test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {
-    const system32 = "C:\\Windows\\System32\\OpenSSH\\ssh.exe";
+    const system32 = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\OpenSSH\\ssh.exe`;
     const both = { exists: (path: string) => path === system32, which: () => "/x/ssh" };
     expect(resolveSshPath({ platform: "win32", ...both })).toBe(system32);
     expect(
