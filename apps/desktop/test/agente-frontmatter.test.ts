@@ -81,4 +81,13 @@ describe("agente-frontmatter", () => {
     const doc = parseDocument(AGENT);
     expect(serialize(setField(doc, "color", ""))).toBe(AGENT);
   });
+
+  test("aspas duplas que o YAML não lê ficam como estão, para o usuário ver", () => {
+    const doc = parseDocument(String.raw`---
+name: "a\qb"
+---
+`);
+    expect(getField(doc, "name")).toBe(String.raw`"a\qb"`);
+  });
 });
+
