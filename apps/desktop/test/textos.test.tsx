@@ -41,6 +41,12 @@ const SWEPT = [
   "UpdateBanner.tsx",
   "DaemonUpdate.tsx",
   "Screens.tsx",
+  "BoardView.tsx",
+  "CardDetail.tsx",
+  "RunTimeline.tsx",
+  "WorkflowsPage.tsx",
+  "ProjectsPage.tsx",
+  "RulesSection.tsx",
 ];
 /** Names and ids that are not translated. */
 const ALLOWED = ["Flightdeck", "Transcript", "Token", "Host", "Tokens"];
@@ -161,6 +167,32 @@ describe("textos", () => {
     expect(session).not.toMatch(/Retomar|Interromper|Encerrar|Enviar|Mensagem/);
     // The turn's line has no internal "subtype": a word and the time.
     expect(session).not.toMatch(/success|subtype/);
+  });
+
+  test("em inglês, projetos, board e workflows falam inglês", async () => {
+    const { store, hostId } = await online("en");
+    await act(async () => {
+      store.router.push({ name: "projects", host: hostId });
+    });
+    await act(() => Bun.sleep(300));
+    const page = main().textContent ?? "";
+    for (const text of [
+      "Projects of alfa",
+      "New project",
+      "Register project",
+      "Host limit",
+      "Save limit",
+    ]) {
+      expect(page).toContain(text);
+    }
+    expect(page).not.toMatch(/Projetos|Novo projeto|Cadastrar|Limite do host|Salvar limite/);
+    expect(screen.queryByLabelText("Repository path")).not.toBeNull();
+    expect(screen.queryByLabelText("PR provider")).not.toBeNull();
+    await act(async () => {
+      store.router.push({ name: "projects", host: hostId, focus: "board" });
+    });
+    await act(() => Bun.sleep(300));
+    expect(main().textContent ?? "").toContain("Board of alfa");
   });
 
   test("termos internos nunca aparecem nas telas principais (lista proibida)", async () => {
