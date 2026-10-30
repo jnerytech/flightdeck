@@ -113,4 +113,24 @@ describe("acoes-ui-aprovacao: the policy for the daemon's requests", () => {
     expect([a.kind, b.kind]).toEqual(["deliver", "deliver"]);
     expect(asked).toEqual(["a"]);
   });
+
+  test("a secret of the run that needs holding is asked again: one held approval covers one request", async () => {
+    const asked: string[] = [];
+    const approved: string[] = [];
+    const policy = actionPolicy({
+      ask: async (ctx) => {
+        asked.push(ctx.request.secretId);
+        return true;
+      },
+      approve: async (ctx) => {
+        approved.push(ctx.request.secretId);
+      },
+      now: () => 1_000,
+    });
+    const run = { approval: "always", decision: "ask", needsHold: true } as const;
+    await policy(context(frame({ ...run, secretId: "a" })));
+    await policy(context(frame({ ...run, secretId: "b" })));
+    expect(asked).toEqual(["a", "b"]);
+    expect(approved).toEqual(["a", "b"]);
+  });
 });
