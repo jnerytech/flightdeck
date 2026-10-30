@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { Central } from "../src/central/central.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
@@ -296,5 +297,40 @@ describe("mensagens-entrega: o adaptador", () => {
     const a = manager.create({ cwd: project, prompt: "um" }).sessionId;
     await waitFor(() => manager.get(a).status === "idle");
     expect(idles).toEqual([]);
+  });
+});
+
+describe("mensagens-entrega: o gerenciador e o hub", () => {
+  test("um ouvinte de mensagem do usuário que quebra não derruba a sessão", async () => {
+    const { manager, project } = setup(1);
+    manager.onUserMessage(() => {
+      throw new Error("ouvinte quebrado");
+    });
+    const delivered: string[] = [];
+    manager.onUserMessage((_id, text) => delivered.push(text));
+    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
+    await waitFor(() => manager.get(a).status === "idle");
+    expect(delivered).toEqual(["primeira"]);
+  });
+
+  test("o hub sem canal para o lançamento diz que não mandou, com e sem o receptor", () => {
+    const base = setup();
+    const make = (token: string | undefined) =>
+      new Central({
+        db: base.store.db,
+        manager: base.manager,
+        hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900, ...(token ? { token } : {}) },
+        dataDir: join(tempDir(), "data"),
+        hostName: "h",
+        configFile: join(tempDir(), "config.json"),
+        selfCommand: ["flightdeckd"],
+        settingsPath: () => join(tempDir(), "settings.json"),
+      });
+    const without = make(undefined);
+    cleanups.push(() => without.stop());
+    expect(without.sendToLaunch("launch-x", "oi")).toBe(false);
+    const withReceptor = make("token-do-receptor-0123456789");
+    cleanups.push(() => withReceptor.stop());
+    expect(withReceptor.sendToLaunch("launch-x", "oi")).toBe(false);
   });
 });

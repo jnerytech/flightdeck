@@ -248,3 +248,13 @@ describe("mensagens-regras: validar a política", () => {
     expect(validatePolicy({ perPairPerHour: -1 }).policy).toEqual(DEFAULT_POLICY);
   });
 });
+
+describe("mensagens-regras: mais validações", () => {
+  test("uma exceção que não é um objeto e um bothWays que não é verdadeiro ou falso são erros", () => {
+    const errorsOf = (raw: unknown) => validatePolicy(raw).errors.join(" | ");
+    expect(errorsOf({ exceptions: ["tudo"] })).toContain("objeto");
+    expect(errorsOf({ exceptions: [{ id: "e", from: {}, to: {}, bothWays: "sim" }] })).toContain(
+      "bothWays",
+    );
+  });
+});
