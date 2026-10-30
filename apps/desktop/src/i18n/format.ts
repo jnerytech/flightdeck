@@ -3,18 +3,33 @@ import type { Lang, T } from "./index.ts";
 /** Each language's usual date length: 29/10/2026 in pt-BR, Oct 29, 2026 in English. */
 const DATE_STYLE: Record<Lang, "short" | "medium"> = { "pt-BR": "short", en: "medium" };
 
+/**
+ * Building an Intl.DateTimeFormat is slow (tens of microseconds on x86, far more on a Pi) and the
+ * lists format a date per row on every render, so each distinct one is built once.
+ */
+const formats = new Map<string, Intl.DateTimeFormat>();
+function dateFormat(lang: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${lang}|${JSON.stringify(options)}`;
+  let format = formats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(lang, options);
+    formats.set(key, format);
+  }
+  return format;
+}
+
 /** Intl puts a no-break space before some units; plain spaces keep texts comparable. */
 const plain = (text: string) => text.replaceAll(" ", " ");
 
 /** HH:MM of an instant in local time (or `timeZone`), in the language's style. */
 export function formatTime(iso: string, lang: Lang, timeZone?: string): string {
-  const format = new Intl.DateTimeFormat(lang, { hour: "2-digit", minute: "2-digit", timeZone });
+  const format = dateFormat(lang, { hour: "2-digit", minute: "2-digit", timeZone });
   return plain(format.format(new Date(iso)));
 }
 
 /** Date and time of an instant in local time (or `timeZone`). */
 export function formatDateTime(iso: string, lang: Lang, timeZone?: string): string {
-  const format = new Intl.DateTimeFormat(lang, {
+  const format = dateFormat(lang, {
     dateStyle: DATE_STYLE[lang],
     timeStyle: "short",
     timeZone,
@@ -25,7 +40,7 @@ export function formatDateTime(iso: string, lang: Lang, timeZone?: string): stri
 /** A list's short time: HH:MM today, the day and month before. */
 export function formatWhen(iso: string, nowMs: number, lang: Lang, timeZone?: string): string {
   const day = (ms: number) =>
-    new Intl.DateTimeFormat("en-CA", {
+    dateFormat("en-CA", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -33,9 +48,7 @@ export function formatWhen(iso: string, nowMs: number, lang: Lang, timeZone?: st
     }).format(ms);
   if (day(Date.parse(iso)) === day(nowMs)) return formatTime(iso, lang, timeZone);
   return plain(
-    new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", timeZone }).format(
-      new Date(iso),
-    ),
+    dateFormat(lang, { day: "numeric", month: "short", timeZone }).format(new Date(iso)),
   );
 }
 
