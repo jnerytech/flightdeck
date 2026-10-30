@@ -52,8 +52,8 @@ export function TerminalPage(props: {
 
   useEffect(() => {
     let alive = true;
-    let stopFollowing = () => {};
-    let stopObserving = () => {};
+    /** What the cleanup undoes, once the async start got that far. */
+    const stops: Array<() => void> = [];
     const parent = area.current;
     void (async () => {
       const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
@@ -84,13 +84,15 @@ export function TerminalPage(props: {
       // to the host through the session's debounced resize.
       const observer = new ResizeObserver(() => xterm.fit());
       observer.observe(parent);
-      stopObserving = () => observer.disconnect();
-      stopFollowing = store.followTerminal(hostId, terminalId, {
-        data: (base64) => current.data(base64),
-        exited: (code) => current.exited(code),
-        resync: () => void current.reopen(),
-        offline: () => current.disconnected(),
-      });
+      stops.push(() => observer.disconnect());
+      stops.push(
+        store.followTerminal(hostId, terminalId, {
+          data: (base64) => current.data(base64),
+          exited: (code) => current.exited(code),
+          resync: () => void current.reopen(),
+          offline: () => current.disconnected(),
+        }),
+      );
       await current.start();
       // A "Claude aqui" terminal carries the launch its session in the central also carries.
       const info = (await host.list().catch(() => [])).find((t) => t.terminalId === terminalId);
@@ -98,8 +100,7 @@ export function TerminalPage(props: {
     })();
     return () => {
       alive = false;
-      stopFollowing();
-      stopObserving();
+      for (const stop of stops) stop();
       session.current?.dispose();
       screen.current?.dispose();
       session.current = null;
