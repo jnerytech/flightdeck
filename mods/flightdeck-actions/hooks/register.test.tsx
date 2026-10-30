@@ -33,7 +33,7 @@ const RESULT = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-test("registers the two tools and the command", async ($, on) => {
+test("registers the four tools and the command", async ($, on) => {
   const tools: string[] = [];
   const commands: string[] = [];
   on("tool.register", (_, e) => {
@@ -48,7 +48,7 @@ test("registers the two tools and the command", async ($, on) => {
 
   await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
 
-  expect(tools).toEqual(["list_actions", "run_action"]);
+  expect(tools).toEqual(["list_actions", "run_action", "list_snippets", "get_snippet"]);
   expect(commands).toEqual(["flightdeck-actions"]);
 });
 
@@ -176,4 +176,41 @@ test("/flightdeck-actions says when no action is trusted, and shows flightdeckd'
   expect((await $.command.run({ command: "flightdeck-actions" })).text).toBe(
     "flightdeck-actions: could not connect",
   );
+});
+
+test("list_snippets reads the snippets of the session's project through flightdeckd, with the query", async ($, on) => {
+  const argvs: string[][] = [];
+  on("process.run", (_, e) => {
+    argvs.push([...e.argv]);
+    return { value: RESULT({ stdout: '{"snippets":[{"name":"status"}]}' }) };
+  });
+  on("tool.register", (_, e) => ({ value: { tool: e.name } }));
+  on("command.register", (_, e) => ({ value: { command: e.name } }));
+  on("tool.call", () => ({ result: {} }));
+  await $.session.start({ cwd: "/work/app", surface: "terminal", isInteractive: true });
+
+  const answer = await $.tool.call({ tool: "mcp__flightdeck-actions__list_snippets", query: "git" });
+
+  expect(argvs).toEqual([
+    ["flightdeckd", "snippet", "list", "--project-path", "/work/app", "--query", "git"],
+  ]);
+  expect(String(answer.result)).toContain("status");
+});
+
+test("get_snippet reads one snippet by name and never runs it; flightdeckd's error comes back", async ($, on) => {
+  const argvs: string[][] = [];
+  let reply = RESULT({ stdout: '{"name":"revisar","text":"Revise {{file}}"}' });
+  on("process.run", (_, e) => {
+    argvs.push([...e.argv]);
+    return { value: reply };
+  });
+  on("tool.call", () => ({ result: {} }));
+
+  const answer = await $.tool.call({ tool: "mcp__flightdeck-actions__get_snippet", name: "revisar" });
+
+  expect(argvs).toEqual([["flightdeckd", "snippet", "get", "revisar"]]);
+  expect(String(answer.result)).toContain("Revise {{file}}");
+  reply = RESULT({ exitCode: 1, stderr: "not_found: snippet\n" });
+  const missing = await $.tool.call({ tool: "mcp__flightdeck-actions__get_snippet", name: "nada" });
+  expect((missing as { deny?: string }).deny).toContain("not_found");
 });
