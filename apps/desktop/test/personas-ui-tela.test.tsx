@@ -72,10 +72,10 @@ async function choose(label: string, value: string) {
 }
 
 describe("personas-ui: the library", () => {
-  test("the sidebar's Personas opens the library with the nine of the pack, in the app's language", async () => {
+  test("the sidebar's Personas opens the library with the ten of the pack, in the app's language", async () => {
     await open();
     expect(screen.queryByRole("heading", { name: "Personas", level: 1 })).not.toBeNull();
-    expect(names()).toHaveLength(9);
+    expect(names()).toHaveLength(10);
     expect(names()).toContain("Revisor de segurança");
     expect(within(row("Revisor de segurança") as HTMLElement).queryByText("Pacote")).not.toBeNull();
   });
@@ -130,7 +130,7 @@ describe("personas-ui: the library", () => {
     expect(within(row("QA editado") as HTMLElement).queryByText("Pacote, editada")).not.toBeNull();
     await click("Restaurar original de QA editado");
     expect(names()).not.toContain("QA editado");
-    expect(names()).toHaveLength(9);
+    expect(names()).toHaveLength(10);
   });
 
   test("Publicar como agente do projeto writes .claude/agents/persona-<id>.md after a confirmation", async () => {

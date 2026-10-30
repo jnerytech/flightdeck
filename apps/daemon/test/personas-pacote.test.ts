@@ -27,6 +27,8 @@ const SPEC_IDS = [
   "docs",
   "frontend",
   "dba",
+  // Phase 21 coordinates its teams with this one.
+  "coordenador",
 ];
 
 function codeOf(fn: () => unknown): string {
@@ -38,8 +40,8 @@ function codeOf(fn: () => unknown): string {
   }
 }
 
-describe("personas-pacote: as nove", () => {
-  test("são as nove da spec, na ordem da tabela, nos dois idiomas", () => {
+describe("personas-pacote: as dez", () => {
+  test("são as nove da spec, na ordem da tabela, e a coordenadora dos times da Fase 21, nos dois idiomas", () => {
     expect(PACK_IDS).toEqual(SPEC_IDS);
     for (const language of ["pt-BR", "en"] as const) {
       expect([language, packPersonas(language).map((p) => p.id)]).toEqual([language, SPEC_IDS]);
@@ -112,11 +114,47 @@ describe("personas-pacote: as nove", () => {
     expect(packPersonas("pt-BR").find((p) => p.id === "arquiteto")?.permissionMode).toBe("plan");
   });
 
+  test("a coordenadora só lê e coordena: confere com o Bash, fala com as executoras pelo MCP do Flightdeck e não implementa", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const coordinator = packPersonas(language).find((p) => p.id === "coordenador");
+      expect([language, coordinator?.tools]).toEqual([
+        language,
+        ["Read", "Grep", "Glob", "Bash", "mcp__flightdeck"],
+      ]);
+      expect([language, coordinator?.model, coordinator?.effort]).toEqual([
+        language,
+        "claude-opus-5-5",
+        "high",
+      ]);
+      for (const tool of ["send_to_session", "notify_when_idle", "team_status"]) {
+        expect([language, tool, coordinator?.body.includes(tool)]).toEqual([language, tool, true]);
+      }
+    }
+    const pt = packPersonas("pt-BR").find((p) => p.id === "coordenador");
+    expect(pt?.name).toBe("Coordenador de time");
+    expect(pt?.body).toMatch(/Não implemente/);
+    expect(packPersonas("en").find((p) => p.id === "coordenador")?.body).toMatch(
+      /Do not implement/,
+    );
+  });
+
+  test("a coordenadora editada volta ao original com o restaurar", () => {
+    const { personas } = setup();
+    personas.save({ scope: "host", persona: edit("coordenador", "Coordene do meu jeito.") });
+    expect(personas.get("coordenador", {}).modified).toBe(true);
+    expect(personas.reset("coordenador", {})).toMatchObject({
+      id: "coordenador",
+      scope: "pack",
+      modified: false,
+      name: "Coordenador de time",
+    });
+  });
+
   test("a lista é nova a cada pedido: mexer nela não muda o pacote", () => {
     const first = packPersonas("pt-BR");
     (first[0] as { body: string }).body = "alterado";
     first.pop();
-    expect(packPersonas("pt-BR")).toHaveLength(9);
+    expect(packPersonas("pt-BR")).toHaveLength(10);
     expect(packPersonas("pt-BR")[0]?.body).not.toBe("alterado");
   });
 });
@@ -176,7 +214,7 @@ describe("personas-pacote: no daemon", () => {
     // One entry per id: the edited one stands in for the pack's, whatever the language.
     expect(revisor().map((p) => p.body)).toEqual(["Revise só o que mudou."]);
     expect(revisor("en").map((p) => p.body)).toEqual(["Revise só o que mudou."]);
-    expect(personas.list({ scope: "host" }).personas).toHaveLength(9);
+    expect(personas.list({ scope: "host" }).personas).toHaveLength(10);
     expect(personas.resolve({ id: "revisor" }, {}).persona.body).toBe("Revise só o que mudou.");
     const restored = personas.reset("revisor", {});
     expect(restored).toMatchObject({
@@ -201,7 +239,7 @@ describe("personas-pacote: no daemon", () => {
     expect(personas.get("qa", {}).scope).toBe("pack");
     personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
     personas.remove("host", "minha");
-    expect(personas.list({ scope: "host" }).personas).toHaveLength(9);
+    expect(personas.list({ scope: "host" }).personas).toHaveLength(10);
   });
 
   test("a edição vale as regras de sempre, e a do projeto vale mais que a editada e que a do pacote", () => {

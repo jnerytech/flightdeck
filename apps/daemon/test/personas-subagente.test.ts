@@ -121,7 +121,7 @@ describe("personas-subagente: o que vira agente", () => {
     );
     expect(
       Object.keys(personas.subagents({ projectPath: join(root, "..", "fora") }).agents),
-    ).toHaveLength(9);
+    ).toHaveLength(10);
   });
 });
 
@@ -133,7 +133,7 @@ describe("personas-subagente: sessão gerenciada", () => {
     manager.create({ cwd: project, prompt: "oi" });
     const names = Object.keys(runtime.starts[0]?.agents ?? {});
     expect(names).toContain("persona-revisor");
-    expect(names).toHaveLength(9);
+    expect(names).toHaveLength(10);
     expect(runtime.starts[0]?.agents?.["persona-seguranca"]).toMatchObject({
       tools: ["Read", "Grep", "Glob", "Bash"],
       model: "claude-opus-5-5",
@@ -384,7 +384,7 @@ describe("personas-subagente: pelo protocolo", () => {
         language: "en",
       },
     );
-    expect(Object.keys(result?.agents ?? {})).toHaveLength(9);
+    expect(Object.keys(result?.agents ?? {})).toHaveLength(10);
     expect(result?.untrusted).toEqual(["nova"]);
     expect(
       await client.data("personas.publishAgent", { id: "qa", projectPath: project, confirm: true }),
@@ -465,7 +465,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     expect(board.getProject(id).personaSubagents).toBe("all");
     addPersona("do-projeto");
     const names = () => Object.keys(personas.subagents({ projectPath: repo }).agents).sort();
-    expect(names()).toHaveLength(10);
+    expect(names()).toHaveLength(11);
     expect(names()).toContain("persona-do-projeto");
     board.updateProject(id, { personaSubagents: "project" });
     expect(board.getProject(id).personaSubagents).toBe("project");
@@ -479,7 +479,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     board.updateProject(id, { personaSubagents: "none" });
     expect(personas.subagents({ projectPath: repo })).toEqual({ agents: {}, untrusted: [] });
     board.updateProject(id, { personaSubagents: "all" });
-    expect(names()).toHaveLength(10);
+    expect(names()).toHaveLength(11);
   });
 
   test("só all, project e none; a pasta que não é de projeto nenhum fica no padrão", async () => {
@@ -493,7 +493,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     }
     expect(failure).toBe("bad_request");
     expect(board.getProject(id).personaSubagents).toBe("all");
-    expect(Object.keys(personas.subagents({ projectPath: root }).agents)).toHaveLength(9);
+    expect(Object.keys(personas.subagents({ projectPath: root }).agents)).toHaveLength(10);
   });
 
   test("a sessão gerenciada do projeto, e a do card na worktree dele, seguem o interruptor", async () => {
@@ -501,7 +501,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     const { id } = await project;
     addPersona("do-projeto");
     manager.create({ cwd: repo, prompt: "oi" });
-    expect(Object.keys(runtime.starts[0]?.agents ?? {})).toHaveLength(10);
+    expect(Object.keys(runtime.starts[0]?.agents ?? {})).toHaveLength(11);
     board.updateProject(id, { personaSubagents: "none" });
     manager.create({ cwd: repo, prompt: "oi" });
     expect(runtime.starts[1]?.agents).toBeUndefined();
