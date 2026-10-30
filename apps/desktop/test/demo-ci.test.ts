@@ -62,7 +62,7 @@ describe("demo-prints: axe e CI", () => {
     expect(pkg.devDependencies["axe-core"]).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  test("e2e: the eight journeys, in both languages, checked at 1280x800 and 800x600", () => {
+  test("e2e: the nine journeys, in both languages, checked at 1280x800 and 800x600", () => {
     expect(JOURNEYS).toEqual([
       "aprovar-bash-com-a",
       "sessao-e-mensagem",
@@ -72,6 +72,7 @@ describe("demo-prints: axe e CI", () => {
       "tema-e-idioma",
       "voltar-arquivos",
       "issue-e-risco",
+      "abas-terminal",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
