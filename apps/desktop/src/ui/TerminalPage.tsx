@@ -195,6 +195,8 @@ export function TerminalPage(props: {
       <div
         ref={area}
         data-terminal-area
+        role="application"
+        aria-label={t("terminalUi.title")}
         className="h-[60vh] w-full"
         onContextMenu={(e) => {
           e.preventDefault();
