@@ -90,4 +90,3 @@ name: "a\qb"
     expect(getField(doc, "name")).toBe(String.raw`"a\qb"`);
   });
 });
-
