@@ -1,6 +1,7 @@
 import type { SshHostKeyCheck, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { savePayload, TargetForm } from "@/components/connections/target-form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import {
@@ -19,6 +20,7 @@ import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 /** The "via" filter's value for a destino that this host opens itself. */
@@ -45,6 +47,8 @@ export function ConnectionsPage(props: {
   const [tag, setTag] = useState("");
   const [via, setVia] = useState("");
   /** A connection waiting for the server key to be confirmed, or blocked by a changed one. */
+  const [editing, setEditing] = useState<SshTarget | "new" | null>(null);
+  const [removing, setRemoving] = useState<SshTarget | null>(null);
   const [keyCheck, setKeyCheck] = useState<{ target: SshTarget; check: SshHostKeyCheck } | null>(
     null,
   );
@@ -86,6 +90,23 @@ export function ConnectionsPage(props: {
     await open(target);
   };
 
+  const duplicate = async (target: SshTarget) => {
+    if (!hostId) return;
+    const copy = await store.hostCommand(
+      hostId,
+      "ssh.save",
+      savePayload(target, t("connections.copySuffix", { name: target.name })),
+    );
+    if (copy) await reload();
+  };
+
+  const remove = async (target: SshTarget) => {
+    setRemoving(null);
+    if (!hostId) return;
+    const removed = await store.hostCommand(hostId, "ssh.remove", { id: target.id, confirm: true });
+    if (removed !== null) await reload();
+  };
+
   const tags = [...new Set(targets.flatMap((target) => target.tags))].sort();
   const vias = [...new Set(targets.flatMap((target) => (target.viaHost ? [target.viaHost] : [])))];
   const viaName = (id: string) => state.hosts.find((h) => h.id === id)?.name ?? id;
@@ -100,7 +121,28 @@ export function ConnectionsPage(props: {
     <Page
       title={t("connections.title")}
       subtitle={t("connections.subtitle", { host: host?.name ?? "" })}
+      actions={
+        hostId &&
+        editing === null && (
+          <Button onClick={() => setEditing("new")}>{t("connections.newTarget")}</Button>
+        )
+      }
     >
+      {hostId && editing !== null && (
+        <TargetForm
+          key={editing === "new" ? "new" : editing.id}
+          store={store}
+          state={state}
+          hostId={hostId}
+          target={editing === "new" ? null : editing}
+          others={targets.filter((other) => editing === "new" || other.id !== editing.id)}
+          onSaved={() => {
+            setEditing(null);
+            void reload();
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="flex flex-col gap-1 text-sm">
           <label htmlFor="connections-search">{t("connections.search")}</label>
@@ -160,6 +202,9 @@ export function ConnectionsPage(props: {
                     aria-label={t(`connections.${verb}For`, { name: target.name })}
                     onClick={() => {
                       if (verb === "connect") void connect(target);
+                      else if (verb === "edit") setEditing(target);
+                      else if (verb === "duplicate") void duplicate(target);
+                      else setRemoving(target);
                     }}
                   >
                     {t(`connections.${verb}`)}
@@ -169,6 +214,15 @@ export function ConnectionsPage(props: {
             </li>
           ))}
         </ul>
+      )}
+      {removing && (
+        <ConfirmDialog
+          message={t("connections.removeMessage", { name: removing.name })}
+          confirmLabel={t("connections.remove")}
+          destructive
+          onConfirm={() => void remove(removing)}
+          onCancel={() => setRemoving(null)}
+        />
       )}
       {keyCheck && (
         <AlertDialog open onOpenChange={(isOpen) => !isOpen && setKeyCheck(null)}>
