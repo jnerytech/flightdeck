@@ -20,12 +20,15 @@ import {
   personaHash,
   serializePersona,
 } from "./model.ts";
+import type { Language } from "./pack.ts";
 
 export interface PersonasOptions {
   db: Database;
   allowedRoots: readonly string[];
   scanner: SecretScanner;
   now?: () => number;
+  /** The personas that come ready, in a language (phase 20's pack). */
+  pack?: (language: Language) => PersonaDef[];
 }
 
 /** What names a persona: its id in the host's or the project's list, or a definition from the app. */
@@ -35,12 +38,14 @@ export interface PersonaRef {
 }
 
 export interface PersonaContext {
-  projectPath?: string;
+  projectPath?: string | undefined;
+  /** The language of the pack personas; `pt-BR` when absent. */
+  language?: Language | undefined;
 }
 
 export interface ResolvedPersona {
   persona: PersonaDef;
-  source: "project" | "host" | "inline";
+  source: "project" | "host" | "pack" | "inline";
   /** The hash of the versioned file, for the ones from a project. */
   hash: string | null;
 }
@@ -69,11 +74,7 @@ export class Personas {
     this.now = opts.now ?? Date.now;
   }
 
-  list(filter: {
-    scope?: "host" | "project" | "all";
-    projectPath?: string;
-    language?: "pt-BR" | "en";
-  }): {
+  list(filter: { scope?: "host" | "project" | "all"; projectPath?: string; language?: Language }): {
     personas: Persona[];
     project: PersonaProjectInfo | null;
   } {
@@ -81,7 +82,7 @@ export class Personas {
     const project = filter.projectPath ? this.project(filter.projectPath) : null;
     if (scope === "project" && !project) throw badRequest("o escopo project pede projectPath");
     const personas: Persona[] = [];
-    if (scope !== "project") personas.push(...this.hostViews());
+    if (scope !== "project") personas.push(...this.hostViews(filter.language));
     let info: PersonaProjectInfo | null = null;
     if (scope !== "host" && project) {
       const loaded = this.loadProject(project);
@@ -112,7 +113,7 @@ export class Personas {
            ON CONFLICT (id) DO UPDATE SET data = $data, updated_at = $at`,
         )
         .run({ $id: persona.id, $data: JSON.stringify(persona), $at: at });
-      return this.hostView(persona);
+      return this.hostViews().find((view) => view.id === persona.id) as Persona;
     }
     const project = this.requireProject(request.projectPath);
     const source = serializePersona(persona);
@@ -121,6 +122,15 @@ export class Personas {
     // It came from the app, from the person: no need to ask them to trust what they just wrote.
     this.trustHash(project, persona.id, personaHash(source));
     return this.get(persona.id, { projectPath: project });
+  }
+
+  /** Puts a pack persona back as it came: the host's edit goes away. */
+  reset(id: string, ctx: PersonaContext): Persona {
+    if (!this.pack(ctx.language).some((persona) => persona.id === id)) {
+      throw badRequest("só as personas do pacote voltam ao original");
+    }
+    this.opts.db.query("DELETE FROM personas WHERE id = ?").run(id);
+    return this.hostViews(ctx.language).find((view) => view.id === id) as Persona;
   }
 
   remove(scope: "host" | "project", id: string, projectPath?: string): void {
@@ -173,7 +183,7 @@ export class Personas {
       );
     }
     const { scope, hash, trusted, modified, ...persona } = view;
-    return { persona, source: scope as "project" | "host", hash };
+    return { persona, source: scope, hash };
   }
 
   // -- storage -------------------------------------------------------------------------------
@@ -202,18 +212,37 @@ export class Personas {
       const inProject = this.loadProject(project)?.views.find((view) => view.id === id);
       if (inProject) return inProject;
     }
-    return this.hostViews().find((view) => view.id === id) ?? null;
+    return this.hostViews(ctx.language).find((view) => view.id === id) ?? null;
   }
 
-  private hostViews(): Persona[] {
+  private pack(language: Language | undefined): PersonaDef[] {
+    return this.opts.pack?.(language ?? "pt-BR") ?? [];
+  }
+
+  /** The pack in its order with the host's edits standing in for it, then the host's own. */
+  private hostViews(language?: Language): Persona[] {
     const rows = this.opts.db.query("SELECT data FROM personas ORDER BY id").all() as Array<{
       data: string;
     }>;
-    return rows.map((row) => this.hostView(JSON.parse(row.data) as PersonaDef));
-  }
-
-  private hostView(persona: PersonaDef): Persona {
-    return { ...persona, scope: "host", hash: null, trusted: true, modified: false };
+    const edited = rows.map((row) => JSON.parse(row.data) as PersonaDef);
+    const view = (persona: PersonaDef, scope: "pack" | "host", modified: boolean): Persona => ({
+      ...persona,
+      scope,
+      hash: null,
+      trusted: true,
+      modified,
+    });
+    const packed = this.pack(language);
+    const views = packed.map((persona) => {
+      const mine = edited.find((candidate) => candidate.id === persona.id);
+      return mine ? view(mine, "host", true) : view(persona, "pack", false);
+    });
+    for (const persona of edited) {
+      if (!packed.some((candidate) => candidate.id === persona.id)) {
+        views.push(view(persona, "host", false));
+      }
+    }
+    return views;
   }
 
   private trustHash(project: string, id: string, hash: string): void {

@@ -52,6 +52,7 @@ import { daemonUrl, startMcp } from "./mcp.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
+import { packPersonas } from "./personas/pack.ts";
 import { Personas } from "./personas/store.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
@@ -691,6 +692,7 @@ export async function startDaemon(
       db: store.db,
       allowedRoots: config.allowedRoots,
       scanner: snippetScanner,
+      pack: packPersonas,
     }),
     snippetUse: new SnippetUse({
       snippets,

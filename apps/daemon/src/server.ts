@@ -1199,6 +1199,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, personas().list(command.payload));
       case "personas.save":
         return ok(command.type, personas().save(command.payload));
+      case "personas.reset":
+        return ok(
+          command.type,
+          personas().reset(command.payload.id, { language: command.payload.language }),
+        );
       case "personas.remove":
         personas().remove(command.payload.scope, command.payload.id, command.payload.projectPath);
         return ok(command.type);

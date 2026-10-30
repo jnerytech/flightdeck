@@ -2074,6 +2074,11 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Puts a pack persona back as it came (the host's edit goes away). */
+  cmd(
+    "personas.reset",
+    z.object({ id: z.string(), language: z.enum(["pt-BR", "en"]).optional() }).strict(),
+  ),
   /** Trusts a project's versioned persona, by the hash `personas.list` showed. */
   cmd(
     "personas.trust",
@@ -2494,6 +2499,7 @@ export interface CommandResults {
   "personas.list": { personas: Persona[]; project: PersonaProjectInfo | null };
   "personas.save": Persona;
   "personas.remove": undefined;
+  "personas.reset": Persona;
   "personas.trust": Persona;
   "snippets.render": { text: string; fields: SnippetField[] };
   "snippets.use": { text: string; terminal: TerminalInfo | null };
