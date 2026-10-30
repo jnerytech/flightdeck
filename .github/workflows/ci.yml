@@ -101,6 +101,7 @@ jobs:
           bun run smoke:checkpoints
           bun run smoke:automation
           bun run smoke:terminal
+          bun run smoke:ssh
 
       # The Tauri context needs the built frontend (frontendDist) to exist.
       - name: cargo check do app
