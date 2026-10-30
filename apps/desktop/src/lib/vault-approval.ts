@@ -63,7 +63,13 @@ export function actionPolicy(deps: {
     };
 
     const grant = grants.get(runKey);
-    if (grant && deps.now() < grant.until && !grant.delivered.has(request.secretId)) {
+    // A request that needs holding is never covered by another's approval: each one is held.
+    if (
+      grant &&
+      !request.needsHold &&
+      deps.now() < grant.until &&
+      !grant.delivered.has(request.secretId)
+    ) {
       grant.delivered.add(request.secretId);
       return approved({ ...grant.answer, scope: "once" });
     }
