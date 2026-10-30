@@ -1,7 +1,7 @@
 /** Single-consumer async queue usable as an `AsyncIterable`. */
 export class AsyncQueue<T> implements AsyncIterable<T> {
-  private items: T[] = [];
-  private waiters: Array<{
+  private readonly items: T[] = [];
+  private readonly waiters: Array<{
     resolve: (r: IteratorResult<T>) => void;
     reject: (e: unknown) => void;
   }> = [];
