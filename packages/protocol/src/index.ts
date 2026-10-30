@@ -1579,6 +1579,61 @@ export const RelayMessage = z.object({
 });
 export type RelayMessage = z.infer<typeof RelayMessage>;
 
+export const TeamState = z.enum(["active", "paused", "closed"]);
+export type TeamState = z.infer<typeof TeamState>;
+
+/** A member of a team: the coordinator or a worker with a card of its own. */
+export const TeamMember = z.object({
+  name: z.string(),
+  role: z.enum(["coordinator", "worker"]),
+  persona: z.string().nullable(),
+  cardId: z.string().nullable(),
+  /** Null while a worker's card waits in the quota queue and has no session yet. */
+  sessionId: z.string().nullable(),
+  address: z.string().nullable(),
+  sessionState: MessagingState.nullable(),
+});
+export type TeamMember = z.infer<typeof TeamMember>;
+
+export const TeamInfo = z.object({
+  id: z.string(),
+  name: z.string(),
+  projectId: z.string(),
+  goal: z.string(),
+  coordinator: z.string().nullable(),
+  members: z.array(TeamMember),
+  /** The commands the coordinator runs to check a worker's work (the project's checks if empty). */
+  checks: z.array(z.string()),
+  state: TeamState,
+  /** Who paused it: you, or the plan quota (which also resumes it). */
+  pausedBy: z.enum(["user", "quota"]).nullable(),
+  instructionsVersion: z.string(),
+  createdAt: z.string(),
+});
+export type TeamInfo = z.infer<typeof TeamInfo>;
+
+export const TeamStatus = z.object({
+  team: TeamInfo,
+  members: z.array(
+    TeamMember.extend({
+      /** The last message this member sent inside the team. */
+      lastReport: z.object({ text: z.string(), at: z.string() }).nullable(),
+      sent: z.number().int(),
+      received: z.number().int(),
+    }),
+  ),
+  messages: z.number().int(),
+});
+export type TeamStatus = z.infer<typeof TeamStatus>;
+
+export const TeamsUpdatedFrame = z.object({
+  type: z.literal("teams.updated"),
+  team: TeamInfo,
+  /** Why it changed, when that is news for you (quota pause, quota resume). */
+  reason: z.string().nullable(),
+});
+export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
+
 /** Phase 17: how an action asks for approval. */
 export const ActionApproval = z.enum(["always", "never", "first-per-session"]);
 
@@ -1893,6 +1948,41 @@ export const Command = z.discriminatedUnion("type", [
       unpause: z.array(z.string()).optional(),
     }),
   ),
+  /** Phase 21: teams, a coordinator and workers with cards of their own. */
+  cmd("teams.list", z.object({ projectId: z.string().optional() })),
+  cmd(
+    "teams.create",
+    z.object({
+      projectId: z.string().min(1),
+      goal: z.string().min(1).max(8000),
+      name: z.string().min(1).max(80).optional(),
+      workers: z.number().int().min(1).max(8),
+      coordinatorPersona: z.string().min(1).optional(),
+      workerPersonas: z.array(z.string().min(1)).max(8).optional(),
+      checks: z.array(z.string().min(1).max(400)).max(10).optional(),
+    }),
+  ),
+  /** Changes the goal or the checks, a member's persona, adds workers or takes a member out. */
+  cmd(
+    "teams.update",
+    z.object({
+      team: z.string().min(1),
+      goal: z.string().min(1).max(8000).optional(),
+      checks: z.array(z.string().min(1).max(400)).max(10).optional(),
+      persona: z
+        .object({ member: z.string().min(1), persona: z.string().min(1).nullable() })
+        .optional(),
+      addWorkers: z.number().int().min(1).max(8).optional(),
+      removeMember: z.string().min(1).optional(),
+    }),
+  ),
+  cmd("teams.pause", z.object({ team: z.string().min(1) })),
+  cmd("teams.resume", z.object({ team: z.string().min(1) })),
+  cmd("teams.close", z.object({ team: z.string().min(1), confirm: z.boolean().optional() })),
+  /** A message from Flightdeck to every member ("mandar a todos"). */
+  cmd("teams.message", z.object({ team: z.string().min(1), text: z.string().min(1) })),
+  cmd("teams.status", z.object({ team: z.string().min(1) })),
+  cmd("teams.watch", z.object({}).strict()),
   /** Phase 19: the rules of one secret, replaced whole (the ones that break the ceiling are refused). */
   cmd(
     "vault.rules.set",
@@ -2729,6 +2819,15 @@ export interface CommandResults {
   "actions.runs": { runs: ActionRunInfo[] };
   "vault.watch": undefined;
   "vault.deny": undefined;
+  "teams.list": { teams: TeamInfo[] };
+  "teams.create": TeamInfo;
+  "teams.update": TeamInfo;
+  "teams.pause": TeamInfo;
+  "teams.resume": TeamInfo;
+  "teams.close": TeamInfo;
+  "teams.message": { delivered: number; refused: number };
+  "teams.status": TeamStatus;
+  "teams.watch": undefined;
   "messages.send": SendResult;
   "messages.list": { messages: MessageInfo[] };
   "messages.sessions": { sessions: MessagingSession[] };
@@ -3190,6 +3289,7 @@ export const ServerMessage = z.union([
   VaultRequestFrame,
   VaultUsed,
   VaultAlertFrame,
+  TeamsUpdatedFrame,
   MessagesUpdatedFrame,
   MessagesRelayFrame,
   MessagingAlertFrame,
