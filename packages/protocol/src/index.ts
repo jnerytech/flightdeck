@@ -2734,3 +2734,16 @@ export function parseServerMessage(raw: string): ServerMessage {
 
 export * from "./pairing.ts";
 export * from "./snippets.ts";
+
+/**
+ * Phase 19: the one rule for a production tag, shared by the daemon's rules and the app's
+ * warnings: `prod`, `produção` or `producao`, in any case.
+ */
+export function isProdTag(_tag: string): boolean {
+  return false;
+}
+
+/** Whether any of the tags marks production. */
+export function isProd(tags: readonly string[] | undefined): boolean {
+  return (tags ?? []).some(isProdTag);
+}

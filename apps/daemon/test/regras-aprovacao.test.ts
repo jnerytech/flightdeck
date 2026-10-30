@@ -381,6 +381,17 @@ describe("regras-aprovacao: aprovar", () => {
 });
 
 describe("regras-aprovacao: prod e risco alto", () => {
+  test("a use tagged producao (no accent) is prod too: it asks at every use, held", async () => {
+    const t = setup();
+    await t.actions.save({ projectId: "p1", definition: echoDef({ tags: ["producao"] }) });
+    t.setRules([allow()]);
+    const running = t.run();
+    const f = await t.frame();
+    expect(f).toMatchObject({ decision: "ask", needsHold: true });
+    t.approveAndDeliver(f, { via: "app", heldMs: 2000 });
+    await running;
+  });
+
   test("an ssh action on a destino tagged prod, and a free command there, ask at every use, held, though neither the action nor the secret says prod", async () => {
     const t = setup({
       ssh: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
