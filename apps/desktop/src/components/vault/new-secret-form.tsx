@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ const splitTags = (text: string): string[] =>
 export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
   const t = useT();
   const { store } = props;
+  const id = useId();
   const [name, setName] = useState("");
   const [type, setType] = useState<SecretType>("password");
   const [value, setValue] = useState("");
@@ -55,10 +56,15 @@ export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
         if (named && value !== "") void save();
       }}
     >
-      <label className="flex flex-col gap-1 text-sm">
-        {t("vault.name")}
-        <Input value={name} autoComplete="off" onChange={(event) => setName(event.target.value)} />
-      </label>
+      <div className="flex flex-col gap-1 text-sm">
+        <label htmlFor={`${id}-name`}>{t("vault.name")}</label>
+        <Input
+          id={`${id}-name`}
+          value={name}
+          autoComplete="off"
+          onChange={(event) => setName(event.target.value)}
+        />
+      </div>
       <label className="flex flex-col gap-1 text-sm">
         {t("vault.typeLabel")}
         <select
@@ -73,19 +79,25 @@ export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm">
-        {t("vault.value")}
+      <div className="flex flex-col gap-1 text-sm">
+        <label htmlFor={`${id}-value`}>{t("vault.value")}</label>
         <Textarea
+          id={`${id}-value`}
           value={value}
           autoComplete="off"
           spellCheck={false}
           onChange={(event) => setValue(event.target.value)}
         />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        {t("vault.tags")}
-        <Input value={tags} autoComplete="off" onChange={(event) => setTags(event.target.value)} />
-      </label>
+      </div>
+      <div className="flex flex-col gap-1 text-sm">
+        <label htmlFor={`${id}-tags`}>{t("vault.tags")}</label>
+        <Input
+          id={`${id}-tags`}
+          value={tags}
+          autoComplete="off"
+          onChange={(event) => setTags(event.target.value)}
+        />
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
