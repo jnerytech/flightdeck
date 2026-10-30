@@ -1,6 +1,7 @@
-import type { SshHostKeyCheck, SshTarget } from "@flightdeck/protocol";
+import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ImportPanel } from "@/components/connections/import-panel";
 import { savePayload, TargetForm } from "@/components/connections/target-form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -48,6 +49,8 @@ export function ConnectionsPage(props: {
   const [via, setVia] = useState("");
   /** A connection waiting for the server key to be confirmed, or blocked by a changed one. */
   const [editing, setEditing] = useState<SshTarget | "new" | null>(null);
+  const [importing, setImporting] = useState<SshImportEntry[] | null>(null);
+  const [importMessage, setImportMessage] = useState<string[]>([]);
   const [removing, setRemoving] = useState<SshTarget | null>(null);
   const [keyCheck, setKeyCheck] = useState<{ target: SshTarget; check: SshHostKeyCheck } | null>(
     null,
@@ -107,6 +110,25 @@ export function ConnectionsPage(props: {
     if (removed !== null) await reload();
   };
 
+  const startImport = async () => {
+    if (!hostId) return;
+    setImportMessage([]);
+    const preview = await store.hostCommand(hostId, "ssh.import.preview", {});
+    if (preview) setImporting(preview.entries);
+  };
+
+  const applyImport = async (aliases: string[]) => {
+    if (!hostId) return;
+    setImporting(null);
+    const result = await store.hostCommand(hostId, "ssh.import.apply", { aliases });
+    if (!result) return;
+    setImportMessage([
+      t("connections.import.created", { n: result.created.length }),
+      ...result.skipped.map((skip) => t("connections.import.skipped", skip)),
+    ]);
+    await reload();
+  };
+
   const tags = [...new Set(targets.flatMap((target) => target.tags))].sort();
   const vias = [...new Set(targets.flatMap((target) => (target.viaHost ? [target.viaHost] : [])))];
   const viaName = (id: string) => state.hosts.find((h) => h.id === id)?.name ?? id;
@@ -124,10 +146,29 @@ export function ConnectionsPage(props: {
       actions={
         hostId &&
         editing === null && (
-          <Button onClick={() => setEditing("new")}>{t("connections.newTarget")}</Button>
+          <>
+            <Button variant="outline" onClick={() => void startImport()}>
+              {t("connections.importAction")}
+            </Button>
+            <Button onClick={() => setEditing("new")}>{t("connections.newTarget")}</Button>
+          </>
         )
       }
     >
+      {importing && (
+        <ImportPanel
+          entries={importing}
+          onApply={(aliases) => void applyImport(aliases)}
+          onClose={() => setImporting(null)}
+        />
+      )}
+      {importMessage.length > 0 && (
+        <div role="status" className="mb-4 text-sm">
+          {importMessage.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      )}
       {hostId && editing !== null && (
         <TargetForm
           key={editing === "new" ? "new" : editing.id}

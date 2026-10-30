@@ -35,6 +35,14 @@ export const en: Dictionary = {
     duplicateFor: "Duplicate {name}",
     remove: "Remove",
     removeFor: "Remove {name}",
+    importAction: "Import from SSH config",
+    import: {
+      empty: "Nothing to import.",
+      exists: "already saved",
+      apply: "Import selected",
+      created: "Created: {n}",
+      skipped: "{alias}: {reason}",
+    },
     newTarget: "New destination",
     form: {
       name: "Name",

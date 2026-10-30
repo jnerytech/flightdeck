@@ -37,6 +37,14 @@ export const ptBR = {
     duplicateFor: "Duplicar {name}",
     remove: "Remover",
     removeFor: "Remover {name}",
+    importAction: "Importar do SSH config",
+    import: {
+      empty: "Nada para importar.",
+      exists: "já cadastrado",
+      apply: "Importar selecionados",
+      created: "Criados: {n}",
+      skipped: "{alias}: {reason}",
+    },
     newTarget: "Novo destino",
     form: {
       name: "Nome",
