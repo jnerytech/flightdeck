@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { trayMenu } from "../src/lib/tray.ts";
+import type { TrayAction } from "../src/platform/types.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
 
@@ -19,8 +20,18 @@ async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
 
 /** A store on a fake daemon with the secret `prod-key`, and a way to push a phase 19 request. */
 async function setup() {
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  const mem = memoryPlatform();
+  let tray: ((action: TrayAction) => void) | null = null;
+  mem.platform.onTrayAction = (handler) => {
+    tray = handler;
+    return () => {
+      tray = null;
+    };
+  };
+  const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
+  // init registers the tray's handler.
+  await store.init();
   const daemon = legacyDaemon(cleanups);
   const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => daemon.asked.includes("vault.watch"));
@@ -51,7 +62,8 @@ async function setup() {
     });
   const types = () => daemon.commands.map((c) => c.type).filter((t) => t.startsWith("vault."));
   const payload = (type: string) => daemon.commands.find((c) => c.type === type)?.payload;
-  return { store, daemon, hostId, push, types, payload };
+  const fromTray = (action: TrayAction) => tray?.(action);
+  return { store, daemon, hostId, push, types, payload, fromTray };
 }
 
 describe("regras-ui-aprovacao: a request that the rules decided", () => {
@@ -114,5 +126,14 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     await settle(() => types().includes("vault.deny"));
     expect(types()).toContain("vault.deny");
     expect(types()).not.toContain("vault.deliver");
+  });
+
+  test("approving from the tray tells the daemon it was the tray", async () => {
+    const { store, hostId, push, payload, types, fromTray } = await setup();
+    push({});
+    await settle(() => needsYou(store.getState()).length === 1);
+    fromTray({ key: `${hostId}/r1`, action: "approve" });
+    await settle(() => types().includes("vault.deliver"));
+    expect(payload("vault.approve")).toEqual({ requestId: "r1", via: "tray", scope: "once" });
   });
 });
