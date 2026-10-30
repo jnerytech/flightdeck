@@ -45,12 +45,12 @@ function reading(window: string, raw: unknown): QuotaReading | null {
 export function quotaReadings(info: unknown): QuotaReading[] {
   if (typeof info !== "object" || info === null) return [];
   const { unifiedWindows, rateLimitType } = info as Record<string, unknown>;
-  const entries: Array<[string, unknown]> =
-    typeof unifiedWindows === "object" && unifiedWindows !== null
-      ? Object.entries(unifiedWindows)
-      : typeof rateLimitType === "string"
-        ? [[rateLimitType, info]]
-        : [];
+  let entries: Array<[string, unknown]> = [];
+  if (typeof unifiedWindows === "object" && unifiedWindows !== null) {
+    entries = Object.entries(unifiedWindows);
+  } else if (typeof rateLimitType === "string") {
+    entries = [[rateLimitType, info]];
+  }
   return entries.flatMap(([window, raw]) => reading(window, raw) ?? []);
 }
 

@@ -289,13 +289,10 @@ const xmlUnescape = (text: string) =>
 /** Arguments of a command line, unquoted; systemd escapes with `\`, Windows has no escapes. */
 function splitArgs(line: string, escapes: boolean): string[] {
   const token = escapes ? /"((?:[^"\\]|\\.)*)"|(\S+)/g : /"([^"]*)"|(\S+)/g;
-  return [...line.matchAll(token)].map(([, quoted, plain]) =>
-    quoted === undefined
-      ? (plain as string)
-      : escapes
-        ? quoted.replace(/\\(["\\])/g, "$1")
-        : quoted,
-  );
+  return [...line.matchAll(token)].map(([, quoted, plain]) => {
+    if (quoted === undefined) return plain as string;
+    return escapes ? quoted.replace(/\\(["\\])/g, "$1") : quoted;
+  });
 }
 
 /** What an installed service runs: the daemon command (before `start`) and its `--config`. */

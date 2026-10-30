@@ -16,7 +16,9 @@ const UPDATE_TASK = "Flightdeck\\update";
 
 /** The manifest key of the daemon binary for this OS and architecture. */
 export function assetKey(platform: string, arch: string): string {
-  const os = platform === "win32" ? "windows" : platform === "linux" ? "linux" : null;
+  let os: string | null = null;
+  if (platform === "win32") os = "windows";
+  else if (platform === "linux") os = "linux";
   if (!os || (arch !== "x64" && arch !== "arm64")) {
     throw new FlightdeckError("invalid_state", `sem binário do daemon para ${platform}-${arch}`);
   }

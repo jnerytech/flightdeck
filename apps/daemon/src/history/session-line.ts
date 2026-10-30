@@ -30,11 +30,8 @@ export function sessionLine(
   transcript: { request: string | null; tool: string | null } | null,
   live: LiveState,
 ): SessionLine {
-  const tool =
-    live.state === "running"
-      ? (transcript?.tool ?? null)
-      : live.state === "waiting"
-        ? (live.waitingTool ?? null)
-        : null;
+  let tool: string | null = null;
+  if (live.state === "running") tool = transcript?.tool ?? null;
+  else if (live.state === "waiting") tool = live.waitingTool ?? null;
   return { request: transcript?.request ?? null, state: live.state, tool, since: live.since };
 }
