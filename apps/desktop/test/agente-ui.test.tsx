@@ -55,6 +55,21 @@ const openTab = async (name: string) => {
   });
 };
 
+const AGENT_FILE = ".claude/agents/revisor.md";
+const AGENT = [
+  "---",
+  "name: revisor",
+  "description: Revisa o diff antes do commit",
+  "tools: Read, Grep",
+  "color: blue",
+  "---",
+  "Você revisa código.",
+  "",
+].join("\n");
+const SKILL_FILE = ".claude/skills/deploy/SKILL.md";
+const SKILL = "---\nname: deploy\ndescription: Publica o app\n---\nPassos.\n";
+const text = (path: string) => readFileSync(path, "utf8").replaceAll("\r\n", "\n");
+
 const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 
 /**
@@ -62,7 +77,7 @@ const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
  * leaves a marker file when it starts), a settings.local.json, and a user ~/.claude.json with
  * one server. Opens the Agente screen of the project.
  */
-async function setup(options: { agentcfg?: boolean } = {}) {
+async function setup(options: { agentcfg?: boolean; empty?: boolean } = {}) {
   const d = makeDaemon(cleanups, { checkpoints: true, agentcfg: options.agentcfg ?? true });
   const repo = join(d.root, "repo");
   mkdirSync(repo);
@@ -91,6 +106,22 @@ async function setup(options: { agentcfg?: boolean } = {}) {
       projects: { [repo]: { mcpServers: { local: { command: "python", args: ["loc.py"] } } } },
     }),
   );
+  if (options.empty !== true) {
+    // CLAUDE.md files, an agent and a skill of the project, and the user's own in claude-home.
+    writeFileSync(join(repo, "CLAUDE.md"), "# Regras\n");
+    writeFileSync(join(repo, "CLAUDE.local.md"), "# Só meu\n");
+    mkdirSync(join(repo, ".claude", "agents"));
+    writeFileSync(join(repo, AGENT_FILE), AGENT);
+    mkdirSync(join(repo, ".claude", "skills", "deploy"), { recursive: true });
+    writeFileSync(join(repo, SKILL_FILE), SKILL);
+    const home = join(d.root, "claude-home");
+    mkdirSync(join(home, "agents"), { recursive: true });
+    writeFileSync(join(home, "CLAUDE.md"), "# Meu usuário\n");
+    writeFileSync(
+      join(home, "agents", "pessoal.md"),
+      "---\nname: pessoal\ndescription: do usuário\n---\nOi\n",
+    );
+  }
   writeFileSync(join(repo, "README.md"), "# repo\n");
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
@@ -289,5 +320,180 @@ describe("agente-ui", () => {
     expect(
       screen.queryByText("Não foi possível carregar a configuração deste projeto."),
     ).not.toBeNull();
+  });
+
+  test("CLAUDE.md: lista os do projeto e o do usuário, que é só leitura e não tem Salvar", async () => {
+    await setup();
+    await openTab("CLAUDE.md");
+    await settle(() => screen.queryByRole("button", { name: "CLAUDE.md (Do projeto)" }) !== null);
+    expect(screen.queryByRole("button", { name: "CLAUDE.local.md (Do projeto)" })).not.toBeNull();
+    await click("CLAUDE.md (Do usuário (~/.claude))");
+    await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.md") !== null);
+    const editor = screen.queryByLabelText("Conteúdo de CLAUDE.md") as HTMLTextAreaElement;
+    expect(editor.value).toBe("# Meu usuário\n");
+    expect(editor.readOnly).toBe(true);
+    expect(screen.queryAllByText("Só leitura").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
+  });
+
+  test("CLAUDE.md do projeto: avisa que é versionado, salva e mostra a prévia", async () => {
+    const { repo } = await setup();
+    await openTab("CLAUDE.md");
+    await settle(() => screen.queryByRole("button", { name: "CLAUDE.md (Do projeto)" }) !== null);
+    await click("CLAUDE.md (Do projeto)");
+    await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.md") !== null);
+    expect(screen.queryByText(/Este arquivo é versionado/)).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Salvar" })?.hasAttribute("disabled")).toBe(true);
+    await type("Conteúdo de CLAUDE.md", "# Regras novas\n");
+    await click("Salvar");
+    await settle(() => text(join(repo, "CLAUDE.md")) === "# Regras novas\n");
+    expect(text(join(repo, "CLAUDE.md"))).toBe("# Regras novas\n");
+    await settle(() => screen.queryByText("Salvo.") !== null);
+    expect(screen.queryByText("Salvo.")).not.toBeNull();
+    await click("Prévia");
+    expect(screen.queryByRole("heading", { name: "Regras novas" })).not.toBeNull();
+    expect(screen.queryByLabelText("Conteúdo de CLAUDE.md")).toBeNull();
+    await click("Editar");
+    expect(screen.queryByLabelText("Conteúdo de CLAUDE.md")).not.toBeNull();
+  });
+
+  test("o CLAUDE.local.md avisa que costuma ficar fora do git, não que é versionado", async () => {
+    await setup();
+    await openTab("CLAUDE.md");
+    await settle(
+      () => screen.queryByRole("button", { name: "CLAUDE.local.md (Do projeto)" }) !== null,
+    );
+    await click("CLAUDE.local.md (Do projeto)");
+    await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.local.md") !== null);
+    expect(screen.queryByText(/Arquivo local: costuma ficar fora do git/)).not.toBeNull();
+    expect(screen.queryByText(/Este arquivo é versionado/)).toBeNull();
+  });
+
+  test("um arquivo que mudou no disco não é sobrescrito: avisa e recarrega a pedido", async () => {
+    const { repo } = await setup();
+    await openTab("CLAUDE.md");
+    await settle(() => screen.queryByRole("button", { name: "CLAUDE.md (Do projeto)" }) !== null);
+    await click("CLAUDE.md (Do projeto)");
+    await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.md") !== null);
+    writeFileSync(join(repo, "CLAUDE.md"), "# Mudou fora\n");
+    await type("Conteúdo de CLAUDE.md", "# Minha versão\n");
+    await click("Salvar");
+    await settle(() => screen.queryByText(/O arquivo mudou no disco/) !== null);
+    expect(screen.queryByText(/O arquivo mudou no disco/)).not.toBeNull();
+    expect(text(join(repo, "CLAUDE.md"))).toBe("# Mudou fora\n");
+    // What the user wrote stays until they reload.
+    expect((screen.queryByLabelText("Conteúdo de CLAUDE.md") as HTMLTextAreaElement).value).toBe(
+      "# Minha versão\n",
+    );
+    await click("Recarregar");
+    expect((screen.queryByLabelText("Conteúdo de CLAUDE.md") as HTMLTextAreaElement).value).toBe(
+      "# Mudou fora\n",
+    );
+    expect(screen.queryByText(/O arquivo mudou no disco/)).toBeNull();
+  });
+
+  test("Agentes: o formulário edita o frontmatter e guarda o resto do arquivo", async () => {
+    const { repo } = await setup();
+    await openTab("Agentes");
+    await settle(() => screen.queryByRole("button", { name: "revisor (Do projeto)" }) !== null);
+    expect(
+      screen.queryByRole("button", { name: "pessoal (Do usuário (~/.claude))" }),
+    ).not.toBeNull();
+    await click("revisor (Do projeto)");
+    await settle(() => screen.queryByLabelText("Descrição") !== null);
+    expect((screen.queryByLabelText("Nome") as HTMLInputElement).value).toBe("revisor");
+    expect((screen.queryByLabelText("Ferramentas") as HTMLInputElement).value).toBe("Read, Grep");
+    expect((screen.queryByLabelText("Instruções") as HTMLTextAreaElement).value).toBe(
+      "Você revisa código.\n",
+    );
+    await type("Descrição", "Revisa o diff");
+    await type("Modelo", "sonnet");
+    await click("Salvar");
+    await settle(() => text(join(repo, AGENT_FILE)).includes("model: sonnet"));
+    expect(text(join(repo, AGENT_FILE))).toBe(
+      "---\nname: revisor\ndescription: Revisa o diff\ntools: Read, Grep\ncolor: blue\nmodel: sonnet\n---\nVocê revisa código.\n",
+    );
+  });
+
+  test("um agente sem descrição não salva, e o do usuário é só leitura", async () => {
+    await setup();
+    await openTab("Agentes");
+    await settle(() => screen.queryByRole("button", { name: "revisor (Do projeto)" }) !== null);
+    await click("revisor (Do projeto)");
+    await settle(() => screen.queryByLabelText("Descrição") !== null);
+    await type("Descrição", "");
+    expect(screen.queryByText("O nome e a descrição são obrigatórios.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Salvar" })?.hasAttribute("disabled")).toBe(true);
+
+    await click("pessoal (Do usuário (~/.claude))");
+    await settle(
+      () => (screen.queryByLabelText("Nome") as HTMLInputElement | null)?.value === "pessoal",
+    );
+    expect((screen.queryByLabelText("Nome") as HTMLInputElement).readOnly).toBe(true);
+    expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
+  });
+
+  test("Skills: criar uma skill gera a pasta e o SKILL.md com o frontmatter", async () => {
+    const { repo } = await setup();
+    await openTab("Skills");
+    await settle(() => screen.queryByRole("button", { name: "deploy (Do projeto)" }) !== null);
+    await click("Nova skill");
+    await type("Nome da skill", "limpar cache");
+    expect(screen.queryByRole("button", { name: "Criar" })?.hasAttribute("disabled")).toBe(true);
+    await type("Nome da skill", "limpar");
+    await click("Criar");
+    await settle(() => screen.queryByLabelText("Descrição") !== null);
+    expect((screen.queryByLabelText("Nome") as HTMLInputElement).value).toBe("limpar");
+    // Nothing is written until it is saved.
+    expect(existsSync(join(repo, ".claude", "skills", "limpar"))).toBe(false);
+    await type("Descrição", "Limpa o cache");
+    await click("Salvar");
+    await settle(() => existsSync(join(repo, ".claude", "skills", "limpar", "SKILL.md")));
+    expect(text(join(repo, ".claude", "skills", "limpar", "SKILL.md"))).toBe(
+      "---\nname: limpar\ndescription: Limpa o cache\n---\n",
+    );
+    await settle(() => screen.queryByRole("button", { name: "limpar (Do projeto)" }) !== null);
+    expect(screen.queryByRole("button", { name: "limpar (Do projeto)" })).not.toBeNull();
+  });
+
+  test("um agente novo e um CLAUDE.md novo: o nome ou o caminho vira o arquivo", async () => {
+    const { repo } = await setup();
+    await openTab("Agentes");
+    await settle(() => screen.queryByRole("button", { name: "Novo agente" }) !== null);
+    await click("Novo agente");
+    await type("Nome do agente", "tester");
+    await click("Criar");
+    await settle(() => screen.queryByLabelText("Descrição") !== null);
+    await type("Descrição", "Roda os testes");
+    await click("Salvar");
+    await settle(() => existsSync(join(repo, ".claude", "agents", "tester.md")));
+    expect(text(join(repo, ".claude", "agents", "tester.md"))).toBe(
+      "---\nname: tester\ndescription: Roda os testes\n---\n",
+    );
+
+    await openTab("CLAUDE.md");
+    await settle(() => screen.queryByRole("button", { name: "Novo CLAUDE.md" }) !== null);
+    await click("Novo CLAUDE.md");
+    await type("Caminho do CLAUDE.md", "docs/CLAUDE.md");
+    await click("Criar");
+    await settle(() => screen.queryByLabelText("Conteúdo de docs/CLAUDE.md") !== null);
+    await type("Conteúdo de docs/CLAUDE.md", "# Docs\n");
+    await click("Salvar");
+    await settle(() => existsSync(join(repo, "docs", "CLAUDE.md")));
+    expect(text(join(repo, "docs", "CLAUDE.md"))).toBe("# Docs\n");
+  });
+
+  test("sem nenhum arquivo, cada aba diz que está vazia", async () => {
+    await setup({ empty: true });
+    await openTab("CLAUDE.md");
+    await settle(() => screen.queryByText("Nenhum CLAUDE.md neste projeto.") !== null);
+    expect(screen.queryByText("Nenhum CLAUDE.md neste projeto.")).not.toBeNull();
+    await openTab("Agentes");
+    await settle(() => screen.queryByText("Nenhum agente neste projeto.") !== null);
+    expect(screen.queryByText("Nenhum agente neste projeto.")).not.toBeNull();
+    await openTab("Skills");
+    await settle(() => screen.queryByText("Nenhuma skill neste projeto.") !== null);
+    expect(screen.queryByText("Nenhuma skill neste projeto.")).not.toBeNull();
+    expect(screen.queryByText("Escolha um arquivo da lista.")).not.toBeNull();
   });
 });
