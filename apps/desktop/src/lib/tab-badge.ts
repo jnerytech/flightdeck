@@ -15,3 +15,24 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
   if (session.status === "running" || session.status === "starting") return "running";
   return state.unread[sessionKey(route.host, route.id)] ? "unread" : null;
 }
+
+/** The kind of screen a tab shows, for its icon. */
+export type TabKind = "session" | "card" | "terminal" | "reader" | "costs" | "agent" | "screen";
+
+const KINDS: Partial<Record<Route["name"], TabKind>> = {
+  session: "session",
+  external: "session",
+  "new-session": "session",
+  card: "card",
+  board: "card",
+  terminal: "terminal",
+  reader: "reader",
+  history: "reader",
+  costs: "costs",
+  agent: "agent",
+};
+
+/** The card's diff lives in the card, so a card tab is also the diff's. */
+export function tabKind(route: Route): TabKind {
+  return KINDS[route.name] ?? "screen";
+}

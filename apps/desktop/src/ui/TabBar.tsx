@@ -1,9 +1,10 @@
 import {
   ArrowLeftRight,
-  Clock,
-  FileDiff,
+  BookOpen,
+  Bot,
   Layers,
   type LucideIcon,
+  MessageSquare,
   Pin,
   PinOff,
   Plus,
@@ -18,17 +19,17 @@ import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
-import { tabBadge } from "../lib/tab-badge.ts";
+import { type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
-const ICONS: Partial<Record<Route["name"], LucideIcon>> = {
-  terminal: SquareTerminal,
-  board: SquareKanban,
+const ICONS: Record<TabKind, LucideIcon> = {
+  session: MessageSquare,
   card: SquareKanban,
-  reader: Clock,
-  history: Clock,
+  terminal: SquareTerminal,
+  reader: BookOpen,
   costs: Wallet,
-  agent: FileDiff,
+  agent: Bot,
+  screen: Layers,
 };
 
 /** The title of a tab: the last step of the path its route shows in the header. */
@@ -56,7 +57,8 @@ export function TabBar(props: {
     >
       {tabs.tabs.map((tab) => {
         const label = title(tab, state, store);
-        const Icon = ICONS[tab.router.current.name] ?? Layers;
+        const kind = tabKind(tab.router.current);
+        const Icon = ICONS[kind];
         const active = tab.id === tabs.activeId;
         const badge = tabBadge(tab.router.current, state);
         return (
@@ -86,7 +88,7 @@ export function TabBar(props: {
                 if (id) tabs.move(id, tabs.tabs.indexOf(tab));
               }}
             >
-              <Icon className="size-4 shrink-0" aria-hidden />
+              <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
               {!tab.pinned && <span className="truncate">{label}</span>}
               {badge && (
                 <span
