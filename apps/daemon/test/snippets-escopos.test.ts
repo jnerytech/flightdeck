@@ -550,4 +550,13 @@ describe("snippets-escopos: pelo protocolo", () => {
       expect([type, await codeOfCall(type, payload)]).toEqual([type, "invalid_state"]);
     }
   });
+
+  test("host.info announces snippets only when the server keeps them, so the app hides the screen elsewhere", async () => {
+    const featuresOf = async (snippets: Snippets | null) => {
+      const { client } = await connect(snippets, setup().root);
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+    };
+    expect(await featuresOf(setup().snippets)).toContain("snippets");
+    expect(await featuresOf(null)).not.toContain("snippets");
+  });
 });
