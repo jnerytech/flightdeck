@@ -518,6 +518,9 @@ describe("personas-sessao-nova: o terminal, flightdeckd claude --persona", () =>
     expect(offline.errors.join("\n")).toMatch(/daemon/);
     const noValue = await run(["--persona"], host, project);
     expect(noValue.code).toBe(1);
+    for (const args of [["--persona="], ["--persona", "--verbose"]]) {
+      expect([args, (await run(args, host, project)).code]).toEqual([args, 1]);
+    }
     expect(fake.events().filter((e) => e.type === "start")).toEqual([]);
   });
 
