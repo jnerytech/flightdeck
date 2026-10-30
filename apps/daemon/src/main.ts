@@ -93,8 +93,8 @@ import {
 } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
-import { whichOnPath } from "./which.ts";
 import { Vault } from "./vault/vault.ts";
+import { whichOnPath } from "./which.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
@@ -554,6 +554,8 @@ export async function startDaemon(
       exec: spawnExec,
       ops: processOps(),
     }),
+  });
+
   // Phase 16: secrets the app hands over for one use; in memory only, gone with the daemon.
   const vault = new Vault({
     log: logger.log.bind(logger),

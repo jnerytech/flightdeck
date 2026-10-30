@@ -96,7 +96,6 @@ export const ptBR = {
       close: "Fechar",
     },
   },
-  vault: { picker: { none: "Nenhum segredo" } },
   vault: {
     picker: { none: "Nenhum segredo" },
     title: "Cofre",

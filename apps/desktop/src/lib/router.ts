@@ -111,6 +111,7 @@ const NAMES: Record<Route["name"], true> = {
   settings: true,
   costs: true,
   connections: true,
+  vault: true,
   "add-host": true,
 };
 

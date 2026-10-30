@@ -94,7 +94,6 @@ export const en: Dictionary = {
       close: "Close",
     },
   },
-  vault: { picker: { none: "No secret" } },
   vault: {
     picker: { none: "No secret" },
     title: "Vault",

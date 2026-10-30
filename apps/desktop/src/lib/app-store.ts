@@ -1743,6 +1743,8 @@ export class AppStore {
     if (!info) return null;
     this.sshTerminals.set(`${hostId}/${info.terminalId}`, { name: target.name, tags: target.tags });
     return info.terminalId;
+  }
+
   /** Phase 16: the vault, whose values live in the system keyring. */
   readonly vault: Vault;
   /** Phase 16: what was asked of the vault, kept in `storage`. */

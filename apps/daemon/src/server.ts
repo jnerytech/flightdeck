@@ -225,7 +225,7 @@ type Outgoing =
   | TerminalData
   | TerminalExited
   | TerminalResync
-  | AskpassRequest;
+  | AskpassRequest
   | VaultUsed;
 
 function send(ws: Socket, message: Outgoing): void {
