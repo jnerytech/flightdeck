@@ -704,6 +704,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
       }
       case "vault.deliver":
+        // A request of the daemon that asks has to be approved before its secret is accepted.
+        opts.actions?.gate(command.payload.purpose);
         return ok(command.type, vault().deliver(command.payload, ws.data.origin));
       case "vault.use": {
         const { secretId, purpose, action } = command.payload;
@@ -747,13 +749,25 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "vault.deny":
         actions().deny(command.payload.requestId);
         return ok(command.type);
-      case "vault.rules.set":
-      case "vault.rules.get":
+      case "vault.rules.set": {
+        const { secretId, tags, rules } = command.payload;
+        return ok(command.type, { rules: actions().setRules(secretId, tags ?? [], rules) });
+      }
+      case "vault.rules.get": {
+        const { secretId } = command.payload;
+        return ok(command.type, { secretId, ...actions().getRules(secretId) });
+      }
       case "vault.rules.preview":
-      case "vault.approve":
+        return ok(command.type, actions().preview(command.payload));
+      case "vault.approve": {
+        const { requestId, ...approval } = command.payload;
+        actions().approve(requestId, approval);
+        return ok(command.type);
+      }
       case "vault.decisions":
+        return ok(command.type, { decisions: actions().decisions(command.payload) });
       case "vault.report":
-        throw new FlightdeckError("invalid_state", "ainda não implementado");
+        return ok(command.type, actions().report(command.payload));
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":

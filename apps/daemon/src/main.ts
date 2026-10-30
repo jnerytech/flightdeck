@@ -99,6 +99,7 @@ import {
 } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
+import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
 import { whichOnPath } from "./which.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
@@ -620,6 +621,11 @@ export async function startDaemon(
       const named = sshTargets.list().filter((t) => t.name === name);
       return named.length === 1 && named[0]?.auth === "vault-key" ? named[0].secretRef : null;
     },
+    // Phase 19: who may use which secret, decided by the rules the app hands over.
+    rules: new VaultRules(),
+    hostName: config.hostName,
+    risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
+    projectKey: (id) => keys.keyFor(board.getProject(id).path),
   });
   const server = startServer({
     manager,

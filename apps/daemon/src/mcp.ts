@@ -101,6 +101,8 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     throw new Error(`não consegui conectar no daemon em ${opts.url}: ${error.message}`);
   });
   const server = new McpServer({ name: "flightdeck", version: "1.0.0" });
+  // One MCP server runs for one Claude Code session: the approvals "for this session" hold for it.
+  const session = crypto.randomUUID();
   const tool = <S extends z.ZodRawShape>(
     name: string,
     description: string,
@@ -181,6 +183,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
       daemon.call("actions.run", {
         name,
         requestedBy: "claude",
+        session,
         ...(params ? { params } : {}),
         ...(projectId ? { projectId } : {}),
       }),
@@ -198,6 +201,7 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
         command,
         secrets,
         requestedBy: "claude",
+        session,
         ...(host ? { host } : {}),
       }),
   );
