@@ -116,4 +116,44 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
       scope: "session",
     });
   });
+
+  test("a request that needs holding (prod) never offers the session button, and approving it for the session without a hold sends nothing", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const daemon = legacyDaemon(cleanups);
+    render(<App store={store} />);
+    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    await settle(() => daemon.asked.includes("vault.watch"));
+    const secret = await act(() =>
+      store.addSecret({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
+    );
+    await act(async () => {
+      store.router.push({ name: "needs-you" });
+      daemon.push({
+        type: "vault.request",
+        requestId: "r1",
+        secretId: secret.id,
+        purpose: "action:deploy:r1",
+        requester: "claude",
+        action: "deploy",
+        params: {},
+        approval: "always",
+        decision: "ask",
+        reason: "regra r1: ask",
+        once: true,
+        needsHold: true,
+        tags: ["prod"],
+      });
+    });
+    await settle(() => needsYou(store.getState()).length === 1);
+    await click(/alfa · Pedido de Claude: deploy/);
+    expect(
+      screen.queryByRole("button", { name: "Aprovar e não perguntar mais nesta sessão" }),
+    ).toBeNull();
+    await act(() => store.approveVaultForSession(hostId, "r1"));
+    await act(() => Bun.sleep(100));
+    expect(daemon.commands.some((c) => c.type === "vault.approve")).toBe(false);
+    expect(daemon.commands.some((c) => c.type === "vault.deliver")).toBe(false);
+    expect(needsYou(store.getState())).toHaveLength(1);
+  });
 });
