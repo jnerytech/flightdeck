@@ -18,6 +18,14 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | daemon | daemon | O `flightdeckd`, o serviço de cada host |
 | histórico | history | As conversas já gravadas pelo Claude Code, que o app só lê |
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
+| turno | turn | One message of the user and the agent's whole answer to it; the timeline lists them |
+| linha do tempo | timeline | The side panel of a session with its turns, what each changed in the files, and the rewind and fork actions |
+| Voltar arquivos | Rewind files | Puts the repository's files back to how they were before a turn; files only, never external commands; it can be undone |
+| Desfazer volta | Undo rewind | Brings the files back to how they were just before the last rewind |
+| Bifurcar | Fork | A new conversation that starts from a turn of another; the original stays as it is |
+| snapshot | snapshot | The git copy of the working tree taken at the start and end of a turn; it never touches the user's index or files |
+| agente | agent | In "Agente de {project}", the project's configuration for Claude Code: MCP servers, CLAUDE.md, agents and skills |
+| só leitura | read-only | What Flightdeck shows but never writes: the user's `~/.claude` and `~/.claude.json` |
 
 ## Estados de uma sessão
 
