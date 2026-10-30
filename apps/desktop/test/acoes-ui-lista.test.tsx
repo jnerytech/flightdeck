@@ -139,4 +139,12 @@ describe("acoes-ui-lista: as ações de um projeto", () => {
     const problems = screen.queryByRole("list", { name: "Problemas no arquivo de ações" });
     expect(problems?.textContent).toContain("quebrada");
   });
+
+  test("a tela diz o limite: o segredo fica longe do Claude, não de outro processo do mesmo usuário", async () => {
+    await online();
+    await open();
+    const notice = screen.queryByRole("note");
+    expect(notice?.textContent).toContain("mesmo usuário");
+    expect(notice?.textContent).toContain("ssh");
+  });
 });
