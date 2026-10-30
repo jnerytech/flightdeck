@@ -48,7 +48,7 @@ import { Issues } from "./issues/issues.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
-import { daemonUrl, startMcp } from "./mcp.ts";
+import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
 import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
@@ -1253,6 +1253,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         token: config.token,
         transport: deps.mcpTransport ?? new StdioServerTransport(),
         cwd: deps.cwd ?? process.cwd(),
+        identity: identityOf(deps.env),
       });
       void mcp.closed.then(() => deps.exit(0));
       return null;

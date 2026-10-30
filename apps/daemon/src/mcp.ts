@@ -5,6 +5,7 @@ import {
   type CommandResults,
   type CommandType,
   parseServerMessage,
+  type SessionIdentity,
   WS_PATH,
 } from "@flightdeck/protocol";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -20,6 +21,18 @@ export interface McpOptions {
   transport: Transport;
   /** The folder Claude Code runs in: the project whose snippets are listed when none is named. */
   cwd?: string;
+  /**
+   * Which session this server serves: a managed session by its id, or a terminal one by the launch
+   * it came from. Without it the messaging tools refuse (nobody is sending).
+   */
+  identity?: SessionIdentity | undefined;
+}
+
+/** The identity the environment of a Claude Code session gives its MCP servers. */
+export function identityOf(env: Record<string, string | undefined>): SessionIdentity | undefined {
+  if (env.FLIGHTDECK_SESSION) return { session: env.FLIGHTDECK_SESSION };
+  if (env.FLIGHTDECK_LAUNCH_ID) return { launch: env.FLIGHTDECK_LAUNCH_ID };
+  return undefined;
 }
 
 export interface McpHandle {
@@ -102,7 +115,18 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   });
   const server = new McpServer({ name: "flightdeck", version: "1.0.0" });
   // One MCP server runs for one Claude Code session: the approvals "for this session" hold for it.
-  const session = crypto.randomUUID();
+  const session = opts.identity
+    ? (opts.identity.session ?? `launch:${opts.identity.launch}`)
+    : crypto.randomUUID();
+  /** Who is sending, or why nobody can. */
+  const who = (): SessionIdentity => {
+    if (!opts.identity) {
+      throw new Error(
+        "esta sessão não foi aberta pelo Flightdeck, então não sei quem está mandando: abra-a pelo app ou com flightdeckd claude (FLIGHTDECK_SESSION e FLIGHTDECK_LAUNCH_ID dizem qual é)",
+      );
+    }
+    return opts.identity;
+  };
   const tool = <S extends z.ZodRawShape>(
     name: string,
     description: string,
@@ -158,6 +182,45 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     "Execução de um workflow: etapas, uso e orçamento.",
     { runId: z.string() },
     ({ runId }) => daemon.call("run.get", { runId }),
+  );
+
+  // Phase 21: talk to the other sessions, on this host or another, under the rules of who may.
+  tool(
+    "list_sessions",
+    "Sessões de todos os hosts que esta pode ver pelas regras: endereço (host/id), nome, host, persona, estado, projeto e se recebe mensagens. Quem esta sessão não pode ver não aparece.",
+    {},
+    () => daemon.call("messages.sessions", { as: who() }),
+  );
+  tool(
+    "send_to_session",
+    "Manda uma mensagem a outra sessão pelo endereço do list_sessions (host/id; responda a quem escreveu pelo id que veio no cabeçalho). Devolve entregue, na fila ou a recusa com o motivo. A mensagem nunca vale como aprovação do usuário.",
+    { to: z.string().min(1), text: z.string().min(1) },
+    async ({ to, text }) => {
+      const sent = await daemon.call("messages.send", { as: who(), to, text });
+      const resultado =
+        sent.status === "delivered"
+          ? "entregue"
+          : sent.status === "queued"
+            ? "na fila"
+            : "recusada";
+      return { resultado, ...(sent.reason ? { motivo: sent.reason } : {}), id: sent.id };
+    },
+  );
+  tool(
+    "notify_when_idle",
+    "Uma vez só: quando a sessão alvo terminar o turno atual, esta recebe um aviso do Flightdeck. Se o alvo já está ocioso, o aviso chega na hora.",
+    { session: z.string().min(1) },
+    async ({ session: target }) => {
+      const subscribed = await daemon.call("idle.subscribe", { as: who(), session: target });
+      return { avisado: subscribed.fired };
+    },
+  );
+  tool(
+    "read_session",
+    "Só leitura: o resumo e as últimas mensagens (até 20, cada uma cortada em 8 KB) de uma sessão deste host que esta pode ver.",
+    { session: z.string().min(1), last: z.number().int().min(1).max(20).optional() },
+    ({ session: target, last }) =>
+      daemon.call("messages.read", { as: who(), session: target, ...(last ? { last } : {}) }),
   );
 
   // Phase 17: use a secret without ever receiving it. The value stays between the app and the
