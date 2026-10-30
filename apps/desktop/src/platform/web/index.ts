@@ -21,12 +21,13 @@ const LINK_HASH = "#link=";
 const TITLE = "Flightdeck";
 
 /**
- * Browser implementation. Secrets stay in memory only: a page has no safe place for tokens, so
+ * Browser implementation. Secrets (and the vault's values) stay in memory only: a page has no safe place for tokens, so
  * the web build asks for them again after a reload. Deep links arrive as `#link=<encoded url>`.
  */
 export function createWebPlatform(
   win: WebWindow = window as unknown as WebWindow,
   secrets: Map<string, string> = new Map(),
+  vault: Map<string, string> = new Map(),
 ): Platform {
   const noop = async () => {};
   /** Deep-link handlers, also reached by a click on a notification that carries a link. */
@@ -40,6 +41,15 @@ export function createWebPlatform(
       },
       delete: async (id) => {
         secrets.delete(id);
+      },
+    },
+    vault: {
+      get: async (id) => vault.get(id) ?? null,
+      set: async (id, value) => {
+        vault.set(id, value);
+      },
+      delete: async (id) => {
+        vault.delete(id);
       },
     },
     async notify({ title, body, link }) {

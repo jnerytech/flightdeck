@@ -71,6 +71,15 @@ export interface Platform {
     set(id: string, value: string): Promise<void>;
     delete(id: string): Promise<void>;
   };
+  /**
+   * Phase 16: the vault's values (service `flightdeck-vault`, account = the secret id), apart from
+   * the host tokens in `secrets`. The metadata lives in `storage` and never holds a value.
+   */
+  vault: {
+    get(id: string): Promise<string | null>;
+    set(id: string, value: string): Promise<void>;
+    delete(id: string): Promise<void>;
+  };
   notify(notification: Notification): Promise<void>;
   isFocused(): boolean;
   openExternal(url: string): Promise<void>;

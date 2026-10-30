@@ -39,6 +39,11 @@ export function tauriPlatform(
       set: (hostId, token) => call("token_set", { hostId, token }),
       delete: (hostId) => call("token_delete", { hostId }),
     },
+    vault: {
+      get: (id) => call<string | null>("vault_get", { id }),
+      set: (id, value) => call("vault_set", { id, value }),
+      delete: (id) => call("vault_delete", { id }),
+    },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
       // The desktop plugin reports no clicks, so the link has nowhere to go (docs/DECISIONS.md).
