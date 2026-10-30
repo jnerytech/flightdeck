@@ -1,5 +1,5 @@
 import type { ActionInfo, ActionRunInfo } from "@flightdeck/protocol";
-import { Terminal } from "lucide-react";
+import { Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -9,6 +9,7 @@ import { useMinLoading } from "@/hooks/use-min-loading";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { SecretMeta } from "../lib/vault.ts";
+import { ActionForm } from "./ActionForm.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Where the action runs, in words: this host, a named one or an SSH destination. */
@@ -82,6 +83,9 @@ export function ActionsPage(props: {
   /** The runs of the actions whose history is open, by `source:name`. */
   const [history, setHistory] = useState<Record<string, ActionRunInfo[]>>({});
   const [trusting, setTrusting] = useState<ActionInfo | null>(null);
+  /** `"new"` for the creation, an action made in the app for its editing. */
+  const [editing, setEditing] = useState<ActionInfo | "new" | null>(null);
+  const [removing, setRemoving] = useState<ActionInfo | null>(null);
   const loading = useMinLoading(actions === null);
 
   const load = useCallback(async () => {
@@ -107,6 +111,17 @@ export function ActionsPage(props: {
     });
     if (result) setHistory({ ...history, [key]: result.runs });
   };
+  const remove = async (action: ActionInfo) => {
+    setRemoving(null);
+    const result = await store.hostCommand(hostId, "actions.remove", {
+      projectId,
+      name: action.name,
+    });
+    if (result) {
+      setActions(result.actions);
+      setErrors(result.errors);
+    }
+  };
   const trust = async (action: ActionInfo) => {
     setTrusting(null);
     const updated = await store.hostCommand(hostId, "actions.trust", {
@@ -124,7 +139,15 @@ export function ActionsPage(props: {
   };
 
   return (
-    <Page title={t("actionsUi.title", { project: props.projectName })}>
+    <Page
+      title={t("actionsUi.title", { project: props.projectName })}
+      actions={
+        <Button size="sm" onClick={() => setEditing("new")}>
+          <Plus aria-hidden="true" />
+          {t("actionsUi.new")}
+        </Button>
+      }
+    >
       <div className="flex max-w-3xl flex-col gap-3">
         {loading && <LoadingState label={t("actionsUi.loading")} />}
         {actions?.length === 0 && <EmptyState icon={Terminal} title={t("actionsUi.empty")} />}
@@ -180,6 +203,26 @@ export function ActionsPage(props: {
                   {t(history[key] ? "actionsUi.hideRunsButton" : "actionsUi.runsButton")}
                 </Button>
                 {history[key] && <Runs store={store} action={action} runs={history[key] ?? []} />}
+                {action.source === "app" && (
+                  <span className="flex gap-1 self-start">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("actionsUi.edit", { name: action.name })}
+                      onClick={() => setEditing(action)}
+                    >
+                      {t("actionsUi.editButton")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("actionsUi.remove", { name: action.name })}
+                      onClick={() => setRemoving(action)}
+                    >
+                      {t("actionsUi.removeButton")}
+                    </Button>
+                  </span>
+                )}
                 {prodHere && (
                   <span className="text-status-needs-you text-xs">{t("actionsUi.prodHere")}</span>
                 )}
@@ -208,6 +251,31 @@ export function ActionsPage(props: {
           })}
         </ul>
       </div>
+      {editing && (
+        <ActionForm
+          store={store}
+          hostId={hostId}
+          projectId={projectId}
+          initial={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setEditing(null);
+            setActions((list) => [
+              ...(list ?? []).filter((a) => !(a.name === saved.name && a.source === saved.source)),
+              saved,
+            ]);
+          }}
+        />
+      )}
+      {removing && (
+        <ConfirmDialog
+          message={t("actionsUi.removeMessage", { name: removing.name })}
+          confirmLabel={t("actionsUi.removeButton")}
+          destructive
+          onConfirm={() => void remove(removing)}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
       {trusting && (
         <ConfirmDialog
           message={`${t("actionsUi.trustMessage", { name: trusting.name, run: trusting.run.join(" ") })}${
