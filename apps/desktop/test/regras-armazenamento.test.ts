@@ -56,14 +56,30 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
   });
 
   test("on connect, the rules of each secret allowed for that host go to it, and no other secret's", async () => {
-    const first = await setup();
-    await first.store.setVaultRules(first.here.id, ALLOW);
-    await first.store.setVaultRules(first.elsewhere.id, ALLOW);
-    // Another start of the app, on the same storage, connecting to a fresh daemon.
-    const { daemon, sent, here } = await setup(first.platform);
+    const { store, daemon, here, elsewhere, sent, platform } = await setup();
+    await store.setVaultRules(here.id, ALLOW);
+    await store.setVaultRules(elsewhere.id, ALLOW);
+    store.dispose();
+    daemon.commands.length = 0;
+    // The app starts again on the same storage and connects to the same daemon.
+    const again = new AppStore(platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => again.dispose());
+    await again.init();
     await settle(() => sent().length > 0);
     expect(sent()).toEqual([{ secretId: here.id, tags: ["staging"], rules: ALLOW }]);
-    expect(JSON.stringify(daemon.commands)).not.toContain(first.elsewhere.id);
+    expect(JSON.stringify(daemon.commands)).not.toContain(elsewhere.id);
+  });
+
+  test("rules a host refuses on connect show as a notice with its reason", async () => {
+    const { store, daemon, here, platform } = await setup();
+    await store.setVaultRules(here.id, ALLOW);
+    store.dispose();
+    daemon.refuse.set("vault.rules.set", "regra inválida");
+    const again = new AppStore(platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => again.dispose());
+    await again.init();
+    await settle(() => again.getState().notices.some((n) => n.text === "regra inválida"));
+    expect(again.getState().notices.map((n) => n.text)).toContain("regra inválida");
   });
 
   test("what the daemon refuses comes back with its reason, and the rules are not saved", async () => {
