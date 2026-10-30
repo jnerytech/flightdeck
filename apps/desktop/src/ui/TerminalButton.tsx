@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import type { AppStore } from "../lib/app-store.ts";
 import type { TerminalTarget } from "../lib/terminal.ts";
 
@@ -23,8 +24,8 @@ export function TerminalButton(props: {
         ? `Copiar comando de ${name}`
         : "Copiar comando";
   return (
-    <button type="button" onClick={() => void store.openInTerminal(hostId, target)}>
+    <Button variant="outline" size="sm" onClick={() => void store.openInTerminal(hostId, target)}>
       {label}
-    </button>
+    </Button>
   );
 }

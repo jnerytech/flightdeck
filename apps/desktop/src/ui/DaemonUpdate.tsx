@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Button } from "@/components/ui/button";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -27,9 +28,9 @@ export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
   const version = offer.version;
   return (
     <>
-      <button type="button" onClick={() => setConfirming(true)}>
+      <Button variant="outline" className="self-start" onClick={() => setConfirming(true)}>
         {`Atualizar daemon para ${version}`}
-      </button>
+      </Button>
       {confirming && (
         <ConfirmDialog
           message={`Atualizar o daemon de ${host.name} para ${version}? Ele reinicia, e o app reconecta sozinho.`}
