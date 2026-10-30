@@ -108,6 +108,7 @@ const NAMES: Record<Route["name"], true> = {
   workflows: true,
   agent: true,
   automations: true,
+  actions: true,
   "auto-approvals": true,
   terminal: true,
   settings: true,

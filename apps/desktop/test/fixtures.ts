@@ -30,8 +30,8 @@ import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
-import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
+import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
