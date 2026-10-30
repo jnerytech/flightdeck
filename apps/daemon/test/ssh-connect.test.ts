@@ -234,7 +234,7 @@ describe("ssh-connect", () => {
     expect(joined).toContain("-o ForwardAgent=yes");
     expect(joined).toContain("-o ServerAliveInterval=30");
     expect(joined).toContain("-o Compression=yes");
-    expect(argv.filter((word, i) => argv[i - 1] === "-L")).toEqual([
+    expect(argv.filter((_word, i) => argv[i - 1] === "-L")).toEqual([
       "8080:localhost:80",
       "127.0.0.1:5432:db.internal:5432",
     ]);
@@ -388,6 +388,7 @@ describe("ssh-connect", () => {
       dir: s.dir,
       platform: "linux",
       sshPath: "/usr/bin/ssh",
+      run: async () => ({ code: 0, stderr: "" }),
       delivery: {
         kind: "agent",
         deliver: async () => {
@@ -708,12 +709,12 @@ describe("ssh-connect: peças", () => {
   });
 
   test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {
-    const system32 = "C:WindowsSystem32OpenSSHssh.exe";
+    const system32 = "C:\\Windows\\System32\\OpenSSH\\ssh.exe";
     const both = { exists: (path: string) => path === system32, which: () => "/x/ssh" };
     expect(resolveSshPath({ platform: "win32", ...both })).toBe(system32);
     expect(
-      resolveSshPath({ platform: "win32", exists: () => false, which: () => "C:Gitssh.exe" }),
-    ).toBe("C:Gitssh.exe");
+      resolveSshPath({ platform: "win32", exists: () => false, which: () => "C:\\Git\\ssh.exe" }),
+    ).toBe("C:\\Git\\ssh.exe");
     expect(resolveSshPath({ platform: "linux", ...both })).toBe("/x/ssh");
     expect(resolveSshPath({ platform: "linux", exists: () => false, which: () => null })).toBe(
       "ssh",
