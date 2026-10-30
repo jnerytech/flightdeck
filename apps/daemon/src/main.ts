@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { Actions } from "./actions/actions.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
@@ -561,10 +562,17 @@ export async function startDaemon(
     log: logger.log.bind(logger),
     actions: vaultActions(runtimeKind),
   });
+  // Phase 17: the actions that use a secret from the vault without Claude seeing it.
+  const actions = new Actions({
+    db: store.db,
+    vault,
+    projects: (id) => board.getProject(id),
+  });
   const server = startServer({
     manager,
     vault,
     log: logger.log.bind(logger),
+    actions,
     autoApprove,
     issues,
     automations,
@@ -651,6 +659,7 @@ export async function startDaemon(
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
         automations.stop();
+        actions.stop();
         vault.stop();
         await automations.idle();
         board.stop();

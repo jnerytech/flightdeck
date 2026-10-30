@@ -29,6 +29,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type VaultRequestFrame,
   type VaultUsed,
   WS_PATH,
 } from "@flightdeck/protocol";
@@ -203,6 +204,8 @@ interface Connection {
   changeWatchers: Map<string, () => void>;
   /** This connection's end of the terminals it is attached to. */
   terminalSink?: TerminalSink;
+  /** Stops the `vault.watch` stream, when active. */
+  unwatchVault?: () => void;
   lastRttMs?: number;
 }
 
@@ -231,7 +234,8 @@ type Outgoing =
   | TerminalExited
   | TerminalResync
   | AskpassRequest
-  | VaultUsed;
+  | VaultUsed
+  | VaultRequestFrame;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -685,15 +689,33 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { result: used.result });
       }
       case "actions.list":
+        return ok(command.type, await actions().list(command.payload.projectId));
       case "actions.save":
+        return ok(command.type, await actions().save(command.payload));
       case "actions.remove":
-      case "actions.trust":
+        return ok(
+          command.type,
+          await actions().remove(command.payload.projectId, command.payload.name),
+        );
+      case "actions.trust": {
+        const { projectId, name, hash } = command.payload;
+        return ok(command.type, await actions().trust(projectId, name, hash));
+      }
       case "actions.run":
+        return ok(command.type, await actions().run(command.payload));
       case "actions.runFree":
+        return ok(command.type, await actions().runFree(command.payload));
       case "actions.runs":
-      case "vault.watch":
+        return ok(command.type, { runs: actions().runs(command.payload) });
+      case "vault.watch": {
+        const service = actions();
+        ws.data.unwatchVault?.();
+        ws.data.unwatchVault = service.watch((frame) => send(ws, frame));
+        return ok(command.type);
+      }
       case "vault.deny":
-        throw new FlightdeckError("invalid_state", "ainda não implementado");
+        actions().deny(command.payload.requestId);
+        return ok(command.type);
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
@@ -1269,6 +1291,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (ws.data.terminalSink) opts.terminals?.detachAll(ws.data.terminalSink);
         for (const stop of ws.data.changeWatchers.values()) stop();
         ws.data.changeWatchers.clear();
+        ws.data.unwatchVault?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },
