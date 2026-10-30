@@ -163,10 +163,15 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     const title = "Corrigir o login com SSO";
     await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
     await c.page.getByRole("button", { name: c.t("issuesUi.button"), exact: true }).click();
-    const row = c.page.locator("li", { hasText: title }).filter({
-      has: c.page.getByRole("button", { name: c.t("issuesUi.createCard"), exact: true }),
+    // The row is found by its title alone: once its card exists the row has no Criar card button.
+    // The demo is seeded once for both languages, so the second language finds the card made by
+    // the first, and Criar card is only there when nobody has made it yet.
+    const row = c.page.locator("li", { hasText: title });
+    const create = row.getByRole("button", { name: c.t("issuesUi.createCard"), exact: true });
+    await create.or(row.getByText(c.t("issuesUi.cardCreated"), { exact: true })).waitFor({
+      timeout: WAIT,
     });
-    await row.getByRole("button", { name: c.t("issuesUi.createCard"), exact: true }).click();
+    if ((await create.count()) > 0) await create.click();
     await row.getByText(c.t("issuesUi.cardCreated"), { exact: true }).waitFor({ timeout: WAIT });
     // The rm -rf of the terminal session waits in the queue: a red seal, and Aprovar is a hold.
     await open(c, { name: "needs-you" });
