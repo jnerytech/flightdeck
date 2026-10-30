@@ -163,6 +163,8 @@ export interface TerminalCommands extends TerminalHost {
 export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
+  | `ssh.${string}`
+  | `askpass.${string}`
   | `project.${string}`
   | `board.${string}`
   | `card.${string}`

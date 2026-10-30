@@ -31,6 +31,8 @@ export type Route =
   | { name: "settings" }
   /** The Custos screen (phase 8, track A). */
   | { name: "costs" }
+  /** The ssh destinos of the host that keeps them (phase 15). */
+  | { name: "connections" }
   | { name: "add-host"; draft?: HostDraft; key?: number };
 
 /** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */

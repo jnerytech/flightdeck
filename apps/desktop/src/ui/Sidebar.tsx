@@ -6,6 +6,7 @@ import {
   History,
   Layers,
   MoreHorizontal,
+  Network,
   Plane,
   Plus,
   Search,
@@ -171,6 +172,15 @@ export function Sidebar(props: {
             icon={<Coins aria-hidden="true" className={icon} />}
             label={t("sidebar.costs")}
             onClick={() => go({ name: "costs" })}
+          />
+        )}
+        {/* Hosts from phase 15 keep ssh destinos. */}
+        {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "ssh", false)) && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Network aria-hidden="true" className={icon} />}
+            label={t("sidebar.connections")}
+            onClick={() => go({ name: "connections" })}
           />
         )}
         <NavButton

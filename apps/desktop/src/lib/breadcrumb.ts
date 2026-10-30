@@ -114,6 +114,8 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       );
     case "costs":
       return path({ label: t("sidebar.costs") });
+    case "connections":
+      return path({ label: t("sidebar.connections") });
     case "settings":
       return path({ label: t("sidebar.settings") });
     case "add-host":
