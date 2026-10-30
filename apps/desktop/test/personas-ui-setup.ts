@@ -22,7 +22,7 @@ export async function personasHost(
   while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
     await Bun.sleep(10);
   }
-  await store.hostCommand(hostId, "project.add", { path: repo });
+  const project = await store.hostCommand(hostId, "project.add", { path: repo });
   /** A versioned persona of the project, as a file under `.flightdeck/personas`. */
   const writePersona = (id: string, name: string, body: string) => {
     mkdirSync(join(repo, ".flightdeck", "personas"), { recursive: true });
@@ -31,5 +31,5 @@ export async function personasHost(
       `---\nid: ${id}\nname: "${name}"\ndescription: "Do projeto"\n---\n${body}\n`,
     );
   };
-  return { d, hostId, repo, writePersona };
+  return { d, hostId, repo, projectId: project?.id ?? "", writePersona };
 }
