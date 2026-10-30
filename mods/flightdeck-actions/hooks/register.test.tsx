@@ -41,7 +41,7 @@ const RESULT = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-test("registers the four tools and the command", async ($, on) => {
+test("registers the nine tools and the command", async ($, on) => {
   const tools: string[] = [];
   const commands: string[] = [];
   on("tool.register", (_, e) => {
@@ -56,7 +56,17 @@ test("registers the four tools and the command", async ($, on) => {
 
   await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
 
-  expect(tools).toEqual(["list_actions", "run_action", "list_snippets", "get_snippet"]);
+  expect(tools).toEqual([
+    "list_actions",
+    "run_action",
+    "list_snippets",
+    "get_snippet",
+    "list_sessions",
+    "send_to_session",
+    "notify_when_idle",
+    "read_session",
+    "team_status",
+  ]);
   expect(commands).toEqual(["flightdeck-actions"]);
 });
 
@@ -225,4 +235,64 @@ test("get_snippet reads one snippet by name and never runs it; flightdeckd's err
   reply = RESULT({ exitCode: 1, stderr: "not_found: snippet\n" });
   const missing = await $.tool.call({ tool: "mcp__flightdeck-actions__get_snippet", name: "nada" });
   expect((missing as { deny?: string }).deny).toContain("not_found");
+const SESSION_CALLS = [
+  ["list_sessions", {}, ["flightdeckd", "message", "list"]],
+  [
+    "send_to_session",
+    { to: "pc/s2", text: "faça o login; e use `aspas` e $VAR sem expandir" },
+    ["flightdeckd", "message", "send", "pc/s2", "faça o login; e use `aspas` e $VAR sem expandir"],
+  ],
+  ["notify_when_idle", { session: "pc/s2" }, ["flightdeckd", "message", "idle", "pc/s2"]],
+  [
+    "read_session",
+    { session: "pc/s2", last: 5 },
+    ["flightdeckd", "message", "read", "pc/s2", "--last", "5"],
+  ],
+  ["read_session", { session: "pc/s2" }, ["flightdeckd", "message", "read", "pc/s2"]],
+  ["team_status", { team: "t1" }, ["flightdeckd", "message", "team", "t1"]],
+] as const;
+
+for (const [tool, input, expected] of SESSION_CALLS) {
+  test(`${tool} passes its arguments to flightdeckd message as plain arguments, never a shell line`, async ($, on) => {
+    const argvs: string[][] = [];
+    on("process.run", (_, e) => {
+      argvs.push([...e.argv]);
+      return { value: RESULT({ stdout: '{"ok":true}' }) };
+    });
+    on("tool.call", () => ({ result: {} }));
+
+    const answer = await $.tool.call({ tool: `mcp__flightdeck-actions__${tool}`, ...input });
+
+    expect(argvs).toEqual([[...expected]]);
+    expect(String(answer.result)).toContain('"ok":true');
+  });
+}
+
+test("the message tools refuse input that is missing and say what flightdeckd said when it fails", async ($, on) => {
+  const argvs: string[][] = [];
+  on("process.run", (_, e) => {
+    argvs.push([...e.argv]);
+    return { value: RESULT({ exitCode: 1, stderr: "invalid_state: sem identidade" }) };
+  });
+  on("tool.call", () => ({ result: {} }));
+
+  const failed = await $.tool.call({ tool: "mcp__flightdeck-actions__list_sessions" });
+  expect((failed as { deny?: string }).deny).toContain("sem identidade");
+  const missing = await $.tool.call({
+    tool: "mcp__flightdeck-actions__send_to_session",
+    to: "pc/s2",
+  });
+  expect((missing as { deny?: string }).deny).toContain("send_to_session");
+  expect(argvs).toHaveLength(1);
+});
+
+test("a flightdeckd that cannot start is an error for the model on the message tools too", async ($, on) => {
+  on("process.run", () => {
+    throw new Error("spawn flightdeckd ENOENT");
+  });
+  on("tool.call", () => ({ result: {} }));
+
+  const answer = await $.tool.call({ tool: "mcp__flightdeck-actions__list_sessions" });
+
+  expect((answer as { deny?: string }).deny).toContain("flightdeckd");
 });
