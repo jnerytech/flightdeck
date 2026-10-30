@@ -53,6 +53,7 @@ export function TerminalPage(props: {
   useEffect(() => {
     let alive = true;
     let stopFollowing = () => {};
+    let stopObserving = () => {};
     const parent = area.current;
     void (async () => {
       const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
@@ -79,6 +80,11 @@ export function TerminalPage(props: {
       screen.current = xterm;
       session.current = current;
       xterm.open(parent);
+      // A resized window, tab or split changes the box: xterm fits it again, and its new size goes
+      // to the host through the session's debounced resize.
+      const observer = new ResizeObserver(() => xterm.fit());
+      observer.observe(parent);
+      stopObserving = () => observer.disconnect();
       stopFollowing = store.followTerminal(hostId, terminalId, {
         data: (base64) => current.data(base64),
         exited: (code) => current.exited(code),
@@ -93,6 +99,7 @@ export function TerminalPage(props: {
     return () => {
       alive = false;
       stopFollowing();
+      stopObserving();
       session.current?.dispose();
       screen.current?.dispose();
       session.current = null;
