@@ -1883,6 +1883,8 @@ export const Command = z.discriminatedUnion("type", [
   /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
   cmd("snippets.trust", z.object({ projectPath: z.string(), hash: z.string() }).strict()),
   cmd("snippets.favorite", z.object({ id: z.string(), favorite: z.boolean() }).strict()),
+  /** Reads a YAML or JSON list of snippets (an import from a file); saves nothing. */
+  cmd("snippets.parse", z.object({ text: z.string().max(1_000_000) }).strict()),
   /**
    * The most used commands of this host's shell histories (read only, secrets hidden). With
    * `select` (ids of the candidates) it also makes them snippets of the host.
@@ -2333,6 +2335,7 @@ export interface CommandResults {
   "snippets.remove": undefined;
   "snippets.trust": SnippetFileInfo;
   "snippets.favorite": Snippet;
+  "snippets.parse": { snippets: SnippetInput[]; errors: string[] };
   "snippets.importHistory": SnippetHistoryResult;
   "snippets.render": { text: string; fields: SnippetField[] };
   "snippets.use": { text: string; terminal: TerminalInfo | null };

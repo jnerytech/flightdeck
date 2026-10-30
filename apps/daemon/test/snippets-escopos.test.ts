@@ -559,4 +559,39 @@ describe("snippets-escopos: pelo protocolo", () => {
     expect(await featuresOf(setup().snippets)).toContain("snippets");
     expect(await featuresOf(null)).not.toContain("snippets");
   });
+
+  test("snippets.parse reads a YAML or JSON list of snippets, gives the reasons for the rest, and saves nothing", async () => {
+    const { snippets, root } = setup();
+    const { client } = await connect(snippets, root);
+    const yaml = [
+      "- name: testes",
+      "  type: command",
+      '  run: "bun test {{arquivo}}"',
+      '  vars: { arquivo: { default: "" } }',
+      "- name: revisar",
+      "  type: prompt",
+      "  text: Revise isto.",
+      "- name: com-segredo",
+      "  type: command",
+      "  run: export GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123",
+      "- type: command",
+    ].join("\n");
+    const parsed = await client.data<{ snippets: Array<{ name: string }>; errors: string[] }>(
+      "snippets.parse",
+      { text: yaml },
+    );
+    expect(parsed?.snippets.map((s) => s.name)).toEqual(["testes", "revisar"]);
+    expect(parsed?.errors).toHaveLength(2);
+    expect(parsed?.errors.join("\n")).toContain("com-segredo");
+    expect(parsed?.errors.join("\n")).not.toContain("ghp_");
+    const json = JSON.stringify([
+      { name: "status", type: "command", run: "git status", tags: ["git"] },
+    ]);
+    expect(
+      (await client.data<{ snippets: unknown[] }>("snippets.parse", { text: json }))?.snippets,
+    ).toEqual([{ name: "status", type: "command", run: "git status", vars: {}, tags: ["git"] }]);
+    const broken = await client.data<{ errors: string[] }>("snippets.parse", { text: "[: :" });
+    expect(broken?.errors).toHaveLength(1);
+    expect(snippets.list({}).snippets).toEqual([]);
+  });
 });
