@@ -286,6 +286,23 @@ export class Messaging {
     return seen;
   }
 
+  /**
+   * Who asks and about whom, under the rules (for the idle notice and for reading a session): throws
+   * the reason when the asker is unknown, the target is not found or the rules do not let them.
+   * `info` is null for a session of another host.
+   */
+  inspect(
+    as: SessionIdentity,
+    address: string,
+  ): { sender: Party; target: Party; info: EndpointInfo | null } {
+    const sender = this.resolve(as);
+    const target = this.target(address);
+    if ("error" in target) throw notFound(target.error);
+    const allowed = access(sender, target.party, this.policy);
+    if (!allowed.ok) throw new FlightdeckError("invalid_state", allowed.reason);
+    return { sender, target: target.party, info: target.local };
+  }
+
   // --- the history the limits count ---
 
   private history(): History {
