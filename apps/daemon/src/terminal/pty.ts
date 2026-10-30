@@ -25,8 +25,11 @@ export type SpawnFn = (argv: string[], options: Record<string, unknown>) => Spaw
 export interface SpawnedProcess {
   exited: Promise<number>;
   terminal?: { write(data: string): number; resize(cols: number, rows: number): void } | undefined;
-  kill(): void;
+  kill(signal?: string): void;
 }
+
+/** How long a killed process gets to end after SIGHUP before SIGKILL. */
+const KILL_GRACE_MS = 2000;
 
 /** How long after the process ended the end of its output is waited for. */
 const EOF_GRACE_MS = 100;
@@ -37,7 +40,10 @@ const EOF_GRACE_MS = 100;
  * only says the output stream closed, so the code is reported once both have happened (or the
  * stream stays silent for a moment after the process ended).
  */
-export function bunPty(spawn: SpawnFn = Bun.spawn as unknown as SpawnFn): PtyFactory {
+export function bunPty(
+  spawn: SpawnFn = Bun.spawn as unknown as SpawnFn,
+  killGraceMs = KILL_GRACE_MS,
+): PtyFactory {
   return (start) => {
     let exitCode: number | null = null;
     let drained = false;
@@ -60,7 +66,9 @@ export function bunPty(spawn: SpawnFn = Bun.spawn as unknown as SpawnFn): PtyFac
         },
       },
     });
+    let ended = false;
     void proc.exited.then((code) => {
+      ended = true;
       exitCode = code;
       setTimeout(() => {
         drained = true;
@@ -75,7 +83,15 @@ export function bunPty(spawn: SpawnFn = Bun.spawn as unknown as SpawnFn): PtyFac
       resize: (cols, rows) => {
         proc.terminal?.resize(cols, rows);
       },
-      kill: () => proc.kill(),
+      // SIGHUP is what a closing terminal sends: an interactive shell ignores SIGTERM but not
+      // SIGHUP, and passes it on to its jobs. Whatever is still there after the grace is killed.
+      // On Windows the signal is ignored and the process is terminated.
+      kill: () => {
+        proc.kill("SIGHUP");
+        setTimeout(() => {
+          if (!ended) proc.kill("SIGKILL");
+        }, killGraceMs);
+      },
     };
   };
 }
