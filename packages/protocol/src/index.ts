@@ -1576,6 +1576,8 @@ export const Command = z.discriminatedUnion("type", [
       name: z.string().min(1),
       params: z.record(z.string(), z.string()).optional(),
       requestedBy: VaultRequester,
+      /** The Claude Code session asking; the once-per-session approvals hold for it. */
+      session: z.string().min(1).optional(),
     }),
   ),
   /** A command written by Claude with secrets in its environment; the app always approves it. */
@@ -1586,6 +1588,7 @@ export const Command = z.discriminatedUnion("type", [
       secrets: z.array(z.string().min(1)).min(1).max(8),
       host: z.string().optional(),
       requestedBy: VaultDaemonRequester,
+      session: z.string().min(1).optional(),
     }),
   ),
   cmd(
@@ -1600,6 +1603,60 @@ export const Command = z.discriminatedUnion("type", [
   cmd("vault.watch", z.object({}).strict()),
   /** The user refused a `vault.request`: the run that waits for it fails at once. */
   cmd("vault.deny", z.object({ requestId: z.string().min(1) })),
+  /** Phase 19: the rules of one secret, replaced whole (the ones that break the ceiling are refused). */
+  cmd(
+    "vault.rules.set",
+    z.object({
+      secretId: z.string().min(1),
+      tags: z.array(z.string().min(1)).max(16).optional(),
+      rules: z.array(z.unknown()).max(200),
+    }),
+  ),
+  cmd("vault.rules.get", z.object({ secretId: z.string().min(1) })),
+  /** "What happens if…": the verdict for a use, without recording or spending anything. */
+  cmd(
+    "vault.rules.preview",
+    z.object({
+      secretId: z.string().min(1),
+      requester: VaultRequester,
+      purpose: z.enum(["ssh", "action", "run_with_secret"]),
+      action: z.string().optional(),
+      host: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      project: z.string().optional(),
+      session: z.string().optional(),
+      risk: z.enum(["low", "medium", "high"]).optional(),
+      actionApproval: ActionApproval.optional(),
+      at: z.number().optional(),
+    }),
+  ),
+  /** The user approved a request that asked; `vault.deliver` for it only works after this. */
+  cmd(
+    "vault.approve",
+    z.object({
+      requestId: z.string().min(1),
+      via: z.enum(["app", "tray"]),
+      /** How long the Approve button was held, for the requests that need 2 s. */
+      heldMs: z.number().int().min(0).optional(),
+      scope: z.enum(["once", "session"]).optional(),
+    }),
+  ),
+  cmd(
+    "vault.decisions",
+    z.object({
+      secretId: z.string().min(1).optional(),
+      days: z.number().int().min(1).max(365).optional(),
+      limit: z.number().int().min(1).max(1000).optional(),
+    }),
+  ),
+  /** Uses by secret, requester and outcome; `csv` adds the same as a CSV text. */
+  cmd(
+    "vault.report",
+    z.object({
+      days: z.number().int().min(1).max(365).optional(),
+      format: z.enum(["json", "csv"]).optional(),
+    }),
+  ),
   /**
    * Phase 16: the app hands the daemon a secret for one use. The daemon keeps it in memory only,
    * for at most 60 s (or until `expiresAt`, in milliseconds since the epoch), and only accepts it
@@ -2272,6 +2329,12 @@ export interface CommandResults {
   "actions.runs": { runs: ActionRunInfo[] };
   "vault.watch": undefined;
   "vault.deny": undefined;
+  "vault.rules.set": { rules: number };
+  "vault.rules.get": { secretId: string; tags: string[]; rules: unknown[] };
+  "vault.rules.preview": VaultVerdict;
+  "vault.approve": undefined;
+  "vault.decisions": { decisions: VaultDecisionInfo[] };
+  "vault.report": { rows: VaultReportRow[]; csv?: string };
   "vault.deliver": { expiresAt: number };
   "vault.use": { result: string };
   "card.startArena": Arena;
@@ -2554,6 +2617,17 @@ export const VaultRequestFrame = z.object({
   command: z.string().optional(),
   secrets: z.array(z.string()).optional(),
   host: z.string().optional(),
+  /** Phase 19: what the rules decided, and which rule did. `allow` is delivered without asking. */
+  decision: z.enum(["allow", "ask"]).optional(),
+  ruleId: z.string().nullable().optional(),
+  reason: z.string().optional(),
+  /** Ask once per session (the approval can be given for the session). */
+  once: z.boolean().optional(),
+  /** Prod or high risk: the Approve button is held for 2 s and the tray cannot approve. */
+  needsHold: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+  /** The request is denied if nobody answers by then (milliseconds since the epoch). */
+  expiresAt: z.number().optional(),
 });
 export type VaultRequestFrame = z.infer<typeof VaultRequestFrame>;
 
@@ -2567,6 +2641,68 @@ export const VaultUsed = z.object({
   at: z.string(),
 });
 export type VaultUsed = z.infer<typeof VaultUsed>;
+
+/** Phase 19: a warning for the app, even where a rule lets the use through. */
+export const VaultAlertFrame = z.object({
+  type: z.literal("vault.alert"),
+  kind: z.enum(["new-requester", "limit"]),
+  secretId: z.string(),
+  requester: VaultRequester,
+  message: z.string(),
+  at: z.string(),
+});
+export type VaultAlertFrame = z.infer<typeof VaultAlertFrame>;
+
+export const VaultVerdict = z.object({
+  decision: z.enum(["allow", "ask", "deny"]),
+  ruleId: z.string().nullable(),
+  reason: z.string(),
+  once: z.boolean(),
+  needsHold: z.boolean(),
+  limited: z.boolean(),
+});
+export type VaultVerdict = z.infer<typeof VaultVerdict>;
+
+export const VaultOutcome = z.enum([
+  "pending",
+  "allowed",
+  "approved",
+  "denied",
+  "expired",
+  "refused",
+  "failed",
+]);
+export type VaultOutcome = z.infer<typeof VaultOutcome>;
+
+/** Phase 19: one decision about a use of a secret, for the audit. */
+export const VaultDecisionInfo = z.object({
+  id: z.string(),
+  at: z.string(),
+  secretId: z.string(),
+  requester: VaultRequester,
+  purpose: z.enum(["ssh", "action", "run_with_secret"]),
+  action: z.string().nullable(),
+  host: z.string(),
+  project: z.string().nullable(),
+  session: z.string().nullable(),
+  ruleId: z.string().nullable(),
+  decision: z.enum(["allow", "ask", "deny"]),
+  outcome: VaultOutcome,
+  /** Who let it through: the rule, the app, the tray or an approval earlier in the session. */
+  approver: z.enum(["rule", "app", "tray", "session"]).nullable(),
+  /** The rule's time window, as it was. */
+  window: z.string().nullable(),
+  reason: z.string(),
+});
+export type VaultDecisionInfo = z.infer<typeof VaultDecisionInfo>;
+
+export const VaultReportRow = z.object({
+  secretId: z.string(),
+  requester: VaultRequester,
+  outcome: VaultOutcome,
+  count: z.number().int(),
+});
+export type VaultReportRow = z.infer<typeof VaultReportRow>;
 
 export const ServerMessage = z.union([
   AckOk,
@@ -2587,6 +2723,7 @@ export const ServerMessage = z.union([
   TerminalResync,
   VaultRequestFrame,
   VaultUsed,
+  VaultAlertFrame,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 

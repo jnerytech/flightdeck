@@ -16,16 +16,22 @@ import type {
   ActionList,
   ActionResult,
   ActionRunInfo,
+  VaultAlertFrame,
   VaultDaemonRequester,
+  VaultDecisionInfo,
+  VaultReportRow,
   VaultRequester,
   VaultRequestFrame,
   VaultUsed,
+  VaultVerdict,
 } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
 import { decideRequest } from "../vault/requests.ts";
+import type { Risk } from "../vault/rules.ts";
+import type { VaultRules } from "../vault/rules-store.ts";
 import type { Vault } from "../vault/vault.ts";
 import { type RunResult, resolveParams, runAction, type SshExecutor } from "./run.ts";
 import { type ActionDef, approvalOf, parseActions, secretsOf, validateAction } from "./schema.ts";
@@ -52,11 +58,25 @@ export interface ActionsOptions {
   ssh?: SshExecutor | undefined;
   /** The vault secret that holds a destino's key (`vault-key`), or null when it has none. */
   sshKey?: ((target: string) => string | null) | undefined;
-  /** How long a run waits for the app to deliver a secret (2 minutes when absent). */
+  /** How long a request waits for the app, and then is denied (10 minutes when absent). */
   requestTimeoutMs?: number | undefined;
+  /** Phase 19: the rules of each secret; without them the requests of phase 17 apply. */
+  rules?: VaultRules | undefined;
+  /** This host's name, as the rules' `host` matches it. */
+  hostName?: string | undefined;
+  /** What the classifier of phase 13 says of a command. */
+  risk?: ((command: string, cwd: string) => Risk) | undefined;
+  /** The `projectKey` of a project, as the rules' `project` matches it. */
+  projectKey?: ((projectId: string) => string | undefined) | undefined;
+  clock?: (() => number) | undefined;
+  /** The PC's time zone for the rules' windows (the system's when absent). */
+  timeZone?: string | undefined;
 }
 
-export type ActionsFrame = VaultRequestFrame | VaultUsed;
+export type ActionsFrame = VaultRequestFrame | VaultUsed | VaultAlertFrame;
+
+/** A request nobody answers is denied after this long. */
+export const REQUEST_TTL_MS = 10 * 60_000;
 
 /** Versioned actions live here, read from the project's base branch only. */
 export const ACTIONS_FILE = ".flightdeck/actions.yaml";
@@ -125,6 +145,58 @@ export class Actions {
     waiting.controller.abort();
   }
 
+  /** The user approved a request that asked; the delivery of its secret is allowed after this. */
+  approve(
+    _requestId: string,
+    _approval: {
+      via: "app" | "tray";
+      heldMs?: number | undefined;
+      scope?: "once" | "session" | undefined;
+    },
+  ): void {}
+
+  /** Throws unless a delivery for `purpose` may go through: a request that asks has to be approved. */
+  gate(_purpose: string): void {}
+
+  /** The verdict for a use, without recording anything. */
+  preview(_use: {
+    secretId: string;
+    requester: VaultRequester;
+    purpose: "ssh" | "action" | "run_with_secret";
+    action?: string | undefined;
+    host?: string | undefined;
+    tags?: string[] | undefined;
+    project?: string | undefined;
+    session?: string | undefined;
+    risk?: Risk | undefined;
+    actionApproval?: "always" | "never" | "first-per-session" | undefined;
+    at?: number | undefined;
+  }): VaultVerdict {
+    return {
+      decision: "deny",
+      ruleId: null,
+      reason: "",
+      once: false,
+      needsHold: false,
+      limited: false,
+    };
+  }
+
+  decisions(_input: {
+    secretId?: string | undefined;
+    days?: number | undefined;
+    limit?: number | undefined;
+  }): VaultDecisionInfo[] {
+    return [];
+  }
+
+  report(_input: { days?: number | undefined; format?: "json" | "csv" | undefined }): {
+    rows: VaultReportRow[];
+    csv?: string;
+  } {
+    return { rows: [] };
+  }
+
   /** Nothing that waits outlives the daemon. */
   stop(): void {
     for (const waiting of this.pending.values()) waiting.controller.abort();
@@ -186,6 +258,7 @@ export class Actions {
     name: string;
     params?: Record<string, string> | undefined;
     requestedBy: VaultRequester;
+    session?: string | undefined;
   }): Promise<ActionResult> {
     const found = await this.find(input.projectId, input.name);
     this.assertTrusted(found);
@@ -214,6 +287,7 @@ export class Actions {
     secrets: string[];
     host?: string | undefined;
     requestedBy: VaultRequester;
+    session?: string | undefined;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
     // Another host is a phase 15 destino of that name: the command runs there with sh -c.

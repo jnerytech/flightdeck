@@ -29,6 +29,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
   WS_PATH,
@@ -244,7 +245,8 @@ type Outgoing =
   | TerminalResync
   | AskpassRequest
   | VaultUsed
-  | VaultRequestFrame;
+  | VaultRequestFrame
+  | VaultAlertFrame;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -745,6 +747,13 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "vault.deny":
         actions().deny(command.payload.requestId);
         return ok(command.type);
+      case "vault.rules.set":
+      case "vault.rules.get":
+      case "vault.rules.preview":
+      case "vault.approve":
+      case "vault.decisions":
+      case "vault.report":
+        throw new FlightdeckError("invalid_state", "ainda não implementado");
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
