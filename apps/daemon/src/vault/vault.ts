@@ -21,10 +21,16 @@ export function isVaultTransport(address: string): boolean {
  * comes from a connection outside loopback and Tailscale. `what` names the command in the log.
  */
 export function requireVaultTransport(
-  _origin: string,
-  _what: string,
-  _log?: (message: string) => void,
-): void {}
+  origin: string,
+  what: string,
+  log?: (message: string) => void,
+): void {
+  if (isVaultTransport(origin)) return;
+  log?.(
+    `vault: ${what} recusado, origem ${origin || "desconhecida"}: fora do loopback e da Tailscale`,
+  );
+  throw invalid(REFUSED_TRANSPORT);
+}
 
 export interface VaultDelivery {
   secretId: string;
@@ -59,6 +65,9 @@ const MAX_HELD = 64;
 
 const invalid = (message: string) => new FlightdeckError("invalid_state", message);
 
+const REFUSED_TRANSPORT =
+  "entrega recusada: o cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard";
+
 export class Vault {
   private readonly values = new Map<string, Held>();
 
@@ -71,9 +80,7 @@ export class Vault {
       this.opts.log?.(
         `vault: entrega do segredo ${input.secretId} recusada, origem ${origin || "desconhecida"}: fora do loopback e da Tailscale`,
       );
-      throw invalid(
-        "entrega recusada: o cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard",
-      );
+      throw invalid(REFUSED_TRANSPORT);
     }
     if (input.expiresAt <= now) throw invalid("o prazo de uso do segredo já passou");
     if (!this.values.has(input.secretId) && this.values.size >= MAX_HELD) {

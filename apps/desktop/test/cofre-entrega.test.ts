@@ -4,6 +4,7 @@ import type { SecretMeta } from "../src/lib/vault.ts";
 import {
   type AnswerDeps,
   answerVaultRequest,
+  checkDelivery,
   transportAllowed,
 } from "../src/lib/vault-requests.ts";
 
@@ -139,5 +140,14 @@ describe("cofre-entrega", () => {
     ];
     expect(accepted.map(transportAllowed)).toEqual(accepted.map(() => true));
     expect(refused.map(transportAllowed)).toEqual(refused.map(() => false));
+  });
+
+  test("checkDelivery, which the ssh uses of the app go through, refuses a host reached over a LAN and never reads the value", async () => {
+    const { deps, reads } = setup({ hostUrl: "ws://192.168.1.5:7878/" });
+    const refused = await checkDelivery("s1", deps);
+    expect(refused).toMatchObject({ ok: false, code: "transport" });
+    expect(reads).toEqual([]);
+    const allowed = await checkDelivery("s1", { ...deps, hostUrl: "ws://100.64.0.7:7878/" });
+    expect(allowed).toEqual({ ok: true, value: VALUE });
   });
 });

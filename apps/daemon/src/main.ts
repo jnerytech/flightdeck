@@ -564,6 +564,7 @@ export async function startDaemon(
   const server = startServer({
     manager,
     vault,
+    log: logger.log.bind(logger),
     autoApprove,
     issues,
     automations,

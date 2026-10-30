@@ -71,7 +71,7 @@ import type { SshTargets } from "./ssh/targets.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
-import type { Vault } from "./vault/vault.ts";
+import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
@@ -1075,11 +1075,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "ssh.connect": {
         const { targetId, cols, rows, privateKey } = command.payload;
+        // A key from the vault travels only where the vault delivers: loopback and Tailscale.
+        if (privateKey) requireVaultTransport(ws.data.origin, "ssh.connect com chave", opts.log);
         const request = { targetId, cols, rows, ...(privateKey ? { privateKey } : {}) };
         return ok(command.type, await sshConnect().connect(request));
       }
       case "ssh.test": {
         const { targetId, privateKey } = command.payload;
+        if (privateKey) requireVaultTransport(ws.data.origin, "ssh.test com chave", opts.log);
         return ok(
           command.type,
           await sshConnect().test({ targetId, ...(privateKey ? { privateKey } : {}) }),
