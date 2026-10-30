@@ -243,6 +243,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.board ? ["arena"] : []),
     ...(opts.issues ? ["issues"] : []),
     ...(opts.automations ? ["automation"] : []),
+    ...(opts.autoApprove ? ["autoapprove"] : []),
   ];
   let pingSeq = 0;
 
