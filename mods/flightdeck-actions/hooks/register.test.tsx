@@ -1,7 +1,7 @@
 import { expect, test } from "claude-code/testing";
 
 const BAND = {
-  plugin: "flightdeck-actions",
+  plugin: "flightdeck",
   component: "AbovePrompt",
   props: {
     hasSurvey: false,
@@ -67,7 +67,7 @@ test("registers the nine tools and the command", async ($, on) => {
     "read_session",
     "team_status",
   ]);
-  expect(commands).toEqual(["flightdeck-actions"]);
+  expect(commands).toEqual(["flightdeck"]);
 });
 
 test("list_actions asks flightdeckd and hands the model what it printed", async ($, on) => {
@@ -79,7 +79,7 @@ test("list_actions asks flightdeckd and hands the model what it printed", async 
   on("tool.call", () => ({ result: {} }));
 
   const answer = await $.tool.call({
-    tool: "mcp__flightdeck-actions__list_actions",
+    tool: "mcp__flightdeck__list_actions",
     projectId: "p1",
   });
 
@@ -96,7 +96,7 @@ test("run_action passes the name and the parameters as arguments, never a shell 
   on("tool.call", () => ({ result: {} }));
 
   const answer = await $.tool.call({
-    tool: "mcp__flightdeck-actions__run_action",
+    tool: "mcp__flightdeck__run_action",
     name: "deploy-staging",
     params: { branch: "main; rm -rf /" },
   });
@@ -112,7 +112,7 @@ test("a failing flightdeckd comes back to the model as the error text", async ($
   on("tool.call", () => ({ result: {} }));
 
   const answer = await $.tool.call({
-    tool: "mcp__flightdeck-actions__run_action",
+    tool: "mcp__flightdeck__run_action",
     name: "deploy-staging",
   });
 
@@ -138,7 +138,7 @@ test("the band names the action while it runs and goes away after", async ($, on
     return <Box />;
   });
 
-  const call = $.tool.call({ tool: "mcp__flightdeck-actions__run_action", name: "deploy-staging" });
+  const call = $.tool.call({ tool: "mcp__flightdeck__run_action", name: "deploy-staging" });
   await reached.promise;
 
   for (const surface of ["terminal", "desktop"] as const) {
@@ -162,7 +162,7 @@ test("a flightdeckd that cannot start is an error for the model, not a crash", a
 
   for (const tool of ["list_actions", "run_action"]) {
     const answer = await $.tool.call({
-      tool: `mcp__flightdeck-actions__${tool}`,
+      tool: `mcp__flightdeck__${tool}`,
       name: "deploy-staging",
     });
 
@@ -261,7 +261,7 @@ for (const [tool, input, expected] of SESSION_CALLS) {
     });
     on("tool.call", () => ({ result: {} }));
 
-    const answer = await $.tool.call({ tool: `mcp__flightdeck-actions__${tool}`, ...input });
+    const answer = await $.tool.call({ tool: `mcp__flightdeck__${tool}`, ...input });
 
     expect(argvs).toEqual([[...expected]]);
     expect(String(answer.result)).toContain('"ok":true');
@@ -276,10 +276,10 @@ test("the message tools refuse input that is missing and say what flightdeckd sa
   });
   on("tool.call", () => ({ result: {} }));
 
-  const failed = await $.tool.call({ tool: "mcp__flightdeck-actions__list_sessions" });
+  const failed = await $.tool.call({ tool: "mcp__flightdeck__list_sessions" });
   expect((failed as { deny?: string }).deny).toContain("sem identidade");
   const missing = await $.tool.call({
-    tool: "mcp__flightdeck-actions__send_to_session",
+    tool: "mcp__flightdeck__send_to_session",
     to: "pc/s2",
   });
   expect((missing as { deny?: string }).deny).toContain("send_to_session");
@@ -292,7 +292,7 @@ test("a flightdeckd that cannot start is an error for the model on the message t
   });
   on("tool.call", () => ({ result: {} }));
 
-  const answer = await $.tool.call({ tool: "mcp__flightdeck-actions__list_sessions" });
+  const answer = await $.tool.call({ tool: "mcp__flightdeck__list_sessions" });
 
   expect((answer as { deny?: string }).deny).toContain("flightdeckd");
 });
