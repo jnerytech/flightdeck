@@ -30,6 +30,8 @@ export class Workspace {
   readonly router: Navigation;
   private readonly listeners = new Set<() => void>();
   private readonly unwatch = new Map<Tabs, () => void>();
+  /** While a move or a join runs, an area may be empty for a moment: its changes wait for the end. */
+  private moving = false;
 
   constructor(
     initial: Route = { name: "home" },
@@ -145,6 +147,7 @@ export class Workspace {
     const from = this.areas.findIndex((area) => area.tabs.some((tab) => tab.id === tabId));
     const source = this.areas[from];
     if (!source) return null;
+    this.moving = true;
     const tab = source.take(tabId) as Tab;
     let target = this.areas[1 - from];
     if (!target) {
@@ -157,12 +160,14 @@ export class Workspace {
     if (source.tabs.length === 0) this.detach(source);
     this.focus = this.areas.indexOf(target) as 0 | 1;
     if (this.areas.length === 1) this.split = null;
+    this.moving = false;
     this.emit();
     return tab;
   }
 
   private join(): void {
     const [first, second] = this.areas as [Tabs, Tabs];
+    this.moving = true;
     for (const tab of [...second.tabs]) {
       second.take(tab.id);
       first.adopt(tab, first.tabs.length);
@@ -170,6 +175,7 @@ export class Workspace {
     this.detach(second);
     this.split = null;
     this.focus = 0;
+    this.moving = false;
     this.emit();
   }
 
@@ -177,7 +183,9 @@ export class Workspace {
     this.areas = [...this.areas, area];
     this.unwatch.set(
       area,
-      area.subscribe(() => this.emit()),
+      area.subscribe(() => {
+        if (!this.moving) this.emit();
+      }),
     );
   }
 
