@@ -42,6 +42,8 @@ sessions from one place, without opening each machine.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
+- A timeline per session: go back to the files of any turn (with a preview and an undo), fork the
+  conversation from a turn, and edit the project's MCP servers, `CLAUDE.md`, agents and skills.
 - Files that are not tracked (such as `.env`) can follow a card into its worktree: list them in
   `.worktreeinclude` at the root of the repository.
 - A Claude Code statusline with your quota and cost: set `statusLine` to

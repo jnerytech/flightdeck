@@ -43,6 +43,9 @@ sessões num lugar só, sem abrir cada máquina.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.
+- Uma linha do tempo por sessão: volte aos arquivos de qualquer turno (com prévia e desfazer),
+  bifurque a conversa a partir de um turno e edite os servidores MCP, o `CLAUDE.md`, os agentes e as
+  skills do projeto.
 - Arquivos não rastreados (como `.env`) podem acompanhar um card até o worktree: liste-os em
   `.worktreeinclude` na raiz do repositório.
 - Uma statusline do Claude Code com sua cota e custo: aponte `statusLine` para
