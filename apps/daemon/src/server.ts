@@ -315,6 +315,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.actions ? ["actions"] : []),
     // Phase 18: saved commands and prompts of the host and its projects.
     ...(opts.snippets ? ["snippets"] : []),
+    // Phase 20: the engineering personas of the host and its projects.
+    ...(opts.personas ? ["personas"] : []),
   ];
   let pingSeq = 0;
 
