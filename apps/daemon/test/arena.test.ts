@@ -182,7 +182,10 @@ describe("arena", () => {
     const done = await until(async () => {
       const current = await board.arena(arenaCard.id);
       return current.variants.every(
-        (v) => v.checks.length > 0 && v.checks.every((c) => c.status !== "running"),
+        (v) =>
+          v.checks.length > 0 &&
+          v.checks.every((c) => c.status !== "running") &&
+          v.files.length > 0,
       )
         ? current
         : null;
