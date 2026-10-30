@@ -217,4 +217,132 @@ export const en: Dictionary = {
     offline: "The host is offline.",
     timeout: "The host didn't answer in time.",
   },
+  common: {
+    cancel: "Cancel",
+  },
+  session: {
+    cost: "estimated cost:",
+    costLabel: "Session cost",
+    resume: "Resume",
+    interrupt: "Interrupt",
+    end: "End",
+    endMessage: "End this session? Claude Code stops; you can resume it later.",
+    endConfirm: "End session",
+    pruned: "conversation removed by retention",
+    message: "Message",
+    placeholder: "Message (Ctrl+Enter sends)",
+    send: "Send",
+    turnDone: "turn finished · {seconds} s",
+    turnFailed: "turn failed · {seconds} s",
+  },
+  reader: {
+    maybeActive: "possibly in use",
+    continue: "Continue in Flightdeck",
+    copyCommand: "Copy command",
+    copied: "Command copied",
+    confirm:
+      "This session may be in use somewhere else: the file changed in the last 2 minutes. Two processes writing the same conversation corrupt it.",
+    continueAnyway: "Continue anyway",
+    loadPrevious: "Load earlier",
+    transcript: "Transcript",
+  },
+  toolCall: {
+    waiting: "waiting for the result…",
+  },
+  alwaysAllow: {
+    rule: "Rule",
+    saveRule: "Save rule",
+    session: "Allow for this session",
+    project: "Always in this project",
+  },
+  newSession: {
+    title: "New session on {host}",
+    folder: "Folder",
+    subfolder: "Subfolder",
+    name: "Name",
+    optional: "optional",
+    mode: "Permission mode",
+    prompt: "First prompt",
+    create: "Create session",
+  },
+  modes: {
+    option: "{name}: {description}",
+    default: {
+      name: "Default",
+      description: "asks before acting",
+    },
+    acceptEdits: {
+      name: "Accept edits",
+      description: "edits files without asking",
+    },
+    plan: {
+      name: "Plan",
+      description: "only reads and proposes a plan",
+    },
+    auto: {
+      name: "Automatic",
+      description: "a classifier decides what goes on",
+    },
+    dontAsk: {
+      name: "Allowed only",
+      description: "denies what the rules do not allow",
+    },
+    bypassPermissions: {
+      name: "No questions",
+      description: "runs everything, without asking for approval",
+    },
+    bypassWarning:
+      "No questions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
+  },
+  diff: {
+    changedFiles: "Changed files",
+    uncommitted: "not committed",
+    unified: "Unified",
+    split: "Side by side",
+    unifiedLabel: "Unified diff",
+    splitLabel: "Side-by-side diff",
+  },
+  update: {
+    label: "App update",
+    available: "Flightdeck {version} available",
+    first: "Update the app first, then the hosts' daemons.",
+    install: "Install and restart",
+    later: "Later",
+  },
+  daemonUpdate: {
+    failed: "The daemon update did not finish: {reason}. On the host, with the new binary:",
+    binary: "<new binary>",
+    updating: "updating…",
+    button: "Update daemon to {version}",
+    message:
+      "Update the daemon of {host} to {version}? It restarts, and the app reconnects by itself.",
+    confirm: "Update daemon",
+  },
+  welcome: {
+    addHost: "Add a host with the flightdeckd address and token.",
+  },
+  external: {
+    line: "{host} · terminal · {state}",
+    controllable: "controllable",
+    message: "Message to the session",
+    placeholder: "Message (goes through the flightdeckd claude channel)",
+    send: "Send message",
+  },
+  status: {
+    starting: "starting",
+    running: "running",
+    awaiting_permission: "waiting for you",
+    idle: "idle",
+    ended: "ended",
+    error: "error",
+  },
+  terminal: {
+    open: "Open in terminal",
+    openNamed: "Open {name} in terminal",
+    copy: "Copy command",
+    copyNamed: "Copy the command of {name}",
+  },
+  projects: {
+    pathPlaceholder: "Path (inside the host's allowed folders)",
+  },
 };

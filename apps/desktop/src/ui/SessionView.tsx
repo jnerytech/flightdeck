@@ -10,16 +10,15 @@ import {
 } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { type T, translator } from "../i18n/index.ts";
+import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
-
-const PT = translator("pt-BR");
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
@@ -98,7 +97,9 @@ function TimelineItem(props: {
             item.isError && "text-status-error",
           )}
         >
-          {`${item.subtype} · ${(item.durationMs / 1000).toFixed(1)} s${cost}`}
+          {props.t(item.isError ? "session.turnFailed" : "session.turnDone", {
+            seconds: (item.durationMs / 1000).toFixed(1),
+          }) + cost}
         </div>
       );
     }
@@ -125,6 +126,8 @@ export function SessionView(props: {
   t?: T;
   nowMs?: number;
 }) {
+  const ctx = useT();
+  const t = props.t ?? ctx;
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
   const cards = props.session.items.length;
@@ -154,7 +157,8 @@ export function SessionView(props: {
             <span>{session.cwd}</span>
             {typeof props.costUsd === "number" && (
               <span>
-                custo estimado: <output aria-label="Custo da sessão">{usd(props.costUsd)}</output>
+                {t("session.cost")}{" "}
+                <output aria-label={t("session.costLabel")}>{usd(props.costUsd)}</output>
               </span>
             )}
           </>
@@ -168,20 +172,20 @@ export function SessionView(props: {
             {props.terminal}
             {closed ? (
               <Button variant="outline" size="sm" onClick={() => void actions.resume()}>
-                Retomar
+                {t("session.resume")}
               </Button>
             ) : (
               <>
                 <Button variant="outline" size="sm" onClick={() => void actions.interrupt()}>
-                  Interromper
+                  {t("session.interrupt")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setClosing(true)}>
-                  Encerrar
+                  {t("session.end")}
                 </Button>
                 {closing && (
                   <ConfirmDialog
-                    message="Encerrar esta sessão? O Claude Code para; dá para retomá-la depois."
-                    confirmLabel="Encerrar sessão"
+                    message={t("session.endMessage")}
+                    confirmLabel={t("session.endConfirm")}
                     destructive
                     onConfirm={() => {
                       setClosing(false);
@@ -197,7 +201,7 @@ export function SessionView(props: {
       />
       <Timeline ref={timeline}>
         {session.pruned && session.items.length === 0 && (
-          <p className="text-muted-foreground text-sm">conversa removida pela retenção</p>
+          <p className="text-muted-foreground text-sm">{t("session.pruned")}</p>
         )}
         {session.items.map((item) => (
           <TimelineItem
@@ -206,7 +210,7 @@ export function SessionView(props: {
             session={session}
             actions={actions}
             alwaysAllow={props.alwaysAllow === true}
-            t={props.t ?? PT}
+            t={t}
             nowMs={props.nowMs ?? Date.now()}
           />
         ))}
@@ -218,8 +222,8 @@ export function SessionView(props: {
       </Timeline>
       <Composer>
         <Textarea
-          aria-label="Mensagem"
-          placeholder="Mensagem (Ctrl+Enter envia)"
+          aria-label={t("session.message")}
+          placeholder={t("session.placeholder")}
           value={text}
           className="max-h-40 min-h-9 flex-1 resize-none"
           rows={1}
@@ -231,7 +235,7 @@ export function SessionView(props: {
             }
           }}
         />
-        <Button onClick={submit}>Enviar</Button>
+        <Button onClick={submit}>{t("session.send")}</Button>
       </Composer>
     </SessionPane>
   );

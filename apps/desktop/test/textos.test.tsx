@@ -59,6 +59,11 @@ async function online(language: string) {
   return { d, store, sessionId, hostId: store.getState().hosts[0]?.id ?? "" };
 }
 
+/** Shows one word from the dictionary of the language in use. */
+function Probe() {
+  return <p>{useT()("sidebar.sessions")}</p>;
+}
+
 const main = () => screen.queryByRole("main") as HTMLElement;
 
 describe("textos", () => {
@@ -84,7 +89,6 @@ describe("textos", () => {
   });
 
   test("useT segue o idioma do app e cai no português fora dele", () => {
-    const Probe = () => <p>{useT()("sidebar.sessions")}</p>;
     render(<Probe />);
     expect(screen.queryByText("Sessões")).not.toBeNull();
     cleanup();
@@ -151,7 +155,7 @@ describe("textos", () => {
     });
     await act(() => Bun.sleep(200));
     const session = main().textContent ?? "";
-    for (const word of ["Resume", "Interrupt", "End", "Send"]) {
+    for (const word of ["Interrupt", "End", "Send", "Copy command", "idle"]) {
       expect(session).toMatch(new RegExp(word));
     }
     expect(session).not.toMatch(/Retomar|Interromper|Encerrar|Enviar|Mensagem/);

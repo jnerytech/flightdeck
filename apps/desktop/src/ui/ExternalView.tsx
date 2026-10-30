@@ -31,6 +31,7 @@ export function ExternalView(props: {
   claudeSessionId: string;
   onResumed(): void;
 }) {
+  const t = props.store.i18n.t;
   const { store, state, hostId, claudeSessionId: id } = props;
   const key = sessionKey(hostId, id);
   const session = state.externals[key];
@@ -54,13 +55,16 @@ export function ExternalView(props: {
     <SessionPane>
       <SessionHeader
         title={title}
-        subtitle={`${props.hostName} · terminal · ${STATES[session?.status ?? "unknown"]}`}
+        subtitle={t("external.line", {
+          host: props.hostName,
+          state: STATES[session?.status ?? "unknown"],
+        })}
         controls={
           <>
             {session?.controllable && (
               <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
                 <Radio aria-hidden="true" className="size-3" />
-                controlável
+                {t("external.controllable")}
               </span>
             )}
             {session?.cwd && (
@@ -100,14 +104,14 @@ export function ExternalView(props: {
       {session?.controllable && (
         <Composer>
           <Textarea
-            aria-label="Mensagem para a sessão"
-            placeholder="Mensagem (vai pelo canal do flightdeckd claude)"
+            aria-label={t("external.message")}
+            placeholder={t("external.placeholder")}
             value={text}
             className="max-h-40 min-h-9 flex-1 resize-none"
             rows={1}
             onChange={(e) => setText(e.target.value)}
           />
-          <Button onClick={send}>Enviar mensagem</Button>
+          <Button onClick={send}>{t("external.send")}</Button>
         </Composer>
       )}
       <div className="min-h-0 flex-1">

@@ -140,9 +140,7 @@ function AddHost(props: {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
       {props.empty && (
-        <p className="text-muted-foreground text-sm">
-          Adicione um host com o endereço e o token do flightdeckd.
-        </p>
+        <p className="text-muted-foreground text-sm">{props.store.i18n.t("welcome.addHost")}</p>
       )}
       <HostForm
         {...(props.draft

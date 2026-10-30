@@ -9,6 +9,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
  * the host comes back on the new version, or why it did not, with the manual command.
  */
 export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
+  const t = props.store.i18n.t;
   const { store, host } = props;
   const [confirming, setConfirming] = useState(false);
   const offer = host.hostInfo?.update;
@@ -16,25 +17,26 @@ export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
   if (progress?.failed) {
     return (
       <InlineNotice>
-        {`A atualização do daemon não terminou: ${progress.failed}. No host, com o binário novo: `}
+        {t("daemonUpdate.failed", { reason: progress.failed }) + " "}
         <code className="rounded bg-muted px-1 font-mono text-xs">
-          flightdeckd update --from &lt;binário novo&gt;
+          flightdeckd update --from {t("daemonUpdate.binary")}
         </code>
       </InlineNotice>
     );
   }
-  if (progress) return <p className="text-muted-foreground text-sm">atualizando…</p>;
+  if (progress)
+    return <p className="text-muted-foreground text-sm">{t("daemonUpdate.updating")}</p>;
   if (!offer?.available || !offer.version) return null;
   const version = offer.version;
   return (
     <>
       <Button variant="outline" className="self-start" onClick={() => setConfirming(true)}>
-        {`Atualizar daemon para ${version}`}
+        {t("daemonUpdate.button", { version })}
       </Button>
       {confirming && (
         <ConfirmDialog
-          message={`Atualizar o daemon de ${host.name} para ${version}? Ele reinicia, e o app reconecta sozinho.`}
-          confirmLabel="Atualizar daemon"
+          message={t("daemonUpdate.message", { host: host.name, version })}
+          confirmLabel={t("daemonUpdate.confirm")}
           onConfirm={() => {
             setConfirming(false);
             void store.updateDaemon(host.id);

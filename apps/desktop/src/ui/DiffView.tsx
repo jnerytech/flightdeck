@@ -2,6 +2,7 @@ import type { CardDiff, DiffLine } from "@flightdeck/protocol";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/context";
 
 /** Pairs each line with its side: removals on the left, additions on the right. */
 const sides = (line: DiffLine): [string, string] => [
@@ -11,17 +12,18 @@ const sides = (line: DiffLine): [string, string] => [
 
 /** The card's changes per file, unified or side by side; uncommitted files are marked. */
 export function DiffView({ diff }: { diff: CardDiff }) {
+  const t = useT();
   const [mode, setMode] = useState<"unified" | "split">("unified");
   return (
     <div className="flex flex-col gap-3">
-      <ul aria-label="Arquivos alterados" className="flex flex-col gap-1 text-sm">
+      <ul aria-label={t("diff.changedFiles")} className="flex flex-col gap-1 text-sm">
         {diff.files.map((file) => (
           <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
             <span className="font-mono text-xs">{file.path}</span>{" "}
             <span className="text-muted-foreground text-xs tabular-nums">{`+${file.additions} −${file.deletions}`}</span>
             {file.uncommitted && (
               <Badge variant="outline" className="text-status-needs-you">
-                não commitado
+                {t("diff.uncommitted")}
               </Badge>
             )}
           </li>
@@ -35,7 +37,7 @@ export function DiffView({ diff }: { diff: CardDiff }) {
           className="aria-pressed:bg-accent"
           onClick={() => setMode("unified")}
         >
-          Unificada
+          {t("diff.unified")}
         </Button>
         <Button
           variant="outline"
@@ -44,11 +46,11 @@ export function DiffView({ diff }: { diff: CardDiff }) {
           className="aria-pressed:bg-accent"
           onClick={() => setMode("split")}
         >
-          Lado a lado
+          {t("diff.split")}
         </Button>
       </div>
       <section
-        aria-label={mode === "unified" ? "Diff unificado" : "Diff lado a lado"}
+        aria-label={mode === "unified" ? t("diff.unifiedLabel") : t("diff.splitLabel")}
         className="flex flex-col gap-4"
       >
         {diff.files.map((file) => (

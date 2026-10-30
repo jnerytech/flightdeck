@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useT } from "@/i18n/context";
 
 /**
  * In-app confirmation (never `window.confirm`, which blocks the webview): an AlertDialog with
@@ -25,6 +26,7 @@ export function ConfirmDialog(props: {
   onConfirm(): void;
   onCancel(): void;
 }) {
+  const t = useT();
   // The action closes the dialog too: only a close that was not a confirmation is a cancel.
   const confirmed = useRef(false);
   return (
@@ -41,7 +43,7 @@ export function ConfirmDialog(props: {
           {props.warning && <p className="text-sm text-status-needs-you">{props.warning}</p>}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             variant={props.destructive ? "destructive" : "default"}
             onClick={() => {

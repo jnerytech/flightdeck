@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import type { TerminalTarget } from "../lib/terminal.ts";
 
@@ -12,17 +13,18 @@ export function TerminalButton(props: {
   target: TerminalTarget;
   name?: string;
 }) {
+  const t = useT();
   const { store, hostId, target, name } = props;
   const launch = store.terminalLaunch(hostId, target);
   if (!launch) return null;
   const label =
     launch.kind === "spawn"
       ? name
-        ? `Abrir ${name} no terminal`
-        : "Abrir no terminal"
+        ? t("terminal.openNamed", { name })
+        : t("terminal.open")
       : name
-        ? `Copiar comando de ${name}`
-        : "Copiar comando";
+        ? t("terminal.copyNamed", { name })
+        : t("terminal.copy");
   return (
     <Button variant="outline" size="sm" onClick={() => void store.openInTerminal(hostId, target)}>
       {label}

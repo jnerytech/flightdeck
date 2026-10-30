@@ -128,7 +128,7 @@ export function SessionsHub(props: {
     filter.showArchived,
   ].filter(Boolean).length;
   const toolbar = (
-    <Toolbar label="Filtros">
+    <Toolbar label={t("hub.filters")}>
       <Input
         aria-label={t("hub.filterLabel")}
         placeholder={t("hub.filterPlaceholder")}
@@ -209,7 +209,7 @@ export function SessionsHub(props: {
   );
 
   return (
-    <Page title="Sessões" toolbar={toolbar}>
+    <Page title={t("sidebar.sessions")} toolbar={toolbar}>
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
         {renaming && (

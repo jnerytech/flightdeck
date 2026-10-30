@@ -220,4 +220,132 @@ export const ptBR = {
     offline: "O host está offline.",
     timeout: "O host não respondeu a tempo.",
   },
+  common: {
+    cancel: "Cancelar",
+  },
+  session: {
+    cost: "custo estimado:",
+    costLabel: "Custo da sessão",
+    resume: "Retomar",
+    interrupt: "Interromper",
+    end: "Encerrar",
+    endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
+    endConfirm: "Encerrar sessão",
+    pruned: "conversa removida pela retenção",
+    message: "Mensagem",
+    placeholder: "Mensagem (Ctrl+Enter envia)",
+    send: "Enviar",
+    turnDone: "turno concluído · {seconds} s",
+    turnFailed: "turno com erro · {seconds} s",
+  },
+  reader: {
+    maybeActive: "possivelmente em uso",
+    continue: "Continuar no Flightdeck",
+    copyCommand: "Copiar comando",
+    copied: "Comando copiado",
+    confirm:
+      "Esta sessão pode estar em uso em outro lugar: o arquivo mudou nos últimos 2 minutos. Dois processos escrevendo na mesma conversa a corrompem.",
+    continueAnyway: "Continuar mesmo assim",
+    loadPrevious: "Carregar anteriores",
+    transcript: "Transcript",
+  },
+  toolCall: {
+    waiting: "aguardando resultado…",
+  },
+  alwaysAllow: {
+    rule: "Regra",
+    saveRule: "Salvar regra",
+    session: "Permitir nesta sessão",
+    project: "Sempre neste projeto",
+  },
+  newSession: {
+    title: "Nova sessão em {host}",
+    folder: "Pasta",
+    subfolder: "Subpasta",
+    name: "Nome",
+    optional: "opcional",
+    mode: "Modo de permissão",
+    prompt: "Primeiro prompt",
+    create: "Criar sessão",
+  },
+  modes: {
+    option: "{name}: {description}",
+    default: {
+      name: "Padrão",
+      description: "pergunta antes de agir",
+    },
+    acceptEdits: {
+      name: "Aceitar edições",
+      description: "edita arquivos sem perguntar",
+    },
+    plan: {
+      name: "Planejar",
+      description: "só lê e propõe um plano",
+    },
+    auto: {
+      name: "Automático",
+      description: "um classificador decide o que segue",
+    },
+    dontAsk: {
+      name: "Só o permitido",
+      description: "nega o que as regras não liberam",
+    },
+    bypassPermissions: {
+      name: "Sem perguntas",
+      description: "executa tudo, sem pedir aprovação",
+    },
+    bypassWarning:
+      "Sem perguntas: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
+  },
+  diff: {
+    changedFiles: "Arquivos alterados",
+    uncommitted: "não commitado",
+    unified: "Unificada",
+    split: "Lado a lado",
+    unifiedLabel: "Diff unificado",
+    splitLabel: "Diff lado a lado",
+  },
+  update: {
+    label: "Atualização do app",
+    available: "Flightdeck {version} disponível",
+    first: "Atualize primeiro o app e depois os daemons dos hosts.",
+    install: "Instalar e reiniciar",
+    later: "Depois",
+  },
+  daemonUpdate: {
+    failed: "A atualização do daemon não terminou: {reason}. No host, com o binário novo:",
+    binary: "<binário novo>",
+    updating: "atualizando…",
+    button: "Atualizar daemon para {version}",
+    message:
+      "Atualizar o daemon de {host} para {version}? Ele reinicia, e o app reconecta sozinho.",
+    confirm: "Atualizar daemon",
+  },
+  welcome: {
+    addHost: "Adicione um host com o endereço e o token do flightdeckd.",
+  },
+  external: {
+    line: "{host} · terminal · {state}",
+    controllable: "controlável",
+    message: "Mensagem para a sessão",
+    placeholder: "Mensagem (vai pelo canal do flightdeckd claude)",
+    send: "Enviar mensagem",
+  },
+  status: {
+    starting: "iniciando",
+    running: "rodando",
+    awaiting_permission: "esperando você",
+    idle: "ociosa",
+    ended: "encerrada",
+    error: "erro",
+  },
+  terminal: {
+    open: "Abrir no terminal",
+    openNamed: "Abrir {name} no terminal",
+    copy: "Copiar comando",
+    copyNamed: "Copiar comando de {name}",
+  },
+  projects: {
+    pathPlaceholder: "Caminho (dentro das pastas permitidas do host)",
+  },
 } as const;

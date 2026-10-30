@@ -3,6 +3,8 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n/context";
+import type { Key } from "../i18n/index.ts";
 import type { HostView } from "../lib/app-store.ts";
 
 const MODES: PermissionMode[] = [
@@ -25,6 +27,7 @@ export function NewSessionForm(props: {
   host: HostView;
   onCreate(payload: CommandPayload<"session.create">): void;
 }) {
+  const t = useT();
   const id = useId();
   const roots = props.host.info?.allowedRoots ?? [];
   const [root, setRoot] = useState(roots[0] ?? "");
@@ -51,7 +54,7 @@ export function NewSessionForm(props: {
     >
       <h2 className="font-semibold text-xl">Nova sessão em {props.host.name}</h2>
       <label className={field}>
-        Pasta
+        {t("newSession.folder")}
         <select className={select} value={root} onChange={(e) => setRoot(e.target.value)}>
           {roots.map((r) => (
             <option key={r} value={r}>
@@ -61,25 +64,25 @@ export function NewSessionForm(props: {
         </select>
       </label>
       <label className={field} htmlFor={`${id}-sub`}>
-        Subpasta
+        {t("newSession.subfolder")}
         <Input
           id={`${id}-sub`}
           value={sub}
           onChange={(e) => setSub(e.target.value)}
-          placeholder="opcional"
+          placeholder={t("newSession.optional")}
         />
       </label>
       <label className={field} htmlFor={`${id}-name`}>
-        Nome
+        {t("newSession.name")}
         <Input
           id={`${id}-name`}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="opcional"
+          placeholder={t("newSession.optional")}
         />
       </label>
       <label className={field}>
-        Modo de permissão
+        {t("newSession.mode")}
         <select
           className={select}
           value={mode}
@@ -87,13 +90,21 @@ export function NewSessionForm(props: {
         >
           {MODES.map((m) => (
             <option key={m} value={m}>
-              {m}
+              {t("modes.option", {
+                name: t(`modes.${m}.name` as Key),
+                description: t(`modes.${m}.description` as Key),
+              })}
             </option>
           ))}
         </select>
+        {mode === "bypassPermissions" && (
+          <p role="alert" className="text-status-error text-xs">
+            {t("modes.bypassWarning")}
+          </p>
+        )}
       </label>
       <label className={field} htmlFor={`${id}-prompt`}>
-        Primeiro prompt
+        {t("newSession.prompt")}
         <Textarea
           id={`${id}-prompt`}
           value={prompt}
@@ -102,7 +113,7 @@ export function NewSessionForm(props: {
         />
       </label>
       <Button type="submit" className="self-start">
-        Criar sessão
+        {t("newSession.create")}
       </Button>
     </form>
   );

@@ -33,6 +33,7 @@ export function TranscriptReader(props: {
   /** The transcript became a managed session (already selected in the store). */
   onResumed(): void;
 }) {
+  const t = props.store.i18n.t;
   const { store, target } = props;
   const [session, setSession] = useState<HistorySessionSummary | null>(null);
   const [messages, setMessages] = useState<HistoryMessage[]>([]);
@@ -113,14 +114,14 @@ export function TranscriptReader(props: {
               controls: (
                 <>
                   {session.maybeActive && (
-                    <span className="text-status-needs-you text-xs">possivelmente em uso</span>
+                    <span className="text-status-needs-you text-xs">{t("reader.maybeActive")}</span>
                   )}
                   <Button
                     size="sm"
                     // Two processes writing the same conversation corrupt it: ask first.
                     onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
                   >
-                    Continuar no Flightdeck
+                    {t("reader.continue")}
                   </Button>
                   <Button
                     variant="outline"
@@ -131,9 +132,11 @@ export function TranscriptReader(props: {
                         .then((ok) => setCopied(ok))
                     }
                   >
-                    Copiar comando
+                    {t("reader.copyCommand")}
                   </Button>
-                  {copied && <span className="text-muted-foreground text-xs">Comando copiado</span>}
+                  {copied && (
+                    <span className="text-muted-foreground text-xs">{t("reader.copied")}</span>
+                  )}
                 </>
               ),
             }
@@ -141,23 +144,20 @@ export function TranscriptReader(props: {
       />
       {confirming && (
         <div className="m-3 flex flex-col gap-3 rounded-lg border border-status-needs-you/40 p-4 text-sm">
-          <p>
-            Esta sessão pode estar em uso em outro lugar: o arquivo mudou nos últimos 2 minutos.
-            Dois processos escrevendo na mesma conversa a corrompem.
-          </p>
+          <p>{t("reader.confirm")}</p>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => void resume(true)}>
-              Continuar mesmo assim
+              {t("reader.continueAnyway")}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setConfirming(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
       )}
       <Timeline
         role="log"
-        aria-label="Transcript"
+        aria-label={t("reader.transcript")}
         ref={log}
         onScroll={(e) => {
           const el = e.currentTarget;
@@ -173,7 +173,7 @@ export function TranscriptReader(props: {
             className="self-center"
             onClick={() => void loadPage(prev, "before")}
           >
-            Carregar anteriores
+            {t("reader.loadPrevious")}
           </Button>
         )}
         {messages.map((m) =>

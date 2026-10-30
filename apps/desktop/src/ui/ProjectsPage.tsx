@@ -182,7 +182,7 @@ export function ProjectsPage(props: {
           <Input
             ref={pathField}
             aria-label="Caminho do repositório"
-            placeholder="Caminho (dentro de allowedRoots)"
+            placeholder={t("projects.pathPlaceholder")}
             disabled={editing !== null}
             {...field("path")}
           />

@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
@@ -175,97 +176,101 @@ export function App({ store }: { store: AppStore }) {
   };
 
   return (
-    <TooltipProvider>
-      <AppShell
-        labels={{
-          sidebar: t("shell.sidebar"),
-          collapse: t("shell.collapse"),
-          expand: t("shell.expand"),
-        }}
-        header={
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("nav.back")}
-              disabled={!router.canBack}
-              onClick={() => router.back()}
-            >
-              <ArrowLeft />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("nav.forward")}
-              disabled={!router.canForward}
-              onClick={() => router.forward()}
-            >
-              <ArrowRight />
-            </Button>
-            <Breadcrumb
-              crumbs={breadcrumb(route, state, t)}
-              label={t("shell.breadcrumb")}
-              onGo={go}
-            />
-          </>
-        }
-        sidebar={(collapsed) => (
-          <Sidebar
-            state={state}
-            collapsed={collapsed}
-            t={t}
-            go={go}
-            onOpenProjectScreen={openProjectScreen}
-            onSelectSession={(hostId, id) => {
-              store.select(hostId, id);
-              go(
-                id ? { name: "session", host: hostId, id } : { name: "new-session", host: hostId },
-              );
-            }}
-            onRemoveHost={(id) => void store.removeHost(id)}
-            onOpenSearch={() => store.openSearch()}
-            onToggleTheme={() => store.theme.toggle()}
-          />
-        )}
-      >
-        <div className="flex h-full min-h-0 flex-col">
-          <UpdateBanner store={store} state={state} />
-          {/* Screens that are a Page scroll by themselves; the others scroll here. */}
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <Screen
-              route={route}
-              store={store}
+    <TContext.Provider value={t}>
+      <TooltipProvider>
+        <AppShell
+          labels={{
+            sidebar: t("shell.sidebar"),
+            collapse: t("shell.collapse"),
+            expand: t("shell.expand"),
+          }}
+          header={
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("nav.back")}
+                disabled={!router.canBack}
+                onClick={() => router.back()}
+              >
+                <ArrowLeft />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("nav.forward")}
+                disabled={!router.canForward}
+                onClick={() => router.forward()}
+              >
+                <ArrowRight />
+              </Button>
+              <Breadcrumb
+                crumbs={breadcrumb(route, state, t)}
+                label={t("shell.breadcrumb")}
+                onGo={go}
+              />
+            </>
+          }
+          sidebar={(collapsed) => (
+            <Sidebar
               state={state}
-              theme={themeMode}
-              density={density}
+              collapsed={collapsed}
+              t={t}
               go={go}
-              onOpenRequest={openRequest}
+              onOpenProjectScreen={openProjectScreen}
+              onSelectSession={(hostId, id) => {
+                store.select(hostId, id);
+                go(
+                  id
+                    ? { name: "session", host: hostId, id }
+                    : { name: "new-session", host: hostId },
+                );
+              }}
+              onRemoveHost={(id) => void store.removeHost(id)}
+              onOpenSearch={() => store.openSearch()}
+              onToggleTheme={() => store.theme.toggle()}
             />
+          )}
+        >
+          <div className="flex h-full min-h-0 flex-col">
+            <UpdateBanner store={store} state={state} />
+            {/* Screens that are a Page scroll by themselves; the others scroll here. */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <Screen
+                route={route}
+                store={store}
+                state={state}
+                theme={themeMode}
+                density={density}
+                go={go}
+                onOpenRequest={openRequest}
+              />
+            </div>
           </div>
-        </div>
-        <Notices store={store} state={state} />
-        {state.searchOpen && (
-          <GlobalSearch
-            state={state}
-            store={store}
-            costs={true}
-            onGo={goTo}
-            onSearch={(query) => void store.searchHistory(query)}
-            onClose={() => store.closeSearch()}
-            onOpenHit={(hit) =>
-              go({
-                name: "reader",
-                target: {
-                  hostId: hit.hostId,
-                  claudeSessionId: hit.claudeSessionId,
-                  cursor: hit.cursor,
-                  focusUuid: hit.uuid,
-                },
-              })
-            }
-          />
-        )}
-      </AppShell>
-    </TooltipProvider>
+          <Notices store={store} state={state} />
+          {state.searchOpen && (
+            <GlobalSearch
+              state={state}
+              store={store}
+              costs={true}
+              onGo={goTo}
+              onSearch={(query) => void store.searchHistory(query)}
+              onClose={() => store.closeSearch()}
+              onOpenHit={(hit) =>
+                go({
+                  name: "reader",
+                  target: {
+                    hostId: hit.hostId,
+                    claudeSessionId: hit.claudeSessionId,
+                    cursor: hit.cursor,
+                    focusUuid: hit.uuid,
+                  },
+                })
+              }
+            />
+          )}
+        </AppShell>
+      </TooltipProvider>
+    </TContext.Provider>
   );
 }

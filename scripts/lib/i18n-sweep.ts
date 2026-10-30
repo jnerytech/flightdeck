@@ -38,7 +38,9 @@ export function visibleLiterals(source: string, allowed: readonly string[] = [])
   for (const line of source.split("\n")) {
     for (const m of line.matchAll(ATTRIBUTE)) keep(offset + m.index, m[0], m[1] ?? "");
     for (const m of line.matchAll(TEMPLATE)) {
-      keep(offset + m.index, m[0], (m[1] ?? "").replaceAll(/\$\{[^}]*\}/g, ""));
+      const fixed = (m[1] ?? "").replaceAll(/\$\{[^}]*\}/g, "");
+      // Ids and keys (`${id}-sub`) are code: text has a space or an accent.
+      if (/[\sÀ-ɏ]/.test(fixed)) keep(offset + m.index, m[0], fixed);
     }
     offset += line.length + 1;
   }

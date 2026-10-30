@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react";
+import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { inputSummary } from "../lib/tool-input.ts";
 
@@ -8,6 +9,7 @@ export function ToolCall(props: {
   input: unknown;
   result?: { content: string; isError: boolean };
 }) {
+  const t = useT();
   return (
     <details className="group rounded-md border bg-card text-sm">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-1.5">
@@ -33,7 +35,7 @@ export function ToolCall(props: {
           {props.result.content}
         </pre>
       ) : (
-        <p className="border-t px-3 py-2 text-muted-foreground text-xs">aguardando resultado…</p>
+        <p className="border-t px-3 py-2 text-muted-foreground text-xs">{t("toolCall.waiting")}</p>
       )}
     </details>
   );

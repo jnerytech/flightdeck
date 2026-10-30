@@ -6,30 +6,27 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
  * daemons behind as well, it suggests updating the app first.
  */
 export function UpdateBanner(props: { store: AppStore; state: AppState }) {
+  const t = props.store.i18n.t;
   const { store, state } = props;
   const { offer, error } = state.appUpdate;
   if (!offer && !error) return null;
   const daemonsBehind = state.hosts.some((h) => h.hostInfo?.update?.available);
   return (
     <section
-      aria-label="Atualização do app"
+      aria-label={t("update.label")}
       className="flex flex-col gap-2 border-b bg-secondary px-4 py-2 text-sm"
     >
       {offer && (
         <>
-          <strong>{`Flightdeck ${offer.version} disponível`}</strong>
+          <strong>{t("update.available", { version: offer.version })}</strong>
           {offer.notes && <p>{offer.notes}</p>}
-          {daemonsBehind && (
-            <p className="text-muted-foreground text-xs">
-              Atualize primeiro o app e depois os daemons dos hosts.
-            </p>
-          )}
+          {daemonsBehind && <p className="text-muted-foreground text-xs">{t("update.first")}</p>}
           <div className="flex gap-2">
             <Button size="sm" onClick={() => void store.installAppUpdate()}>
-              Instalar e reiniciar
+              {t("update.install")}
             </Button>
             <Button variant="outline" size="sm" onClick={() => store.dismissAppUpdate()}>
-              Depois
+              {t("update.later")}
             </Button>
           </div>
         </>
