@@ -75,18 +75,13 @@ async function setup() {
     const out: string[] = [];
     const errors: string[] = [];
     const exits: number[] = [];
-    let failure = "";
-    try {
-      await runCli([...args, "--config", file], {
-        env: {},
-        log: { log: (m) => out.push(m), error: (m) => errors.push(m) },
-        exit: (code) => exits.push(code),
-        onSignal: () => {},
-      });
-    } catch (error) {
-      failure = (error as Error).message;
-    }
-    return { out: out.join("\n"), errors, exits, failure };
+    await runCli([...args, "--config", file], {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => errors.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+    });
+    return { out: out.join("\n"), errors: errors.join("\n"), exits };
   };
   return { run, app };
 }
@@ -152,8 +147,10 @@ describe("acoes-cli", () => {
   test("um erro do daemon vira erro do comando, com o código e a mensagem", async () => {
     const { run } = await setup();
     const refused = await run("action", "run", "diz", "--project", "p1", "--param", "palavra=NÃO");
-    expect(refused.failure).toContain("bad_request");
+    expect(refused.exits).toEqual([1]);
+    expect(refused.errors).toContain("bad_request");
     const missing = await run("action", "run", "nada", "--project", "p1");
-    expect(missing.failure).toContain("not_found");
+    expect(missing.exits).toEqual([1]);
+    expect(missing.errors).toContain("not_found");
   });
 });

@@ -142,7 +142,7 @@ describe("mcp-acoes", () => {
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "ações");
     const listed = await call("list_actions", { projectId: "p1" });
-    expect((listed.data?.actions as Array<{ name: string }>).map((a) => a.name)).toEqual([
+    expect(((listed.data?.actions ?? []) as Array<{ name: string }>).map((a) => a.name)).toEqual([
       "diz",
       "echo",
     ]);
