@@ -62,6 +62,15 @@ describe("desktop: estado da sessão", () => {
     expect(s.lastSeq).toBe(6);
   });
 
+  test("as marcas de persona avançam a posição mas não viram item da conversa", () => {
+    let s = emptySession();
+    const persona = { id: "seg", name: "Segurança", icon: null };
+    s = applyEnvelope(s, env(1, { type: "persona.applied", persona }));
+    s = applyEnvelope(s, env(2, { type: "persona.cleared", persona }));
+    expect(s.items).toEqual([]);
+    expect(s.lastSeq).toBe(2);
+  });
+
   test("pedido de permissão vira card, é resolvido e o resultado da ferramenta é indexado", () => {
     let s = emptySession();
     s = applyEnvelope(
