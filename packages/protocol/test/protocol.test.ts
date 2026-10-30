@@ -192,6 +192,9 @@ const validCommands: Record<CommandType, unknown> = {
   "ssh.hostkey.forget": { targetId: "t" },
   "ssh.connect": { targetId: "t", cols: 100, rows: 30 },
   "ssh.test": { targetId: "t" },
+  "askpass.watch": {},
+  "askpass.ask": { ticket: "abc", prompt: "Password: " },
+  "askpass.answer": { requestId: "r", secret: "s" },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
