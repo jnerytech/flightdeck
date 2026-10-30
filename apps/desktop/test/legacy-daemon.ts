@@ -15,7 +15,11 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
   const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
   /** What `messages.list` answers (phase 21); the payloads asked are in `commands`. */
-  const messaging = { messages: [] as unknown[] };
+  const messaging = {
+    messages: [] as unknown[],
+    sessions: [] as unknown[],
+    send: { id: "m-sent", status: "queued", reason: null } as unknown,
+  };
   /** What `vault.rules.preview` answers (phase 19). */
   const preview = {
     verdict: {
@@ -75,6 +79,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         if (type === "vault.approve") return ack();
         if (type === "vault.rules.preview") return ack(preview.verdict);
         if (type === "messages.list") return ack({ messages: messaging.messages });
+        if (type === "messages.sessions") return ack({ sessions: messaging.sessions });
+        if (type === "messages.send") return ack(messaging.send);
         if (type === "messages.directory") return ack({ host: "h", sessions: [] });
         if (type === "messages.peers") return ack();
         if (type === "vault.report") {
