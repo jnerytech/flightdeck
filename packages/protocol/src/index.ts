@@ -743,6 +743,40 @@ export const AskpassRequest = z.object({
 });
 export type AskpassRequest = z.infer<typeof AskpassRequest>;
 
+/** How a snippet variable is filled in: a default value and a short list of options. */
+export const SnippetVar = z
+  .object({
+    default: z.string().max(1000).optional(),
+    options: z.array(z.string().max(200)).optional(),
+  })
+  .strict();
+export type SnippetVar = z.infer<typeof SnippetVar>;
+
+/**
+ * What the form sends for a snippet (phase 18): a `command` (`run`, one line) or a `prompt`
+ * (`text`), with `{{name}}` variables. A snippet carries no secret.
+ */
+export const SnippetInput = z
+  .object({
+    name: z.string(),
+    type: z.enum(["command", "prompt"]),
+    run: z.string().optional(),
+    text: z.string().optional(),
+    vars: z.record(z.string(), SnippetVar).optional(),
+    tags: z.array(z.string()).optional(),
+  })
+  .strict();
+export type SnippetInput = z.infer<typeof SnippetInput>;
+
+/** A field to fill in when a snippet is used. The specials (`cwd`, `branch`, `file`, `selection`) come from the context. */
+export const SnippetField = z.object({
+  name: z.string(),
+  special: z.boolean(),
+  default: z.string().nullable(),
+  options: z.array(z.string()),
+});
+export type SnippetField = z.infer<typeof SnippetField>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -2198,6 +2232,8 @@ export const ErrorCode = z.enum([
   /** `ssh.connect` to a server whose key was never confirmed, or whose key changed (phase 15). */
   "hostkey_unconfirmed",
   "hostkey_changed",
+  /** A snippet with a secret in it; the app offers "Transformar em ação" (phase 18). */
+  "snippet_secret",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
