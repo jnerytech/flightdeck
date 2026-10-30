@@ -51,7 +51,7 @@ describe("trust", () => {
     ]);
   });
 
-  test("lista os workflows em ordem alfabética sem diferenciar maiúsculas", async () => {
+  test("lists workflows alphabetically, with case only as a tie-break", async () => {
     const { board, project, repo } = await setup();
     commitWorkflow(repo, "Zeta", EXAMPLE);
     commitWorkflow(repo, "alpha", EXAMPLE);
