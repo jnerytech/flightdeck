@@ -268,7 +268,7 @@ export class Actions {
       requester: use.requester,
       purpose: use.purpose,
       host: use.host ?? this.opts.hostName ?? "",
-      tags: [...(use.tags ?? []), ...(rules?.tagsFor(use.secretId) ?? [])],
+      tags: this.tagsOf(use.secretId, use.tags ?? []),
       ...(use.action !== undefined ? { action: use.action } : {}),
       ...(use.project !== undefined ? { project: use.project } : {}),
       ...(use.session !== undefined ? { session: use.session } : {}),
@@ -623,6 +623,11 @@ export class Actions {
     return secrets;
   }
 
+  /** The tags of the action and of the secret, without repeats. */
+  private tagsOf(secretId: string, actionTags: readonly string[]): string[] {
+    return [...new Set([...actionTags, ...(this.opts.rules?.tagsFor(secretId) ?? [])])];
+  }
+
   /** The rules' verdict for one secret of this use, with the session approval applied. */
   private decide(
     secretId: string,
@@ -640,7 +645,7 @@ export class Actions {
         secretId,
         purpose: use.purpose,
         host: this.opts.hostName ?? "",
-        tags: [...use.tags, ...rules.tagsFor(secretId)],
+        tags: this.tagsOf(secretId, use.tags),
         ...(use.action ? { action: use.action } : {}),
         ...(use.project ? { project: use.project } : {}),
         ...(use.session ? { session: use.session } : {}),
@@ -755,7 +760,7 @@ export class Actions {
             reason: verdict.reason,
             once: verdict.once,
             needsHold: verdict.needsHold,
-            tags: [...ask.use.tags, ...(rules?.tagsFor(secretId) ?? [])],
+            tags: this.tagsOf(secretId, ask.use.tags),
             expiresAt: this.ms() + timeoutMs,
           }
         : {}),
