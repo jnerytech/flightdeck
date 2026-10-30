@@ -149,4 +149,11 @@ describe("persistencia-abas", () => {
     expect(second.workspace.tabs.tabs).toHaveLength(2);
     second.dispose();
   });
+
+  test("a stored window that is not JSON gives a fresh one", () => {
+    const mem = memoryPlatform(false, "pt-BR");
+    mem.items.set(WORKSPACE_KEY, "{oops");
+    const store = new AppStore(mem.platform);
+    expect(shape(store.workspace)).toEqual([{ tabs: [["home", false]], active: 0 }]);
+  });
 });
