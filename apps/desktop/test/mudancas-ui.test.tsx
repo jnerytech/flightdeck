@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, watch, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { cardWhen, git } from "../../daemon/test/board-helpers.ts";
@@ -51,7 +51,17 @@ const dialog = () => screen.queryByRole("alertdialog");
 
 /** A host with a git repository inside its allowed root and a session working in it. */
 async function setup(features?: string[], baseDelayMs = 60_000) {
-  const d = makeDaemon(cleanups, { review: true });
+  const watches = { count: 0 };
+  const d = makeDaemon(cleanups, {
+    review: true,
+    changesWatch: (root, onEvent) => {
+      const watcher = watch(root, { recursive: true }, (_event, name) =>
+        onEvent(name?.toString() ?? null),
+      );
+      watches.count++;
+      return watcher;
+    },
+  });
   const repo = join(d.root, "repo");
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");
@@ -81,7 +91,7 @@ async function setup(features?: string[], baseDelayMs = 60_000) {
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
-  return { ...d, ...mem, repo, store, hostId, clock, timers, server };
+  return { ...d, ...mem, repo, store, hostId, clock, timers, server, watches };
 }
 
 /** Opens the managed session working in `cwd` (its Claude id is known once the first turn ran). */
@@ -501,13 +511,15 @@ describe("mudancas-ui", () => {
     await openSession(ctx);
     await openChanges();
     await settle(() => screen.queryByText("Nada mudou.") !== null);
+    const watchesBefore = ctx.watches.count;
     await act(async () => {
       await ctx.server.stop();
     });
     await settle(() => ctx.store.getState().hosts[0]?.status !== "online");
     ctx.listen(ctx.server.port);
     await settle(() => ctx.store.getState().hosts[0]?.status === "online", 10_000);
-    await act(() => Bun.sleep(100));
+    // The app asks again for the watch on reconnect: write only once the daemon has it in place.
+    await settle(() => ctx.watches.count > watchesBefore, 10_000);
     writeFileSync(join(ctx.repo, "depois.txt"), "voltou\n");
     await settle(() => files().includes("depois.txt"), 10_000);
     expect(files()).toContain("depois.txt");

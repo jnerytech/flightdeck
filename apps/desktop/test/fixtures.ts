@@ -20,7 +20,7 @@ import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
-import { Changes } from "../../daemon/src/review/changes.ts";
+import { Changes, type WatchFn } from "../../daemon/src/review/changes.ts";
 import { ReviewComments } from "../../daemon/src/review/comments.ts";
 import { ReviewFiles } from "../../daemon/src/review/files.ts";
 import { SessionFiles } from "../../daemon/src/review/session-files.ts";
@@ -69,6 +69,8 @@ export function daemon(
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
     /** The review of changes (phase 11: `changes.*`, `review.*`, `file.*`, `files.sessions`); on unless `false`. */
     review?: boolean;
+    /** Replaces the recursive `fs.watch` of the changes review (to know when a watch is in place). */
+    changesWatch?: WatchFn;
     /** Git snapshots per turn, rewind and fork (phase 12), over this daemon's database. */
     checkpoints?: boolean;
     /** The project's MCP servers, CLAUDE.md, agents and skills (phase 12), in this daemon's root. */
@@ -185,7 +187,14 @@ export function daemon(
     options.quotaHistory?.(store.db) ??
     (options.costs ? new QuotaHistory({ db: store.db }) : undefined);
   // Like the real daemon: the diff of every session and card, with comments, files and sessions.
-  const changes = options.review !== false ? new Changes({ db: store.db, board }) : undefined;
+  const changes =
+    options.review !== false
+      ? new Changes({
+          db: store.db,
+          board,
+          ...(options.changesWatch ? { watch: options.changesWatch } : {}),
+        })
+      : undefined;
   const review = changes
     ? {
         changes,
