@@ -55,6 +55,8 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
+import type { Idle } from "./messaging/idle.ts";
+import type { Messaging } from "./messaging/messages.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
@@ -109,6 +111,10 @@ export interface ServerOptions {
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
   vault?: Vault;
+  /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
+  messaging?: Messaging;
+  /** Phase 21: the one-shot idle notices (`idle.subscribe`). */
+  idle?: Idle;
   /** Phase 17: actions that use a secret without Claude seeing it (`actions.*`, `vault.watch`). */
   actions?: Actions;
   /** Phase 13: the projects' automations (`automation.*`). */
@@ -405,6 +411,16 @@ export function startServer(opts: ServerOptions): RunningServer {
   function vault(): Vault {
     if (!opts.vault) throw new FlightdeckError("invalid_state", "cofre indisponível");
     return opts.vault;
+  }
+
+  function messaging(): Messaging {
+    if (!opts.messaging) throw new FlightdeckError("invalid_state", "mensagens indisponíveis");
+    return opts.messaging;
+  }
+
+  function idle(): Idle {
+    if (!opts.idle) throw new FlightdeckError("invalid_state", "aviso de ocioso indisponível");
+    return opts.idle;
   }
 
   function actions(): Actions {
@@ -769,6 +785,20 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "vault.deny":
         actions().deny(command.payload.requestId);
         return ok(command.type);
+      case "messages.send":
+      case "messages.list":
+      case "messages.sessions":
+      case "messages.read":
+      case "messages.relay":
+      case "messages.relayed":
+      case "messages.peers":
+      case "messages.watch":
+      case "idle.subscribe":
+      case "messaging.rules.get":
+      case "messaging.rules.set":
+        messaging();
+        idle();
+        throw new FlightdeckError("invalid_state", "ainda não implementado");
       case "vault.rules.set": {
         const { secretId, tags, rules } = command.payload;
         return ok(command.type, { rules: actions().setRules(secretId, tags ?? [], rules) });

@@ -1496,6 +1496,89 @@ export type VaultRequester = z.infer<typeof VaultRequester>;
 export const VaultDaemonRequester = z.enum(["claude", "automation", "workflow"]);
 export type VaultDaemonRequester = z.infer<typeof VaultDaemonRequester>;
 
+// ---------------------------------------------------------------------------
+// Phase 21: messages between sessions, and teams
+// ---------------------------------------------------------------------------
+
+/** Who sends: a managed session by its id, or a terminal session by its launch id. */
+export const SessionIdentity = z
+  .object({ session: z.string().min(1).optional(), launch: z.string().min(1).optional() })
+  .refine((who) => (who.session === undefined) !== (who.launch === undefined), {
+    message: "informe a sessão (session) ou o lançamento (launch), um dos dois",
+  });
+export type SessionIdentity = z.infer<typeof SessionIdentity>;
+
+export const MessageStatus = z.enum(["pending", "delivered", "queued", "refused", "expired"]);
+export type MessageStatus = z.infer<typeof MessageStatus>;
+/** `session` is from another session; `system` and `idle` are from Flightdeck itself. */
+export const MessageKind = z.enum(["session", "system", "idle"]);
+export type MessageKind = z.infer<typeof MessageKind>;
+
+export const MessageInfo = z.object({
+  id: z.string(),
+  fromSession: z.string(),
+  fromHost: z.string(),
+  toSession: z.string(),
+  toHost: z.string(),
+  text: z.string(),
+  status: MessageStatus,
+  reason: z.string().nullable(),
+  createdAt: z.string(),
+  deliveredAt: z.string().nullable(),
+  teamId: z.string().nullable(),
+  kind: MessageKind,
+});
+export type MessageInfo = z.infer<typeof MessageInfo>;
+
+export const MessagingState = z.enum(["running", "waiting", "idle", "ended"]);
+export const MessagingKind = z.enum(["managed", "card", "terminal", "plain"]);
+
+/** A session as another session sees it in `list_sessions`. */
+export const MessagingSession = z.object({
+  /** `<host>/<id>`: what `send_to_session` takes. */
+  address: z.string(),
+  id: z.string(),
+  host: z.string(),
+  name: z.string().nullable(),
+  persona: z.string().nullable(),
+  state: MessagingState,
+  projectKey: z.string().nullable(),
+  teamId: z.string().nullable(),
+  kind: MessagingKind,
+  /** Whether it takes messages; `reason` says why not (a plain claude has no channel). */
+  receives: z.boolean(),
+  reason: z.string().nullable(),
+});
+export type MessagingSession = z.infer<typeof MessagingSession>;
+
+export const SendResult = z.object({
+  id: z.string(),
+  status: z.enum(["delivered", "queued", "refused"]),
+  reason: z.string().nullable(),
+});
+export type SendResult = z.infer<typeof SendResult>;
+
+/** A message on its way between hosts, through the app. */
+export const RelayMessage = z.object({
+  id: z.string(),
+  from: z.object({
+    id: z.string(),
+    host: z.string(),
+    name: z.string().nullable(),
+    persona: z.string().nullable(),
+    projectKey: z.string().nullable(),
+    teamId: z.string().nullable(),
+  }),
+  toSession: z.string(),
+  toHost: z.string(),
+  text: z.string(),
+  createdAt: z.string(),
+  /** The sender carries third-party content (phase 13); the destination suspends its auto-approval. */
+  untrusted: z.boolean(),
+  kind: MessageKind.default("session"),
+});
+export type RelayMessage = z.infer<typeof RelayMessage>;
+
 /** Phase 17: how an action asks for approval. */
 export const ActionApproval = z.enum(["always", "never", "first-per-session"]);
 
@@ -1741,6 +1824,75 @@ export const Command = z.discriminatedUnion("type", [
   cmd("vault.watch", z.object({}).strict()),
   /** The user refused a `vault.request`: the run that waits for it fails at once. */
   cmd("vault.deny", z.object({ requestId: z.string().min(1) })),
+  /** Phase 21: messages between sessions. `as` is who sends: a managed session, or a terminal launch. */
+  cmd(
+    "messages.send",
+    z.object({ as: SessionIdentity, to: z.string().min(1), text: z.string().min(1) }),
+  ),
+  cmd(
+    "messages.list",
+    z.object({
+      team: z.string().optional(),
+      session: z.string().optional(),
+      host: z.string().optional(),
+      status: MessageStatus.optional(),
+      days: z.number().int().min(1).max(365).optional(),
+      limit: z.number().int().min(1).max(1000).optional(),
+    }),
+  ),
+  /** The sessions `as` may see by the rules (every host the app described). */
+  cmd("messages.sessions", z.object({ as: SessionIdentity })),
+  cmd(
+    "messages.read",
+    z.object({
+      as: SessionIdentity,
+      session: z.string().min(1),
+      last: z.number().int().min(1).max(20).optional(),
+    }),
+  ),
+  /** The app hands over a message from another host's daemon; idempotent by id. */
+  cmd("messages.relay", z.object({ message: RelayMessage })),
+  /** The app tells how a relayed message ended at the recipient's daemon. */
+  cmd(
+    "messages.relayed",
+    z.object({
+      id: z.string().min(1),
+      status: z.enum(["delivered", "queued", "refused"]),
+      reason: z.string().nullable().optional(),
+    }),
+  ),
+  /** The app describes the sessions of another host (what `list_sessions` shows of it). */
+  cmd(
+    "messages.peers",
+    z.object({
+      host: z.string().min(1),
+      sessions: z.array(
+        z.object({
+          id: z.string().min(1),
+          name: z.string().nullable(),
+          persona: z.string().nullable(),
+          projectKey: z.string().nullable(),
+          teamId: z.string().nullable(),
+          state: MessagingState,
+          kind: MessagingKind,
+          receives: z.boolean(),
+          reason: z.string().nullable(),
+        }),
+      ),
+    }),
+  ),
+  /** Receive `messages.updated`, `messages.relay`, `messaging.alert` and `idle.fired`. */
+  cmd("messages.watch", z.object({}).strict()),
+  cmd("idle.subscribe", z.object({ as: SessionIdentity, session: z.string().min(1) })),
+  cmd("messaging.rules.get", z.object({}).strict()),
+  /** Replaces the policy (exceptions and limits); `unpause` frees pairs a loop paused. */
+  cmd(
+    "messaging.rules.set",
+    z.object({
+      policy: z.record(z.string(), z.unknown()),
+      unpause: z.array(z.string()).optional(),
+    }),
+  ),
   /** Phase 19: the rules of one secret, replaced whole (the ones that break the ceiling are refused). */
   cmd(
     "vault.rules.set",
@@ -2577,6 +2729,17 @@ export interface CommandResults {
   "actions.runs": { runs: ActionRunInfo[] };
   "vault.watch": undefined;
   "vault.deny": undefined;
+  "messages.send": SendResult;
+  "messages.list": { messages: MessageInfo[] };
+  "messages.sessions": { sessions: MessagingSession[] };
+  "messages.read": ReadSessionResult;
+  "messages.relay": SendResult;
+  "messages.relayed": undefined;
+  "messages.peers": undefined;
+  "messages.watch": undefined;
+  "idle.subscribe": { fired: boolean };
+  "messaging.rules.get": { policy: Record<string, unknown>; paused: string[] };
+  "messaging.rules.set": { policy: Record<string, unknown>; paused: string[] };
   "vault.rules.set": { rules: number };
   "vault.rules.get": { secretId: string; tags: string[]; rules: unknown[] };
   "vault.rules.preview": VaultVerdict;
@@ -2904,88 +3067,42 @@ export const VaultUsed = z.object({
 });
 export type VaultUsed = z.infer<typeof VaultUsed>;
 
-// ---------------------------------------------------------------------------
-// Phase 21: messages between sessions, and teams
-// ---------------------------------------------------------------------------
-
-/** Who sends: a managed session by its id, or a terminal session by its launch id. */
-export const SessionIdentity = z
-  .object({ session: z.string().min(1).optional(), launch: z.string().min(1).optional() })
-  .refine((who) => (who.session === undefined) !== (who.launch === undefined), {
-    message: "informe a sessão (session) ou o lançamento (launch), um dos dois",
-  });
-export type SessionIdentity = z.infer<typeof SessionIdentity>;
-
-export const MessageStatus = z.enum(["pending", "delivered", "queued", "refused", "expired"]);
-export type MessageStatus = z.infer<typeof MessageStatus>;
-/** `session` is from another session; `system` and `idle` are from Flightdeck itself. */
-export const MessageKind = z.enum(["session", "system", "idle"]);
-export type MessageKind = z.infer<typeof MessageKind>;
-
-export const MessageInfo = z.object({
-  id: z.string(),
-  fromSession: z.string(),
-  fromHost: z.string(),
-  toSession: z.string(),
-  toHost: z.string(),
-  text: z.string(),
-  status: MessageStatus,
-  reason: z.string().nullable(),
-  createdAt: z.string(),
-  deliveredAt: z.string().nullable(),
-  teamId: z.string().nullable(),
-  kind: MessageKind,
+export const MessagingPolicyException = z.object({
+  id: z.string().min(1),
+  from: z.record(z.string(), z.string()),
+  to: z.record(z.string(), z.string()),
+  bothWays: z.boolean().optional(),
 });
-export type MessageInfo = z.infer<typeof MessageInfo>;
 
-export const MessagingState = z.enum(["running", "waiting", "idle", "ended"]);
-export const MessagingKind = z.enum(["managed", "card", "terminal", "plain"]);
-
-/** A session as another session sees it in `list_sessions`. */
-export const MessagingSession = z.object({
-  /** `<host>/<id>`: what `send_to_session` takes. */
-  address: z.string(),
-  id: z.string(),
-  host: z.string(),
-  name: z.string().nullable(),
-  persona: z.string().nullable(),
-  state: MessagingState,
-  projectKey: z.string().nullable(),
-  teamId: z.string().nullable(),
-  kind: MessagingKind,
-  /** Whether it takes messages; `reason` says why not (a plain claude has no channel). */
-  receives: z.boolean(),
-  reason: z.string().nullable(),
+/** One session read through `read_session`: the summary line and the last messages. */
+export const ReadSessionResult = z.object({
+  summary: SessionLine.nullable(),
+  messages: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string() })),
 });
-export type MessagingSession = z.infer<typeof MessagingSession>;
+export type ReadSessionResult = z.infer<typeof ReadSessionResult>;
 
-export const SendResult = z.object({
-  id: z.string(),
-  status: z.enum(["delivered", "queued", "refused"]),
-  reason: z.string().nullable(),
+export const MessagesUpdatedFrame = z.object({
+  type: z.literal("messages.updated"),
+  message: MessageInfo,
 });
-export type SendResult = z.infer<typeof SendResult>;
-
-/** A message on its way between hosts, through the app. */
-export const RelayMessage = z.object({
-  id: z.string(),
-  from: z.object({
-    id: z.string(),
-    host: z.string(),
-    name: z.string().nullable(),
-    persona: z.string().nullable(),
-    projectKey: z.string().nullable(),
-    teamId: z.string().nullable(),
-  }),
-  toSession: z.string(),
-  toHost: z.string(),
-  text: z.string(),
-  createdAt: z.string(),
-  /** The sender carries third-party content (phase 13); the destination suspends its auto-approval. */
-  untrusted: z.boolean(),
-  kind: MessageKind.default("session"),
+export const MessagesRelayFrame = z.object({
+  type: z.literal("messages.relay"),
+  message: RelayMessage,
 });
-export type RelayMessage = z.infer<typeof RelayMessage>;
+export const MessagingAlertFrame = z.object({
+  type: z.literal("messaging.alert"),
+  kind: z.literal("loop"),
+  from: z.string(),
+  to: z.string(),
+  message: z.string(),
+  at: z.string(),
+});
+export const IdleFiredFrame = z.object({
+  type: z.literal("idle.fired"),
+  watcher: z.string(),
+  session: z.string(),
+  at: z.string(),
+});
 
 /** Phase 19: a warning for the app, even where a rule lets the use through. */
 export const VaultAlertFrame = z.object({
@@ -3069,6 +3186,10 @@ export const ServerMessage = z.union([
   VaultRequestFrame,
   VaultUsed,
   VaultAlertFrame,
+  MessagesUpdatedFrame,
+  MessagesRelayFrame,
+  MessagingAlertFrame,
+  IdleFiredFrame,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;
 
