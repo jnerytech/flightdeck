@@ -28,6 +28,7 @@ import type {
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
+  TerminalInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
@@ -54,6 +55,7 @@ import {
   type TerminalTarget,
   terminalLaunch,
 } from "./terminal.ts";
+import type { TerminalHost } from "./terminal-session.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { hasFeature } from "./version.ts";
@@ -138,8 +140,23 @@ export interface AppUpdateState {
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
+/** What a host's terminals say to the one following them. */
+export interface TerminalListener {
+  data(base64: string): void;
+  exited(exitCode: number): void;
+  resync(): void;
+  offline(): void;
+}
+
+/** The terminal commands of one host. */
+export interface TerminalCommands extends TerminalHost {
+  open(cwd: string, cols: number, rows: number): Promise<{ terminalId: string }>;
+  list(): Promise<TerminalInfo[]>;
+}
+
 export type HostCommandType = Extract<
   CommandType,
+  | `terminal.${string}`
   | `project.${string}`
   | `board.${string}`
   | `card.${string}`
@@ -411,6 +428,7 @@ export class AppStore {
   private readonly quotaNotified = new Set<string>();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
+  private readonly terminalListeners = new Map<string, Set<TerminalListener>>();
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
   /** Accelerator currently registered with the OS. */
   private shortcut: string | null = null;
@@ -981,6 +999,34 @@ export class AppStore {
     };
   }
 
+  /** The commands of a host's terminals, as `TerminalSession` drives them (phase 14). */
+  terminalHost(hostId: string): TerminalCommands {
+    const request = <T extends Extract<CommandType, `terminal.${string}`>>(
+      type: T,
+      payload: CommandPayload<T>,
+    ): Promise<CommandResults[T]> => this.dispatch(hostId, type, payload);
+    return {
+      open: async (cwd, cols, rows) => request("terminal.open", { cwd, cols, rows }),
+      attach: (terminalId) => request("terminal.attach", { terminalId }),
+      write: (terminalId, data) => request("terminal.write", { terminalId, data }),
+      resize: (terminalId, cols, rows) => request("terminal.resize", { terminalId, cols, rows }),
+      close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),
+      list: async () => (await request("terminal.list", {})).terminals,
+    };
+  }
+
+  /** Calls `listener` with the output, exit, resync and loss of the host of a terminal. */
+  followTerminal(hostId: string, terminalId: string, listener: TerminalListener): () => void {
+    const key = `${hostId}|${terminalId}`;
+    const listeners = this.terminalListeners.get(key) ?? new Set();
+    this.terminalListeners.set(key, listeners);
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) this.terminalListeners.delete(key);
+    };
+  }
+
   /** Runs `fn` after `ms` (the store's timers, which tests drive); returns the function that cancels. */
   later(fn: () => void, ms: number): () => void {
     const timers = this.options.timers ?? REAL_TIMERS;
@@ -1241,6 +1287,14 @@ export class AppStore {
       onRunUpdated: (run) => this.onRun(config.id, run),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
+      onTerminal: (frame) => {
+        for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
+          []) {
+          if (frame.type === "terminal.data") listener.data(frame.data);
+          else if (frame.type === "terminal.exited") listener.exited(frame.exitCode);
+          else listener.resync();
+        }
+      },
       onChangesUpdated: (update) => {
         for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
           listener(update);
@@ -1278,6 +1332,11 @@ export class AppStore {
         (state) => this.onQuota(hostId, state),
         () => {},
       );
+    }
+    if (status !== "online") {
+      for (const [key, listeners] of this.terminalListeners) {
+        if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
+      }
     }
     if (status === "connecting") {
       // Partial text from before the drop will never be completed by a delta; drop it.
