@@ -20,6 +20,7 @@ import {
   type TerminalExited,
   type TerminalResync,
   type VaultRequestFrame,
+  type VaultUsed,
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { backoffDelay } from "./backoff.ts";
@@ -65,6 +66,7 @@ export interface HostConnectionOptions {
   onExternal?(frame: ExternalUpdated | ExternalPermissionFrame): void;
   /** The daemon asks the app for a secret (phase 16); the app decides. */
   onVaultRequest?(request: VaultRequestFrame): void;
+  onVaultUsed?(used: VaultUsed): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
@@ -163,6 +165,7 @@ export class HostConnection {
       if (message.type === "history.changed") return this.opts.onHistoryChanged?.(message);
       if (message.type === "askpass.request") return this.opts.onAskpass?.(message);
       if (message.type === "vault.request") return this.opts.onVaultRequest?.(message);
+      if (message.type === "vault.used") return this.opts.onVaultUsed?.(message);
       if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });

@@ -492,6 +492,7 @@ export class AppStore {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
     );
     this.vault = new Vault(platform);
+    this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
@@ -513,7 +514,7 @@ export class AppStore {
       ssh: {},
       askpass: [],
       secrets: new Vault(platform).list(),
-      vaultUsage: new VaultUsageLog(platform).list(),
+      vaultUsage: this.usage.list(),
       externals: {},
       externalRequests: {},
       meta: {},
@@ -1416,6 +1417,10 @@ export class AppStore {
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
       onVaultRequest: (request) => void this.onVaultRequest(config, request),
+      onVaultUsed: (used) => {
+        this.usage.recordUsed(config.id, used);
+        this.keepUsage();
+      },
       onRunUpdated: (run) => this.onRun(config.id, run),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
@@ -1718,6 +1723,12 @@ export class AppStore {
     return info.terminalId;
   /** Phase 16: the vault, whose values live in the system keyring. */
   readonly vault: Vault;
+  /** Phase 16: what was asked of the vault, kept in `storage`. */
+  readonly usage: VaultUsageLog;
+
+  private keepUsage(): void {
+    this.update({ vaultUsage: this.usage.list() });
+  }
 
   private readonly vaultListeners = new Set<(outcome: VaultOutcome) => void>();
 
@@ -1750,6 +1761,8 @@ export class AppStore {
       deliver: (payload) => this.dispatch(config.id, "vault.deliver", payload),
       now: this.options.now ?? Date.now,
     });
+    this.usage.recordOutcome(outcome);
+    this.keepUsage();
     for (const listener of this.vaultListeners) listener(outcome);
   }
 
