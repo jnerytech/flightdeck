@@ -218,7 +218,9 @@ async function run(work: string): Promise<void> {
     const reading = await until(
       () =>
         client.frames.find(
-          (f) => f.type === "quota.updated" && f.windows.some((w) => w.utilization === 0.95),
+          (f) =>
+            f.type === "quota.updated" &&
+            f.windows.some((w) => Math.abs(w.utilization - 0.95) < 1e-9),
         ),
       "quota.updated com five_hour em 95%",
     );
