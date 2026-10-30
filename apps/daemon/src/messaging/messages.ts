@@ -15,6 +15,7 @@ import type {
   SessionIdentity,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { slug } from "../names/format.ts";
 import { ulid } from "../ulid.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { formatSessionMessage, formatSystemMessage } from "./header.ts";
@@ -203,8 +204,7 @@ export class Messaging {
       return {
         id: info.id,
         name: party.name,
-        alias: null,
-        aliases: [],
+        ...this.aliasesOf(info.id),
         persona: party.persona,
         projectKey: party.projectKey,
         teamId: party.teamId,
@@ -226,11 +226,17 @@ export class Messaging {
     return {
       id: info.id,
       host: this.opts.host,
-      name: info.name,
+      name: this.opts.names?.get(info.id)?.display ?? info.name,
       persona: this.opts.personaOf?.(info.id) ?? info.persona,
       projectKey: info.projectKey,
       teamId: this.opts.teamOf?.(info.id) ?? null,
     };
+  }
+
+  /** The standard alias of a session of this host and every alias that points at it. */
+  private aliasesOf(id: string): { alias: string | null; aliases: string[] } {
+    const named = this.opts.names?.get(id);
+    return { alias: named?.alias ?? null, aliases: named?.aliases ?? [] };
   }
 
   private peerParty(host: string, peer: PeerSession): Party {
@@ -262,7 +268,9 @@ export class Messaging {
   private target(address: string): Target | { error: string } {
     const { host, id } = split(address);
     if (host === null || host === this.opts.host) {
-      const info = this.opts.endpoints.list().find((e) => e.id === id);
+      const sessionId = this.opts.names?.resolve(id) ?? id;
+      const list = this.opts.endpoints.list();
+      const info = list.find((e) => e.id === id) ?? list.find((e) => e.id === sessionId);
       if (!info) return { error: `sessão ${address} não encontrada neste host` };
       return {
         party: this.partyOf(info),
@@ -273,7 +281,9 @@ export class Messaging {
     }
     const sessions = this.peers.get(host);
     if (!sessions) return { error: `o host ${host} não é conhecido: o app descreve os hosts` };
-    const peer = sessions.find((s) => s.id === id);
+    const alias = slug(id);
+    const peer =
+      sessions.find((s) => s.id === id) ?? sessions.find((s) => s.aliases?.includes(alias));
     if (!peer) return { error: `sessão ${address} não encontrada no host ${host}` };
     return {
       party: this.peerParty(host, peer),
@@ -289,7 +299,7 @@ export class Messaging {
     const seen: MessagingSession[] = [];
     const consider = (
       party: Party,
-      extra: Pick<MessagingSession, "state" | "kind" | "receives" | "reason">,
+      extra: Pick<MessagingSession, "state" | "kind" | "receives" | "reason" | "alias" | "aliases">,
     ) => {
       if (addressOf(party) === addressOf(sender)) return;
       if (!access(sender, party, this.policy).ok) return;
@@ -298,8 +308,6 @@ export class Messaging {
         id: party.id,
         host: party.host,
         name: party.name,
-        alias: null,
-        aliases: [],
         persona: party.persona,
         projectKey: party.projectKey,
         teamId: party.teamId,
@@ -308,6 +316,7 @@ export class Messaging {
     };
     for (const info of this.opts.endpoints.list()) {
       consider(this.partyOf(info), {
+        ...this.aliasesOf(info.id),
         state: info.state,
         kind: info.kind,
         receives: info.controllable,
@@ -317,6 +326,8 @@ export class Messaging {
     for (const [host, sessions] of this.peers) {
       for (const peer of sessions) {
         consider(this.peerParty(host, peer), {
+          alias: peer.alias ?? null,
+          aliases: peer.aliases ?? [],
           state: peer.state,
           kind: peer.kind,
           receives: peer.receives,
