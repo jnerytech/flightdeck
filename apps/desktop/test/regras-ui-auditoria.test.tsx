@@ -154,4 +154,23 @@ describe("regras-ui-auditoria: what the rules decided", () => {
     await report(store);
     expect(screen.queryByText("Nenhum host conectado com ações")).not.toBeNull();
   });
+
+  test("with two hosts that have actions, the report is the chosen host's", async () => {
+    const { store, daemon } = await setup();
+    const other = legacyDaemon(cleanups);
+    other.features.push("actions");
+    await store.addHost({ name: "pi", url: other.url, token: TOKEN });
+    await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
+    await report(store);
+    await settle(() => daemon.asked.includes("vault.report"));
+    const select = screen.queryByLabelText("Host") as HTMLSelectElement | null;
+    expect(select).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(select as HTMLSelectElement, {
+        target: { value: store.getState().hosts[1]?.id },
+      });
+    });
+    await settle(() => other.asked.includes("vault.report"));
+    expect(other.asked).toContain("vault.decisions");
+  });
 });
