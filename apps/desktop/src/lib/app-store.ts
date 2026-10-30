@@ -87,6 +87,7 @@ import {
   type VaultPolicy,
   type VaultRequestContext,
 } from "./vault-requests.ts";
+import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
@@ -233,6 +234,7 @@ export type HostCommandType = Extract<
   | "vault.deliver"
   | "vault.deny"
   | "vault.approve"
+  | "vault.rules.set"
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
@@ -528,6 +530,7 @@ export class AppStore {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
     );
     this.vault = new Vault(platform);
+    this.rules = new VaultRules(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
@@ -1584,6 +1587,8 @@ export class AppStore {
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
     }
+    // Phase 19: the daemon decides a request with the rules the app hands it.
+    if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
@@ -1890,6 +1895,9 @@ export class AppStore {
 
   /** Phase 16: the vault, whose values live in the system keyring. */
   readonly vault: Vault;
+
+  /** Phase 19: each secret's usage rules, kept with the vault. */
+  private readonly rules: VaultRules;
   /** Phase 18: the global snippets, kept by the app. */
   readonly globalSnippets: GlobalSnippets;
   /** Phase 16: what was asked of the vault, kept in `storage`. */
@@ -2028,8 +2036,8 @@ export class AppStore {
   private defaultVaultPolicy: VaultPolicy | null = null;
 
   /** Phase 19: a secret's usage rules, in order. */
-  vaultRules(_secretId: string): unknown[] {
-    return [];
+  vaultRules(secretId: string): unknown[] {
+    return this.rules.get(secretId);
   }
 
   /**
@@ -2037,10 +2045,33 @@ export class AppStore {
    * copy; a refusal comes back with the daemon's reason and nothing is saved.
    */
   async setVaultRules(
-    _secretId: string,
-    _rules: unknown[],
+    secretId: string,
+    rules: unknown[],
   ): Promise<{ ok: true } | { ok: false; message: string }> {
+    const secret = this.vault.list().find((s) => s.id === secretId);
+    for (const host of this.state.hosts) {
+      if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
+      const result = await this.hostRequest(host.id, "vault.rules.set", {
+        secretId,
+        tags: secret.tags,
+        rules,
+      });
+      if (!result.ok) return { ok: false, message: result.message };
+    }
+    this.rules.set(secretId, rules);
     return { ok: true };
+  }
+
+  /** On connect: the host gets the rules of the secrets it may receive, and of no other. */
+  private sendVaultRules(hostId: string, conn: HostConnection): void {
+    const all = this.rules.all();
+    for (const secret of this.vault.list()) {
+      const rules = all[secret.id];
+      if (!rules || !secret.allowedHosts.includes(hostId)) continue;
+      void conn
+        .request("vault.rules.set", { secretId: secret.id, tags: secret.tags, rules })
+        .catch((error: unknown) => this.fail(error));
+    }
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
