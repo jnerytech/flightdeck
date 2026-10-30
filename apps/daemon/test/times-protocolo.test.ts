@@ -9,8 +9,8 @@ import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { startServer } from "../src/server.ts";
 import { Teams } from "../src/teams/teams.ts";
-import { newBoard } from "./board-helpers.ts";
-import { poll, tempDir, waitFor } from "./helpers.ts";
+import { newBoard, whenChanged } from "./board-helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -106,11 +106,8 @@ describe("times-protocolo", () => {
       members: Array<{ cardId: string | null }>;
     }>("teams.create", { projectId: project.id, goal: "Faça o login.", workers: 1, name: "login" });
     expect(team?.id).toBeTruthy();
-    await waitFor(
-      () => team?.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
-      {
-        timeoutMs: 20_000,
-      },
+    await whenChanged(board, () =>
+      team?.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
     );
     expect(
       (
@@ -185,11 +182,8 @@ describe("mcp-mensagens: team_status", () => {
       workers: 1,
       name: "login",
     });
-    await waitFor(
-      () => team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
-      {
-        timeoutMs: 20_000,
-      },
+    await whenChanged(board, () =>
+      team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
     );
     const outsider = manager.create({ cwd: project.path, prompt: "outra coisa" }).sessionId;
     const asMember = await mcp(team.coordinator as string, teams, server);

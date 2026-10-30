@@ -4,8 +4,7 @@ import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { Quota } from "../src/quota/quota.ts";
 import { Teams } from "../src/teams/teams.ts";
-import { newBoard } from "./board-helpers.ts";
-import { waitFor } from "./helpers.ts";
+import { newBoard, whenChanged } from "./board-helpers.ts";
 
 setDefaultTimeout(30_000);
 
@@ -59,9 +58,8 @@ async function setup() {
     quota.record([{ window: "five_hour", utilization, status: "allowed", resetsAt }]);
   const start = async (workers = 1) => {
     const team = await teams.create({ projectId: project.id, goal: "Uma tarefa.", workers });
-    await waitFor(
-      () => team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
-      { timeoutMs: 20_000 },
+    await whenChanged(ctx.board, () =>
+      team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
     );
     return team;
   };

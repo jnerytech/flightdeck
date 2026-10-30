@@ -77,3 +77,54 @@ export function cardWhen(
     return check(card) ? card : null;
   }, timeoutMs);
 }
+
+/**
+ * Waits for the board to change into something `check` accepts: it looks now and again on every
+ * change the board announces, with no polling. Rejects after `timeoutMs` so a run that never gets
+ * there fails with that, not by hanging until the test's own limit.
+ */
+export function whenChanged<T>(
+  board: Board,
+  check: () => Promise<T | null | undefined | false> | T | null | undefined | false,
+  timeoutMs = 25_000,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let busy = false;
+    let again = false;
+    let done = false;
+    const finish = () => {
+      done = true;
+      off();
+      clearTimeout(timer);
+    };
+    const run = async (): Promise<void> => {
+      if (done) return;
+      if (busy) {
+        again = true;
+        return;
+      }
+      busy = true;
+      try {
+        const found = await check();
+        if (found) {
+          finish();
+          resolve(found as T);
+        }
+      } catch (error) {
+        finish();
+        reject(error);
+      }
+      busy = false;
+      if (again && !done) {
+        again = false;
+        void run();
+      }
+    };
+    const off = board.watch(() => void run());
+    const timer = setTimeout(() => {
+      finish();
+      reject(new Error("timeout esperando o board mudar"));
+    }, timeoutMs);
+    void run();
+  });
+}

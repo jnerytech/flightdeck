@@ -6,8 +6,7 @@ import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { INSTRUCTIONS_VERSION } from "../src/teams/instructions.ts";
 import { Teams, type TeamsOptions } from "../src/teams/teams.ts";
-import { cardWhen, newBoard } from "./board-helpers.ts";
-import { waitFor } from "./helpers.ts";
+import { cardWhen, newBoard, whenChanged } from "./board-helpers.ts";
 
 setDefaultTimeout(30_000);
 
@@ -100,7 +99,7 @@ describe("times: criar", () => {
     // Each worker is a card of the project with a worktree, started with the worker instructions.
     const cards = team.members.slice(1).map((m) => board.getCard(m.cardId as string));
     expect(cards.map((c) => c.projectId)).toEqual([project.id, project.id]);
-    await waitFor(() => cards.every((c) => board.getCard(c.id).sessionId), { timeoutMs: 20_000 });
+    await whenChanged(board, () => cards.every((c) => board.getCard(c.id).sessionId));
     for (const card of cards) {
       expect(card.title).toMatch(/^login · executora [12]$/);
       expect(card.description).toContain("espere a tarefa");
@@ -122,11 +121,8 @@ describe("times: criar", () => {
       projectId: project.id,
       name: "Implementar o login com e-mail e senha, com testes completos",
     });
-    await waitFor(
-      () => team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
-      {
-        timeoutMs: 20_000,
-      },
+    await whenChanged(board, () =>
+      team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
     );
     const branches = team.members.slice(1).map((m) => board.getCard(m.cardId as string).branch);
     expect(new Set(branches).size).toBe(2);
@@ -184,7 +180,7 @@ describe("times: os membros se falam", () => {
     const { teams, project, messaging, board } = await setup();
     const team = await teams.create({ ...NEW, projectId: project.id });
     const worker = team.members[1];
-    await waitFor(() => board.getCard(worker?.cardId as string).sessionId, { timeoutMs: 20_000 });
+    await whenChanged(board, () => board.getCard(worker?.cardId as string).sessionId);
     const workerSession = board.getCard(worker?.cardId as string).sessionId as string;
     expect(teams.teamOf(team.coordinator as string)).toBe(team.id);
     expect(teams.teamOf(workerSession)).toBe(team.id);
@@ -206,9 +202,8 @@ describe("times: os controles", () => {
   async function running() {
     const ctx = await setup();
     const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id, name: "time" });
-    await waitFor(
-      () => team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
-      { timeoutMs: 20_000 },
+    await whenChanged(ctx.board, () =>
+      team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
     );
     const fresh = ctx.teams.get(team.id);
     return { ...ctx, team: fresh };
@@ -334,7 +329,7 @@ describe("times: o estado do time", () => {
     const { teams, project, messaging, board } = await setup();
     const team = await teams.create({ ...NEW, projectId: project.id });
     const worker = team.members[1];
-    await waitFor(() => board.getCard(worker?.cardId as string).sessionId, { timeoutMs: 20_000 });
+    await whenChanged(board, () => board.getCard(worker?.cardId as string).sessionId);
     const workerSession = board.getCard(worker?.cardId as string).sessionId as string;
     await cardWhen(board, worker?.cardId as string, (c) => c.sessionStatus === "idle");
     messaging.send({
