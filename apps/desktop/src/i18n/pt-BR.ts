@@ -34,6 +34,7 @@ export const ptBR = {
     origin: { global: "Global", host: "Host", project: "Projeto", file: "Arquivo versionado" },
     favorite: "Favoritar {name}",
     unfavorite: "Desfavoritar {name}",
+    picker: "Snippets de comando",
     newSnippet: "Novo snippet",
     edit: "Editar",
     editFor: "Editar {name}",

@@ -45,6 +45,8 @@ export interface XtermScreenOptions {
   onSearch(): void;
   /** A link in the output was clicked. */
   onLink(uri: string): void;
+  /** Ctrl+Shift+Space: the snippets (phase 18). */
+  onSnippets?(): void;
 }
 
 export interface XtermScreen {
@@ -99,6 +101,9 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
         return false;
       case "search":
         options.onSearch();
+        return false;
+      case "snippets":
+        options.onSnippets?.();
         return false;
       default:
         return true;

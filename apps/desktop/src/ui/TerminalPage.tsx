@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Page } from "@/components/layout/page";
+import { SnippetPicker } from "@/components/snippets/snippet-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ export function TerminalPage(props: {
   const [closing, setClosing] = useState(false);
   /** Where the right button opened the copy and paste menu. */
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [picking, setPicking] = useState(false);
   const [launchId, setLaunchId] = useState<string | null>(null);
   const appState = useSyncExternalStore(store.subscribe, store.getState);
   /** The session in the central of a "Claude aqui" terminal: same host, same launch. */
@@ -73,6 +75,7 @@ export function TerminalPage(props: {
         onResize: (cols, rows) => session.current?.resize(cols, rows),
         onSearch: () => setSearching(true),
         onLink: (uri) => store.openLink(uri),
+        onSnippets: () => setPicking(true),
       });
       const current = new TerminalSession({
         terminalId,
@@ -235,6 +238,17 @@ export function TerminalPage(props: {
       {closing && (
         <TerminalCloseDialog
           onClose={(kill) => (kill === null ? setClosing(false) : void close(kill))}
+        />
+      )}
+      {picking && (
+        <SnippetPicker
+          store={store}
+          hostId={hostId}
+          onPick={(choice) => {
+            setPicking(false);
+            store.chooseSnippet(choice);
+          }}
+          onClose={() => setPicking(false)}
         />
       )}
     </Page>

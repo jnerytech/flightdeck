@@ -11,9 +11,15 @@ export interface TerminalKey {
   metaKey: boolean;
 }
 
-const KEY_ACTIONS: Record<string, TerminalKeyAction> = { c: "copy", v: "paste", f: "search" };
+const KEY_ACTIONS: Record<string, TerminalKeyAction> = {
+  c: "copy",
+  v: "paste",
+  f: "search",
+  // Phase 18: the command snippets of this terminal's host and of the app.
+  " ": "snippets",
+};
 
-/** Ctrl+Shift+C/V/F are the app's; everything else, Ctrl+C included, goes to the process. */
+/** Ctrl+Shift+C/V/F/Space are the app's; everything else, Ctrl+C included, goes to the process. */
 export function terminalKeyAction(event: TerminalKey): TerminalKeyAction {
   if (!event.ctrlKey || !event.shiftKey || event.altKey || event.metaKey) return "pass";
   return KEY_ACTIONS[event.key.toLowerCase()] ?? "pass";

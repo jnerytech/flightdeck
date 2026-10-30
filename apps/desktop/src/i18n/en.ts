@@ -32,6 +32,7 @@ export const en: Dictionary = {
     origin: { global: "Global", host: "Host", project: "Project", file: "Versioned file" },
     favorite: "Favorite {name}",
     unfavorite: "Unfavorite {name}",
+    picker: "Command snippets",
     newSnippet: "New snippet",
     edit: "Edit",
     editFor: "Edit {name}",

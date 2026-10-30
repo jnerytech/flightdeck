@@ -1,11 +1,11 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { type SnippetChoice, SnippetUse } from "@/components/snippets/snippet-use";
+import { SnippetUse } from "@/components/snippets/snippet-use";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TContext } from "@/i18n/context";
@@ -235,8 +235,6 @@ export function App({ store }: { store: AppStore }) {
     });
   };
 
-  const [snippetChoice, setSnippetChoice] = useState<SnippetChoice | null>(null);
-
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
@@ -249,7 +247,7 @@ export function App({ store }: { store: AppStore }) {
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
     } else if (target.kind === "snippet") {
-      setSnippetChoice({ hostId: target.hostId, snippetId: target.snippetId });
+      store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else go(paletteRoute(target));
@@ -329,12 +327,12 @@ export function App({ store }: { store: AppStore }) {
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}
           <AskpassPrompt store={store} state={state} />
-          {snippetChoice && (
+          {state.snippetChoice && (
             <SnippetUse
               store={store}
               state={state}
-              choice={snippetChoice}
-              onClose={() => setSnippetChoice(null)}
+              choice={state.snippetChoice}
+              onClose={() => store.chooseSnippet(null)}
             />
           )}
           {state.searchOpen && (

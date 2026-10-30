@@ -1815,6 +1815,16 @@ export class AppStore {
     this.update({ askpass: [...this.state.askpass, { hostId, request }] });
   }
 
+  /** Keeps a host's snippets as listed, for the palette and the use dialog (phase 18). */
+  keepSnippets(hostId: string, snippets: Snippet[]): void {
+    this.update({ snippets: { ...this.state.snippets, [hostId]: snippets } });
+  }
+
+  /** Opens the use dialog for a snippet (`null` closes it): from the palette or a terminal's list. */
+  chooseSnippet(choice: { hostId: string | null; snippetId: string } | null): void {
+    this.update({ snippetChoice: choice });
+  }
+
   /**
    * Phase 18: the prompt snippets a session's message box offers after `/`, the host's and the
    * app's, and the text of one: filled from the session's folder, or as written when a field
