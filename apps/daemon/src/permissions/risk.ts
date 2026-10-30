@@ -235,6 +235,10 @@ export class RiskClassifier {
     }
     if (NETWORK_TOOLS.has(toolName)) return [["medium", "acessa a rede"]];
     if (toolName.startsWith("mcp__")) {
+      // Phase 17: a command Claude wrote, with a secret in its environment, from any server.
+      if (toolName.endsWith("__run_with_secret")) {
+        return [["high", "comando livre com segredo no ambiente"]];
+      }
       return /delete|drop|destroy/i.test(toolName)
         ? [["high", "ferramenta MCP destrutiva"]]
         : [["medium", "ferramenta MCP"]];
