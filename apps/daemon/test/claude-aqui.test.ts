@@ -96,6 +96,31 @@ describe("claude-aqui", () => {
     expect(manager.open({ cwd: project, command: ["sh"], cols: 80, rows: 24 }).launchId).toBeNull();
   });
 
+  test("Claude aqui with a persona runs flightdeckd claude --persona <id> (phase 20)", () => {
+    const { manager, ptys, project } = setup();
+    manager.open({ cwd: project, claude: { persona: "seguranca" }, cols: 80, rows: 24 });
+    expect(ptys.spawned[0]?.argv).toEqual([
+      "/opt/fd/flightdeckd",
+      "claude",
+      "--persona",
+      "seguranca",
+    ]);
+    manager.open({
+      cwd: project,
+      claude: { resume: "abc-123", persona: "qa" },
+      cols: 80,
+      rows: 24,
+    });
+    expect(ptys.spawned[1]?.argv).toEqual([
+      "/opt/fd/flightdeckd",
+      "claude",
+      "--resume",
+      "abc-123",
+      "--persona",
+      "qa",
+    ]);
+  });
+
   test("sem flightdeckd configurado, o Claude aqui é recusado", () => {
     const { manager, project } = setup({ claude: undefined });
     let code = "ok";

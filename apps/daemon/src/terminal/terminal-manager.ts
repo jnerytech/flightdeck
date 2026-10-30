@@ -54,7 +54,7 @@ export interface OpenRequest {
   /** An argv, never run through a shell; the host's default shell when absent. */
   command?: string[];
   /** "Claude aqui": `flightdeckd claude` in the cwd, optionally `--resume <id>`. */
-  claude?: { resume?: string };
+  claude?: { resume?: string; persona?: string };
   /** Variables added to the process environment. For code of the daemon, not for clients. */
   env?: Record<string, string>;
   /** The cwd is the daemon own folder: it needs no place in `allowedRoots`. Daemon code only. */
