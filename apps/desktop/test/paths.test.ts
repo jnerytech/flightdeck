@@ -4,8 +4,8 @@ import { trimTrailingSeparators } from "../src/lib/paths.ts";
 describe("paths", () => {
   test("trimTrailingSeparators drops trailing slashes and backslashes", () => {
     expect(trimTrailingSeparators("/home/me/project/")).toBe("/home/me/project");
-    expect(trimTrailingSeparators("C:\work\project\\")).toBe("C:\work\project");
-    expect(trimTrailingSeparators("/home/me/project//\/")).toBe("/home/me/project");
+    expect(trimTrailingSeparators("C:\\work\\project\\")).toBe("C:\\work\\project");
+    expect(trimTrailingSeparators("/home/me/project//\\/")).toBe("/home/me/project");
     expect(trimTrailingSeparators("///")).toBe("");
   });
 
