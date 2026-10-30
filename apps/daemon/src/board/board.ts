@@ -1174,12 +1174,13 @@ export class Board {
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };
       for (const { id } of open) await this.pollPr(id).catch(failed(id));
-      // Merged, but the worktree removal failed (a busy folder on Windows): finish again, without
-      // asking the provider. Pending changes wait for the user, as in completeCard.
+      // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
+      // notice): finish again, without asking the provider. Pending changes wait for the user,
+      // as in completeCard, and a card started again (notice cleared) is left alone.
       const unfinished = this.db
         .query<{ id: string }, [string]>(
-          `SELECT id FROM cards WHERE pr_state = 'merged' AND worktree_path IS NOT NULL
-           AND (notice IS NULL OR notice <> ?)`,
+          `SELECT id FROM cards WHERE pr_state = 'merged' AND board_column = 'done'
+           AND worktree_path IS NOT NULL AND notice IS NOT NULL AND notice <> ?`,
         )
         .all(PENDING_NOTICE);
       for (const { id } of unfinished) await this.finish(id).catch(failed(id));
