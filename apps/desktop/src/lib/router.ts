@@ -24,6 +24,8 @@ export type Route =
   | { name: "agent"; host: string; projectId: string; projectName: string }
   /** A project's automations (phase 13). */
   | { name: "automations"; host: string; projectId: string; projectName: string }
+  /** The automatic approvals' decisions and suspended sessions of a host (phase 13). */
+  | { name: "auto-approvals"; host: string }
   | { name: "settings" }
   /** The Custos screen (phase 8, track A). */
   | { name: "costs" }

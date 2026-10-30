@@ -18,6 +18,7 @@ import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { AgentPage } from "./AgentPage.tsx";
+import { AutoApprovalsPage } from "./AutoApprovalsPage.tsx";
 import { AutomationsPage } from "./AutomationsPage.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
@@ -51,6 +52,7 @@ function hostToWait(route: Route): string | null {
     case "workflows":
     case "agent":
     case "automations":
+    case "auto-approvals":
       return route.host;
     default:
       return null;
@@ -436,6 +438,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           host={host}
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
+          onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);
@@ -512,6 +515,8 @@ function routeScreen(props: ScreenProps): ReactNode {
           projectName={route.projectName}
         />
       );
+    case "auto-approvals":
+      return <AutoApprovalsPage key={route.host} store={store} hostId={route.host} />;
     case "workflows":
       return (
         <WorkflowsPage

@@ -28,6 +28,7 @@ export function HostPage(props: {
   host: HostView;
   onRename(name: string): void;
   onReconnect(): void;
+  onOpenAutoApprovals(): void;
   onRemove(): void;
 }) {
   const t = useT();
@@ -128,6 +129,11 @@ export function HostPage(props: {
               </div>
             </Panel>
           </section>
+        )}
+        {host.status === "online" && hasFeature(info?.features, "autoapprove", false) && (
+          <Button variant="outline" className="self-start" onClick={props.onOpenAutoApprovals}>
+            {t("autoApprovalsUi.open")}
+          </Button>
         )}
         {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
           <MaintenanceSection store={store} hostId={host.id} />

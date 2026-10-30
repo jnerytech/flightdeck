@@ -203,6 +203,10 @@ export const en: Dictionary = {
       one: "Flightdeck: {n} request waiting for you ({hosts})",
       other: "Flightdeck: {n} requests waiting for you ({hosts})",
     },
+    autoApproved: {
+      one: "{n} automatic approval",
+      other: "{n} automatic approvals",
+    },
   },
   notify: {
     waiting: "{label}: needs you",
@@ -586,6 +590,29 @@ export const en: Dictionary = {
     connectButton: "Connect issues",
     configure: "Configure issues",
     save: "Save",
+  },
+  autoApprovalsUi: {
+    open: "Automatic approvals",
+    openHint:
+      "What the daemon approved, or asked you about, without your hand, and the suspended sessions.",
+    list: "Automatic decisions",
+    project: "Project",
+    allProjects: "All projects",
+    filter: "Filter decisions",
+    filterPlaceholder: "Tool or reason",
+    loading: "Loading the decisions",
+    empty: "No automatic decisions yet",
+    noMatch: "No decision matches the filter",
+    allow: "Approved",
+    ask: "Asked you",
+    byRule: "Rule",
+    byAi: "AI ({model})",
+    suspended: "Suspended sessions",
+    noSuspended: "No suspended sessions",
+    resume: "Resume {session}",
+    resumeConfirm: "Resume",
+    resumeMessage:
+      "Resume the automatic approval in {session}? It was suspended because: {reason}.",
   },
   arenaUi: {
     start: "Start in arena",

@@ -1527,7 +1527,14 @@ export class AppStore {
 
   /** Pushes the fleet-wide badge to the tray whenever it changes. */
   private syncTray(): void {
-    const status = trayStatus(this.state.hosts, this.i18n.t);
+    // The requests the daemon approved by itself that the app has seen in its sessions.
+    let autoApproved = 0;
+    for (const session of Object.values(this.state.sessions)) {
+      for (const item of session.items) {
+        if (item.kind === "permission" && item.resolution?.auto) autoApproved++;
+      }
+    }
+    const status = trayStatus(this.state.hosts, this.i18n.t, autoApproved);
     if (this.tray?.label === status.label && this.tray.tooltip === status.tooltip) return;
     this.tray = status;
     void this.platform.setTrayStatus(status);

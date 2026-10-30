@@ -46,8 +46,11 @@ export interface TrayHost {
   sessions: { pendingPermissions: PendingPermission[] }[];
 }
 
-/** Tray badge for the whole fleet: total open requests and a per-host breakdown. */
-export function trayStatus(hosts: TrayHost[], t: T = PT): TrayStatus {
+/**
+ * Tray badge for the whole fleet: total open requests and a per-host breakdown, then how many
+ * requests were approved automatically (phase 13) when there were any.
+ */
+export function trayStatus(hosts: TrayHost[], t: T = PT, autoApproved = 0): TrayStatus {
   const perHost = hosts
     .map((h) => ({
       name: h.name,
@@ -57,7 +60,8 @@ export function trayStatus(hosts: TrayHost[], t: T = PT): TrayStatus {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const count = perHost.reduce((n, h) => n + h.count, 0);
   const label = t("tray.needsYou", { n: count });
-  if (count === 0) return { count, label, tooltip: t("tray.idle") };
+  const auto = autoApproved > 0 ? ` · ${t("tray.autoApproved", { n: autoApproved })}` : "";
+  if (count === 0) return { count, label, tooltip: `${t("tray.idle")}${auto}` };
   const breakdown = perHost.map((h) => `${h.name}: ${h.count}`).join(", ");
-  return { count, label, tooltip: t("tray.waiting", { n: count, hosts: breakdown }) };
+  return { count, label, tooltip: `${t("tray.waiting", { n: count, hosts: breakdown })}${auto}` };
 }
