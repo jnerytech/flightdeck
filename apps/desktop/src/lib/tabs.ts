@@ -28,8 +28,11 @@ const randomId = () => `tab-${Date.now().toString(36)}-${(counter++).toString(36
 export class Tabs {
   tabs: readonly Tab[] = [];
   activeId = "";
+  /** Changes with every change of the tabs or of the route of the active one. */
+  version = 0;
   readonly router: Navigation;
   private closed: Closed[] = [];
+  private newTab = false;
   private readonly listeners = new Set<() => void>();
   private readonly unwatch = new Map<string, () => void>();
 
@@ -50,7 +53,10 @@ export class Tabs {
       get canForward() {
         return active().canForward;
       },
-      push: (route) => active().push(route),
+      push: (route) => {
+        if (this.newTab) this.open(route);
+        else active().push(route);
+      },
       back: () => active().back(),
       forward: () => active().forward(),
       subscribe: this.subscribe,
@@ -65,6 +71,14 @@ export class Tabs {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
+
+  /** The navigation of the next moment (this event) opens a new tab instead of using the active one. */
+  openNextInNewTab(): void {
+    this.newTab = true;
+    setTimeout(() => {
+      this.newTab = false;
+    }, 0);
+  }
 
   open(route: Route, options: { background?: boolean } = {}): Tab {
     const after = this.tabs.findIndex((tab) => tab.id === this.activeId) + 1;
@@ -169,6 +183,7 @@ export class Tabs {
   }
 
   private emit(): void {
+    this.version++;
     for (const listener of this.listeners) listener();
   }
 }

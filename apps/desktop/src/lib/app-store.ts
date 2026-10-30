@@ -46,9 +46,9 @@ import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
-import { Router } from "./router.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { Tabs } from "./tabs.ts";
 import {
   type TerminalEnv,
   type TerminalLaunch,
@@ -490,7 +490,8 @@ export class AppStore {
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
-  readonly router = new Router();
+  readonly tabs = new Tabs();
+  readonly router = this.tabs.router;
 
   getState = (): AppState => this.state;
 

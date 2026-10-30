@@ -1,0 +1,95 @@
+import {
+  Clock,
+  FileDiff,
+  Layers,
+  type LucideIcon,
+  Pin,
+  PinOff,
+  SquareKanban,
+  SquareTerminal,
+  Wallet,
+  X,
+} from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { AppState, AppStore } from "../lib/app-store.ts";
+import { breadcrumb } from "../lib/breadcrumb.ts";
+import type { Route } from "../lib/router.ts";
+import type { Tab } from "../lib/tabs.ts";
+
+const ICONS: Partial<Record<Route["name"], LucideIcon>> = {
+  terminal: SquareTerminal,
+  board: SquareKanban,
+  card: SquareKanban,
+  reader: Clock,
+  history: Clock,
+  costs: Wallet,
+  agent: FileDiff,
+};
+
+/** The title of a tab: the last step of the path its route shows in the header. */
+const title = (tab: Tab, state: AppState, store: AppStore) =>
+  breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
+
+/** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
+export function TabBar(props: { store: AppStore; state: AppState }) {
+  const { store, state } = props;
+  const { t } = store.i18n;
+  useSyncExternalStore(store.tabs.subscribe, () => store.tabs.version);
+  return (
+    <div
+      role="tablist"
+      aria-label={t("tabs.list")}
+      className="flex h-9 items-end gap-0.5 border-b px-2"
+    >
+      {store.tabs.tabs.map((tab) => {
+        const label = title(tab, state, store);
+        const Icon = ICONS[tab.router.current.name] ?? Layers;
+        const active = tab.id === store.tabs.activeId;
+        return (
+          <div
+            key={tab.id}
+            role="presentation"
+            className={cn(
+              "group flex max-w-48 items-center rounded-t-md border border-b-0 text-sm",
+              active ? "bg-background" : "bg-muted/40 text-muted-foreground",
+            )}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={active}
+              {...(tab.pinned ? { "aria-label": label } : {})}
+              className="flex min-w-0 items-center gap-1.5 px-2 py-1.5"
+              onClick={() => store.tabs.activate(tab.id)}
+            >
+              <Icon className="size-4 shrink-0" aria-hidden />
+              {!tab.pinned && <span className="truncate">{label}</span>}
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              aria-label={t(tab.pinned ? "tabs.unpin" : "tabs.pin", { title: label })}
+              onClick={() => store.tabs.pin(tab.id, !tab.pinned)}
+            >
+              {tab.pinned ? <PinOff /> : <Pin />}
+            </Button>
+            {!tab.pinned && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                aria-label={t("tabs.close", { title: label })}
+                onClick={() => store.tabs.close(tab.id)}
+              >
+                <X />
+              </Button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

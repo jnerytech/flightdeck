@@ -468,6 +468,12 @@ export const ptBR = {
     ended: "encerrada",
     error: "erro",
   },
+  tabs: {
+    list: "Abas",
+    close: "Fechar aba {title}",
+    pin: "Fixar aba {title}",
+    unpin: "Desafixar aba {title}",
+  },
   terminalUi: {
     title: "Terminal",
     state: {

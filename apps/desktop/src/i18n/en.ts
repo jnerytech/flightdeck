@@ -465,6 +465,12 @@ export const en: Dictionary = {
     ended: "ended",
     error: "error",
   },
+  tabs: {
+    list: "Tabs",
+    close: "Close tab {title}",
+    pin: "Pin tab {title}",
+    unpin: "Unpin tab {title}",
+  },
   terminalUi: {
     title: "Terminal",
     state: {

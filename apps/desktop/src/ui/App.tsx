@@ -15,6 +15,7 @@ import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
 import { Screen } from "./Screens.tsx";
 import { Sidebar } from "./Sidebar.tsx";
+import { TabBar } from "./TabBar.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
@@ -54,6 +55,29 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
     case "costs":
       return { name: "costs" };
   }
+}
+
+/**
+ * The tab shortcuts (Ctrl+T/W/Shift+T, Ctrl+Tab, Ctrl+1…9, Ctrl+Shift+PageUp/Down): true when the
+ * key was one of them and has been handled.
+ */
+function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
+  const { tabs } = store;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (key === "t" && e.shiftKey) tabs.reopen();
+  else if (key === "t") {
+    tabs.open({ name: "home" });
+    store.openSearch();
+  } else if (key === "w") tabs.close(tabs.activeId);
+  else if (key === "Tab") {
+    if (e.shiftKey) tabs.previous();
+    else tabs.next();
+  } else if (/^[1-9]$/.test(key) && !e.shiftKey) tabs.goto(Number(key));
+  else if ((key === "PageUp" || key === "PageDown") && e.shiftKey) {
+    const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
+    tabs.move(tabs.activeId, index + (key === "PageUp" ? -1 : 1));
+  } else return false;
+  return true;
 }
 
 export function App({ store }: { store: AppStore }) {
@@ -126,11 +150,23 @@ export function App({ store }: { store: AppStore }) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         store.openSearch();
+      } else if ((e.ctrlKey || e.metaKey) && tabShortcut(store, e)) {
+        e.preventDefault();
       } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         e.preventDefault();
         if (e.key === "ArrowLeft") router.back();
         else router.forward();
       }
+    };
+    // Ctrl+click and the middle button open what was clicked in a new tab: the navigation of
+    // that event goes to a new tab (the middle button fires no click, so it clicks for itself).
+    const onNewTab = (e: MouseEvent) => {
+      const middle = e.type === "auxclick";
+      if (middle ? e.button !== 1 : !(e.ctrlKey || e.metaKey)) return;
+      store.tabs.openNextInNewTab();
+      if (!middle) return;
+      e.preventDefault();
+      (e.target as HTMLElement).closest<HTMLElement>("button, a, [role=button]")?.click();
     };
     const onMouse = (e: MouseEvent) => {
       if (e.button === 3) router.back();
@@ -138,9 +174,13 @@ export function App({ store }: { store: AppStore }) {
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("mouseup", onMouse);
+    window.addEventListener("click", onNewTab, true);
+    window.addEventListener("auxclick", onNewTab, true);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mouseup", onMouse);
+      window.removeEventListener("click", onNewTab, true);
+      window.removeEventListener("auxclick", onNewTab, true);
     };
   }, [store, router]);
 
@@ -244,6 +284,7 @@ export function App({ store }: { store: AppStore }) {
           )}
         >
           <div className="flex h-full min-h-0 flex-col">
+            <TabBar store={store} state={state} />
             <UpdateBanner store={store} state={state} />
             {/* Screens that are a Page scroll by themselves; the others scroll here. */}
             <div className="min-h-0 flex-1 overflow-y-auto">
