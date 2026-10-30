@@ -30,7 +30,7 @@ export function withTurnUuids(rows: SnapshotRow[], prompts: UserPrompt[]): Snaps
   for (const [text, group] of turns) {
     const said = prompts.filter((p) => key(p.text) === text);
     if (said.length !== group.length) continue;
-    group.forEach((row, i) => found.set(row.n, (said[i] as UserPrompt).uuid));
+    for (const [i, row] of group.entries()) found.set(row.n, (said[i] as UserPrompt).uuid);
   }
   return rows.map((row) =>
     found.has(row.n) ? { ...row, turnUuid: found.get(row.n) ?? null } : row,
