@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
-import type { PendingItem } from "../src/lib/app-store.ts";
+import { needsYou, type PendingItem } from "../src/lib/app-store.ts";
 import { parseRequestLink, requestLink } from "../src/lib/request-link.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu } from "../src/lib/tray.ts";
 import type { TrayAction, TrayActionKind, TrayMenu } from "../src/platform/types.ts";
@@ -171,9 +171,8 @@ describe("bandeja-aprovacao", () => {
     const first = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Gerenciada" });
     await poll(() => d.manager.pendingPermissions(first.sessionId).length === 1);
     const r1 = d.manager.pendingPermissions(first.sessionId)[0]?.requestId ?? "";
-    await settle(
-      () => clock.pending.size === 1 && store.getState().hosts[0]?.sessions.length === 1,
-    );
+    // The request is in the app's state and the debounce is armed: only then does the clock fire.
+    await settle(() => needsYou(store.getState()).length === 1 && clock.pending.size === 1);
     // Nothing goes to the tray until the list settles for 500 ms: changes reset the wait.
     expect(tray.menus).toEqual([]);
     expect(clock.pending.size).toBe(1);
@@ -208,16 +207,20 @@ describe("bandeja-aprovacao", () => {
     const second = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Outra" });
     await poll(() => d.manager.pendingPermissions(second.sessionId).length === 1);
     const r2 = d.manager.pendingPermissions(second.sessionId)[0]?.requestId ?? "";
+    // The tray ignores a request the app does not know yet: wait until it is in the state.
+    await settle(() => needsYou(store.getState()).some((i) => i.requestId === r2));
+    expect(needsYou(store.getState()).some((i) => i.requestId === r2)).toBe(true);
     await act(async () => tray.act({ key: `${hostId}/${r2}`, action: "deny" }));
     await poll(() => status(d, r2) !== "pending");
     expect(status(d, r2)).toBe("denied");
 
     // The emptied list goes to the tray too; "e mais N…" just brings the app up.
+    // Both sessions are in the state and neither waits any more (an absent session would pass too).
     await settle(
       () =>
-        store.getState().hosts[0]?.sessions.every((s) => s.pendingPermissions.length === 0) ??
-        false,
+        store.getState().hosts[0]?.sessions.length === 2 && needsYou(store.getState()).length === 0,
     );
+    expect(store.getState().hosts[0]?.sessions).toHaveLength(2);
     await act(async () => clock.fire());
     expect(tray.menus.at(-1)).toEqual({ items: [], more: 0, labels: LABELS(0) });
     await act(async () => tray.act({ key: "more", action: "open" }));
