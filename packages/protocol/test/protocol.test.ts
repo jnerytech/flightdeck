@@ -190,6 +190,8 @@ const validCommands: Record<CommandType, unknown> = {
   "ssh.hostkey.check": { targetId: "t" },
   "ssh.hostkey.confirm": { targetId: "t", fingerprint: "SHA256:abc" },
   "ssh.hostkey.forget": { targetId: "t" },
+  "ssh.connect": { targetId: "t", cols: 100, rows: 30 },
+  "ssh.test": { targetId: "t" },
   "review.list": { target: "card:k" },
   "review.add": {
     target: "card:k",
