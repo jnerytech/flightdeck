@@ -42,6 +42,7 @@ import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/ty
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
+import { GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
@@ -213,6 +214,9 @@ export type HostCommandType = Extract<
   | `terminal.${string}`
   | `ssh.${string}`
   | `snippets.${string}`
+  | `personas.${string}`
+  | "session.applyPersona"
+  | "session.clearPersona"
   | `askpass.${string}`
   | `project.${string}`
   | `board.${string}`
@@ -540,6 +544,7 @@ export class AppStore {
     this.vault = new Vault(platform);
     this.rules = new VaultRules(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
+    this.globalPersonas = new GlobalPersonas(platform);
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
@@ -1922,6 +1927,8 @@ export class AppStore {
   private readonly rules: VaultRules;
   /** Phase 18: the global snippets, kept by the app. */
   readonly globalSnippets: GlobalSnippets;
+  /** Phase 20: the global personas, kept by the app. */
+  readonly globalPersonas: GlobalPersonas;
   /** Phase 16: what was asked of the vault, kept in `storage`. */
   readonly usage: VaultUsageLog;
 
