@@ -11,6 +11,7 @@ import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { AppSnippet } from "../lib/global-snippets.ts";
 import type { Route } from "../lib/router.ts";
+import { actionSeedFromCommand } from "../lib/snippets.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -137,12 +138,13 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
           onClose={() => setEditing(null)}
           {...(actionsProject && hostId
             ? {
-                onMakeAction: () =>
+                onMakeAction: ({ name, command }: { name: string; command: string }) =>
                   props.go({
                     name: "actions",
                     host: hostId,
                     projectId: actionsProject.id,
                     projectName: actionsProject.name,
+                    draft: actionSeedFromCommand(name, command),
                   }),
               }
             : {})}

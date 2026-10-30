@@ -1,5 +1,6 @@
 import type { HostDraft } from "../ui/HostForm.tsx";
 import type { ReaderTarget } from "../ui/TranscriptReader.tsx";
+import type { ActionSeed } from "./snippets.ts";
 
 /** Every screen of the app, with what it shows. */
 export type Route =
@@ -30,8 +31,8 @@ export type Route =
       host: string;
       projectId: string;
       projectName: string;
-      /** Opens Nova ação filled with this (phase 18: a snippet turned into an action). */
-      draft?: { name: string; run: string[] };
+      /** A new action to start from, out of a snippet refused for its secret (phase 18). */
+      draft?: ActionSeed;
     }
   /** The automatic approvals' decisions and suspended sessions of a host (phase 13). */
   | { name: "auto-approvals"; host: string }

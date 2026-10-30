@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
+import type { ActionSeed } from "../lib/snippets.ts";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -37,9 +38,18 @@ interface Draft {
   params: Array<{ name: string; pattern: string; default: string }>;
 }
 
-/** The form's starting point: the saved action, or an empty one. */
-function draftOf(initial: ActionInfo | null): Draft {
+/** The form's starting point: the saved action, a snippet's seed (phase 18), or an empty one. */
+function draftOf(initial: ActionInfo | null, seed?: ActionSeed): Draft {
   const entries = Object.entries(initial?.env ?? {});
+  if (!initial && seed) {
+    return {
+      ...draftOf(null),
+      name: seed.name,
+      run: seed.run.join("\n"),
+      // The secret is chosen in the vault: the value the snippet had never comes here.
+      env: (seed.env ?? []).map((name) => ({ name, secretId: "" })),
+    };
+  }
   return {
     name: initial?.name ?? "",
     description: initial?.description ?? "",
@@ -100,17 +110,14 @@ export function ActionForm(props: {
   hostId: string;
   projectId: string;
   initial: ActionInfo | null;
-  /** A new action's name and command, handed over from elsewhere. */
-  seed?: { name: string; run: string[] };
+  /** A new action's first values, from a snippet with a secret (phase 18). */
+  seed?: ActionSeed;
   onClose(): void;
   onSaved(action: ActionInfo): void;
 }) {
   const { store, initial } = props;
   const { t } = store.i18n;
-  const [draft, setDraft] = useState<Draft>(() => ({
-    ...draftOf(initial),
-    ...(props.seed ? { name: props.seed.name, run: props.seed.run.join("\n") } : {}),
-  }));
+  const [draft, setDraft] = useState<Draft>(() => draftOf(initial, props.seed));
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const secrets = store.getState().secrets;

@@ -28,7 +28,7 @@ export function SnippetEditor(props: {
   onSaved(): void;
   onClose(): void;
   /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
-  onMakeAction?(): void;
+  onMakeAction?(snippet: { name: string; command: string }): void;
 }) {
   const t = useT();
   const id = useId();
@@ -203,7 +203,7 @@ export function SnippetEditor(props: {
               size="sm"
               variant="outline"
               disabled={!props.onMakeAction}
-              onClick={props.onMakeAction}
+              onClick={() => props.onMakeAction?.({ name: name.trim(), command: body.trim() })}
             >
               {t("snippets.editor.makeAction")}
             </Button>

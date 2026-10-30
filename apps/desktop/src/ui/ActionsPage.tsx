@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
+import type { ActionSeed } from "../lib/snippets.ts";
 import { isProd } from "../lib/ssh.ts";
 import type { SecretMeta } from "../lib/vault.ts";
 import { ActionForm } from "./ActionForm.tsx";
@@ -71,8 +72,8 @@ export function ActionsPage(props: {
   hostId: string;
   projectId: string;
   projectName: string;
-  /** Opens Nova ação already filled (phase 18 hands over a snippet). */
-  draft?: { name: string; run: string[] } | undefined;
+  /** Opens the form on a new action filled from a snippet (phase 18). */
+  draft?: ActionSeed | undefined;
 }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
