@@ -1924,6 +1924,15 @@ export class AppStore {
 
   private defaultVaultPolicy: VaultPolicy | null = null;
 
+  /** The policy of the options, or the one that puts action requests to the user. */
+  private vaultPolicy(): VaultPolicy {
+    this.defaultVaultPolicy ??= actionPolicy({
+      ask: (context) => this.askVault(context),
+      now: this.options.now ?? Date.now,
+    });
+    return this.options.vaultPolicy ?? this.defaultVaultPolicy;
+  }
+
   /** Puts a request of the daemon for a secret in the queue and waits for the user's answer. */
   private askVault({ request, hostId, secret }: VaultRequestContext): Promise<boolean> {
     const { t } = this.i18n;
@@ -1991,12 +2000,7 @@ export class AppStore {
       hostId: config.id,
       hostUrl: config.url,
       vault: this.vault,
-      policy:
-        this.options.vaultPolicy ??
-        (this.defaultVaultPolicy ??= actionPolicy({
-          ask: (context) => this.askVault(context),
-          now: this.options.now ?? Date.now,
-        })),
+      policy: this.vaultPolicy(),
       deliver: (payload) => this.dispatch(config.id, "vault.deliver", payload),
       now: this.options.now ?? Date.now,
     });
