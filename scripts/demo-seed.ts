@@ -321,6 +321,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const done = await card("Atualizar dependências", "Atualize e rode os testes.");
   await client.call("card.move", { cardId: done.id, column: "done" });
 
+  // A change in the working tree, for the Mudanças tab of the sessions working in this folder.
+  writeFileSync(join(web, "app.ts"), "export const versao = 2;\n");
+
   // Managed sessions: waiting for Bash, waiting for Write, idle, ended; the plan quota.
   const later = (hours: number) => Math.floor(Date.now() / 1000) + hours * 3600;
   const session = (name: string, prompt: string) =>

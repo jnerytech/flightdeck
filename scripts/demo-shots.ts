@@ -54,6 +54,29 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
     },
     {
+      // The card's Mudanças tab: files, numbered diff and the composer open on a line.
+      name: "card-mudancas",
+      route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page
+          .getByRole("button", {
+            name: /^(Comentar a linha 1 de fake-1.txt|Comment on line 1 of fake-1.txt)$/,
+          })
+          .click();
+        await page.waitForTimeout(500);
+      },
+    },
+    {
+      // A session's Mudanças tab: the repository's working tree against HEAD.
+      name: "sessao-mudancas",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
       name: "card-gate",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.gateCard },
     },

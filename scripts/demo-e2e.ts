@@ -1,5 +1,5 @@
 /**
- * `bun run e2e` (phase 10): five journeys in a real browser against the seeded demo, in both
+ * `bun run e2e` (phase 10): six journeys in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). Chrome through playwright-core,
  * like the prints.
@@ -83,7 +83,22 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("region", { name: c.t("diff.unifiedLabel") }).waitFor({ timeout: WAIT });
   },
 
-  // 4. Open the palette, search the history and open the reader.
+  // 4. Comment on a line of the card's diff and send the review to the agent.
+  "revisao-comentar-e-enviar": async (c) => {
+    await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });
+    await c.page.getByRole("button", { name: c.t("cardUi.diff"), exact: true }).click();
+    const line = c.t("changes.commentLine", { line: 1, path: "fake-1.txt" });
+    await c.page.getByRole("button", { name: line, exact: true }).click({ timeout: WAIT });
+    await c.page
+      .getByLabel(c.t("changes.commentLabel"), { exact: true })
+      .fill("Explique esta linha");
+    await c.page.getByRole("button", { name: c.t("changes.addComment"), exact: true }).click();
+    await c.page.getByRole("button", { name: c.t("changes.send", { n: 1 }), exact: true }).click();
+    // The demo keeps what the other language sent: the history may hold more than one.
+    await c.page.getByText(c.t("changes.sent"), { exact: true }).first().waitFor({ timeout: WAIT });
+  },
+
+  // 5. Open the palette, search the history and open the reader.
   "paleta-e-leitor": async (c) => {
     await open(c, { name: "hub" });
     await c.page.keyboard.press("Control+K");
@@ -99,7 +114,7 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("log", { name: c.t("reader.transcript") }).waitFor({ timeout: WAIT });
   },
 
-  // 5. Switch the theme and the language and see both kept after a reload.
+  // 6. Switch the theme and the language and see both kept after a reload.
   "tema-e-idioma": async (c) => {
     await open(c, { name: "settings" }, false);
     const other: Lang = c.lang === "pt-BR" ? "en" : "pt-BR";

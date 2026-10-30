@@ -3,6 +3,7 @@ export const JOURNEYS: readonly string[] = [
   "aprovar-bash-com-a",
   "sessao-e-mensagem",
   "card-diff",
+  "revisao-comentar-e-enviar",
   "paleta-e-leitor",
   "tema-e-idioma",
 ];
