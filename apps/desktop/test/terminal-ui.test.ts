@@ -209,8 +209,9 @@ describe("terminal-ui: the session of one terminal", () => {
       onState: () => {},
     });
     session.resize(90, 30);
+    session.resize(100, 40);
     expect(sizes).toEqual([]);
     await Bun.sleep(150);
-    expect(sizes).toEqual([[90, 30]]);
+    expect(sizes).toEqual([[100, 40]]);
   });
 });
