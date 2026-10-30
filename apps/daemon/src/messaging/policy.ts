@@ -60,18 +60,110 @@ export type Access =
   | { ok: true; via: "project" | "team" | "exception" }
   | { ok: false; reason: string };
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+const SELECTOR_KEYS = ["session", "project", "team", "host"] as const;
+const POLICY_KEYS = new Set([
+  "exceptions",
+  "perPairPerHour",
+  "perSessionPerHour",
+  "loopMessages",
+  "loopMinutes",
+]);
+
 /** The policy that is valid, or why it is not. */
-export function validatePolicy(_raw: unknown): { policy: Policy; errors: string[] } {
-  return { policy: DEFAULT_POLICY, errors: [] };
+export function validatePolicy(raw: unknown): { policy: Policy; errors: string[] } {
+  if (raw === undefined) return { policy: DEFAULT_POLICY, errors: [] };
+  if (!isRecord(raw)) return { policy: DEFAULT_POLICY, errors: ["a política é um objeto"] };
+  const errors: string[] = [];
+  for (const key of Object.keys(raw))
+    if (!POLICY_KEYS.has(key)) errors.push(`campo desconhecido: ${key}`);
+  const numbers: Partial<Record<keyof Policy, number>> = {};
+  for (const key of [
+    "perPairPerHour",
+    "perSessionPerHour",
+    "loopMessages",
+    "loopMinutes",
+  ] as const) {
+    const value = raw[key];
+    if (value === undefined) continue;
+    if (typeof value === "number" && Number.isInteger(value) && value > 0) numbers[key] = value;
+    else errors.push(`${key} é um inteiro positivo`);
+  }
+  const exceptions: Exception[] = [];
+  const given = raw.exceptions;
+  if (given !== undefined && !Array.isArray(given)) errors.push("exceptions é uma lista");
+  const ids = new Set<string>();
+  for (const [index, item] of (Array.isArray(given) ? given : []).entries()) {
+    const label = `exceção #${index + 1}`;
+    if (!isRecord(item)) {
+      errors.push(`${label}: tem de ser um objeto`);
+      continue;
+    }
+    const before = errors.length;
+    if (typeof item.id !== "string" || item.id === "") errors.push(`${label}: id é obrigatório`);
+    else if (ids.has(item.id)) errors.push(`${label}: id repetido`);
+    else ids.add(item.id);
+    for (const side of ["from", "to"] as const) {
+      const selector = item[side];
+      if (!isRecord(selector)) {
+        errors.push(`${label}: ${side} é um seletor (session, project, team, host)`);
+        continue;
+      }
+      for (const [key, value] of Object.entries(selector)) {
+        if (!(SELECTOR_KEYS as readonly string[]).includes(key)) {
+          errors.push(`${label}: ${side}.${key} não existe`);
+        } else if (typeof value !== "string" || value === "") {
+          errors.push(`${label}: ${side}.${key} é um texto`);
+        }
+      }
+    }
+    if (item.bothWays !== undefined && typeof item.bothWays !== "boolean") {
+      errors.push(`${label}: bothWays é verdadeiro ou falso`);
+    }
+    if (errors.length === before) exceptions.push(item as unknown as Exception);
+  }
+  if (errors.length > 0) return { policy: DEFAULT_POLICY, errors };
+  return { policy: { ...DEFAULT_POLICY, ...numbers, exceptions }, errors };
 }
 
+const selects = (selector: Selector, party: Party): boolean =>
+  (selector.session === undefined ||
+    selector.session === party.id ||
+    selector.session === addressOf(party)) &&
+  (selector.project === undefined || selector.project === party.projectKey) &&
+  (selector.team === undefined || selector.team === party.teamId) &&
+  (selector.host === undefined || selector.host === party.host);
+
 /** Whether the sender may message the target. */
-export function access(_from: Party, _to: Party, _policy: Policy): Access {
-  return { ok: false, reason: "" };
+export function access(from: Party, to: Party, policy: Policy): Access {
+  if (addressOf(from) === addressOf(to)) {
+    return { ok: false, reason: "uma sessão não manda mensagem para si mesma" };
+  }
+  if (from.projectKey !== null && from.projectKey === to.projectKey) {
+    return { ok: true, via: "project" };
+  }
+  if (from.teamId !== null && from.teamId === to.teamId) return { ok: true, via: "team" };
+  const allowed = policy.exceptions.some(
+    (e) =>
+      (selects(e.from, from) && selects(e.to, to)) ||
+      (e.bothWays === true && selects(e.from, to) && selects(e.to, from)),
+  );
+  if (allowed) return { ok: true, via: "exception" };
+  return {
+    ok: false,
+    reason:
+      "as sessões não são do mesmo projeto nem do mesmo time, e nenhuma exceção em Configurações libera este par",
+  };
 }
 
 /** Why the text is refused, or null. */
-export function sizeError(_text: string): string | null {
+export function sizeError(text: string): string | null {
+  if (text.trim() === "") return "mensagem vazia";
+  if (new TextEncoder().encode(text).length > MAX_TEXT_BYTES) {
+    return "mensagem acima de 32 KB";
+  }
   return null;
 }
 
@@ -85,13 +177,43 @@ export interface History {
 
 export type Limit = { ok: true } | { ok: false; kind: "pair" | "session" | "loop"; reason: string };
 
+const HOUR_MS = 3_600_000;
+const MINUTE_MS = 60_000;
+
 /** Whether one more message from `from` to `to` is within the limits. */
 export function limits(
-  _from: string,
-  _to: string,
-  _history: History,
-  _now: number,
-  _policy: Policy,
+  from: string,
+  to: string,
+  history: History,
+  now: number,
+  policy: Policy,
 ): Limit {
+  const recent = history.pair(from, to, now - policy.loopMinutes * MINUTE_MS);
+  if (
+    recent.fromA + recent.fromB + 1 > policy.loopMessages &&
+    recent.fromA > 0 &&
+    recent.fromB > 0
+  ) {
+    return {
+      ok: false,
+      kind: "loop",
+      reason: `laço: mais de ${policy.loopMessages} mensagens em ${policy.loopMinutes} minutos indo e voltando entre o par; o par foi pausado`,
+    };
+  }
+  const hour = history.pair(from, to, now - HOUR_MS);
+  if (hour.fromA + hour.fromB >= policy.perPairPerHour) {
+    return {
+      ok: false,
+      kind: "pair",
+      reason: `limite de ${policy.perPairPerHour} por hora por par de sessões`,
+    };
+  }
+  if (history.sent(from, now - HOUR_MS) >= policy.perSessionPerHour) {
+    return {
+      ok: false,
+      kind: "session",
+      reason: `limite de ${policy.perSessionPerHour} por hora por sessão`,
+    };
+  }
   return { ok: true };
 }
