@@ -1,5 +1,5 @@
 import { existsSync, unwatchFile, watchFile } from "node:fs";
-import { homedir, userInfo } from "node:os";
+import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -72,8 +72,10 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
 import { HostKeys } from "./ssh/hostkey.ts";
 import { SshImporter } from "./ssh/import.ts";
+import { chooseDelivery, processOps } from "./ssh/key-delivery.ts";
 import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
@@ -89,6 +91,7 @@ import {
 } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
+import { whichOnPath } from "./which.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
@@ -510,6 +513,25 @@ export async function startDaemon(
     settingsPath: claudeSettingsPath,
   });
   const sshTargets = new SshTargets({ db: store.db });
+  const sshHostKeys = new HostKeys({ targets: sshTargets });
+  const sshDir = join(config.dataDir, "ssh");
+  const sshConnect = new SshConnector({
+    targets: sshTargets,
+    hostKeys: sshHostKeys,
+    terminals,
+    dir: sshDir,
+    sshPath: resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
+    run: processRun(),
+    // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
+    delivery: chooseDelivery({
+      platform: process.platform,
+      keysDir: join(sshDir, "keys"),
+      sockDir: tmpdir(),
+      user: userInfo().username,
+      exec: spawnExec,
+      ops: processOps(),
+    }),
+  });
   const server = startServer({
     manager,
     autoApprove,
@@ -527,7 +549,8 @@ export async function startDaemon(
     sessionFiles: new SessionFiles({ db: store.db }),
     ssh: sshTargets,
     // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
-    sshHostKeys: new HostKeys({ targets: sshTargets }),
+    sshHostKeys,
+    sshConnect,
     sshImport: new SshImporter({
       targets: sshTargets,
       configPath: join(homedir(), ".ssh", "config"),

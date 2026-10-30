@@ -61,6 +61,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { SshConnector } from "./ssh/connect.ts";
 import type { HostKeys } from "./ssh/hostkey.ts";
 import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
@@ -136,6 +137,8 @@ export interface ServerOptions {
   sshImport?: SshImporter;
   /** The server keys of the ssh destinos behind `ssh.hostkey.*` (phase 15). */
   sshHostKeys?: HostKeys;
+  /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test` (phase 15). */
+  sshConnect?: SshConnector;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -454,6 +457,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function ssh(): SshTargets {
     if (!opts.ssh) throw new FlightdeckError("invalid_state", "destinos ssh desativados");
     return opts.ssh;
+  }
+
+  function sshConnect(): SshConnector {
+    if (!opts.sshConnect) throw new FlightdeckError("invalid_state", "conectar por ssh desativado");
+    return opts.sshConnect;
   }
 
   function sshHostKeys(): HostKeys {
@@ -1010,6 +1018,18 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.remove":
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
+      case "ssh.connect": {
+        const { targetId, cols, rows, privateKey } = command.payload;
+        const request = { targetId, cols, rows, ...(privateKey ? { privateKey } : {}) };
+        return ok(command.type, await sshConnect().connect(request));
+      }
+      case "ssh.test": {
+        const { targetId, privateKey } = command.payload;
+        return ok(
+          command.type,
+          await sshConnect().test({ targetId, ...(privateKey ? { privateKey } : {}) }),
+        );
+      }
       case "ssh.hostkey.check":
         return ok(command.type, await sshHostKeys().check(command.payload.targetId));
       case "ssh.hostkey.confirm":

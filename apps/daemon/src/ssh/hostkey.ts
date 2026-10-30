@@ -23,6 +23,14 @@ const KEY_LINE = new RegExp(`^\\S+\\s+(${KEY_TYPES.join("|")})\\s+([A-Za-z0-9+/]
 /** What was shown stays confirmable this long. */
 const PENDING_MS = 5 * 60_000;
 
+/** ssh-keyscan could not read the server keys (unreachable from here, or nothing answered). */
+export class ScanFailed extends FlightdeckError {
+  constructor(message: string) {
+    super("invalid_state", message);
+    this.name = "ScanFailed";
+  }
+}
+
 interface Scan {
   fingerprint: string;
   /** `<type> <base64>`, most preferred type first. */
@@ -123,10 +131,7 @@ export class HostKeys {
       .sort((a, b) => KEY_TYPES.indexOf(a[1]) - KEY_TYPES.indexOf(b[1]))
       .map(([key]) => key);
     if (code !== 0 || keys.length === 0) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `não consegui ler a chave do servidor (ssh-keyscan ${host}:${port})`,
-      );
+      throw new ScanFailed(`não consegui ler a chave do servidor (ssh-keyscan ${host}:${port})`);
     }
     return { fingerprint: fingerprintOf(keys[0] as string), keys };
   }

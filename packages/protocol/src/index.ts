@@ -725,6 +725,10 @@ export const SshHostKeyCheck = z.object({
 });
 export type SshHostKeyCheck = z.infer<typeof SshHostKeyCheck>;
 
+/** The answer to `ssh.test`: reachable and logged in, or why not (in words, not the raw ssh error). */
+export const SshTestResult = z.object({ ok: z.boolean(), error: z.string().nullable() });
+export type SshTestResult = z.infer<typeof SshTestResult>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1555,6 +1559,26 @@ export const Command = z.discriminatedUnion("type", [
   /** Keeps the key whose fingerprint `check` just showed; replacing one asks to forget it first. */
   cmd("ssh.hostkey.confirm", z.object({ targetId: z.string(), fingerprint: z.string() }).strict()),
   cmd("ssh.hostkey.forget", z.object({ targetId: z.string() }).strict()),
+  /**
+   * Opens a terminal running ssh to the destino. `privateKey` is the key from the vault, for
+   * `vault-key` only; it is delivered for this connection and never stored or logged.
+   */
+  cmd(
+    "ssh.connect",
+    z
+      .object({
+        targetId: z.string(),
+        cols: TerminalCols,
+        rows: TerminalRows,
+        privateKey: z.string().max(65_536).optional(),
+      })
+      .strict(),
+  ),
+  /** `ssh -o BatchMode=yes ... exit 0`: no terminal, the error translated. */
+  cmd(
+    "ssh.test",
+    z.object({ targetId: z.string(), privateKey: z.string().max(65_536).optional() }).strict(),
+  ),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -1942,6 +1966,8 @@ export interface CommandResults {
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
+  "ssh.connect": TerminalInfo;
+  "ssh.test": SshTestResult;
   "ssh.hostkey.check": SshHostKeyCheck;
   "ssh.hostkey.confirm": SshTarget;
   "ssh.hostkey.forget": SshTarget;
@@ -1991,6 +2017,9 @@ export const ErrorCode = z.enum([
   "file_conflict",
   /** A terminal command on a host that has the terminal off (phase 14). */
   "terminal_disabled",
+  /** `ssh.connect` to a server whose key was never confirmed, or whose key changed (phase 15). */
+  "hostkey_unconfirmed",
+  "hostkey_changed",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

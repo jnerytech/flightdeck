@@ -55,6 +55,12 @@ export interface OpenRequest {
   command?: string[];
   /** "Claude aqui": `flightdeckd claude` in the cwd, optionally `--resume <id>`. */
   claude?: { resume?: string };
+  /** Variables added to the process environment. For code of the daemon, not for clients. */
+  env?: Record<string, string>;
+  /** The cwd is the daemon own folder: it needs no place in `allowedRoots`. Daemon code only. */
+  internal?: boolean;
+  /** Called when the process ends. Daemon code only. */
+  onExit?: () => void;
   cols: number;
   rows: number;
 }
@@ -119,6 +125,8 @@ interface Entry {
   pty: Pty;
   ring: Ring;
   clients: Map<TerminalSink, Client>;
+  /** Run when the process ends (daemon code that opened it). */
+  afterExit: (() => void) | undefined;
   exitCode: number | null;
   /** Being ended on purpose: it goes when the process does. */
   closing: boolean;
@@ -216,7 +224,7 @@ export class TerminalManager {
 
   open(req: OpenRequest): TerminalInfo {
     this.assertOn();
-    const cwd = resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
+    const cwd = req.internal ? req.cwd : resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
     const max = this.opts.max ?? DEFAULT_MAX;
     if (this.live() >= max) {
       throw new FlightdeckError("invalid_state", `limite de ${max} terminais por host`);
@@ -253,7 +261,7 @@ export class TerminalManager {
       pty = this.opts.pty({
         argv,
         cwd,
-        env: { ...buildChildEnv(env, this.opts.allowApiKey ?? false), ...extraEnv },
+        env: { ...buildChildEnv(env, this.opts.allowApiKey ?? false), ...extraEnv, ...req.env },
         cols: req.cols,
         rows: req.rows,
         onData: (chunk) => this.onData(id, chunk),
@@ -274,6 +282,7 @@ export class TerminalManager {
       pty,
       ring: new Ring(SCROLLBACK_BYTES),
       clients: new Map(),
+      afterExit: req.onExit,
       exitCode: null,
       closing: false,
       idle: null,
@@ -472,6 +481,7 @@ export class TerminalManager {
     if (!entry || entry.exitCode !== null) return;
     entry.exitCode = exitCode;
     this.log(`terminal ${id} encerrado (código ${exitCode})`);
+    entry.afterExit?.();
     // The pending output goes first, then the end.
     if (this.flush(entry)) this.scheduleFlush();
     if (entry.closing) this.remove(entry);
