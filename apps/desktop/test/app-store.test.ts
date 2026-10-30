@@ -113,10 +113,14 @@ describe("desktop: estado do app", () => {
     await waitFor(() => store.getState().sessions[key]?.pending.length === 1);
     await store.interrupt();
     await waitFor(() => store.getState().sessions[key]?.status === "idle", "idle após interrupt");
+    expect(store.getState().sessions[key]?.status).toBe("idle");
+    expect(store.getState().sessions[key]?.pending).toEqual([]);
     await store.close();
     await waitFor(() => store.getState().sessions[key]?.status === "ended", "ended");
+    expect(store.getState().sessions[key]?.status).toBe("ended");
     await store.resume();
     await waitFor(() => store.getState().sessions[key]?.status === "idle", "retomada");
+    expect(store.getState().sessions[key]?.status).toBe("idle");
   });
 
   test("erros viram mensagem no estado; sem seleção as ações não fazem nada", async () => {
