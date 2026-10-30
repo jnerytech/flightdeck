@@ -1075,6 +1075,8 @@ export interface CliDeps {
   channelTransport?: Transport;
   /** Where `flightdeckd mcp` speaks MCP; stdio when absent. */
   mcpTransport?: Transport;
+  /** The folder `flightdeckd mcp` runs in; the process's when absent. */
+  cwd?: string;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
@@ -1170,6 +1172,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         url: daemonUrl(config),
         token: config.token,
         transport: deps.mcpTransport ?? new StdioServerTransport(),
+        cwd: deps.cwd ?? process.cwd(),
       });
       void mcp.closed.then(() => deps.exit(0));
       return null;

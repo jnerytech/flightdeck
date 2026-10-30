@@ -18,6 +18,8 @@ export interface McpOptions {
   token: string;
   /** Where Claude Code speaks MCP to us: stdio for real, in memory in tests. */
   transport: Transport;
+  /** The folder Claude Code runs in: the project whose snippets are listed when none is named. */
+  cwd?: string;
 }
 
 export interface McpHandle {
@@ -198,6 +200,48 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
         requestedBy: "claude",
         ...(host ? { host } : {}),
       }),
+  );
+  // Snippets are only read here: nothing the Flightdeck runs, pastes or counts for Claude.
+  /** With a named project, as asked; without, the folder Claude runs in, or only the host's when the daemon does not allow it. */
+  const inProject = async <T>(
+    projectPath: string | undefined,
+    ask: (path: string | undefined) => Promise<T>,
+  ): Promise<T> => {
+    if (projectPath !== undefined) return ask(projectPath);
+    try {
+      return await ask(opts.cwd);
+    } catch (error) {
+      if (!(error as Error).message.startsWith("forbidden_cwd")) throw error;
+      return ask(undefined);
+    }
+  };
+  tool(
+    "list_snippets",
+    "Snippets (comandos e prompts salvos) do host e do projeto, com o texto, as variáveis e se um comando do arquivo do projeto pode rodar.",
+    {
+      projectPath: z.string().optional(),
+      query: z.string().optional(),
+      tag: z.string().optional(),
+      type: z.enum(["command", "prompt"]).optional(),
+    },
+    ({ projectPath, query, tag, type }) =>
+      inProject(projectPath, (path) =>
+        daemon.call("snippets.list", {
+          ...(path ? { projectPath: path } : {}),
+          ...(query ? { query } : {}),
+          ...(tag ? { tag } : {}),
+          ...(type ? { type } : {}),
+        }),
+      ),
+  );
+  tool(
+    "get_snippet",
+    "O texto de um snippet pelo nome, para usar como referência. Não o executa: rodar um comando passa pelas permissões do Claude Code.",
+    { name: z.string().min(1), projectPath: z.string().optional() },
+    ({ name, projectPath }) =>
+      inProject(projectPath, (path) =>
+        daemon.call("snippets.get", { name, ...(path ? { projectPath: path } : {}) }),
+      ),
   );
 
   const { promise: closed, resolve } = Promise.withResolvers<void>();
