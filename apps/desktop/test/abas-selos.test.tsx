@@ -29,6 +29,7 @@ const state = (sessions: unknown[]) =>
     externalRequests: {},
     runs: {},
     cards: {},
+    unread: {},
     externals: {},
     meta: {},
   }) as unknown as AppState;
