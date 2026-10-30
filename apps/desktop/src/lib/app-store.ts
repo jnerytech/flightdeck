@@ -1076,6 +1076,25 @@ export class AppStore {
     return opened.terminalId;
   }
 
+  /** "Claude aqui": `flightdeckd claude` (resuming `claudeSessionId` when given) in a terminal tab. */
+  async openClaudeHere(hostId: string, target: TerminalTarget): Promise<string | null> {
+    const opened = await this.hostCommand(hostId, "terminal.open", {
+      cwd: target.cwd,
+      cols: 80,
+      rows: 24,
+      claude: target.claudeSessionId ? { resume: target.claudeSessionId } : {},
+    });
+    if (!opened) return null;
+    this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
+    return opened.terminalId;
+  }
+
+  /** Whether the host opens terminals inside the app (phase 14) right now. */
+  embeddedTerminal(hostId: string): boolean {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
+  }
+
   /** Asks the host for its `host.info` again (after a change of its settings). */
   async reloadHostInfo(hostId: string): Promise<void> {
     const conn = this.connections.get(hostId);

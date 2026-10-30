@@ -469,6 +469,14 @@ export const ptBR = {
     ended: "encerrada",
     error: "erro",
   },
+  claudeHere: {
+    open: "Abrir Claude aqui (terminal)",
+    openNamed: "Abrir Claude aqui em {name} (terminal)",
+    resume: "Continuar no terminal",
+    resumeNamed: "Continuar {name} no terminal",
+    asSession: "Ver como sessão",
+    viewTerminal: "Ver terminal",
+  },
   hostTerminal: {
     title: "Terminal",
     open: "Novo terminal",

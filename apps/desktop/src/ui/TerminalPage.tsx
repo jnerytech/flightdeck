@@ -40,6 +40,13 @@ export function TerminalPage(props: {
   const [searching, setSearching] = useState(false);
   const [needle, setNeedle] = useState("");
   const [closing, setClosing] = useState(false);
+  const [launchId, setLaunchId] = useState<string | null>(null);
+  const appState = useSyncExternalStore(store.subscribe, store.getState);
+  /** The session in the central of a "Claude aqui" terminal: same host, same launch. */
+  const linked = Object.entries(appState.externals).find(
+    ([key, external]) =>
+      launchId !== null && key.startsWith(`${hostId}/`) && external.launchId === launchId,
+  )?.[1];
   const font = useSyncExternalStore(store.terminalFont.subscribe, () => store.terminalFont.value);
   const theme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
 
@@ -79,6 +86,9 @@ export function TerminalPage(props: {
         offline: () => current.disconnected(),
       });
       await current.start();
+      // A "Claude aqui" terminal carries the launch its session in the central also carries.
+      const info = (await host.list().catch(() => [])).find((t) => t.terminalId === terminalId);
+      if (alive) setLaunchId(info?.launchId ?? null);
     })();
     return () => {
       alive = false;
@@ -117,6 +127,21 @@ export function TerminalPage(props: {
           {(state.state === "detached" || state.state === "ended") && (
             <Button size="sm" onClick={() => void session.current?.reopen()}>
               {t("terminalUi.reopen")}
+            </Button>
+          )}
+          {linked && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                store.tabs.open({
+                  name: "external",
+                  host: hostId,
+                  claudeSessionId: linked.claudeSessionId,
+                })
+              }
+            >
+              {t("claudeHere.asSession")}
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={() => setClosing(true)}>

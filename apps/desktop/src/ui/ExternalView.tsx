@@ -1,5 +1,5 @@
 import { Radio } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { Composer, SessionHeader, SessionPane } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export function ExternalView(props: {
     .filter(([k, request]) => k.startsWith(`${hostId}/`) && request.claudeSessionId === id)
     .map(([, request]) => request);
   const [text, setText] = useState("");
+  const terminalId = useLaunchTerminal(store, hostId, session?.launchId ?? null);
   const host = state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
   const withCheckpoints = hasFeature(host?.hostInfo?.features, "checkpoints", false);
@@ -77,6 +78,15 @@ export function ExternalView(props: {
                 cwd={session.cwd}
                 busy={session.status === "running" || session.status === "awaiting_permission"}
               />
+            )}
+            {terminalId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => store.tabs.open({ name: "terminal", host: hostId, terminalId })}
+              >
+                {t("claudeHere.viewTerminal")}
+              </Button>
             )}
             {session?.cwd && (
               <TerminalButton
@@ -138,4 +148,28 @@ export function ExternalView(props: {
       </div>
     </SessionPane>
   );
+}
+
+/** The live terminal of the host that launched this session ("Claude aqui"), if there is one. */
+function useLaunchTerminal(store: AppStore, hostId: string, launchId: string | null) {
+  const [terminalId, setTerminalId] = useState<string | null>(null);
+  const embedded = store.embeddedTerminal(hostId);
+  useEffect(() => {
+    if (!launchId || !embedded) return;
+    let alive = true;
+    store
+      .terminalHost(hostId)
+      .list()
+      .then(
+        (terminals) => {
+          const found = terminals.find((t) => t.launchId === launchId && t.exitCode === null);
+          if (alive) setTerminalId(found?.terminalId ?? null);
+        },
+        () => {},
+      );
+    return () => {
+      alive = false;
+    };
+  }, [store, hostId, launchId, embedded]);
+  return launchId ? terminalId : null;
 }

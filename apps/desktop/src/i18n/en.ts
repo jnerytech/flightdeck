@@ -466,6 +466,14 @@ export const en: Dictionary = {
     ended: "ended",
     error: "error",
   },
+  claudeHere: {
+    open: "Open Claude here (terminal)",
+    openNamed: "Open Claude here in {name} (terminal)",
+    resume: "Continue in the terminal",
+    resumeNamed: "Continue {name} in the terminal",
+    asSession: "View as session",
+    viewTerminal: "View terminal",
+  },
   hostTerminal: {
     title: "Terminal",
     open: "New terminal",

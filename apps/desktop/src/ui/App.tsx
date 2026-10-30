@@ -222,8 +222,11 @@ export function App({ store }: { store: AppStore }) {
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
-    if (target.kind === "terminal") void store.openInTerminal(target.hostId, target.target);
-    else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
+    if (target.kind === "terminal") {
+      if (store.embeddedTerminal(target.hostId))
+        void store.openClaudeHere(target.hostId, target.target);
+      else void store.openInTerminal(target.hostId, target.target);
+    } else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
     else if (target.kind === "toggle-theme") store.theme.toggle();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
