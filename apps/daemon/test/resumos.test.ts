@@ -79,7 +79,7 @@ describe("resumos", () => {
     watch.unwatch();
     const before = received.length;
     await manager.close(sessionId);
-    expect(received.length).toBe(before);
+    expect(received).toHaveLength(before);
   });
 
   test("sessions.watch pela rede: ack, resumos atuais e depois ao vivo; resumo é efêmero", async () => {

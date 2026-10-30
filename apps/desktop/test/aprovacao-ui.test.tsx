@@ -352,7 +352,7 @@ describe("aprovacao-ui", () => {
     ).toBe("repo: acme/flightdeck-web · title: Login falha · labels: bug, p1");
     expect(inputSummary({ opts: { deep: 1 } })).toBe("opts.deep: 1");
     const long = inputSummary({ title: "x".repeat(200) });
-    expect(long.length).toBe(81);
+    expect(long).toHaveLength(81);
     expect(long.endsWith("…")).toBe(true);
     expect(inputSummary({})).toBe("");
     expect(inputSummary(null)).toBe("");

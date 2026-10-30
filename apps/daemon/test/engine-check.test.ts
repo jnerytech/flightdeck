@@ -85,7 +85,7 @@ describe("engine-check", () => {
     const { start, runWhen } = await setup(LINT);
     await start();
     const output = (await runWhen((r) => r.status === "completed"))?.steps[0]?.output ?? "";
-    expect(output.length).toBe(8192);
+    expect(output).toHaveLength(8192);
     expect(output.endsWith("xFIM")).toBe(true);
   });
 

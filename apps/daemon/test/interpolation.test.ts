@@ -52,7 +52,7 @@ describe("interpolation", () => {
     );
     expect(interpolate("{{inputs.exact}}", { ...context, inputs: { exact } })).toBe(exact);
     const outputs = { steps: { r: { outputs: [big, "fim"] } } };
-    expect(interpolate("{{steps.r.outputs}}", { ...context, ...outputs }).length).toBe(MAX_VALUE);
+    expect(interpolate("{{steps.r.outputs}}", { ...context, ...outputs })).toHaveLength(MAX_VALUE);
   });
 
   test("referência sem valor no contexto é erro, não texto vazio", () => {

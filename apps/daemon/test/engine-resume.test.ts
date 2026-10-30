@@ -171,6 +171,6 @@ describe("engine-resume", () => {
     // a: 0.5; b (resumed, its prompt sent again): the session's total goes to 0.75.
     expect(done?.usage.costUsd).toBe(0.75);
     expect(done?.usage.turns).toBe(2);
-    expect(host.runtime.starts.filter((s) => s.resume).length).toBe(1);
+    expect(host.runtime.starts.filter((s) => s.resume)).toHaveLength(1);
   });
 });

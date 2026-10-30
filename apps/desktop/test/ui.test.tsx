@@ -104,7 +104,7 @@ describe("desktop: interface", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
     });
-    await waitFor(() => expect(screen.getAllByText("Echo: segunda").length).toBe(1));
+    await waitFor(() => expect(screen.getAllByText("Echo: segunda")).toHaveLength(1));
     expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
   });
 

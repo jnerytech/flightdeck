@@ -250,7 +250,7 @@ describe("replay", () => {
       () => manager.get(sessionId).status === "idle" && manager.get(sessionId).lastSeq > 0,
     );
     await Bun.sleep(30);
-    expect(client.events.length).toBe(before);
+    expect(client.events).toHaveLength(before);
     client.close();
   });
 });

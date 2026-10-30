@@ -136,7 +136,7 @@ describe("app-updater", () => {
     act(() => store.setNotifyUpdates(false));
     const count = mem.calls.length;
     await Bun.sleep(80);
-    expect(mem.calls.length).toBe(count);
+    expect(mem.calls).toHaveLength(count);
   });
 
   test("na plataforma web o updater não existe e nada é consultado", async () => {

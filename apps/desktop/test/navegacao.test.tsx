@@ -223,7 +223,7 @@ describe("navegacao", () => {
       fireEvent.click(start as HTMLElement);
     });
     await poll(() => d.board.getCard(card.id).runs.length > 0, 8000);
-    expect(d.board.getCard(card.id).runs.length).toBe(1);
+    expect(d.board.getCard(card.id).runs).toHaveLength(1);
 
     const second = d.board.createCard(card.projectId, { title: "Outro", description: "faça" });
     await act(async () => {
@@ -248,7 +248,7 @@ describe("navegacao", () => {
       fireEvent.keyDown(input as HTMLInputElement, { key: "Enter" });
     });
     await poll(() => d.board.getCard(second.id).runs.length > 0, 8000);
-    expect(d.board.getCard(second.id).runs.length).toBe(1);
+    expect(d.board.getCard(second.id).runs).toHaveLength(1);
   });
 
   test("remover o host da tela aberta (nova sessão nele) volta para o hub em vez de uma tela vazia", async () => {

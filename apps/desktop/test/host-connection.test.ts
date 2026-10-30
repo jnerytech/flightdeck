@@ -108,7 +108,7 @@ describe("desktop: conexão com o host", () => {
     conn.dispose();
     const count = statuses.length;
     await Bun.sleep(60);
-    expect(statuses.length).toBe(count);
+    expect(statuses).toHaveLength(count);
     expect(conn.status).toBe("offline");
     expect(await conn.request("session.list", {}).catch((e) => e.code)).toBe("offline");
     conn.unsubscribe("qualquer");

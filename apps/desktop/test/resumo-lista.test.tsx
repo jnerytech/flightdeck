@@ -60,7 +60,7 @@ describe("resumo-lista", () => {
   test("pedido: primeira linha não vazia do prompt, cortada em 80 caracteres", () => {
     expect(requestLine("  \n  rode os testes  \nsegunda linha")).toBe("rode os testes");
     expect(requestLine("a".repeat(100))).toBe(`${"a".repeat(79)}…`);
-    expect(requestLine("a".repeat(100)).length).toBe(80);
+    expect(requestLine("a".repeat(100))).toHaveLength(80);
     expect(requestLine("b".repeat(80))).toBe("b".repeat(80));
     expect(lastTool("vou ver\n[ferramenta Read]\nagora\n[ferramenta Bash]")).toBe("Bash");
     expect(lastTool("só texto")).toBeNull();
