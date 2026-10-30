@@ -7,6 +7,9 @@ import type { AppStore, HostView } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
+/** How often the list of live terminals is asked again. */
+const LIST_REFRESH_MS = 1000;
+
 /**
  * The host's embedded terminals (phase 14): a new one, the live ones, and turning them on (which
  * asks, since a terminal is a full shell on the host) or off (which ends the live ones).
@@ -20,12 +23,18 @@ export function HostTerminal(props: { store: AppStore; host: HostView }) {
   const [live, setLive] = useState<TerminalInfo[]>([]);
   const [asking, setAsking] = useState<"on" | "off" | null>(null);
 
+  // Terminals open and end elsewhere too (another tab, another app, by themselves): the list
+  // asks again every second while the page is open.
   useEffect(() => {
     if (!online || !enabled) return;
-    store
-      .terminalHost(host.id)
-      .list()
-      .then(setLive, () => setLive([]));
+    const load = () =>
+      store
+        .terminalHost(host.id)
+        .list()
+        .then(setLive, () => setLive([]));
+    void load();
+    const timer = setInterval(load, LIST_REFRESH_MS);
+    return () => clearInterval(timer);
   }, [store, host.id, online, enabled]);
 
   if (!online || !info?.terminal) return null;
