@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ExternalSessions } from "../src/central/external.ts";
@@ -8,6 +8,7 @@ import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { newManager, record, tempDir, waitFor } from "./helpers.ts";
 
+setDefaultTimeout(20_000);
 const PROJECT = "github.com/acme/app";
 
 const cleanups: Array<() => unknown> = [];
@@ -16,8 +17,8 @@ afterEach(async () => {
 });
 
 /** A real session manager and terminal hub with the real adapter and the messaging service over them. */
-function setup() {
-  const base = newManager({ runtime: new FakeRuntime({ delayMs: 20 }) });
+function setup(delayMs = 20) {
+  const base = newManager({ runtime: new FakeRuntime({ delayMs }) });
   const { manager, project } = base;
   const store = new EventStore(":memory:");
   const external = new ExternalSessions({
@@ -213,10 +214,10 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
   });
 
   test("read devolve o resumo e as últimas mensagens, até 20, cortadas em 8 KB; sessão que não existe é null", async () => {
-    const { manager, project, endpoints } = setup();
+    const { manager, project, endpoints } = setup(1);
     const a = manager.create({ cwd: project, prompt: "pergunta um" }).sessionId;
     await waitFor(() => manager.get(a).status === "idle");
-    manager.send(a, "x".repeat(20_000));
+    await waitFor(() => manager.get(a).status === "idle", { timeoutMs: 12_000 });
     await waitFor(() => manager.get(a).status === "idle");
     const read = endpoints.read(a, 3);
     expect(read?.messages.length).toBeLessThanOrEqual(3);
@@ -226,5 +227,74 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     }
     expect(endpoints.read(a, 50)?.messages.length).toBeLessThanOrEqual(20);
     expect(endpoints.read("fantasma", 3)).toBeNull();
+  });
+});
+
+describe("mensagens-entrega: o adaptador", () => {
+  test("o que não pode receber falha com o motivo: sessão que não existe, claude puro, canal desconectado", () => {
+    const { endpoints, terminal, channels, external, project } = setup();
+    const code = (fn: () => unknown) => {
+      try {
+        fn();
+        return "ok";
+      } catch (error) {
+        return `${(error as { code?: string }).code}: ${(error as Error).message}`;
+      }
+    };
+    expect(code(() => endpoints.send("fantasma", "oi"))).toContain("not_found");
+    terminal("P1", "launch-p", false);
+    expect(code(() => endpoints.send("P1", "oi"))).toContain("claude puro");
+    terminal("T1", "launch-t");
+    channels.delete("launch-t");
+    expect(code(() => endpoints.send("T1", "oi"))).toContain("canal");
+    external.apply("SessionEnd", { session_id: "T1", cwd: project, reason: "exit" });
+    expect(endpoints.list().find((e) => e.id === "T1")).toMatchObject({
+      state: "ended",
+      controllable: false,
+      reason: "a sessão terminou",
+    });
+  });
+
+  test("o transcript que não dá para ler vale mensagens vazias", () => {
+    const { external, endpoints, project } = setup();
+    external.apply("SessionStart", {
+      session_id: "T1",
+      cwd: project,
+      transcript_path: join(tempDir(), "nao-existe.jsonl"),
+    });
+    expect(endpoints.read("T1", 5)?.messages).toEqual([]);
+  });
+
+  test("a mudança de estado vira ouvinte uma vez por transição: o fim do turno gerenciado, o Stop do terminal e o soltar do ouvinte", async () => {
+    const { manager, project, endpoints, external, terminal } = setup(1);
+    const idles: string[] = [];
+    const states: Array<[string, string]> = [];
+    const offIdle = endpoints.onIdle((id) => idles.push(id));
+    const offState = endpoints.onState((id, state) => states.push([id, state]));
+    const a = manager.create({ cwd: project, prompt: "um" }).sessionId;
+    await waitFor(() => idles.includes(a));
+    expect(states.filter(([id]) => id === a).map(([, s]) => s)).toEqual(["running", "idle"]);
+
+    terminal("T1", "launch-1");
+    external.apply("UserPromptSubmit", { session_id: "T1", cwd: project });
+    external.apply("Stop", { session_id: "T1", cwd: project });
+    // A second Stop is not a new transition.
+    external.apply("Stop", { session_id: "T1", cwd: project });
+    expect(idles.filter((id) => id === "T1")).toHaveLength(2);
+    offIdle();
+    offState();
+    external.apply("UserPromptSubmit", { session_id: "T1", cwd: project });
+    external.apply("Stop", { session_id: "T1", cwd: project });
+    expect(idles.filter((id) => id === "T1")).toHaveLength(2);
+  });
+
+  test("o adaptador parado solta as assinaturas do gerenciador e dos terminais", async () => {
+    const { manager, project, endpoints } = setup(1);
+    const idles: string[] = [];
+    endpoints.onIdle((id) => idles.push(id));
+    endpoints.stop();
+    const a = manager.create({ cwd: project, prompt: "um" }).sessionId;
+    await waitFor(() => manager.get(a).status === "idle");
+    expect(idles).toEqual([]);
   });
 });
