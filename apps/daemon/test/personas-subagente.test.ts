@@ -17,7 +17,7 @@ import { startServer } from "../src/server.ts";
 import { SessionManager } from "../src/sessions/session-manager.ts";
 import { SecretScanner } from "../src/snippets/model.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { cardWhen, gitRepo } from "./board-helpers.ts";
+import { cardWhen, git, gitRepo } from "./board-helpers.ts";
 import { installFakeClaude } from "./fake-claude.ts";
 import { newManager, tempDir, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -450,6 +450,9 @@ function boardSetup() {
     mkdirSync(dir, { recursive: true });
     const source = `---\nid: ${id}\nname: ${id}\ndescription: Do projeto\n---\nCorpo de ${id}.\n`;
     writeFileSync(join(dir, `${id}.md`), source);
+    // Versioned, as a team would have it: a card's worktree is made from the base branch.
+    git(repo, "add", ".flightdeck");
+    git(repo, "commit", "-q", "-m", `persona ${id}`);
     personas.trust(repo, id, personaHash(source));
   };
   return { root, repo, store, personas, runtime, manager, board, project, addPersona };
@@ -509,8 +512,16 @@ describe("personas-subagente: o interruptor do projeto", () => {
     expect(running?.worktreePath).not.toBe(repo);
     expect(runtime.starts.at(-1)?.agents).toBeUndefined();
     board.updateProject(id, { personaSubagents: "project" });
-    manager.create({ cwd: running?.worktreePath ?? repo, prompt: "oi" });
+    const worktree = running?.worktreePath ?? repo;
+    manager.create({ cwd: worktree, prompt: "oi" });
     expect(Object.keys(runtime.starts.at(-1)?.agents ?? {})).toEqual(["persona-do-projeto"]);
+    // The trust given to the project holds for its worktrees: the file there is the same one.
+    const { sessionId } = manager.create({
+      cwd: worktree,
+      prompt: "oi",
+      persona: { id: "do-projeto" },
+    });
+    expect(manager.get(sessionId).persona).toMatchObject({ id: "do-projeto" });
   });
 
   test("o --agents do wrapper também: sem arquivo com none, só as do projeto com project", async () => {
