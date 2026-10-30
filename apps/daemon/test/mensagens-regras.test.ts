@@ -12,6 +12,7 @@ import {
   sizeError,
   validatePolicy,
 } from "../src/messaging/policy.ts";
+import { setup } from "./mensagens-helpers.ts";
 
 const NOW = Date.UTC(2026, 9, 28, 15, 0, 0);
 const HOUR = 3_600_000;
@@ -256,5 +257,30 @@ describe("mensagens-regras: mais validações", () => {
     expect(errorsOf({ exceptions: [{ id: "e", from: {}, to: {}, bothWays: "sim" }] })).toContain(
       "bothWays",
     );
+  });
+});
+
+describe("mensagens-regras: retention rides in the policy", () => {
+  test("retentionDays is 30 by default and a positive integer otherwise", () => {
+    expect(validatePolicy({}).policy.retentionDays).toBe(30);
+    expect(validatePolicy({ retentionDays: 7 })).toEqual({
+      policy: { ...DEFAULT_POLICY, retentionDays: 7 },
+      errors: [],
+    });
+    expect(validatePolicy({ retentionDays: 0 }).errors.join(" | ")).toContain("retentionDays");
+  });
+
+  test("a sweep keeps what the policy's retention still covers and drops the rest", () => {
+    expect(validatePolicy({ retentionDays: 7 }).errors).toEqual([]);
+    const { messaging, endpoints, now } = setup();
+    endpoints.add("s1");
+    endpoints.add("s2");
+    messaging.setPolicy({ retentionDays: 7 });
+    messaging.send({ as: { session: "s1" }, to: "s2", text: "velha" });
+    now.at = NOW + 2 * 24 * HOUR;
+    messaging.send({ as: { session: "s1" }, to: "s2", text: "nova" });
+    now.at = NOW + 8 * 24 * HOUR;
+    messaging.sweep();
+    expect(messaging.list({ days: 365 }).map((m) => m.text)).toEqual(["nova"]);
   });
 });

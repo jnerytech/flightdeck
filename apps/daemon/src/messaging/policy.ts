@@ -43,6 +43,8 @@ export interface Policy {
   loopMessages: number;
   /** ...within this many minutes pause the pair. */
   loopMinutes: number;
+  /** Days the history is kept for the conversations screen. */
+  retentionDays: number;
 }
 
 export const DEFAULT_POLICY: Policy = {
@@ -51,6 +53,7 @@ export const DEFAULT_POLICY: Policy = {
   perSessionPerHour: 100,
   loopMessages: 10,
   loopMinutes: 10,
+  retentionDays: 0,
 };
 
 /** A message above this many bytes is refused. */
