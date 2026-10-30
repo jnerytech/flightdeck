@@ -39,6 +39,46 @@ fn token_delete(host_id: String) -> Result<(), String> {
     }
 }
 
+/// Phase 16: the vault's values live in the OS credential store under their own service, one
+/// entry per secret id. The list and metadata stay in the app's storage and never hold a value.
+const VAULT_SERVICE: &str = "flightdeck-vault";
+
+/// The Windows credential store keeps at most 2560 bytes per entry, and `keyring` writes UTF-16.
+const WINDOWS_CREDENTIAL_MAX_BYTES: usize = 2560;
+
+fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(VAULT_SERVICE, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn vault_get(id: String) -> Result<Option<String>, String> {
+    match vault_entry(&id)?.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn vault_set(id: String, value: String) -> Result<(), String> {
+    if cfg!(windows) && value.encode_utf16().count() * 2 > WINDOWS_CREDENTIAL_MAX_BYTES {
+        return Err(format!(
+            "o valor passa de {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, o limite do cofre do Windows"
+        ));
+    }
+    vault_entry(&id)?
+        .set_password(&value)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn vault_delete(id: String) -> Result<(), String> {
+    match vault_entry(&id)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// The tray's "Abrir" and "Sair" items, its "Precisa de você (N)" submenu, and whether closing
 /// hides to the tray. Their texts come translated from the frontend (phase 10).
 struct TrayState {
@@ -337,6 +377,9 @@ pub fn run() {
             token_get,
             token_set,
             token_delete,
+            vault_get,
+            vault_set,
+            vault_delete,
             tray_set_status,
             tray_set_menu,
             set_close_to_tray,
