@@ -564,7 +564,7 @@ describe("agente-ui", () => {
 
   test("with a live managed session in the project, each server it reports shows its live status", async () => {
     await setup({ live: true });
-    await settle(() => screen.queryByText("Conectado") !== null);
+    await settle(() => screen.queryAllByText("Conectado").length === 2);
     const row = (name: string) => screen.queryByRole("listitem", { name }) as HTMLElement;
     expect(within(row("eco")).queryByText("Conectado")).not.toBeNull();
     expect(within(row("marcador")).queryByText("Conectado")).not.toBeNull();
