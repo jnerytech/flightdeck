@@ -19,6 +19,9 @@ import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
+import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
+import { packPersonas } from "../../daemon/src/personas/pack.ts";
+import { Personas } from "../../daemon/src/personas/store.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
@@ -100,6 +103,8 @@ export function daemon(
     actions?: boolean;
     /** The snippets (phase 18) in this daemon's database; `history` names fixture shell histories. */
     snippets?: boolean | { history?: HistorySources };
+    /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
+    personas?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -130,7 +135,16 @@ export function daemon(
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => cwd });
   // Phase 12: a snapshot at the edges of every turn, like main.ts wires it.
   const snapshots = options.checkpoints ? new Snapshots({ db: store.db }) : undefined;
+  const personaStore = options.personas
+    ? new Personas({
+        db: store.db,
+        allowedRoots: [root],
+        scanner: new SecretScanner(),
+        pack: packPersonas,
+      })
+    : undefined;
   const manager = new SessionManager({
+    ...(personaStore ? { personas: personaStore } : {}),
     ...(snapshots
       ? {
           onTurnEdge: (edge) =>
@@ -290,6 +304,12 @@ export function daemon(
           }
         : {}),
       ...(snippetHistory ? { snippetHistory } : {}),
+      ...(personaStore
+        ? {
+            personas: personaStore,
+            personaSessions: new OpenSessionPersonas({ personas: personaStore, manager, central }),
+          }
+        : {}),
       hostName: "h1",
       bind: "127.0.0.1",
       port,
