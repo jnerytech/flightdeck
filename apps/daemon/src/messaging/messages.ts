@@ -211,6 +211,11 @@ export class Messaging {
     };
   }
 
+  /** Who a session identity is (throws when the daemon does not know it). */
+  whoIs(as: SessionIdentity): Party {
+    return this.resolve(as);
+  }
+
   /** The session that is asking: a managed one by id, a terminal one by the launch it came from. */
   private resolve(who: SessionIdentity): Party {
     const id = who.session ?? this.opts.endpoints.byLaunch(who.launch as string);

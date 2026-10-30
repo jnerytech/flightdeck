@@ -206,8 +206,12 @@ export class Teams {
     return null;
   }
 
-  status(id: string): TeamStatus {
+  /** The state of a team; with `asker`, only a member of the team may read it. */
+  status(id: string, asker?: string): TeamStatus {
     const team = this.get(id);
+    if (asker !== undefined && !team.members.some((m) => m.sessionId === asker)) {
+      throw invalid(`esta sessão não é do time ${team.name}`);
+    }
     const messages = this.opts.messaging
       .list({ team: id, days: 365, limit: 1000 })
       .filter((m) => m.kind === "session");

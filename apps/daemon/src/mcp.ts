@@ -223,6 +223,13 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
       daemon.call("messages.read", { as: who(), session: target, ...(last ? { last } : {}) }),
   );
 
+  tool(
+    "team_status",
+    "O estado do time a que esta sessão pertence: os membros com persona, estado, card e último relato, e quantas mensagens trocaram. Só quem é do time pode ver.",
+    { team: z.string().min(1) },
+    ({ team }) => daemon.call("teams.status", { team, as: who() }),
+  );
+
   // Phase 17: use a secret without ever receiving it. The value stays between the app and the
   // daemon; what comes back is the exit code and the output, with the secret masked.
   tool(

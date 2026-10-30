@@ -96,6 +96,7 @@ import { EventStore } from "./store/event-store.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
+import { Teams } from "./teams/teams.ts";
 import {
   requestShutdown,
   runUpdate,
@@ -689,13 +690,22 @@ export async function startDaemon(
     sendToLaunch: (launchId, text) => central.receptor?.sendToLaunch(launchId, text) ?? false,
     autoApprove,
   });
-  const messaging = new Messaging({ db: store.db, host: config.hostName, endpoints });
+  // The messaging service asks the teams who is on one, and the teams need the messaging service.
+  let teams: Teams | undefined;
+  const messaging = new Messaging({
+    db: store.db,
+    host: config.hostName,
+    endpoints,
+    teamOf: (sessionId) => teams?.teamOf(sessionId) ?? null,
+  });
+  teams = new Teams({ db: store.db, board, manager, messaging, host: config.hostName, quota });
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(() => messaging.sweep(), 5 * 60_000);
   const server = startServer({
     manager,
     messaging,
     idle,
+    teams,
     vault,
     log: logger.log.bind(logger),
     actions,
@@ -806,6 +816,7 @@ export async function startDaemon(
         await wsl?.stop();
         automations.stop();
         clearInterval(messagingSweep);
+        teams.stop();
         idle.stop();
         messaging.stop();
         endpoints.stop();

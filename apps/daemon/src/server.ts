@@ -33,6 +33,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type TeamsUpdatedFrame,
   type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
@@ -237,6 +238,8 @@ interface Connection {
   unwatchVault?: () => void;
   /** Stops the `messages.watch` stream, when active. */
   unwatchMessages?: () => void;
+  /** Stops the `teams.watch` stream, when active. */
+  unwatchTeams?: () => void;
   lastRttMs?: number;
 }
 
@@ -271,7 +274,8 @@ type Outgoing =
   | MessagesUpdatedFrame
   | MessagesRelayFrame
   | MessagingAlertFrame
-  | IdleFiredFrame;
+  | IdleFiredFrame
+  | TeamsUpdatedFrame;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -804,16 +808,33 @@ export function startServer(opts: ServerOptions): RunningServer {
         actions().deny(command.payload.requestId);
         return ok(command.type);
       case "teams.list":
+        return ok(command.type, { teams: teams().list(command.payload.projectId) });
       case "teams.create":
+        return ok(command.type, await teams().create(command.payload));
       case "teams.update":
+        return ok(command.type, await teams().update(command.payload));
       case "teams.pause":
+        return ok(command.type, teams().pause(command.payload.team));
       case "teams.resume":
+        return ok(command.type, teams().resume(command.payload.team));
       case "teams.close":
+        return ok(
+          command.type,
+          teams().close(command.payload.team, command.payload.confirm === true),
+        );
       case "teams.message":
-      case "teams.status":
-      case "teams.watch":
-        teams();
-        throw new FlightdeckError("invalid_state", "ainda não implementado");
+        return ok(command.type, teams().message(command.payload.team, command.payload.text));
+      case "teams.status": {
+        const { team, as } = command.payload;
+        const asker = as ? messaging().whoIs(as).id : undefined;
+        return ok(command.type, teams().status(team, asker));
+      }
+      case "teams.watch": {
+        const service = teams();
+        ws.data.unwatchTeams?.();
+        ws.data.unwatchTeams = service.watch((frame) => send(ws, frame));
+        return ok(command.type);
+      }
       case "messages.send":
         return ok(command.type, messaging().send(command.payload));
       case "messages.list":
@@ -1539,6 +1560,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.changeWatchers.clear();
         ws.data.unwatchVault?.();
         ws.data.unwatchMessages?.();
+        ws.data.unwatchTeams?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },
