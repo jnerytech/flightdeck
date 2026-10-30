@@ -36,6 +36,9 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Ciclo do card](#ciclo-do-card)
   - [Provedores de PR](#provedores-de-pr)
   - [Limite de execuções paralelas](#limite-de-execuções-paralelas)
+- [Revisão de mudanças](#revisão-de-mudanças)
+  - [`.worktreeinclude`](#worktreeinclude)
+  - [Statusline do Claude Code](#statusline-do-claude-code)
 - [Workflows](#workflows)
   - [Declarar](#declarar)
   - [Confiar](#confiar)
@@ -523,6 +526,102 @@ interrompida ou fica ociosa.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+## Revisão de mudanças
+
+Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, ao lado da conversa.
+É onde você confere o que o agente fez e devolve a ele o que corrigir.
+
+- **O que mostra:**
+  - numa sessão cuja pasta está num repositório git, o working tree contra o `HEAD`, com os
+    arquivos não rastreados;
+  - num card, o diff contra a base, com quantos commits ele está à frente e atrás dela;
+  - os arquivos com status e contagens, e o diff unificado ou lado a lado, com as linhas
+    numeradas. Um arquivo binário aparece na lista, sem diff;
+  - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
+    lê de novo.
+- **Comentários inline:**
+  - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
+    Uma linha apagada é comentada pelo lado antigo;
+  - os comentários ficam em rascunho, que dá para editar ou remover, até **Enviar revisão**;
+  - a revisão vai para a sessão gerenciada, para a sessão do card ou para o canal de uma sessão do
+    terminal aberta com `flightdeckd claude`. Uma sessão que não recebe mensagens ganha o texto
+    copiado, e os comentários contam como enviados;
+  - um comentário segue o trecho citado quando o arquivo muda, e mostra **Desatualizado** quando o
+    trecho some. Os enviados continuam na lista como histórico.
+- **Reverter e editar:**
+  - **Reverter** pede confirmação, volta ao `HEAD` (ou à base do card; um arquivo novo é removido),
+    guarda uma cópia em `<dataDir>/review-trash/` por 7 dias e oferece **Desfazer** por 30 s;
+  - **Editar** abre um editor de texto simples (arquivos de texto até 1 MB). Só grava se o arquivo
+    estiver como estava quando foi aberto; se mudou no disco, dá para recarregar o texto do disco
+    ou sobrescrever com o seu;
+  - os dois valem só nas pastas de `allowedRoots`; em qualquer outra, o host só lê.
+- **Sessões que mexeram num arquivo:** cada arquivo lista as sessões que o escreveram, a partir dos
+  transcripts (`Write`, `Edit`, `MultiEdit` e `NotebookEdit`; mudanças feitas pelo `Bash` não
+  entram).
+- **Card e a base:**
+  - **Atualizar com a base** faz o rebase da branch do card. Com conflito, aborta, deixa a
+    worktree como estava e lista os arquivos;
+  - **Merge e arquivar**, para um card sem PR: `merge --no-ff` (o padrão) ou `squash`. Se a base
+    está em checkout em alguma worktree (em geral o `main` do repositório principal), o merge é
+    feito ali, e só se aquela worktree estiver limpa; senão, vai por uma worktree temporária. Um
+    conflito recusa e não muda nada. Depois do merge, a worktree e a branch do card somem e o card
+    vai para Concluído.
+- **Comentários do PR:** num card com PR, os comentários de revisão são lidos do GitHub (`gh api`)
+  ou do Azure DevOps (`az devops invoke`) a cada consulta do PR, e listados com arquivo, linha,
+  autor e estado (resolvido ou não). No GitHub, quem não é dono, membro nem colaborador ganha o
+  selo **Autor externo**: trate o texto como não confiável. O Azure DevOps não tem esse campo, e
+  por isso nada é marcado ali. Os comentários abertos vêm selecionados; **Enviar ao agente** entrega
+  os escolhidos à sessão do card. Nada é postado de volta no provedor.
+
+O host anuncia `review` no `host.info`; um host mais antigo não tem a aba Mudanças.
+
+### `.worktreeinclude`
+
+Uma worktree nova recebe os arquivos rastreados do repositório, mas não os ignorados, como `.env`.
+Para levá-los ao card, crie `.worktreeinclude` na raiz do repositório, com padrões no formato do
+`.gitignore`:
+
+```gitignore
+.env
+.env.local
+config/*.secret.json
+```
+
+- **O que é copiado:** do repositório principal, os arquivos **ignorados pelo git** que casam com
+  os padrões, até 50 MB no total. Acima disso, o card avisa quantos ficaram de fora.
+- **O que nunca é copiado:** nada de `.git/` nem de `.flightdeck/`.
+- **Padrão embutido:** `.claude/settings.local.json`, as regras do projeto da Fase 7, entra sempre.
+- O formulário do projeto, no app, avisa quando o repositório não tem `.worktreeinclude`, com um
+  exemplo.
+
+### Statusline do Claude Code
+
+`flightdeckd statusline` imprime uma linha como `5h 35% · 7d 27% · hoje $4.20 · sessão $0.84`: a
+cota do plano, o custo estimado do dia e o custo da sessão. Ele lê o JSON que o Claude Code passa
+no stdin e consulta o daemon local, com prazo de 300 ms. Com o daemon fora do ar ou lento, imprime
+uma linha vazia e sai com 0.
+
+O Flightdeck **nunca escreve** a configuração da statusline. Para usar o comando, ponha você mesmo
+no `~/.claude/settings.json`:
+
+```json
+{ "statusLine": { "type": "command", "command": "flightdeckd statusline" } }
+```
+
+Para somar à statusline que você já tem, chame os dois num script e junte as linhas. O stdin vai
+para os dois:
+
+```bash
+#!/usr/bin/env bash
+input=$(cat)
+mine=$(printf '%s' "$input" | ~/.claude/minha-statusline.sh)
+fd=$(printf '%s' "$input" | flightdeckd statusline)
+printf '%s%s\n' "$mine" "${fd:+ · $fd}"
+```
+
+O comando usa a config do daemon (`~/.flightdeck/config.json`, ou `--config <arquivo>`) e nunca a
+cria.
 
 ## Workflows
 

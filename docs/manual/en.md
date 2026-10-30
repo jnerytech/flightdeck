@@ -36,6 +36,9 @@ are written in Portuguese.
   - [Card lifecycle](#card-lifecycle)
   - [PR providers](#pr-providers)
   - [Parallel run limit](#parallel-run-limit)
+- [Reviewing changes](#reviewing-changes)
+  - [`.worktreeinclude`](#worktreeinclude)
+  - [Claude Code statusline](#claude-code-statusline)
 - [Workflows](#workflows)
   - [Declaring](#declaring)
   - [Trusting](#trusting)
@@ -539,6 +542,103 @@ interrupted or goes idle.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+## Reviewing changes
+
+Every session (managed or from the terminal) and every card has a **Changes** tab, next to the
+conversation. It is where you check what the agent did and send it back what to fix.
+
+- **What it shows:**
+  - for a session whose folder is in a git repository, the working tree against `HEAD`, with the
+    untracked files;
+  - for a card, the diff against its base, with how many commits it is ahead of and behind it;
+  - the files with their status and counts, and the diff unified or side by side, with numbered
+    lines. A binary file is listed without a diff;
+  - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
+    **Refresh** reads it again.
+- **Inline comments:**
+  - click a line number to comment on it, and shift+click another to extend the range. A removed
+    line is commented on its old side;
+  - comments stay as drafts, which you can edit or remove, until **Send review**;
+  - the review goes to the managed session, to the card's session or to the channel of a terminal
+    session started with `flightdeckd claude`. A session that takes no messages gets the text
+    copied instead, and the comments count as sent;
+  - a comment follows the quoted lines when the file changes, and shows **Outdated** when they are
+    gone. Sent comments stay in the list as history.
+- **Revert and edit:**
+  - **Revert** asks for confirmation, goes back to `HEAD` (or the card's base; a new file is
+    removed), keeps a copy in `<dataDir>/review-trash/` for 7 days and offers **Undo** for 30
+    seconds;
+  - **Edit** opens a plain text editor (text files up to 1 MB). It saves only if the file is as it
+    was when opened; if it changed on disk, you can reload the disk's text or overwrite it with
+    yours;
+  - both work only in the folders of `allowedRoots`; anywhere else the host only reads.
+- **Sessions that touched a file:** each file lists the sessions that wrote it, from the
+  transcripts (`Write`, `Edit`, `MultiEdit` and `NotebookEdit`; changes made by `Bash` do not
+  count).
+- **Card against its base:**
+  - **Update from the base** rebases the card's branch. On a conflict it aborts, leaves the
+    worktree as it was and lists the files;
+  - **Merge and archive**, for a card without a PR: `merge --no-ff` (the default) or `squash`. If
+    the base is checked out in some worktree (usually `main` in the main repository), the merge
+    happens there, and only if that worktree is clean; otherwise it goes through a temporary
+    worktree. A conflict refuses and changes nothing. After the merge, the card's worktree and
+    branch go away and the card moves to Done.
+- **PR comments:** for a card with a PR, the review comments are read from GitHub (`gh api`) or
+  Azure DevOps (`az devops invoke`) with each poll of the PR, and listed with file, line, author
+  and resolved state. On GitHub, an author who is not the owner, a member or a collaborator gets
+  the **External author** badge: treat the text as untrusted. Azure DevOps has no such field, so
+  nothing is marked there. The open comments come selected; **Send to the agent** hands the
+  chosen ones to the card's session. Nothing is ever posted back to the provider.
+
+The host announces `review` in `host.info`; an older host has no Changes tab.
+
+### `.worktreeinclude`
+
+A new worktree gets the repository's tracked files, but not the ignored ones, such as `.env`. To
+take them to the card, create `.worktreeinclude` at the root of the repository, with patterns in
+the `.gitignore` format:
+
+```gitignore
+.env
+.env.local
+config/*.secret.json
+```
+
+- **What is copied:** from the main repository, the files **ignored by git** that match the
+  patterns, up to 50 MB in total. Above that, the card says how many were left out.
+- **What is never copied:** anything under `.git/` or `.flightdeck/`.
+- **Built-in pattern:** `.claude/settings.local.json`, the project rules from phase 7, is always
+  included.
+- The project form in the app warns when the repository has no `.worktreeinclude`, with an example.
+
+### Claude Code statusline
+
+`flightdeckd statusline` prints a line like `5h 35% · 7d 27% · today $4.20 · session $0.84`: the
+plan quota, the estimated cost of the day and the cost of the session. It reads the JSON that
+Claude Code passes on stdin and asks the local daemon, with a deadline of 300 ms. With the daemon
+down or slow, it prints an empty line and exits with 0.
+
+Flightdeck **never writes** the statusline configuration. To use the command, put it yourself in
+`~/.claude/settings.json`:
+
+```json
+{ "statusLine": { "type": "command", "command": "flightdeckd statusline" } }
+```
+
+To add it to a statusline you already have, call both in a script and join the lines. The stdin
+goes to both:
+
+```bash
+#!/usr/bin/env bash
+input=$(cat)
+mine=$(printf '%s' "$input" | ~/.claude/my-statusline.sh)
+fd=$(printf '%s' "$input" | flightdeckd statusline)
+printf '%s%s\n' "$mine" "${fd:+ · $fd}"
+```
+
+The command uses the daemon's config (`~/.flightdeck/config.json`, or `--config <file>`) and never
+creates it.
 
 ## Workflows
 
