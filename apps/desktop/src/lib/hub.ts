@@ -129,12 +129,9 @@ function liveLine(
 ): SessionLine | null {
   if (!line || !live) return line ?? null;
   const state = LINE[live.status];
-  const tool =
-    state === "waiting"
-      ? (live.pendingPermissions[0]?.toolName ?? null)
-      : state === "running"
-        ? line.tool
-        : null;
+  let tool: string | null = null;
+  if (state === "waiting") tool = live.pendingPermissions[0]?.toolName ?? null;
+  else if (state === "running") tool = line.tool;
   return { ...line, state, tool, since: live.updatedAt };
 }
 

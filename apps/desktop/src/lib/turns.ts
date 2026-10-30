@@ -26,13 +26,11 @@ export function turnsOf(snapshots: SnapshotInfo[]): Turn[] {
       prompt: row.prompt,
       createdAt: row.createdAt,
       uuid: row.turnUuid,
-      files:
-        next?.kind === "after"
-          ? next.tree === row.tree
-            ? ("unchanged" as const)
-            : ("changed" as const)
-          : next === undefined
-            ? ("running" as const)
-            : ("unknown" as const),
+      files: filesState(row, next),
     }));
+}
+
+function filesState(row: SnapshotInfo, next: SnapshotInfo | undefined): Turn["files"] {
+  if (next?.kind === "after") return next.tree === row.tree ? "unchanged" : "changed";
+  return next === undefined ? "running" : "unknown";
 }

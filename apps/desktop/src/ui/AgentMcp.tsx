@@ -147,12 +147,10 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
     if (result && "tools" in result) setResults((all) => ({ ...all, [name]: result }));
   };
 
-  const origin = (server: McpServerView) =>
-    server.origin === "project"
-      ? t("agent.originProject")
-      : server.origin === "user"
-        ? t("agent.originUserMcp")
-        : t("agent.originUserProject");
+  const origin = (server: McpServerView) => {
+    if (server.origin === "project") return t("agent.originProject");
+    return server.origin === "user" ? t("agent.originUserMcp") : t("agent.originUserProject");
+  };
 
   if (failed) {
     return (
