@@ -12,8 +12,10 @@ import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
+import { CardReview } from "./CardReview.tsx";
 import { ChangesPanel } from "./ChangesPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { PrComments } from "./PrComments.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
@@ -43,6 +45,7 @@ export function CardDetail(props: {
   const host = props.state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
   const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
+  const withReview = hasFeature(host?.hostInfo?.features, "review", false);
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -333,7 +336,30 @@ export function CardDetail(props: {
           </Button>
         </div>
         {tab === "diff" ? (
-          <ChangesPanel store={store} hostId={hostId} target={`card:${cardId}`} />
+          <div className="flex flex-col gap-5">
+            {card.prUrl && withReview && (
+              <PrComments
+                store={store}
+                hostId={hostId}
+                cardId={cardId}
+                moment={`${card.updatedAt}/${card.prState}`}
+              />
+            )}
+            <ChangesPanel
+              store={store}
+              hostId={hostId}
+              target={`card:${cardId}`}
+              extra={(changes, refresh) => (
+                <CardReview
+                  store={store}
+                  hostId={hostId}
+                  card={card}
+                  changes={changes}
+                  refresh={refresh}
+                />
+              )}
+            />
+          </div>
         ) : openedStep?.type === "check" ? (
           <div className="flex flex-col gap-2">
             <p className="text-muted-foreground text-xs">

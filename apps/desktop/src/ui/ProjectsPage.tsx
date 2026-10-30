@@ -1,6 +1,7 @@
 import type { Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -11,6 +12,9 @@ import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
 import { RulesSection } from "./RulesSection.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
+
+/** What a `.worktreeinclude` looks like: patterns in the format of `.gitignore`. */
+const WORKTREE_INCLUDE_EXAMPLE = [".env", ".env.local", "config/*.secret.json"].join("\n");
 
 interface Draft {
   path: string;
@@ -217,6 +221,16 @@ export function ProjectsPage(props: {
             placeholder={t("projectsUi.templatePlaceholder")}
             {...field("promptTemplate")}
           />
+          {editing && list?.projects.find((p) => p.id === editing)?.worktreeInclude === false && (
+            <div className="flex flex-col gap-2">
+              <InlineNotice tone="info">{t("projectsUi.worktreeIncludeMissing")}</InlineNotice>
+              <figure aria-label={t("projectsUi.worktreeIncludeExample")}>
+                <pre className="rounded-md border bg-muted p-3 font-mono text-xs">
+                  {WORKTREE_INCLUDE_EXAMPLE}
+                </pre>
+              </figure>
+            </div>
+          )}
           <Button className="self-start" onClick={() => void submit()}>
             {editing ? t("projectsUi.save") : t("projectsUi.register")}
           </Button>

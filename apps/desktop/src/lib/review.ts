@@ -75,3 +75,18 @@ export function selected(
     line <= selection.end
   );
 }
+
+/** The authors whose PR comments are yours: you, and people with write access to the repository. */
+const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+
+/**
+ * Whether a PR comment comes from outside the team: GitHub says what the author is to the
+ * repository. Azure DevOps has no such field (its `authorIdentity` is set), so nothing is marked.
+ */
+export function isExternalAuthor(comment: {
+  authorAssociation: string | null;
+  authorIdentity: string | null;
+}): boolean {
+  if (comment.authorIdentity !== null) return false;
+  return !TRUSTED_ASSOCIATIONS.has((comment.authorAssociation ?? "").toUpperCase());
+}
