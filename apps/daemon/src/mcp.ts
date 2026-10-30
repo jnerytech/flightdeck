@@ -32,7 +32,7 @@ export function daemonUrl(config: { bind: string; port: number }): string {
 }
 
 /** The daemon protocol, as any client of the app speaks it: `hello`, then commands and acks. */
-class DaemonClient {
+export class DaemonClient {
   private readonly acks = new Map<string, { ok(ack: Ack): void; fail(error: Error): void }>();
   private seq = 0;
 
@@ -48,14 +48,14 @@ class DaemonClient {
     });
   }
 
-  static async connect(url: string, token: string): Promise<DaemonClient> {
+  static async connect(url: string, token: string, name = "flightdeck-mcp"): Promise<DaemonClient> {
     const ws = new WebSocket(url);
     await new Promise<void>((resolve, reject) => {
       ws.addEventListener("open", () => resolve(), { once: true });
       ws.addEventListener("error", () => reject(new Error("sem resposta")), { once: true });
     });
     const client = new DaemonClient(ws);
-    await client.call("hello", { token, client: "flightdeck-mcp" });
+    await client.call("hello", { token, client: name });
     return client;
   }
 

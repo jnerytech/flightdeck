@@ -72,6 +72,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { AskpassBroker, askpassHook, runAskpass } from "./ssh/askpass.ts";
 import { processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
 import { HostKeys } from "./ssh/hostkey.ts";
 import { SshImporter } from "./ssh/import.ts";
@@ -106,6 +107,7 @@ export interface CliArgs {
     | "hook"
     | "channel"
     | "claude"
+    | "askpass"
     | "mcp"
     | "statusline"
     | "version"
@@ -135,6 +137,8 @@ export interface CliArgs {
   allowDowngrade?: true;
   /** `claude [args]`: everything after `claude` belongs to the real claude. */
   claudeArgs?: string[];
+  /** `askpass <prompt...>`: what ssh is asking for. */
+  askpassPrompt?: string;
 }
 
 const USAGE = [
@@ -151,6 +155,7 @@ const USAGE = [
   "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
   "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
   "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
+  "     flightdeckd askpass <prompt>   (chamado pelo ssh via SSH_ASKPASS; config em FLIGHTDECK_CONFIG)",
   "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
   "     flightdeckd statusline [--config <arquivo>]   (uma linha para a statusline do Claude Code)",
 ].join("\n");
@@ -236,6 +241,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       case "claude":
         args.command = "claude";
         args.claudeArgs = argv.slice(i + 1);
+        i = argv.length;
+        break;
+      case "askpass":
+        args.command = "askpass";
+        args.askpassPrompt = argv.slice(i + 1).join(" ");
         i = argv.length;
         break;
       case "--launch":
@@ -515,6 +525,14 @@ export async function startDaemon(
   const sshTargets = new SshTargets({ db: store.db });
   const sshHostKeys = new HostKeys({ targets: sshTargets });
   const sshDir = join(config.dataDir, "ssh");
+  const askpass = new AskpassBroker({});
+  const sshAskpass = askpassHook({
+    broker: askpass,
+    dir: sshDir,
+    platform: process.platform,
+    self: daemonCommand(process.execPath, Bun.main),
+    configFile,
+  });
   const sshConnect = new SshConnector({
     targets: sshTargets,
     hostKeys: sshHostKeys,
@@ -522,6 +540,7 @@ export async function startDaemon(
     dir: sshDir,
     sshPath: resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
     run: processRun(),
+    ...(sshAskpass ? { askpass: sshAskpass } : {}),
     // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
     delivery: chooseDelivery({
       platform: process.platform,
@@ -551,6 +570,7 @@ export async function startDaemon(
     // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
     sshHostKeys,
     sshConnect,
+    askpass,
     sshImport: new SshImporter({
       targets: sshTargets,
       configPath: join(homedir(), ".ssh", "config"),
@@ -1004,6 +1024,18 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       });
       deps.exit(code);
+      return null;
+    }
+    if (args.command === "askpass") {
+      // ssh runs this with only the prompt, so the config comes from the environment.
+      const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
+      const secret = await runAskpass({
+        configFile: file,
+        ticket: deps.env.FLIGHTDECK_ASKPASS_TICKET,
+        prompt: args.askpassPrompt ?? "",
+      });
+      deps.log.log(secret);
+      deps.exit(0);
       return null;
     }
     if (args.command === "channel") {

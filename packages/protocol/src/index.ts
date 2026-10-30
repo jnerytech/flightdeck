@@ -729,6 +729,20 @@ export type SshHostKeyCheck = z.infer<typeof SshHostKeyCheck>;
 export const SshTestResult = z.object({ ok: z.boolean(), error: z.string().nullable() });
 export type SshTestResult = z.infer<typeof SshTestResult>;
 
+/** A password or key passphrase that ssh is asking for; the app answers with `askpass.answer`. */
+export const AskpassRequest = z.object({
+  type: z.literal("askpass.request"),
+  requestId: z.string(),
+  targetId: z.string(),
+  targetName: z.string(),
+  kind: z.enum(["password", "passphrase"]),
+  /** Where the vault keeps it, to be read without asking the person. */
+  secretRef: z.string().nullable(),
+  /** What ssh printed, such as "deploy@host's password:". */
+  prompt: z.string(),
+});
+export type AskpassRequest = z.infer<typeof AskpassRequest>;
+
 const TerminalId = z.string().min(1);
 const TerminalCols = z.number().int().min(1).max(500);
 const TerminalRows = z.number().int().min(1).max(300);
@@ -1579,6 +1593,15 @@ export const Command = z.discriminatedUnion("type", [
     "ssh.test",
     z.object({ targetId: z.string(), privateKey: z.string().max(65_536).optional() }).strict(),
   ),
+  /** Follow `askpass.request` frames: the app that answers a ssh password prompt. */
+  cmd("askpass.watch", z.object({}).strict()),
+  /** What `flightdeckd askpass` calls with the ticket of its connection; returns the answer. */
+  cmd("askpass.ask", z.object({ ticket: z.string(), prompt: z.string().max(500) }).strict()),
+  /** The app answers a request; `null` refuses. */
+  cmd(
+    "askpass.answer",
+    z.object({ requestId: z.string(), secret: z.string().max(4096).nullable() }).strict(),
+  ),
   /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
   cmd("ssh.import.preview", z.object({}).strict()),
   /** Creates the chosen names; the ones it cannot create come back with the reason. */
@@ -1966,6 +1989,9 @@ export interface CommandResults {
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
+  "askpass.watch": undefined;
+  "askpass.ask": { secret: string };
+  "askpass.answer": undefined;
   "ssh.connect": TerminalInfo;
   "ssh.test": SshTestResult;
   "ssh.hostkey.check": SshHostKeyCheck;
@@ -2165,6 +2191,7 @@ export const ServerMessage = z.union([
   ExternalPermissionFrame,
   RunUpdated,
   QuotaUpdated,
+  AskpassRequest,
   BudgetUpdated,
   ChangesUpdated,
   TerminalData,

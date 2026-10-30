@@ -50,7 +50,7 @@ export function statuslineText(data: StatuslineData): string {
 }
 
 /** The config as it is on disk; `null` when there is none or it does not parse. Never writes. */
-function readConfig(file: string): Config | null {
+export function readConfig(file: string): Config | null {
   if (!existsSync(file)) return null;
   const parsed = Config.safeParse(JSON.parse(readFileSync(file, "utf8")));
   return parsed.success ? parsed.data : null;

@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   type Ack,
+  type AskpassRequest,
   type BudgetUpdated,
   type CardUpdated,
   type ChangesUpdated,
@@ -61,6 +62,7 @@ import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import type { AskpassBroker } from "./ssh/askpass.ts";
 import type { SshConnector } from "./ssh/connect.ts";
 import type { HostKeys } from "./ssh/hostkey.ts";
 import type { SshImporter } from "./ssh/import.ts";
@@ -139,6 +141,8 @@ export interface ServerOptions {
   sshHostKeys?: HostKeys;
   /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test` (phase 15). */
   sshConnect?: SshConnector;
+  /** The ssh password and passphrase requests behind `askpass.*` (phase 15). */
+  askpass?: AskpassBroker;
   /** Inline comments behind `review.*` (phase 11). */
   review?: ReviewComments;
   /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
@@ -180,6 +184,8 @@ interface Connection {
   unwatchRuns?: () => void;
   /** Stops the `quota.watch` stream, when active. */
   unwatchQuota?: () => void;
+  /** Stops the `askpass.watch` stream, when active. */
+  unwatchAskpass?: () => void;
   /** Stops the `budget.watch` stream, when active. */
   unwatchBudgets?: () => void;
   /** Stops each `changes.watch`, by target. */
@@ -212,7 +218,8 @@ type Outgoing =
   | ChangesUpdated
   | TerminalData
   | TerminalExited
-  | TerminalResync;
+  | TerminalResync
+  | AskpassRequest;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -457,6 +464,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function ssh(): SshTargets {
     if (!opts.ssh) throw new FlightdeckError("invalid_state", "destinos ssh desativados");
     return opts.ssh;
+  }
+
+  function askpass(): AskpassBroker {
+    if (!opts.askpass) throw new FlightdeckError("invalid_state", "senhas do ssh desativadas");
+    return opts.askpass;
   }
 
   function sshConnect(): SshConnector {
@@ -1018,6 +1030,17 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.remove":
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
+      case "askpass.watch":
+        ws.data.unwatchAskpass?.();
+        ws.data.unwatchAskpass = askpass().watch((frame) => send(ws, frame));
+        return ok(command.type);
+      case "askpass.ask":
+        return ok(command.type, {
+          secret: await askpass().ask(command.payload.ticket, command.payload.prompt),
+        });
+      case "askpass.answer":
+        askpass().answer(command.payload.requestId, command.payload.secret);
+        return ok(command.type);
       case "ssh.connect": {
         const { targetId, cols, rows, privateKey } = command.payload;
         const request = { targetId, cols, rows, ...(privateKey ? { privateKey } : {}) };
@@ -1187,6 +1210,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchExternal?.();
         ws.data.unwatchRuns?.();
         ws.data.unwatchQuota?.();
+        ws.data.unwatchAskpass?.();
         ws.data.unwatchBudgets?.();
         if (ws.data.terminalSink) opts.terminals?.detachAll(ws.data.terminalSink);
         for (const stop of ws.data.changeWatchers.values()) stop();
