@@ -27,6 +27,7 @@
     "smoke:vault": "bun run scripts/smoke-vault.ts",
     "smoke:actions": "bun run scripts/smoke-actions.ts",
     "smoke:rules-vault": "bun run scripts/smoke-rules-vault.ts",
+    "smoke:teams": "bun run scripts/smoke-teams.ts",
     "smoke:automation": "bun run scripts/smoke-automation.ts",
     "smoke:checkpoints": "bun run scripts/smoke-checkpoints.ts",
     "smoke:terminal": "bun run scripts/smoke-terminal.ts",
