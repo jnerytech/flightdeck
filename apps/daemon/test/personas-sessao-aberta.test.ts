@@ -355,3 +355,28 @@ describe("personas-sessao-aberta: pelo protocolo", () => {
     expect(await codeOfCall("session.clearPersona", { sessionId: "x" })).toBe("invalid_state");
   });
 });
+
+describe("personas-sessao-aberta: o que falta no host", () => {
+  test("a mensagem de saída também vem em inglês", async () => {
+    const s = setup();
+    const { sessionId } = await idleSession(s);
+    await s.switcher.apply({ sessionId, persona: { id: "qa", language: "en" } });
+    await waitFor(() => s.manager.get(sessionId).status === "idle", { label: "ociosa" });
+    const left = await s.switcher.clear({ sessionId, language: "en" });
+    expect(left.text).toBe('Leave the "QA / testing" role and go back to your normal behavior.');
+  });
+
+  test("sem o cadastro de personas, ou sem as sessões de terminal, o serviço diz o que falta", async () => {
+    const s = setup();
+    const { sessionId } = await idleSession(s);
+    const bare = new OpenSessionPersonas({ manager: s.manager });
+    expect(await codeOf(() => bare.apply({ sessionId, persona: { id: "seg" } }))).toBe(
+      "invalid_state",
+    );
+    expect(
+      await codeOf(() => bare.apply({ claudeSessionId: "claude-1", persona: { id: "seg" } })),
+    ).toBe("invalid_state");
+    expect(await codeOf(() => bare.clear({ claudeSessionId: "claude-1" }))).toBe("invalid_state");
+    expect(s.manager.get(sessionId).persona).toBeUndefined();
+  });
+});
