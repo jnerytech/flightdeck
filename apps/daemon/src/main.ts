@@ -53,6 +53,8 @@ import { runMessageCli } from "./messaging/cli.ts";
 import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
+import { Names } from "./names/names.ts";
+import { trackNames } from "./names/track.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
@@ -736,20 +738,45 @@ export async function startDaemon(
     sendToLaunch: central.sendToLaunch.bind(central),
     autoApprove,
   });
+  // Phase 21: every session of this host has a standard name and an alias that addresses it.
+  const names = new Names(store.db);
   // The messaging service asks the teams who is on one, and the teams need the messaging service.
   let teams: Teams | undefined;
   const messaging = new Messaging({
     db: store.db,
     host: config.hostName,
     endpoints,
+    names,
     teamOf: (sessionId) => teams?.teamOf(sessionId) ?? null,
   });
-  teams = new Teams({ db: store.db, board, manager, messaging, host: config.hostName, quota });
+  teams = new Teams({
+    db: store.db,
+    board,
+    manager,
+    messaging,
+    host: config.hostName,
+    quota,
+    names,
+  });
+  const cardOf = (sessionId: string) =>
+    board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null;
+  const stopNames = trackNames({
+    names,
+    manager,
+    external: central.external,
+    projectOf: (cwd) => keys.keyFor(board.projectForCwd(cwd)?.project.path ?? cwd),
+    cardOf,
+    personaOf: (sessionId) => {
+      const card = cardOf(sessionId);
+      return card ? (teams?.personaOfCard(card) ?? null) : null;
+    },
+  });
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({
     manager,
     messaging,
+    names,
     idle,
     teams,
     vault,
@@ -862,6 +889,7 @@ export async function startDaemon(
         await wsl?.stop();
         automations.stop();
         clearInterval(messagingSweep);
+        stopNames();
         teams.stop();
         idle.stop();
         messaging.stop();

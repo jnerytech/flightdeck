@@ -433,6 +433,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.vault;
   }
 
+  function names(): Names {
+    if (!opts.names) throw new FlightdeckError("invalid_state", "nomes de sessão indisponíveis");
+    return opts.names;
+  }
+
   function teams(): Teams {
     if (!opts.teams) throw new FlightdeckError("invalid_state", "times indisponíveis");
     return opts.teams;
@@ -708,6 +713,14 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.meta.set": {
         const { claudeSessionId, ...patch } = command.payload;
         const meta = central().meta.set(claudeSessionId, patch);
+        // The name the user gives also renames the standard one; the old alias keeps working.
+        const given = patch.name?.trim();
+        if (given && opts.names) {
+          const id =
+            opts.manager.list().find((s) => s.claudeSessionId === claudeSessionId)?.id ??
+            claudeSessionId;
+          if (opts.names.get(id)) opts.names.rename(id, given);
+        }
         return ok(command.type, { claudeSessionId, ...meta });
       }
       case "maintenance.status":
@@ -858,7 +871,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "messages.directory":
         return ok(command.type, { host: opts.hostName, sessions: messaging().directory() });
       case "names.list":
-        return ok(command.type, { names: [] });
+        return ok(command.type, {
+          names: names()
+            .list()
+            .map(({ id, ...name }) => ({ sessionId: id, ...name })),
+        });
       case "messages.peers":
         messaging().setPeers(command.payload.host, command.payload.sessions);
         return ok(command.type);
