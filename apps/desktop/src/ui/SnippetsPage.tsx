@@ -1,4 +1,4 @@
-import type { Snippet, SnippetFileInfo } from "@flightdeck/protocol";
+import type { SnippetFileInfo } from "@flightdeck/protocol";
 import { SquareCode, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppSnippet } from "../lib/global-snippets.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -15,8 +16,10 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
 /** Where a snippet lives, as the row says it. */
-const originOf = (snippet: Snippet) =>
-  snippet.source === "file" ? "file" : snippet.scope === "project" ? "project" : "host";
+const originOf = (snippet: AppSnippet) => (snippet.source === "file" ? "file" : snippet.scope);
+
+/** The "Projeto" choice that shows the app's own snippets instead of the host's. */
+export const GLOBAL = "@global";
 
 /** Phase 18: the snippets of the first online host that keeps them, and of one of its projects. */
 export function SnippetsPage(props: { store: AppStore; state: AppState; go(route: Route): void }) {
@@ -29,16 +32,23 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
   const [project, setProject] = useState("");
   const [query, setQuery] = useState("");
   const [type, setType] = useState<"" | "command" | "prompt">("");
-  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [snippets, setSnippets] = useState<AppSnippet[]>([]);
   const [file, setFile] = useState<SnippetFileInfo | null>(null);
-  const [removing, setRemoving] = useState<Snippet | null>(null);
-  const [editing, setEditing] = useState<Snippet | "new" | null>(null);
+  const [removing, setRemoving] = useState<AppSnippet | null>(null);
+  const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
 
   useEffect(() => {
     if (hostId) void store.loadProjects(hostId);
   }, [store, hostId]);
 
   const reload = useCallback(async () => {
+    if (project === GLOBAL) {
+      setSnippets(
+        store.globalSnippets.list({ ...(query ? { query } : {}), ...(type ? { type } : {}) }),
+      );
+      setFile(null);
+      return;
+    }
     if (!hostId) return;
     const listed = await store.hostCommand(hostId, "snippets.list", {
       ...(project ? { scope: "all", projectPath: project } : { scope: "host" }),
@@ -53,7 +63,11 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
     void reload();
   }, [reload]);
 
-  const favorite = async (snippet: Snippet) => {
+  const favorite = async (snippet: AppSnippet) => {
+    if (snippet.scope === "global") {
+      store.globalSnippets.favorite(snippet.id, !snippet.favorite);
+      return reload();
+    }
     if (!hostId) return;
     const done = await store.hostCommand(hostId, "snippets.favorite", {
       id: snippet.id,
@@ -62,8 +76,12 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
     if (done) await reload();
   };
 
-  const remove = async (snippet: Snippet) => {
+  const remove = async (snippet: AppSnippet) => {
     setRemoving(null);
+    if (snippet.scope === "global") {
+      store.globalSnippets.remove(snippet.id);
+      return reload();
+    }
     if (!hostId) return;
     const done = await store.hostCommand(hostId, "snippets.remove", { id: snippet.id });
     if (done !== null) await reload();
@@ -100,7 +118,7 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
           key={editing === "new" ? "new" : editing.id}
           store={store}
           hostId={hostId}
-          project={project}
+          project={project === GLOBAL ? "" : project}
           snippet={editing === "new" ? null : editing}
           onSaved={() => {
             setEditing(null);
@@ -125,6 +143,7 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
           {t("snippets.project")}
           <select className={SELECT} value={project} onChange={(e) => setProject(e.target.value)}>
             <option value="">{t("snippets.hostOnly")}</option>
+            <option value={GLOBAL}>{t("snippets.globals")}</option>
             {projects.map((p) => (
               <option key={p.id} value={p.path}>
                 {p.name}

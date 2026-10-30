@@ -1,15 +1,16 @@
-import type { Snippet, SnippetVar } from "@flightdeck/protocol";
+import { SnippetModelError, type SnippetVar } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import type { AppSnippet } from "@/lib/global-snippets";
 import { placeholders, SPECIAL_VARS } from "@/lib/snippets";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
-type Place = "host" | "project" | "file";
+type Place = "host" | "project" | "file" | "global";
 
 const split = (text: string) =>
   text
@@ -23,7 +24,7 @@ export function SnippetEditor(props: {
   hostId: string;
   /** The chosen project's path; "" for the host alone. */
   project: string;
-  snippet: Snippet | null;
+  snippet: AppSnippet | null;
   onSaved(): void;
   onClose(): void;
   /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
@@ -60,9 +61,29 @@ export function SnippetEditor(props: {
       if (def || opts.length)
         vars[n] = { ...(def ? { default: def } : {}), ...(opts.length ? { options: opts } : {}) };
     }
+    const fields = {
+      name: name.trim(),
+      type,
+      ...(type === "command" ? { run: body.trim() } : { text: body }),
+      vars,
+      tags: split(tags),
+    };
+    if (snippet ? snippet.scope === "global" : place === "global") {
+      try {
+        store.globalSnippets.save({ ...(snippet ? { id: snippet.id } : {}), ...fields });
+        return props.onSaved();
+      } catch (thrown) {
+        if (!(thrown instanceof SnippetModelError)) throw thrown;
+        return setError(
+          thrown.code === "snippet_secret"
+            ? { secret: true, message: t("snippets.editor.secret") }
+            : { secret: false, message: thrown.message },
+        );
+      }
+    }
     const where = snippet
       ? {
-          scope: snippet.scope,
+          scope: snippet.scope === "project" ? ("project" as const) : ("host" as const),
           ...(snippet.projectPath ? { projectPath: snippet.projectPath } : {}),
         }
       : place === "host" || !project
@@ -75,11 +96,7 @@ export function SnippetEditor(props: {
     const result = await store.hostRequest(hostId, "snippets.save", {
       ...(snippet ? { id: snippet.id } : {}),
       ...where,
-      name: name.trim(),
-      type,
-      ...(type === "command" ? { run: body.trim() } : { text: body }),
-      vars,
-      tags: split(tags),
+      ...fields,
     });
     if (result.ok) return props.onSaved();
     setError(
@@ -172,6 +189,7 @@ export function SnippetEditor(props: {
             onChange={(e) => setPlace(e.target.value as Place)}
           >
             <option value="host">{t("snippets.editor.placeOption.host")}</option>
+            <option value="global">{t("snippets.editor.placeOption.global")}</option>
             {project && <option value="project">{t("snippets.editor.placeOption.project")}</option>}
             {project && <option value="file">{t("snippets.editor.placeOption.file")}</option>}
           </select>
