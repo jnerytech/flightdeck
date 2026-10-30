@@ -286,7 +286,7 @@ describe("board-ui", () => {
     await click("Parar");
 
     writeFileSync(join(board.getCard(id).worktreePath ?? "", "solto.txt"), "não commitado\n");
-    await click("Diff");
+    await click("Mudanças");
     await settle(() => screen.queryByRole("list", { name: "Arquivos alterados" }) !== null);
     const files = screen.queryByRole("list", { name: "Arquivos alterados" })?.textContent ?? "";
     expect(files).toContain("fake-1.txt");

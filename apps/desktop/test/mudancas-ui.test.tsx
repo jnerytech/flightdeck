@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../daemon/test/board-helpers.ts";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
+import { cardWhen, git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -49,7 +50,7 @@ const files = () => text("Arquivos alterados");
 const dialog = () => screen.queryByRole("alertdialog");
 
 /** A host with a git repository inside its allowed root and a session working in it. */
-async function setup(features?: string[]) {
+async function setup(features?: string[], baseDelayMs = 60_000) {
   const d = makeDaemon(cleanups, { review: true });
   const repo = join(d.root, "repo");
   mkdirSync(repo);
@@ -63,7 +64,7 @@ async function setup(features?: string[]) {
   const clock = { offset: 0 };
   const timers: Array<{ fn: () => void; ms: number }> = [];
   const store = new AppStore(mem.platform, {
-    baseDelayMs: 60_000,
+    baseDelayMs,
     now: () => Date.now() + clock.offset,
     timers: {
       setTimeout: (fn, ms) => {
@@ -80,7 +81,7 @@ async function setup(features?: string[]) {
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
-  return { ...d, ...mem, repo, store, hostId, clock, timers };
+  return { ...d, ...mem, repo, store, hostId, clock, timers, server };
 }
 
 /** Opens the managed session working in `cwd` (its Claude id is known once the first turn ran). */
@@ -194,17 +195,14 @@ describe("mudancas-ui", () => {
     await settle(() => text("Comentários da revisão").includes("sobram"));
 
     // Edit one draft, remove another.
-    await click("Editar o comentário em novo.txt");
+    await click("Editar o comentário em novo.txt, linha 2");
     await type("Texto do comentário", "troque pelo nome certo");
     await click("Salvar comentário");
     await settle(() => text("Comentários da revisão").includes("nome certo"));
     expect(text("Comentários da revisão")).not.toContain("troque por outro nome");
-    await click(/^Remover o comentário em novo.txt/);
-    await settle(
-      () =>
-        !text("Comentários da revisão").includes("nome certo") ||
-        !text("Comentários da revisão").includes("sobram"),
-    );
+    await click("Remover o comentário em novo.txt, linhas 3–4");
+    await settle(() => !text("Comentários da revisão").includes("sobram"));
+    expect(text("Comentários da revisão")).toContain("nome certo");
     expect(ctx.eventStore.db.query("SELECT count(*) AS n FROM review_comments").get()).toEqual({
       n: 1,
     });
@@ -259,6 +257,7 @@ describe("mudancas-ui", () => {
     await settle(() => copied.length === 1);
     expect(copied[0]).toContain("Revisão das mudanças:");
     expect(copied[0]).toContain("revise isto");
+    await settle(() => text("Comentários da revisão").includes("Enviado"));
     expect(text("Comentários da revisão")).toContain("Enviado");
     expect(document.body.textContent ?? "").toContain("A sessão não recebe mensagens");
   });
@@ -294,7 +293,8 @@ describe("mudancas-ui", () => {
     await click("Reverter README.md");
     await click("Reverter arquivo");
     await settle(() => !files().includes("README.md"));
-    expect(readFileSync(join(ctx.repo, "README.md"), "utf8")).toBe(
+    // git on Windows may write the committed file back with CRLF line ends.
+    expect(readFileSync(join(ctx.repo, "README.md"), "utf8").replaceAll("\r\n", "\n")).toBe(
       "# repo\nlinha dois\nlinha três\n",
     );
     expect(screen.queryByRole("button", { name: "Desfazer" })).not.toBeNull();
@@ -365,6 +365,16 @@ describe("mudancas-ui", () => {
     expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("minha versão\n");
     await click("Fechar");
     expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
+
+    // Esc closes it too.
+    await click("Editar arquivo novo.txt");
+    await settle(() => screen.queryByRole("dialog", { name: "Editar novo.txt" }) !== null);
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog", { name: "Editar novo.txt" }), {
+        key: "Escape",
+      });
+    });
+    expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
   });
 
   test("um arquivo grande demais para editar mostra o motivo no lugar do editor", async () => {
@@ -429,5 +439,101 @@ describe("mudancas-ui", () => {
     await openChanges();
     await settle(() => files().includes("tarde.txt"));
     expect(files()).toContain("tarde.txt");
+  });
+  test("comenta uma linha apagada pelo lado antigo, mostra um renomeado sem linhas e cancela a edição de um rascunho", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "README.md"), "# repo\nlinha DOIS\nlinha três\n");
+    // A rename that keeps the content has no lines to show.
+    writeFileSync(join(ctx.repo, "extra.txt"), "igual\n");
+    git(ctx.repo, "add", "extra.txt");
+    git(ctx.repo, "commit", "-q", "-m", "extra");
+    git(ctx.repo, "mv", "extra.txt", "movido.txt");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("movido.txt"));
+    expect(screen.queryByText("Sem linhas para mostrar.")).not.toBeNull();
+
+    await click("Comentar a linha antiga 2 de README.md");
+    expect(screen.queryByRole("form", { name: "Novo comentário" })?.textContent ?? "").toContain(
+      "README.md · linha 2 (antes)",
+    );
+    await type("Comentário", "por que mudou?");
+    await click("Adicionar comentário");
+    await settle(() => text("Comentários da revisão").includes("por que mudou?"));
+    expect(text("Comentários da revisão")).toContain("linha dois");
+
+    await click("Editar o comentário em README.md, linha 2");
+    await type("Texto do comentário", "outro texto");
+    await click("Cancelar");
+    expect(text("Comentários da revisão")).toContain("por que mudou?");
+    expect(text("Comentários da revisão")).not.toContain("outro texto");
+  });
+
+  test("fora das pastas permitidas o host mostra as mudanças mas recusa gravar", async () => {
+    const ctx = await setup();
+    const outside = realTempDir("fd-fora-");
+    git(outside, "init", "-q", "-b", "main");
+    git(outside, "config", "commit.gpgsign", "false");
+    writeFileSync(join(outside, "a.txt"), "um\n");
+    git(outside, "add", ".");
+    git(outside, "commit", "-q", "-m", "inicial");
+    writeFileSync(join(outside, "a.txt"), "um\ndois\n");
+    ctx.central.external.apply("SessionStart", { session_id: "fora-1", cwd: outside });
+    await act(async () => {
+      await ctx.store.refreshHub();
+      ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "fora-1" });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Mudanças" }) !== null);
+    await openChanges();
+    await settle(() => files().includes("a.txt"));
+
+    await click("Editar arquivo a.txt");
+    await settle(() => document.querySelector(".cm-content") !== null);
+    await click("Salvar");
+    await settle(() => document.querySelector(".cm-content") === null);
+    expect(document.querySelector(".cm-content")).toBeNull();
+    expect(screen.queryByRole("dialog")?.textContent ?? "").toContain("fora de allowedRoots");
+    expect(readFileSync(join(outside, "a.txt"), "utf8")).toBe("um\ndois\n");
+  });
+
+  test("depois que o host cai e volta, a aba volta a acompanhar o disco", async () => {
+    const ctx = await setup(undefined, 20);
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => screen.queryByText("Nada mudou.") !== null);
+    await act(async () => {
+      await ctx.server.stop();
+    });
+    await settle(() => ctx.store.getState().hosts[0]?.status !== "online");
+    ctx.listen(ctx.server.port);
+    await settle(() => ctx.store.getState().hosts[0]?.status === "online", 10_000);
+    await act(() => Bun.sleep(100));
+    writeFileSync(join(ctx.repo, "depois.txt"), "voltou\n");
+    await settle(() => files().includes("depois.txt"), 10_000);
+    expect(files()).toContain("depois.txt");
+  });
+  test("no card a aba Mudanças é a mesma e reverter volta ao que a base tem", async () => {
+    const ctx = await setup();
+    const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
+    const card = ctx.board.createCard(project.id, { title: "Com mudanças", description: "oi" });
+    await ctx.board.startCard(card.id);
+    const started = await cardWhen(ctx.board, card.id, (c) => c.sessionStatus === "idle");
+    writeFileSync(join(started?.worktreePath ?? "", "solto.txt"), "não commitado");
+    await act(async () => {
+      ctx.store.router.push({
+        name: "card",
+        host: ctx.hostId,
+        projectId: project.id,
+        cardId: card.id,
+      });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+    await click("Mudanças");
+    await settle(() => files().includes("solto.txt"));
+    await click("Reverter solto.txt");
+    expect(dialog()?.textContent ?? "").toContain("da base (main)");
+    await click("Reverter arquivo");
+    await settle(() => !files().includes("solto.txt"));
+    expect(files()).not.toContain("solto.txt");
   });
 });

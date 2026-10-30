@@ -58,7 +58,7 @@ export function daemon(
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
-    /** The review of changes (phase 11): `changes.*`, `review.*`, `file.*` and `files.sessions`. */
+    /** The review of changes (phase 11: `changes.*`, `review.*`, `file.*`, `files.sessions`); on unless `false`. */
     review?: boolean;
   } = {},
 ) {
@@ -118,7 +118,7 @@ export function daemon(
     options.quotaHistory?.(store.db) ??
     (options.costs ? new QuotaHistory({ db: store.db }) : undefined);
   // Like the real daemon: the diff of every session and card, with comments, files and sessions.
-  const changes = options.review ? new Changes({ db: store.db, board }) : undefined;
+  const changes = options.review !== false ? new Changes({ db: store.db, board }) : undefined;
   const review = changes
     ? {
         changes,
