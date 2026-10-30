@@ -381,6 +381,26 @@ describe("regras-aprovacao: aprovar", () => {
 });
 
 describe("regras-aprovacao: prod e risco alto", () => {
+  test("a session approval of a use that is not prod never lets a prod use of the same secret through: it still asks, held", async () => {
+    const t = setup();
+    await t.actions.save({ projectId: "p1", definition: echoDef() });
+    await t.actions.save({
+      projectId: "p1",
+      definition: echoDef({ name: "echo-prod", tags: ["prod"] }),
+    });
+    t.setRules([{ id: "r", match: { requester: "claude" }, decision: "ask", once: "session" }]);
+    const first = t.run();
+    const a = await t.frame(0);
+    expect(a).toMatchObject({ decision: "ask", once: true, needsHold: false });
+    t.approveAndDeliver(a, { via: "app", scope: "session" });
+    await first;
+    const second = t.run({ name: "echo-prod" });
+    const b = await t.frame(1);
+    expect(b).toMatchObject({ decision: "ask", once: false, needsHold: true });
+    t.approveAndDeliver(b, { via: "app", heldMs: 2000 });
+    await second;
+  });
+
   test("a prod request that a rule lets be approved for the session is still approved one use at a time: the session scope is refused, even held", async () => {
     const t = setup();
     await t.actions.save({ projectId: "p1", definition: echoDef({ tags: ["prod"] }) });
