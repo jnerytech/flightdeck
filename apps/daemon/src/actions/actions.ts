@@ -39,7 +39,6 @@ import {
   type Risk,
   type RulesEnv,
   type UseContext,
-  type Verdict,
 } from "../vault/rules.ts";
 import type { VaultRules } from "../vault/rules-store.ts";
 import type { Vault } from "../vault/vault.ts";

@@ -305,3 +305,67 @@ describe("acoes-protocolo: o daemon montado pelo main", () => {
     });
   });
 });
+
+describe("acoes-protocolo: o daemon montado pelo main aplica as regras", () => {
+  test("o pedido do Claude passa pelas regras com o host, o risco e a chave do projeto do daemon de verdade", async () => {
+    const { root, repo } = gitRepo();
+    const dir = tempDir("fd-main-regras-");
+    const file = join(dir, "config.json");
+    await Bun.write(
+      file,
+      JSON.stringify({
+        hostName: "meu-host",
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        hooks: { port: 0 },
+        allowedRoots: [root],
+      }),
+    );
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+    });
+    cleanups.push(() => daemon?.stop());
+    const app = new FrameClient(daemon?.url ?? "");
+    const claude = new FrameClient(daemon?.url ?? "");
+    cleanups.push(() => app.close());
+    cleanups.push(() => claude.close());
+    for (const client of [app, claude])
+      await client.request("hello", { token: TOKEN, client: "t" });
+    const project = await app.data<{ id: string }>("project.add", { path: repo });
+    const projectId = project?.id ?? "";
+    await app.data("actions.save", {
+      projectId,
+      definition: {
+        name: "segredo",
+        description: "usa um segredo",
+        run: [process.execPath, "-e", "console.log(1)"],
+        env: { TOKEN: "{{secret.tok}}" },
+      },
+    });
+    // A rule that matches only on what the daemon knows: its host name.
+    await app.data("vault.rules.set", {
+      secretId: "tok",
+      rules: [
+        { id: "deste-host", match: { host: "meu-host", requester: "claude" }, decision: "ask" },
+      ],
+    });
+    await app.request("vault.watch", {});
+    const running = claude.request("actions.run", {
+      projectId,
+      name: "segredo",
+      requestedBy: "claude",
+    });
+    const request = (await poll(() => app.frames.find((f) => f.type === "vault.request"))) as {
+      requestId: string;
+      ruleId: string;
+      decision: string;
+    };
+    expect(request).toMatchObject({ ruleId: "deste-host", decision: "ask" });
+    await app.request("vault.deny", { requestId: request.requestId });
+    expect(await running).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+  });
+});
