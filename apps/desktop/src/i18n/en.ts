@@ -94,6 +94,7 @@ export const en: Dictionary = {
       close: "Close",
     },
   },
+  vault: { picker: { none: "No secret" } },
   approval: {
     label: "Request for {tool}",
     title: "Permission for",

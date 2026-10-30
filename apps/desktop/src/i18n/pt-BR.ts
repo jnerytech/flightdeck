@@ -96,6 +96,7 @@ export const ptBR = {
       close: "Fechar",
     },
   },
+  vault: { picker: { none: "Nenhum segredo" } },
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",
