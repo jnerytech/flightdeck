@@ -16,6 +16,7 @@ const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { hostDotView } = await import("../src/lib/host-status.ts");
 const { HostsBanner } = await import("../src/components/hosts/hosts-banner.tsx");
+const { Timeline } = await import("../src/components/session/parts.tsx");
 
 setDefaultTimeout(20_000);
 
@@ -264,5 +265,20 @@ describe("direcao-visual: ajustes finos", () => {
     await settle(() => separator() !== null);
     await widen();
     expect(mem.platform.storage.getItem("flightdeck.listWidth")).toBe("412");
+  });
+
+  test("as regiões que rolam (a conversa e as colunas do board) pegam foco: acesso pelo teclado", async () => {
+    render(
+      <Timeline role="log" aria-label="Conversa">
+        <p>oi</p>
+      </Timeline>,
+    );
+    expect(screen.queryByRole("log", { name: "Conversa" })?.getAttribute("tabindex")).toBe("0");
+    cleanup();
+    const { store } = await setup({ projects: 1 });
+    await click(screen.queryByRole("button", { name: "Board" }));
+    await settle(() => store.router.current.name === "board");
+    await settle(() => document.querySelector("[class*='grid-flow-col']") !== null);
+    expect(document.querySelector("[class*='grid-flow-col']")?.getAttribute("tabindex")).toBe("0");
   });
 });
