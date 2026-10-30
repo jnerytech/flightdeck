@@ -40,6 +40,7 @@ import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/ty
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
+import { GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
@@ -518,6 +519,7 @@ export class AppStore {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot())),
     );
     this.vault = new Vault(platform);
+    this.globalSnippets = new GlobalSnippets(platform);
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
@@ -1814,6 +1816,8 @@ export class AppStore {
 
   /** Phase 16: the vault, whose values live in the system keyring. */
   readonly vault: Vault;
+  /** Phase 18: the global snippets, kept by the app. */
+  readonly globalSnippets: GlobalSnippets;
   /** Phase 16: what was asked of the vault, kept in `storage`. */
   readonly usage: VaultUsageLog;
 
