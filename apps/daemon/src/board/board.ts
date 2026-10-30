@@ -1087,6 +1087,7 @@ export class Board {
     worktree: string,
     branch: string,
   ): Promise<{ worktree: boolean; branch: boolean; notice: string | null }> {
+    await this.opts.idle?.();
     const removed = await git(repo, "worktree", "remove", worktree);
     if (removed.code !== 0) {
       const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
@@ -1140,6 +1141,7 @@ export class Board {
     this.follows.delete(id);
     const repo = this.getProject(card.projectId).path;
     if (card.worktreePath) {
+      await this.opts.idle?.();
       must(
         await git(repo, "worktree", "remove", "--force", card.worktreePath),
         "git worktree remove",
