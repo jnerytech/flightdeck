@@ -1981,7 +1981,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("teams.close", z.object({ team: z.string().min(1), confirm: z.boolean().optional() })),
   /** A message from Flightdeck to every member ("mandar a todos"). */
   cmd("teams.message", z.object({ team: z.string().min(1), text: z.string().min(1) })),
-  cmd("teams.status", z.object({ team: z.string().min(1) })),
+  /** With `as`, only a member of the team may ask (the MCP tool does). */
+  cmd("teams.status", z.object({ team: z.string().min(1), as: SessionIdentity.optional() })),
   cmd("teams.watch", z.object({}).strict()),
   /** Phase 19: the rules of one secret, replaced whole (the ones that break the ceiling are refused). */
   cmd(

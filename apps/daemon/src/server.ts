@@ -83,6 +83,7 @@ import type { HostKeys } from "./ssh/hostkey.ts";
 import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
+import type { Teams } from "./teams/teams.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
@@ -115,6 +116,8 @@ export interface ServerOptions {
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
   vault?: Vault;
+  /** Phase 21: the teams (`teams.*`). */
+  teams?: Teams;
   /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
   messaging?: Messaging;
   /** Phase 21: the one-shot idle notices (`idle.subscribe`). */
@@ -421,6 +424,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function vault(): Vault {
     if (!opts.vault) throw new FlightdeckError("invalid_state", "cofre indisponível");
     return opts.vault;
+  }
+
+  function teams(): Teams {
+    if (!opts.teams) throw new FlightdeckError("invalid_state", "times indisponíveis");
+    return opts.teams;
   }
 
   function messaging(): Messaging {
@@ -795,6 +803,17 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "vault.deny":
         actions().deny(command.payload.requestId);
         return ok(command.type);
+      case "teams.list":
+      case "teams.create":
+      case "teams.update":
+      case "teams.pause":
+      case "teams.resume":
+      case "teams.close":
+      case "teams.message":
+      case "teams.status":
+      case "teams.watch":
+        teams();
+        throw new FlightdeckError("invalid_state", "ainda não implementado");
       case "messages.send":
         return ok(command.type, messaging().send(command.payload));
       case "messages.list":
