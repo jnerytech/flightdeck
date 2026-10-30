@@ -8,7 +8,7 @@ const THEME = {
   selectionBackground: "#333333",
 };
 
-function setup(selection = "") {
+function setup(selection = "", clipboardFails = false) {
   const log: string[] = [];
   const clip: string[] = [];
   const inputs: string[] = [];
@@ -72,8 +72,14 @@ function setup(selection = "") {
     fontSize: 13,
     fontFamily: "mono",
     clipboard: {
-      copy: async (text) => void clip.push(`copy:${text}`),
-      read: async () => "pasted",
+      copy: async (text) => {
+        if (clipboardFails) throw new Error("denied");
+        clip.push(`copy:${text}`);
+      },
+      read: async () => {
+        if (clipboardFails) throw new Error("denied");
+        return "pasted";
+      },
     },
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
@@ -174,5 +180,13 @@ describe("terminal-ui: the xterm screen", () => {
     const s = setup();
     s.screen.dispose();
     expect(s.log).toEqual(["off-data", "off-resize", "dispose"]);
+  });
+
+  test("a clipboard that refuses to copy or to be read leaves the terminal as it was", async () => {
+    const s = setup("abc", true);
+    expect(s.press("C")).toBe(false);
+    expect(s.press("V")).toBe(false);
+    await Bun.sleep(5);
+    expect(s.log).toEqual([]);
   });
 });
