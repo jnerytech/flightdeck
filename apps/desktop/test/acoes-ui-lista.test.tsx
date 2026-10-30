@@ -88,6 +88,7 @@ describe("acoes-ui-lista: as ações de um projeto", () => {
   test("a lista mostra cada ação com a descrição, onde roda, a aprovação, os segredos e os parâmetros", async () => {
     await online();
     await open();
+    await settle(() => row("deploy-staging") !== null);
     const deploy = row("deploy-staging") as HTMLElement;
     for (const part of [
       "Faz o deploy da branch na VPS de staging",
@@ -112,6 +113,7 @@ describe("acoes-ui-lista: as ações de um projeto", () => {
       await d.actions.remove(d.project.id, "logs-prod");
     });
     await open();
+    await settle(() => screen.queryByText("Nenhuma ação neste projeto") !== null);
     expect(screen.queryByText("Nenhuma ação neste projeto")).not.toBeNull();
   });
 

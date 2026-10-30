@@ -828,6 +828,25 @@ export const ptBR = {
     configure: "Configurar issues",
     save: "Salvar",
   },
+  actionsUi: {
+    title: "Ações de {project}",
+    list: "Ações",
+    row: "Ação {name}",
+    empty: "Nenhuma ação neste projeto",
+    loading: "Carregando as ações",
+    problems: "Problemas no arquivo de ações",
+    here: "Neste host",
+    onHost: "Host {host}",
+    ssh: "SSH {destination}",
+    approval: {
+      always: "Sempre pede aprovação",
+      never: "Nunca pede aprovação",
+      "first-per-session": "Pede na primeira vez da sessão",
+    },
+    secrets: "Segredos: {names}",
+    params: "Parâmetros: {names}",
+    source: { app: "Criada no app", versioned: "Versionada" },
+  },
   autoApprovalsUi: {
     open: "Aprovações automáticas",
     openHint: "O que o daemon aprovou ou perguntou a você sem a sua mão, e as sessões suspensas.",
@@ -998,6 +1017,7 @@ export const ptBR = {
     list: "Projetos",
     openBoard: "Abrir board de {name}",
     automations: "Automações de {name}",
+    actions: "Ações de {name}",
     workflows: "Workflows de {name}",
     edit: "Editar {name}",
     worktreeIncludeMissing:

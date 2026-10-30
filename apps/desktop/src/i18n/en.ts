@@ -826,6 +826,25 @@ export const en: Dictionary = {
     configure: "Configure issues",
     save: "Save",
   },
+  actionsUi: {
+    title: "Actions of {project}",
+    list: "Actions",
+    row: "Action {name}",
+    empty: "No actions in this project",
+    loading: "Loading actions",
+    problems: "Problems in the actions file",
+    here: "On this host",
+    onHost: "Host {host}",
+    ssh: "SSH {destination}",
+    approval: {
+      always: "Always asks for approval",
+      never: "Never asks for approval",
+      "first-per-session": "Asks the first time in a session",
+    },
+    secrets: "Secrets: {names}",
+    params: "Parameters: {names}",
+    source: { app: "Made in the app", versioned: "Versioned" },
+  },
   autoApprovalsUi: {
     open: "Automatic approvals",
     openHint:
@@ -995,6 +1014,7 @@ export const en: Dictionary = {
     title: "Projects of {host}",
     list: "Projects",
     automations: "Automations of {name}",
+    actions: "Actions of {name}",
     openBoard: "Open the board of {name}",
     workflows: "Workflows of {name}",
     edit: "Edit {name}",

@@ -229,6 +229,7 @@ export type HostCommandType = Extract<
   | `issues.${string}`
   | `automation.${string}`
   | `autoapprove.${string}`
+  | `actions.${string}`
 >;
 
 /** A command's answer kept apart from the error banner: the caller decides what to show. */

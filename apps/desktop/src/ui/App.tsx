@@ -99,7 +99,8 @@ export function App({ store }: { store: AppStore }) {
     route.name === "board" ||
     route.name === "card" ||
     route.name === "workflows" ||
-    route.name === "automations"
+    route.name === "automations" ||
+    route.name === "actions"
       ? route.host
       : null;
   const projectsKnown = projectHost === null || state.projects[projectHost] !== undefined;

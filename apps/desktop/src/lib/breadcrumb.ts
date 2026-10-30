@@ -84,6 +84,7 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
     case "terminal":
       return path(host(route.host), { label: t("terminalUi.title") });
     case "automations":
+    case "actions":
       return path(
         host(route.host),
         { label: t("projectsUi.list"), route: projects(route.host) },

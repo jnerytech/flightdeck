@@ -53,6 +53,9 @@ export function ProjectsPage(props: {
   /** The host announces `automation` (phase 13): each project's Automações. */
   automations: boolean;
   onOpenAutomations(project: { id: string; name: string }): void;
+  /** The host announces `actions` (phase 17): each project's Ações. */
+  actions: boolean;
+  onOpenActions(project: { id: string; name: string }): void;
   /** The host announces `rules`: the project's Regras section. */
   rules: boolean;
   /** The host announces `agentcfg` (phase 12): the project's Agente screen. */
@@ -180,6 +183,11 @@ export function ProjectsPage(props: {
               {props.agent && (
                 <Button variant="ghost" size="sm" onClick={() => props.onOpenAgent(project)}>
                   {t("agent.open", { name: project.name })}
+                </Button>
+              )}
+              {props.actions && (
+                <Button variant="ghost" size="sm" onClick={() => props.onOpenActions(project)}>
+                  {t("projectsUi.actions", { name: project.name })}
                 </Button>
               )}
               {props.automations && (
