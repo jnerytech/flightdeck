@@ -39,6 +39,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         };
         if (type in known) return ack(known[type]);
         if (type === "vault.deliver") return ack({ expiresAt: 0 });
+        // Phase 19: the approval of a request that asked, before its delivery.
+        if (type === "vault.approve") return ack();
         if (type.endsWith(".watch")) return ack();
         ws.send(
           JSON.stringify({

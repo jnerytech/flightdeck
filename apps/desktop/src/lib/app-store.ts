@@ -2019,6 +2019,9 @@ export class AppStore {
 
   private defaultVaultPolicy: VaultPolicy | null = null;
 
+  /** Approves a request for a secret for the rest of the requester's session (phase 19). */
+  async approveVaultForSession(_hostId: string, _requestId: string): Promise<void> {}
+
   /** The policy of the options, or the one that puts action requests to the user. */
   private vaultPolicy(): VaultPolicy {
     this.defaultVaultPolicy ??= actionPolicy({
