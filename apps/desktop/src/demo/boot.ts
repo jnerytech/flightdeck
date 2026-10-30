@@ -62,7 +62,10 @@ export function entryHtml(html: string, entry: string | undefined): string {
   return entry === "web" ? html.replace("/src/main.tsx", "/src/main.web.tsx") : html;
 }
 
-/** What the store gets in the demo (stub: filled in with the implementation). */
-export function demoStoreOptions(_hosts: DemoHost[]): { baseDelayMs?: number } {
-  return {};
+/**
+ * What the store gets in the demo: with seeded hosts, a long wait between attempts, so a host that
+ * does not answer stays offline (or reconnecting) long enough for the prints instead of flickering.
+ */
+export function demoStoreOptions(hosts: DemoHost[]): { baseDelayMs?: number } {
+  return hosts.length > 0 ? { baseDelayMs: 60_000 } : {};
 }

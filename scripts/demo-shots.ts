@@ -75,6 +75,7 @@ function shots(ids: DemoIds): Shot[] {
     },
     // The hard states.
     { name: "host-offline", route: { name: "host", host: "demo-offline" } },
+    { name: "host-reconectando", route: { name: "host", host: "demo-slow" } },
     { name: "host-incompativel", route: { name: "host", host: "demo-old" } },
     {
       name: "projeto-vazio",

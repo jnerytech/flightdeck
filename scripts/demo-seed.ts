@@ -10,7 +10,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
@@ -165,6 +165,63 @@ function writeHistory(history: string, cwd: string): void {
     .replaceAll("__CWD__", JSON.stringify(cwd).slice(1, -1))
     .replace(/"timestamp":"[^"]+"/g, `"timestamp":"${now}"`);
   writeFileSync(join(dir, "aaaaaaaa-0000-4000-8000-000000000001.jsonl"), usage);
+  writeCostsHistory(dir, cwd);
+}
+
+/** An assistant turn with the usage the costs read: one request id per turn. */
+const turnLine = (id: string, cwd: string, ts: string, model: string, scale: number) =>
+  JSON.stringify({
+    type: "assistant",
+    uuid: `${id}-line`,
+    cwd,
+    timestamp: ts,
+    message: {
+      id: `msg_${id}`,
+      type: "message",
+      role: "assistant",
+      model,
+      content: [{ type: "text", text: "Feito." }],
+      stop_reason: "end_turn",
+      usage: {
+        input_tokens: 800 * scale,
+        output_tokens: 300 * scale,
+        cache_read_input_tokens: 9000 * scale,
+        cache_creation_input_tokens: 1200 * scale,
+        cache_creation: {
+          ephemeral_5m_input_tokens: 1200 * scale,
+          ephemeral_1h_input_tokens: 0,
+        },
+      },
+    },
+  });
+
+/**
+ * A week of usage across three projects and three models, so the Custos screen has totals, a
+ * chart by day, breakdowns and top sessions to show.
+ */
+function writeCostsHistory(dir: string, cwd: string): void {
+  const projects = ["flightdeck-web", "api-gateway", "docs-site"].map((name) =>
+    join(dirname(cwd), name),
+  );
+  const models = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
+  let n = 0;
+  for (let day = 0; day < 7; day++) {
+    for (let k = 0; k < 4; k++) {
+      n++;
+      const project = projects[(day + k) % projects.length] as string;
+      const model = models[(day * 2 + k) % models.length] as string;
+      const at = (minutes: number) =>
+        new Date(Date.now() - day * 86_400_000 - (k * 50 + minutes) * 60_000).toISOString();
+      const id = `usage-${String(n).padStart(3, "0")}`;
+      const turns = Array.from({ length: 2 + ((day + k) % 3) }, (_, t) =>
+        turnLine(`${id}-${t}`, project, at(10 - t), model, 1 + ((day * 3 + k + t) % 4)),
+      );
+      writeFileSync(
+        join(dir, `${id}.jsonl`),
+        `${[userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)), ...turns].join("\n")}\n`,
+      );
+    }
+  }
 }
 
 interface HostRun {
@@ -355,6 +412,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       },
     },
   });
+  // Reconnecting: a server that takes the connection and never answers the handshake.
+  const slow = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    fetch: () => new Promise<Response>(() => {}),
+  });
   // Offline: an address nothing listens on.
   const closed = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response("") });
   const offlineUrl = `ws://127.0.0.1:${closed.port}/v1/ws`;
@@ -365,7 +428,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     hosts: [
       { id: "demo-alfa", name: "alfa", url: alfa.url, token: alfa.token },
       { id: "demo-beta", name: "beta", url: beta.url, token: beta.token },
-      { id: "demo-offline", name: "notebook (offline)", url: offlineUrl, token: "x".repeat(32) },
+      { id: "demo-offline", name: "notebook", url: offlineUrl, token: "x".repeat(32) },
+      {
+        id: "demo-slow",
+        name: "estação",
+        url: `ws://127.0.0.1:${slow.port}/v1/ws`,
+        token: "x".repeat(32),
+      },
       {
         id: "demo-old",
         name: "servidor antigo",
@@ -383,6 +452,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     },
     stop: async () => {
       old.stop(true);
+      slow.stop(true);
       await alfa.stop();
       await beta.stop();
     },
