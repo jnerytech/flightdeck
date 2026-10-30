@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
+import { NewSecretForm } from "@/components/vault/new-secret-form";
 import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -90,6 +91,7 @@ export function VaultPage(props: {
   const revealMs = props.revealMs ?? REVEAL_MS;
   const clearMs = props.clearMs ?? CLEAR_MS;
   const [asking, setAsking] = useState<SecretMeta | null>(null);
+  const [creating, setCreating] = useState(false);
   const [removing, setRemoving] = useState<SecretMeta | null>(null);
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
 
@@ -121,7 +123,14 @@ export function VaultPage(props: {
   }, [store, state.secrets]);
 
   return (
-    <Page title={t("vault.title")} subtitle={t("vault.subtitle")}>
+    <Page
+      title={t("vault.title")}
+      subtitle={t("vault.subtitle")}
+      actions={
+        !creating && <Button onClick={() => setCreating(true)}>{t("vault.newSecret")}</Button>
+      }
+    >
+      {creating && <NewSecretForm store={store} onClose={() => setCreating(false)} />}
       {state.secrets.length === 0 ? (
         <EmptyState icon={KeyRound} title={t("vault.empty")} />
       ) : (

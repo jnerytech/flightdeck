@@ -120,6 +120,17 @@ export const en: Dictionary = {
     removePrompt: "Type {word} to confirm",
     removeMessage:
       "Removing {name} deletes its value from the system vault. This cannot be undone.",
+    newSecret: "New secret",
+    name: "Name",
+    typeLabel: "Type",
+    value: "Value",
+    tags: "Tags (comma separated)",
+    save: "Save",
+    generate: "Generate SSH key",
+    importFile: "Import key file",
+    deleteOriginal: "Delete the original file after importing",
+    publicKey: "Public key",
+    copyPublicKey: "Copy public key",
   },
   approval: {
     label: "Request for {tool}",

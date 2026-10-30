@@ -63,7 +63,7 @@ import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
-import { type NewSecret, type SecretMeta, Vault } from "./vault.ts";
+import { type NewKey, type NewSecret, type SecretMeta, Vault } from "./vault.ts";
 import {
   answerVaultRequest,
   denyAllPolicy,
@@ -1744,6 +1744,30 @@ export class AppStore {
     const meta = await this.vault.create(input);
     this.update({ secrets: this.vault.list() });
     return meta;
+  }
+
+  /** `ssh-keygen` makes a pair; the private key goes to the vault, the public one comes back. */
+  async generateSshKey(input: NewKey): Promise<{ meta: SecretMeta; publicKey: string } | null> {
+    try {
+      const made = await this.vault.generateSshKey(input);
+      this.update({ secrets: this.vault.list() });
+      return made;
+    } catch (error) {
+      this.fail(error);
+      return null;
+    }
+  }
+
+  /** Stores a key file the person picks; null when the dialog is cancelled or it fails. */
+  async importKeyFile(input: NewKey & { deleteOriginal?: boolean }): Promise<SecretMeta | null> {
+    try {
+      const meta = await this.vault.importKeyFile(input);
+      this.update({ secrets: this.vault.list() });
+      return meta;
+    } catch (error) {
+      this.fail(error);
+      return null;
+    }
   }
 
   async removeSecret(id: string): Promise<void> {
