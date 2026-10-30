@@ -4,6 +4,8 @@
  * sideways, and the end of the long list shows after scrolling). Chrome through playwright-core,
  * like the prints.
  */
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { type Lang, translator } from "../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
@@ -11,6 +13,8 @@ import { DANGER_SESSION, type DemoIds } from "./demo-seed.ts";
 import { launchFirst } from "./lib/browser.ts";
 import { JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
 
+/** A failed journey leaves its print here; `E2E_ONLY=a,b` runs just those journeys. */
+const FAILURES_DIR = process.env.E2E_FAILURES ?? join(tmpdir(), "flightdeck-e2e");
 const ALFA = "demo-alfa";
 const WAIT = 15_000;
 
@@ -269,10 +273,12 @@ export async function runE2e(
     chromium.launch({ ...attempt, headless: true, env }),
   );
   const problems: string[] = [];
+  const only = process.env.E2E_ONLY?.split(",");
   try {
     for (const language of LANGUAGES) {
       const lang = language as Lang;
       for (const name of JOURNEYS) {
+        if (only && !only.includes(name)) continue;
         // A page of its own per journey: the app keeps its choices in the page's storage.
         const context = await browser.newContext({
           viewport: VIEWPORTS[0] ?? { width: 1280, height: 800 },
@@ -284,7 +290,9 @@ export async function runE2e(
           await (journeys[name] as (c: Context) => Promise<void>)(c);
           log(`${lang} ${name}: ok`);
         } catch (error) {
-          problems.push(`${lang} ${name}: ${(error as Error).message.split("\n")[0]}`);
+          const shot = join(FAILURES_DIR, `${lang}-${name}.png`);
+          await page.screenshot({ path: shot }).catch(() => {});
+          problems.push(`${lang} ${name}: ${(error as Error).message.split("\n")[0]} (${shot})`);
         }
         await context.close();
       }
