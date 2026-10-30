@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { loadConfig } from "../src/config.ts";
 import { startServer } from "../src/server.ts";
 import { processRun, resolveSshPath, SshConnector } from "../src/ssh/connect.ts";
 import { HostKeys } from "../src/ssh/hostkey.ts";
@@ -779,6 +780,17 @@ describe("ssh-connect: peças", () => {
     expect(chooseDelivery({ platform: "win32", ...common }).kind).toBe("file");
     expect(chooseDelivery({ platform: "linux", ...common }).kind).toBe("agent");
     expect(chooseDelivery({ platform: "darwin", ...common }).kind).toBe("agent");
+  });
+
+  test("a config pode apontar o ssh a usar, e um caminho vazio é recusado", () => {
+    const write = (ssh: unknown) => {
+      const file = join(tempDir(), "config.json");
+      writeFileSync(file, JSON.stringify({ token: "t".repeat(32), ssh }));
+      return file;
+    };
+    expect(loadConfig(write({ path: "/opt/openssh/ssh" })).ssh.path).toBe("/opt/openssh/ssh");
+    expect(loadConfig(write({})).ssh.path).toBeUndefined();
+    expect(() => loadConfig(write({ path: "" }))).toThrow();
   });
 
   test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {
