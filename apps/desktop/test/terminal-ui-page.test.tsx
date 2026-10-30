@@ -20,7 +20,10 @@ afterEach(async () => {
 async function setup() {
   const d = makeDaemon(cleanups, { terminals: true });
   const server = d.listen();
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
+  const mem = memoryPlatform(false, "pt-BR");
+  const copied: string[] = [];
+  mem.platform.copyText = async (text) => void copied.push(text);
+  const store = new AppStore(mem.platform, {
     baseDelayMs: 10,
     maxDelayMs: 20,
   });
@@ -41,7 +44,7 @@ async function setup() {
       />
     </TContext.Provider>,
   );
-  return { ...d, server, store, hostId, terminalId, x, closed };
+  return { ...d, server, store, hostId, terminalId, x, closed, copied };
 }
 
 const state = (name: string) => screen.queryByText(name);
@@ -148,5 +151,70 @@ describe("terminal-ui: the terminal screen", () => {
     act(() => store.terminalFont.set(18));
     await settle(() => x.terminal.options.fontSize === 18);
     expect(x.terminal.options.fontSize).toBe(18);
+  });
+
+  test("Ctrl+Shift+C copies the selection through the app and Ctrl+Shift+V pastes the clipboard", async () => {
+    const { x, copied } = await setup();
+    await settle(() => state("Ao vivo"));
+    x.select("linha copiada");
+    const clipboard = navigator.clipboard as unknown as { readText?: () => Promise<string> };
+    const saved = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { ...clipboard, readText: async () => "colado" },
+    });
+    try {
+      await act(async () => {
+        x.chord("C");
+        x.chord("V");
+        await Bun.sleep(5);
+      });
+    } finally {
+      if (saved) Object.defineProperty(navigator, "clipboard", saved);
+    }
+    expect(copied).toEqual(["linha copiada"]);
+    expect(x.pasted).toEqual(["colado"]);
+  });
+
+  test("a resync from the host attaches again; a frame of a terminal nobody follows is ignored", async () => {
+    const { x, store, hostId, terminalId } = await setup();
+    await settle(() => state("Ao vivo"));
+    const conn = (
+      store as unknown as {
+        connections: Map<string, { opts: { onTerminal(frame: object): void } }>;
+      }
+    ).connections.get(hostId);
+    const resets = () => x.drawn.filter((entry) => entry === "<reset>").length;
+    const before = resets();
+    await act(async () => {
+      conn?.opts.onTerminal({ type: "terminal.data", terminalId: "ninguem", data: "eA==" });
+      conn?.opts.onTerminal({ type: "terminal.resync", terminalId });
+    });
+    await settle(() => resets() > before);
+    expect(resets()).toBe(before + 1);
+  });
+
+  test("the terminal fits its box again when the box changes size", async () => {
+    const observers: Array<() => void> = [];
+    const saved = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: () => void) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const { x } = await setup();
+      await settle(() => state("Ao vivo"));
+      const before = x.fits();
+      act(() => {
+        for (const callback of observers) callback();
+      });
+      expect(x.fits()).toBeGreaterThan(before);
+    } finally {
+      globalThis.ResizeObserver = saved;
+    }
   });
 });

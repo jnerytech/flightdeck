@@ -8,6 +8,9 @@ export function fakeXterm() {
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
   let disposed = false;
+  let selection = "";
+  let fits = 0;
+  const pasted: string[] = [];
   let fonts: number[] = [];
   const terminal: XtermTerminal = {
     cols: 80,
@@ -19,9 +22,9 @@ export function fakeXterm() {
     write: (bytes) => void drawn.push(Buffer.from(bytes).toString()),
     reset: () => void drawn.push("<reset>"),
     focus: () => {},
-    paste: () => {},
-    hasSelection: () => false,
-    getSelection: () => "",
+    paste: (text) => void pasted.push(text),
+    hasSelection: () => selection !== "",
+    getSelection: () => selection,
     onData: (listener) => {
       onData = listener;
       return { dispose: () => {} };
@@ -42,7 +45,11 @@ export function fakeXterm() {
       fonts = [options.fontSize as number];
       return terminal;
     },
-    fit: () => ({ fit: () => {} }),
+    fit: () => ({
+      fit: () => {
+        fits++;
+      },
+    }),
     webLinks: () => ({}),
     search: () => ({
       findNext: (text) => {
@@ -64,6 +71,11 @@ export function fakeXterm() {
     terminal,
     fonts: () => fonts,
     disposed: () => disposed,
+    pasted,
+    fits: () => fits,
+    select: (text: string) => {
+      selection = text;
+    },
     type: (data: string) => onData(data),
     resize: (cols: number, rows: number) => onResize({ cols, rows }),
     chord: (key: string) =>
