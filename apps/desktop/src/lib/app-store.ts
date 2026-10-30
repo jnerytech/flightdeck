@@ -1904,6 +1904,15 @@ export class AppStore {
     return result;
   }
 
+  /**
+   * The vault's values long enough to tell apart from ordinary text (6+ characters), for a scan
+   * that runs in the app: they are compared here and never sent (phase 18's history import).
+   */
+  async vaultValuesForScan(): Promise<string[]> {
+    const values = await Promise.all(this.vault.list().map((s) => this.vault.value(s.id)));
+    return values.filter((v): v is string => v !== null && v.length >= 6);
+  }
+
   /** Edits a secret's name, description, tags and allowed hosts; its value is not touched. */
   updateSecret(id: string, patch: SecretPatch): SecretMeta | null {
     const meta = this.vault.update(id, patch);

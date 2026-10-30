@@ -3,6 +3,7 @@ import { SquareCode, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { HistoryImport } from "@/components/snippets/history-import";
 import { SnippetEditor } from "@/components/snippets/snippet-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
   const [file, setFile] = useState<SnippetFileInfo | null>(null);
   const [removing, setRemoving] = useState<AppSnippet | null>(null);
   const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (hostId) void store.loadProjects(hostId);
@@ -109,10 +111,18 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
       actions={
         hostId &&
         editing === null && (
-          <Button onClick={() => setEditing("new")}>{t("snippets.newSnippet")}</Button>
+          <>
+            <Button variant="outline" onClick={() => setImporting(!importing)}>
+              {t("snippets.history.open")}
+            </Button>
+            <Button onClick={() => setEditing("new")}>{t("snippets.newSnippet")}</Button>
+          </>
         )
       }
     >
+      {hostId && importing && (
+        <HistoryImport store={store} hostId={hostId} onImported={() => void reload()} />
+      )}
       {hostId && editing !== null && (
         <SnippetEditor
           key={editing === "new" ? "new" : editing.id}

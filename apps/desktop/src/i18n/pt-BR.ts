@@ -62,6 +62,17 @@ export const ptBR = {
     remove: "Remover",
     removeFor: "Remover {name}",
     removeMessage: "Remover o snippet {name}?",
+    history: {
+      open: "Importar do histórico do shell",
+      list: "Histórico do shell",
+      hidden: "Linha oculta: {kinds}",
+      count: "{n}×",
+      target: "Importar para",
+      toHost: "Snippets do host",
+      import: "Importar selecionados",
+      reveal: "Revelar linhas ocultas",
+      imported: "Importados: {n}",
+    },
     file: {
       path: "Arquivo versionado: {path}",
       untrusted: "Não confiável: os comandos do arquivo só colam, sem rodar.",

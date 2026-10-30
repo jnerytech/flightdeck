@@ -60,6 +60,17 @@ export const en: Dictionary = {
     remove: "Remove",
     removeFor: "Remove {name}",
     removeMessage: "Remove the snippet {name}?",
+    history: {
+      open: "Import from the shell history",
+      list: "Shell history",
+      hidden: "Hidden line: {kinds}",
+      count: "{n}×",
+      target: "Import to",
+      toHost: "The host's snippets",
+      import: "Import selected",
+      reveal: "Reveal hidden lines",
+      imported: "Imported: {n}",
+    },
     file: {
       path: "Versioned file: {path}",
       untrusted: "Not trusted: the file's commands only paste, they do not run.",
