@@ -301,4 +301,41 @@ describe("terminal-ui: the terminal screen", () => {
     x.clickLink("file:///etc/passwd");
     expect(opened).toEqual(["https://example.com/a"]);
   });
+
+  test("a click anywhere else closes the right button's menu", async () => {
+    await setup();
+    await settle(() => state("Ao vivo"));
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement | null;
+    await act(async () => {
+      if (area) fireEvent.contextMenu(area, { clientX: 10, clientY: 10 });
+    });
+    expect(screen.queryByRole("menu", { name: "Terminal" })).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(document.body);
+    });
+    expect(screen.queryByRole("menu", { name: "Terminal" })).toBeNull();
+  });
+
+  test("Colar in the right button's menu pastes the clipboard", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement | null;
+    const saved = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { readText: async () => "do menu" },
+    });
+    try {
+      await act(async () => {
+        if (area) fireEvent.contextMenu(area, { clientX: 10, clientY: 10 });
+      });
+      await click("Colar");
+      await act(async () => {
+        await Bun.sleep(5);
+      });
+    } finally {
+      if (saved) Object.defineProperty(navigator, "clipboard", saved);
+    }
+    expect(x.pasted).toEqual(["do menu"]);
+  });
 });

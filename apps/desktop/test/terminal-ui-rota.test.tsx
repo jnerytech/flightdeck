@@ -74,4 +74,13 @@ describe("terminal-ui: the route and the settings", () => {
     expect([terminal.cols, terminal.rows]).toEqual([80, 24]);
     terminal.dispose();
   });
+
+  test("the real links addon hands a clicked link to the app", () => {
+    const opened: string[] = [];
+    const addon = realXtermDeps.webLinks((uri) => opened.push(uri)) as {
+      _handler(event: MouseEvent, uri: string): void;
+    };
+    addon._handler(new MouseEvent("click"), "https://example.com");
+    expect(opened).toEqual(["https://example.com"]);
+  });
 });
