@@ -18,7 +18,7 @@ export const noSpending = (): RunSpending => ({ turns: 0, minutes: 0, costUsd: 0
  */
 export function addTurn(
   spending: RunSpending,
-  turn: { sessionId: string; costUsd?: number | undefined; minutes: number },
+  turn: { sessionId: string; costUsd?: number; minutes: number },
 ): RunSpending {
   const last = spending.sessions[turn.sessionId] ?? 0;
   const total = Math.max(last, turn.costUsd ?? last);

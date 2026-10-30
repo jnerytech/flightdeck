@@ -33,7 +33,7 @@ import { statusTone } from "../lib/status.ts";
 function CardTile(props: {
   card: Card;
   /** The name of the workflow the card is running, when known. */
-  workflow?: string | undefined;
+  workflow?: string;
   formatTime(iso: string): string;
   labels: { actions: string; start: string };
   onOpen(): void;

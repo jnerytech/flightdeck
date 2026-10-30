@@ -9,7 +9,7 @@ export const OUTPUTS_SEPARATOR = "\n\n---\n\n";
 export interface InterpolationContext {
   inputs: Record<string, string>;
   steps: Record<string, { output?: string; outputs?: string[] }>;
-  loop?: { lastCheck: { output: string; exitCode: number } } | undefined;
+  loop?: { lastCheck: { output: string; exitCode: number } };
 }
 
 function resolve(expression: string, context: InterpolationContext): string | undefined {

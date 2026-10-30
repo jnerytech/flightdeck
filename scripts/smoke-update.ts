@@ -174,7 +174,7 @@ async function run(work: string): Promise<void> {
     let update: { available?: boolean; version?: string } | undefined;
     while (!update?.available && Date.now() < deadline) {
       const info = await client.send("host.info", {});
-      update = info.ok ? (info.data as { update?: typeof update }).update : undefined;
+      update = info.ok ? (info.data as { update?: NonNullable<typeof update> }).update : undefined;
       if (!update?.available) await Bun.sleep(50);
     }
     if (update?.version !== "9.9.9") throw new Error(`update: ${JSON.stringify(update)}`);
