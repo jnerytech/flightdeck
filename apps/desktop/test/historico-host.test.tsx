@@ -60,7 +60,10 @@ async function setup() {
   ]);
   d.history.scan();
   const server = d.listen();
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  const store = new AppStore(memoryPlatform().platform, {
+    baseDelayMs: 60_000,
+    timeZone: "America/Sao_Paulo",
+  });
   render(<App store={store} />);
   await act(async () => {
     await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
@@ -107,14 +110,16 @@ describe("historico-host", () => {
     const [managed, elsewhere, old] = rows();
     expect(managed).toContain("Sessão do Flightdeck");
     expect(managed).toContain("Flightdeck");
-    expect(managed).toContain("2026-09-10 09:00");
+    // Local time of the instant (São Paulo is UTC-3), not the UTC the file keeps.
+    expect(managed).toContain("10/09/2026, 06:00");
+    expect(managed).not.toContain("09:00");
     expect(managed).toContain("possivelmente em uso");
     expect(elsewhere).toContain("Outra pasta");
     expect(elsewhere).toContain("outra");
     expect(elsewhere).toContain("externa");
     expect(elsewhere).not.toContain("possivelmente em uso");
     expect(old).toContain("Revisar o build");
-    expect(old).toContain("2026-09-01 10:00");
+    expect(old).toContain("01/09/2026, 07:00");
     expect(old).not.toContain("possivelmente em uso");
   });
 
