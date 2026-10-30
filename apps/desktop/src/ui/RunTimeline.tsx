@@ -1,5 +1,9 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Meter } from "@/components/status/meter";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { usd } from "../lib/costs.ts";
 import { budgetLines, RUN_LABELS, STEP_LABELS, stepDuration, stepUsage } from "../lib/runs.ts";
 
@@ -8,13 +12,11 @@ const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 /** Turns, minutes and estimated cost against the run's budget. */
 function BudgetMeter({ run }: { run: WorkflowRun }) {
   return (
-    <section aria-label="Orçamento" className="budget">
+    <section aria-label="Orçamento" className="flex flex-col gap-1 text-sm">
       {budgetLines(run).map((line) => (
-        <div key={line.label} className="row">
-          <span>{line.text}</span>
-          {line.max !== undefined && (
-            <meter aria-label={line.label} value={line.value} max={line.max} />
-          )}
+        <div key={line.label} className="flex items-center gap-3">
+          <span className="w-56 text-muted-foreground text-xs tabular-nums">{line.text}</span>
+          {line.max !== undefined && <Meter label={line.label} value={line.value} max={line.max} />}
         </div>
       ))}
     </section>
@@ -29,26 +31,29 @@ function GateCard(props: {
   const { step } = props;
   const [note, setNote] = useState("");
   return (
-    <section aria-label={`Gate ${step.stepId}`} className="gate">
+    <section
+      aria-label={`Gate ${step.stepId}`}
+      className="mt-2 flex flex-col gap-2 rounded-lg border border-status-needs-you/50 p-3 text-sm"
+    >
       <p>{step.message}</p>
-      {step.output && <pre>{step.output}</pre>}
-      <textarea
+      {step.output && (
+        <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
+          {step.output}
+        </pre>
+      )}
+      <Textarea
         aria-label="Nota do gate"
         placeholder="Nota (opcional)"
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
-      <div className="row">
-        <button
-          type="button"
-          className="primary"
-          onClick={() => props.onRespond(step, "approve", note)}
-        >
+      <div className="flex gap-2">
+        <Button size="sm" onClick={() => props.onRespond(step, "approve", note)}>
           Aprovar
-        </button>
-        <button type="button" onClick={() => props.onRespond(step, "reject", note)}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => props.onRespond(step, "reject", note)}>
           Recusar
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -69,21 +74,21 @@ export function RunTimeline(props: {
 }) {
   const { run } = props;
   return (
-    <section aria-label="Execução do workflow" className="run">
-      <h3>{`Workflow ${run.workflowName} · ${RUN_LABELS[run.status]}`}</h3>
+    <section aria-label="Execução do workflow" className="flex flex-col gap-3">
+      <h3 className="font-semibold text-sm">{`Workflow ${run.workflowName} · ${RUN_LABELS[run.status]}`}</h3>
       {typeof props.costUsd === "number" && (
-        <p className="muted">
+        <p className="text-muted-foreground text-xs">
           custo estimado das sessões:{" "}
           <output aria-label="Custo da execução">{usd(props.costUsd)}</output>
         </p>
       )}
       {run.quotaUntil ? (
-        <p className="notice">{`aguardando cota até ${props.formatTime(run.quotaUntil)}`}</p>
+        <InlineNotice>{`aguardando cota até ${props.formatTime(run.quotaUntil)}`}</InlineNotice>
       ) : (
-        run.statusReason && <p className="notice">{run.statusReason}</p>
+        run.statusReason && <InlineNotice>{run.statusReason}</InlineNotice>
       )}
       <BudgetMeter run={run} />
-      <ol aria-label="Etapas">
+      <ol aria-label="Etapas" className="flex flex-col gap-1 text-sm">
         {run.steps.map((step) => {
           const line = [
             step.stepId,
@@ -97,15 +102,16 @@ export function RunTimeline(props: {
           return (
             <li key={stepKey(step)}>
               {opens ? (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   aria-label={`Abrir etapa ${step.stepId}${attempt}`}
                   onClick={() => props.onOpenStep(step)}
                 >
                   {line}
-                </button>
+                </Button>
               ) : (
-                <span>{line}</span>
+                <span className="px-3 text-muted-foreground text-xs">{line}</span>
               )}
               {step.type === "gate" && step.status === "waiting" && (
                 <GateCard step={step} onRespond={props.onRespond} />

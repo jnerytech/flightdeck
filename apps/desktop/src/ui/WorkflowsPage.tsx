@@ -1,5 +1,9 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Page } from "@/components/layout/page";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -40,32 +44,46 @@ export function WorkflowsPage(props: {
   };
 
   return (
-    <section className="card workflows">
-      <h2>{`Workflows de ${props.projectName}`}</h2>
-      <p className="muted">Lidos de .flightdeck/workflows na branch base do projeto.</p>
-      <ul aria-label="Workflows">
+    <Page
+      title={`Workflows de ${props.projectName}`}
+      subtitle="Lidos de .flightdeck/workflows na branch base do projeto."
+    >
+      <ul aria-label="Workflows" className="flex flex-col gap-3">
         {workflows.map((workflow) => (
-          <li key={workflow.name} aria-label={`Workflow ${workflow.name}`}>
-            <strong>{workflow.name}</strong>{" "}
-            <span className="badge">{workflow.trusted ? "confiado" : "não confiado"}</span>
+          <li
+            key={workflow.name}
+            aria-label={`Workflow ${workflow.name}`}
+            className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <strong>{workflow.name}</strong>{" "}
+              <Badge variant="outline">{workflow.trusted ? "confiado" : "não confiado"}</Badge>
+            </div>
             {workflow.errors.length > 0 && (
-              <ul aria-label={`Erros de ${workflow.name}`} className="errors">
+              <ul aria-label={`Erros de ${workflow.name}`} className="flex flex-col gap-1">
                 {workflow.errors.map((error) => (
-                  <li key={error}>{error}</li>
+                  <li key={error}>
+                    <InlineNotice tone="error">{error}</InlineNotice>
+                  </li>
                 ))}
               </ul>
             )}
-            <ul aria-label={`Comandos de ${workflow.name}`}>
+            <ul aria-label={`Comandos de ${workflow.name}`} className="flex flex-col gap-1">
               {workflow.checks.map((command) => (
                 <li key={command}>
-                  <code>{command}</code>
+                  <code className="rounded bg-muted px-1 font-mono text-xs">{command}</code>
                 </li>
               ))}
             </ul>
             {!workflow.trusted && workflow.errors.length === 0 && (
-              <button type="button" onClick={() => setTrusting(workflow)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onClick={() => setTrusting(workflow)}
+              >
                 {`Confiar em ${workflow.name}`}
-              </button>
+              </Button>
             )}
           </li>
         ))}
@@ -78,6 +96,6 @@ export function WorkflowsPage(props: {
           onCancel={() => setTrusting(null)}
         />
       )}
-    </section>
+    </Page>
   );
 }

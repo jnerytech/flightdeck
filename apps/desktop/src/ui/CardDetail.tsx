@@ -1,5 +1,11 @@
 import type { CardDiff, StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Page } from "@/components/layout/page";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { CHECK_LABELS, PR_LABELS } from "../lib/board.ts";
 import { usd } from "../lib/costs.ts";
@@ -99,7 +105,7 @@ export function CardDetail(props: {
     if (missing) void store.hostCommand(hostId, "card.get", { cardId });
   }, [store, hostId, cardId, missing]);
 
-  if (!card) return <p className="muted welcome">Card não encontrado.</p>;
+  if (!card) return <p className="p-6 text-muted-foreground text-sm">Card não encontrado.</p>;
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -140,199 +146,233 @@ export function CardDetail(props: {
     ? (props.state.sessions[sessionKey(hostId, sessionId)] ?? emptySession())
     : null;
 
+  const SELECT =
+    "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
-    <section className="card-detail">
-      <header className="row">
-        <button type="button" onClick={props.onBack}>
-          Voltar ao board
-        </button>
-        <h2>{card.title}</h2>
-        {cardCost !== null && (
-          <span className="muted">
+    <Page
+      title={card.title}
+      subtitle={
+        cardCost !== null ? (
+          <span>
             custo estimado: <output aria-label="Custo do card">{usd(cardCost)}</output>
           </span>
-        )}
-        {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
-        {card.queued && <span className="badge badge-muted">na fila</span>}
-        {card.prState && <span className="badge">{PR_LABELS[card.prState]}</span>}
-        {card.checksState && <span className="badge">{CHECK_LABELS[card.checksState]}</span>}
-        {/* The worktree, resuming the card's session once Claude Code named it. */}
-        {card.worktreePath && (!session || session.claudeSessionId) && (
-          <TerminalButton
-            store={store}
-            hostId={hostId}
-            target={{ cwd: card.worktreePath, claudeSessionId: session?.claudeSessionId ?? null }}
+        ) : undefined
+      }
+      actions={
+        <>
+          <Button variant="outline" size="sm" onClick={props.onBack}>
+            Voltar ao board
+          </Button>
+          {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
+          {card.queued && <Badge variant="outline">na fila</Badge>}
+          {card.prState && <Badge variant="outline">{PR_LABELS[card.prState]}</Badge>}
+          {card.checksState && <Badge variant="outline">{CHECK_LABELS[card.checksState]}</Badge>}
+          {/* The worktree, resuming the card's session once Claude Code named it. */}
+          {card.worktreePath && (!session || session.claudeSessionId) && (
+            <TerminalButton
+              store={store}
+              hostId={hostId}
+              target={{ cwd: card.worktreePath, claudeSessionId: session?.claudeSessionId ?? null }}
+            />
+          )}
+        </>
+      }
+    >
+      <div className="flex max-w-4xl flex-col gap-5">
+        {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
+        <div className="flex items-start gap-2">
+          <Textarea
+            aria-label="Descrição"
+            value={description}
+            className="min-h-20 flex-1"
+            onChange={(e) => setDescription(e.target.value)}
           />
-        )}
-      </header>
-      {card.notice && <p className="notice">{card.notice}</p>}
-      <div className="row">
-        <textarea
-          aria-label="Descrição"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() => void store.hostCommand(hostId, "card.update", { cardId, description })}
-        >
-          Salvar descrição
-        </button>
-      </div>
-      <div className="row">
-        <select
-          aria-label="Workflow"
-          value={workflow}
-          onChange={(e) => {
-            setWorkflow(e.target.value);
-            setInputs({});
-          }}
-        >
-          <option value="">Nenhum (card simples)</option>
-          {workflows.map((w) => (
-            <option key={w.name} value={w.name}>
-              {w.name}
-            </option>
+          <Button
+            variant="outline"
+            onClick={() => void store.hostCommand(hostId, "card.update", { cardId, description })}
+          >
+            Salvar descrição
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Workflow"
+            className={SELECT}
+            value={workflow}
+            onChange={(e) => {
+              setWorkflow(e.target.value);
+              setInputs({});
+            }}
+          >
+            <option value="">Nenhum (card simples)</option>
+            {workflows.map((w) => (
+              <option key={w.name} value={w.name}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+          {chosen?.inputs.map((name) => (
+            <Input
+              key={name}
+              aria-label={`Input ${name}`}
+              placeholder={name}
+              className="w-48"
+              value={inputs[name] ?? ""}
+              onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+            />
           ))}
-        </select>
-        {chosen?.inputs.map((name) => (
-          <input
-            key={name}
-            aria-label={`Input ${name}`}
-            placeholder={name}
-            value={inputs[name] ?? ""}
-            onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-          />
-        ))}
-      </div>
-      <div className="row actions">
-        <button
-          type="button"
-          className="primary"
-          onClick={() =>
-            void store.hostCommand(hostId, "card.start", {
-              cardId,
-              ...(chosen ? { workflow: chosen.name, inputs } : {}),
-            })
-          }
-        >
-          Iniciar
-        </button>
-        <button
-          type="button"
-          onClick={() => void store.hostCommand(hostId, "card.stop", { cardId })}
-        >
-          Parar
-        </button>
-        <button
-          type="button"
-          onClick={() => void store.hostCommand(hostId, "card.pr.create", { cardId })}
-        >
-          Abrir PR
-        </button>
-        <button type="button" onClick={() => setConfirming({ kind: "complete", warning: null })}>
-          Concluir
-        </button>
-        <button type="button" className="danger" onClick={() => void askDiscard()}>
-          Descartar
-        </button>
-      </div>
-      {confirming && (
-        <ConfirmDialog
-          message={
-            confirming.kind === "complete"
-              ? "Concluir este card? A worktree é removida se não houver alterações pendentes."
-              : "Descartar este card? A worktree e a branch local são apagadas."
-          }
-          warning={confirming.warning}
-          confirmLabel={confirming.kind === "complete" ? "Concluir card" : "Descartar card"}
-          destructive={confirming.kind === "discard"}
-          onConfirm={() => void confirm()}
-          onCancel={() => setConfirming(null)}
-        />
-      )}
-      <div className="row">
-        <textarea
-          aria-label="Ajuste"
-          placeholder="O que ajustar"
-          value={adjustment}
-          onChange={(e) => setAdjustment(e.target.value)}
-        />
-        <button type="button" onClick={sendAdjustment}>
-          Pedir ajuste
-        </button>
-      </div>
-      <h3>Execuções</h3>
-      <ul aria-label="Execuções">
-        {card.runs.map((run, i) => (
-          <li key={run.queuedAt}>
-            {[
-              `#${i + 1}`,
-              when(run.queuedAt),
-              run.endedAt ? "encerrada" : run.startedAt ? "ativa" : "na fila",
-            ].join(" · ")}
-          </li>
-        ))}
-      </ul>
-      {run && (
-        <RunTimeline
-          run={run}
-          formatTime={(iso) => store.formatTime(iso)}
-          costUsd={runCost}
-          onOpenStep={openStep}
-          onRespond={(step, decision, note) =>
-            void store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
-          }
-        />
-      )}
-      <div className="row">
-        <button
-          type="button"
-          aria-pressed={tab === "conversation"}
-          onClick={() => setTab("conversation")}
-        >
-          Conversa
-        </button>
-        <button type="button" aria-pressed={tab === "diff"} onClick={() => setTab("diff")}>
-          Diff
-        </button>
-      </div>
-      {tab === "diff" ? (
-        diff && <DiffView diff={diff} />
-      ) : openedStep?.type === "check" ? (
-        <div className="check-output">
-          <p className="muted">{`código ${openedStep.exitCode}`}</p>
-          <section aria-label={`Saída do check ${openedStep.stepId}`}>
-            <pre>{openedStep.output}</pre>
-          </section>
         </div>
-      ) : openedStep && stepSession ? (
-        <div role="log" aria-label={`Conversa da etapa ${openedStep.stepId}`}>
-          <SessionView
-            title={`${card.title} · ${openedStep.stepId}`}
-            session={stepSession}
-            actions={store}
-            t={store.i18n.t}
-            nowMs={store.now()}
-            focusRequestId={null}
-            alwaysAllow={alwaysAllow}
-          />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() =>
+              void store.hostCommand(hostId, "card.start", {
+                cardId,
+                ...(chosen ? { workflow: chosen.name, inputs } : {}),
+              })
+            }
+          >
+            Iniciar
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => void store.hostCommand(hostId, "card.stop", { cardId })}
+          >
+            Parar
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => void store.hostCommand(hostId, "card.pr.create", { cardId })}
+          >
+            Abrir PR
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setConfirming({ kind: "complete", warning: null })}
+          >
+            Concluir
+          </Button>
+          <Button variant="destructive" onClick={() => void askDiscard()}>
+            Descartar
+          </Button>
         </div>
-      ) : session && sessionId ? (
-        <div role="log" aria-label="Conversa do card">
-          <SessionView
-            title={card.title}
-            session={session}
-            actions={store}
-            t={store.i18n.t}
-            nowMs={store.now()}
-            focusRequestId={null}
-            alwaysAllow={alwaysAllow}
+        {confirming && (
+          <ConfirmDialog
+            message={
+              confirming.kind === "complete"
+                ? "Concluir este card? A worktree é removida se não houver alterações pendentes."
+                : "Descartar este card? A worktree e a branch local são apagadas."
+            }
+            warning={confirming.warning}
+            confirmLabel={confirming.kind === "complete" ? "Concluir card" : "Descartar card"}
+            destructive={confirming.kind === "discard"}
+            onConfirm={() => void confirm()}
+            onCancel={() => setConfirming(null)}
           />
+        )}
+        <div className="flex items-start gap-2">
+          <Textarea
+            aria-label="Ajuste"
+            placeholder="O que ajustar"
+            value={adjustment}
+            className="min-h-16 flex-1"
+            onChange={(e) => setAdjustment(e.target.value)}
+          />
+          <Button variant="outline" onClick={sendAdjustment}>
+            Pedir ajuste
+          </Button>
         </div>
-      ) : (
-        <p className="muted">Sem sessão ainda.</p>
-      )}
-    </section>
+        <section className="flex flex-col gap-2">
+          <h3 className="font-semibold text-sm">Execuções</h3>
+          <ul aria-label="Execuções" className="flex flex-col gap-1 text-muted-foreground text-xs">
+            {card.runs.map((run, i) => (
+              <li key={run.queuedAt} className="tabular-nums">
+                {[
+                  `#${i + 1}`,
+                  when(run.queuedAt),
+                  run.endedAt ? "encerrada" : run.startedAt ? "ativa" : "na fila",
+                ].join(" · ")}
+              </li>
+            ))}
+          </ul>
+        </section>
+        {run && (
+          <RunTimeline
+            run={run}
+            formatTime={(iso) => store.formatTime(iso)}
+            costUsd={runCost}
+            onOpenStep={openStep}
+            onRespond={(step, decision, note) =>
+              void store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
+            }
+          />
+        )}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={tab === "conversation"}
+            className="aria-pressed:bg-accent"
+            onClick={() => setTab("conversation")}
+          >
+            Conversa
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={tab === "diff"}
+            className="aria-pressed:bg-accent"
+            onClick={() => setTab("diff")}
+          >
+            Diff
+          </Button>
+        </div>
+        {tab === "diff" ? (
+          diff && <DiffView diff={diff} />
+        ) : openedStep?.type === "check" ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-muted-foreground text-xs">{`código ${openedStep.exitCode}`}</p>
+            <section aria-label={`Saída do check ${openedStep.stepId}`}>
+              <pre className="overflow-x-auto rounded-md border bg-muted p-3 font-mono text-xs">
+                {openedStep.output}
+              </pre>
+            </section>
+          </div>
+        ) : openedStep && stepSession ? (
+          <div
+            role="log"
+            aria-label={`Conversa da etapa ${openedStep.stepId}`}
+            className="h-[32rem] overflow-hidden rounded-lg border"
+          >
+            <SessionView
+              title={`${card.title} · ${openedStep.stepId}`}
+              session={stepSession}
+              actions={store}
+              t={store.i18n.t}
+              nowMs={store.now()}
+              focusRequestId={null}
+              alwaysAllow={alwaysAllow}
+            />
+          </div>
+        ) : session && sessionId ? (
+          <div
+            role="log"
+            aria-label="Conversa do card"
+            className="h-[32rem] overflow-hidden rounded-lg border"
+          >
+            <SessionView
+              title={card.title}
+              session={session}
+              actions={store}
+              t={store.i18n.t}
+              nowMs={store.now()}
+              focusRequestId={null}
+              alwaysAllow={alwaysAllow}
+            />
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">Sem sessão ainda.</p>
+        )}
+      </div>
+    </Page>
   );
 }

@@ -1,7 +1,12 @@
 import type { Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
+import { FolderGit2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Page } from "@/components/layout/page";
+import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
 import { RulesSection } from "./RulesSection.tsx";
@@ -102,10 +107,7 @@ export function ProjectsPage(props: {
   if (props.focus) {
     const board = props.focus === "board";
     return (
-      <section className="flex flex-col gap-3 p-6">
-        <h1 className="font-semibold text-xl">
-          {t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}
-        </h1>
+      <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>
         {loading && <LoadingState label={t("states.loadingProjects")} />}
         {!loading && list?.projects.length === 0 && (
           <EmptyState title={t("states.emptyProjects")} />
@@ -125,101 +127,112 @@ export function ProjectsPage(props: {
             </li>
           ))}
         </ul>
-      </section>
+      </Page>
     );
   }
 
+  const SELECT =
+    "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
-    <section className="card projects">
-      <h2>{`Projetos de ${props.hostName}`}</h2>
-      {loading && <LoadingState label={t("states.loadingProjects")} />}
-      {!loading && list?.projects.length === 0 && (
-        <EmptyState
-          title={t("states.emptyProjects")}
-          action={
-            <Button onClick={() => pathField.current?.focus()}>{t("states.addProject")}</Button>
-          }
-        />
-      )}
-      <ul aria-label="Projetos">
-        {(list?.projects ?? []).map((project) => (
-          <li key={project.id}>
-            <button type="button" onClick={() => props.onOpenBoard(project.id)}>
-              {`Abrir board de ${project.name}`}
-            </button>
-            <span className="muted">{`${project.path} · ${project.baseBranch}`}</span>
-            <TerminalButton
-              store={store}
-              hostId={hostId}
-              target={{ cwd: project.path, claudeSessionId: null }}
-              name={project.name}
-            />
-            <button type="button" onClick={() => props.onOpenWorkflows(project)}>
-              {`Workflows de ${project.name}`}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(project.id);
-                setDraft(fromProject(project));
-              }}
+    <Page title={`Projetos de ${props.hostName}`}>
+      <div className="flex max-w-3xl flex-col gap-6">
+        {loading && <LoadingState label={t("states.loadingProjects")} />}
+        {!loading && list?.projects.length === 0 && (
+          <EmptyState
+            icon={FolderGit2}
+            title={t("states.emptyProjects")}
+            action={
+              <Button onClick={() => pathField.current?.focus()}>{t("states.addProject")}</Button>
+            }
+          />
+        )}
+        <ul aria-label="Projetos" className="flex flex-col gap-2">
+          {(list?.projects ?? []).map((project) => (
+            <li
+              key={project.id}
+              className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm"
             >
-              {`Editar ${project.name}`}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <h3>{editing ? "Editar projeto" : "Novo projeto"}</h3>
-      <div className="form">
-        <input
-          ref={pathField}
-          aria-label="Caminho do repositório"
-          placeholder="Caminho (dentro de allowedRoots)"
-          disabled={editing !== null}
-          {...field("path")}
-        />
-        <input aria-label="Nome" placeholder="Nome" {...field("name")} />
-        <input aria-label="Branch base" placeholder="Branch base" {...field("baseBranch")} />
-        <select aria-label="Provedor de PR" {...field("prProvider")}>
-          <option value="none">Sem PR</option>
-          <option value="github">GitHub (gh)</option>
-          <option value="azure-devops">Azure DevOps (az)</option>
-        </select>
-        <input
-          aria-label="Script de preparação"
-          placeholder="Script de preparação (opcional)"
-          {...field("setupScript")}
-        />
-        <textarea
-          aria-label="Modelo de instruções"
-          placeholder="Instruções anexadas ao prompt de todo card"
-          {...field("promptTemplate")}
-        />
-        <button type="button" className="primary" onClick={() => void submit()}>
-          {editing ? "Salvar projeto" : "Cadastrar projeto"}
-        </button>
+              <Button variant="ghost" size="sm" onClick={() => props.onOpenBoard(project.id)}>
+                {`Abrir board de ${project.name}`}
+              </Button>
+              <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
+              <TerminalButton
+                store={store}
+                hostId={hostId}
+                target={{ cwd: project.path, claudeSessionId: null }}
+                name={project.name}
+              />
+              <Button variant="ghost" size="sm" onClick={() => props.onOpenWorkflows(project)}>
+                {`Workflows de ${project.name}`}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditing(project.id);
+                  setDraft(fromProject(project));
+                }}
+              >
+                {`Editar ${project.name}`}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <Panel title={editing ? "Editar projeto" : "Novo projeto"}>
+          <Input
+            ref={pathField}
+            aria-label="Caminho do repositório"
+            placeholder="Caminho (dentro de allowedRoots)"
+            disabled={editing !== null}
+            {...field("path")}
+          />
+          <Input aria-label="Nome" placeholder="Nome" {...field("name")} />
+          <Input aria-label="Branch base" placeholder="Branch base" {...field("baseBranch")} />
+          <select aria-label="Provedor de PR" className={SELECT} {...field("prProvider")}>
+            <option value="none">Sem PR</option>
+            <option value="github">GitHub (gh)</option>
+            <option value="azure-devops">Azure DevOps (az)</option>
+          </select>
+          <Input
+            aria-label="Script de preparação"
+            placeholder="Script de preparação (opcional)"
+            {...field("setupScript")}
+          />
+          <Textarea
+            aria-label="Modelo de instruções"
+            placeholder="Instruções anexadas ao prompt de todo card"
+            {...field("promptTemplate")}
+          />
+          <Button className="self-start" onClick={() => void submit()}>
+            {editing ? "Salvar projeto" : "Cadastrar projeto"}
+          </Button>
+        </Panel>
+        {editing && props.rules && (
+          <RulesSection key={editing} store={store} hostId={hostId} projectId={editing} />
+        )}
+        <Panel title="Limite do host">
+          <div className="flex items-center gap-2">
+            <Input
+              aria-label="Execuções em paralelo"
+              type="number"
+              min={1}
+              className="w-28"
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+            />
+            <Button
+              variant="outline"
+              onClick={() =>
+                void store.hostCommand(hostId, "board.settings", {
+                  maxParallelRuns: Number(limit),
+                })
+              }
+            >
+              Salvar limite
+            </Button>
+          </div>
+        </Panel>
       </div>
-      {editing && props.rules && (
-        <RulesSection key={editing} store={store} hostId={hostId} projectId={editing} />
-      )}
-      <h3>Limite do host</h3>
-      <div className="row">
-        <input
-          aria-label="Execuções em paralelo"
-          type="number"
-          min={1}
-          value={limit}
-          onChange={(e) => setLimit(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() =>
-            void store.hostCommand(hostId, "board.settings", { maxParallelRuns: Number(limit) })
-          }
-        >
-          Salvar limite
-        </button>
-      </div>
-    </section>
+    </Page>
   );
 }

@@ -1,7 +1,11 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
-import { MoreHorizontal } from "lucide-react";
+import { Columns3, MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Page } from "@/components/layout/page";
+import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import {
@@ -36,40 +41,47 @@ function CardTile(props: {
     <li
       draggable
       aria-label={`Card ${card.title}`}
-      className="board-card"
+      className="flex cursor-grab flex-col gap-2 rounded-md border bg-card p-2 text-sm hover:bg-accent"
       onDragStart={props.onDragStart}
       onDrop={(e) => {
         e.stopPropagation();
         props.onDropOn();
       }}
     >
-      <button type="button" onClick={props.onOpen}>
-        {card.title}
-      </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={props.labels.actions}>
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <div className="badges">
+      <div className="flex items-start justify-between gap-2">
+        <button type="button" className="min-w-0 text-left font-medium" onClick={props.onOpen}>
+          {card.title}
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              aria-label={props.labels.actions}
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
         {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
-        {card.queued && <span className="badge badge-muted">na fila</span>}
+        {card.queued && <Badge variant="outline">na fila</Badge>}
         {card.queueReason === "quota" && (
-          <span className="badge badge-warn">
+          <Badge variant="outline" className="text-status-needs-you">
             {card.quotaUntil
               ? `aguardando cota até ${props.formatTime(card.quotaUntil)}`
               : "aguardando cota"}
-          </span>
+          </Badge>
         )}
-        {card.prState && <span className="badge">{PR_LABELS[card.prState]}</span>}
-        {card.checksState && <span className="badge">{CHECK_LABELS[card.checksState]}</span>}
+        {card.prState && <Badge variant="outline">{PR_LABELS[card.prState]}</Badge>}
+        {card.checksState && <Badge variant="outline">{CHECK_LABELS[card.checksState]}</Badge>}
       </div>
-      {card.notice && <p className="notice">{card.notice}</p>}
+      {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
     </li>
   );
 }
@@ -126,77 +138,86 @@ export function BoardView(props: {
   };
 
   return (
-    <section className="board">
-      <h2>{`Board de ${project?.name ?? ""}`}</h2>
-      <div className="row">
-        <input
-          aria-label="Filtrar cards"
-          placeholder="Filtrar"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-        <input
-          ref={titleField}
-          aria-label="Título do card"
-          placeholder="Título"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <input
-          aria-label="Descrição do card"
-          placeholder="Descrição"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <button type="button" className="primary" onClick={create}>
-          Criar card
-        </button>
+    <Page
+      title={`Board de ${project?.name ?? ""}`}
+      toolbar={
+        <Toolbar label="Filtros">
+          <Input
+            aria-label="Filtrar cards"
+            placeholder="Filtrar"
+            className="h-8 w-40 text-xs"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          <Input
+            ref={titleField}
+            aria-label="Título do card"
+            placeholder="Título"
+            className="h-8 w-48 text-xs"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Input
+            aria-label="Descrição do card"
+            placeholder="Descrição"
+            className="h-8 min-w-48 flex-1 text-xs"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <Button size="sm" onClick={create}>
+            Criar card
+          </Button>
+        </Toolbar>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {loading && <LoadingState label={t("states.loadingBoard")} />}
+        {!loading && project && all.length === 0 && (
+          <EmptyState
+            icon={Columns3}
+            title={t("states.emptyCards")}
+            action={
+              <Button onClick={() => titleField.current?.focus()}>{t("states.newCard")}</Button>
+            }
+          />
+        )}
+        <div className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
+          {COLUMNS.map(({ id, label }) => (
+            <section
+              key={id}
+              aria-label={label}
+              className="flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => drop(id)}
+            >
+              <h3 className="px-1 font-medium text-muted-foreground text-xs">{label}</h3>
+              <ul className="flex flex-col gap-2">
+                {shown
+                  .filter((card) => card.column === id)
+                  .map((card) => (
+                    <CardTile
+                      key={card.id}
+                      card={card}
+                      formatTime={(iso) => store.formatTime(iso)}
+                      labels={{
+                        actions: store.i18n.t("board.cardActions", { title: card.title }),
+                        start: store.i18n.t("board.startCard"),
+                      }}
+                      onOpen={() => props.onOpenCard(card.id)}
+                      onStart={() =>
+                        void store.hostCommand(hostId, "card.start", { cardId: card.id })
+                      }
+                      onDragStart={() => {
+                        dragging.current = card.id;
+                      }}
+                      onDropOn={() => drop(id, card.id)}
+                    />
+                  ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
-      {loading && <LoadingState label={t("states.loadingBoard")} />}
-      {!loading && project && all.length === 0 && (
-        <EmptyState
-          title={t("states.emptyCards")}
-          action={
-            <Button onClick={() => titleField.current?.focus()}>{t("states.newCard")}</Button>
-          }
-        />
-      )}
-      <div className="columns">
-        {COLUMNS.map(({ id, label }) => (
-          <section
-            key={id}
-            aria-label={label}
-            className="column"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => drop(id)}
-          >
-            <h3>{label}</h3>
-            <ul>
-              {shown
-                .filter((card) => card.column === id)
-                .map((card) => (
-                  <CardTile
-                    key={card.id}
-                    card={card}
-                    formatTime={(iso) => store.formatTime(iso)}
-                    labels={{
-                      actions: store.i18n.t("board.cardActions", { title: card.title }),
-                      start: store.i18n.t("board.startCard"),
-                    }}
-                    onOpen={() => props.onOpenCard(card.id)}
-                    onStart={() =>
-                      void store.hostCommand(hostId, "card.start", { cardId: card.id })
-                    }
-                    onDragStart={() => {
-                      dragging.current = card.id;
-                    }}
-                    onDropOn={() => drop(id, card.id)}
-                  />
-                ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-    </section>
+    </Page>
   );
 }
