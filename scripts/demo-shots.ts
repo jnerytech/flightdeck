@@ -25,12 +25,23 @@ function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
     {
-      // The sidebar's queue with the Bash request open: its command, folder, age and buttons.
+      // Precisa de você with the Bash request chosen: its command, folder, age and buttons.
       name: "precisa-de-voce",
-      route: { name: "hub" },
+      route: { name: "needs-you" },
       prepare: async (page) => {
         await page.getByRole("button", { name: /Testes do backend: Bash/ }).click();
         await page.waitForTimeout(500);
+      },
+    },
+    {
+      // The sidebar as a 56 px rail of icons.
+      name: "barra-recolhida",
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /^(Recolher barra lateral|Collapse sidebar)$/ })
+          .click();
+        await page.waitForTimeout(400);
       },
     },
     { name: "sessao-aprovacao", route: { name: "session", host: ALFA, id: ids.waitingSession } },

@@ -29,7 +29,7 @@ export function Page(props: {
         </div>
         {props.toolbar}
       </div>
-      <ScrollArea className="min-h-0 flex-1">
+      <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
         <div className="px-6 py-4">{props.children}</div>
       </ScrollArea>
     </section>
