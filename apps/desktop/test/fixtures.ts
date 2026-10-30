@@ -102,6 +102,7 @@ export function daemon(
         allowedRoots: [root],
         platform: "linux",
         enabled: options.terminals !== "off",
+        claude: { self: ["flightdeckd"], configFile: join(root, "config.json") },
       })
     : undefined;
   if (terminals) cleanups.push(() => terminals.stop());
