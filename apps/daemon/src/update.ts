@@ -175,6 +175,49 @@ function updateHooks(deps: UpdateDeps, config: Config): void {
   deps.log.log(`hooks reinstalados apontando para ${deps.stableBin}`);
 }
 
+/** Puts `from` at `stableBin`, keeping the previous binary as `.old`. True when there was one. */
+function swapBinary(from: string, stableBin: string): boolean {
+  const old = `${stableBin}.old`;
+  const incoming = `${stableBin}.new`;
+  mkdirSync(join(stableBin, ".."), { recursive: true });
+  rmSync(old, { force: true });
+  const hadPrevious = existsSync(stableBin);
+  if (hadPrevious) renameSync(stableBin, old);
+  copyFileSync(from, incoming);
+  chmodSync(incoming, 0o755);
+  renameSync(incoming, stableBin);
+  return hadPrevious;
+}
+
+/** Back to how it was: the previous binary (if any) and the service as it was installed. */
+async function rollback(
+  deps: UpdateDeps,
+  config: Config,
+  state: {
+    version: string;
+    hadPrevious: boolean;
+    installed: NonNullable<Awaited<ReturnType<typeof serviceCommand>>>;
+    reinstalled: boolean;
+    serviceExe: string;
+  },
+): Promise<void> {
+  const { log, ctx, stableBin } = deps;
+  const { version, hadPrevious, installed, reinstalled, serviceExe } = state;
+  await stopServiceDaemon(deps, config, stableBin);
+  rmSync(stableBin, { force: true });
+  if (hadPrevious) renameSync(`${stableBin}.old`, stableBin);
+  if (reinstalled) {
+    await installService({ ...ctx, command: installed.command }, installed.config);
+    log.error(`serviço reinstalado de volta em ${serviceExe}`);
+  }
+  await startService(ctx);
+  log.error(
+    hadPrevious
+      ? `o daemon ${version} não respondeu em /health: a versão anterior foi restaurada`
+      : `o daemon ${version} não respondeu em /health; não havia versão anterior em ${stableBin}`,
+  );
+}
+
 /**
  * `flightdeckd update --from <bin>`: checks the new binary, stops the service, swaps the stable
  * binary (keeping the previous one as `.old`), points service and hooks at it, starts it and
@@ -212,15 +255,7 @@ export async function runUpdate(
     return 1;
   }
 
-  const old = `${stableBin}.old`;
-  const incoming = `${stableBin}.new`;
-  mkdirSync(join(stableBin, ".."), { recursive: true });
-  rmSync(old, { force: true });
-  const hadPrevious = existsSync(stableBin);
-  if (hadPrevious) renameSync(stableBin, old);
-  copyFileSync(opts.from, incoming);
-  chmodSync(incoming, 0o755);
-  renameSync(incoming, stableBin);
+  const hadPrevious = swapBinary(opts.from, stableBin);
 
   const reinstalled =
     installed !== null && !samePath(resolved(serviceExe), resolved(stableBin), ctx.platform);
@@ -244,20 +279,7 @@ export async function runUpdate(
     log.log(`flightdeckd ${deps.currentVersion} → ${version} em ${stableBin}, respondendo`);
     return 0;
   }
-  // Back to how it was: the previous binary (if any) and the service as it was installed.
-  await stopServiceDaemon(deps, config, stableBin);
-  rmSync(stableBin, { force: true });
-  if (hadPrevious) renameSync(old, stableBin);
-  if (reinstalled) {
-    await installService({ ...ctx, command: installed.command }, installed.config);
-    log.error(`serviço reinstalado de volta em ${serviceExe}`);
-  }
-  await startService(ctx);
-  log.error(
-    hadPrevious
-      ? `o daemon ${version} não respondeu em /health: a versão anterior foi restaurada`
-      : `o daemon ${version} não respondeu em /health; não havia versão anterior em ${stableBin}`,
-  );
+  await rollback(deps, config, { version, hadPrevious, installed, reinstalled, serviceExe });
   return 1;
 }
 
