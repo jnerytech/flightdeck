@@ -69,6 +69,8 @@ export function daemon(
     checkpoints?: boolean;
     /** The project's MCP servers, CLAUDE.md, agents and skills (phase 12), in this daemon's root. */
     agentcfg?: boolean;
+    /** The MCP servers a live session of the fake runtime reports (phase 12). */
+    mcpServers?: string[];
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -78,7 +80,10 @@ export function daemon(
   const historyRoot = join(root, "claude-projects");
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
-  const runtime = new FakeRuntime({ delayMs: 1 });
+  const runtime = new FakeRuntime({
+    delayMs: 1,
+    ...(options.mcpServers ? { mcpServers: options.mcpServers } : {}),
+  });
   // The host's plan quota and usage (phase 7): pass a quota on a manual clock to drive it.
   const quota = options.quota ?? new Quota({ pauseAt: 0.9 });
   cleanups.push(() => quota.stop());

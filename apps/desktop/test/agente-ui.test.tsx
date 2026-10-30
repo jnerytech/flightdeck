@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
+import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -77,8 +78,12 @@ const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
  * leaves a marker file when it starts), a settings.local.json, and a user ~/.claude.json with
  * one server. Opens the Agente screen of the project.
  */
-async function setup(options: { agentcfg?: boolean; empty?: boolean } = {}) {
-  const d = makeDaemon(cleanups, { checkpoints: true, agentcfg: options.agentcfg ?? true });
+async function setup(options: { agentcfg?: boolean; empty?: boolean; live?: boolean } = {}) {
+  const d = makeDaemon(cleanups, {
+    checkpoints: true,
+    agentcfg: options.agentcfg ?? true,
+    mcpServers: ["eco", "marcador"],
+  });
   const repo = join(d.root, "repo");
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");
@@ -125,6 +130,10 @@ async function setup(options: { agentcfg?: boolean; empty?: boolean } = {}) {
   writeFileSync(join(repo, "README.md"), "# repo\n");
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
+  if (options.live) {
+    const { sessionId } = d.manager.create({ cwd: repo, prompt: "hi" });
+    await poll(() => d.manager.get(sessionId).status === "idle");
+  }
   const server = d.listen();
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
@@ -551,5 +560,41 @@ describe("agente-ui", () => {
     expect(
       screen.queryByText("Não foi possível carregar a configuração deste projeto."),
     ).not.toBeNull();
+  });
+
+  test("with a live managed session in the project, each server it reports shows its live status", async () => {
+    await setup({ live: true });
+    await settle(() => screen.queryByText("Conectado") !== null);
+    const row = (name: string) => screen.queryByRole("listitem", { name }) as HTMLElement;
+    expect(within(row("eco")).queryByText("Conectado")).not.toBeNull();
+    expect(within(row("marcador")).queryByText("Conectado")).not.toBeNull();
+    // A server the session does not know (the user's) has no live status.
+    expect(within(row("global")).queryByText("Conectado")).toBeNull();
+  });
+
+  test("the switch also turns the server off in the live session, and its status follows", async () => {
+    const { runtime } = await setup({ live: true });
+    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
+    await settle(() => screen.queryAllByText("Conectado").length === 2);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("switch", { name: "Ligar eco" }) as HTMLElement);
+    });
+    await settle(() => runtime.mcpToggles.length === 1);
+    expect(runtime.mcpToggles).toEqual([{ name: "eco", enabled: false }]);
+    const eco = () => screen.queryByRole("listitem", { name: "eco" }) as HTMLElement;
+    await settle(() => within(eco()).queryByText("Desligado") !== null);
+    expect(within(eco()).queryByText("Desligado")).not.toBeNull();
+  });
+
+  test("without a live session no status shows, and the switch only writes the file", async () => {
+    const { runtime, repo } = await setup();
+    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
+    expect(screen.queryByText("Conectado")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("switch", { name: "Ligar eco" }) as HTMLElement);
+    });
+    const settings = join(repo, ".claude", "settings.local.json");
+    await settle(() => (json(settings).disabledMcpjsonServers ?? []).includes("eco"));
+    expect(runtime.mcpToggles).toEqual([]);
   });
 });
