@@ -17,6 +17,8 @@ export interface SshJob {
   argv: string[];
   env: Record<string, string>;
   timeoutS: number;
+  /** The destino's key from the vault, when it authenticates with one; for this run only. */
+  privateKey?: string;
 }
 
 /** The SSH destinations of phase 15 plug in here: `ssh <target> -- <argv>` with the env sent. */

@@ -50,6 +50,8 @@ export interface ActionsOptions {
   baseEnv?: Record<string, string | undefined> | undefined;
   /** The SSH destinations of phase 15 plug in here. */
   ssh?: SshExecutor | undefined;
+  /** The vault secret that holds a destino's key (`vault-key`), or null when it has none. */
+  sshKey?: ((target: string) => string | null) | undefined;
   /** How long a run waits for the app to deliver a secret (2 minutes when absent). */
   requestTimeoutMs?: number | undefined;
 }
