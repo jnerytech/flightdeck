@@ -85,7 +85,10 @@ export class Vault {
   }
 
   /** Puts a secret back with its own id and metadata, replacing the one with that id. */
-  async restore(_meta: SecretMeta, _value: string): Promise<void> {}
+  async restore(meta: SecretMeta, value: string): Promise<void> {
+    await this.platform.vault.set(meta.id, value);
+    this.save([...this.list().filter((s) => s.id !== meta.id), meta]);
+  }
 
   value(id: string): Promise<string | null> {
     return this.platform.vault.get(id);
