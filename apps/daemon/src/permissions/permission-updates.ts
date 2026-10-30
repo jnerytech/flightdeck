@@ -40,6 +40,29 @@ export function isProjectRule(
   );
 }
 
+type AddRules = Extract<PermissionUpdate, { type: "addRules" }>;
+
+/** A rule must be for the request's own tool, with a one-line content of bounded size. */
+function checkRule(rule: AddRules["rules"][number], toolName: string): void {
+  if (rule.toolName !== toolName) refuse(`a regra é de outra ferramenta (${rule.toolName})`);
+  const content = rule.ruleContent;
+  if (
+    content !== undefined &&
+    (!content || /[\r\n]/.test(content) || content.length > MAX_RULE_CONTENT)
+  ) {
+    refuse("conteúdo da regra inválido");
+  }
+}
+
+/** The destination and the mode of an update must be ones an answer may use. */
+function checkDestinationAndMode(update: PermissionUpdate): void {
+  if (!DESTINATIONS.has(update.destination))
+    refuse(`destino ${update.destination} não é permitido`);
+  if (update.type === "setMode" && FORBIDDEN_MODES.has(update.mode)) {
+    refuse(`modo ${update.mode} não é permitido`);
+  }
+}
+
 /**
  * Refuses (`invalid_permission_update`) any update that is neither one of the request's own
  * suggestions (destination `session` or `localSettings`, never `bypassPermissions` or `auto`)
@@ -51,24 +74,10 @@ export function checkUpdates(
 ): void {
   const suggested = new Set(request.suggestions.map(canonical));
   for (const update of updates) {
-    if (!DESTINATIONS.has(update.destination))
-      refuse(`destino ${update.destination} não é permitido`);
-    if (update.type === "setMode" && FORBIDDEN_MODES.has(update.mode)) {
-      refuse(`modo ${update.mode} não é permitido`);
-    }
+    checkDestinationAndMode(update);
     if (suggested.has(canonical(update))) continue;
     if (!isProjectRule(update))
       refuse("não é uma das sugestões do pedido nem uma regra do projeto");
-    for (const rule of (update as Extract<PermissionUpdate, { type: "addRules" }>).rules) {
-      if (rule.toolName !== request.toolName)
-        refuse(`a regra é de outra ferramenta (${rule.toolName})`);
-      const content = rule.ruleContent;
-      if (
-        content !== undefined &&
-        (!content || /[\r\n]/.test(content) || content.length > MAX_RULE_CONTENT)
-      ) {
-        refuse("conteúdo da regra inválido");
-      }
-    }
+    for (const rule of (update as AddRules).rules) checkRule(rule, request.toolName);
   }
 }
