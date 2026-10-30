@@ -8,6 +8,7 @@ import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
+import { CheckpointsButton } from "./Checkpoints.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
@@ -42,6 +43,7 @@ export function ExternalView(props: {
   const [text, setText] = useState("");
   const host = state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
+  const withCheckpoints = hasFeature(host?.hostInfo?.features, "checkpoints", false);
   // Stable, or the reader would reload on every render.
   const target = useMemo(() => ({ hostId, claudeSessionId: id }), [hostId, id]);
 
@@ -66,6 +68,15 @@ export function ExternalView(props: {
                 <Radio aria-hidden="true" className="size-3" />
                 {t("external.controllable")}
               </span>
+            )}
+            {withCheckpoints && session?.cwd && (
+              <CheckpointsButton
+                store={store}
+                hostId={hostId}
+                claudeSessionId={id}
+                cwd={session.cwd}
+                busy={session.status === "running" || session.status === "awaiting_permission"}
+              />
             )}
             {session?.cwd && (
               <TerminalButton
