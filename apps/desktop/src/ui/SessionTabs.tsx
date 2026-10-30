@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { ChangesPanel } from "./ChangesPanel.tsx";
+import { SessionFiles } from "./SessionFiles.tsx";
 
 /**
  * A session's screen with the Mudanças tab beside its conversation (phase 11). Without the tab
@@ -48,11 +49,16 @@ export function SessionTabs(props: {
         {props.children}
       </div>
       {tab === "changes" && (
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
           <ChangesPanel
             store={props.store}
             hostId={props.hostId}
             target={`session:${props.claudeSessionId}`}
+          />
+          <SessionFiles
+            store={props.store}
+            hostId={props.hostId}
+            claudeSessionId={props.claudeSessionId}
           />
         </div>
       )}

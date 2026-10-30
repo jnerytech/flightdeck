@@ -45,13 +45,17 @@ export function FileSessions(props: {
                 <span className="text-muted-foreground text-xs tabular-nums">
                   {[
                     t("changes.sessionEdits", { n: session.edits }),
-                    t("changes.sessionLast", { when: store.formatDateTime(session.lastAt) }),
+                    t("changes.sessionSpan", {
+                      from: store.formatDateTime(session.firstAt),
+                      to: store.formatDateTime(session.lastAt),
+                    }),
                   ].join(" · ")}
                 </span>
               </li>
             ))}
           </ul>
         )}
+        <p className="mt-2 text-muted-foreground text-xs">{t("changes.bashNote")}</p>
       </PopoverContent>
     </Popover>
   );

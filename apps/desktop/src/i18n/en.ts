@@ -369,6 +369,10 @@ export const en: Dictionary = {
     sessionsNone: "No session recorded an edit to this file.",
     sessionEdits: { one: "{n} edit", other: "{n} edits" },
     sessionLast: "last on {when}",
+    sessionSpan: "from {from} to {to}",
+    sessionFiles: "Files the session wrote",
+    sessionFilesNone: "The session has not written any file yet.",
+    bashNote: "Changes made through Bash do not count.",
   },
   cardReview: {
     positionLabel: "Position on the base",

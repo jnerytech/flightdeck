@@ -372,6 +372,10 @@ export const ptBR = {
     sessionsNone: "Nenhuma sessão registrou edição neste arquivo.",
     sessionEdits: { one: "{n} edição", other: "{n} edições" },
     sessionLast: "última em {when}",
+    sessionSpan: "de {from} a {to}",
+    sessionFiles: "Arquivos que a sessão escreveu",
+    sessionFilesNone: "A sessão ainda não escreveu arquivos.",
+    bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   cardReview: {
     positionLabel: "Posição na base",
