@@ -66,7 +66,7 @@ import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
-import { actionPolicy } from "./vault-approval.ts";
+import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import {
   applyImport,
   BackupError,
@@ -90,6 +90,9 @@ import {
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
+
+/** How long a prod or high-risk approval is held, as the approval card measures it. */
+const HOLD_MS = 2000;
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -229,6 +232,7 @@ export type HostCommandType = Extract<
   | `file.${string}`
   | "vault.deliver"
   | "vault.deny"
+  | "vault.approve"
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
@@ -782,7 +786,11 @@ export class AppStore {
     if (!item) return;
     // The tray never approves a high-risk request: that takes holding the button in the app.
     if (action === "open" || (action === "approve" && item.risk === "high")) this.openRequest(item);
-    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+    else if (item.vault && action === "approve") {
+      // The daemon records that it was the tray that approved it.
+      this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
+    } else
+      void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
@@ -1348,7 +1356,7 @@ export class AppStore {
   ): Promise<void> {
     const question = this.vaultQuestions.get(requestId);
     if (question) {
-      question(decision === "allow");
+      question(decision === "allow" ? { scope: "once", via: "app" } : null);
       return;
     }
     try {
@@ -2015,30 +2023,44 @@ export class AppStore {
   }
 
   /** Phase 17: the questions about the daemon's requests, answered from the queue, by request id. */
-  private readonly vaultQuestions = new Map<string, (approved: boolean) => void>();
+  private readonly vaultQuestions = new Map<string, (answer: VaultAnswer | null) => void>();
 
   private defaultVaultPolicy: VaultPolicy | null = null;
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
-  async approveVaultForSession(_hostId: string, _requestId: string): Promise<void> {}
+  async approveVaultForSession(_hostId: string, requestId: string): Promise<void> {
+    this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
+  }
 
   /** The policy of the options, or the one that puts action requests to the user. */
   private vaultPolicy(): VaultPolicy {
     this.defaultVaultPolicy ??= actionPolicy({
       ask: (context) => this.askVault(context),
       now: this.options.now ?? Date.now,
+      // Phase 19: a request the rules made ask is approved on the daemon before the delivery.
+      approve: async ({ request, hostId }, answer) => {
+        await this.dispatch(hostId, "vault.approve", {
+          requestId: request.requestId,
+          via: answer.via,
+          scope: answer.scope,
+          ...(request.needsHold ? { heldMs: HOLD_MS } : {}),
+        });
+      },
     });
     return this.options.vaultPolicy ?? this.defaultVaultPolicy;
   }
 
   /** Puts a request of the daemon for a secret in the queue and waits for the user's answer. */
-  private askVault({ request, hostId, secret }: VaultRequestContext): Promise<boolean> {
+  private askVault({ request, hostId, secret }: VaultRequestContext): Promise<VaultAnswer | null> {
     const { t } = this.i18n;
     const free = request.command !== undefined;
     const host = this.state.hosts.find((h) => h.id === hostId);
     const requester = t(`actionsUi.requester.${request.requester}` as Key);
     const input: Record<string, string> = {
       [t("vaultApproval.requester")]: requester,
+      // Phase 19: the rule that made it ask, and the tags it saw.
+      ...(request.reason ? { [t("vaultApproval.rule")]: request.reason } : {}),
+      ...(request.tags?.length ? { [t("vaultApproval.tags")]: request.tags.join(", ") } : {}),
       ...(free
         ? {
             [t("vaultApproval.command")]: request.command ?? "",
@@ -2067,7 +2089,12 @@ export class AppStore {
       toolName: free ? "run_with_secret" : (request.action ?? ""),
       createdAt: new Date((this.options.now ?? Date.now)()).toISOString(),
       input,
-      ...(free ? { risk: "high" as const, riskReason: t("vaultApproval.freeReason") } : {}),
+      ...(free || request.needsHold
+        ? {
+            risk: "high" as const,
+            riskReason: free ? t("vaultApproval.freeReason") : (request.reason ?? ""),
+          }
+        : {}),
       vault: true,
     };
     void this.platform.notify({
@@ -2079,7 +2106,16 @@ export class AppStore {
       }),
     });
     return new Promise((resolve) => {
+      // Phase 19: unanswered when the daemon gives up on it, it is denied and leaves the queue.
+      const expiry =
+        request.expiresAt === undefined
+          ? undefined
+          : setTimeout(
+              () => this.vaultQuestions.get(request.requestId)?.(null),
+              Math.max(0, request.expiresAt - (this.options.now ?? Date.now)()),
+            );
       this.vaultQuestions.set(request.requestId, (approved) => {
+        clearTimeout(expiry);
         this.vaultQuestions.delete(request.requestId);
         this.update({
           vaultApprovals: this.state.vaultApprovals.filter(

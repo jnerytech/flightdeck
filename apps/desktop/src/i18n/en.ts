@@ -916,6 +916,8 @@ export const en: Dictionary = {
   vaultApproval: {
     session: "Request from {requester}",
     requester: "Requested by",
+    rule: "Rule",
+    tags: "Tags",
     action: "Action",
     secret: "Secret",
     secrets: "Secrets",

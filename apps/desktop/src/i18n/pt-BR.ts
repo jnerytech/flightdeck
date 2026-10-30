@@ -918,6 +918,8 @@ export const ptBR = {
   vaultApproval: {
     session: "Pedido de {requester}",
     requester: "Pedido por",
+    rule: "Regra",
+    tags: "Tags",
     action: "Ação",
     secret: "Segredo",
     secrets: "Segredos",
