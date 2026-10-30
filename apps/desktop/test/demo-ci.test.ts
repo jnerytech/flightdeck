@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
+import { JOURNEYS, LANGUAGES, VIEWPORTS } from "../../../scripts/lib/e2e-journeys.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const read = (file: string) => readFileSync(resolve(ROOT, file), "utf8");
@@ -59,5 +60,20 @@ describe("demo-prints: axe e CI", () => {
     expect(pkg.scripts.e2e).toBe("bun run scripts/demo.ts --e2e");
     expect(pkg.scripts.demo).toBe("bun run scripts/demo.ts");
     expect(pkg.devDependencies["axe-core"]).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  test("e2e: as cinco jornadas, nos dois idiomas, conferidas a 1280x800 e a 800x600", () => {
+    expect(JOURNEYS).toEqual([
+      "aprovar-bash-com-a",
+      "sessao-e-mensagem",
+      "card-diff",
+      "paleta-e-leitor",
+      "tema-e-idioma",
+    ]);
+    expect(LANGUAGES).toEqual(["pt-BR", "en"]);
+    expect(VIEWPORTS).toEqual([
+      { width: 1280, height: 800 },
+      { width: 800, height: 600 },
+    ]);
   });
 });
