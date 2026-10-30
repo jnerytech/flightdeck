@@ -868,6 +868,8 @@ export const en: Dictionary = {
     timedOut: "timed out",
     truncated: "output cut",
     requester: { you: "You", claude: "Claude", automation: "Automation", workflow: "Workflow" },
+    prodHere:
+      "A production secret on this host: a Claude session with Bash here can read it while the action runs. Prefer an ssh action.",
     trusted: "Trusted",
     notTrusted: "Not trusted",
     changedSince: "Changed since it was trusted: {what}",

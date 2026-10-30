@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
+import type { SecretMeta } from "../lib/vault.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Where the action runs, in words: this host, a named one or an SSH destination. */
@@ -15,6 +16,17 @@ function whereText(t: T, action: ActionInfo): string {
   if (action.ssh) return t("actionsUi.ssh", { destination: action.ssh });
   if (action.host) return t("actionsUi.onHost", { host: action.host });
   return t("actionsUi.here");
+}
+
+/** The tags that mark a secret as production's. */
+const PROD_TAGS = new Set(["prod", "produção", "producao"]);
+
+/** Whether the action uses a vault secret tagged as production. */
+function usesProdSecret(action: ActionInfo, secrets: SecretMeta[]): boolean {
+  const ids = new Set([...action.secrets.values, ...action.secrets.files]);
+  return secrets.some(
+    (s) => ids.has(s.id) && s.tags.some((tag) => PROD_TAGS.has(tag.toLowerCase())),
+  );
 }
 
 /** One action's runs, newest first; the output is shown as the daemon masked it. */
@@ -131,6 +143,7 @@ export function ActionsPage(props: {
             const secrets = [...action.secrets.values, ...action.secrets.files];
             const params = Object.keys(action.params);
             const key = `${action.source}:${action.name}`;
+            const prodHere = !action.ssh && usesProdSecret(action, store.getState().secrets);
             return (
               <li
                 key={key}
@@ -167,6 +180,9 @@ export function ActionsPage(props: {
                   {t(history[key] ? "actionsUi.hideRunsButton" : "actionsUi.runsButton")}
                 </Button>
                 {history[key] && <Runs store={store} action={action} runs={history[key] ?? []} />}
+                {prodHere && (
+                  <span className="text-status-needs-you text-xs">{t("actionsUi.prodHere")}</span>
+                )}
                 {action.changed.length > 0 && (
                   <span className="text-status-needs-you text-xs">
                     {t("actionsUi.changedSince", { what: action.changed.join(", ") })}
