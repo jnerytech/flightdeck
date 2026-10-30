@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { basename } from "node:path";
 import type { ExternalSession } from "@flightdeck/protocol";
+import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -183,6 +184,25 @@ describe("claude-aqui: no app", () => {
     });
     await waitFor(() => expect(ptys.spawned).toHaveLength(1));
     expect(ptys.spawned[0]?.argv).toContain("claude-9");
+    expect(store.router.current.name).toBe("terminal");
+  });
+
+  test("the reader of an ended or history session has Continuar no terminal, which resumes it in a terminal tab", async () => {
+    const { store, hostId, root, ptys, historyRoot, history } = await setup();
+    const id = "77777777-7777-4777-8777-777777777777";
+    writeTranscript(historyRoot, "-p", id, [userLine({ uuid: "u1", text: "oi", cwd: root })]);
+    history.scan();
+    render(<App store={store} />);
+    await act(async () => {
+      store.router.push({ name: "reader", target: { hostId, claudeSessionId: id } });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Continuar no terminal" })).not.toBeNull(),
+    );
+    await click("Continuar no terminal");
+    await waitFor(() => expect(ptys.spawned).toHaveLength(1));
+    expect(ptys.spawned[0]?.argv).toContain(id);
+    expect(ptys.spawned[0]?.cwd).toBe(root);
     expect(store.router.current.name).toBe("terminal");
   });
 });
