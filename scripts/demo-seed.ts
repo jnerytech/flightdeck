@@ -16,10 +16,13 @@ import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
+import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const FIXTURES = join(ROOT, "apps/daemon/test/fixtures/history");
+/** The terminal session that waits for a high-risk Bash (the e2e journey opens it by name). */
+export const DANGER_SESSION = "Limpar a pasta build";
 const LONG_TITLE =
   "Migrar a autenticação do painel administrativo para o provedor novo sem derrubar as sessões abertas nem perder os tokens de serviço";
 
@@ -347,6 +350,22 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   writeUserConfig(home);
+  // A `gh` that lists one issue (the issues of phase 13 come through the CLI), before any daemon.
+  const issue = {
+    number: 7,
+    title: "Corrigir o login com SSO",
+    body: "O login falha quando o SSO devolve um e-mail em maiúsculas.",
+    url: "https://github.com/Acme/App/issues/7",
+    author: { login: "ana" },
+    labels: [{ name: "bug" }],
+    createdAt: "2026-10-01T10:00:00Z",
+    authorAssociation: "MEMBER",
+  };
+  const gh = installFakeCli("gh", [
+    { args: ["api", "user"], stdout: "eu\n" },
+    { args: ["issue", "list"], stdout: JSON.stringify([issue]) },
+    { args: ["issue", "view", "7"], stdout: JSON.stringify(issue) },
+  ]);
 
   const alfa = await host(work, "alfa");
   const beta = await host(work, "beta");
@@ -362,6 +381,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ".claude/agents/revisor.md": AGENT_MD,
     ".claude/skills/deploy/SKILL.md": SKILL_MD,
   });
+  git(web, "remote", "add", "origin", "git@github.com:Acme/App.git");
   repo(join(alfa.projects, "vazio"), { "README.md": "# vazio\n" });
   commitWorkflow(web, "feature", WORKFLOW);
   const project = await client.call<{ id: string }>("project.add", { path: web });
@@ -370,6 +390,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     name: "feature",
     hash: sha256(WORKFLOW),
   });
+  await client.call("project.update", { projectId: project.id, issues: { provider: "github" } });
   const empty = await client.call<{ id: string }>("project.add", {
     path: join(alfa.projects, "vazio"),
   });
@@ -474,6 +495,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ["ext-rodando", "suba o servidor de desenvolvimento"],
     ["ext-edit", "corrija o import quebrado"],
     ["ext-mcp", "abra uma issue para o bug do login"],
+    ["ext-rm", "limpe os artefatos de build"],
   ] as const) {
     await hook(id, "SessionStart", { source: "startup" });
     await hook(id, "UserPromptSubmit", { prompt });
@@ -490,6 +512,11 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await client.call("session.meta.set", {
     claudeSessionId: "ext-mcp",
     name: "Issue do bug de login",
+  });
+  await client.call("session.meta.set", { claudeSessionId: "ext-rm", name: DANGER_SESSION });
+  void hook("ext-rm", "PermissionRequest", {
+    tool_name: "Bash",
+    tool_input: { command: "rm -rf build" },
   });
   void hook("ext-edit", "PermissionRequest", {
     tool_name: "Edit",
@@ -567,6 +594,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       rewindSession: rewind.sessionId,
     },
     stop: async () => {
+      gh.restore();
       old.stop(true);
       slow.stop(true);
       await alfa.stop();

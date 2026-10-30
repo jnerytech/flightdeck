@@ -7,7 +7,7 @@
 import { chromium, type Page } from "playwright-core";
 import { type Lang, translator } from "../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
-import type { DemoIds } from "./demo-seed.ts";
+import { DANGER_SESSION, type DemoIds } from "./demo-seed.ts";
 import { JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
 
 const ALFA = "demo-alfa";
@@ -151,6 +151,32 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       async () => (await c.page.evaluate(() => document.documentElement.lang)) === other,
       "o idioma voltou",
     );
+  },
+
+  // 6. Turn a GitHub issue into a card, then see the risk seal and the hold button on a high request.
+  "issue-e-risco": async (c) => {
+    const title = "Corrigir o login com SSO";
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("issuesUi.button"), exact: true }).click();
+    const row = c.page.locator("li", { hasText: title }).filter({
+      has: c.page.getByRole("button", { name: c.t("issuesUi.createCard"), exact: true }),
+    });
+    await row.getByRole("button", { name: c.t("issuesUi.createCard"), exact: true }).click();
+    await row.getByText(c.t("issuesUi.cardCreated"), { exact: true }).waitFor({ timeout: WAIT });
+    // The rm -rf of the terminal session waits in the queue: a red seal, and Aprovar is a hold.
+    await open(c, { name: "needs-you" });
+    await c.page
+      .getByRole("button", { name: new RegExp(`${DANGER_SESSION}: Bash`) })
+      .click({ timeout: WAIT });
+    await c.page.getByText(c.t("approval.risk.high"), { exact: true }).first().waitFor({
+      timeout: WAIT,
+    });
+    await c.page.getByRole("button", { name: c.t("approval.hold") }).waitFor({ timeout: WAIT });
+    if (
+      (await c.page.getByRole("button", { name: c.t("approval.approve"), exact: true }).count()) > 0
+    ) {
+      throw new Error("um pedido de risco alto não pode ter o botão Aprovar simples");
+    }
   },
 };
 
