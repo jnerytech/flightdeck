@@ -374,7 +374,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
     case "snippets":
-      return <SnippetsPage store={store} state={state} />;
+      return <SnippetsPage store={store} state={state} go={go} />;
     case "connections":
       return <ConnectionsPage store={store} state={state} go={go} connect={route.connect} />;
     case "costs":

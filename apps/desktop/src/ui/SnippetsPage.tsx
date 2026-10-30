@@ -3,10 +3,12 @@ import { SquareCode, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { SnippetEditor } from "@/components/snippets/snippet-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -17,7 +19,7 @@ const originOf = (snippet: Snippet) =>
   snippet.source === "file" ? "file" : snippet.scope === "project" ? "project" : "host";
 
 /** Phase 18: the snippets of the first online host that keeps them, and of one of its projects. */
-export function SnippetsPage(props: { store: AppStore; state: AppState }) {
+export function SnippetsPage(props: { store: AppStore; state: AppState; go(route: Route): void }) {
   const t = useT();
   const { store, state } = props;
   const host = state.hosts.find(
@@ -30,6 +32,7 @@ export function SnippetsPage(props: { store: AppStore; state: AppState }) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [file, setFile] = useState<SnippetFileInfo | null>(null);
   const [removing, setRemoving] = useState<Snippet | null>(null);
+  const [editing, setEditing] = useState<Snippet | "new" | null>(null);
 
   useEffect(() => {
     if (hostId) void store.loadProjects(hostId);
@@ -76,8 +79,47 @@ export function SnippetsPage(props: { store: AppStore; state: AppState }) {
   };
 
   const projects = hostId ? (state.projects[hostId] ?? []) : [];
+  // Phase 17's actions are a project's: a snippet with a secret becomes one of the chosen project.
+  const actionsProject =
+    project && hasFeature(host?.hostInfo?.features, "actions", false)
+      ? projects.find((p) => p.path === project)
+      : undefined;
   return (
-    <Page title={t("snippets.title")} subtitle={t("snippets.subtitle", { host: host?.name ?? "" })}>
+    <Page
+      title={t("snippets.title")}
+      subtitle={t("snippets.subtitle", { host: host?.name ?? "" })}
+      actions={
+        hostId &&
+        editing === null && (
+          <Button onClick={() => setEditing("new")}>{t("snippets.newSnippet")}</Button>
+        )
+      }
+    >
+      {hostId && editing !== null && (
+        <SnippetEditor
+          key={editing === "new" ? "new" : editing.id}
+          store={store}
+          hostId={hostId}
+          project={project}
+          snippet={editing === "new" ? null : editing}
+          onSaved={() => {
+            setEditing(null);
+            void reload();
+          }}
+          onClose={() => setEditing(null)}
+          {...(actionsProject && hostId
+            ? {
+                onMakeAction: () =>
+                  props.go({
+                    name: "actions",
+                    host: hostId,
+                    projectId: actionsProject.id,
+                    projectName: actionsProject.name,
+                  }),
+              }
+            : {})}
+        />
+      )}
       <div className="mb-4 flex flex-wrap gap-3">
         <label className="flex flex-col gap-1 text-sm">
           {t("snippets.project")}
@@ -160,6 +202,14 @@ export function SnippetsPage(props: { store: AppStore; state: AppState }) {
                   onClick={() => void favorite(snippet)}
                 >
                   <Star className={snippet.favorite ? "fill-current" : ""} aria-hidden />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={t("snippets.editFor", { name: snippet.name })}
+                  onClick={() => setEditing(snippet)}
+                >
+                  {t("snippets.edit")}
                 </Button>
                 <Button
                   variant="outline"
