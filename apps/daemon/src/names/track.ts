@@ -27,6 +27,15 @@ export interface TrackOptions {
   personaOf?: ((sessionId: string) => string | null) | undefined;
 }
 
+/** Naming is auxiliary: a failure must not break the event of the session; the next one tries again. */
+function safely(name: () => void): void {
+  try {
+    name();
+  } catch {
+    // Left unnamed for now.
+  }
+}
+
 /** Starts naming; returns the function that stops it. */
 export function trackNames(opts: TrackOptions): () => void {
   const { names } = opts;
@@ -56,15 +65,16 @@ export function trackNames(opts: TrackOptions): () => void {
       .list()
       .map((s) => ({ at: s.startedAt, key: s.claudeSessionId, name: () => terminal(s) })),
   ].sort((a, b) => a.at.localeCompare(b.at) || a.key.localeCompare(b.key));
-  for (const item of before) item.name();
+  for (const item of before) safely(item.name);
 
   const offs = [
     opts.manager.watchSummaries(({ event }) => {
       if (event.type === "session.summary" && event.sessionId) {
-        managed(opts.manager.get(event.sessionId));
+        const id = event.sessionId;
+        safely(() => managed(opts.manager.get(id)));
       }
     }).unwatch,
-    opts.external.onChange(terminal),
+    opts.external.onChange((session) => safely(() => terminal(session))),
   ];
   return () => {
     for (const off of offs.splice(0)) off();

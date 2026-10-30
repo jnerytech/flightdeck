@@ -758,8 +758,11 @@ export async function startDaemon(
     quota,
     names,
   });
-  const cardOf = (sessionId: string) =>
-    board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null;
+  // Of a managed session only: the id of a terminal session is not one the manager knows.
+  const cardOf = (sessionId: string) => {
+    const cwd = manager.list().find((s) => s.id === sessionId)?.cwd;
+    return cwd ? (board.projectForCwd(cwd)?.card?.id ?? null) : null;
+  };
   const stopNames = trackNames({
     names,
     manager,
