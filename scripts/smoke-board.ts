@@ -72,9 +72,9 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
-  frames: ServerMessage[] = [];
+  readonly frames: ServerMessage[] = [];
 
   constructor(private readonly url: string) {}
 

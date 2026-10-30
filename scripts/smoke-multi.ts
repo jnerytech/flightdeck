@@ -58,9 +58,9 @@ async function until(check: () => boolean, what: string): Promise<void> {
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
-  events: EventEnvelope[] = [];
+  readonly events: EventEnvelope[] = [];
 
   constructor(private readonly url: string) {}
 

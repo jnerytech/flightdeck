@@ -57,7 +57,7 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
   /** Close code once the daemon drops the connection. */
   closed!: Promise<number>;

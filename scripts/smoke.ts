@@ -38,9 +38,9 @@ const log = (msg: string) => console.log(`  · ${msg}`);
 
 class Client {
   private ws!: WebSocket;
-  private acks = new Map<string, (ack: Ack) => void>();
+  private readonly acks = new Map<string, (ack: Ack) => void>();
   private seq = 0;
-  events: EventEnvelope[] = [];
+  readonly events: EventEnvelope[] = [];
   closed = false;
 
   constructor(private readonly url: string) {}
