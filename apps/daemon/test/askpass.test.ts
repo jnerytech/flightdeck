@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { AskpassRequest } from "@flightdeck/protocol";
 import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
-import { AskpassBroker, writeAskpassScript } from "../src/ssh/askpass.ts";
+import { AskpassBroker, askpassHook, writeAskpassScript } from "../src/ssh/askpass.ts";
 import { SshTargets } from "../src/ssh/targets.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { newManager, poll, tempDir, workspace } from "./helpers.ts";
@@ -153,6 +153,31 @@ describe("askpass: o script do SSH_ASKPASS", () => {
     for (const bad of ["C:\\100%\\bun.exe", 'C:\\a"b\\bun.exe']) {
       expect(() => writeAskpassScript({ dir, platform: "win32", self: [bad] })).toThrow(/cmd/);
     }
+  });
+
+  test("o gancho do conector: o script, o config do daemon e tickets do corretor; se o script não cabe, não há askpass", async () => {
+    const { broker, target } = setup();
+    const hook = askpassHook({
+      broker,
+      dir: tempDir(),
+      platform: "linux",
+      self,
+      configFile: "/home/u/.flightdeck/config.json",
+    });
+    expect(hook?.script.endsWith("askpass.sh")).toBe(true);
+    expect(hook?.configFile).toBe("/home/u/.flightdeck/config.json");
+    const ticket = hook?.ticket(target, "password") ?? "";
+    expect(ticket).toMatch(/^[0-9a-f]{32}$/);
+    broker.watch((frame) => broker.answer(frame.requestId, SECRET));
+    expect(await broker.ask(ticket, "p")).toBe(SECRET);
+    const none = askpassHook({
+      broker,
+      dir: tempDir(),
+      platform: "win32",
+      self: ["C:\\100%\\bun.exe"],
+      configFile: "x",
+    });
+    expect(none).toBeUndefined();
   });
 
   test("só reescreve quando muda", async () => {
