@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Snippet } from "@flightdeck/protocol";
 import { startServer } from "../src/server.ts";
-import { HistoryImporter } from "../src/snippets/history.ts";
+import { defaultHistorySources, HistoryImporter } from "../src/snippets/history.ts";
 import { SecretScanner } from "../src/snippets/model.ts";
 import { Snippets } from "../src/snippets/store.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -377,5 +377,54 @@ describe("snippets-historico: nomes", () => {
 
   test("sem nenhuma origem configurada, não há candidatos", () => {
     expect(setup({}).importer.preview({})).toEqual({ candidates: [], sources: [] });
+  });
+});
+
+describe("snippets-historico: onde ficam os históricos", () => {
+  test("no Windows o PSReadLine fica no APPDATA, e fora dele no ~/.local/share/powershell; bash e zsh no home", () => {
+    expect(
+      defaultHistorySources({ home: "/home/u", appData: undefined, platform: "linux" }),
+    ).toEqual({
+      bash: join("/home/u", ".bash_history"),
+      zsh: join("/home/u", ".zsh_history"),
+      psreadline: join(
+        "/home/u",
+        ".local",
+        "share",
+        "powershell",
+        "PSReadLine",
+        "ConsoleHost_history.txt",
+      ),
+    });
+    expect(
+      defaultHistorySources({ home: "C:/Users/u", appData: "D:/Roaming", platform: "win32" }),
+    ).toEqual({
+      bash: join("C:/Users/u", ".bash_history"),
+      zsh: join("C:/Users/u", ".zsh_history"),
+      psreadline: join(
+        "D:/Roaming",
+        "Microsoft",
+        "Windows",
+        "PowerShell",
+        "PSReadLine",
+        "ConsoleHost_history.txt",
+      ),
+    });
+    // Without APPDATA it falls back to the usual place under the home.
+    expect(
+      defaultHistorySources({ home: "C:/Users/u", appData: undefined, platform: "win32" })
+        .psreadline,
+    ).toBe(
+      join(
+        "C:/Users/u",
+        "AppData",
+        "Roaming",
+        "Microsoft",
+        "Windows",
+        "PowerShell",
+        "PSReadLine",
+        "ConsoleHost_history.txt",
+      ),
+    );
   });
 });
