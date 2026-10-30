@@ -49,6 +49,8 @@ sessions from one place, without opening each machine.
 - Actions: you declare a command with places for vault secrets and parameters, and Claude calls it
   by name (MCP tools `list_actions` and `run_action`, or the `flightdeck-actions` mod) without ever
   receiving the secret. It gets the exit code and the output (up to 32 KB) with the secret masked.
+- Snippets: saved commands and prompts (global, per host or versioned in the project), used from
+  Ctrl+K, a terminal tab or `/` in a session, imported from the shell history with secrets hidden.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.

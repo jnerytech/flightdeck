@@ -2078,3 +2078,20 @@ What the Phase 17 interface settled or left open. The text of this section is in
 - **Vermelho do `smoke:snippets`:** numa cópia da base `599529f`, `SMOKE SNIPPETS FAIL no passo "snippet do host e segredo recusado"` (o comando não existe) e código 1. Passa no Windows e no contêiner Linux.
 - **Regra 7:** o ramo que impede um snippet de mudar entre o daemon e o arquivo foi removido para o teste ficar vermelho antes de voltar. Um catch do importador que não podia ser alcançado, e uma segunda varredura do arquivo inteiro que a primeira já cobre, saíram em vez de ganhar teste.
 - **O que o teste já tinha de fixo mudou duas vezes de propósito:** o MCP passou de seis a oito ferramentas, e segredos no nome e nas tags passaram a ser vistos antes das outras checagens deles (um token de 40 caracteres era recusado como "tag grande demais").
+
+## Phase 18 decisions: the app
+
+- **One snippet model for the daemon and the app.** `SecretScanner`, `normalizeSnippet`, `fieldsOf`, `renderSnippet` and `placeholders` moved to `packages/protocol/src/snippets.ts`. The daemon re-exports them and answers the model's `SnippetModelError` as a protocol error with the same code; the app checks its global snippets with the same code, so the two cannot drift.
+- **Global snippets live in the app's storage** (`flightdeck.snippets`), with the daemon's order (favorites, then the most recent use, then the name) and search (name, tags, content). Using one fills it in the app and counts the use; a copy counts too.
+- **The Snippets screen reads one host,** the first online one that announces `snippets` (a new feature flag in `host.info`), like Conexões. A project is chosen from that host's board.
+- **"Transformar em ação"** opens the chosen project's Ações screen (phase 17). It does not prefill phase 17's form yet; the refused snippet stays in the editor to copy from.
+- **The history import checks the vault in the app.** The daemon's scanner has a vault extension point, but the vault is the app's: `store.vaultValuesForScan` reads each secret's lines (and an `env` set's values one by one), keeps the ones of 6+ characters, and the import panel hides and locks any line that contains one. The values are compared in the app, never sent and never kept. Revealing shows only the lines the daemon's patterns flagged; a vault line stays hidden. A host import sends only the ids of unlocked lines, and the daemon re-reads the history.
+- **Importing to the app** names a global snippet from the command's first words, unique among the globals, with the tag `histórico`, like the daemon's host import.
+- **Using a snippet:**
+  - The palette lists the snippets of the hosts that announce them (read when it opens) and the app's, as **Snippet: <name>**, matching the tags and the content too.
+  - A command pastes into the terminal on screen only when it belongs to that host (a global one pastes anywhere); **Colar e rodar** and **Rodar numa aba nova** are off for an untrusted file's command, which only pastes.
+  - **Rodar numa aba nova** needs a folder (the daemon checks it is allowed) and opens the new terminal in a tab.
+  - A prompt is sent to the managed session on screen (`snippets.use send` for a host's, `store.send` for a global one).
+- **Ctrl+Shift+Space** in a terminal tab is the app's, next to Ctrl+Shift+C/V/F; no tab shortcut uses it. It lists the command snippets of the terminal's host and of the app. The choice goes through `store.chooseSnippet`, so the palette and the terminal open the same dialog.
+- **`/` in a managed session's message box** lists the prompt snippets; the chosen one is filled from the session's folder, or goes in as written when a field still needs a value, for the person to complete. External (terminal) sessions do not have the menu yet.
+- **The version is 0.18.0** (`test(versao)` cycle); at integration it resolves to the highest number.

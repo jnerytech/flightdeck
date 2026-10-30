@@ -51,6 +51,9 @@ sessões num lugar só, sem abrir cada máquina.
   o chama pelo nome (ferramentas MCP `list_actions` e `run_action`, ou o mod `flightdeck-actions`)
   sem nunca receber o segredo. Ele recebe o código de saída e a saída (até 32 KB) com o segredo
   mascarado.
+- Snippets: comandos e prompts salvos (globais, por host ou versionados no projeto), usados pelo
+  Ctrl+K, numa aba de terminal ou com `/` numa sessão, importados do histórico do shell com os
+  segredos ocultos.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.

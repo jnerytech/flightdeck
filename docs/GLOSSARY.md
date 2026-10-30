@@ -18,6 +18,7 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | daemon | daemon | O `flightdeckd`, o serviço de cada host |
 | histórico | history | As conversas já gravadas pelo Claude Code, que o app só lê |
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
+| snippet | snippet | Um comando ou prompt salvo, com variáveis `{{nome}}`; global (do app), do host ou do projeto |
 | destino SSH | SSH destination | Um servidor cadastrado em Conexões (host, porta, usuário, autenticação, etiquetas); a tela se chama Conexões / Connections |
 | chave do servidor | server key | A chave que o servidor SSH mostra; o app guarda o fingerprint e bloqueia se ele mudar |
 | cofre | vault | Onde ficam os segredos (chaves SSH, senhas, tokens, variáveis de ambiente), no cofre de credenciais do sistema |
