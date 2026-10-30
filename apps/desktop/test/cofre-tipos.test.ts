@@ -45,6 +45,15 @@ describe("cofre-tipos", () => {
     ).toEqual({});
   });
 
+  test("a key body that is not valid base64 shows nothing", async () => {
+    expect(
+      await describeSecret(
+        "ssh-key",
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n%%%\n-----END OPENSSH PRIVATE KEY-----",
+      ),
+    ).toEqual({});
+  });
+
   test("a token shows its prefix and its last four characters", async () => {
     expect(await describeSecret("token", "ghp_0123456789abcdefghijWXYZ")).toEqual({
       hint: "ghp_…WXYZ",
