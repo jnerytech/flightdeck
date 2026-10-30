@@ -207,11 +207,14 @@ describe("estados-avisos", () => {
       store.router.push({ name: "board", host: hostId, projectId: project.id }),
     );
     await settle(() => screen.queryByText("Nenhum card neste projeto.") !== null);
-    const novo = screen.queryByRole("button", { name: "Novo card" });
-    expect(novo).not.toBeNull();
+    // The empty board's own action opens the new-card dialog, on its title.
+    const first = screen.queryByRole("button", { name: "Criar o primeiro card" });
+    expect(first).not.toBeNull();
     await act(async () => {
-      fireEvent.click(novo as HTMLElement);
+      fireEvent.click(first as HTMLElement);
     });
+    expect(screen.queryByRole("dialog", { name: "Novo card" })).not.toBeNull();
+    await settle(() => document.activeElement === screen.queryByLabelText("Título do card"));
     expect(document.activeElement).toBe(screen.queryByLabelText("Título do card"));
   });
 

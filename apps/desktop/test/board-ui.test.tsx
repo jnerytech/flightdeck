@@ -84,6 +84,8 @@ async function openBoard(repo: string) {
 }
 
 async function createCard(title: string, description = "faça") {
+  // The form lives in a dialog the "Novo card" button opens.
+  await click("Novo card");
   await type("Título do card", title);
   await type("Descrição do card", description);
   await click("Criar card");
@@ -341,7 +343,12 @@ describe("board-ui", () => {
     await board.startCard(id);
     await settle(() => (cardItem("Com selos")?.textContent ?? "").includes("na fila"));
     expect(cardItem("Com selos")?.textContent ?? "").toContain("na fila");
-    expect(cardItem("Ocupa")?.textContent ?? "").toContain("esperando você");
+    // The session's state is the dot before the title; the line under it says the card's branch.
+    const busyTile = cardItem("Ocupa") as HTMLElement;
+    expect(within(busyTile).queryByRole("img", { name: "esperando você" })).not.toBeNull();
+    expect(busyTile.querySelector("[data-slot='card-meta']")?.textContent ?? "").toMatch(
+      /flightdeck\//,
+    );
     await board.stopCard(id);
     eventStore.db
       .query(

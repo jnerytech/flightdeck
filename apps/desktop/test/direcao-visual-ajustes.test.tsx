@@ -296,4 +296,37 @@ describe("direcao-visual: ajustes finos", () => {
     await settle(() => path() === "alfaBoardrepo0");
     expect(path()).toBe("alfaBoardrepo0");
   });
+
+  test("o board tem um botão Novo card que abre um diálogo; o formulário fixo saiu do cabeçalho", async () => {
+    const { store } = await setup({ projects: 1 });
+    await click(screen.queryByRole("button", { name: "Board" }));
+    await settle(() => store.router.current.name === "board");
+    await settle(() => screen.queryByRole("button", { name: "Novo card" }) !== null);
+    expect(screen.queryByLabelText("Título do card")).toBeNull();
+    expect(screen.queryByLabelText("Descrição do card")).toBeNull();
+    // Cancelar leaves nothing behind.
+    await click(screen.queryByRole("button", { name: "Novo card" }));
+    const dialog = () => screen.queryByRole("dialog", { name: "Novo card" });
+    expect(dialog()).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Título do card") as HTMLElement, {
+        target: { value: "Rascunho" },
+      });
+    });
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Cancelar" }));
+    expect(dialog()).toBeNull();
+    expect(screen.queryByLabelText("Card Rascunho")).toBeNull();
+    // Criar adds the card and closes the dialog; a new one opens empty.
+    await click(screen.queryByRole("button", { name: "Novo card" }));
+    expect((screen.queryByLabelText("Título do card") as HTMLInputElement).value).toBe("");
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Título do card") as HTMLElement, {
+        target: { value: "Do diálogo" },
+      });
+    });
+    await click(within(dialog() as HTMLElement).queryByRole("button", { name: "Criar card" }));
+    await settle(() => screen.queryByLabelText("Card Do diálogo") !== null);
+    expect(screen.queryByLabelText("Card Do diálogo")).not.toBeNull();
+    expect(dialog()).toBeNull();
+  });
 });
