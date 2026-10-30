@@ -196,7 +196,8 @@ describe("acoes-execucao", () => {
         // The capture stops at 250,000 characters: the secret starts ten characters before that.
         "process.stdout.write('y'.repeat(250_000 - 10));",
         "process.stdout.write(t);",
-        "process.stdout.write('z'.repeat(1000));",
+        // Later, so it arrives in a read of its own after the capture is full (Linux merges close writes).
+        "setTimeout(() => process.stdout.write('z'.repeat(1000)), 150);",
         "process.stderr.write('e'.repeat(100003));",
         "process.stderr.write('e'.repeat(200001));",
       ].join("\n"),
