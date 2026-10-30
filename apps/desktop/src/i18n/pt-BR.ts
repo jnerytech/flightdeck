@@ -901,6 +901,8 @@ export const ptBR = {
     timedOut: "tempo esgotado",
     truncated: "saída cortada",
     requester: { you: "Você", claude: "Claude", automation: "Automação", workflow: "Workflow" },
+    sameUser:
+      "As ações deixam o segredo longe do Claude, não de outro programa seu: enquanto uma ação roda, um processo do mesmo usuário neste host consegue ler o ambiente dela. Segredos de produção ficam em ações ssh, que rodam em outro host.",
     prodHere:
       "Um segredo de produção neste host: uma sessão do Claude com Bash aqui consegue lê-lo enquanto a ação roda. Prefira uma ação ssh.",
     trusted: "Confiada",

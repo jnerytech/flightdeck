@@ -899,6 +899,8 @@ export const en: Dictionary = {
     timedOut: "timed out",
     truncated: "output cut",
     requester: { you: "You", claude: "Claude", automation: "Automation", workflow: "Workflow" },
+    sameUser:
+      "Actions keep the secret away from Claude, not from another program of yours: while an action runs, a process of the same user on this host can read its environment. Keep production secrets in ssh actions, which run on another host.",
     prodHere:
       "A production secret on this host: a Claude session with Bash here can read it while the action runs. Prefer an ssh action.",
     trusted: "Trusted",

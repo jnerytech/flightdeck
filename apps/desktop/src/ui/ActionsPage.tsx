@@ -145,6 +145,9 @@ export function ActionsPage(props: {
       }
     >
       <div className="flex max-w-3xl flex-col gap-3">
+        <p role="note" className="text-muted-foreground text-xs">
+          {t("actionsUi.sameUser")}
+        </p>
         {loading && <LoadingState label={t("actionsUi.loading")} />}
         {actions?.length === 0 && <EmptyState icon={Terminal} title={t("actionsUi.empty")} />}
         {errors.length > 0 && (
