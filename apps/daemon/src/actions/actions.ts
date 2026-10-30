@@ -222,6 +222,12 @@ export class Actions {
         throw invalid("a bandeja não aprova pedidos de prod ou de risco alto: aprove no app");
       }
       if ((approval.heldMs ?? 0) < HOLD_MS) throw invalid("segure o botão Aprovar por 2 s");
+      // An approval for the session would let the next uses through without the button held.
+      if (approval.scope === "session") {
+        throw invalid(
+          "um pedido de prod ou de risco alto não é aprovado para a sessão: só um uso por vez",
+        );
+      }
     }
     if (approval.scope === "session" && !waiting.once) {
       throw invalid("a regra não permite aprovar para a sessão: este pedido pergunta a cada uso");
