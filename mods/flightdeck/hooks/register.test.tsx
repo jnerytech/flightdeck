@@ -235,6 +235,8 @@ test("get_snippet reads one snippet by name and never runs it; flightdeckd's err
   reply = RESULT({ exitCode: 1, stderr: "not_found: snippet\n" });
   const missing = await $.tool.call({ tool: "mcp__flightdeck__get_snippet", name: "nada" });
   expect((missing as { deny?: string }).deny).toContain("not_found");
+});
+
 const SESSION_CALLS = [
   ["list_sessions", {}, ["flightdeckd", "message", "list"]],
   [

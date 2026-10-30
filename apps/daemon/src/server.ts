@@ -30,10 +30,10 @@ import {
   type SessionLine,
   type SessionStatus,
   type SessionSummary,
+  type TeamsUpdatedFrame,
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
-  type TeamsUpdatedFrame,
   type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
@@ -84,8 +84,8 @@ import type { SshConnector } from "./ssh/connect.ts";
 import type { HostKeys } from "./ssh/hostkey.ts";
 import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
-import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { Teams } from "./teams/teams.ts";
+import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";

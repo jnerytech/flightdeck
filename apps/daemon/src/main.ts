@@ -96,10 +96,10 @@ import { SshImporter } from "./ssh/import.ts";
 import { chooseDelivery, processOps } from "./ssh/key-delivery.ts";
 import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
+import { Teams } from "./teams/teams.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
-import { Teams } from "./teams/teams.ts";
 import {
   requestShutdown,
   runUpdate,
