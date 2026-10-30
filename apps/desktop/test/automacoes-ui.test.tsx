@@ -435,4 +435,16 @@ describe("automacoes-ui: the other triggers and actions", () => {
     expect(screen.queryByRole("dialog", { name: "Nova automação" })).toBeNull();
     expect(automationsOf(d)).toHaveLength(0);
   });
+
+  test("Escape closes the form and saves nothing", async () => {
+    const d = await online();
+    await openForm();
+    await act(async () => {
+      fireEvent.keyDown(screen.queryByRole("dialog", { name: "Nova automação" }) as HTMLElement, {
+        key: "Escape",
+      });
+    });
+    expect(screen.queryByRole("dialog", { name: "Nova automação" })).toBeNull();
+    expect(automationsOf(d)).toHaveLength(0);
+  });
 });
