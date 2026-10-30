@@ -1025,6 +1025,37 @@ cofre chegam com o Cofre (fase 16) por cima desta fase.
 Um destino com **host que o abre** diferente do que o guarda roda o ssh lá (por exemplo uma VPS,
 para alcançar a rede interna dela): o Flightdeck guarda uma cópia do destino nesse host e avisa na
 tela se o host está offline ou sem suporte a SSH.
+## Cofre
+
+O **Cofre** (barra lateral) guarda segredos: chaves SSH, senhas, tokens e conjuntos de variáveis de
+ambiente. O **valor** de um segredo fica no cofre de credenciais do sistema (Gerenciador de
+Credenciais do Windows), nunca nos arquivos do app e nunca em um log. A lista da tela guarda só o
+nome, o tipo, as etiquetas e uma descrição do segredo.
+
+- **Novo segredo** pede nome, tipo, valor e etiquetas. **Gerar chave SSH** cria um par `ed25519`
+  com o `ssh-keygen` deste computador, guarda a chave privada no cofre, apaga o arquivo temporário
+  e mostra a chave pública, pronta para **Copiar chave pública**. **Importar arquivo de chave** lê
+  um arquivo que você escolhe no diálogo do sistema; o original fica onde está, a menos que você
+  marque **Apagar o arquivo original depois de importar**.
+- Cada linha mostra só o que é seguro mostrar: a impressão digital da chave pública, o começo e o
+  fim de um token (`ghp_…WXYZ`, e nada para um token curto) ou os nomes de um conjunto de
+  variáveis. Uma senha não mostra nada.
+- **Revelar** pede que você digite a palavra `revelar` e então mostra o valor por 10 segundos.
+  **Copiar** coloca o valor na área de transferência e a limpa 30 segundos depois. **Remover** pede
+  que você digite o nome do segredo e apaga também o valor do cofre do sistema.
+- **Uso** é o registro de cada pedido feito ao cofre: o segredo, o host, a finalidade, quem pediu
+  (você, o Claude, uma automação ou um workflow) e o resultado (entregue, negado ou usado). Ele
+  nunca guarda um valor. Filtre por segredo ou por quem pediu.
+- **Backup** exporta o cofre para um arquivo `cofre.fdvault`, cifrado com a frase-senha que você
+  digitar (pelo menos 12 caracteres, confirmada duas vezes). **Importar cofre** lê esse arquivo com
+  a frase-senha e mostra uma prévia dos segredos **Novos**, **Iguais** e **Conflitantes** antes de
+  mudar qualquer coisa; um conflito mantém o que está no cofre, a menos que você escolha
+  **Substituir pelo backup**. Uma frase-senha errada e um arquivo alterado são recusados.
+
+Um segredo só chega a um daemon quando o app o envia, só para um host da lista de hosts permitidos
+do segredo e só por `localhost` ou Tailscale; o daemon o guarda na memória por no máximo 60
+segundos. Nesta versão nenhuma função do daemon pede segredos ainda, então todo pedido vindo de um
+daemon é negado.
 
 ## Custos, orçamentos e cota
 

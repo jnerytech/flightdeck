@@ -1044,6 +1044,35 @@ of this phase.
 A destination with a **host that opens it** other than the one that keeps it runs ssh there (for
 example a VPS, to reach its internal network): Flightdeck keeps a copy of the destination on that
 host, and says so on screen if the host is offline or has no SSH support.
+## Vault
+
+The **Vault** (sidebar) keeps secrets: SSH keys, passwords, tokens and sets of environment
+variables. A secret's **value** lives in the system credential store (Windows Credential Manager),
+never in the app's files and never in a log. The list on the screen holds only the name, the type,
+the tags and a description of the secret.
+
+- **New secret** asks for a name, a type, the value and tags. **Generate SSH key** makes an
+  `ed25519` pair with the `ssh-keygen` of this computer, keeps the private key in the vault, deletes
+  the temporary file and shows the public key, ready to **Copy public key**. **Import key file**
+  reads a key file you choose in the system dialog; the original stays where it is unless you tick
+  **Delete the original file after importing**.
+- Each row shows what is safe to show: a key's public key fingerprint, a token's start and end
+  (`ghp_…WXYZ`, and nothing for a short one) or the names of an env set. A password shows nothing.
+- **Reveal** asks you to type the word `reveal`, then shows the value for 10 seconds. **Copy** puts
+  the value on the clipboard and clears the clipboard 30 seconds later. **Remove** asks you to type
+  the secret's name and deletes the value from the system store as well.
+- **Usage** is a log of every request made of the vault: the secret, the host, the purpose, who
+  asked (you, Claude, an automation or a workflow) and the result (delivered, denied or used). It
+  never holds a value. Filter it by secret or by who asked.
+- **Backup** exports the vault to a `cofre.fdvault` file, encrypted with the passphrase you type
+  (at least 12 characters, confirmed twice). **Import vault** reads such a file with its
+  passphrase and shows a preview of the **New**, **Same** and **Conflicting** secrets before
+  anything changes; a conflict keeps what is in the vault unless you choose **Replace with the
+  backup**. A wrong passphrase and a changed file are both refused.
+
+A secret reaches a daemon only when the app sends it, only to a host in the secret's allowed hosts,
+and only over `localhost` or Tailscale; the daemon keeps it in memory for at most 60 seconds. In
+this version no daemon feature asks for secrets yet, so every request from a daemon is denied.
 
 ## Costs, budgets and quota
 

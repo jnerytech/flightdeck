@@ -20,6 +20,9 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
 | destino SSH | SSH destination | Um servidor cadastrado em Conexões (host, porta, usuário, autenticação, etiquetas); a tela se chama Conexões / Connections |
 | chave do servidor | server key | A chave que o servidor SSH mostra; o app guarda o fingerprint e bloqueia se ele mudar |
+| cofre | vault | Onde ficam os segredos (chaves SSH, senhas, tokens, variáveis de ambiente), no cofre de credenciais do sistema |
+| segredo | secret | Um item do cofre: o valor fica no cofre do sistema e o app só lista nome, tipo e etiquetas |
+| frase-senha | passphrase | A frase que cifra o backup `.fdvault`; pelo menos 12 caracteres |
 | turno | turn | One message of the user and the agent's whole answer to it; the timeline lists them |
 | linha do tempo | timeline | The side panel of a session with its turns, what each changed in the files, and the rewind and fork actions |
 | Voltar arquivos | Rewind files | Puts the repository's files back to how they were before a turn; files only, never external commands; it can be undone |

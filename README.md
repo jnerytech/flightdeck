@@ -44,6 +44,8 @@ sessions from one place, without opening each machine.
 - Risk seals on every permission request: a high-risk one asks you to hold the button for 2 seconds.
 - SSH destinations (Termius-style, with the host's OpenSSH): import `~/.ssh/config`, check and pin
   the server key, connect in a terminal screen, and a red border for `prod`.
+- A vault for secrets (SSH keys, passwords, tokens, env sets): values live in the system credential
+  store, are revealed only after you type a word, and leave in an encrypted backup you choose.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
