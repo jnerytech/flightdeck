@@ -46,7 +46,8 @@ async function open(withTerminal = true) {
     vars: { msg: { default: "oi" } },
   });
   render(<App store={store} />);
-  await settle(() => store.getState().hosts[0]?.status === "online");
+  // The palette reads the snippets of hosts whose features it already knows.
+  await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("snippets") === true);
   let terminalId = "";
   if (withTerminal) {
     terminalId = (await store.terminalHost(h.hostId).open(h.d.project, 80, 24)).terminalId;
