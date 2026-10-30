@@ -10,6 +10,7 @@ import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
+import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
 
@@ -135,6 +136,7 @@ export function HostPage(props: {
             {t("autoApprovalsUi.open")}
           </Button>
         )}
+        <HostTerminal store={store} host={host} />
         {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
           <MaintenanceSection store={store} hostId={host.id} />
         )}

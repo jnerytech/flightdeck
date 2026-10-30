@@ -175,6 +175,7 @@ export const ptBR = {
     terminalDetail: "terminal",
     cardDetail: "card",
     actionDetail: "ação",
+    newTerminalIn: "Novo terminal em {host}",
     newSessionIn: "Nova sessão em {host}",
     goCosts: "Ir para Custos",
     goSettings: "Ir para Configurações",
@@ -467,6 +468,19 @@ export const ptBR = {
     idle: "ociosa",
     ended: "encerrada",
     error: "erro",
+  },
+  hostTerminal: {
+    title: "Terminal",
+    open: "Novo terminal",
+    attach: "Abrir o terminal em {cwd}",
+    attachShort: "Abrir",
+    off: "Os terminais estão desligados neste host.",
+    turnOn: "Ligar terminais",
+    turnOff: "Desligar terminais",
+    turnOnMessage:
+      "Um terminal é um shell completo no host, com o usuário do daemon. Ligar os terminais deste host?",
+    turnOffMessage: "Desligar encerra os terminais abertos neste host.",
+    none: "Nenhum terminal aberto.",
   },
   tabs: {
     moveToOther: "Mover a aba {title} para a outra área",

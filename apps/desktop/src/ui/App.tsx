@@ -18,7 +18,7 @@ import { Sidebar } from "./Sidebar.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
-type InPlace = "terminal" | "toggle-theme" | "switch-language" | "start-card";
+type InPlace = "terminal" | "new-terminal" | "toggle-theme" | "switch-language" | "start-card";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -222,6 +222,7 @@ export function App({ store }: { store: AppStore }) {
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
     if (target.kind === "terminal") void store.openInTerminal(target.hostId, target.target);
+    else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
     else if (target.kind === "toggle-theme") store.theme.toggle();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");

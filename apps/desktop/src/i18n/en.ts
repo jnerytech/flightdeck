@@ -172,6 +172,7 @@ export const en: Dictionary = {
     terminalDetail: "terminal",
     cardDetail: "card",
     actionDetail: "action",
+    newTerminalIn: "New terminal on {host}",
     newSessionIn: "New session in {host}",
     goCosts: "Go to Costs",
     goSettings: "Go to Settings",
@@ -464,6 +465,19 @@ export const en: Dictionary = {
     idle: "idle",
     ended: "ended",
     error: "error",
+  },
+  hostTerminal: {
+    title: "Terminal",
+    open: "New terminal",
+    attach: "Open the terminal in {cwd}",
+    attachShort: "Open",
+    off: "Terminals are turned off on this host.",
+    turnOn: "Turn terminals on",
+    turnOff: "Turn terminals off",
+    turnOnMessage:
+      "A terminal is a full shell on the host, as the daemon's user. Turn this host's terminals on?",
+    turnOffMessage: "Turning them off ends the terminals open on this host.",
+    none: "No terminal open.",
   },
   tabs: {
     moveToOther: "Move tab {title} to the other area",

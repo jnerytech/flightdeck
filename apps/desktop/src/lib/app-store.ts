@@ -1039,6 +1039,26 @@ export class AppStore {
     };
   }
 
+  /** Opens a terminal on the host (in `cwd`, its first allowed folder by default) in a new tab. */
+  async openTerminal(hostId: string, cwd?: string): Promise<string | null> {
+    const folder = cwd ?? this.state.hosts.find((h) => h.id === hostId)?.info?.allowedRoots[0];
+    if (!folder) return null;
+    const opened = await this.hostCommand(hostId, "terminal.open", {
+      cwd: folder,
+      cols: 80,
+      rows: 24,
+    });
+    if (!opened) return null;
+    this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
+    return opened.terminalId;
+  }
+
+  /** Asks the host for its `host.info` again (after a change of its settings). */
+  async reloadHostInfo(hostId: string): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (conn) await this.loadHostInfo(hostId, conn);
+  }
+
   /** Calls `listener` with the output, exit, resync and loss of the host of a terminal. */
   followTerminal(hostId: string, terminalId: string, listener: TerminalListener): () => void {
     const key = `${hostId}|${terminalId}`;

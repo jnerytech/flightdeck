@@ -3,6 +3,7 @@ import { type AppState, sessionKey } from "./app-store.ts";
 import { hostStatusView } from "./host-status.ts";
 import { basename } from "./paths.ts";
 import type { TerminalTarget } from "./terminal.ts";
+import { hasFeature } from "./version.ts";
 
 /** Where an entry of the Ctrl+K palette leads. */
 export type PaletteTarget =
@@ -15,6 +16,8 @@ export type PaletteTarget =
   | { kind: "projects"; hostId: string }
   | { kind: "new-session"; hostId: string }
   | { kind: "terminal"; hostId: string; target: TerminalTarget }
+  /** A new embedded terminal (phase 14), in a new tab. */
+  | { kind: "new-terminal"; hostId: string }
   | { kind: "settings" }
   | { kind: "toggle-theme" }
   | { kind: "switch-language" }
@@ -181,6 +184,14 @@ export function paletteSections(
         hostId: host.id,
       }),
     ),
+    ...online
+      .filter((host) => hasFeature(host.hostInfo?.features, "terminal", false))
+      .map((host) =>
+        action(`terminal:${host.id}`, t("palette.newTerminalIn", { host: host.name }), {
+          kind: "new-terminal",
+          hostId: host.id,
+        }),
+      ),
     action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
     action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
     ...(options.costs ? [action("costs", t("palette.goCosts"), { kind: "costs" })] : []),
