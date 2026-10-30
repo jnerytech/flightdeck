@@ -6,6 +6,12 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { isExternalAuthor } from "../lib/review.ts";
 
+/** `path:line` of a comment, or just `path` when it has no line. */
+function location(comment: PrComment): string {
+  const line = comment.line ? `:${comment.line}` : "";
+  return `${comment.path}${line}`;
+}
+
 /**
  * The review comments of a card's PR (GitHub or Azure DevOps), read by the host: file and line,
  * author (marked when from outside the team), resolved or not. The open ones come selected;
@@ -63,9 +69,7 @@ export function PrComments(props: {
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs">
-                      {comment.path
-                        ? `${comment.path}${comment.line ? `:${comment.line}` : ""}`
-                        : t("cardReview.review")}
+                      {comment.path ? location(comment) : t("cardReview.review")}
                     </span>
                     <span className="font-medium">{comment.author}</span>
                     {comment.authorIdentity && (

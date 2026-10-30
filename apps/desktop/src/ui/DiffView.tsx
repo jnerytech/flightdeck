@@ -65,54 +65,55 @@ function FileDiff(props: {
       />
     );
   };
+  const renderRow = (row: DiffRow, i: number) => {
+    if (row.kind === "hunk") {
+      return (
+        // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
+        <tr key={i} className="bg-muted text-muted-foreground">
+          <td colSpan={props.mode === "split" ? 2 : 1} className="px-2 py-0.5">
+            {row.header}
+          </td>
+        </tr>
+      );
+    }
+    if (props.mode === "unified") {
+      return (
+        // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
+        <tr key={i} className={TONE[row.op]}>
+          <td className="flex">
+            {number(row, row.op === "-" ? "old" : "new")}
+            <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
+              {`${row.op}${row.text}`}
+            </span>
+          </td>
+        </tr>
+      );
+    }
+    return (
+      // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
+      <tr key={i}>
+        <td className={cn("w-1/2 border-r align-top", row.op === "-" && TONE["-"])}>
+          {row.op !== "+" && (
+            <div className="flex">
+              {row.op === "-" ? number(row, "old") : <span className="w-10 shrink-0" />}
+              <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">{row.text}</span>
+            </div>
+          )}
+        </td>
+        <td className={cn("w-1/2 align-top", row.op === "+" && TONE["+"])}>
+          {row.op !== "-" && (
+            <div className="flex">
+              {number(row, "new")}
+              <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">{row.text}</span>
+            </div>
+          )}
+        </td>
+      </tr>
+    );
+  };
   return (
     <table className="w-full table-fixed overflow-hidden rounded-md border font-mono text-xs">
-      <tbody>
-        {rows.map((row, i) =>
-          row.kind === "hunk" ? (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
-            <tr key={i} className="bg-muted text-muted-foreground">
-              <td colSpan={props.mode === "split" ? 2 : 1} className="px-2 py-0.5">
-                {row.header}
-              </td>
-            </tr>
-          ) : props.mode === "unified" ? (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
-            <tr key={i} className={TONE[row.op]}>
-              <td className="flex">
-                {number(row, row.op === "-" ? "old" : "new")}
-                <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
-                  {`${row.op}${row.text}`}
-                </span>
-              </td>
-            </tr>
-          ) : (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are immutable and ordered
-            <tr key={i}>
-              <td className={cn("w-1/2 border-r align-top", row.op === "-" && TONE["-"])}>
-                {row.op !== "+" && (
-                  <div className="flex">
-                    {row.op === "-" ? number(row, "old") : <span className="w-10 shrink-0" />}
-                    <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
-                      {row.text}
-                    </span>
-                  </div>
-                )}
-              </td>
-              <td className={cn("w-1/2 align-top", row.op === "+" && TONE["+"])}>
-                {row.op !== "-" && (
-                  <div className="flex">
-                    {number(row, "new")}
-                    <span className="min-w-0 flex-1 whitespace-pre-wrap break-all px-2">
-                      {row.text}
-                    </span>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ),
-        )}
-      </tbody>
+      <tbody>{rows.map(renderRow)}</tbody>
     </table>
   );
 }
