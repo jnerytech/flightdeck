@@ -381,6 +381,23 @@ describe("regras-aprovacao: aprovar", () => {
 });
 
 describe("regras-aprovacao: prod e risco alto", () => {
+  test("a prod request that a rule lets be approved for the session is still approved one use at a time: the session scope is refused, even held", async () => {
+    const t = setup();
+    await t.actions.save({ projectId: "p1", definition: echoDef({ tags: ["prod"] }) });
+    t.setRules([
+      { id: "prod-sessao", match: { requester: "claude" }, decision: "ask", once: "session" },
+    ]);
+    const running = t.run();
+    const f = await t.frame();
+    expect(f).toMatchObject({ decision: "ask", needsHold: true });
+    const approve = (input: Parameters<Actions["approve"]>[1]) =>
+      failure(Promise.resolve().then(() => t.actions.approve(f.requestId, input)));
+    expect(await approve({ via: "app", heldMs: 2000, scope: "session" })).toContain("sessão");
+    expect(await approve({ via: "app", heldMs: 2000 })).toBe("ok");
+    t.deliver(f);
+    await running;
+  });
+
   test("prod pede a cada uso, segurando o botão 2 s, e a bandeja não aprova", async () => {
     const t = setup();
     await t.actions.save({ projectId: "p1", definition: echoDef({ tags: ["prod"] }) });
