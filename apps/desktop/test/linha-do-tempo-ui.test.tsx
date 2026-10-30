@@ -2,8 +2,10 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SnapshotInfo } from "@flightdeck/protocol";
+import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
+import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -324,5 +326,50 @@ describe("linha-do-tempo-ui", () => {
       [4, 3, "changed"],
       [7, 4, "running"],
     ]);
+  });
+
+  test("uma sessão do terminal tem a linha do tempo, e bifurca porque o uuid foi achado no transcript", async () => {
+    const d = makeDaemon(cleanups, { checkpoints: true });
+    const repo = join(d.root, "repo");
+    mkdirSync(repo);
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "commit.gpgsign", "false");
+    writeFileSync(join(repo, "README.md"), "# repo\n");
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "inicial");
+    d.central.hooksInstall(true);
+    const hook = (event: string, body: object) =>
+      fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        body: JSON.stringify({ session_id: "ext-1", hook_event_name: event, cwd: repo, ...body }),
+      });
+    await hook("SessionStart", {});
+    await hook("UserPromptSubmit", { prompt: "arrume o README" });
+    await d.snapshots?.idle();
+    writeFileSync(join(repo, "README.md"), "# arrumado\n");
+    await hook("Stop", {});
+    await d.snapshots?.idle();
+    writeTranscript(d.historyRoot, "-p", "ext-1", [
+      userLine({ uuid: "u-ext", text: "arrume o README", cwd: repo }),
+    ]);
+    d.history.scan();
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => Object.keys(store.getState().externals).length === 1);
+    const hostId = store.getState().hosts[0]?.id as string;
+    await act(async () =>
+      store.router.push({ name: "external", host: hostId, claudeSessionId: "ext-1" }),
+    );
+    await settle(() => screen.queryByRole("button", { name: "Linha do tempo" }) !== null);
+    await click("Linha do tempo");
+    await settle(() => sheet().queryByText("arrume o README") !== null);
+    expect(within(turn("arrume o README")).queryByText("Mudou arquivos")).not.toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Bifurcar daqui (turno 1)" })?.hasAttribute("disabled"),
+    ).toBe(false);
   });
 });
