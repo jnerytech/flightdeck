@@ -430,7 +430,11 @@ export class SessionManager {
     const run = this.opts.runtime.start({
       cwd: session.cwd,
       permissionMode: session.permissionMode,
-      env: buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
+      // The session's own id: the Flightdeck MCP it opens knows who is sending (phase 21).
+      env: {
+        ...buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
+        FLIGHTDECK_SESSION: sessionId,
+      },
       canUseTool: (toolName, input, ctx) =>
         persona && !toolAllowed(persona.tools, toolName)
           ? Promise.resolve({

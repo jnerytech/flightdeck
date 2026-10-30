@@ -49,6 +49,9 @@ import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, startMcp } from "./mcp.ts";
+import { LocalEndpoints } from "./messaging/endpoints.ts";
+import { Idle } from "./messaging/idle.ts";
+import { Messaging } from "./messaging/messages.ts";
 import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
@@ -676,8 +679,23 @@ export async function startDaemon(
     risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
     projectKey: (id) => keys.keyFor(board.getProject(id).path),
   });
+  // Phase 21: messages between sessions, delivered here and carried between hosts by the app.
+  const endpoints = new LocalEndpoints({
+    manager,
+    external: central.external,
+    nameOf: (claudeSessionId) => central.meta.get(claudeSessionId).name,
+    projectKey: (cwd) => keys.keyFor(cwd),
+    cardOf: (sessionId) => board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null,
+    sendToLaunch: (launchId, text) => central.receptor?.sendToLaunch(launchId, text) ?? false,
+    autoApprove,
+  });
+  const messaging = new Messaging({ db: store.db, host: config.hostName, endpoints });
+  const idle = new Idle({ endpoints, messaging, host: config.hostName });
+  const messagingSweep = setInterval(() => messaging.sweep(), 5 * 60_000);
   const server = startServer({
     manager,
+    messaging,
+    idle,
     vault,
     log: logger.log.bind(logger),
     actions,
@@ -787,6 +805,10 @@ export async function startDaemon(
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
         automations.stop();
+        clearInterval(messagingSweep);
+        idle.stop();
+        messaging.stop();
+        endpoints.stop();
         actions.stop();
         vault.stop();
         await automations.idle();
