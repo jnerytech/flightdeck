@@ -103,7 +103,11 @@ test("a failing flightdeckd comes back to the model as the error text", async ($
 
 test("the band names the action while it runs and goes away after", async ($, on) => {
   let finish: (() => void) | undefined;
+  // The mod writes the running state and only then calls process.run, so once this hook is
+  // reached the state is there: the test waits for that event, not for a time.
+  const reached = Promise.withResolvers<void>();
   on("process.run", async () => {
+    reached.resolve();
     await new Promise<void>((resolve) => {
       finish = resolve;
     });
@@ -117,7 +121,7 @@ test("the band names the action while it runs and goes away after", async ($, on
   });
 
   const call = $.tool.call({ tool: "mcp__flightdeck-actions__run_action", name: "deploy-staging" });
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  await reached.promise;
 
   for (const surface of ["terminal", "desktop"] as const) {
     const ui = await $.ui.mount({ ...BAND, surface });
