@@ -2331,8 +2331,6 @@ export const TerminalResync = z.object({
   terminalId: z.string(),
 });
 export type TerminalResync = z.infer<typeof TerminalResync>;
-/** Phase 16: who a daemon can be asking for; never `you`. */
-export const VaultDaemonRequester = z.enum(["claude", "automation", "workflow"]);
 
 /**
  * Phase 16: a use that needs a secret, asked of the app by the daemon. In this phase no daemon
