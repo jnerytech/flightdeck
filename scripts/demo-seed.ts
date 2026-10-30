@@ -10,6 +10,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
@@ -485,12 +486,23 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await client.call("external.watch", {});
   const status = await client.call<{ receptorUrl: string | null }>("hooks.status", {});
   const hooksToken = loadConfig(alfa.config).hooks.token ?? "";
+  // A held PermissionRequest waits for the app for as long as the demo runs. Bun's `fetch` gives
+  // up on a request after 6 minutes (and has no option to turn that off), which dropped the
+  // seeded requests from the queue in a slow e2e run; `node:http` has no such limit.
   const hook = (sessionId: string, event: string, body: object) =>
-    fetch(`${status.receptorUrl}/hooks/${event}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${hooksToken}` },
-      body: JSON.stringify({ session_id: sessionId, hook_event_name: event, cwd: web, ...body }),
-    }).catch(() => undefined);
+    new Promise<void>((done) => {
+      const req = request(
+        `${status.receptorUrl}/hooks/${event}`,
+        { method: "POST", headers: { Authorization: `Bearer ${hooksToken}` } },
+        (res) => {
+          res.resume();
+          res.on("end", () => done());
+          res.on("error", () => done());
+        },
+      );
+      req.on("error", () => done());
+      req.end(JSON.stringify({ session_id: sessionId, hook_event_name: event, cwd: web, ...body }));
+    });
   for (const [id, prompt] of [
     ["ext-rodando", "suba o servidor de desenvolvimento"],
     ["ext-edit", "corrija o import quebrado"],
