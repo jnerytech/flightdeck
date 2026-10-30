@@ -16,6 +16,7 @@ let shortcutTaken = false;
 mock.module("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: unknown) => {
     invokes.push([cmd, args]);
+    if (cmd === "vault_get") return "valor-do-cofre";
     return cmd === "token_get" ? "segredo" : undefined;
   },
   // @tauri-apps/api/event (the tray's clicks) imports it; without it this file fails to load alone.
@@ -173,6 +174,18 @@ describe("platform", () => {
     expect(tokens.get("b")).toBe("t2");
   });
 
+  test("web: the vault's values stay in memory apart from the host tokens, or in an injected map", async () => {
+    const values = new Map([["s1", "v1"]]);
+    const platform = createWebPlatform(fakeWindow().win, new Map(), values);
+    expect(await platform.vault.get("s1")).toBe("v1");
+    expect(await platform.vault.get("s2")).toBeNull();
+    await platform.vault.set("s2", "v2");
+    expect(values.get("s2")).toBe("v2");
+    expect(await platform.secrets.get("s2")).toBeNull();
+    await platform.vault.delete("s1");
+    expect(values.has("s1")).toBe(false);
+  });
+
   test("web: notificação usa a API do navegador e a bandeja vira o título da janela", async () => {
     const { win, notifications } = fakeWindow();
     const platform = createWebPlatform(win);
@@ -206,6 +219,20 @@ describe("platform", () => {
     expect(received).toEqual([link, "flightdeck://b:1?token=z"]);
     stop();
     expect(listeners.has("hashchange")).toBe(false);
+  });
+
+  test("tauri: the vault's values go through the vault_* commands with the secret id", async () => {
+    invokes.length = 0;
+    const platform = tauriPlatform(fakeWindow().win);
+    expect(await platform.vault.get("s1")).toBe("valor-do-cofre");
+    await platform.vault.set("s1", "novo");
+    await platform.vault.delete("s1");
+    expect(invokes).toEqual([
+      ["vault_get", { id: "s1" }],
+      ["vault_set", { id: "s1", value: "novo" }],
+      ["vault_delete", { id: "s1" }],
+    ]);
+    invokes.length = 0;
   });
 
   test("tauri: segredos no keyring, link externo, bandeja, fechar para a bandeja e auto-start", async () => {
