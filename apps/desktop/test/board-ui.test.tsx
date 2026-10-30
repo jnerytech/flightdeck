@@ -354,5 +354,11 @@ describe("board-ui", () => {
     expect(text).toContain("PR aberto");
     expect(text).toContain("checks falhando");
     expect(text).toContain("algo deu errado");
+    // The card's own page says the same in its header.
+    await click("Com selos");
+    await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+    const header = document.body.textContent ?? "";
+    expect(header).toContain("PR aberto");
+    expect(header).toContain("checks falhando");
   });
 });
