@@ -267,6 +267,8 @@ describe("i18n", () => {
       '<Foo label="Host" id="x" />',
       "if (a > b && c < d) run();",
       '<p>{t("a")}</p>',
+      // Ids and keys are not text: no space and no accent in what is left of the template.
+      "<label htmlFor={`${id}-sub`} key={`row-${i}`}>{`custo ${n}`}</label>",
     ].join("\n");
     expect(visibleLiterals(source)).toEqual([
       { line: 2, text: "Salvar nome" },
@@ -275,6 +277,7 @@ describe("i18n", () => {
       { line: 5, text: 'message="Apagar?"' },
       { line: 5, text: 'confirmLabel="Apagar"' },
       { line: 6, text: 'label="Host"' },
+      { line: 9, text: "{`custo ${n}`}" },
     ]);
   });
 });
