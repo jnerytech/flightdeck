@@ -6,7 +6,7 @@ import type { BoardOptions } from "../src/board/board.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../src/runtime/claude-sdk-runtime.ts";
 import { startServer } from "../src/server.ts";
 import type { CheckRunner } from "../src/workflows/check-runner.ts";
-import { git } from "./board-helpers.ts";
+import { git, whenChanged } from "./board-helpers.ts";
 import { record } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
@@ -63,12 +63,12 @@ async function setup(board: Partial<BoardOptions> = {}) {
         v.sessionStatus !== "starting" &&
         v.sessionStatus !== "running",
     );
-  /** Polls the comparison until every variant has finished its work. */
+  /** Waits, on the arena card's own changes, until every variant has finished its work. */
   const finished = () =>
-    until(async () => {
+    whenChanged(ctx.board, async () => {
       const arena = await ctx.board.arena(card.id);
       return settled(arena) ? arena : null;
-    }, 8000);
+    });
   const visible = () =>
     ctx.board.getBoard(ctx.project.id).columns.flatMap((c) => c.cards.map((x) => x.title));
   return { ...ctx, arenaCard: card, costs, finished, visible };
@@ -175,11 +175,12 @@ describe("arena", () => {
   });
 
   test("com workflow: cada variante roda o seu; a comparação traz diff, checks, custo e duração", async () => {
-    const { board, arenaCard, finished, costs } = await setup();
+    const { board, arenaCard, costs } = await setup();
     const arena = await board.startArena(arenaCard.id, { variants: [{}, {}], workflow: "wf" });
     costs.set(arena.variants[0]?.id ?? "", 0.5);
     costs.set(arena.variants[1]?.id ?? "", 1.25);
-    const done = await until(async () => {
+    // On the arena card's own changes: the checks of both variants have ended, with their diff.
+    const done = await whenChanged(board, async () => {
       const current = await board.arena(arenaCard.id);
       return current.variants.every(
         (v) =>
@@ -189,7 +190,7 @@ describe("arena", () => {
       )
         ? current
         : null;
-    }, 10_000);
+    });
     const [a, b] = done?.variants ?? [];
     expect(board.getCard(a?.id ?? "").workflowRunId).not.toBeNull();
     expect(board.getCard(b?.id ?? "").workflowRunId).not.toBe(
@@ -202,7 +203,6 @@ describe("arena", () => {
     expect([a?.costUsd, b?.costUsd]).toEqual([0.5, 1.25]);
     expect(a?.startedAt).not.toBeNull();
     expect(a?.durationMs).toBeGreaterThanOrEqual(0);
-    await finished();
   });
 
   test("uma vaga por variante: sem vagas para todas, a que sobra espera na fila e depois roda", async () => {
