@@ -1,10 +1,10 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { BellRing, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
-import { StateBadge, type StateTone } from "@/components/status/state-badge";
+import type { StateTone } from "@/components/status/state-badge";
 import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
+import type { Density } from "../lib/density.ts";
 import {
   type HubFilter,
   type HubRow,
@@ -27,8 +28,8 @@ import {
   STATE_LABELS,
   sessionLineText,
 } from "../lib/hub.ts";
+import { typing } from "../lib/keys.ts";
 import { hasFeature } from "../lib/version.ts";
-import { QuotaPanel } from "./QuotaPanel.tsx";
 
 const TONES: Record<HubState, StateTone> = {
   running: "running",
@@ -50,6 +51,9 @@ export function SessionsHub(props: {
   store: AppStore;
   state: AppState;
   onOpen(row: HubRow): void;
+  /** Whether the row is the session open on the right. */
+  isOpen(row: HubRow): boolean;
+  density: Density;
 }) {
   const { store, state } = props;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
@@ -63,6 +67,27 @@ export function SessionsHub(props: {
 
   const rows = hubRows(state);
   const groups = hubGroups(rows, filter);
+  /** The rows as listed, top to bottom: what J and K walk. */
+  const listed = groups.flatMap((g) => g.rows);
+  /** The row the keyboard is on (-1: none yet). */
+  const [cursor, setCursor] = useState(-1);
+  // J and K move the cursor, Enter opens the row under it (a focused button keeps its own Enter).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+      if (e.key === "j") setCursor(Math.min(listed.length - 1, cursor + 1));
+      else if (e.key === "k") setCursor(Math.max(0, cursor - 1));
+      else if (
+        e.key === "Enter" &&
+        listed[cursor] &&
+        (e.target as HTMLElement).tagName !== "BUTTON"
+      ) {
+        props.onOpen(listed[cursor] as HubRow);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   /** Estimated cost of each row's session, by row key (hosts with costs, phase 8). */
   const [costs, setCosts] = useState<Record<string, number>>({});
   const asked = JSON.stringify(
@@ -160,7 +185,6 @@ export function SessionsHub(props: {
     <Page title="Sessões" toolbar={toolbar}>
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
-        <QuotaPanel store={store} state={state} />
         {renaming && (
           <div className="flex items-center gap-2">
             <Input
@@ -183,64 +207,65 @@ export function SessionsHub(props: {
           <section
             key={group.key}
             aria-label={`Projeto ${group.name}`}
-            className="flex flex-col gap-2"
+            className="flex flex-col gap-1"
           >
-            <h3 className="font-semibold text-muted-foreground text-sm">{group.name}</h3>
-            <ul className="flex flex-col gap-2">
+            <h3 className="px-2 font-medium text-muted-foreground text-xs">{group.name}</h3>
+            <ul className="flex flex-col">
               {group.rows.map((row) => {
-                const needsYou = row.state === "needs_you";
                 const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
                 const line = sessionLineText(row.summary, store.now());
+                const origin = ORIGIN_LABELS[row.origin];
                 return (
                   <li
                     key={row.key}
                     aria-label={row.title}
+                    aria-current={props.isOpen(row) ? "true" : undefined}
+                    data-active={listed[cursor]?.key === row.key}
                     className={cn(
-                      "group flex items-start gap-3 rounded-lg border p-3 hover:bg-accent",
-                      needsYou && "border-status-needs-you/40 bg-status-needs-you/10",
+                      "group flex items-center gap-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
+                      props.density === "compact" ? "h-8" : "min-h-10 py-1",
                     )}
                   >
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {needsYou && (
-                          <BellRing
-                            data-icon="needs-you"
-                            aria-hidden="true"
-                            className="size-4 text-status-needs-you"
-                          />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => props.onOpen(row)}
-                          className="max-w-full truncate text-left font-medium"
-                        >
-                          {row.title}
-                        </button>
-                        <StatusDot tone={TONES[row.state]} label={STATE_LABELS[row.state]} />
-                        <span className="text-muted-foreground text-sm">{row.hostName}</span>
-                        {row.controllable && <StateBadge tone="running">controlável</StateBadge>}
-                        {cost !== undefined && (
-                          <output
-                            aria-label={`Custo de ${row.title}`}
-                            className="text-muted-foreground text-xs"
-                          >
-                            {usd(cost)}
-                          </output>
-                        )}
-                      </div>
-                      <div className="text-muted-foreground text-xs">
-                        {ORIGIN_LABELS[row.origin] ? `${ORIGIN_LABELS[row.origin]} · ` : ""}
-                        <time
-                          dateTime={new Date(row.lastActivity).toISOString()}
-                          className="tabular-nums"
-                        >
-                          {store.formatDateTime(row.lastActivity)}
-                        </time>
-                      </div>
-                      {line && (
-                        <span className="truncate text-muted-foreground text-xs">{line}</span>
-                      )}
-                    </div>
+                    <StatusDot tone={TONES[row.state]} label={STATE_LABELS[row.state]} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCursor(listed.findIndex((r) => r.key === row.key));
+                        props.onOpen(row);
+                      }}
+                      className="min-w-0 max-w-[60%] truncate text-left font-medium text-sm"
+                    >
+                      {row.title}
+                    </button>
+                    <span className="shrink-0 text-muted-foreground text-xs">
+                      {origin ? `${row.hostName} · ${origin}` : row.hostName}
+                    </span>
+                    {row.controllable && (
+                      <>
+                        <Radio
+                          aria-hidden="true"
+                          className="size-3 shrink-0 text-muted-foreground"
+                        />
+                        <span className="sr-only">controlável</span>
+                      </>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">
+                      {line}
+                    </span>
+                    {cost !== undefined && (
+                      <output
+                        aria-label={`Custo de ${row.title}`}
+                        className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                      >
+                        {usd(cost)}
+                      </output>
+                    )}
+                    <time
+                      dateTime={new Date(row.lastActivity).toISOString()}
+                      className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                    >
+                      {store.formatDateTime(row.lastActivity)}
+                    </time>
                     {row.claudeSessionId && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -248,7 +273,7 @@ export function SessionsHub(props: {
                             variant="ghost"
                             size="icon"
                             aria-label={`Ações de ${row.title}`}
-                            className="opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+                            className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                           >
                             <MoreHorizontal />
                           </Button>

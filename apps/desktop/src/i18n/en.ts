@@ -83,9 +83,18 @@ export const en: Dictionary = {
     choose: "Choose a request to see its details.",
     resize: "Resize the list",
   },
+  hub: {
+    pick: "Choose a session to see the conversation.",
+    resize: "Resize the list",
+  },
+  history: {
+    pick: "Choose a session to read.",
+  },
   settings: {
     language: "Language",
     theme: "Theme",
+    density: "List density",
+    densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },

@@ -6,6 +6,7 @@ import type {
   AppUpdateState,
   Settings as SettingsState,
 } from "../lib/app-store.ts";
+import type { Density } from "../lib/density.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
@@ -27,6 +28,9 @@ export function Settings(props: {
   /** Light, dark or the system's (phase 10). */
   theme: ThemeMode;
   onTheme(mode: ThemeMode): void;
+  /** The list rows' height (phase 10). */
+  density: Density;
+  onDensity(density: Density): void;
   /** pt-BR or English (phase 10). */
   lang: Lang;
   onLang(lang: Lang): void;
@@ -47,6 +51,14 @@ export function Settings(props: {
         <option value="system">{t("settings.themes.system")}</option>
         <option value="light">{t("settings.themes.light")}</option>
         <option value="dark">{t("settings.themes.dark")}</option>
+      </select>
+      <select
+        aria-label={t("settings.density")}
+        value={props.density}
+        onChange={(e) => props.onDensity(e.target.value as Density)}
+      >
+        <option value="compact">{t("settings.densities.compact")}</option>
+        <option value="comfortable">{t("settings.densities.comfortable")}</option>
       </select>
       <select
         aria-label={t("settings.language")}

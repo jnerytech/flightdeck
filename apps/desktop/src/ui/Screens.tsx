@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
-import { LoadingState } from "@/components/layout/states";
+import { BookOpen, MessagesSquare } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { SplitView } from "@/components/layout/split-view";
+import { EmptyState, LoadingState } from "@/components/layout/states";
 import {
   type AppState,
   type AppStore,
@@ -7,6 +9,7 @@ import {
   type PendingItem,
   sessionKey,
 } from "../lib/app-store.ts";
+import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
@@ -23,6 +26,7 @@ import { HostPage } from "./HostPage.tsx";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { ProjectsPage } from "./ProjectsPage.tsx";
+import { QuotaPanel } from "./QuotaPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
@@ -150,25 +154,135 @@ function AddHost(props: {
   );
 }
 
-/** The screen of a route. `go` opens another one (the history keeps this one). */
-export function Screen(props: {
+interface ScreenProps {
   route: Route;
   store: AppStore;
   state: AppState;
   theme: ThemeMode;
+  density: Density;
   go(route: Route): void;
   /** A request from the Precisa de você screen: its session, card or terminal view. */
   onOpenRequest(item: PendingItem): void;
-}) {
+}
+
+/** The session open on the right of Sessões, if any (its daemon id or its Claude id). */
+function openedSession(route: Route, state: AppState): { id?: string; claude?: string } {
+  if (route.name === "session") return { id: route.id };
+  if (route.name === "external") return { claude: route.claudeSessionId };
+  if (route.name === "reader") return { claude: route.target.claudeSessionId };
+  if (route.name === "home" && state.selected?.sessionId) return { id: state.selected.sessionId };
+  return {};
+}
+
+/**
+ * The screen of a route. `go` opens another one (the history keeps this one). Sessões and
+ * Histórico are three columns: the list stays on the left and the open session, the transcript or
+ * the new-session form shows on the right; the others use the whole width.
+ */
+export function Screen(props: ScreenProps) {
+  const { store, state, go } = props;
+  const { t } = store.i18n;
+  // A host removed while its screen was open: back to the hub.
+  const waiting = hostToWait(props.route);
+  const removed =
+    waiting !== null && state.hostsLoaded && !state.hosts.some((h) => h.id === waiting);
+  const route: Route = removed ? { name: "hub" } : props.route;
+  const detail = routeScreen({ ...props, route });
+  // Settings, the host form and the first start (no host) use the whole width.
+  if (route.name === "settings" || route.name === "add-host" || state.hosts.length === 0) {
+    return detail;
+  }
+
+  const fromHistory =
+    route.name === "history" || (route.name === "reader" && route.list === "history");
+  if (fromHistory) {
+    const hostId =
+      route.name === "history"
+        ? route.host
+        : (route as { target: { hostId: string } }).target.hostId;
+    // A host that is not online yet shows its own loading screen, without the list.
+    if (hostToWait(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
+      return detail;
+    }
+    const opened = route.name === "reader" ? route.target.claudeSessionId : null;
+    return (
+      <SplitView
+        list={
+          <HistoryList
+            key={hostId}
+            store={store}
+            hostId={hostId}
+            hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
+            density={props.density}
+            openId={opened}
+            onOpen={(claudeSessionId) =>
+              go({ name: "reader", target: { hostId, claudeSessionId }, list: "history" })
+            }
+          />
+        }
+        detail={route.name === "reader" ? detail : null}
+        empty={
+          <div className="flex h-full items-center justify-center p-6">
+            <EmptyState icon={BookOpen} title={t("history.pick")} />
+          </div>
+        }
+        onClose={() => go({ name: "history", host: hostId })}
+        labels={{ resize: t("hub.resize") }}
+      />
+    );
+  }
+
+  const inSessions =
+    route.name === "hub" ||
+    route.name === "home" ||
+    route.name === "session" ||
+    route.name === "external" ||
+    route.name === "new-session" ||
+    route.name === "reader";
+  if (!inSessions) return detail;
+  // Waiting for a host (a reader or the like) keeps the loading screen as it is.
+  if (
+    route.name === "reader" &&
+    state.hosts.find((h) => h.id === route.target.hostId)?.status !== "online"
+  ) {
+    return detail;
+  }
+  const opened = openedSession(route, state);
+  return (
+    <SplitView
+      list={
+        <SessionsHub
+          store={store}
+          state={state}
+          density={props.density}
+          onOpen={(row) => go(rowRoute(row))}
+          isOpen={(row) =>
+            (opened.id !== undefined && row.sessionId === opened.id) ||
+            (opened.claude !== undefined && row.claudeSessionId === opened.claude)
+          }
+        />
+      }
+      detail={detail}
+      empty={
+        <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+          <EmptyState icon={MessagesSquare} title={t("hub.pick")} />
+          <QuotaPanel store={store} state={state} />
+        </div>
+      }
+      onClose={() => go({ name: "hub" })}
+      labels={{ resize: t("hub.resize") }}
+    />
+  );
+}
+
+/** What a route shows on its own; `null` is the Sessões screen with nothing open. */
+function routeScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
   const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
-  const hub = <SessionsHub store={store} state={state} onOpen={(row) => go(rowRoute(row))} />;
   // Screens that ask their host for data on opening wait for it to be online: a route can come
   // before the connection (a deep link at start-up).
   const waiting = hostToWait(route);
   const waitHost = waiting ? hostOf(waiting) : undefined;
-  // A host removed while its screen was open: back to the hub.
-  if (waiting && state.hostsLoaded && !waitHost) return hub;
   if (waiting && waitHost?.status !== "online") {
     const { t } = store.i18n;
     const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
@@ -193,6 +307,8 @@ export function Screen(props: {
         onNotifyUpdates={(enabled) => store.setNotifyUpdates(enabled)}
         theme={props.theme}
         onTheme={(mode) => store.theme.setMode(mode)}
+        density={props.density}
+        onDensity={(density) => store.density.set(density)}
         lang={store.i18n.lang}
         onLang={(next) => store.i18n.setLang(next)}
         t={store.i18n.t}
@@ -213,7 +329,7 @@ export function Screen(props: {
   }
   switch (route.name) {
     case "hub":
-      return hub;
+      return null;
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
     case "costs":
@@ -244,7 +360,7 @@ export function Screen(props: {
     case "new-session": {
       // A host removed while its form is open: back to the hub.
       const host = hostOf(route.host);
-      return host ? <NewSession store={store} host={host} /> : hub;
+      return host ? <NewSession store={store} host={host} /> : null;
     }
     case "external":
       return (
@@ -269,20 +385,11 @@ export function Screen(props: {
         />
       );
     case "history":
-      return (
-        <HistoryList
-          key={route.host}
-          store={store}
-          hostId={route.host}
-          hostName={hostOf(route.host)?.name ?? route.host}
-          onOpen={(claudeSessionId) =>
-            go({ name: "reader", target: { hostId: route.host, claudeSessionId } })
-          }
-        />
-      );
+      // The list is drawn beside it (Screen).
+      return null;
     case "host": {
       const host = hostOf(route.host);
-      if (!host) return hub;
+      if (!host) return null;
       return (
         <HostPage
           key={host.id}
@@ -364,7 +471,7 @@ export function Screen(props: {
   }
   const selectedHost = selected ? hostOf(selected.hostId) : undefined;
   if (selectedHost) return <NewSession store={store} host={selectedHost} />;
-  return hub;
+  return null;
 }
 
 /** The new-session form of a host; the created session opens. */

@@ -56,6 +56,7 @@ export function App({ store }: { store: AppStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getState);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
+  const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
   const route = useSyncExternalStore(router.subscribe, () => router.current);
   const { t } = store.i18n;
@@ -210,6 +211,7 @@ export function App({ store }: { store: AppStore }) {
             store={store}
             state={state}
             theme={themeMode}
+            density={density}
             go={go}
             onOpenRequest={openRequest}
           />

@@ -9,6 +9,7 @@ import { formatAgo } from "../i18n/format.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { STATE_LABELS } from "../lib/hub.ts";
+import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
 import { inputSummary } from "../lib/tool-input.ts";
 
@@ -19,12 +20,6 @@ type Entry =
 
 const ROW =
   "flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent";
-
-/** Whether a key press belongs to a field, not to the list. */
-function typing(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null;
-  return el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.tagName === "SELECT";
-}
 
 /** The requests waiting for the user: the list on the left, the chosen request's card on the right. */
 export function NeedsYou(props: {

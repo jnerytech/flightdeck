@@ -1,8 +1,13 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
+import { History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { cn } from "@/lib/utils";
 import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
+import type { Density } from "../lib/density.ts";
 import { basename } from "../lib/paths.ts";
 import { when } from "./GlobalSearch.tsx";
 
@@ -10,6 +15,10 @@ const ORIGIN_LABELS: Record<HistoryOrigin, string> = {
   flightdeck: "Flightdeck",
   external: "externa",
 };
+
+/** Native selects, as in the hub. */
+const SELECT_CLASS =
+  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 interface Draft {
   cwd: string;
@@ -33,6 +42,9 @@ export function HistoryList(props: {
   store: AppStore;
   hostId: string;
   hostName: string;
+  density: Density;
+  /** The session open on the right, if any. */
+  openId: string | null;
   onOpen(claudeSessionId: string): void;
 }) {
   const { store, hostId } = props;
@@ -59,42 +71,63 @@ export function HistoryList(props: {
   });
 
   return (
-    <section className="card history">
-      <h2>{`Histórico de ${props.hostName}`}</h2>
-      <div className="row filters">
-        <input aria-label="Pasta" placeholder="Pasta" {...field("cwd")} />
-        <input aria-label="De" type="date" {...field("from")} />
-        <input aria-label="Até" type="date" {...field("to")} />
-        <select aria-label="Origem" {...field("origin")}>
-          <option value="">Todas as origens</option>
-          <option value="flightdeck">Flightdeck</option>
-          <option value="external">Externa</option>
-        </select>
-        <button type="button" onClick={() => setFilter(toFilter(draft))}>
-          Filtrar
-        </button>
+    <section className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-col gap-2 border-b px-4 py-3">
+        <h2 className="font-semibold text-base">{`Histórico de ${props.hostName}`}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input aria-label="Pasta" placeholder="Pasta" className="w-32" {...field("cwd")} />
+          <Input aria-label="De" type="date" className="w-36" {...field("from")} />
+          <Input aria-label="Até" type="date" className="w-36" {...field("to")} />
+          <select aria-label="Origem" className={SELECT_CLASS} {...field("origin")}>
+            <option value="">Todas as origens</option>
+            <option value="flightdeck">Flightdeck</option>
+            <option value="external">Externa</option>
+          </select>
+          <Button variant="outline" onClick={() => setFilter(toFilter(draft))}>
+            Filtrar
+          </Button>
+        </div>
       </div>
-      {loading && <LoadingState label={t("states.loadingSessions")} />}
-      {!loading && sessions?.length === 0 && <EmptyState title={t("states.emptyHistory")} />}
-      {!loading && sessions && sessions.length > 0 && (
-        <ul aria-label="Sessões do histórico">
-          {sessions.map((s) => (
-            <li key={s.claudeSessionId}>
-              <button type="button" onClick={() => props.onOpen(s.claudeSessionId)}>
-                <span>
-                  {[
-                    s.title ?? s.claudeSessionId,
-                    basename(s.cwd),
-                    when(s.lastTs),
-                    ORIGIN_LABELS[s.origin],
-                  ].join(" · ")}
-                </span>
-                {s.maybeActive && <span className="badge badge-warn">possivelmente em uso</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {loading && <LoadingState label={t("states.loadingSessions")} />}
+        {!loading && sessions?.length === 0 && (
+          <EmptyState icon={History} title={t("states.emptyHistory")} />
+        )}
+        {!loading && sessions && sessions.length > 0 && (
+          <ul aria-label="Sessões do histórico" className="flex flex-col">
+            {sessions.map((s) => (
+              <li
+                key={s.claudeSessionId}
+                aria-current={props.openId === s.claudeSessionId ? "true" : undefined}
+                className={cn(
+                  "flex items-center rounded-md transition-colors duration-150 hover:bg-accent aria-[current=true]:bg-accent",
+                  props.density === "compact" ? "h-8" : "min-h-10 py-1",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => props.onOpen(s.claudeSessionId)}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2 text-left text-sm"
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    {[
+                      s.title ?? s.claudeSessionId,
+                      basename(s.cwd),
+                      when(s.lastTs),
+                      ORIGIN_LABELS[s.origin],
+                    ].join(" · ")}
+                  </span>
+                  {s.maybeActive && (
+                    <span className="shrink-0 text-status-needs-you text-xs">
+                      possivelmente em uso
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

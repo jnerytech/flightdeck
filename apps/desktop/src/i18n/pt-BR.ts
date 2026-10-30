@@ -86,9 +86,18 @@ export const ptBR = {
     choose: "Escolha um pedido para ver os detalhes.",
     resize: "Redimensionar a lista",
   },
+  hub: {
+    pick: "Escolha uma sessão para ver a conversa.",
+    resize: "Redimensionar a lista",
+  },
+  history: {
+    pick: "Escolha uma sessão para ler.",
+  },
   settings: {
     language: "Idioma",
     theme: "Tema",
+    density: "Densidade da lista",
+    densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },

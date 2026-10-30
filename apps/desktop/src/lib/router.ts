@@ -11,7 +11,8 @@ export type Route =
   | { name: "session"; host: string; id: string; focus?: string }
   | { name: "new-session"; host: string }
   | { name: "external"; host: string; claudeSessionId: string }
-  | { name: "reader"; target: ReaderTarget }
+  /** A transcript; `list: "history"` when it was opened from a host's history list. */
+  | { name: "reader"; target: ReaderTarget; list?: "history" }
   | { name: "history"; host: string }
   | { name: "host"; host: string }
   | { name: "projects"; host: string }

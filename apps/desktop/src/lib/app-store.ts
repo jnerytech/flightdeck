@@ -396,6 +396,7 @@ export class AppStore {
     private readonly options: AppStoreOptions = {},
   ) {
     this.theme = new ThemeController(platform);
+    this.density = new DensityController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -435,7 +436,7 @@ export class AppStore {
 
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
-  readonly density = new DensityController();
+  readonly density: DensityController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
