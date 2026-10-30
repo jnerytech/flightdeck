@@ -403,4 +403,30 @@ describe("card-revisao-ui", () => {
     expect(screen.queryByText("Nenhum comentário no PR.")).not.toBeNull();
     expect(screen.queryByRole("button", { name: /^Enviar ao agente/ })).toBeNull();
   });
+  test("a configuração do projeto avisa quando falta o .worktreeinclude e dá um exemplo", async () => {
+    const ctx = await setup();
+    const other = join(ctx.root, "outro");
+    mkdirSync(other);
+    git(other, "init", "-q", "-b", "main");
+    git(other, "config", "commit.gpgsign", "false");
+    writeFileSync(join(other, "README.md"), "# outro\n");
+    writeFileSync(join(other, ".worktreeinclude"), ".env\n");
+    git(other, "add", ".");
+    git(other, "commit", "-q", "-m", "inicial");
+    await ctx.board.addProject({ path: other, promptTemplate: "" });
+    await act(async () => {
+      ctx.store.router.push({ name: "projects", host: ctx.hostId });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Editar repo" }) !== null);
+    expect(screen.queryByText(/não tem um .worktreeinclude/)).toBeNull();
+
+    await click("Editar repo");
+    expect(screen.queryByText(/não tem um .worktreeinclude/)).not.toBeNull();
+    expect(screen.queryByLabelText("Exemplo de .worktreeinclude")?.textContent).toContain(
+      ".env.local",
+    );
+
+    await click("Editar outro");
+    expect(screen.queryByText(/não tem um .worktreeinclude/)).toBeNull();
+  });
 });
