@@ -337,4 +337,27 @@ describe("ssh-destinos", () => {
     const ack = await client.request("ssh.list", {});
     expect((ack.error as { code?: string } | undefined)?.code).toBe("invalid_state");
   });
+
+  test("host.info announces ssh only when the server has the destinos, so the app hides Conexões elsewhere", async () => {
+    const featuresOf = async (withSsh: boolean) => {
+      const { targets } = setup();
+      const { root } = workspace();
+      const server = startServer({
+        manager: newManager().manager,
+        ...(withSsh ? { ssh: targets } : {}),
+        hostName: "h",
+        bind: "127.0.0.1",
+        port: 0,
+        token: TOKEN,
+        allowedRoots: [root],
+      });
+      cleanups.push(() => server.stop());
+      const client = new FrameClient(server.url);
+      cleanups.push(() => client.close());
+      await client.request("hello", { token: TOKEN, client: "t" });
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features;
+    };
+    expect(await featuresOf(true)).toEqual(["ssh"]);
+    expect(await featuresOf(false)).toEqual([]);
+  });
 });
