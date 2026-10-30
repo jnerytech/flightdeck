@@ -142,6 +142,7 @@ describe("versoes-ui", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Abrir Sessões" }));
     });
+    await sidebar.openFilters();
     const hosts = within(screen.getByLabelText("Host")).queryAllByRole("option");
     expect(hosts.map((o) => o.textContent)).toEqual(["Todos os hosts"]);
     await openHost();

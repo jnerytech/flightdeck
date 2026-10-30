@@ -15,11 +15,13 @@ import {
 } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -280,6 +282,7 @@ describe("hub-ui", () => {
   test("os filtros escolhidos ficam guardados e voltam na próxima abertura do app", async () => {
     const first = await setup();
     const select = (label: string) => screen.queryByLabelText(label) as HTMLSelectElement | null;
+    await sidebar.openFilters();
     await act(async () => {
       fireEvent.change(select("Estado") as HTMLSelectElement, { target: { value: "idle" } });
       fireEvent.change(select("Host") as HTMLSelectElement, { target: { value: "alfa" } });
@@ -300,7 +303,10 @@ describe("hub-ui", () => {
     const store = new AppStore(first.platform.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => store.router.push({ name: "hub" }));
-    await settle(() => select("Estado") !== null);
+    await settle(() => screen.queryByLabelText("Filtrar sessões") !== null);
+    // The button counts the two filters kept; the popover shows them.
+    expect(screen.queryByRole("button", { name: /^Filtros/ })?.textContent).toBe("Filtros2");
+    await sidebar.openFilters();
     expect(select("Estado")?.value).toBe("idle");
     expect(select("Host")?.value).toBe("alfa");
     expect((screen.queryByLabelText("Filtrar sessões") as HTMLInputElement | null)?.value).toBe("");

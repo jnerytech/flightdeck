@@ -105,6 +105,8 @@ describe("direcao-visual: barra lateral", () => {
     const { store } = await setup({ costs: true });
     const go = async (name: string) => {
       await click(inAside().queryByRole("button", { name }));
+      // Board and Workflows ask the host for its projects first.
+      await act(() => Bun.sleep(40));
       return store.router.current.name;
     };
     expect(await go("Precisa de você")).toBe("needs-you");

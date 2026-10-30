@@ -184,10 +184,11 @@ describe("direcao-visual: ajustes finos", () => {
     const { mem } = await setup();
     const separator = () => screen.queryByRole("separator", { name: "Redimensionar a lista" });
     expect(separator()?.getAttribute("aria-valuenow")).toBe("380");
-    await act(async () => {
-      fireEvent.keyDown(separator() as HTMLElement, { key: "ArrowRight" });
-      fireEvent.keyDown(separator() as HTMLElement, { key: "ArrowRight" });
-    });
+    for (let i = 0; i < 2; i++) {
+      await act(async () => {
+        fireEvent.keyDown(separator() as HTMLElement, { key: "ArrowRight" });
+      });
+    }
     expect(separator()?.getAttribute("aria-valuenow")).toBe("412");
     expect(mem.platform.storage.getItem("flightdeck.listWidth")).toBe("412");
     cleanup();

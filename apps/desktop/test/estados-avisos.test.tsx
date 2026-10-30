@@ -239,7 +239,7 @@ describe("estados-avisos", () => {
       </div>,
     );
     const classOf = (label: string) => screen.queryByText(label)?.className ?? "";
-    expect(classOf("offline")).toContain("text-status-error");
+    expect(classOf("offline")).toContain("text-status-idle");
     expect(classOf("reconectando")).toContain("text-status-needs-you");
     expect(classOf("offline")).not.toBe(classOf("reconectando"));
     expect(classOf("online")).toContain("text-status-idle");
@@ -277,6 +277,11 @@ describe("estados-avisos", () => {
     await act(async () => store.router.push({ name: "hub" }));
     await settle(() => screen.queryByRole("status", { name: "Hosts com problema" }) !== null);
     const strip = screen.queryByRole("status", { name: "Hosts com problema" });
+    // One compact line, open on click.
+    expect(strip?.textContent ?? "").toContain("2 hosts com problema");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "2 hosts com problema" }));
+    });
     expect(strip?.textContent ?? "").toContain("2 hosts offline");
     expect(strip?.textContent ?? "").toContain("notebook");
     expect(strip?.textContent ?? "").toContain("servidor");

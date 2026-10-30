@@ -160,6 +160,7 @@ describe("direcao-visual: três colunas", () => {
 
   test("os filtros da lista são compactos (32 px)", async () => {
     await setup();
+    await sidebar.openFilters();
     for (const label of ["Host", "Origem", "Estado"]) {
       expect(screen.queryByLabelText(label)?.className ?? "").toContain("h-8");
     }

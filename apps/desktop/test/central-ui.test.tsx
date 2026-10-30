@@ -32,6 +32,8 @@ async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
 }
 
 const click = async (name: string) => {
+  // The hub's toggles live in the Filtros popover.
+  if (name === "Só fixadas" || name === "Mostrar arquivadas") await sidebar.openFilters();
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();
   await act(async () => {
@@ -40,6 +42,7 @@ const click = async (name: string) => {
 };
 
 const change = async (label: string, value: string) => {
+  if (["Host", "Origem", "Estado"].includes(label)) await sidebar.openFilters();
   const field = screen.queryByLabelText(label) as HTMLInputElement | null;
   expect(field).not.toBeNull();
   await act(async () => {

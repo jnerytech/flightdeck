@@ -8,7 +8,10 @@ interface Deps {
     pointerDown(element: Element, init?: object): unknown;
     keyDown(element: Element, init?: object): unknown;
   };
-  screen: { queryByRole(role: string, options?: object): HTMLElement | null };
+  screen: {
+    queryByRole(role: string, options?: object): HTMLElement | null;
+    queryByLabelText(label: string | RegExp): HTMLElement | null;
+  };
 }
 
 /** The sidebar as the tests drive it: the nav, the host menus and the Precisa de você list. */
@@ -46,6 +49,11 @@ export function sidebarNav({ act, fireEvent, screen }: Deps) {
       });
       return names;
     },
+    /** The hub's Filtros popover, open (it stays open when it already is). */
+    async openFilters() {
+      if (screen.queryByLabelText(/^(Host)$/)) return;
+      await click(screen.queryByRole("button", { name: /^(Filtros|Filters)/ }));
+    },
     /** The Precisa de você screen. */
     async openQueue() {
       await click(screen.queryByRole("button", { name: /^Precisa de você/ }));
@@ -57,7 +65,7 @@ export function sidebarNav({ act, fireEvent, screen }: Deps) {
     },
     /** The Sessões screen. */
     async openHub() {
-      await click(screen.queryByRole("button", { name: "Abrir Sessões" }));
+      await click(screen.queryByRole("button", { name: /^(Abrir Sessões|Open Sessions)$/ }));
     },
   };
 }
