@@ -189,21 +189,25 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
-  // 9. Two tabs and a split by the buttons (Chromium keeps Ctrl+T and Ctrl+W for itself), a
+  // 9. Two tabs (Ctrl+click) and a split by the button (Chromium keeps Ctrl+T and Ctrl+W), a
   // terminal on the host with an echo, then detach and attach again: the scrollback comes back.
   "abas-terminal": async (c) => {
     const marker = `fd-${c.lang}-${Date.now()}`;
     const rows = c.page.locator(".xterm-rows");
     const shown = async () => ((await rows.first().textContent()) ?? "").split(marker).length - 1;
     await open(c, { name: "hub" });
-    await c.page.getByRole("button", { name: c.t("tabs.newTab"), exact: true }).click();
-    await c.page.keyboard.press("Escape");
+    // A Ctrl+click opens alfa's page in a second tab (Nova aba would open the palette over the bar).
+    await c.page
+      .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
+      .click({ modifiers: ["Control"] });
     await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
     await c.page.getByRole("button", { name: c.t("tabs.split"), exact: true }).click();
     await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "a tela dividida");
-    // What is opened goes to the focused area, the new one.
-    await c.page.getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) }).click();
-    await c.page.getByRole("button", { name: c.t("hostTerminal.open"), exact: true }).click();
+    // The new area shows alfa's page too: its Novo terminal opens the terminal there.
+    await c.page
+      .getByRole("button", { name: c.t("hostTerminal.open"), exact: true })
+      .last()
+      .click();
     await c.page
       .getByText(c.t("terminalUi.state.live"), { exact: true })
       .waitFor({ timeout: WAIT });
@@ -219,6 +223,14 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       .first()
       .click();
     await waitFor(async () => (await shown()) >= 2, "o scrollback ao anexar de novo");
+    // Ends it: the demo keeps its state, and the other language's run lists only its own.
+    await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+    await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
+    await waitFor(
+      async () =>
+        (await c.page.getByRole("button", { name: new RegExp(`^${attach}`) }).count()) === 0,
+      "o terminal encerrado",
+    );
   },
 };
 
