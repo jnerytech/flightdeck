@@ -47,6 +47,7 @@ export const en: Dictionary = {
   board: { cardActions: "Actions for {title}", startCard: "Start card" },
   shell: {
     sidebar: "Sidebar",
+    breadcrumb: "You are in",
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
   },
@@ -68,6 +69,7 @@ export const en: Dictionary = {
     openHost: "Open host {host}",
     hostMenu: "Menu of {host}",
     hostState: "{host}: {state}",
+    addHostCrumb: "Add host",
     boardOf: "Board of {host}",
     workflowsOf: "Workflows of {host}",
     hostHistory: "History",

@@ -3,9 +3,11 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
+import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
+import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { GlobalSearch } from "./GlobalSearch.tsx";
@@ -200,6 +202,11 @@ export function App({ store }: { store: AppStore }) {
             >
               <ArrowRight />
             </Button>
+            <Breadcrumb
+              crumbs={breadcrumb(route, state, t)}
+              label={t("shell.breadcrumb")}
+              onGo={go}
+            />
           </>
         }
         sidebar={(collapsed) => (

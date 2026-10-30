@@ -49,6 +49,7 @@ export const ptBR = {
   board: { cardActions: "Ações de {title}", startCard: "Iniciar card" },
   shell: {
     sidebar: "Barra lateral",
+    breadcrumb: "Você está em",
     collapse: "Recolher barra lateral",
     expand: "Mostrar barra lateral",
   },
@@ -70,6 +71,7 @@ export const ptBR = {
     openHost: "Abrir host {host}",
     hostMenu: "Menu de {host}",
     hostState: "{host}: {state}",
+    addHostCrumb: "Adicionar host",
     boardOf: "Board de {host}",
     workflowsOf: "Workflows de {host}",
     hostHistory: "Histórico",
