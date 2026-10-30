@@ -578,7 +578,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
-    const probe = await probeHost(input.url, input.token);
+    const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
   }
@@ -677,7 +677,7 @@ export class AppStore {
 
   /** Validates, swaps the registration and saves the new shortcut only if the OS took it. */
   async setGlobalShortcut(text: string): Promise<void> {
-    const check = validateShortcut(text);
+    const check = validateShortcut(text, this.i18n.t);
     if (!check.ok) {
       this.updateSettings({ shortcutError: check.error });
       return;
@@ -704,7 +704,7 @@ export class AppStore {
       return true;
     } catch {
       this.updateSettings({
-        shortcutProblem: `O atalho ${accelerator} não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.`,
+        shortcutProblem: this.i18n.t("messages.shortcutTaken", { accelerator }),
         shortcutError: null,
       });
       return false;
@@ -991,7 +991,7 @@ export class AppStore {
     try {
       await this.platform.terminal.open(launch.program, launch.args);
     } catch (error) {
-      this.fail(error, `Terminal não abriu: ${describeError(error)}`);
+      this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) }));
     }
   }
 
@@ -1159,7 +1159,9 @@ export class AppStore {
       this.update({ appUpdate: { offer, upToDate: offer === null, error: null } });
     } catch (error) {
       this.setAppUpdate({
-        error: `não consegui procurar atualização: ${(error as Error).message ?? String(error)}`,
+        error: this.i18n.t("messages.updateCheckFailed", {
+          error: (error as Error).message ?? String(error),
+        }),
       });
     }
   }
@@ -1170,7 +1172,9 @@ export class AppStore {
       await this.platform.updater.install();
     } catch (error) {
       this.setAppUpdate({
-        error: `A atualização não foi instalada: ${(error as Error).message ?? String(error)}`,
+        error: this.i18n.t("messages.updateInstallFailed", {
+          error: (error as Error).message ?? String(error),
+        }),
       });
     }
   }
@@ -1321,7 +1325,7 @@ export class AppStore {
       return;
     }
     setTimeout(
-      () => fail(`o daemon não voltou na versão ${target} a tempo`),
+      () => fail(this.i18n.t("messages.daemonUpdateLate", { version: target })),
       this.options.daemonUpdateTimeoutMs ?? 120_000,
     );
   }
@@ -1427,8 +1431,13 @@ export class AppStore {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (update.threshold === null || !host) return;
     void this.platform.notify({
-      title: "Orçamento",
-      body: `${host.name}: ${budgetLabel(update.budget)} em ${Math.round(update.threshold * 100)}% de ${usd(update.budget.limitUsd)}`,
+      title: this.i18n.t("messages.budgetTitle"),
+      body: this.i18n.t("messages.budgetBody", {
+        host: host.name,
+        label: budgetLabel(update.budget, this.i18n.t),
+        percent: Math.round(update.threshold * 100),
+        limit: usd(update.budget.limitUsd),
+      }),
     });
   }
 

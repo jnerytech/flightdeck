@@ -91,19 +91,6 @@ export interface HubGroup {
   rows: HubRow[];
 }
 
-export const ORIGIN_LABELS: Record<HubOrigin, string> = {
-  flightdeck: "Flightdeck",
-  terminal: "terminal",
-  history: "histórico",
-};
-
-export const STATE_LABELS: Record<HubState, string> = {
-  running: "rodando",
-  needs_you: "precisa de você",
-  idle: "ociosa",
-  ended: "encerrada",
-};
-
 const MANAGED: Record<SessionStatus, HubState> = {
   starting: "running",
   running: "running",

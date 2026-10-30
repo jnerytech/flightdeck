@@ -5,19 +5,19 @@ import { Composer, SessionHeader, SessionPane } from "@/components/session/parts
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
-import { STATE_LABELS } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { CheckpointsButton } from "./Checkpoints.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
-const STATES = {
-  running: STATE_LABELS.running,
-  awaiting_permission: STATE_LABELS.needs_you,
-  idle: STATE_LABELS.idle,
-  unknown: STATE_LABELS.idle,
-  ended: STATE_LABELS.ended,
+/** The dictionary key of a terminal session's state. */
+const STATE_KEYS = {
+  running: "running",
+  awaiting_permission: "needs_you",
+  idle: "idle",
+  unknown: "idle",
+  ended: "ended",
 } as const;
 
 /**
@@ -59,7 +59,7 @@ export function ExternalView(props: {
         title={title}
         subtitle={t("external.line", {
           host: props.hostName,
-          state: STATES[session?.status ?? "unknown"],
+          state: t(`hub.stateDots.${STATE_KEYS[session?.status ?? "unknown"]}`),
         })}
         controls={
           <>

@@ -1,15 +1,6 @@
 import type { SessionStatus } from "@flightdeck/protocol";
 import type { StateTone } from "@/components/status/status-dot";
 
-export const STATUS_LABELS: Record<SessionStatus, string> = {
-  starting: "iniciando",
-  running: "rodando",
-  awaiting_permission: "esperando você",
-  idle: "ociosa",
-  ended: "encerrada",
-  error: "erro",
-};
-
 /** A session status as the state tone of the theme (its badge color). */
 export function statusTone(status: SessionStatus): StateTone {
   switch (status) {

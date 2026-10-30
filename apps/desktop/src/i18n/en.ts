@@ -172,6 +172,7 @@ export const en: Dictionary = {
     sectionCards: "Cards",
     sectionProjects: "Projects",
     sectionHosts: "Hosts",
+    actionsOf: "Actions of {label}",
     sectionActions: "Actions",
   },
   time: {
@@ -941,5 +942,20 @@ export const en: Dictionary = {
       "Before opening, the files go back to the state of this turn. You can undo it later, from the timeline.",
     forkConfirm: "Fork",
     forkCommand: "Conversation forked. To open it in the terminal, run:",
+  },
+  messages: {
+    shortcutTaken:
+      "The shortcut {accelerator} could not be registered: another program probably uses it. Choose another.",
+    terminalFailed: "The terminal did not open: {error}",
+    updateCheckFailed: "could not check for updates: {error}",
+    updateInstallFailed: "The update was not installed: {error}",
+    daemonUpdateLate: "the daemon did not come back on version {version} in time",
+    budgetTitle: "Budget",
+    budgetBody: "{host}: {label} at {percent}% of {limit}",
+    tokenRefused: "token refused",
+    cannotConnect: "could not connect",
+    shortcutFormat: "expected format: Modifiers+Key, for example Ctrl+Alt+F",
+    shortcutModifier: "use at least Ctrl, Alt or Super",
+    shortcutReserved: "Ctrl+K opens the search inside the app; choose another shortcut",
   },
 };

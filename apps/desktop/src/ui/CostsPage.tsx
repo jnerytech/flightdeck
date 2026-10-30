@@ -13,14 +13,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import {
-  daysBetween,
-  PERIOD_LABELS,
-  type Period,
-  periodRange,
-  projectLabel,
-  usd,
-} from "../lib/costs.ts";
+import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -131,7 +124,7 @@ export function CostsPage(props: {
               </option>
             ))}
           </select>
-          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+          {PERIODS.map((p) => (
             <Button
               key={p}
               variant="outline"

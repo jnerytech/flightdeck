@@ -4,7 +4,7 @@ import { backoffDelay } from "../src/lib/backoff.ts";
 import { toolDiff } from "../src/lib/diff.ts";
 import { summaryNotifications } from "../src/lib/notify.ts";
 import { applyEnvelope, emptySession, endStreaming } from "../src/lib/session-state.ts";
-import { STATUS_LABELS, statusTone } from "../src/lib/status.ts";
+import { statusTone } from "../src/lib/status.ts";
 
 const env = (seq: number, event: SessionEvent): EventEnvelope => ({
   type: "event",
@@ -187,8 +187,6 @@ describe("desktop: notificações e status", () => {
   });
 
   test("rótulos e tons de status", () => {
-    expect(STATUS_LABELS.awaiting_permission).toBe("esperando você");
-    expect(STATUS_LABELS.running).toBe("rodando");
     expect(statusTone("awaiting_permission")).toBe("needs-you");
     expect(statusTone("running")).toBe("running");
     expect(statusTone("starting")).toBe("running");

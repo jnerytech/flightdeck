@@ -66,7 +66,7 @@ export function GlobalSearch(props: {
   const sections: PaletteSection[] = actionsOf
     ? [
         {
-          title: `Ações de ${actionsOf.label}`,
+          title: store.i18n.t("palette.actionsOf", { label: actionsOf.label }),
           items: actionsOf.actions.map((action, i) => ({
             id: `action:${i}`,
             label: action.label,

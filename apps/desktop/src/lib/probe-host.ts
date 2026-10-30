@@ -5,6 +5,8 @@ import {
   parseServerMessage,
 } from "@flightdeck/protocol";
 
+import { type T, translator } from "../i18n/index.ts";
+
 export type ProbeResult =
   | { ok: true; info: HelloResult & HostInfoResult }
   | { ok: false; error: string };
@@ -13,7 +15,11 @@ export type ProbeResult =
  * One-shot check before saving a host: connects, sends `hello` and `host.info`, then closes.
  * Resolves with the daemon's data or a short reason (bad token, unreachable, daemon error).
  */
-export function probeHost(url: string, token: string): Promise<ProbeResult> {
+export function probeHost(
+  url: string,
+  token: string,
+  t: T = translator("pt-BR"),
+): Promise<ProbeResult> {
   return new Promise((resolve) => {
     const ws = new WebSocket(url);
     let hello: HelloResult | null = null;
@@ -44,7 +50,9 @@ export function probeHost(url: string, token: string): Promise<ProbeResult> {
     ws.addEventListener("close", (event) =>
       finish({
         ok: false,
-        error: event.code === CLOSE_UNAUTHORIZED ? "token recusado" : "não foi possível conectar",
+        error: t(
+          event.code === CLOSE_UNAUTHORIZED ? "messages.tokenRefused" : "messages.cannotConnect",
+        ),
       }),
     );
   });

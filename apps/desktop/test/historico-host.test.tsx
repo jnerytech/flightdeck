@@ -116,7 +116,7 @@ describe("historico-host", () => {
     expect(managed).toContain("possivelmente em uso");
     expect(elsewhere).toContain("Outra pasta");
     expect(elsewhere).toContain("outra");
-    expect(elsewhere).toContain("externa");
+    expect(elsewhere).toContain("terminal");
     expect(elsewhere).not.toContain("possivelmente em uso");
     expect(old).toContain("Revisar o build");
     expect(old).toContain("01/09/2026, 07:00");

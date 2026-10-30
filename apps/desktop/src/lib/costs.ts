@@ -23,13 +23,7 @@ export function daysBetween(from: string, to: string): string[] {
 
 export type Period = "today" | "7d" | "30d" | "month" | "range";
 
-export const PERIOD_LABELS: Record<Period, string> = {
-  today: "Hoje",
-  "7d": "7 dias",
-  "30d": "30 dias",
-  month: "Mês atual",
-  range: "Intervalo",
-};
+export const PERIODS: readonly Period[] = ["today", "7d", "30d", "month", "range"];
 
 /** The days of a period ending today; `range` keeps the days the user chose. */
 export function periodRange(

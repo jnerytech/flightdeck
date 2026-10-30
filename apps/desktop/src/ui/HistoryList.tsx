@@ -10,11 +10,6 @@ import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
 import { basename } from "../lib/paths.ts";
 
-const ORIGIN_LABELS: Record<HistoryOrigin, string> = {
-  flightdeck: "Flightdeck",
-  external: "externa",
-};
-
 /** Native selects, as in the hub. */
 const SELECT_CLASS =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -120,7 +115,7 @@ export function HistoryList(props: {
                       s.title ?? s.claudeSessionId,
                       basename(s.cwd),
                       store.formatDateTime(s.lastTs ?? ""),
-                      ORIGIN_LABELS[s.origin],
+                      t(`hub.originTags.${s.origin === "external" ? "terminal" : "flightdeck"}`),
                     ].join(" · ")}
                   </span>
                   {s.maybeActive && (

@@ -1,3 +1,5 @@
+import { type T, translator } from "../i18n/index.ts";
+
 /** System-wide shortcut that brings the app forward with the global search open. */
 export const DEFAULT_SHORTCUT = "Ctrl+Alt+F";
 
@@ -27,19 +29,19 @@ const KEY = /^([A-Z0-9]|F([1-9]|1[0-9]|2[0-4]))$/;
  * one of Ctrl, Alt or Super (Shift alone would steal plain typing). `Ctrl+K` stays the in-app
  * search: as a global shortcut it would clash with browsers and VS Code.
  */
-export function validateShortcut(text: string): ShortcutCheck {
+export function validateShortcut(text: string, t: T = translator("pt-BR")): ShortcutCheck {
   const parts = text.split("+").map((p) => p.trim());
   const key = (parts.pop() ?? "").toUpperCase();
   const modifiers = parts.map((p) => MODIFIERS[p.toLowerCase()]);
   if (!KEY.test(key) || modifiers.includes(undefined) || new Set(modifiers).size < parts.length) {
-    return { ok: false, error: "formato esperado: Modificadores+Tecla, por exemplo Ctrl+Alt+F" };
+    return { ok: false, error: t("messages.shortcutFormat") };
   }
   if (!modifiers.some((m) => m !== "Shift")) {
-    return { ok: false, error: "use ao menos Ctrl, Alt ou Super" };
+    return { ok: false, error: t("messages.shortcutModifier") };
   }
   const value = [...ORDER.filter((m) => modifiers.includes(m)), key].join("+");
   if (value === "Ctrl+K") {
-    return { ok: false, error: "Ctrl+K abre a busca dentro do app; escolha outro atalho" };
+    return { ok: false, error: t("messages.shortcutReserved") };
   }
   return { ok: true, value };
 }

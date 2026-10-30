@@ -1,25 +1,13 @@
-import type { BoardColumn, Card, ChecksState, PrState } from "@flightdeck/protocol";
+import type { BoardColumn, Card } from "@flightdeck/protocol";
 import type { AppState } from "./app-store.ts";
 
-export const COLUMNS: ReadonlyArray<{ id: BoardColumn; label: string }> = [
-  { id: "backlog", label: "Backlog" },
-  { id: "in_progress", label: "Em andamento" },
-  { id: "waiting", label: "Esperando você" },
-  { id: "review", label: "Em revisão" },
-  { id: "done", label: "Concluído" },
+export const COLUMNS: ReadonlyArray<{ id: BoardColumn }> = [
+  { id: "backlog" },
+  { id: "in_progress" },
+  { id: "waiting" },
+  { id: "review" },
+  { id: "done" },
 ];
-
-export const PR_LABELS: Record<PrState, string> = {
-  open: "PR aberto",
-  merged: "PR mesclado",
-  closed: "PR fechado",
-};
-
-export const CHECK_LABELS: Record<ChecksState, string> = {
-  pending: "checks pendentes",
-  passing: "checks passando",
-  failing: "checks falhando",
-};
 
 /** The project's cards on one host, in board order. */
 export function projectCards(state: AppState, hostId: string, projectId: string): Card[] {

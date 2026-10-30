@@ -1,26 +1,7 @@
-import type { RunStatus, StepRun, StepStatus, WorkflowRun } from "@flightdeck/protocol";
+import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 
 const PT = translator("pt-BR");
-
-export const RUN_LABELS: Record<RunStatus, string> = {
-  queued: "na fila",
-  running: "em andamento",
-  waiting: "esperando você",
-  paused: "pausada",
-  failed: "falhou",
-  rejected: "recusada",
-  completed: "concluída",
-};
-
-export const STEP_LABELS: Record<StepStatus, string> = {
-  running: "em andamento",
-  waiting: "esperando você",
-  completed: "concluída",
-  failed: "falhou",
-  approved: "aprovado",
-  rejected: "recusado",
-};
 
 /** How long a step took (or has taken so far), roughly. */
 export function stepDuration(step: StepRun, now = Date.now()): string {

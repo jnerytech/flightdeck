@@ -175,6 +175,7 @@ export const ptBR = {
     sectionCards: "Cards",
     sectionProjects: "Projetos",
     sectionHosts: "Hosts",
+    actionsOf: "Ações de {label}",
     sectionActions: "Ações",
   },
   time: {
@@ -945,5 +946,20 @@ export const ptBR = {
       "Antes de abrir, os arquivos voltam ao estado deste turno. Dá para desfazer depois, pela linha do tempo.",
     forkConfirm: "Bifurcar",
     forkCommand: "Conversa bifurcada. Para abrir no terminal, rode:",
+  },
+  messages: {
+    shortcutTaken:
+      "O atalho {accelerator} não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.",
+    terminalFailed: "Terminal não abriu: {error}",
+    updateCheckFailed: "não consegui procurar atualização: {error}",
+    updateInstallFailed: "A atualização não foi instalada: {error}",
+    daemonUpdateLate: "o daemon não voltou na versão {version} a tempo",
+    budgetTitle: "Orçamento",
+    budgetBody: "{host}: {label} em {percent}% de {limit}",
+    tokenRefused: "token recusado",
+    cannotConnect: "não foi possível conectar",
+    shortcutFormat: "formato esperado: Modificadores+Tecla, por exemplo Ctrl+Alt+F",
+    shortcutModifier: "use ao menos Ctrl, Alt ou Super",
+    shortcutReserved: "Ctrl+K abre a busca dentro do app; escolha outro atalho",
   },
 } as const;

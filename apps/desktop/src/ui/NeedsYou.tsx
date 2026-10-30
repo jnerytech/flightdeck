@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { formatAgo } from "../i18n/format.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
-import { STATE_LABELS } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
 import { inputSummary } from "../lib/tool-input.ts";
@@ -121,7 +120,7 @@ export function NeedsYou(props: {
                 }}
               >
                 <span className="flex items-center gap-2">
-                  <StatusDot tone="needs-you" label={STATE_LABELS.needs_you} />
+                  <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
                   <span className="min-w-0 flex-1 truncate text-sm">{`${item.hostName} · ${item.sessionName}`}</span>
                   <time
                     dateTime={item.createdAt}
