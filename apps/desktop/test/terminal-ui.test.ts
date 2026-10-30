@@ -157,4 +157,35 @@ describe("terminal-ui: the session of one terminal", () => {
     await Promise.resolve();
     expect(session.state).toBe("live");
   });
+
+  test("it decodes the output without Node's Buffer, as in the browser", async () => {
+    const scrollback = b64("olá\r\n");
+    const saved = globalThis.Buffer;
+    const drawn: string[] = [];
+    let last: TerminalState | null = null;
+    const session = new TerminalSession({
+      terminalId: "t1",
+      host: {
+        attach: async () => ({ terminalId: "t1", scrollback, cols: 80, rows: 24, exitCode: null }),
+        write: async () => null,
+        resize: async () => null,
+        close: async () => null,
+      },
+      screen: {
+        write: (bytes) => void drawn.push(new TextDecoder().decode(bytes)),
+        reset: () => {},
+      },
+      onState: (state) => {
+        last = state;
+      },
+    });
+    Reflect.deleteProperty(globalThis, "Buffer");
+    try {
+      await session.start();
+    } finally {
+      globalThis.Buffer = saved;
+    }
+    expect(last as TerminalState | null).toBe("live");
+    expect(drawn).toEqual(["olá\r\n"]);
+  });
 });
