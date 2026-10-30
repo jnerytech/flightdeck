@@ -1896,6 +1896,15 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 
 O que a spec da Fase 16 (cofre de segredos) deixou aberto, ou o que mudou na implementação. Nesta rodada só entrou o lado do daemon (`cofre-entrega` e `cofre-solicitante`); o keyring, as telas, o backup com `age` e a escolha dos hosts permitidos são do app e esperam a Fase 10.
 
+## Nomes de sessão
+
+- **Duas tabelas de verdade e uma de contadores.** `session_names` (o nome de cada sessão), `session_aliases` (todos os apelidos, únicos no host, os antigos de um renomear incluídos) e `session_name_counters` (só sobe). Apagar a linha de uma sessão não devolve o número, e o apelido continua reservado para ela.
+- **O contador é pelo `slug` do projeto e da persona**, então `Meu App` e `meu-app` contam juntos e nunca geram o mesmo apelido. Se um renomear já tomou o apelido que o próximo número geraria, o número é pulado.
+- **Card:** o número do card é por projeto e nasce na primeira sessão do card (`card 42`). A segunda sessão do mesmo card ganha o número de execução depois (`card 42 · 2`, apelido `…-card-42-2`), porque o apelido tem de ser único e um id é que identifica a sessão.
+- **A persona chega de dois jeitos.** Já na primeira vista, por `personaOf` (as executoras: o card guarda a persona antes de iniciar, então a sessão nasce com ela). Depois, por `setPersona` (a coordenadora, e a persona trocada num membro em andamento): é um número novo sob a persona nova e o apelido de antes continua valendo. Um nome que o usuário deu não é trocado.
+- **O nome padronizado é o nome que o messaging mostra** (`list_sessions`, o cabeçalho das mensagens). Os campos `name` de `session.list` e da meta seguem como eram: a lista do app só passa a mostrá-lo na Fase 10, com o `names.list`.
+- **O id vence o apelido** quando os dois coincidem. Entre hosts, o app que ainda não manda apelidos continua endereçando por id.
+
 ## Entrega
 
 - **Em memória e só nela:** o `Vault` do daemon guarda o valor num `Map`, com um temporizador por segredo. Nenhuma tabela, arquivo ou linha de log recebe o valor. O `vault.deliver` e o `vault.use` não gravam nada.
