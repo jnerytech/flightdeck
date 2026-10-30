@@ -92,6 +92,10 @@ async function setup(options: { checkpoints?: boolean; git?: boolean } = {}) {
     store.router.push({ name: "session", host: hostId, id: sessionId });
   });
   await settle(() => screen.queryByRole("button", { name: "Interromper" }) !== null);
+  // The button needs the claudeSessionId, which comes with the replayed events after the subscribe.
+  if (options.checkpoints !== false) {
+    await settle(() => screen.queryByRole("button", { name: "Linha do tempo" }) !== null);
+  }
   return { ...d, repo, store, hostId, sessionId, claudeSessionId };
 }
 
