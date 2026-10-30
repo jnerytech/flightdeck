@@ -29,6 +29,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type VaultUsed,
   WS_PATH,
 } from "@flightdeck/protocol";
 import type { ServerWebSocket } from "bun";
@@ -172,6 +173,8 @@ export interface RunningServer {
 
 interface Connection {
   authed: boolean;
+  /** Where the connection came from (the address the origin filter looked at). */
+  origin: string;
   subscriptions: Map<string, () => void>;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
@@ -223,6 +226,7 @@ type Outgoing =
   | TerminalExited
   | TerminalResync
   | AskpassRequest;
+  | VaultUsed;
 
 function send(ws: Socket, message: Outgoing): void {
   ws.send(JSON.stringify(message));
@@ -364,6 +368,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  function vault(): Vault {
+    if (!opts.vault) throw new FlightdeckError("invalid_state", "cofre indisponível");
+    return opts.vault;
   }
 
   function automations(): Automations {
@@ -650,9 +659,21 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
       }
       case "vault.deliver":
-        return ok(command.type, { expiresAt: 0 });
-      case "vault.use":
-        return ok(command.type, { result: "" });
+        return ok(command.type, vault().deliver(command.payload, ws.data.origin));
+      case "vault.use": {
+        const { secretId, purpose, action } = command.payload;
+        const used = vault().use(secretId, purpose, action);
+        // For the app's usage log: who, for what, when; never the value.
+        send(ws, {
+          type: "vault.used",
+          secretId,
+          purpose,
+          requester: used.requester,
+          action,
+          at: new Date().toISOString(),
+        });
+        return ok(command.type, { result: used.result });
+      }
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
@@ -1186,6 +1207,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const upgraded = srv.upgrade(req, {
           data: {
             authed: false,
+            origin,
             subscriptions: new Map(),
             pendingPings: new Map(),
             changeWatchers: new Map(),

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, unwatchFile, watchFile } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
@@ -93,6 +94,7 @@ import {
 import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
 import { whichOnPath } from "./which.ts";
+import { Vault } from "./vault/vault.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
@@ -552,9 +554,14 @@ export async function startDaemon(
       exec: spawnExec,
       ops: processOps(),
     }),
+  // Phase 16: secrets the app hands over for one use; in memory only, gone with the daemon.
+  const vault = new Vault({
+    log: logger.log.bind(logger),
+    actions: vaultActions(runtimeKind),
   });
   const server = startServer({
     manager,
+    vault,
     autoApprove,
     issues,
     automations,
@@ -641,6 +648,7 @@ export async function startDaemon(
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
         automations.stop();
+        vault.stop();
         await automations.idle();
         board.stop();
         terminals.stop();
@@ -880,9 +888,15 @@ function runBackup(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
-/** Stub. */
-export function vaultActions(_kind: RuntimeKind): Record<string, (value: string) => string> {
-  return { echo: (value) => value };
+/**
+ * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
+ * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
+ * to read a secret back out.
+ */
+export function vaultActions(kind: RuntimeKind): Record<string, (value: string) => string> {
+  return kind === "fake"
+    ? { echo: (value) => createHash("sha256").update(value).digest("hex") }
+    : {};
 }
 
 /** The real pieces that stop the daemon of a service: shutdown request, lock and process. */
