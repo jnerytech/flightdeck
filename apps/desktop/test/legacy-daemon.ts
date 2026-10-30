@@ -12,6 +12,17 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const refuse = new Map<string, string>();
   /** Features `host.info` announces (a phase 6 daemon announces none). */
   const features: string[] = [];
+  /** What `vault.rules.preview` answers (phase 19). */
+  const preview = {
+    verdict: {
+      decision: "ask",
+      ruleId: null as string | null,
+      reason: "padrão",
+      once: false,
+      needsHold: false,
+      limited: false,
+    },
+  };
   const server = Bun.serve({
     port: 0,
     fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("", { status: 426 })),
@@ -58,6 +69,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         if (type === "vault.deliver") return ack({ expiresAt: 0 });
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
+        if (type === "vault.rules.preview") return ack(preview.verdict);
         if (type === "vault.rules.set")
           return ack({ rules: (payload as { rules: unknown[] }).rules.length });
         if (type.endsWith(".watch")) return ack();
@@ -79,6 +91,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     commands,
     refuse,
     features,
+    preview,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));

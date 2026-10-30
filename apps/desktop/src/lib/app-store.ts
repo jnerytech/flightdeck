@@ -33,6 +33,7 @@ import type {
   SshTarget,
   TerminalInfo,
   VaultRequestFrame,
+  VaultVerdict,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
@@ -2072,6 +2073,17 @@ export class AppStore {
         .request("vault.rules.set", { secretId: secret.id, tags: secret.tags, rules })
         .catch((error: unknown) => this.fail(error));
     }
+  }
+
+  /**
+   * Phase 19: what the saved rules decide for a use ("what happens if…"), asked of a connected
+   * host the secret may go to; null when there is none.
+   */
+  async previewVaultUse(
+    _secretId: string,
+    _use: Omit<CommandPayload<"vault.rules.preview">, "secretId" | "tags">,
+  ): Promise<VaultVerdict | null> {
+    return null;
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
