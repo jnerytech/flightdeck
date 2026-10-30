@@ -1,6 +1,6 @@
-import type { McpServerView } from "@flightdeck/protocol";
+import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -24,12 +24,16 @@ import {
   type McpDraft,
   serverFromDraft,
 } from "../lib/mcp-form.ts";
+import { isInside } from "../lib/paths.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** The protocol's names, which the screen shows as they are. */
+/** Sessions of a managed run that can still answer `mcp.status`. */
+const LIVE_SESSION = new Set(["starting", "running", "awaiting_permission", "idle"]);
+
 const TRANSPORTS: McpDraft["transport"][] = ["stdio", "http", "sse"];
 
 interface TestResult {
@@ -50,6 +54,32 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
   );
   const [testing, setTesting] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, TestResult>>({});
+  const [live, setLive] = useState<McpLiveStatus[]>([]);
+  const state = useSyncExternalStore(store.subscribe, store.getState);
+  const projects = state.projects[hostId];
+  const projectPath = projects?.find((project) => project.id === projectId)?.path;
+  const liveSession = projectPath
+    ? state.hosts
+        .find((host) => host.id === hostId)
+        ?.sessions.find(
+          (session) => LIVE_SESSION.has(session.status) && isInside(session.cwd, projectPath),
+        )
+    : undefined;
+  const liveSessionId = liveSession?.id;
+
+  useEffect(() => {
+    if (!projects) void store.loadProjects(hostId);
+  }, [store, hostId, projects]);
+
+  const loadLive = useCallback(async () => {
+    if (!liveSessionId) return setLive([]);
+    const result = await store.hostCommand(hostId, "mcp.status", { sessionId: liveSessionId });
+    setLive(result ? result.servers : []);
+  }, [store, hostId, liveSessionId]);
+
+  useEffect(() => {
+    void loadLive();
+  }, [loadLive]);
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -68,8 +98,10 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
       name,
       enabled,
       confirm: true,
+      ...(liveSessionId ? { sessionId: liveSessionId } : {}),
     });
     if (result) setServers(result.servers);
+    await loadLive();
   };
 
   const save = async () => {
@@ -145,6 +177,11 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
   return (
     <div className="flex flex-col gap-4">
       <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
+      {liveSession && (
+        <p className="text-muted-foreground text-xs">
+          {t("agent.mcp.live.session", { name: liveSession.name ?? liveSession.id })}
+        </p>
+      )}
       <div>
         <Button variant="outline" size="sm" onClick={() => setDraft(emptyDraft())}>
           <Plus aria-hidden="true" />
@@ -155,6 +192,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
       <ul aria-label={t("agent.mcp.list")} className="flex flex-col gap-2">
         {servers.map((server) => {
           const result = results[server.name];
+          const status = live.find((entry) => entry.name === server.name);
           return (
             <li
               key={`${server.origin}/${server.name}`}
@@ -173,6 +211,11 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
                 <Badge variant="outline">{server.transport}</Badge>
                 <Badge variant="secondary">{origin(server)}</Badge>
                 {server.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
+                {status && (
+                  <Badge variant={status.status === "failed" ? "destructive" : "outline"}>
+                    {t(`agent.mcp.live.${status.status}`)}
+                  </Badge>
+                )}
                 <span className="flex-1" />
                 <Button
                   variant="ghost"
@@ -200,6 +243,9 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
                 )}
               </div>
               <code className="break-all text-muted-foreground text-xs">{commandLine(server)}</code>
+              {status?.status === "failed" && status.error && (
+                <p className="text-destructive text-xs">{status.error}</p>
+              )}
               {result && (
                 <div className="flex flex-wrap gap-6">
                   {(["tools", "resources"] as const).map((kind) => (
