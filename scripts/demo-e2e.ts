@@ -70,8 +70,10 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
   "card-diff": async (c) => {
     const title = `Card e2e ${Date.now()}`;
     await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    // The new-card dialog: Novo card, the title, Criar card.
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
     await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
-    await c.page.getByRole("button", { name: c.t("kanban.create") }).click();
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();

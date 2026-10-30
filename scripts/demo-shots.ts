@@ -127,6 +127,12 @@ export async function takeShots(
           await page.goto(`${url}?${query}`);
           // The hosts connect and the screen loads its data.
           await page.waitForTimeout(1500);
+          // The host nothing listens on shows as offline (hollow gray), not still connecting.
+          await page
+            .getByRole("img", { name: /^notebook: offline$/ })
+            .first()
+            .waitFor({ timeout: 8000 })
+            .catch(() => undefined);
           await shot.prepare?.(page);
           await page.screenshot({ path: join(dir, `${shot.name}.png`) });
           // The same screen, checked for accessibility: serious and critical violations fail.

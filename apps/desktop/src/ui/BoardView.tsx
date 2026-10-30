@@ -200,15 +200,17 @@ export function BoardView(props: {
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
         >
-          {COLUMNS.map(({ id, label }) => (
+          {COLUMNS.map(({ id }) => (
             <section
               key={id}
-              aria-label={label}
+              aria-label={t(`kanban.columns.${id}` as Key)}
               className="flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2"
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => drop(id)}
             >
-              <h3 className="px-1 font-medium text-muted-foreground text-xs">{label}</h3>
+              <h3 className="px-1 font-medium text-muted-foreground text-xs">
+                {t(`kanban.columns.${id}` as Key)}
+              </h3>
               <ul className="flex flex-col gap-2">
                 {shown
                   .filter((card) => card.column === id)

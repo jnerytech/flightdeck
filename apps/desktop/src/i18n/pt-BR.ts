@@ -370,6 +370,13 @@ export const ptBR = {
     descriptionLabel: "Descrição do card",
     descriptionPlaceholder: "Descrição",
     newCard: "Novo card",
+    columns: {
+      backlog: "Backlog",
+      in_progress: "Em andamento",
+      waiting: "Esperando você",
+      review: "Em revisão",
+      done: "Concluído",
+    },
     create: "Criar card",
   },
   cardUi: {
