@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import type { BoardOptions } from "../src/board/board.ts";
@@ -40,6 +40,36 @@ async function cardWithPr(overrides: Partial<BoardOptions> = {}) {
   await ctx.board.createPr(card.id);
   const views = () => gh.calls().filter((args) => args.includes(VIEW)).length;
   return { ...ctx, gh, card, views, worktree: reviewed?.worktreePath ?? "" };
+}
+
+/** An idle() that holds until `release()`, counting the calls. */
+function gatedIdle() {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const state = { waited: 0 };
+  const idle = () => {
+    state.waited++;
+    return gate;
+  };
+  return { idle, state, release: () => release() };
+}
+
+/** A card started and idle on a board with `idle`, with its worktree. */
+async function idleCard(idle: () => Promise<void>) {
+  const ctx = newBoard({ idle });
+  cleanups.push(() => ctx.board.stop());
+  const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
+  const card = ctx.board.createCard(project.id, { title: "Esperar", description: "faça" });
+  await ctx.board.startCard(card.id);
+  const started = await cardWhen(
+    ctx.board,
+    card.id,
+    (c) => c.worktreePath !== null && c.sessionStatus === "idle",
+  );
+  expect(started).not.toBeNull();
+  return { ...ctx, card, worktree: started?.worktreePath ?? "" };
 }
 
 describe("board", () => {
@@ -116,6 +146,35 @@ describe("board", () => {
     release();
     const done = await cardWhen(board, card.id, (c) => c.worktreePath === null);
     expect(done ?? {}).toMatchObject({ column: "done", notice: null });
+    expect(existsSync(worktree)).toBe(false);
+  });
+
+  test("a local merge removes the worktree only after the injected idle() settles", async () => {
+    const { idle, state, release } = gatedIdle();
+    const { board, card, worktree } = await idleCard(idle);
+    writeFileSync(join(worktree, "feito.txt"), "feito\n");
+    git(worktree, "add", "feito.txt");
+    git(worktree, "commit", "-q", "-m", "feito");
+    const merging = board.mergeLocal(card.id, "merge", true);
+    const asked = await poll(() => state.waited > 0 || null, 3000);
+    expect(asked).toBe(true);
+    await Bun.sleep(200);
+    expect(existsSync(worktree)).toBe(true);
+    release();
+    expect(await merging).toMatchObject({ column: "done", worktreePath: null, notice: null });
+    expect(existsSync(worktree)).toBe(false);
+  });
+
+  test("discarding a card removes its worktree only after the injected idle() settles", async () => {
+    const { idle, state, release } = gatedIdle();
+    const { board, card, worktree } = await idleCard(idle);
+    const discarding = board.discardCard(card.id, true);
+    const asked = await poll(() => state.waited > 0 || null, 3000);
+    expect(asked).toBe(true);
+    await Bun.sleep(200);
+    expect(existsSync(worktree)).toBe(true);
+    release();
+    expect(await discarding).toMatchObject({ discarded: true, worktreePath: null });
     expect(existsSync(worktree)).toBe(false);
   });
 });
