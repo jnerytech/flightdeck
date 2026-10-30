@@ -63,7 +63,7 @@ fn vault_get(id: String) -> Result<Option<String>, String> {
 fn vault_set(id: String, value: String) -> Result<(), String> {
     if cfg!(windows) && value.encode_utf16().count() * 2 > WINDOWS_CREDENTIAL_MAX_BYTES {
         return Err(format!(
-            "o valor passa de {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, o limite do cofre do Windows"
+            "the value is over {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, the limit of the Windows credential store"
         ));
     }
     vault_entry(&id)?
@@ -77,6 +77,140 @@ fn vault_delete(id: String) -> Result<(), String> {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// A key pair `ssh-keygen` made: the private key goes to the vault, the public one to the screen.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GeneratedKey {
+    private_key: String,
+    public_key: String,
+}
+
+/// Runs `ssh-keygen` inside `dir` (a folder only this user can read) and reads both files back.
+fn run_keygen(dir: &std::path::Path, comment: &str) -> Result<GeneratedKey, String> {
+    let key = dir.join("key");
+    let mut command = std::process::Command::new("ssh-keygen");
+    command
+        .args(["-q", "-t", "ed25519", "-N", "", "-C"])
+        .arg(comment)
+        .arg("-f")
+        .arg(&key);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let output = command.output().map_err(|e| format!("ssh-keygen: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "ssh-keygen: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    let private_key = std::fs::read_to_string(&key).map_err(|e| e.to_string())?;
+    let public_key = std::fs::read_to_string(dir.join("key.pub"))
+        .map_err(|e| e.to_string())?
+        .trim()
+        .to_string();
+    Ok(GeneratedKey {
+        private_key,
+        public_key,
+    })
+}
+
+/// Makes an `ed25519` pair with the local `ssh-keygen`, no passphrase, in a temporary folder that
+/// is deleted before returning (the private key never stays on disk).
+#[tauri::command]
+async fn vault_generate_key(comment: String) -> Result<GeneratedKey, String> {
+    if comment.chars().any(|c| c.is_control()) {
+        return Err("the key comment has control characters".to_string());
+    }
+    // A missing or slow `ssh-keygen` must not freeze the window.
+    tauri::async_runtime::spawn_blocking(move || generate_key(&comment))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn generate_key(comment: &str) -> Result<GeneratedKey, String> {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!(
+        "flightdeck-keygen-{}-{nanos}",
+        std::process::id()
+    ));
+    let mut builder = std::fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(&dir).map_err(|e| e.to_string())?;
+    let result = run_keygen(&dir, comment);
+    let _ = std::fs::remove_dir_all(&dir);
+    result
+}
+
+/// The key file the person picked last. Only that file may be removed afterwards, so the frontend
+/// cannot delete an arbitrary path.
+#[derive(Default)]
+struct PickedFile(std::sync::Mutex<Option<std::path::PathBuf>>);
+
+#[derive(serde::Serialize)]
+struct PickedFileInfo {
+    path: String,
+    text: String,
+}
+
+/// A key file is a few KiB; anything bigger is not one.
+const PICKED_FILE_MAX_BYTES: u64 = 1024 * 1024;
+
+/// Opens the system file dialog and reads the chosen file as text; `None` when it is cancelled.
+#[tauri::command]
+async fn vault_pick_file(
+    app: tauri::AppHandle,
+    state: State<'_, PickedFile>,
+) -> Result<Option<PickedFileInfo>, String> {
+    use std::io::Read;
+    use tauri_plugin_dialog::DialogExt;
+    // A new pick forgets the last one, even when this one fails or is cancelled.
+    *state.0.lock().map_err(|e| e.to_string())? = None;
+    let Some(picked) = app.dialog().file().blocking_pick_file() else {
+        return Ok(None);
+    };
+    let path = picked.into_path().map_err(|e| e.to_string())?;
+    // Bounded while reading, so a file that grows (or a device) cannot get past the cap.
+    let mut text = String::new();
+    std::fs::File::open(&path)
+        .map_err(|e| e.to_string())?
+        .take(PICKED_FILE_MAX_BYTES + 1)
+        .read_to_string(&mut text)
+        .map_err(|e| e.to_string())?;
+    if text.len() as u64 > PICKED_FILE_MAX_BYTES {
+        return Err("the file is too big to be a key".to_string());
+    }
+    *state.0.lock().map_err(|e| e.to_string())? = Some(path.clone());
+    Ok(Some(PickedFileInfo {
+        path: path.to_string_lossy().into_owned(),
+        text,
+    }))
+}
+
+/// Deletes the file `vault_pick_file` returned last, and nothing else.
+#[tauri::command]
+fn vault_remove_file(path: String, state: State<PickedFile>) -> Result<(), String> {
+    let mut picked = state.0.lock().map_err(|e| e.to_string())?;
+    if picked.as_deref() != Some(std::path::Path::new(&path)) {
+        return Err("only the file picked last can be deleted".to_string());
+    }
+    // Delete the path the dialog gave, not the string the frontend sent.
+    if let Some(stored) = picked.take() {
+        std::fs::remove_file(&stored).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 /// The tray's "Abrir" and "Sair" items, its "Precisa de você (N)" submenu, and whether closing
@@ -352,6 +486,9 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        // Phase 16: only the Rust side opens the dialog, to pick a key file for the vault.
+        .plugin(tauri_plugin_dialog::init())
+        .manage(PickedFile::default())
         .setup(|app| {
             // Registers the scheme at runtime too, so dev builds work without an installer.
             #[cfg(any(windows, target_os = "linux"))]
@@ -380,6 +517,9 @@ pub fn run() {
             vault_get,
             vault_set,
             vault_delete,
+            vault_generate_key,
+            vault_pick_file,
+            vault_remove_file,
             tray_set_status,
             tray_set_menu,
             set_close_to_tray,
