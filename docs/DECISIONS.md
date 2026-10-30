@@ -1892,3 +1892,37 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Prod tags** are `prod`, `produção` and `producao`, in any case (`lib/ssh.ts`).
 - **"Claude aqui" over SSH** and pairing a destino that has `flightdeckd` as a host are not part of this branch.
 - **The version is 0.15.0** (`test(versao)` cycle); at integration it resolves to the highest number.
+# Decisões e divergências da Fase 16 (daemon e protocolo)
+
+O que a spec da Fase 16 (cofre de segredos) deixou aberto, ou o que mudou na implementação. Nesta rodada só entrou o lado do daemon (`cofre-entrega` e `cofre-solicitante`); o keyring, as telas, o backup com `age` e a escolha dos hosts permitidos são do app e esperam a Fase 10.
+
+## Entrega
+
+- **Em memória e só nela:** o `Vault` do daemon guarda o valor num `Map`, com um temporizador por segredo. Nenhuma tabela, arquivo ou linha de log recebe o valor. O `vault.deliver` e o `vault.use` não gravam nada.
+- **Prazo:** `expiresAt` (milissegundos desde a época) é cortado em 60 s a partir de agora; um prazo que já passou é recusado. Passado o prazo o valor some sozinho (temporizador) e, por garantia, quem tenta usar um valor vencido não o encontra.
+- **Reentrega:** entregar de novo o mesmo segredo troca o valor e o prazo, sem ocupar outra vaga. No máximo 64 segredos de cada vez, para que um cliente local não encha a memória do daemon.
+- **Uso:** `vault.use { secretId, purpose, action }` roda uma ação do daemon com o valor e o **descarta**. A finalidade tem de ser a da entrega, e a ação tem de existir; um erro nesses dois não gasta o valor. Uma ação que falha não repassa a mensagem do erro (ela poderia trazer o valor), só diz que falhou.
+- **Sem app, sem segredo:** quando não há nada em memória, o uso falha com `not_found` e diz que o cofre é do app, que precisa estar aberto para entregar.
+- **`vault.used`:** depois de cada uso o daemon manda ao cliente o frame com segredo, finalidade, solicitante, ação e hora, para o registro de uso do app. Nunca leva o valor.
+- **A spec fala em "comando daemon → app" para o `vault.used`:** no protocolo atual o app é o cliente, então ele é um frame do daemon.
+- **A ação `echo`:** a única que existe, e só com `--runtime fake`. Devolve o SHA-256 do valor e nunca o valor, para o smoke conferir que o daemon usou o valor certo. Um daemon com o runtime real não tem nenhuma ação: o `vault.use echo` é recusado e o segredo não é gasto. Nesta fase não há como ler um segredo de volta de um daemon.
+- **O comando `vault.use` não está na tabela da spec.** Ele existe para que o uso aconteça num daemon que é um processo separado. As Fases 15 e 17 vão registrar ações de verdade (ssh, ações do Claude), e o `vault.use` é o gatilho de um uso que o app inicia.
+
+## Transporte
+
+- **O daemon confere também:** além do app, o daemon só aceita `vault.deliver` de uma conexão cuja origem (o endereço que o filtro de rede já olha) esteja no loopback (`127.0.0.0/8`, `::1`) ou nas faixas da Tailscale (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`). É uma defesa em profundidade: o transporte cifrado é exigido, não presumido.
+- **Recusa:** qualquer outra origem, por exemplo uma LAN em `allowedNetworks` com `ws` sem TLS, recebe `invalid_state` com o motivo, e o daemon registra a recusa com a origem e o id do segredo, **sem o valor**.
+- **Teste de rede de verdade:** quando a máquina tem uma interface que não é loopback nem Tailscale, o teste sobe o daemon nela e entrega por ali.
+
+## Solicitante
+
+- **`you` só para o que o app iniciou.** Um pedido que vem do daemon é `claude`, `automation` ou `workflow`; qualquer outra coisa, `you` inclusive, e a ausência dele, vale `unknown`, o mais restrito.
+- **Todo pedido do daemon é negado nesta fase** (`decideRequest`), com o motivo. Não há nenhum caminho que emita o frame `vault.request`; o schema dele só aceita os três solicitantes do daemon, então um frame que diga `you` nem é um pedido válido (o app o trata como desconhecido).
+- **O que o pedido `you` do daemon não consegue:** qualquer processo local que leia o `~/.flightdeck/config.json` fala o protocolo, mas não tem como fazer o daemon pedir um segredo ao app em nome de `you`.
+
+## Travas e testes
+
+- **Procura do valor:** um teste sobe um daemon de verdade, entrega e usa segredos de teste (com quebra de linha, acento e `=`), e procura cada um, em texto, base64 e hex, nos logs, na saída do console e em todos os arquivos da pasta de dados, o banco incluído. O vermelho foi mostrado fazendo o `Vault` logar o valor. O `smoke:vault` faz a mesma procura nos logs do daemon, nos arquivos dele e na própria saída.
+- **Ramos revelados pela cobertura (regra 7):** a ação que falha sem repassar a mensagem (vermelho: a mensagem com o valor).
+- **`smoke:vault`:** foi escrito depois das áreas. O vermelho veio guardando o valor depois do uso: `SMOKE VAULT FAIL no passo "o valor sai da memória no uso"`, com exit 1.
+- **Áreas do app que esperam a Fase 10:** `cofre-armazenamento`, `cofre-tipos`, `cofre-gerar-importar`, `cofre-uso`, `cofre-backup` e `cofre-ui`, e a lista de hosts permitidos de cada segredo (o app confere antes de entregar).
