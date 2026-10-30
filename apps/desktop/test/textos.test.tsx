@@ -1,0 +1,201 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { visibleLiterals } from "../../../scripts/lib/i18n-sweep.ts";
+import { poll } from "../../daemon/test/helpers.ts";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
+
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+const { useT, TContext } = await import("../src/i18n/context.tsx");
+const { translator } = await import("../src/i18n/index.ts");
+
+setDefaultTimeout(20_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+const ROOT = resolve(import.meta.dir, "../../..");
+const UI = resolve(import.meta.dir, "../src/ui");
+
+/** Screens whose visible text all comes from the dictionary (the list grows with the sweep). */
+const SWEPT = [
+  "SessionView.tsx",
+  "ExternalView.tsx",
+  "TranscriptReader.tsx",
+  "ToolCall.tsx",
+  "AlwaysAllow.tsx",
+  "NewSessionForm.tsx",
+  "ConfirmDialog.tsx",
+  "DiffView.tsx",
+  "UpdateBanner.tsx",
+  "DaemonUpdate.tsx",
+  "Screens.tsx",
+];
+/** Names and ids that are not translated. */
+const ALLOWED = ["Flightdeck", "Transcript", "Token", "Host", "Tokens"];
+
+async function online(language: string) {
+  const d = makeDaemon(cleanups);
+  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
+  await poll(() => d.manager.get(sessionId).status === "idle");
+  const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
+  cleanups.push(() => store.dispose());
+  render(<App store={store} />);
+  await act(async () => {
+    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+  });
+  await act(() => Bun.sleep(300));
+  return { d, store, sessionId, hostId: store.getState().hosts[0]?.id ?? "" };
+}
+
+const main = () => screen.queryByRole("main") as HTMLElement;
+
+describe("textos", () => {
+  test("o glossário existe e fixa os termos nos dois idiomas", () => {
+    const path = resolve(ROOT, "docs/GLOSSARY.md");
+    expect(existsSync(path)).toBe(true);
+    const text = readFileSync(path, "utf8");
+    for (const term of ["Aprovar", "Negar", "Precisa de você", "sessão do terminal", "card"]) {
+      expect(text).toContain(term);
+    }
+    for (const term of ["Approve", "Deny", "Needs you", "terminal session"]) {
+      expect(text).toContain(term);
+    }
+  });
+
+  test("as telas varridas não têm texto visível fora do dicionário", () => {
+    const left = SWEPT.flatMap((file) =>
+      visibleLiterals(readFileSync(resolve(UI, file), "utf8"), ALLOWED).map(
+        (l) => `${file}:${l.line} ${l.text}`,
+      ),
+    );
+    expect(left).toEqual([]);
+  });
+
+  test("useT segue o idioma do app e cai no português fora dele", () => {
+    const Probe = () => <p>{useT()("sidebar.sessions")}</p>;
+    render(<Probe />);
+    expect(screen.queryByText("Sessões")).not.toBeNull();
+    cleanup();
+    render(
+      <TContext.Provider value={translator("en")}>
+        <Probe />
+      </TContext.Provider>,
+    );
+    expect(screen.queryByText("Sessions")).not.toBeNull();
+  });
+
+  test("os modos de permissão têm nome legível e uma linha de explicação; o valor técnico não aparece", async () => {
+    const { store, hostId } = await online("pt-BR");
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    const select = screen.queryByLabelText("Modo de permissão") as HTMLSelectElement;
+    expect(select).not.toBeNull();
+    expect([...select.options].map((o) => o.textContent)).toEqual([
+      "Padrão: pergunta antes de agir",
+      "Aceitar edições: edita arquivos sem perguntar",
+      "Planejar: só lê e propõe um plano",
+      "Automático: um classificador decide o que segue",
+      "Só o permitido: nega o que as regras não liberam",
+      "Sem perguntas: executa tudo, sem pedir aprovação",
+    ]);
+    const text = main().textContent ?? "";
+    for (const technical of ["bypassPermissions", "acceptEdits", "dontAsk"]) {
+      expect(text).not.toContain(technical);
+    }
+    // The risky one warns, in red.
+    expect(screen.queryByRole("alert")).toBeNull();
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "bypassPermissions" } });
+    });
+    const warning = screen.queryByRole("alert");
+    expect(warning?.textContent).toContain("Sem perguntas");
+    expect(warning?.className ?? "").toContain("text-status-error");
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "plan" } });
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("em inglês, a sessão nova, a conversa e o leitor falam inglês e não mostram termos internos", async () => {
+    const { store, hostId, sessionId } = await online("en");
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    const english = [
+      "Folder",
+      "Subfolder",
+      "Name",
+      "Permission mode",
+      "First prompt",
+      "Create session",
+    ];
+    for (const label of english) expect(main().textContent ?? "").toContain(label);
+    expect(main().textContent ?? "").not.toMatch(/Pasta|Subpasta|Modo de|Primeiro|Criar sessão/);
+    const select = screen.queryByLabelText("Permission mode") as HTMLSelectElement;
+    expect([...select.options][0]?.textContent).toBe("Default: asks before acting");
+    await act(async () => {
+      store.router.push({ name: "session", host: hostId, id: sessionId });
+    });
+    await act(() => Bun.sleep(200));
+    const session = main().textContent ?? "";
+    for (const word of ["Resume", "Interrupt", "End", "Send"]) {
+      expect(session).toMatch(new RegExp(word));
+    }
+    expect(session).not.toMatch(/Retomar|Interromper|Encerrar|Enviar|Mensagem/);
+    // The turn's line has no internal "subtype": a word and the time.
+    expect(session).not.toMatch(/success|subtype/);
+  });
+
+  test("termos internos nunca aparecem nas telas principais (lista proibida)", async () => {
+    const { store, hostId } = await online("pt-BR");
+    const forbidden = [
+      "bypassPermissions",
+      "acceptEdits",
+      "dontAsk",
+      "allowedRoots",
+      "subtype",
+      "claudeSessionId",
+      "awaiting_permission",
+      "needs_you",
+      "pendingPermissions",
+    ];
+    await sidebar.openHub();
+    const routes = [
+      { name: "hub" },
+      { name: "settings" },
+      { name: "host", host: hostId },
+      { name: "projects", host: hostId },
+      { name: "new-session", host: hostId },
+      { name: "history", host: hostId },
+    ] as const;
+    for (const route of routes) {
+      await act(async () => {
+        store.router.push(route);
+      });
+      await act(() => Bun.sleep(150));
+      // What is read: the text and the attributes that are spoken or shown.
+      const attributes = [...document.querySelectorAll("[placeholder], [aria-label], [title]")]
+        .map(
+          (el) =>
+            `${el.getAttribute("placeholder")} ${el.getAttribute("aria-label")} ${el.getAttribute("title")}`,
+        )
+        .join(" ");
+      const text = `${document.body.textContent ?? ""} ${attributes}`;
+      for (const term of forbidden)
+        expect(`${route.name}: ${text.includes(term)}`).toBe(`${route.name}: false`);
+    }
+  });
+});
