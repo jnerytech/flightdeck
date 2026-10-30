@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
+import { isProd } from "../lib/ssh.ts";
 import type { SecretMeta } from "../lib/vault.ts";
 import { ActionForm } from "./ActionForm.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -19,15 +20,10 @@ function whereText(t: T, action: ActionInfo): string {
   return t("actionsUi.here");
 }
 
-/** The tags that mark a secret as production's. */
-const PROD_TAGS = new Set(["prod", "produção", "producao"]);
-
 /** Whether the action uses a vault secret tagged as production. */
 function usesProdSecret(action: ActionInfo, secrets: SecretMeta[]): boolean {
   const ids = new Set([...action.secrets.values, ...action.secrets.files]);
-  return secrets.some(
-    (s) => ids.has(s.id) && s.tags.some((tag) => PROD_TAGS.has(tag.toLowerCase())),
-  );
+  return secrets.some((s) => ids.has(s.id) && isProd(s.tags));
 }
 
 /** One action's runs, newest first; the output is shown as the daemon masked it. */
