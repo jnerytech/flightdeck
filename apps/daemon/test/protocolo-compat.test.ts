@@ -108,6 +108,7 @@ describe("protocolo-compat", () => {
     expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
       "workflows",
       "rules",
+      "arena",
     ]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());
