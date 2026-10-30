@@ -347,7 +347,7 @@ describe("board-ui", () => {
     const busyTile = cardItem("Ocupa") as HTMLElement;
     expect(within(busyTile).queryByRole("img", { name: "esperando você" })).not.toBeNull();
     expect(busyTile.querySelector("[data-slot='card-meta']")?.textContent ?? "").toMatch(
-      /flightdeck\//,
+      /fd\/ocupa/,
     );
     await board.stopCard(id);
     eventStore.db
