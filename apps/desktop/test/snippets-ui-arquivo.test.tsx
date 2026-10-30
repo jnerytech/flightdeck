@@ -34,10 +34,16 @@ const YAML = [
   "  run: export GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123",
 ].join("\n");
 
-async function open() {
+async function open(
+  seed?: (
+    store: InstanceType<typeof AppStore>,
+    h: Awaited<ReturnType<typeof snippetsHost>>,
+  ) => Promise<void>,
+) {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await snippetsHost(cleanups, store);
+  await seed?.(store, h);
   render(<App store={store} />);
   await settle(() => screen.queryByRole("button", { name: "Snippets" }) !== null);
   await act(async () => {
@@ -108,5 +114,35 @@ describe("snippets-ui: import from a file", () => {
         .sort(),
     ).toEqual(["revisar", "testes"]);
     expect((await store.hostCommand(hostId, "snippets.list", {}))?.snippets).toEqual([]);
+  });
+
+  test("a name already taken is reported and the rest still imported, on the host and in the app", async () => {
+    await open(async (store, h) => {
+      await h.save({ name: "testes", type: "command", run: "ls" });
+      store.globalSnippets.save({ name: "revisar", type: "prompt", text: "Outro." });
+    });
+    await click("Importar do arquivo");
+    expect(screen.queryByText("Importados: 1")).not.toBeNull();
+    expect(screen.queryByText(/^testes: /)).not.toBeNull();
+  });
+
+  test("in the app a taken name is reported too", async () => {
+    const { store } = await open(async (s) => {
+      s.globalSnippets.save({ name: "revisar", type: "prompt", text: "Outro." });
+    });
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Importar o arquivo para") as HTMLElement, {
+        target: { value: "global" },
+      });
+    });
+    await click("Importar do arquivo");
+    expect(screen.queryByText("Importados: 1")).not.toBeNull();
+    expect(screen.queryByText(/^revisar: /)).not.toBeNull();
+    expect(
+      store.globalSnippets
+        .list()
+        .map((s) => s.name)
+        .sort(),
+    ).toEqual(["revisar", "testes"]);
   });
 });
