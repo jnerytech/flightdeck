@@ -1,4 +1,11 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { clampListWidth, LIST_DEFAULT, LIST_MAX, LIST_MIN } from "@/lib/list-width";
 
 const STEP = 16;
@@ -21,11 +28,13 @@ export function SplitView(props: {
   const [width, setWidth] = useState(props.initialWidth ?? LIST_DEFAULT);
   /** The width as last set, so keys pressed before a render still add up. */
   const current = useRef(width);
-  const resize = (next: number) => {
+  const onResize = useRef(props.onResize);
+  onResize.current = props.onResize;
+  const resize = useCallback((next: number) => {
     current.current = next;
     setWidth(next);
-    props.onResize?.(next);
-  };
+    onResize.current?.(next);
+  }, []);
   /** Where a drag began: the pointer's x and the list's width then. */
   const drag = useRef<{ x: number; width: number } | null>(null);
 
@@ -42,7 +51,7 @@ export function SplitView(props: {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", stop);
     };
-  }, []);
+  }, [resize]);
 
   const onDividerKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key === "ArrowLeft") resize(clampListWidth(current.current - STEP));
