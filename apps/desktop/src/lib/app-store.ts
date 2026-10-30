@@ -358,6 +358,8 @@ export interface PendingItem {
   riskReason?: string;
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
+  /** Phase 19: the rule lets this request be approved for the rest of the session. */
+  vaultOnce?: true;
   /** Phase 19: what a rule made from this request matches ("Criar regra a partir disto"). */
   vaultRule?: { secretId: string; match: Record<string, string> };
 }
@@ -2183,6 +2185,7 @@ export class AppStore {
           }
         : {}),
       vault: true,
+      ...(request.once ? { vaultOnce: true as const } : {}),
       vaultRule: {
         secretId: request.secretId,
         match: {

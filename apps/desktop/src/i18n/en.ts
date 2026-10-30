@@ -973,6 +973,7 @@ export const en: Dictionary = {
     },
     add: "Add rule",
     fromRequest: "Create a rule from this",
+    approveSession: "Approve and don't ask again this session",
     save: "Save rules",
     cancel: "Cancel",
   },

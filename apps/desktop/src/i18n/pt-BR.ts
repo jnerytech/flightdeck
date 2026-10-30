@@ -975,6 +975,7 @@ export const ptBR = {
     },
     add: "Adicionar regra",
     fromRequest: "Criar regra a partir disto",
+    approveSession: "Aprovar e não perguntar mais nesta sessão",
     save: "Salvar regras",
     cancel: "Cancelar",
   },
