@@ -1,5 +1,5 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState } from "@/components/layout/states";
@@ -57,18 +57,16 @@ export function NeedsYou(props: {
   };
 
   // J and K move the cursor, Enter opens the row under it.
-  const keys = useRef<(e: KeyboardEvent) => void>(() => {});
-  keys.current = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
-    if (e.key === "j") setCursor(Math.min(entries.length - 1, cursor + 1));
-    else if (e.key === "k") setCursor(Math.max(0, cursor - 1));
-    else if (e.key === "Enter" && entries[cursor]) open(entries[cursor] as Entry);
-  };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => keys.current(e);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+      if (e.key === "j") setCursor(Math.min(entries.length - 1, cursor + 1));
+      else if (e.key === "k") setCursor(Math.max(0, cursor - 1));
+      else if (e.key === "Enter" && entries[cursor]) open(entries[cursor] as Entry);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  });
 
   if (entries.length === 0) {
     return (
