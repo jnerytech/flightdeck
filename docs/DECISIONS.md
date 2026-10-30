@@ -1580,6 +1580,13 @@ dictionary, in pt-BR and English.
   server that writes a marker file when it starts).
 - **Writes:** the form's "Salvar no .mcp.json" button, the removal dialog and the switch each send
   `confirm: true`. Nothing is written to `~/.claude` or `~/.claude.json`.
+- **mcp-ao-vivo:** when a managed session is live in the project (status starting, running,
+  awaiting_permission or idle, with a `cwd` equal to the project path or inside it; compared ignoring
+  case and treating `\` as `/`), the MCP tab calls `mcp.status {sessionId}` on load and after each
+  toggle, and shows a badge per server (connected, failed, needs login, connecting, disabled), the
+  error on `failed`, and a line naming the session that answers. The switch passes `sessionId` in
+  `mcp.toggle`, so it also reaches the live session. With no live session the tab behaves as before.
+  The status comes from the SDK query (`mcpServerStatus`) or, in tests, from the FakeRuntime.
 - **CLAUDE.md, Agentes and Skills:** the project's files are editable and the user's read-only. Saving
   sends the hash read when the file was opened; if the daemon refuses and the file's hash changed, the
   screen says so, keeps what was typed and offers "Recarregar". A new file is only written on its
