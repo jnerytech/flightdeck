@@ -107,6 +107,7 @@ export class SessionManager {
   private readonly efforts = new Map<string, EffortLevel>();
   private readonly listeners = new Map<string, Set<EventListener>>();
   private readonly summaryListeners = new Set<EventListener>();
+  private readonly userListeners = new Set<(sessionId: string, text: string) => void>();
   private readonly updateListeners = new Set<
     (sessionId: string, updates: PermissionUpdate[]) => void
   >();
@@ -351,8 +352,15 @@ export class SessionManager {
   }
 
   /** Phase 21: told when a user message reaches a session (a queued one is delivered then). */
-  onUserMessage(_listener: (sessionId: string, text: string) => void): () => void {
-    return () => {};
+  onUserMessage(listener: (sessionId: string, text: string) => void): () => void {
+    this.userListeners.add(listener);
+    return () => this.userListeners.delete(listener);
+  }
+
+  /** The stored events of a session after a sequence number (its transcript, for reading it). */
+  eventsSince(sessionId: string, sinceSeq = 0): EventEnvelope[] {
+    this.get(sessionId);
+    return this.store.eventsSince(sessionId, sinceSeq);
   }
 
   /** Ephemeral: the store does not persist it and stamps it with the last persisted seq. */
@@ -508,6 +516,13 @@ export class SessionManager {
     const status = this.get(sessionId).status;
     if (status !== "starting") this.setStatus(sessionId, "running");
     this.emit(sessionId, { type: "message.user", text });
+    for (const listener of this.userListeners) {
+      try {
+        listener(sessionId, text);
+      } catch {
+        // A broken listener must not break the session.
+      }
+    }
     const uuid = crypto.randomUUID();
     if (this.get(sessionId).claudeSessionId) this.turnEdge(sessionId, "before", text, uuid);
     else live.pendingBefore = { text, uuid };

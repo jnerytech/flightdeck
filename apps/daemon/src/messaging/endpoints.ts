@@ -3,8 +3,18 @@
  * the session manager, the cards and the terminal sessions of the central hub; tests hand in a
  * fake. A session is addressed by its id: the managed id, or the Claude session id of a terminal.
  */
-import type { MessagingSession, SessionLine } from "@flightdeck/protocol";
+import { readFileSync } from "node:fs";
+import type {
+  ExternalStatus,
+  MessagingSession,
+  SessionLine,
+  SessionStatus,
+  SessionSummary,
+} from "@flightdeck/protocol";
 import type { ExternalSessions } from "../central/external.ts";
+import { FlightdeckError } from "../errors.ts";
+import { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "../history/parser.ts";
+import { requestLine } from "../history/session-line.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 
@@ -66,45 +76,199 @@ export interface LocalEndpointsOptions {
   readFile?: ((path: string) => string | null) | undefined;
 }
 
-export class LocalEndpoints implements Endpoints {
-  constructor(readonly opts: LocalEndpointsOptions) {}
+const MANAGED_STATE: Record<SessionStatus, MessagingSession["state"]> = {
+  starting: "running",
+  running: "running",
+  awaiting_permission: "waiting",
+  idle: "idle",
+  ended: "ended",
+  error: "ended",
+};
 
-  list(): EndpointInfo[] {
-    return [];
-  }
+const TERMINAL_STATE: Record<ExternalStatus, MessagingSession["state"]> = {
+  idle: "idle",
+  running: "running",
+  awaiting_permission: "waiting",
+  ended: "ended",
+  unknown: "running",
+};
 
-  byLaunch(_launchId: string): string | null {
+const PLAIN_REASON = "claude puro, sem canal: só recebe pela troca nativa do Claude Code";
+const ENDED_REASON = "a sessão terminou";
+/** `read_session` shows at most this many messages, each cut to 8 KB. */
+const MAX_READ = 20;
+
+const defaultRead = (path: string): string | null => {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
     return null;
   }
+};
 
-  send(_id: string, _text: string): "delivered" | "queued" {
+export class LocalEndpoints implements Endpoints {
+  private readonly last = new Map<string, MessagingSession["state"]>();
+  private readonly idleListeners = new Set<(id: string) => void>();
+  private readonly stateListeners = new Set<
+    (id: string, state: MessagingSession["state"]) => void
+  >();
+  private readonly offs: Array<() => void> = [];
+
+  constructor(private readonly opts: LocalEndpointsOptions) {
+    this.offs.push(
+      opts.manager.watchSummaries((envelope) => {
+        const event = envelope.event;
+        if (event.type === "session.summary") {
+          this.changed(event.sessionId, MANAGED_STATE[event.status]);
+        }
+      }).unwatch,
+      opts.external.onChange((session) =>
+        this.changed(session.claudeSessionId, TERMINAL_STATE[session.status]),
+      ),
+    );
+  }
+
+  /** A state change: tells the listeners once per transition. */
+  private changed(id: string, state: MessagingSession["state"]): void {
+    if (this.last.get(id) === state) return;
+    this.last.set(id, state);
+    for (const listener of this.stateListeners) listener(id, state);
+    if (state === "idle") for (const listener of this.idleListeners) listener(id);
+  }
+
+  private managed(): SessionSummary[] {
+    return this.opts.manager.list();
+  }
+
+  list(): EndpointInfo[] {
+    const managed = this.managed();
+    const ids = new Set(managed.map((s) => s.claudeSessionId).filter(Boolean));
+    const infos: EndpointInfo[] = managed.map((s) => {
+      const state = MANAGED_STATE[s.status];
+      return {
+        id: s.id,
+        kind: this.opts.cardOf(s.id) ? "card" : "managed",
+        name: (s.claudeSessionId && this.opts.nameOf(s.claudeSessionId)) || s.name,
+        persona: this.opts.personaOf?.(s.id) ?? null,
+        projectKey: this.opts.projectKey(s.cwd),
+        state,
+        controllable: state !== "ended",
+        reason: state === "ended" ? ENDED_REASON : null,
+      };
+    });
+    for (const s of this.opts.external.list()) {
+      if (ids.has(s.claudeSessionId)) continue;
+      const state = TERMINAL_STATE[s.status];
+      const controllable = s.controllable && state !== "ended";
+      infos.push({
+        id: s.claudeSessionId,
+        kind: s.controllable ? "terminal" : "plain",
+        name: this.opts.nameOf(s.claudeSessionId),
+        persona: this.opts.personaOf?.(s.claudeSessionId) ?? null,
+        projectKey: s.cwd ? this.opts.projectKey(s.cwd) : s.projectKey,
+        state,
+        controllable,
+        reason: controllable ? null : state === "ended" ? ENDED_REASON : PLAIN_REASON,
+      });
+    }
+    return infos;
+  }
+
+  byLaunch(launchId: string): string | null {
+    return this.opts.external.sessionForLaunch(launchId);
+  }
+
+  send(id: string, text: string): "delivered" | "queued" {
+    if (this.managed().some((s) => s.id === id)) {
+      return this.opts.manager.send(id, text).queued ? "queued" : "delivered";
+    }
+    const terminal = this.opts.external.get(id);
+    if (!terminal) throw new FlightdeckError("not_found", `sessão ${id} não existe`);
+    if (!terminal.controllable || !terminal.launchId) {
+      throw new FlightdeckError("invalid_state", PLAIN_REASON);
+    }
+    if (!this.opts.sendToLaunch(terminal.launchId, text)) {
+      throw new FlightdeckError("invalid_state", "o canal do terminal não está conectado");
+    }
     return "delivered";
   }
 
-  untrusted(_id: string): boolean {
-    return false;
+  /** The keys the automatic approval knows a session by. */
+  private keys(id: string): string[] {
+    const card = this.opts.cardOf(id);
+    return card ? [id, `card:${card}`] : [id];
   }
 
-  suspend(_id: string, _reason: string): void {}
-
-  onIdle(_listener: (id: string) => void): () => void {
-    return () => {};
+  untrusted(id: string): boolean {
+    const keys = this.keys(id);
+    return (this.opts.autoApprove?.suspended() ?? []).some((s) => keys.includes(s.sessionKey));
   }
 
-  onUserMessage(_listener: (id: string, text: string) => void): () => void {
-    return () => {};
+  suspend(id: string, reason: string): void {
+    for (const key of this.keys(id)) this.opts.autoApprove?.suspend(key, reason);
   }
 
-  onState(_listener: (id: string, state: MessagingSession["state"]) => void): () => void {
-    return () => {};
+  onIdle(listener: (id: string) => void): () => void {
+    this.idleListeners.add(listener);
+    return () => this.idleListeners.delete(listener);
   }
 
-  read(
-    _id: string,
-    _last: number,
-  ): { summary: SessionLine | null; messages: ReadMessage[] } | null {
-    return null;
+  onUserMessage(listener: (id: string, text: string) => void): () => void {
+    return this.opts.manager.onUserMessage(listener);
   }
 
-  stop(): void {}
+  onState(listener: (id: string, state: MessagingSession["state"]) => void): () => void {
+    this.stateListeners.add(listener);
+    return () => this.stateListeners.delete(listener);
+  }
+
+  read(id: string, last: number): { summary: SessionLine | null; messages: ReadMessage[] } | null {
+    const count = Math.max(1, Math.min(last, MAX_READ));
+    const info = this.list().find((e) => e.id === id);
+    if (!info) return null;
+    let messages: ReadMessage[] = [];
+    let since: string | null = null;
+    if (this.managed().some((s) => s.id === id)) {
+      const events = this.opts.manager.eventsSince(id, 0);
+      for (const { event } of events) {
+        if (event.type === "message.user") messages.push({ role: "user", text: event.text });
+        else if (event.type === "message.assistant") {
+          const text = event.blocks.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n");
+          if (text) messages.push({ role: "assistant", text });
+        }
+      }
+      since = this.opts.manager.get(id).updatedAt;
+    } else {
+      const terminal = this.opts.external.get(id);
+      const text = terminal?.transcriptPath
+        ? (this.opts.readFile ?? defaultRead)(terminal.transcriptPath)
+        : null;
+      if (text) {
+        for (const record of parseLines(text).records) {
+          if (
+            record.kind === "message" &&
+            (record.role === "user" || record.role === "assistant")
+          ) {
+            messages.push({ role: record.role, text: record.text });
+          }
+        }
+      }
+      since = terminal?.lastEventAt ?? null;
+    }
+    messages = messages
+      .slice(-count)
+      .map((m) => ({ role: m.role, text: truncateUtf8(m.text, MAX_TEXT_BYTES) }));
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const summary: SessionLine = {
+      request: lastUser ? requestLine(lastUser.text) || null : null,
+      state: info.state,
+      tool: null,
+      since,
+    };
+    return { summary, messages };
+  }
+
+  stop(): void {
+    for (const off of this.offs.splice(0)) off();
+  }
 }
