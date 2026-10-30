@@ -2071,6 +2071,7 @@ export class AppStore {
     rules: unknown[],
   ): Promise<{ ok: true } | { ok: false; message: string }> {
     const secret = this.vault.list().find((s) => s.id === secretId);
+    const accepted: string[] = [];
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
       const result = await this.hostRequest(host.id, "vault.rules.set", {
@@ -2078,7 +2079,20 @@ export class AppStore {
         tags: secret.tags,
         rules,
       });
-      if (!result.ok) return { ok: false, message: result.message };
+      if (!result.ok) {
+        // The hosts that took the refused set go back to the saved one: none keeps rules the
+        // app did not save (they could be looser).
+        const saved = this.rules.get(secretId);
+        for (const hostId of accepted) {
+          await this.hostRequest(hostId, "vault.rules.set", {
+            secretId,
+            tags: secret.tags,
+            rules: saved,
+          });
+        }
+        return { ok: false, message: result.message };
+      }
+      accepted.push(host.id);
     }
     this.rules.set(secretId, rules);
     return { ok: true };
