@@ -4,6 +4,9 @@
  * fake. A session is addressed by its id: the managed id, or the Claude session id of a terminal.
  */
 import type { MessagingSession, SessionLine } from "@flightdeck/protocol";
+import type { ExternalSessions } from "../central/external.ts";
+import type { AutoApprover } from "../permissions/auto-approve.ts";
+import type { SessionManager } from "../sessions/session-manager.ts";
 
 export interface EndpointInfo {
   id: string;
@@ -44,4 +47,64 @@ export interface Endpoints {
   onState(listener: (id: string, state: MessagingSession["state"]) => void): () => void;
   /** The summary and the last messages of the transcript, or null for a session that is not known. */
   read(id: string, last: number): { summary: SessionLine | null; messages: ReadMessage[] } | null;
+}
+
+/** What the real adapter reads of this host. */
+export interface LocalEndpointsOptions {
+  manager: SessionManager;
+  external: ExternalSessions;
+  /** The name the user gave a session (managed or terminal), by Claude session id. */
+  nameOf: (claudeSessionId: string) => string | null;
+  projectKey: (cwd: string) => string;
+  /** The card a managed session works for, if any. */
+  cardOf: (sessionId: string) => string | null;
+  /** Writes to the channel of a terminal launch; false when there is none. */
+  sendToLaunch: (launchId: string, text: string) => boolean;
+  autoApprove?: Pick<AutoApprover, "suspend" | "suspended"> | undefined;
+  personaOf?: ((sessionId: string) => string | null) | undefined;
+  /** The text of a transcript file; null when it cannot be read. */
+  readFile?: ((path: string) => string | null) | undefined;
+}
+
+export class LocalEndpoints implements Endpoints {
+  constructor(readonly opts: LocalEndpointsOptions) {}
+
+  list(): EndpointInfo[] {
+    return [];
+  }
+
+  byLaunch(_launchId: string): string | null {
+    return null;
+  }
+
+  send(_id: string, _text: string): "delivered" | "queued" {
+    return "delivered";
+  }
+
+  untrusted(_id: string): boolean {
+    return false;
+  }
+
+  suspend(_id: string, _reason: string): void {}
+
+  onIdle(_listener: (id: string) => void): () => void {
+    return () => {};
+  }
+
+  onUserMessage(_listener: (id: string, text: string) => void): () => void {
+    return () => {};
+  }
+
+  onState(_listener: (id: string, state: MessagingSession["state"]) => void): () => void {
+    return () => {};
+  }
+
+  read(
+    _id: string,
+    _last: number,
+  ): { summary: SessionLine | null; messages: ReadMessage[] } | null {
+    return null;
+  }
+
+  stop(): void {}
 }

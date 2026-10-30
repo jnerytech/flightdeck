@@ -350,6 +350,11 @@ export class SessionManager {
     return { snapshot, unwatch: () => this.summaryListeners.delete(listener) };
   }
 
+  /** Phase 21: told when a user message reaches a session (a queued one is delivered then). */
+  onUserMessage(_listener: (sessionId: string, text: string) => void): () => void {
+    return () => {};
+  }
+
   /** Ephemeral: the store does not persist it and stamps it with the last persisted seq. */
   private summaryEnvelope(sessionId: string): EventEnvelope {
     const session = this.get(sessionId);
