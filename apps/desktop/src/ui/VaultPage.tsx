@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackupPanel } from "@/components/vault/backup-panel";
 import { EditSecretForm } from "@/components/vault/edit-secret-form";
 import { NewSecretForm } from "@/components/vault/new-secret-form";
+import { RulesEditor } from "@/components/vault/rules-editor";
 import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { UsageLog } from "@/components/vault/usage-log";
 import { useT } from "@/i18n/context";
@@ -32,6 +33,8 @@ function SecretRow(props: {
   onCopy(): void;
   onRemove(): void;
   onEdit(): void;
+  /** Phase 19: the secret's usage rules. */
+  onRules(): void;
   onCopyPublicKey(): void;
   hostName(id: string): string;
 }) {
@@ -88,6 +91,9 @@ function SecretRow(props: {
         >
           {t("vault.edit")}
         </Button>
+        <Button variant="outline" size="sm" onClick={props.onRules}>
+          {t("vaultRulesUi.open", { name: secret.name })}
+        </Button>
         {info.publicKey && (
           <Button
             variant="outline"
@@ -128,6 +134,7 @@ export function VaultPage(props: {
   const [asking, setAsking] = useState<SecretMeta | null>(null);
   const [editing, setEditing] = useState<SecretMeta | null>(null);
   const [creating, setCreating] = useState(false);
+  const [ruling, setRuling] = useState<SecretMeta | null>(null);
   const [removing, setRemoving] = useState<SecretMeta | null>(null);
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
 
@@ -176,6 +183,14 @@ export function VaultPage(props: {
           onClose={() => setEditing(null)}
         />
       )}
+      {ruling && (
+        <RulesEditor
+          key={ruling.id}
+          store={store}
+          secret={ruling}
+          onClose={() => setRuling(null)}
+        />
+      )}
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
           <TabsTrigger value="secrets">{t("vault.tabSecrets")}</TabsTrigger>
@@ -197,6 +212,7 @@ export function VaultPage(props: {
                   onCopy={() => void store.copySecret(secret.id, clearMs)}
                   onRemove={() => setRemoving(secret)}
                   onEdit={() => setEditing(secret)}
+                  onRules={() => setRuling(secret)}
                   onCopyPublicKey={() => void store.copyText(infos[secret.id]?.publicKey ?? "")}
                   hostName={(hostId) => state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
                 />
