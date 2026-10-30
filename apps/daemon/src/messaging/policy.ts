@@ -53,7 +53,7 @@ export const DEFAULT_POLICY: Policy = {
   perSessionPerHour: 100,
   loopMessages: 10,
   loopMinutes: 10,
-  retentionDays: 0,
+  retentionDays: 30,
 };
 
 /** A message above this many bytes is refused. */
@@ -73,6 +73,7 @@ const POLICY_KEYS = new Set([
   "perSessionPerHour",
   "loopMessages",
   "loopMinutes",
+  "retentionDays",
 ]);
 
 /** The policy that is valid, or why it is not. */
@@ -88,6 +89,7 @@ export function validatePolicy(raw: unknown): { policy: Policy; errors: string[]
     "perSessionPerHour",
     "loopMessages",
     "loopMinutes",
+    "retentionDays",
   ] as const) {
     const value = raw[key];
     if (value === undefined) continue;

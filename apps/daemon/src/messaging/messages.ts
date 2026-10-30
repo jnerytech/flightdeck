@@ -41,8 +41,6 @@ export interface MessagingOptions {
   teamOf?: ((sessionId: string) => string | null) | undefined;
   /** The persona badge of a session (phase 20); the endpoint's own when absent. */
   personaOf?: ((sessionId: string) => string | null) | undefined;
-  /** Days the history is kept (30 when absent). */
-  retentionDays?: number | undefined;
   /** The standard names of the sessions: their aliases address them. */
   names?: NameBook | undefined;
 }
@@ -828,7 +826,7 @@ export class Messaging {
         at: now,
       });
     }
-    const keep = (this.opts.retentionDays ?? 30) * DAY_MS;
+    const keep = this.policy.retentionDays * DAY_MS;
     this.opts.db.query("DELETE FROM session_messages WHERE created_ms < ?").run(now - keep);
   }
 

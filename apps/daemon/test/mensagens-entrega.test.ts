@@ -427,7 +427,8 @@ describe("mensagens-entrega: o histórico", () => {
   });
 
   test("a retenção é configurável", () => {
-    const { messaging, endpoints, now } = setup({ retentionDays: 2 });
+    const { messaging, endpoints, now } = setup();
+    messaging.setPolicy({ retentionDays: 2 });
     endpoints.add("s1");
     endpoints.add("s2");
     messaging.send({ as: { session: "s1" }, to: "s2", text: "um" });
