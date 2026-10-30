@@ -24,6 +24,7 @@
     "smoke:update": "bun run scripts/smoke-update.ts",
     "smoke:costs": "bun run scripts/smoke-costs.ts",
     "smoke:review": "bun run scripts/smoke-review.ts",
+    "smoke:vault": "bun run scripts/smoke-vault.ts",
     "smoke:automation": "bun run scripts/smoke-automation.ts",
     "smoke:checkpoints": "bun run scripts/smoke-checkpoints.ts",
     "smoke:terminal": "bun run scripts/smoke-terminal.ts",
