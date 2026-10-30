@@ -1,5 +1,6 @@
 import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
+import { hostStatusView } from "./host-status.ts";
 import { basename } from "./paths.ts";
 import type { TerminalTarget } from "./terminal.ts";
 
@@ -56,7 +57,7 @@ export function paletteSections(
   const { t } = options;
   const online = state.hosts.filter((h) => h.status === "online");
   const terminal = (hostId: string, target: TerminalTarget): PaletteAction => ({
-    label: "Abrir no terminal",
+    label: t("palette.openTerminal"),
     target: { kind: "terminal", hostId, target },
   });
 
@@ -74,7 +75,7 @@ export function paletteSections(
           detail: `${host.name} · ${s.cwd}`,
           target,
           actions: [
-            { label: "Abrir", target },
+            { label: t("palette.open"), target },
             ...(claudeSessionId ? [terminal(host.id, { cwd: s.cwd, claudeSessionId })] : []),
           ],
         };
@@ -87,10 +88,10 @@ export function paletteSections(
         return {
           id: `external:${key}`,
           label: state.meta[key]?.name ?? basename(s.cwd ?? id),
-          detail: `${host.name} · terminal`,
+          detail: `${host.name} · ${t("palette.terminalDetail")}`,
           target,
           actions: [
-            { label: "Abrir", target },
+            { label: t("palette.open"), target },
             ...(s.cwd ? [terminal(host.id, { cwd: s.cwd, claudeSessionId: id })] : []),
           ],
         };
@@ -111,10 +112,10 @@ export function paletteSections(
         return {
           id: `card:${key}`,
           label: card.title,
-          detail: `${host.name} · card`,
+          detail: `${host.name} · ${t("palette.cardDetail")}`,
           target,
           actions: [
-            { label: "Abrir", target },
+            { label: t("palette.open"), target },
             {
               label: t("palette.startCard"),
               target: { kind: "start-card", hostId: host.id, cardId: card.id },
@@ -133,9 +134,9 @@ export function paletteSections(
         detail: `${host.name} · ${project.path}`,
         target: board,
         actions: [
-          { label: "Abrir board", target: board },
+          { label: t("palette.openBoard"), target: board },
           {
-            label: "Workflows",
+            label: t("palette.workflows"),
             target: {
               kind: "workflows",
               hostId: host.id,
@@ -156,12 +157,12 @@ export function paletteSections(
       return {
         id: `host:${host.id}`,
         label: host.name,
-        detail: host.status,
+        detail: hostStatusView(host.status, t).label,
         target: page,
         actions: [
-          { label: "Abrir página do host", target: page },
-          { label: "Nova sessão", target: { kind: "new-session", hostId: host.id } },
-          { label: "Projetos", target: { kind: "projects", hostId: host.id } },
+          { label: t("palette.openHost"), target: page },
+          { label: t("palette.newSession"), target: { kind: "new-session", hostId: host.id } },
+          { label: t("palette.projects"), target: { kind: "projects", hostId: host.id } },
         ],
       };
     });
@@ -169,31 +170,31 @@ export function paletteSections(
   const action = (id: string, label: string, target: PaletteTarget): PaletteItem => ({
     id,
     label,
-    detail: "ação",
+    detail: t("palette.actionDetail"),
     target,
     actions: [],
   });
   const actions = [
     ...online.map((host) =>
-      action(`new:${host.id}`, `Nova sessão em ${host.name}`, {
+      action(`new:${host.id}`, t("palette.newSessionIn", { host: host.name }), {
         kind: "new-session",
         hostId: host.id,
       }),
     ),
     action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
     action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
-    ...(options.costs ? [action("costs", "Ir para Custos", { kind: "costs" })] : []),
-    action("settings", "Ir para Configurações", { kind: "settings" }),
+    ...(options.costs ? [action("costs", t("palette.goCosts"), { kind: "costs" })] : []),
+    action("settings", t("palette.goSettings"), { kind: "settings" }),
   ];
 
   const needle = query.trim().toLowerCase();
   const matches = (item: PaletteItem) => item.label.toLowerCase().includes(needle);
   return [
-    { title: "Sessões ao vivo", items: sessions },
-    { title: "Cards", items: cards },
-    { title: "Projetos", items: projects },
-    { title: "Hosts", items: hosts },
-    { title: "Ações", items: actions },
+    { title: t("palette.sectionSessions"), items: sessions },
+    { title: t("palette.sectionCards"), items: cards },
+    { title: t("palette.sectionProjects"), items: projects },
+    { title: t("palette.sectionHosts"), items: hosts },
+    { title: t("palette.sectionActions"), items: actions },
   ]
     .map((section) => ({ ...section, items: section.items.filter(matches) }))
     .filter((section) => section.items.length > 0);
