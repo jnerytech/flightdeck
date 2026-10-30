@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { RelayMessage } from "@flightdeck/protocol";
+import { FlightdeckError } from "../src/errors.ts";
 import {
   formatSessionMessage,
   formatSystemMessage,
@@ -433,5 +434,129 @@ describe("mensagens-entrega: o histórico", () => {
     now.at = NOW + 3 * 24 * HOUR;
     messaging.sweep();
     expect(messaging.list({ days: 365 })).toEqual([]);
+  });
+});
+
+describe("mensagens-entrega: casos de borda", () => {
+  test("o que esperava na memória quando o daemon parou não pode mais ser entregue: expira no novo boot", () => {
+    const first = setup();
+    first.endpoints.add("s1");
+    first.endpoints.add("s2", { state: "running" });
+    first.endpoints.busy.add("s2");
+    first.messaging.send({ as: { session: "s1" }, to: "s2", text: "na fila" });
+    expect(first.messaging.list({})[0]?.status).toBe("queued");
+    const second = setup({ db: first.store.db });
+    expect(second.messaging.list({})[0]).toMatchObject({ status: "expired" });
+    expect(second.messaging.list({})[0]?.reason).toContain("reiniciou");
+  });
+
+  test("um canal que se perdeu recusa com o motivo do canal; um erro que não é do canal sobe", () => {
+    const { messaging, endpoints } = setup();
+    endpoints.add("s1");
+    endpoints.add("T1", { kind: "terminal" });
+    const original = endpoints.send.bind(endpoints);
+    endpoints.send = () => {
+      throw new FlightdeckError("invalid_state", "o canal desconectou");
+    };
+    const lost = messaging.send({ as: { session: "s1" }, to: "T1", text: "oi" });
+    expect(lost).toMatchObject({ status: "refused", reason: "o canal desconectou" });
+    endpoints.send = () => {
+      throw new Error("bug");
+    };
+    expect(
+      failure(() => messaging.send({ as: { session: "s1" }, to: "T1", text: "oi" })),
+    ).toContain("bug");
+    endpoints.send = original;
+  });
+
+  test("o que estava segurado e encontra o terminal ocupado espera o turno; se o canal caiu, é recusado", () => {
+    const { messaging, endpoints } = setup();
+    endpoints.add("s1");
+    endpoints.add("T1", { kind: "terminal", state: "waiting" });
+    messaging.send({ as: { session: "s1" }, to: "T1", text: "uma" });
+    endpoints.busy.add("T1");
+    endpoints.setState("T1", "running");
+    expect(messaging.list({})[0]?.status).toBe("queued");
+    endpoints.userMessage("T1", endpoints.sent[0]?.text ?? "");
+    expect(messaging.list({})[0]?.status).toBe("delivered");
+
+    endpoints.busy.delete("T1");
+    endpoints.setState("T1", "waiting");
+    messaging.send({ as: { session: "s1" }, to: "T1", text: "duas" });
+    const info = endpoints.infos.get("T1");
+    if (info) {
+      info.controllable = false;
+      info.reason = "o canal caiu";
+    }
+    endpoints.setState("T1", "running");
+    expect(messaging.list({})[0]).toMatchObject({ status: "refused", reason: "o canal caiu" });
+  });
+
+  test("repassar de novo uma mensagem que o destino recusou devolve a recusa, sem registrar duas vezes", () => {
+    const { b } = twoHosts();
+    const message: RelayMessage = {
+      id: "m1",
+      from: { id: "s1", host: "pc", name: null, persona: null, projectKey: PROJECT, teamId: null },
+      toSession: "fantasma",
+      toHost: "wsl",
+      text: "oi",
+      createdAt: new Date(NOW).toISOString(),
+      untrusted: false,
+      kind: "session",
+    };
+    const first = b.messaging.relay(message);
+    const second = b.messaging.relay(message);
+    expect(second).toEqual(first);
+    expect(second.status).toBe("refused");
+    expect(b.messaging.list({})).toHaveLength(1);
+  });
+
+  test("só mensagens de sessão atravessam os hosts", () => {
+    const { b } = twoHosts();
+    b.endpoints.add("w1");
+    const result = b.messaging.relay({
+      id: "m1",
+      from: {
+        id: "flightdeck",
+        host: "pc",
+        name: null,
+        persona: null,
+        projectKey: null,
+        teamId: null,
+      },
+      toSession: "w1",
+      toHost: "wsl",
+      text: "pare",
+      createdAt: new Date(NOW).toISOString(),
+      untrusted: false,
+      kind: "system",
+    });
+    expect(result).toMatchObject({
+      status: "refused",
+      reason: expect.stringContaining("de sessão"),
+    });
+  });
+
+  test("um aviso para um terminal sem canal é recusado e registrado", () => {
+    const { messaging, endpoints } = setup();
+    endpoints.add("P1", { kind: "plain", controllable: false, reason: "sem canal" });
+    expect(messaging.notice("P1", "system", "STOP")).toMatchObject({
+      status: "refused",
+      reason: "sem canal",
+    });
+    expect(messaging.list({})[0]).toMatchObject({ status: "refused", kind: "system" });
+  });
+
+  test("parar o serviço solta os ouvintes: nada mais é marcado como entregue", () => {
+    const { messaging, endpoints, frames } = setup();
+    endpoints.add("s1");
+    endpoints.add("s2", { state: "running" });
+    endpoints.busy.add("s2");
+    messaging.send({ as: { session: "s1" }, to: "s2", text: "fila" });
+    messaging.stop();
+    const before = frames.length;
+    endpoints.userMessage("s2", endpoints.sent[0]?.text ?? "");
+    expect(messaging.list({})[0]?.status).toBe("queued");
+    expect(frames.length).toBe(before);
   });
 });
