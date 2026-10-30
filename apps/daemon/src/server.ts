@@ -239,6 +239,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
     ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
+    // Phase 13: the arena is the board's; issues and automations are services of their own.
+    ...(opts.board ? ["arena"] : []),
+    ...(opts.issues ? ["issues"] : []),
+    ...(opts.automations ? ["automation"] : []),
   ];
   let pingSeq = 0;
 
