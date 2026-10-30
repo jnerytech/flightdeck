@@ -98,6 +98,8 @@ async function createLabelAutomation(name = "Revisar issues auto") {
   await change("Rótulo", "auto");
   await click("Próximo");
   await change("Ação", "start_workflow");
+  // The project's workflows load beside the list: the picker appears when they are here.
+  await settle(() => screen.queryByLabelText("Workflow") !== null);
   await change("Workflow", "revisar");
   await click("Próximo");
   await change("Nome da automação", name);
@@ -110,6 +112,7 @@ describe("automacoes-ui: the screen", () => {
     await click("Automações de repo");
     await settle(() => screen.queryByRole("heading", { name: "Automações de repo" }) !== null);
     expect(screen.queryByRole("heading", { name: "Automações de repo" })).not.toBeNull();
+    await settle(() => screen.queryByText("Nenhuma automação neste projeto") !== null);
     expect(screen.queryByText("Nenhuma automação neste projeto")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Nova automação" })).not.toBeNull();
   });
