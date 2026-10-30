@@ -310,14 +310,14 @@ describe("regras-aprovacao: aprovar", () => {
         name: "dois",
         description: "dois segredos",
         run: [process.execPath, "-e", "console.log(process.env.A, process.env.B)"],
-        env: { A: "{{secret.token}}", B: "{{secret.outro}}" },
+        env: { A: "{{secret.token}}", B: "{{secret.zeta}}" },
       },
     });
     const first = t.run({ name: "dois" });
     const a = await t.frame(0);
     t.approveAndDeliver(a, { via: "app", scope: "session" });
     const b = await t.frame(1);
-    expect(b.secretId).toBe("outro");
+    expect(b.secretId).toBe("zeta");
     t.approveAndDeliver(b, { via: "app", scope: "once" });
     await first;
 

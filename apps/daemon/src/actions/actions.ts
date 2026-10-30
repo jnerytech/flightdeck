@@ -29,8 +29,18 @@ import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
-import { decideRequest } from "../vault/requests.ts";
-import type { Risk } from "../vault/rules.ts";
+import { Decisions } from "../vault/decisions.ts";
+import { toCsv } from "../vault/report.ts";
+import { decideRequest, requesterOf } from "../vault/requests.ts";
+import {
+  evaluate,
+  localTime,
+  type Purpose,
+  type Risk,
+  type RulesEnv,
+  type UseContext,
+  type Verdict,
+} from "../vault/rules.ts";
 import type { VaultRules } from "../vault/rules-store.ts";
 import type { Vault } from "../vault/vault.ts";
 import { type RunResult, resolveParams, runAction, type SshExecutor } from "./run.ts";
@@ -123,13 +133,59 @@ interface Ask {
   /** Before the request id, in the purpose the secret is delivered for. */
   purposeBase: string;
   frame: Partial<VaultRequestFrame>;
+  /** What the rules of phase 19 look at. */
+  use: {
+    purpose: Purpose;
+    action?: string;
+    tags: string[];
+    actionApproval?: "always" | "never" | "first-per-session";
+    /** The command line, for the risk classifier. */
+    command: string;
+    cwd: string;
+    project?: string;
+    session?: string;
+  };
 }
+
+/** A request waiting for the app. */
+interface Waiting {
+  controller: AbortController;
+  denied: boolean;
+  expired: boolean;
+  /** Phase 19: what the rules decided; absent when the daemon runs without rules. */
+  decision?: "allow" | "ask";
+  needsHold: boolean;
+  /** The approval may be given for the whole session. */
+  once: boolean;
+  purpose: string;
+  approved?: { by: "app" | "tray"; scope: "once" | "session" };
+}
+
+const HOLD_MS = 2000;
 
 export class Actions {
   private readonly listeners = new Set<(frame: ActionsFrame) => void>();
-  private readonly pending = new Map<string, { controller: AbortController; denied: boolean }>();
+  private readonly pending = new Map<string, Waiting>();
+  /** Secret, rule and session the user approved "for this session". */
+  private readonly approvedSessions = new Set<string>();
+  private readonly audit: Decisions;
 
-  constructor(private readonly opts: ActionsOptions) {}
+  constructor(private readonly opts: ActionsOptions) {
+    this.audit = new Decisions(opts.db);
+  }
+
+  private ms(): number {
+    return (this.opts.clock ?? Date.now)();
+  }
+
+  /** The clock, the PC's zone and the uses the rules' limits count. */
+  private env(at?: number): RulesEnv {
+    return {
+      now: () => at ?? this.ms(),
+      local: (ms) => localTime(ms, this.opts.timeZone),
+      uses: (ruleId, sinceMs) => this.audit.uses(ruleId, sinceMs),
+    };
+  }
 
   /** The app's stream of `vault.request` and `vault.used` frames; answers how to stop it. */
   watch(listener: (frame: ActionsFrame) => void): () => void {
@@ -147,19 +203,54 @@ export class Actions {
 
   /** The user approved a request that asked; the delivery of its secret is allowed after this. */
   approve(
-    _requestId: string,
-    _approval: {
+    requestId: string,
+    approval: {
       via: "app" | "tray";
       heldMs?: number | undefined;
       scope?: "once" | "session" | undefined;
     },
-  ): void {}
+  ): void {
+    const waiting = this.pending.get(requestId);
+    if (!waiting) {
+      throw new FlightdeckError(
+        "not_found",
+        `o pedido ${requestId} não existe: venceu, foi recusado ou já terminou`,
+      );
+    }
+    if (waiting.decision !== "ask") throw invalid("o pedido não precisa de aprovação");
+    if (waiting.needsHold) {
+      if (approval.via === "tray") {
+        throw invalid("a bandeja não aprova pedidos de prod ou de risco alto: aprove no app");
+      }
+      if ((approval.heldMs ?? 0) < HOLD_MS) throw invalid("segure o botão Aprovar por 2 s");
+    }
+    if (approval.scope === "session" && !waiting.once) {
+      throw invalid("a regra não permite aprovar para a sessão: este pedido pergunta a cada uso");
+    }
+    waiting.approved = { by: approval.via, scope: approval.scope ?? "once" };
+  }
 
   /** Throws unless a delivery for `purpose` may go through: a request that asks has to be approved. */
-  gate(_purpose: string): void {}
+  gate(purpose: string): void {
+    const waiting = this.pending.get(purpose.slice(purpose.lastIndexOf(":") + 1));
+    if (waiting?.purpose === purpose && waiting.decision === "ask" && !waiting.approved) {
+      throw invalid("o pedido precisa da sua aprovação antes da entrega do segredo");
+    }
+  }
+
+  /** The rules of a secret, replaced whole (the ones that break the ceiling are refused). */
+  setRules(secretId: string, tags: readonly string[], rules: unknown): number {
+    if (!this.opts.rules) throw invalid("regras de uso indisponíveis");
+    return this.opts.rules.set(secretId, tags, rules);
+  }
+
+  getRules(secretId: string) {
+    if (!this.opts.rules) throw invalid("regras de uso indisponíveis");
+    return this.opts.rules.get(secretId);
+  }
 
   /** The verdict for a use, without recording anything. */
-  preview(_use: {
+  preview(use: {
     secretId: string;
     requester: VaultRequester;
     purpose: "ssh" | "action" | "run_with_secret";
@@ -172,29 +263,36 @@ export class Actions {
     actionApproval?: "always" | "never" | "first-per-session" | undefined;
     at?: number | undefined;
   }): VaultVerdict {
-    return {
-      decision: "deny",
-      ruleId: null,
-      reason: "",
-      once: false,
-      needsHold: false,
-      limited: false,
+    const rules = this.opts.rules;
+    const ctx: UseContext = {
+      secretId: use.secretId,
+      requester: use.requester,
+      purpose: use.purpose,
+      host: use.host ?? this.opts.hostName ?? "",
+      tags: [...(use.tags ?? []), ...(rules?.tagsFor(use.secretId) ?? [])],
+      ...(use.action !== undefined ? { action: use.action } : {}),
+      ...(use.project !== undefined ? { project: use.project } : {}),
+      ...(use.session !== undefined ? { session: use.session } : {}),
+      ...(use.risk !== undefined ? { risk: use.risk } : {}),
+      ...(use.actionApproval !== undefined ? { actionApproval: use.actionApproval } : {}),
     };
+    return evaluate(rules?.rulesFor(use.secretId) ?? [], ctx, this.env(use.at));
   }
 
-  decisions(_input: {
+  decisions(input: {
     secretId?: string | undefined;
     days?: number | undefined;
     limit?: number | undefined;
   }): VaultDecisionInfo[] {
-    return [];
+    return this.audit.list(input, this.ms());
   }
 
-  report(_input: { days?: number | undefined; format?: "json" | "csv" | undefined }): {
+  report(input: { days?: number | undefined; format?: "json" | "csv" | undefined }): {
     rows: VaultReportRow[];
     csv?: string;
   } {
-    return { rows: [] };
+    const rows = this.audit.report(input.days ?? 30, this.ms());
+    return input.format === "csv" ? { rows, csv: toCsv(rows) } : { rows };
   }
 
   /** Nothing that waits outlives the daemon. */
@@ -267,10 +365,21 @@ export class Actions {
     // A destino that logs in with a key from the vault: the key is asked for like the secrets.
     const keyId = found.action.ssh ? (this.opts.sshKey?.(found.action.ssh) ?? null) : null;
     const ids = [...new Set([...values, ...files, ...(keyId ? [keyId] : [])])];
+    const project = found.scope ? this.opts.projectKey?.(found.scope) : undefined;
     const secrets = await this.collect(ids, {
       requester: input.requestedBy,
       purposeBase: `action:${found.action.name}`,
       frame: { action: found.action.name, params, approval: approvalOf(found.action) },
+      use: {
+        purpose: "action",
+        action: found.action.name,
+        tags: found.action.tags ?? [],
+        command: found.action.run.join(" "),
+        cwd: found.base,
+        ...(found.action.approval ? { actionApproval: found.action.approval } : {}),
+        ...(project ? { project } : {}),
+        ...(input.session ? { session: input.session } : {}),
+      },
     });
     // The approval can take a while: what the action executes is checked again before it starts.
     this.assertTrusted(found);
@@ -321,6 +430,13 @@ export class Actions {
           command: input.command,
           secrets: ids,
           ...(input.host ? { host: input.host } : {}),
+        },
+        use: {
+          purpose: "run_with_secret",
+          tags: [],
+          command: input.command,
+          cwd: this.baseOf(),
+          ...(input.session ? { session: input.session } : {}),
         },
       });
       const found: Found = { action, source: "app", scope: "", base: this.baseOf() };
@@ -487,9 +603,13 @@ export class Actions {
 
   /** The requester, if it is one that may ask the app for a secret. */
   private permit(requester: VaultRequester): VaultDaemonRequester {
-    const decision = decideRequest({ requester });
-    if (!decision.granted) throw invalid(`pedido recusado: ${decision.reason}`);
-    return decision.requester;
+    const known = requesterOf(requester);
+    if (known === "unknown") {
+      throw invalid(
+        "pedido recusado: só o Claude, uma automação ou um workflow pedem segredos ao app por este caminho",
+      );
+    }
+    return known;
   }
 
   /** The values, by id. The user's own run finds them delivered; anyone else's is asked of the app. */
@@ -504,23 +624,122 @@ export class Actions {
     return secrets;
   }
 
+  /** The rules' verdict for one secret of this use, with the session approval applied. */
+  private decide(
+    secretId: string,
+    ask: Ask & { requester: VaultDaemonRequester },
+  ): {
+    verdict: ReturnType<typeof decideRequest>;
+    rememberedKey: string | null;
+    remembered: boolean;
+  } {
+    const rules = this.opts.rules as VaultRules;
+    const { use } = ask;
+    const verdict = decideRequest(
+      {
+        requester: ask.requester,
+        secretId,
+        purpose: use.purpose,
+        host: this.opts.hostName ?? "",
+        tags: [...use.tags, ...rules.tagsFor(secretId)],
+        ...(use.action ? { action: use.action } : {}),
+        ...(use.project ? { project: use.project } : {}),
+        ...(use.session ? { session: use.session } : {}),
+        ...(use.actionApproval ? { actionApproval: use.actionApproval } : {}),
+        ...(this.opts.risk ? { risk: this.opts.risk(use.command, use.cwd) } : {}),
+      },
+      rules.rulesFor(secretId),
+      this.env(),
+    );
+    // "Approve and don't ask again in this session": the next use in the same session is let through.
+    const key =
+      verdict.granted && verdict.decision === "ask" && verdict.once && use.session
+        ? [secretId, verdict.ruleId ?? "", use.session].join("\u0000")
+        : null;
+    if (verdict.granted && key && this.approvedSessions.has(key)) {
+      return {
+        verdict: {
+          ...verdict,
+          decision: "allow",
+          once: false,
+          reason: `${verdict.reason}; já aprovado nesta sessão`,
+        },
+        rememberedKey: key,
+        remembered: true,
+      };
+    }
+    return { verdict, rememberedKey: key, remembered: false };
+  }
+
   /** Asks the app for one secret, for this request only, and waits for the delivery or the no. */
   private async request(
     secretId: string,
     ask: Ask & { requester: VaultDaemonRequester },
   ): Promise<string> {
+    const rules = this.opts.rules;
+    const requestId = ulid();
+    const decided = rules ? this.decide(secretId, ask) : null;
+    const verdict = decided?.verdict;
+    if (rules && decided && verdict) {
+      const isNew = this.audit.isNew(secretId, ask.requester);
+      const rule = rules.rulesFor(secretId).find((r) => r.id === verdict.ruleId);
+      this.audit.insert({
+        id: requestId,
+        atMs: this.ms(),
+        secretId,
+        requester: ask.requester,
+        purpose: ask.use.purpose,
+        action: ask.use.action ?? null,
+        host: this.opts.hostName ?? "",
+        project: ask.use.project ?? null,
+        session: ask.use.session ?? null,
+        ruleId: verdict.ruleId,
+        decision: verdict.decision,
+        outcome: verdict.granted ? "pending" : "refused",
+        approver: null,
+        window: rule?.window ? JSON.stringify(rule.window) : null,
+        reason: verdict.reason,
+      });
+      if (isNew) {
+        this.alert(
+          "new-requester",
+          secretId,
+          ask.requester,
+          `${ask.requester} usou o segredo ${secretId} pela primeira vez`,
+        );
+      }
+      if (!verdict.granted) {
+        if (verdict.limited) {
+          this.alert("limit", secretId, ask.requester, `${verdict.reason}`);
+        }
+        throw invalid(`uso negado: ${verdict.reason}`);
+      }
+    }
     if (this.listeners.size === 0) {
+      this.audit.finish(requestId, "failed", null);
       throw invalid("o app não está conectado: ele precisa estar aberto para liberar o segredo");
     }
-    const requestId = ulid();
     const purpose = `${ask.purposeBase}:${requestId}`;
-    const waiting = { controller: new AbortController(), denied: false };
+    const timeoutMs = this.opts.requestTimeoutMs ?? REQUEST_TTL_MS;
+    const waiting: Waiting = {
+      controller: new AbortController(),
+      denied: false,
+      expired: false,
+      needsHold: verdict?.granted ? verdict.needsHold : false,
+      once: verdict?.granted ? verdict.once : false,
+      purpose,
+      ...(verdict?.granted ? { decision: verdict.decision } : {}),
+    };
     this.pending.set(requestId, waiting);
+    const timer = setTimeout(() => {
+      waiting.expired = true;
+      waiting.controller.abort();
+    }, timeoutMs);
     // The wait is set up before the frame goes out, so a delivery cannot slip past it.
     const value = this.opts.vault.waitFor(
       secretId,
       purpose,
-      this.opts.requestTimeoutMs ?? 120_000,
+      timeoutMs + 1000,
       waiting.controller.signal,
     );
     this.emit({
@@ -530,15 +749,67 @@ export class Actions {
       secretId,
       purpose,
       requester: ask.requester,
+      ...(verdict?.granted
+        ? {
+            decision: verdict.decision,
+            ruleId: verdict.ruleId,
+            reason: verdict.reason,
+            once: verdict.once,
+            needsHold: verdict.needsHold,
+            tags: [...ask.use.tags, ...(rules?.tagsFor(secretId) ?? [])],
+            expiresAt: this.ms() + timeoutMs,
+          }
+        : {}),
     });
     try {
-      return await value;
+      const secret = await value;
+      if (rules && verdict?.granted) {
+        const approver = decided?.remembered
+          ? "session"
+          : verdict.decision === "allow"
+            ? "rule"
+            : (waiting.approved?.by ?? null);
+        this.audit.finish(
+          requestId,
+          verdict.decision === "allow" ? "allowed" : "approved",
+          approver,
+        );
+        if (waiting.approved?.scope === "session" && decided?.rememberedKey) {
+          this.approvedSessions.add(decided.rememberedKey);
+        }
+      }
+      return secret;
     } catch (error) {
-      if (waiting.denied) throw invalid(`o app recusou o segredo ${secretId}`);
+      if (waiting.denied) {
+        this.audit.finish(requestId, "denied", null);
+        throw invalid(`o app recusou o segredo ${secretId}`);
+      }
+      if (waiting.expired) {
+        this.audit.finish(requestId, "expired", null);
+        throw invalid(`o pedido do segredo ${secretId} venceu sem resposta e foi negado`);
+      }
+      this.audit.finish(requestId, "failed", null);
       throw error;
     } finally {
+      clearTimeout(timer);
       this.pending.delete(requestId);
     }
+  }
+
+  private alert(
+    kind: "new-requester" | "limit",
+    secretId: string,
+    requester: VaultRequester,
+    message: string,
+  ): void {
+    this.emit({
+      type: "vault.alert",
+      kind,
+      secretId,
+      requester,
+      message,
+      at: new Date(this.ms()).toISOString(),
+    });
   }
 
   private emit(frame: ActionsFrame): void {

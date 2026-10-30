@@ -4,23 +4,41 @@
  * the same way and to refuse at once what no rule or default lets through. After a restart the
  * app sends them again, and until then the safe defaults decide.
  */
-import type { Rule } from "./rules.ts";
+import { FlightdeckError } from "../errors.ts";
+import { type Rule, validateRules } from "./rules.ts";
+
+interface Held {
+  tags: string[];
+  rules: Rule[];
+}
 
 export class VaultRules {
-  /** Validates and replaces the rules of a secret; returns how many. */
-  set(_secretId: string, _tags: readonly string[], _raw: unknown): number {
-    return 0;
+  private readonly bySecret = new Map<string, Held>();
+
+  /**
+   * Validates and replaces the rules of a secret; returns how many. Rules that break the ceiling
+   * or are malformed are refused as a whole, and the previous ones stay.
+   */
+  set(secretId: string, tags: readonly string[], raw: unknown): number {
+    const { rules, errors } = validateRules(raw);
+    if (errors.length > 0) throw new FlightdeckError("bad_request", errors.join("; "));
+    this.bySecret.set(secretId, {
+      tags: [...new Set(tags.map((tag) => tag.toLowerCase()))],
+      rules,
+    });
+    return rules.length;
   }
 
-  get(_secretId: string): { tags: string[]; rules: Rule[] } {
-    return { tags: [], rules: [] };
+  get(secretId: string): Held {
+    return this.bySecret.get(secretId) ?? { tags: [], rules: [] };
   }
 
-  rulesFor(_secretId: string): Rule[] {
-    return [];
+  rulesFor(secretId: string): Rule[] {
+    return this.get(secretId).rules;
   }
 
-  tagsFor(_secretId: string): string[] {
-    return [];
+  /** The tags of the secret itself (the app knows them); the action adds its own. */
+  tagsFor(secretId: string): string[] {
+    return this.get(secretId).tags;
   }
 }

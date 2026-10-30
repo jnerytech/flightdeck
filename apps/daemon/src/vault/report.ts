@@ -4,10 +4,16 @@
  */
 import type { VaultReportRow } from "@flightdeck/protocol";
 
-export function csvCell(_value: string | number): string {
-  return "";
+const FORMULA = /^[=+\-@\t\r]/;
+
+export function csvCell(value: string | number): string {
+  const text = typeof value === "number" ? String(value) : value.replace(FORMULA, "'$&");
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-export function toCsv(_rows: readonly VaultReportRow[]): string {
-  return "";
+export function toCsv(rows: readonly VaultReportRow[]): string {
+  const lines = rows.map((row) =>
+    [row.secretId, row.requester, row.outcome, row.count].map(csvCell).join(","),
+  );
+  return ["secret,requester,outcome,count", ...lines].join("\r\n");
 }

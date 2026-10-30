@@ -481,4 +481,29 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (project_path, hash)
   );
   `,
+  // Phase 19: one row per request of the daemon for a secret: the rule that decided, the
+  // decision, who let it through and how it ended. Never a value; the limits of the rules count it.
+  `
+  CREATE TABLE vault_decisions (
+    id         TEXT PRIMARY KEY,
+    at         TEXT NOT NULL,
+    at_ms      INTEGER NOT NULL,
+    secret_id  TEXT NOT NULL,
+    requester  TEXT NOT NULL,
+    purpose    TEXT NOT NULL,
+    action     TEXT,
+    host       TEXT NOT NULL,
+    project    TEXT,
+    session    TEXT,
+    rule_id    TEXT,
+    decision   TEXT NOT NULL,
+    outcome    TEXT NOT NULL,
+    approver   TEXT,
+    window     TEXT,
+    reason     TEXT NOT NULL
+  );
+
+  CREATE INDEX vault_decisions_secret ON vault_decisions (secret_id, requester);
+  CREATE INDEX vault_decisions_rule ON vault_decisions (rule_id, at_ms);
+  `,
 ];
