@@ -35,6 +35,7 @@ import {
 import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
 import type { Automations } from "./automations/automations.ts";
@@ -101,6 +102,8 @@ export interface ServerOptions {
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
   vault?: Vault;
+  /** Phase 17: actions that use a secret without Claude seeing it (`actions.*`, `vault.watch`). */
+  actions?: Actions;
   /** Phase 13: the projects' automations (`automation.*`). */
   automations?: Automations;
   /** Phase 13: issues of the projects (`issues.*`). */
@@ -375,6 +378,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function vault(): Vault {
     if (!opts.vault) throw new FlightdeckError("invalid_state", "cofre indisponível");
     return opts.vault;
+  }
+
+  function actions(): Actions {
+    if (!opts.actions) throw new FlightdeckError("invalid_state", "ações indisponíveis");
+    return opts.actions;
   }
 
   function automations(): Automations {
@@ -676,6 +684,16 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
         return ok(command.type, { result: used.result });
       }
+      case "actions.list":
+      case "actions.save":
+      case "actions.remove":
+      case "actions.trust":
+      case "actions.run":
+      case "actions.runFree":
+      case "actions.runs":
+      case "vault.watch":
+      case "vault.deny":
+        throw new FlightdeckError("invalid_state", "ainda não implementado");
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
