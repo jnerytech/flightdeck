@@ -133,4 +133,21 @@ describe("acoes-ui-aprovacao: the policy for the daemon's requests", () => {
     expect(asked).toEqual(["a", "b"]);
     expect(approved).toEqual(["a", "b"]);
   });
+
+  test("two requests that need holding, in flight together, never share one question: each is held", async () => {
+    const asked: string[] = [];
+    const policy = actionPolicy({
+      ask: async (ctx) => {
+        asked.push(ctx.request.requestId);
+        return true;
+      },
+      now: () => 1_000,
+    });
+    const held = { approval: "always", decision: "ask", needsHold: true } as const;
+    await Promise.all([
+      policy(context(frame({ ...held, requestId: "r1" }))),
+      policy(context(frame({ ...held, requestId: "r2" }))),
+    ]);
+    expect(asked.sort()).toEqual(["r1", "r2"]);
+  });
 });
