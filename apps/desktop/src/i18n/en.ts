@@ -21,6 +21,13 @@ export const en: Dictionary = {
     title: "Personas",
     subtitle:
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
+    picker: {
+      label: "Persona",
+      none: "None",
+      card: "Card persona",
+      here: "Claude here persona",
+      hereNamed: "Claude here persona in {name}",
+    },
     list: "Personas",
     empty: "No persona.",
     project: "Project",
@@ -492,6 +499,7 @@ export const en: Dictionary = {
     actionDetail: "action",
     newTerminalIn: "New terminal on {host}",
     newSessionIn: "New session in {host}",
+    newSessionAs: "New session as {persona}",
     goCosts: "Go to Costs",
     connectTo: "Connect to {name}",
     snippet: "Snippet: {name}",

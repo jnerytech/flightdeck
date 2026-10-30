@@ -2,6 +2,7 @@ import type { Arena, ArenaVariant, StepRun, WorkflowInfo } from "@flightdeck/pro
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
+import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,8 @@ export function CardDetail(props: {
   /** Workflows the card can start with: trusted and valid on the project's base branch. */
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
   const [workflow, setWorkflow] = useState("");
+  /** Phase 20: the persona the card starts in, a picker value. */
+  const [persona, setPersona] = useState("");
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const projectId = card?.projectId ?? "";
   const chosen = workflows.find((w) => w.name === workflow);
@@ -271,14 +274,25 @@ export function CardDetail(props: {
             />
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          {hasFeature(host?.hostInfo?.features, "personas", false) && (
+            <PersonaPicker
+              store={store}
+              hostId={hostId}
+              label={t("personas.picker.card")}
+              value={persona}
+              onChange={setPersona}
+            />
+          )}
           <Button
-            onClick={() =>
+            onClick={() => {
+              const ref = store.personaRef(persona);
               void store.hostCommand(hostId, "card.start", {
                 cardId,
                 ...(chosen ? { workflow: chosen.name, inputs } : {}),
-              })
-            }
+                ...(ref ? { persona: ref } : {}),
+              });
+            }}
           >
             {t("cardUi.start")}
           </Button>

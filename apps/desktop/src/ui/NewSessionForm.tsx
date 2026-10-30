@@ -29,6 +29,8 @@ export function NewSessionForm(props: {
   onCreate(payload: CommandPayload<"session.create">): void;
   /** The first prompt, filled in (a snippet, phase 18). */
   prompt?: string;
+  /** More fields above Criar sessão: the persona picker (phase 20). */
+  extra?: React.ReactNode;
 }) {
   const t = useT();
   const id = useId();
@@ -115,6 +117,7 @@ export function NewSessionForm(props: {
           className="min-h-28"
         />
       </label>
+      {props.extra}
       <Button type="submit" className="self-start">
         {t("newSession.create")}
       </Button>

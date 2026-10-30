@@ -11,7 +11,7 @@ export type Route =
   | { name: "needs-you" }
   | { name: "session"; host: string; id: string; focus?: string }
   /** `prompt`: the first prompt, filled in (a snippet, phase 18). */
-  | { name: "new-session"; host: string; prompt?: string }
+  | { name: "new-session"; host: string; prompt?: string; persona?: string }
   | { name: "external"; host: string; claudeSessionId: string }
   /** A transcript; `list: "history"` when it was opened from a host's history list. */
   | { name: "reader"; target: ReaderTarget; list?: "history" }

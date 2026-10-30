@@ -15,7 +15,8 @@ export type PaletteTarget =
   | { kind: "workflows"; hostId: string; projectId: string; name: string }
   | { kind: "host"; hostId: string }
   | { kind: "projects"; hostId: string }
-  | { kind: "new-session"; hostId: string }
+  /** `persona`: a picker value (`host:<id>`) to open the form with (phase 20). */
+  | { kind: "new-session"; hostId: string; persona?: string }
   | { kind: "terminal"; hostId: string; target: TerminalTarget }
   /** A new embedded terminal (phase 14), in a new tab. */
   | { kind: "new-terminal"; hostId: string }
@@ -189,6 +190,15 @@ export function paletteSections(
         kind: "new-session",
         hostId: host.id,
       }),
+    ),
+    ...online.flatMap((host) =>
+      (state.personas?.[host.id] ?? []).map((persona) =>
+        action(
+          `new-as:${host.id}/${persona.id}`,
+          t("palette.newSessionAs", { persona: persona.name }),
+          { kind: "new-session", hostId: host.id, persona: `host:${persona.id}` },
+        ),
+      ),
     ),
     ...online
       .filter((host) => hasFeature(host.hostInfo?.features, "terminal", false))

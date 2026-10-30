@@ -2,6 +2,8 @@ import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { PersonaPicker } from "@/components/personas/persona-picker";
+import { useT } from "@/i18n/context";
 import {
   type AppState,
   type AppStore,
@@ -420,7 +422,15 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "new-session": {
       // A host removed while its form is open: back to the hub.
       const host = hostOf(route.host);
-      return host ? <NewSession store={store} host={host} prompt={route.prompt} /> : null;
+      return host ? (
+        <NewSession
+          store={store}
+          state={state}
+          host={host}
+          prompt={route.prompt}
+          persona={route.persona}
+        />
+      ) : null;
     }
     case "external":
       return (
@@ -603,20 +613,43 @@ function routeScreen(props: ScreenProps): ReactNode {
     );
   }
   const selectedHost = selected ? hostOf(selected.hostId) : undefined;
-  if (selectedHost) return <NewSession store={store} host={selectedHost} />;
+  if (selectedHost) return <NewSession store={store} state={state} host={selectedHost} />;
   return null;
 }
 
 /** The new-session form of a host; the created session opens. */
-function NewSession(props: { store: AppStore; host: HostView; prompt?: string | undefined }) {
+function NewSession(props: {
+  store: AppStore;
+  state: AppState;
+  host: HostView;
+  prompt?: string | undefined;
+  persona?: string | undefined;
+}) {
   const { host } = props;
+  const t = useT();
+  const [persona, setPersona] = useState(props.persona ?? "");
+  const personas = hasFeature(host.hostInfo?.features, "personas", false);
   return (
     <NewSessionForm
       key={`${host.id}/${props.prompt ?? ""}`}
       host={host}
       {...(props.prompt ? { prompt: props.prompt } : {})}
+      extra={
+        personas ? (
+          <PersonaPicker
+            store={props.store}
+            hostId={host.id}
+            label={t("personas.picker.label")}
+            value={persona}
+            onChange={setPersona}
+          />
+        ) : null
+      }
       // The created session opens by itself (AppStore.createSession).
-      onCreate={(payload) => void props.store.createSession(host.id, payload)}
+      onCreate={(payload) => {
+        const ref = props.store.personaRef(persona);
+        void props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });
+      }}
     />
   );
 }

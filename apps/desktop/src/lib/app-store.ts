@@ -21,6 +21,7 @@ import type {
   HostInfoResult,
   PendingPermission,
   PermissionUpdate,
+  PersonaRef,
   Project,
   QuotaState,
   RiskLevel,
@@ -42,7 +43,7 @@ import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/ty
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
-import { GlobalPersonas } from "./global-personas.ts";
+import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
@@ -159,6 +160,8 @@ export interface AppState {
   /** The snippets of each host that keeps them, by host id; read when the palette opens (phase 18). */
   snippets: Record<string, Snippet[]>;
   /** The snippet to fill and use now, from the palette or a terminal's list (phase 18). */
+  /** The personas of each host that keeps them (the pack's, the host's), by host id (phase 20). */
+  personas: Record<string, AppPersona[]>;
   snippetChoice: { hostId: string | null; snippetId: string; snippet?: AppSnippet } | null;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
@@ -567,6 +570,7 @@ export class AppStore {
       ssh: {},
       snippets: {},
       snippetChoice: null,
+      personas: {},
       askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
@@ -912,6 +916,12 @@ export class AppStore {
         const listed = await quiet(this.dispatch(host.id, "ssh.list", {}));
         if (listed) this.update({ ssh: { ...this.state.ssh, [host.id]: listed.targets } });
       });
+    const personas = this.state.hosts
+      .filter(
+        (host) =>
+          host.status === "online" && hasFeature(host.hostInfo?.features, "personas", false),
+      )
+      .map((host) => this.loadPersonas(host.id));
     const snippets = this.state.hosts
       .filter(
         (host) =>
@@ -922,7 +932,7 @@ export class AppStore {
         if (listed)
           this.update({ snippets: { ...this.state.snippets, [host.id]: listed.snippets } });
       });
-    await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets]);
+    await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets, ...personas]);
   }
 
   openSearch(): void {
@@ -1193,12 +1203,19 @@ export class AppStore {
   }
 
   /** "Claude aqui": `flightdeckd claude` (resuming `claudeSessionId` when given) in a terminal tab. */
-  async openClaudeHere(hostId: string, target: TerminalTarget): Promise<string | null> {
+  async openClaudeHere(
+    hostId: string,
+    target: TerminalTarget,
+    persona?: string,
+  ): Promise<string | null> {
     const opened = await this.hostCommand(hostId, "terminal.open", {
       cwd: target.cwd,
       cols: 80,
       rows: 24,
-      claude: target.claudeSessionId ? { resume: target.claudeSessionId } : {},
+      claude: {
+        ...(target.claudeSessionId ? { resume: target.claudeSessionId } : {}),
+        ...(persona ? { persona } : {}),
+      },
     });
     if (!opened) return null;
     this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
@@ -1858,6 +1875,22 @@ export class AppStore {
   /** Keeps a host's snippets as listed, for the palette and the use dialog (phase 18). */
   keepSnippets(hostId: string, snippets: Snippet[]): void {
     this.update({ snippets: { ...this.state.snippets, [hostId]: snippets } });
+  }
+
+  /** Reads a host's personas (the pack's in the app's language, and the host's) for the pickers. */
+  async loadPersonas(hostId: string): Promise<void> {
+    const listed = await this.hostCommand(hostId, "personas.list", {
+      scope: "host",
+      language: this.i18n.lang,
+    });
+    if (listed) this.update({ personas: { ...this.state.personas, [hostId]: listed.personas } });
+  }
+
+  /** What a picker's value asks a session for: a persona by id, or an app persona whole. */
+  personaRef(value: string): PersonaRef | null {
+    if (value.startsWith("host:")) return { id: value.slice(5), language: this.i18n.lang };
+    if (value.startsWith("app:")) return this.globalPersonas.ref(value.slice(4), this.i18n.lang);
+    return null;
   }
 
   /** Opens the use dialog for a snippet (`null` closes it): from the palette or a terminal's list. */

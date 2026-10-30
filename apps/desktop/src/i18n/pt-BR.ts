@@ -23,6 +23,13 @@ export const ptBR = {
     title: "Personas",
     subtitle:
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
+    picker: {
+      label: "Persona",
+      none: "Nenhuma",
+      card: "Persona do card",
+      here: "Persona do Claude aqui",
+      hereNamed: "Persona do Claude aqui em {name}",
+    },
     list: "Personas",
     empty: "Nenhuma persona.",
     project: "Projeto",
@@ -490,6 +497,7 @@ export const ptBR = {
     actionDetail: "ação",
     newTerminalIn: "Novo terminal em {host}",
     newSessionIn: "Nova sessão em {host}",
+    newSessionAs: "Nova sessão como {persona}",
     goCosts: "Ir para Custos",
     connectTo: "Conectar a {name}",
     snippet: "Snippet: {name}",

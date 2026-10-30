@@ -35,7 +35,11 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
     case "session":
       return { name: "session", host: target.hostId, id: target.sessionId };
     case "new-session":
-      return { name: "new-session", host: target.hostId };
+      return {
+        name: "new-session",
+        host: target.hostId,
+        ...(target.persona ? { persona: target.persona } : {}),
+      };
     case "external":
       return { name: "external", host: target.hostId, claudeSessionId: target.claudeSessionId };
     case "card":

@@ -1,7 +1,10 @@
+import { useState } from "react";
+import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import type { TerminalTarget } from "../lib/terminal.ts";
+import { hasFeature } from "../lib/version.ts";
 
 /**
  * "Abrir no terminal" for a session, card or project: opens one on this machine, or copies the
@@ -18,6 +21,14 @@ export function TerminalButton(props: {
   const { store, hostId, target, name } = props;
   const launch = store.terminalLaunch(hostId, target);
   const embedded = store.embeddedTerminal(hostId);
+  const [persona, setPersona] = useState("");
+  const personas =
+    embedded &&
+    hasFeature(
+      store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+      "personas",
+      false,
+    );
   let label = "";
   if (launch?.kind === "spawn")
     label = name ? t("terminal.openNamed", { name }) : t("terminal.open");
@@ -28,11 +39,21 @@ export function TerminalButton(props: {
   else here = name ? t("claudeHere.openNamed", { name }) : t("claudeHere.open");
   return (
     <>
+      {personas && (
+        <PersonaPicker
+          store={store}
+          hostId={hostId}
+          label={name ? t("personas.picker.hereNamed", { name }) : t("personas.picker.here")}
+          value={persona}
+          onChange={setPersona}
+          idsOnly
+        />
+      )}
       {embedded && (
         <Button
           variant="outline"
           size="sm"
-          onClick={() => void store.openClaudeHere(hostId, target)}
+          onClick={() => void store.openClaudeHere(hostId, target, persona || undefined)}
         >
           {here}
         </Button>
