@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { basename } from "node:path";
 import type { ExternalSession } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -151,5 +152,37 @@ describe("claude-aqui: no app", () => {
       host: hostId,
       terminalId: terminalId as string,
     });
+  });
+
+  test("the palette's Abrir no terminal on a session resumes it in a terminal tab when the host has terminals", async () => {
+    const { store, hostId, root, ptys } = await setup();
+    render(<App store={store} />);
+    // The palette loads the hosts' sessions when it opens: the terminal session comes after.
+    await act(async () => {
+      store.openSearch();
+      await Bun.sleep(300);
+    });
+    await act(async () =>
+      inject(store, hostId, { ...external("claude-9", "launch-x"), cwd: root }),
+    );
+    const input = document.querySelector("dialog input") as HTMLElement | null;
+    expect(input).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(input as HTMLElement, { target: { value: basename(root) } });
+    });
+    await act(async () => {
+      fireEvent.keyDown(input as HTMLElement, { key: "ArrowDown" });
+    });
+    await act(async () => {
+      fireEvent.keyDown(input as HTMLElement, { key: "Tab" });
+    });
+    const action = screen.queryByRole("option", { name: "Abrir no terminal" });
+    expect(action).not.toBeNull();
+    await act(async () => {
+      if (action) fireEvent.click(action);
+    });
+    await waitFor(() => expect(ptys.spawned).toHaveLength(1));
+    expect(ptys.spawned[0]?.argv).toContain("claude-9");
+    expect(store.router.current.name).toBe("terminal");
   });
 });
