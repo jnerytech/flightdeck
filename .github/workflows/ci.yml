@@ -27,9 +27,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      # Full history: SonarCloud uses the blame to tell new code from old.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.4
 
@@ -62,6 +65,26 @@ jobs:
       - name: Testes (cobertura 100%)
         run: bun run test
 
+      # SonarCloud, on the Linux leg only, with the lcov report the tests just wrote. The product
+      # version marks the new-code period ("previous version"). Skipped where the secret is not
+      # available (pull requests from forks).
+      - name: Versão para o SonarCloud
+        id: sonar
+        if: runner.os == 'Linux'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo "FD_VERSION=$(bun -e 'console.log(require("./apps/daemon/package.json").version)')" >> "$GITHUB_ENV"
+          if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: SonarCloud
+        if: steps.sonar.outputs.enabled == 'true'
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.projectVersion=${{ env.FD_VERSION }}
+
       - name: Smokes
         run: |
           bun run smoke
@@ -92,9 +115,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.4
 
@@ -119,7 +142,7 @@ jobs:
 
       - name: Publicar os prints
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: prints
           path: apps/desktop/screenshots
