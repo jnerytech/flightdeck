@@ -11,11 +11,10 @@ import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
+import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
-import { Screen } from "./Screens.tsx";
 import { Sidebar } from "./Sidebar.tsx";
-import { TabBar } from "./TabBar.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
@@ -64,7 +63,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
 function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
   const { tabs } = store;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  if (key === "t" && e.shiftKey) tabs.reopen();
+  if (key === "\\") store.workspace.toggleSplit();
+  else if (key === "t" && e.shiftKey) tabs.reopen();
   else if (key === "t") {
     tabs.open({ name: "home" });
     store.openSearch();
@@ -284,20 +284,19 @@ export function App({ store }: { store: AppStore }) {
           )}
         >
           <div className="flex h-full min-h-0 flex-col">
-            <TabBar store={store} state={state} />
             <UpdateBanner store={store} state={state} />
-            {/* Screens that are a Page scroll by themselves; the others scroll here. */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <Screen
-                route={route}
-                store={store}
-                state={state}
-                theme={themeMode}
-                density={density}
-                go={go}
-                onOpenRequest={openRequest}
-              />
-            </div>
+            <Areas
+              store={store}
+              state={state}
+              screen={{
+                store,
+                state,
+                theme: themeMode,
+                density,
+                go,
+                onOpenRequest: openRequest,
+              }}
+            />
           </div>
           <Notices store={store} state={state} />
           {state.searchOpen && (

@@ -26,6 +26,8 @@ const randomId = () => `tab-${Date.now().toString(36)}-${(counter++).toString(36
 
 /** The window's tabs: each one a route with its own history; one is active. */
 export class Tabs {
+  /** Tells this area from the other one, for the screens that draw it. */
+  readonly id = randomId();
   tabs: readonly Tab[] = [];
   activeId = "";
   /** Changes with every change of the tabs or of the route of the active one. */

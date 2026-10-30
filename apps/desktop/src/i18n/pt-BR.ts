@@ -469,6 +469,13 @@ export const ptBR = {
     error: "erro",
   },
   tabs: {
+    moveToOther: "Mover a aba {title} para a outra área",
+    split: "Dividir a tela",
+    join: "Juntar as áreas",
+    splitHorizontal: "Dividir na horizontal",
+    splitVertical: "Dividir na vertical",
+    area: "Área {n}",
+    resize: "Redimensionar a divisão",
     newTab: "Nova aba",
     badge: { "needs-you": "Precisa de você", running: "Rodando" },
     list: "Abas",

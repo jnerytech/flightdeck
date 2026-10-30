@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   Clock,
   FileDiff,
   Layers,
@@ -11,14 +12,14 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
 import { tabBadge } from "../lib/tab-badge.ts";
-import type { Tab } from "../lib/tabs.ts";
+import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Partial<Record<Route["name"], LucideIcon>> = {
   terminal: SquareTerminal,
@@ -35,20 +36,26 @@ const title = (tab: Tab, state: AppState, store: AppStore) =>
   breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
 
 /** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
-export function TabBar(props: { store: AppStore; state: AppState }) {
-  const { store, state } = props;
+export function TabBar(props: {
+  store: AppStore;
+  state: AppState;
+  tabs: Tabs;
+  /** The split's own buttons, at the end of the bar of the first area. */
+  children?: ReactNode;
+}) {
+  const { store, state, tabs } = props;
   const { t } = store.i18n;
-  useSyncExternalStore(store.tabs.subscribe, () => store.tabs.version);
+  useSyncExternalStore(tabs.subscribe, () => tabs.version);
   return (
     <div
       role="tablist"
       aria-label={t("tabs.list")}
       className="flex h-9 items-end gap-0.5 border-b px-2"
     >
-      {store.tabs.tabs.map((tab) => {
+      {tabs.tabs.map((tab) => {
         const label = title(tab, state, store);
         const Icon = ICONS[tab.router.current.name] ?? Layers;
-        const active = tab.id === store.tabs.activeId;
+        const active = tab.id === tabs.activeId;
         const badge = tabBadge(tab.router.current, state);
         return (
           <div
@@ -65,7 +72,7 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
               aria-selected={active}
               {...(tab.pinned ? { "aria-label": label } : {})}
               className="flex min-w-0 items-center gap-1.5 px-2 py-1.5"
-              onClick={() => store.tabs.activate(tab.id)}
+              onClick={() => tabs.activate(tab.id)}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
               {!tab.pinned && <span className="truncate">{label}</span>}
@@ -88,8 +95,17 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
               variant="ghost"
               size="icon"
               className="size-6"
+              aria-label={t("tabs.moveToOther", { title: label })}
+              onClick={() => store.workspace.moveToOtherArea(tab.id)}
+            >
+              <ArrowLeftRight />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
               aria-label={t(tab.pinned ? "tabs.unpin" : "tabs.pin", { title: label })}
-              onClick={() => store.tabs.pin(tab.id, !tab.pinned)}
+              onClick={() => tabs.pin(tab.id, !tab.pinned)}
             >
               {tab.pinned ? <PinOff /> : <Pin />}
             </Button>
@@ -99,7 +115,7 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
                 size="icon"
                 className="size-6"
                 aria-label={t("tabs.close", { title: label })}
-                onClick={() => store.tabs.close(tab.id)}
+                onClick={() => tabs.close(tab.id)}
               >
                 <X />
               </Button>
@@ -113,12 +129,13 @@ export function TabBar(props: { store: AppStore; state: AppState }) {
         className="mb-0.5 size-7"
         aria-label={t("tabs.newTab")}
         onClick={() => {
-          store.tabs.open({ name: "home" });
+          tabs.open({ name: "home" });
           store.openSearch();
         }}
       >
         <Plus />
       </Button>
+      {props.children}
     </div>
   );
 }

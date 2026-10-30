@@ -48,7 +48,7 @@ import { isHot } from "./quota.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
-import { Tabs } from "./tabs.ts";
+import type { Tabs } from "./tabs.ts";
 import {
   type TerminalEnv,
   type TerminalLaunch,
@@ -60,6 +60,7 @@ import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { hasFeature } from "./version.ts";
+import { Workspace } from "./workspace.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -490,8 +491,13 @@ export class AppStore {
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
-  readonly tabs = new Tabs();
-  readonly router = this.tabs.router;
+  readonly workspace = new Workspace();
+  readonly router = this.workspace.router;
+
+  /** The focused area's tabs. */
+  get tabs(): Tabs {
+    return this.workspace.tabs;
+  }
 
   getState = (): AppState => this.state;
 
