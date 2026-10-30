@@ -134,6 +134,13 @@ async function setup(platform = memoryPlatform()) {
   await hook("ext-run", "UserPromptSubmit", two as string, { prompt: "rode" });
   await act(async () => store.router.push({ name: "hub" }));
   await settle(() => group("central").length === 4);
+  // The hooks' states land after the rows: wait for them too, or the checks race the app.
+  await settle(
+    () =>
+      !!badge("repo-ask", "precisa de você") &&
+      !!badge("repo-run", "rodando") &&
+      !!badge("Gerenciada", "ociosa"),
+  );
   return { d, store, copied, platform, sessionId };
 }
 
