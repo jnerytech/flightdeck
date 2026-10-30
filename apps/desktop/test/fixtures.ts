@@ -87,8 +87,8 @@ export function daemon(
     autoApprove?: boolean;
     /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
     risk?: (root: string) => RiskClassifier;
-    /** The host's embedded terminals (phase 14), over fake PTYs that echo what is written. */
-    terminals?: boolean;
+    /** The host's embedded terminals (phase 14), over fake PTYs that echo what is written; "off" has them turned off. */
+    terminals?: boolean | "off";
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -97,7 +97,12 @@ export function daemon(
   const store = new EventStore(":memory:");
   const ptys = fakePtys();
   const terminals = options.terminals
-    ? new TerminalManager({ pty: ptys.factory, allowedRoots: [root], platform: "linux" })
+    ? new TerminalManager({
+        pty: ptys.factory,
+        allowedRoots: [root],
+        platform: "linux",
+        enabled: options.terminals !== "off",
+      })
     : undefined;
   if (terminals) cleanups.push(() => terminals.stop());
   const historyRoot = join(root, "claude-projects");
