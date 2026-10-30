@@ -61,6 +61,7 @@ describe("mensagens-protocolo", () => {
       ["messages.relay", { message: {} }],
       ["messages.relayed", { id: "m", status: "queued" }],
       ["messages.peers", { host: "wsl", sessions: [] }],
+      ["messages.directory", {}],
       ["messages.watch", {}],
       ["idle.subscribe", { as: { session: "s1" }, session: "s2" }],
       ["messaging.rules.get", {}],
@@ -271,5 +272,31 @@ describe("mensagens-protocolo: ler uma sessão", () => {
     await Bun.sleep(50);
     await other.data("messages.send", { as: { session: "s1" }, to: "pc/s2", text: "dois" });
     expect(endpoints.sent).toHaveLength(2);
+  });
+});
+
+describe("mensagens-protocolo: o diretório do host", () => {
+  test("messages.directory dá as sessões do host sem filtrar, para o app repassar aos outros daemons", async () => {
+    const { server, teams, endpoints } = boot();
+    const client = await connect(server.url);
+    teams.set("s1", "t1");
+    endpoints.add("P1", { kind: "plain", controllable: false, reason: "sem canal", persona: "qa" });
+    const directory = await client.data<{
+      host: string;
+      sessions: Array<{ id: string; teamId: string | null; receives: boolean; kind: string }>;
+    }>("messages.directory", {});
+    expect(directory?.host).toBe("pc");
+    expect(directory?.sessions.map((s) => s.id).sort()).toEqual(["P1", "s1", "s2", "s3"]);
+    expect(directory?.sessions.find((s) => s.id === "s1")).toMatchObject({
+      teamId: "t1",
+      receives: true,
+      kind: "managed",
+    });
+    expect(directory?.sessions.find((s) => s.id === "P1")).toMatchObject({
+      receives: false,
+      kind: "plain",
+      reason: "sem canal",
+      persona: "qa",
+    });
   });
 });

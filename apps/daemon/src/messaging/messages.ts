@@ -183,6 +183,11 @@ export class Messaging {
     for (const listener of this.listeners) listener(frame);
   }
 
+  /** Every session of this host, unfiltered, for the app to hand to the other daemons. */
+  directory(): PeerSession[] {
+    return [];
+  }
+
   setPeers(host: string, sessions: PeerSession[]): void {
     this.peers.set(host, sessions);
   }

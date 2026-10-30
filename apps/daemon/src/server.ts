@@ -852,6 +852,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         messaging().relayed(id, result);
         return ok(command.type);
       }
+      case "messages.directory":
+        return ok(command.type, { host: opts.hostName, sessions: messaging().directory() });
       case "messages.peers":
         messaging().setPeers(command.payload.host, command.payload.sessions);
         return ok(command.type);

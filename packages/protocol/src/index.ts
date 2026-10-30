@@ -1551,6 +1551,20 @@ export const MessagingSession = z.object({
 });
 export type MessagingSession = z.infer<typeof MessagingSession>;
 
+/** A session as the daemon of another host is told about it. */
+export const MessagingPeer = z.object({
+  id: z.string().min(1),
+  name: z.string().nullable(),
+  persona: z.string().nullable(),
+  projectKey: z.string().nullable(),
+  teamId: z.string().nullable(),
+  state: MessagingState,
+  kind: MessagingKind,
+  receives: z.boolean(),
+  reason: z.string().nullable(),
+});
+export type MessagingPeer = z.infer<typeof MessagingPeer>;
+
 export const SendResult = z.object({
   id: z.string(),
   status: z.enum(["delivered", "queued", "refused"]),
@@ -1916,6 +1930,8 @@ export const Command = z.discriminatedUnion("type", [
       reason: z.string().nullable().optional(),
     }),
   ),
+  /** This host's sessions as the app hands them to the other daemons (`messages.peers`). */
+  cmd("messages.directory", z.object({}).strict()),
   /** The app describes the sessions of another host (what `list_sessions` shows of it). */
   cmd(
     "messages.peers",
@@ -2836,6 +2852,7 @@ export interface CommandResults {
   "messages.relay": SendResult;
   "messages.relayed": undefined;
   "messages.peers": undefined;
+  "messages.directory": { host: string; sessions: MessagingPeer[] };
   "messages.watch": undefined;
   "idle.subscribe": { fired: boolean };
   "messaging.rules.get": { policy: Record<string, unknown>; paused: string[] };
