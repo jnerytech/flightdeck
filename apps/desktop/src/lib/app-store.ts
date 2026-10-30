@@ -288,6 +288,8 @@ export interface AppStoreOptions {
   appUpdateIntervalMs?: number;
   /** Phase 16: decides a `vault.request` of the daemon; denies them all when absent. */
   vaultPolicy?: VaultPolicy;
+  /** scrypt work factor (log2 N) of an exported vault; tests lower it to stay fast. */
+  vaultWorkFactor?: number;
 }
 
 /** A toast: a host's error (by code, the daemon's message as detail) or a short success. */
