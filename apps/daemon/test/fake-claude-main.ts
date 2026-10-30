@@ -22,7 +22,20 @@ const mcpConfig =
   args.includes("--mcp-config") && mcpConfigFile && existsSync(mcpConfigFile)
     ? JSON.parse(readFileSync(mcpConfigFile, "utf8"))
     : null;
-log({ type: "start", args, env, mcpConfig });
+// The system prompt a persona appends travels in a file that only lives while claude runs.
+const appendedPath = args[args.indexOf("--append-system-prompt-file") + 1] ?? null;
+const appended =
+  args.includes("--append-system-prompt-file") && appendedPath && existsSync(appendedPath)
+    ? readFileSync(appendedPath, "utf8")
+    : null;
+log({
+  type: "start",
+  args,
+  env,
+  mcpConfig,
+  appended,
+  appendedPath: appended === null ? null : appendedPath,
+});
 
 interface HookEntry {
   type: "command" | "http";
