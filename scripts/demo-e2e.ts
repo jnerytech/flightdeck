@@ -276,6 +276,30 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       "a regra salva ao reabrir",
     );
   },
+
+  // 12. Configurações lets two projects of alfa message each other, both ways, and lists it.
+  mensagens: async (c) => {
+    const source = `e2e-${c.lang}`;
+    await open(c, { name: "settings" });
+    const section = c.page.getByRole("region", {
+      name: c.t("messagingRulesUi.title", { host: "alfa" }),
+    });
+    await section.waitFor({ timeout: WAIT });
+    const field = (label: Parameters<Context["t"]>[0]) =>
+      section.getByLabel(c.t(label), { exact: true });
+    await field("messagingRulesUi.from").selectOption("project");
+    await field("messagingRulesUi.fromValue").fill(source);
+    await field("messagingRulesUi.to").selectOption("project");
+    await field("messagingRulesUi.toValue").fill("flightdeck-web");
+    await field("messagingRulesUi.both").check();
+    await section.getByRole("button", { name: c.t("messagingRulesUi.add"), exact: true }).click();
+    const kind = c.t("messagingRulesUi.kinds.project");
+    const label = c.t("messagingRulesUi.bothWays", {
+      from: `${kind} ${source}`,
+      to: `${kind} flightdeck-web`,
+    });
+    await section.getByText(label, { exact: true }).waitFor({ timeout: WAIT });
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
