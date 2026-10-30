@@ -19,6 +19,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
   type WorkflowRun,
@@ -67,6 +68,8 @@ export interface HostConnectionOptions {
   /** The daemon asks the app for a secret (phase 16); the app decides. */
   onVaultRequest?(request: VaultRequestFrame): void;
   onVaultUsed?(used: VaultUsed): void;
+  /** Phase 19: a warning about a secret's use, even where a rule let it through. */
+  onVaultAlert?(alert: VaultAlertFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
@@ -169,6 +172,7 @@ export class HostConnection {
       if (message.type === "askpass.request") return this.opts.onAskpass?.(message);
       if (message.type === "vault.request") return this.opts.onVaultRequest?.(message);
       if (message.type === "vault.used") return this.opts.onVaultUsed?.(message);
+      if (message.type === "vault.alert") return this.opts.onVaultAlert?.(message);
       if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });

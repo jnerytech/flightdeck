@@ -10,6 +10,7 @@ import { NewSecretForm } from "@/components/vault/new-secret-form";
 import { RulesEditor } from "@/components/vault/rules-editor";
 import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { UsageLog } from "@/components/vault/usage-log";
+import { VaultReport } from "@/components/vault/vault-report";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { SecretMeta } from "../lib/vault.ts";
@@ -196,6 +197,7 @@ export function VaultPage(props: {
           <TabsTrigger value="secrets">{t("vault.tabSecrets")}</TabsTrigger>
           <TabsTrigger value="usage">{t("vault.tabUsage")}</TabsTrigger>
           <TabsTrigger value="backup">{t("vault.tabBackup")}</TabsTrigger>
+          <TabsTrigger value="report">{t("vaultAudit.tab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="secrets">
           {state.secrets.length === 0 ? (
@@ -225,6 +227,9 @@ export function VaultPage(props: {
         </TabsContent>
         <TabsContent value="backup">
           <BackupPanel store={store} />
+        </TabsContent>
+        <TabsContent value="report">
+          <VaultReport store={store} state={state} />
         </TabsContent>
       </Tabs>
       {asking && (

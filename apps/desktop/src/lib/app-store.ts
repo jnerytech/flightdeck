@@ -237,6 +237,8 @@ export type HostCommandType = Extract<
   | "vault.approve"
   | "vault.rules.set"
   | "vault.rules.preview"
+  | "vault.report"
+  | "vault.decisions"
   | `pr.${string}`
   | "files.sessions"
   | "session.files"
@@ -1492,6 +1494,20 @@ export class AppStore {
       onVaultUsed: (used) => {
         this.usage.recordUsed(config.id, used);
         this.keepUsage();
+      },
+      // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
+      onVaultAlert: (alert) => {
+        const notice: Notice = {
+          id: ++this.noticeSeq,
+          kind: "error",
+          code: "vault_alert",
+          text: alert.message,
+        };
+        this.update({ notices: [...this.state.notices, notice] });
+        void this.platform.notify({
+          title: this.i18n.t("vaultAudit.alertTitle"),
+          body: alert.message,
+        });
       },
       onRunUpdated: (run) => this.onRun(config.id, run),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
