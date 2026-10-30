@@ -48,7 +48,11 @@ export type Route =
   /** Saved commands and prompts (phase 18). */
   | { name: "snippets" }
   /** The vault (phase 16): secrets, their use and the encrypted backup. */
-  | { name: "vault" }
+  | {
+      name: "vault";
+      /** Phase 19: opens a secret's rules with a new rule matching a request ("criar regra"). */
+      rule?: { secretId: string; match: Record<string, string> };
+    }
   | { name: "add-host"; draft?: HostDraft; key?: number };
 
 /** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */
