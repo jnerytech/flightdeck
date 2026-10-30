@@ -121,4 +121,22 @@ describe("divisao", () => {
     expect(seen.length).toBeGreaterThanOrEqual(after + 4);
     expect(ws.version).toBeGreaterThanOrEqual(seen.length);
   });
+
+  test("listeners never see an area without tabs, while joining or moving a tab", () => {
+    const { ws } = setup();
+    let broken = 0;
+    ws.subscribe(() => {
+      try {
+        for (const area of ws.areas) void area.router.current;
+      } catch {
+        broken++;
+      }
+    });
+    ws.areas[0]?.open(hub);
+    ws.moveToOtherArea(ws.areas[0]?.activeId as string);
+    ws.moveToOtherArea(ws.areas[1]?.activeId as string);
+    ws.toggleSplit();
+    ws.toggleSplit();
+    expect(broken).toBe(0);
+  });
 });
