@@ -66,7 +66,7 @@ test("list_actions asks flightdeckd and hands the model what it printed", async 
   });
 
   expect(argvs).toEqual([["flightdeckd", "action", "list", "--project", "p1"]]);
-  expect(answer.text).toContain("deploy-staging");
+  expect(String(answer.result)).toContain("deploy-staging");
 });
 
 test("run_action passes the name and the parameters as arguments, never a shell line", async ($, on) => {
@@ -86,7 +86,7 @@ test("run_action passes the name and the parameters as arguments, never a shell 
   expect(argvs).toEqual([
     ["flightdeckd", "action", "run", "deploy-staging", "--param", "branch=main; rm -rf /"],
   ]);
-  expect(answer.text).toContain("•••(token)");
+  expect(String(answer.result)).toContain("•••(token)");
 });
 
 test("a failing flightdeckd comes back to the model as the error text", async ($, on) => {
@@ -98,8 +98,7 @@ test("a failing flightdeckd comes back to the model as the error text", async ($
     name: "deploy-staging",
   });
 
-  expect(answer.text).toContain("bad_request");
-  expect(answer.isError).toBe(true);
+  expect((answer as { deny?: string }).deny).toContain("bad_request");
 });
 
 test("the band names the action while it runs and goes away after", async ($, on) => {
@@ -118,7 +117,7 @@ test("the band names the action while it runs and goes away after", async ($, on
   });
 
   const call = $.tool.call({ tool: "mcp__flightdeck-actions__run_action", name: "deploy-staging" });
-  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 50));
 
   for (const surface of ["terminal", "desktop"] as const) {
     const ui = await $.ui.mount({ ...BAND, surface });
@@ -131,4 +130,20 @@ test("the band names the action while it runs and goes away after", async ($, on
   const after = await $.ui.mount({ ...BAND, surface: "terminal" });
   expect(await after.find({ type: "Text", text: /deploy-staging/ })).toBeUndefined();
   await after.unmount();
+});
+
+test("a flightdeckd that cannot start is an error for the model, not a crash", async ($, on) => {
+  on("process.run", () => {
+    throw new Error("spawn flightdeckd ENOENT");
+  });
+  on("tool.call", () => ({ result: {} }));
+
+  for (const tool of ["list_actions", "run_action"]) {
+    const answer = await $.tool.call({
+      tool: `mcp__flightdeck-actions__${tool}`,
+      name: "deploy-staging",
+    });
+
+    expect((answer as { deny?: string }).deny).toContain("flightdeckd");
+  }
 });
