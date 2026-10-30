@@ -6,7 +6,7 @@ import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Actions } from "./actions/actions.ts";
-import { runActionCli } from "./actions/cli.ts";
+import { runActionCli, runSnippetCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
@@ -120,17 +120,24 @@ export interface CliArgs {
     | "mcp"
     | "statusline"
     | "action"
+    | "snippet"
     | "version"
     | "db"
     | "backup"
     | "restore"
     | "update";
   /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
-  action?: ServiceAction | "reindex" | "list" | "run";
+  action?: ServiceAction | "reindex" | "list" | "run" | "get";
   /** `action ... --project <id>`. */
   project?: string;
   /** `action run <name>`. */
   actionName?: string;
+  /** `snippet get <name>` (phase 18). */
+  snippetName?: string;
+  /** `snippet ... --project-path <path>`: the project whose snippets count too. */
+  projectPath?: string;
+  /** `snippet list --query <text>`. */
+  query?: string;
   /** `action run ... --param k=v`, repeatable. */
   params?: Record<string, string>;
   /** `service ... --dry-run`: print, change nothing. */
@@ -176,6 +183,8 @@ const USAGE = [
   "     flightdeckd statusline [--config <arquivo>]   (uma linha para a statusline do Claude Code)",
   "     flightdeckd action list [--project <id>] [--config <arquivo>]",
   "     flightdeckd action run <nome> [--project <id>] [--param chave=valor ...] [--config <arquivo>]",
+  "     flightdeckd snippet list [--project-path <pasta>] [--query <texto>] [--config <arquivo>]",
+  "     flightdeckd snippet get <nome> [--project-path <pasta>] [--config <arquivo>]",
 ].join("\n");
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
@@ -309,8 +318,30 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         }
         break;
       }
+      case "snippet": {
+        args.command = "snippet";
+        const action = argv[++i];
+        if (action !== "list" && action !== "get") {
+          throw new Error(`ação de snippet inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        if (action === "get") {
+          const name = argv[++i];
+          if (name === undefined || name.startsWith("--")) {
+            throw new Error(`falta o nome do snippet\n${USAGE}`);
+          }
+          args.snippetName = name;
+        }
+        break;
+      }
       case "--project":
         args.project = value();
+        break;
+      case "--project-path":
+        args.projectPath = value();
+        break;
+      case "--query":
+        args.query = value();
         break;
       case "--param": {
         const [key, ...rest] = value().split("=");
@@ -1191,6 +1222,21 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
           project: args.project,
           name: args.actionName,
           params: args.params,
+        },
+        config,
+      );
+      deps.log.log(JSON.stringify(printed, null, 2));
+      deps.exit(0);
+      return null;
+    }
+    if (args.command === "snippet") {
+      const config = loadConfig(configPath(args));
+      const printed = await runSnippetCli(
+        {
+          action: args.action as "list" | "get",
+          name: args.snippetName,
+          projectPath: args.projectPath,
+          query: args.query,
         },
         config,
       );

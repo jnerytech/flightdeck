@@ -39,3 +39,37 @@ export async function runActionCli(
     daemon.close();
   }
 }
+
+export interface SnippetCliArgs {
+  action: "list" | "get";
+  name?: string | undefined;
+  projectPath?: string | undefined;
+  query?: string | undefined;
+}
+
+/**
+ * Phase 18: `flightdeckd snippet list|get`, the snippets the MCP's `list_snippets` and
+ * `get_snippet` read, for the `flightdeck-actions` mod. It only reads: nothing is pasted or run.
+ */
+export async function runSnippetCli(
+  args: SnippetCliArgs,
+  config: { bind: string; port: number; token: string },
+): Promise<unknown> {
+  const daemon = await DaemonClient.connect(daemonUrl(config), config.token).catch(
+    (error: Error) => {
+      throw new Error(`não consegui conectar no daemon: ${error.message}`);
+    },
+  );
+  try {
+    const project = args.projectPath ? { projectPath: args.projectPath } : {};
+    if (args.action === "list") {
+      return await daemon.call("snippets.list", {
+        ...project,
+        ...(args.query ? { query: args.query } : {}),
+      });
+    }
+    return await daemon.call("snippets.get", { name: args.name as string, ...project });
+  } finally {
+    daemon.close();
+  }
+}
