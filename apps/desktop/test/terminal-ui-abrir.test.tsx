@@ -155,4 +155,40 @@ describe("terminal-ui: abrir um terminal", () => {
     await until(() => row() === null);
     expect(row()).toBeNull();
   });
+
+  test("Cancelar on the question changes nothing", async () => {
+    const { store } = await setup("off");
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Ligar terminais" })).not.toBeNull(),
+    );
+    await press("Ligar terminais");
+    const cancel = within(screen.getByRole("alertdialog")).queryByRole("button", {
+      name: "Cancelar",
+    });
+    expect(cancel).not.toBeNull();
+    await act(async () => {
+      if (cancel) fireEvent.click(cancel);
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(store.getState().hosts[0]?.hostInfo?.terminal?.enabled).toBe(false);
+  });
+
+  test("a list the host refuses (terminals turned off elsewhere) shows none", async () => {
+    const { store, hostId, root } = await setup();
+    const row = () => screen.queryByRole("button", { name: `Abrir o terminal em ${root}` });
+    await store.terminalHost(hostId).open(root, 80, 24);
+    for (let i = 0; i < 20 && row() === null; i++) {
+      await act(async () => {
+        await Bun.sleep(200);
+      });
+    }
+    expect(row()).not.toBeNull();
+    await store.hostCommand(hostId, "terminal.settings", { enabled: false });
+    for (let i = 0; i < 20 && row() !== null; i++) {
+      await act(async () => {
+        await Bun.sleep(200);
+      });
+    }
+    expect(row()).toBeNull();
+  });
 });

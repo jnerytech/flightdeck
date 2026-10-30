@@ -188,4 +188,29 @@ describe("terminal-ui: the session of one terminal", () => {
     expect(last as TerminalState | null).toBe("live");
     expect(drawn).toEqual(["olá\r\n"]);
   });
+
+  test("without a schedule of its own, the resize waits on a real 100 ms timer", async () => {
+    const sizes: number[][] = [];
+    const session = new TerminalSession({
+      terminalId: "t1",
+      host: {
+        attach: async () => ({
+          terminalId: "t1",
+          scrollback: "",
+          cols: 80,
+          rows: 24,
+          exitCode: null,
+        }),
+        write: async () => null,
+        resize: async (_id, cols, rows) => void sizes.push([cols, rows]),
+        close: async () => null,
+      },
+      screen: { write: () => {}, reset: () => {} },
+      onState: () => {},
+    });
+    session.resize(90, 30);
+    expect(sizes).toEqual([]);
+    await Bun.sleep(150);
+    expect(sizes).toEqual([[90, 30]]);
+  });
 });
