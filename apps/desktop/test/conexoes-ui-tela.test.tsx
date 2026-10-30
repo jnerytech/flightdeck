@@ -30,7 +30,7 @@ const TARGETS = [
     host: "stg.example.com",
     user: "ci",
     port: 2222,
-    tags: ["staging", "cliente X"],
+    tags: ["homolog", "cliente X"],
   }),
   sshTarget({ id: "t3", name: "lab", host: "lab.local", viaHost: "outro", tags: [] }),
 ];
@@ -42,8 +42,10 @@ async function open(options: Parameters<typeof sshDaemon>[1] = { targets: TARGET
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
-  await settle(() => d.commands.some((c) => c.type === "host.info"));
+  await settle(() => store.getState().hosts[0]?.hostInfo != null);
   render(<App store={store} />);
+  // Mounting the app reconnects the host, which announces its features again.
+  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
   const nav = screen.queryByRole("button", { name: "Conexões" });
   expect(nav).not.toBeNull();
   await act(async () => {
