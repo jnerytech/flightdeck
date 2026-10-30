@@ -1,6 +1,7 @@
 import {
   type BudgetUpdated,
   type Card,
+  type ChangesUpdated,
   CLOSE_UNAUTHORIZED,
   type CommandPayload,
   type CommandResults,
@@ -62,6 +63,8 @@ export interface HostConnectionOptions {
   onQuotaUpdated?(state: QuotaState): void;
   /** A budget changed, crossed a threshold or entered a new period (after `watchBudgets`). */
   onBudgetUpdated?(update: BudgetUpdated): void;
+  /** The diff of a watched target changed on disk (after `watchChanges`, phase 11). */
+  onChangesUpdated?(update: ChangesUpdated): void;
   /** Last persisted seq the app has seen for a session; used to resubscribe without gaps. */
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
@@ -91,6 +94,8 @@ export class HostConnection {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly pending = new Map<string, Pending>();
   private readonly subscriptions = new Set<string>();
+  /** The review targets whose diff is watched (phase 11), asked for again after a reconnect. */
+  private readonly changeTargets = new Set<string>();
   private watching = false;
   private watchingBoard = false;
   private watchingHistory = false;
@@ -127,6 +132,9 @@ export class HostConnection {
           if (this.watchingQuota) this.send("quota.watch", {}).catch(ignore);
           // Daemons before phase 8 have no budgets: the error is ignored.
           if (this.watchingBudgets) this.send("budget.watch", {}).catch(ignore);
+          for (const target of this.changeTargets) {
+            this.send("changes.watch", { target }).catch(ignore);
+          }
           for (const sessionId of this.subscriptions) this.sendSubscribe(sessionId);
         },
         (error: RequestError) => {
@@ -148,6 +156,7 @@ export class HostConnection {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
       }
       if (message.type === "budget.updated") return this.opts.onBudgetUpdated?.(message);
+      if (message.type === "changes.updated") return this.opts.onChangesUpdated?.(message);
       if (message.type === "external.updated" || message.type === "external.permission") {
         return this.opts.onExternal?.(message);
       }
@@ -179,6 +188,18 @@ export class HostConnection {
     if (this.subscriptions.has(sessionId)) return;
     this.subscriptions.add(sessionId);
     if (this.status === "online") this.sendSubscribe(sessionId);
+  }
+
+  /** Streams `changes.updated` for a target, again after each reconnect, until `unwatchChanges`. */
+  watchChanges(target: string): void {
+    if (this.changeTargets.has(target)) return;
+    this.changeTargets.add(target);
+    if (this.status === "online") this.send("changes.watch", { target }).catch(ignore);
+  }
+
+  unwatchChanges(target: string): void {
+    if (!this.changeTargets.delete(target)) return;
+    if (this.status === "online") this.send("changes.unwatch", { target }).catch(ignore);
   }
 
   /** Streams `session.summary` for every session of the host, again after each reconnect. */

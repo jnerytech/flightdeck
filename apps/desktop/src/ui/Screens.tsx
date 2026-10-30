@@ -28,6 +28,7 @@ import { NewSessionForm } from "./NewSessionForm.tsx";
 import { ProjectsPage } from "./ProjectsPage.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
+import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { Settings } from "./Settings.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
@@ -93,29 +94,36 @@ function ManagedSession(props: {
       .then((r) => setCostUsd(r?.costUsd ?? null));
   }, [store, hostId, claudeId, withCosts, status]);
   return (
-    <SessionView
-      t={store.i18n.t}
-      nowMs={store.now()}
-      title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
-      session={session}
-      actions={store}
-      focusRequestId={props.focus}
-      alwaysAllow={hasFeature(host?.hostInfo?.features, "rules", false)}
-      terminal={
-        // Only once Claude Code named the session: there is nothing to resume before that.
-        session.claudeSessionId && (
-          <TerminalButton
-            store={store}
-            hostId={hostId}
-            target={{
-              cwd: summary?.cwd ?? session.cwd ?? "",
-              claudeSessionId: session.claudeSessionId,
-            }}
-          />
-        )
-      }
-      costUsd={costUsd}
-    />
+    <SessionTabs
+      store={store}
+      hostId={hostId}
+      claudeSessionId={claudeId}
+      enabled={hasFeature(host?.hostInfo?.features, "review", false)}
+    >
+      <SessionView
+        t={store.i18n.t}
+        nowMs={store.now()}
+        title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
+        session={session}
+        actions={store}
+        focusRequestId={props.focus}
+        alwaysAllow={hasFeature(host?.hostInfo?.features, "rules", false)}
+        terminal={
+          // Only once Claude Code named the session: there is nothing to resume before that.
+          session.claudeSessionId && (
+            <TerminalButton
+              store={store}
+              hostId={hostId}
+              target={{
+                cwd: summary?.cwd ?? session.cwd ?? "",
+                claudeSessionId: session.claudeSessionId,
+              }}
+            />
+          )
+        }
+        costUsd={costUsd}
+      />
+    </SessionTabs>
   );
 }
 
@@ -370,15 +378,22 @@ function routeScreen(props: ScreenProps): ReactNode {
     }
     case "external":
       return (
-        <ExternalView
+        <SessionTabs
           key={`${route.host}/${route.claudeSessionId}`}
           store={store}
-          state={state}
           hostId={route.host}
-          hostName={hostOf(route.host)?.name ?? route.host}
           claudeSessionId={route.claudeSessionId}
-          onResumed={() => go({ name: "home" })}
-        />
+          enabled={hasFeature(hostOf(route.host)?.hostInfo?.features, "review", false)}
+        >
+          <ExternalView
+            store={store}
+            state={state}
+            hostId={route.host}
+            hostName={hostOf(route.host)?.name ?? route.host}
+            claudeSessionId={route.claudeSessionId}
+            onResumed={() => go({ name: "home" })}
+          />
+        </SessionTabs>
       );
     case "reader":
       return (

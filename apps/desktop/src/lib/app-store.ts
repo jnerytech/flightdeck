@@ -3,6 +3,7 @@ import type {
   BudgetInput,
   BudgetUpdated,
   Card,
+  ChangesUpdated,
   CommandPayload,
   CommandResults,
   CommandType,
@@ -153,7 +154,16 @@ export type HostCommandType = Extract<
   | `rules.${string}`
   | `costs.${string}`
   | `budget.${string}`
+  | `changes.${string}`
+  | `review.${string}`
+  | `file.${string}`
+  | `pr.${string}`
+  | "files.sessions"
+  | "session.files"
 >;
+
+/** A command's answer kept apart from the error banner: the caller decides what to show. */
+export type HostResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
@@ -384,6 +394,8 @@ export class AppStore {
   /** Quota windows already notified, by host, window and reset. */
   private readonly quotaNotified = new Set<string>();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
+  /** Who watches each review target's diff (phase 11), by `hostId|target`. */
+  private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
   /** Accelerator currently registered with the OS. */
   private shortcut: string | null = null;
   /** The tray submenu last sent, and the debounce that will send the next one (phase 8). */
@@ -839,16 +851,42 @@ export class AppStore {
     payload: CommandPayload<T>,
   ): Promise<CommandResults[T] | null> {
     try {
-      const conn = this.connections.get(hostId);
-      if (!conn) throw new RequestError("offline", "host desconhecido");
-      const result = await conn.request(type, payload);
-      for (const card of cardsIn(result)) this.onCard(hostId, card);
-      if (isRun(result)) this.onRun(hostId, result);
-      return result;
+      return await this.dispatch(hostId, type, payload);
     } catch (error) {
       this.fail(error);
       return null;
     }
+  }
+
+  /**
+   * Like `hostCommand`, but a refusal comes back with its code and message instead of going to
+   * the banner: for screens that explain it themselves (a file that changed, a merge conflict).
+   */
+  async hostRequest<T extends HostCommandType>(
+    hostId: string,
+    type: T,
+    payload: CommandPayload<T>,
+  ): Promise<HostResult<CommandResults[T]>> {
+    try {
+      return { ok: true, data: await this.dispatch(hostId, type, payload) };
+    } catch (error) {
+      // A connection only ever rejects with a RequestError (even a host it does not know).
+      const { code, message } = error as RequestError;
+      return { ok: false, code, message };
+    }
+  }
+
+  private async dispatch<T extends HostCommandType>(
+    hostId: string,
+    type: T,
+    payload: CommandPayload<T>,
+  ): Promise<CommandResults[T]> {
+    const conn = this.connections.get(hostId);
+    if (!conn) throw new RequestError("offline", "host desconhecido");
+    const result = await conn.request(type, payload);
+    for (const card of cardsIn(result)) this.onCard(hostId, card);
+    if (isRun(result)) this.onRun(hostId, result);
+    return result;
   }
 
   /**
@@ -897,6 +935,35 @@ export class AppStore {
     if (!result) return;
     const { claudeSessionId: _id, ...meta } = result;
     this.update({ meta: { ...this.state.meta, [sessionKey(hostId, claudeSessionId)]: meta } });
+  }
+
+  /**
+   * Calls `listener` with the diff of a review target each time it changes on the host's disk
+   * (phase 11); the host keeps watching while someone listens. Returns the function that stops.
+   */
+  watchChanges(
+    hostId: string,
+    target: string,
+    listener: (update: ChangesUpdated) => void,
+  ): () => void {
+    const key = `${hostId}|${target}`;
+    const listeners = this.changeListeners.get(key) ?? new Set();
+    this.changeListeners.set(key, listeners);
+    listeners.add(listener);
+    this.connections.get(hostId)?.watchChanges(target);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size > 0) return;
+      this.changeListeners.delete(key);
+      this.connections.get(hostId)?.unwatchChanges(target);
+    };
+  }
+
+  /** Runs `fn` after `ms` (the store's timers, which tests drive); returns the function that cancels. */
+  later(fn: () => void, ms: number): () => void {
+    const timers = this.options.timers ?? REAL_TIMERS;
+    const handle = timers.setTimeout(fn, ms);
+    return () => timers.clearTimeout(handle);
   }
 
   /** Transcripts growing on any host (live reader); returns the function that stops it. */
@@ -1148,6 +1215,11 @@ export class AppStore {
       onRunUpdated: (run) => this.onRun(config.id, run),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
+      onChangesUpdated: (update) => {
+        for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
+          listener(update);
+        }
+      },
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },

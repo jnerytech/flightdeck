@@ -1,4 +1,4 @@
-import type { CardDiff, StepRun, WorkflowInfo } from "@flightdeck/protocol";
+import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -12,8 +12,8 @@ import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { emptySession } from "../lib/session-state.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ChangesPanel } from "./ChangesPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { DiffView } from "./DiffView.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
@@ -38,7 +38,6 @@ export function CardDetail(props: {
   const [description, setDescription] = useState(card?.description ?? "");
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
-  const [diff, setDiff] = useState<CardDiff | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const sessionId = card?.sessionId ?? null;
   const host = props.state.hosts.find((h) => h.id === hostId);
@@ -92,11 +91,6 @@ export function CardDetail(props: {
   useEffect(() => {
     if (sessionId) store.select(hostId, sessionId);
   }, [store, hostId, sessionId]);
-
-  useEffect(() => {
-    if (tab !== "diff") return;
-    void store.hostCommand(hostId, "card.diff", { cardId }).then(setDiff);
-  }, [store, hostId, cardId, tab]);
 
   // A route straight to a card (a link, a notification) has not loaded its board: ask the host.
   const missing = card === undefined;
@@ -339,7 +333,7 @@ export function CardDetail(props: {
           </Button>
         </div>
         {tab === "diff" ? (
-          diff && <DiffView diff={diff} />
+          <ChangesPanel store={store} hostId={hostId} target={`card:${cardId}`} />
         ) : openedStep?.type === "check" ? (
           <div className="flex flex-col gap-2">
             <p className="text-muted-foreground text-xs">
