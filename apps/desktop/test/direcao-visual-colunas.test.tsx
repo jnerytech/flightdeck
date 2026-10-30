@@ -107,7 +107,7 @@ describe("direcao-visual: três colunas", () => {
     expect(alpha.className).toContain("h-8");
     expect(alpha.className).not.toContain("min-h-10");
     expect(within(alpha).queryByRole("img", { name: "ociosa" })).not.toBeNull();
-    expect(within(alpha).queryByText("alfa")?.className ?? "").toContain("text-muted-foreground");
+    expect(within(alpha).queryByText(/^alfa/)?.className ?? "").toContain("text-muted-foreground");
     const time = alpha.querySelector("time");
     expect(time?.className ?? "").toContain("tabular-nums");
     // The time closes the line; the actions wait for hover or focus.
@@ -139,20 +139,28 @@ describe("direcao-visual: três colunas", () => {
 
   test("J e K movem pela lista, Enter abre e as teclas ficam com o campo quando se digita", async () => {
     const { store } = await setup();
+    // The managed ones and the transcript from the terminal, in the order they are listed.
+    const order = [...main().querySelectorAll("li[data-active]")].map((li) =>
+      li.getAttribute("aria-label"),
+    );
+    expect(order).toHaveLength(3);
     const active = () =>
-      ["Alpha", "Beta"].filter((t) => row(t)?.getAttribute("data-active") === "true");
+      [...main().querySelectorAll("li[data-active='true']")].map((li) =>
+        li.getAttribute("aria-label"),
+      );
     await press("j");
-    expect(active()).toEqual(["Alpha"]);
+    expect(active()).toEqual([order[0] ?? ""]);
     await press("j");
-    expect(active()).toEqual(["Beta"]);
+    expect(active()).toEqual([order[1] ?? ""]);
     await press("j");
-    expect(active()).toEqual(["Beta"]);
+    await press("j");
+    expect(active()).toEqual([order[2] ?? ""]);
     await press("k");
-    expect(active()).toEqual(["Alpha"]);
+    expect(active()).toEqual([order[1] ?? ""]);
     // Typing in the filter is text.
     const input = screen.queryByLabelText("Filtrar sessões") as HTMLElement;
     await press("j", input);
-    expect(active()).toEqual(["Alpha"]);
+    expect(active()).toEqual([order[1] ?? ""]);
     await press("Enter");
     expect(store.router.current.name).toBe("session");
   });

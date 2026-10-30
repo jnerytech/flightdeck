@@ -146,8 +146,9 @@ describe("historico-host", () => {
     });
     await settle(() => document.querySelectorAll("[data-uuid]").length > 0);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
-    expect(document.querySelector("[aria-current]")).toBeNull();
-    expect(screen.queryByRole("list", { name: "Sessões do histórico" })).toBeNull();
+    // Three columns: the list stays on the left with the open one marked.
+    expect(document.querySelectorAll("[aria-current]")).toHaveLength(1);
+    expect(screen.queryByRole("list", { name: "Sessões do histórico" })).not.toBeNull();
   });
 
   test("host sem conexão: a lista vira erro no banner", async () => {

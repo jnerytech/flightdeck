@@ -207,15 +207,17 @@ describe("hub-ui", () => {
     await setup();
     expect(group("central")).toEqual(["repo-ask", "repo-run", "Gerenciada", "Do histórico"]);
     const ask = item("repo-ask") as HTMLElement;
-    expect(ask.className).toContain("bg-status-needs-you/10");
-    expect(ask.querySelector("svg[data-icon='needs-you']")).not.toBeNull();
+    // Needs you is an amber dot in a 32 px line, nothing more.
+    expect(ask.className).toContain("h-8");
+    expect(ask.className).not.toContain("bg-status-needs-you");
+    expect(ask.querySelector("svg[data-icon='needs-you']")).toBeNull();
     expect(badge("repo-ask", "precisa de você")?.className).toContain("bg-status-needs-you");
-    expect(within(ask).queryByText("alfa")).not.toBeNull();
-    expect(item("repo-run")?.className).not.toContain("bg-status-needs-you/10");
+    expect(within(ask).queryByText(/^alfa/)).not.toBeNull();
     expect(badge("repo-run", "rodando")?.className).toContain("bg-status-running");
     expect(badge("Gerenciada", "ociosa")?.className).toContain("bg-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
-    expect(item("Do histórico")?.textContent ?? "").toContain("histórico · 01/09/2026, 07:00");
+    expect(item("Do histórico")?.textContent ?? "").toContain("alfa · histórico");
+    expect(item("Do histórico")?.querySelector("time")?.textContent).toBe("01/09/2026, 07:00");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
     expect(badge("Do histórico", "encerrada")?.className).toContain("bg-status-ended");
   });

@@ -243,7 +243,8 @@ describe("paleta", () => {
     expect(screen.queryByRole("heading", { name: "Nova sessão em alfa" })).not.toBeNull();
 
     await choose("app-a", "Enter");
-    expect(screen.queryByRole("heading", { name: "app-a" })).not.toBeNull();
+    // The project's group heading in the list and the session's own, on the right.
+    expect(screen.queryAllByRole("heading", { name: "app-a" })).toHaveLength(2);
 
     // Tab again (or Esc) leaves the actions for the list.
     await choose("Gerenciada", "Tab");
