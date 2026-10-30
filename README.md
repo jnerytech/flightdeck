@@ -15,7 +15,7 @@ SQLite, WebSocket), that hosts sessions through the official Agent SDK and watch
 start in a terminal. The app connects to every daemon, so you can follow, approve and message
 sessions from one place, without opening each machine.
 
-![The Flightdeck session hub](docs/images/hub-dark.png)
+![The Flightdeck session hub](docs/images/hub-dark-en.png)
 
 ## Features
 
