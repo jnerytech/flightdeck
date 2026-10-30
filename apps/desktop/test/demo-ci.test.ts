@@ -73,6 +73,7 @@ describe("demo-prints: axe e CI", () => {
       "voltar-arquivos",
       "issue-e-risco",
       "abas-terminal",
+      "acoes",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

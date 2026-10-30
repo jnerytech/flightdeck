@@ -42,4 +42,13 @@ describe("demo-issue-risco: what the issue-and-risk journey needs from the demo"
     const danger = result?.sessions.find((s) => s.meta?.name === DANGER_SESSION);
     expect(danger?.status).toBe("awaiting_permission");
   });
+
+  test("the web project versions an action that is not trusted yet, for the actions journey", async () => {
+    const result = await alfa.data<{
+      actions: Array<{ name: string; source: string; trusted: boolean }>;
+    }>("actions.list", { projectId: seed.ids.project });
+    expect(result?.actions.map((a) => [a.name, a.source, a.trusted])).toEqual([
+      ["versao", "versioned", false],
+    ]);
+  });
 });
