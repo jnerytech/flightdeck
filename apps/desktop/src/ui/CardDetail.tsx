@@ -25,6 +25,7 @@ import { ChangesPanel } from "./ChangesPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal } from "./IssuesPanel.tsx";
 import { PrComments } from "./PrComments.tsx";
+import { RunPanel } from "./RunPanel.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
@@ -356,6 +357,9 @@ export function CardDetail(props: {
               await store.hostCommand(hostId, "card.pr.create", { cardId, description });
             }}
           />
+        )}
+        {card.worktreePath && hasFeature(host?.hostInfo?.features, "runenv", false) && (
+          <RunPanel store={store} hostId={hostId} card={card} />
         )}
         {confirming && (
           <ConfirmDialog
