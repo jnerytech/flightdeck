@@ -277,30 +277,38 @@ export function BoardView(props: {
           <DialogHeader>
             <DialogTitle>{t("kanban.newCard")}</DialogTitle>
           </DialogHeader>
-          <Input
-            aria-label={t("kanban.titleLabel")}
-            placeholder={t("kanban.titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Textarea
-            aria-label={t("kanban.descriptionLabel")}
-            placeholder={t("kanban.descriptionPlaceholder")}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={close}>
-              {t("common.cancel")}
-            </Button>
-            <ActionButton
-              disabled={!title.trim()}
-              disabledReason={t("kanban.needTitle")}
-              onClick={create}
-            >
-              {t("kanban.create")}
-            </ActionButton>
-          </DialogFooter>
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void create();
+            }}
+          >
+            <Input
+              aria-label={t("kanban.titleLabel")}
+              placeholder={t("kanban.titlePlaceholder")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <Textarea
+              aria-label={t("kanban.descriptionLabel")}
+              placeholder={t("kanban.descriptionPlaceholder")}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={close}>
+                {t("common.cancel")}
+              </Button>
+              <ActionButton
+                type="submit"
+                disabled={!title.trim()}
+                disabledReason={t("kanban.needTitle")}
+              >
+                {t("kanban.create")}
+              </ActionButton>
+            </DialogFooter>
+          </form>
         </AppDialogContent>
       </Dialog>
     </Page>
