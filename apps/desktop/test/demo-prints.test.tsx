@@ -10,7 +10,7 @@ import {
 import { LANG_KEY } from "../src/i18n/index.ts";
 import { loadHosts } from "../src/lib/hosts.ts";
 import { THEME_KEY } from "../src/lib/theme.ts";
-import { WORKSPACE_KEY } from "../src/lib/workspace.ts";
+import { WORKSPACE_KEY, Workspace } from "../src/lib/workspace.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -82,14 +82,27 @@ describe("demo-prints", () => {
 
   test("an address with ?route= opens on a fresh window, so a split kept by an earlier print does not leak", () => {
     const { platform, items } = memoryPlatform();
-    items.set(WORKSPACE_KEY, '{"v":1}');
+    const split = JSON.stringify({
+      v: 1,
+      areas: [
+        { tabs: [{ route: { name: "hub" }, pinned: false }], active: 0 },
+        { tabs: [{ route: { name: "costs" }, pinned: false }], active: 0 },
+      ],
+      split: "vertical",
+      focus: 1,
+      fraction: 0.5,
+    });
+    items.set(WORKSPACE_KEY, split);
     applyDemoPrefs(platform.storage, "?theme=dark");
-    expect(items.get(WORKSPACE_KEY)).toBe('{"v":1}');
+    expect(items.get(WORKSPACE_KEY)).toBe(split);
     applyDemoPrefs(
       platform.storage,
       `?route=${encodeURIComponent(JSON.stringify({ name: "hub" }))}`,
     );
-    expect(items.has(WORKSPACE_KEY)).toBe(false);
+    const kept = Workspace.restore(JSON.parse(items.get(WORKSPACE_KEY) ?? "null"));
+    expect(kept.areas.map((area) => area.tabs.map((tab) => tab.router.current.name))).toEqual([
+      ["home"],
+    ]);
   });
 
   test("FLIGHTDECK_ENTRY=web troca a entrada do index.html pela web", () => {
