@@ -240,6 +240,22 @@ describe("run-ui: Run e Stop no card", () => {
     expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).toBeNull();
   });
 
+  test("Cancelar na pergunta de confiança não confia em nada: o Run continua fora", async () => {
+    await cardScreen();
+    expect(await shows(() => panel() !== null)).toBe(true);
+    await press("Confiar neste run.yaml");
+    const cancel = within(screen.getByRole("alertdialog")).queryByRole("button", {
+      name: "Cancelar",
+    });
+    expect(cancel).not.toBeNull();
+    await act(async () => {
+      if (cancel) fireEvent.click(cancel);
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).not.toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+  });
+
   test("Run mostra o setup, depois cada processo com o log e o preview; Stop encerra tudo", async () => {
     const { store, hostId, runHost } = await cardScreen(true);
     expect(
@@ -292,6 +308,51 @@ describe("run-ui: Run e Stop no card", () => {
     ).toBe(true);
     expect(runHost?.spawned.at(-1)?.killed).toBe(true);
     expect(inPanel().queryByText("Encerrado")).not.toBeNull();
+  });
+
+  test("o log do setup e o estado de espera e de prazo vencido do preview aparecem no painel", async () => {
+    const { store, hostId, cardId, key } = await cardScreen(true);
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+      ),
+    ).toBe(true);
+    const state = (ready: "waiting" | "timeout") => ({
+      cardId,
+      status: "running" as const,
+      setup: "done" as const,
+      setupTerminalId: "term-setup",
+      ports: { web: 41000 },
+      processes: [
+        {
+          name: "web",
+          terminalId: "term-web",
+          status: "running" as const,
+          exitCode: null,
+          url: "http://127.0.0.1:41000/",
+          ready,
+        },
+      ],
+      error: null,
+    });
+    const show = async (next: ReturnType<typeof state>) => {
+      await act(async () => {
+        (store as unknown as { update(patch: object): void }).update({
+          runEnvs: { [key]: next },
+        });
+      });
+    };
+    await show(state("waiting"));
+    expect(inPanel().queryByText("esperando web responder…")).not.toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Abrir preview de web" })).toBeNull();
+    await show(state("timeout"));
+    expect(inPanel().queryByText("web não respondeu a tempo")).not.toBeNull();
+    await press("Ver log de Setup");
+    expect(store.router.current).toEqual({
+      name: "terminal",
+      host: hostId,
+      terminalId: "term-setup",
+    });
   });
 
   test("um setup que falha mostra o código, e o Run está lá para tentar de novo", async () => {
