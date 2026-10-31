@@ -124,27 +124,6 @@ async function boot() {
   return { az, client, daemon, projectId: project?.id ?? "", cardId, repo };
 }
 
-/**
- * The PR is merged: the polls then have nothing to ask, so the daemon does not stop under one
- * (a poll in flight would write to a closed database).
- */
-async function merged(az: FakeCli, client: FrameClient, cardId: string) {
-  az.respond([
-    {
-      args: ["repos", "pr", "show"],
-      stdout: JSON.stringify({ status: "completed", repository: { project: { id: "proj-guid" } } }),
-    },
-    { args: ["repos", "pr", "policy", "list"], stdout: "[]" },
-    { args: ["pullRequestThreads"], stdout: '{"value":[]}' },
-  ]);
-  await until(async () => {
-    const got = await client.data<{ prState: string; worktreePath: string | null }>("card.get", {
-      cardId,
-    });
-    return got?.prState === "merged" && got.worktreePath === null;
-  }, 15_000);
-}
-
 interface Watch {
   cardId: string;
   enabled: boolean;
@@ -229,7 +208,6 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     expect(await client.data("watch.byUrl", { url: `${WEB}/pullrequest/77` })).toMatchObject({
       via: "none",
     });
-    await merged(az, client, cardId);
   });
 
   test("the description is offered for the person to edit, and the PR opens only with what is confirmed", async () => {
@@ -254,6 +232,5 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     await client.data("card.pr.create", { cardId, description: `${offered?.text} (editado)` });
     const create = az.calls().find((args) => args.includes("create")) ?? [];
     expect(create[create.indexOf("--description") + 1]).toContain("(editado)");
-    await merged(az, client, cardId);
   });
 });
