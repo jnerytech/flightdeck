@@ -29,6 +29,8 @@ describe("preview: só loopback", () => {
       "http://localhost.evil.com/",
       "http://127.0.0.1.evil.com/",
       "http://127.0.0.1@evil.com/",
+      "http://user:pw@127.0.0.1:3000/",
+      "http://user@localhost/",
       "ftp://127.0.0.1/",
       "file:///etc/passwd",
       "javascript:alert(1)",
