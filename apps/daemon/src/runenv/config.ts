@@ -127,6 +127,7 @@ function urlProblem(url: string): string | null {
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
     return "precisa ser http ou https";
+  if (parsed.username || parsed.password) return "sem usuário nem senha no endereço";
   return LOOPBACK.has(parsed.hostname) ? null : "só 127.0.0.1 e localhost";
 }
 
