@@ -206,7 +206,15 @@ export function VaultPage(props: {
         </TabsList>
         <TabsContent value="secrets">
           {state.secrets.length === 0 ? (
-            <EmptyState icon={KeyRound} title={t("vault.empty")} />
+            <EmptyState
+              icon={KeyRound}
+              title={t("vault.empty")}
+              action={
+                !creating && (
+                  <Button onClick={() => setCreating(true)}>{t("vault.emptyAction")}</Button>
+                )
+              }
+            />
           ) : (
             <ul aria-label={t("vault.list")} className="flex flex-col gap-2">
               {state.secrets.map((secret) => (

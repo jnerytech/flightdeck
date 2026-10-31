@@ -408,7 +408,11 @@ export function TeamsPage(props: { store: AppStore; state: AppState }) {
         />
       )}
       {teams.length === 0 && !creating && (
-        <EmptyState icon={UsersRound} title={t("teamsUi.empty")} />
+        <EmptyState
+          icon={UsersRound}
+          title={t("teamsUi.empty")}
+          action={<Button onClick={() => setCreating(true)}>{t("teamsUi.emptyAction")}</Button>}
+        />
       )}
       <ul aria-label={t("teamsUi.list")} className="flex max-w-3xl flex-col gap-3">
         {teams.map((team) => (

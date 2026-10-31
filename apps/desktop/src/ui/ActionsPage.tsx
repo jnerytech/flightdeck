@@ -152,7 +152,13 @@ export function ActionsPage(props: {
           {t("actionsUi.sameUser")}
         </p>
         {loading && <LoadingState label={t("actionsUi.loading")} />}
-        {actions?.length === 0 && <EmptyState icon={Terminal} title={t("actionsUi.empty")} />}
+        {actions?.length === 0 && (
+          <EmptyState
+            icon={Terminal}
+            title={t("actionsUi.empty")}
+            action={<Button onClick={() => setEditing("new")}>{t("actionsUi.emptyAction")}</Button>}
+          />
+        )}
         {errors.length > 0 && (
           <ul
             aria-label={t("actionsUi.problems")}

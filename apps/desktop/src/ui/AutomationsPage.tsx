@@ -136,7 +136,13 @@ export function AutomationsPage(props: {
       <div className="flex max-w-3xl flex-col gap-3">
         {loading && <LoadingState label={t("automationsUi.loading")} />}
         {automations?.length === 0 && (
-          <EmptyState icon={Workflow} title={t("automationsUi.empty")} />
+          <EmptyState
+            icon={Workflow}
+            title={t("automationsUi.empty")}
+            action={
+              <Button onClick={() => setEditing("new")}>{t("automationsUi.emptyAction")}</Button>
+            }
+          />
         )}
         <ul aria-label={t("automationsUi.list")} className="flex flex-col gap-2">
           {(automations ?? []).map((automation) => (

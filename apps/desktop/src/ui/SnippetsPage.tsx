@@ -208,7 +208,11 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
         </div>
       )}
       {snippets.length === 0 ? (
-        <EmptyState icon={SquareCode} title={t("snippets.empty")} />
+        <EmptyState
+          icon={SquareCode}
+          title={t("snippets.empty")}
+          action={<Button onClick={() => setEditing("new")}>{t("snippets.emptyAction")}</Button>}
+        />
       ) : (
         <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
           {snippets.map((snippet) => (

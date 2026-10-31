@@ -263,7 +263,11 @@ export function ConnectionsPage(props: {
         </label>
       </div>
       {targets.length === 0 ? (
-        <EmptyState icon={Network} title={t("connections.empty")} />
+        <EmptyState
+          icon={Network}
+          title={t("connections.empty")}
+          action={<Button onClick={() => setEditing("new")}>{t("connections.emptyAction")}</Button>}
+        />
       ) : (
         <ul aria-label={t("connections.list")} className="flex flex-col gap-2">
           {shown.map((target) => (
