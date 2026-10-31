@@ -21,6 +21,7 @@ import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
+import { type ContextBudget, MEMORY_LIMIT_BYTES, MEMORY_LIMIT_LINES } from "./budget.ts";
 
 export interface MemoryFile {
   name: string;
@@ -70,6 +71,8 @@ export interface ProjectMemoryOptions {
   clock?: () => number;
   /** Told of every write and delete that landed. */
   record?: (decision: MemoryDecision) => void;
+  /** The organization's CLAUDE.md; the platform's own place unless told otherwise. */
+  managedClaudeMd?: string;
 }
 
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
@@ -155,6 +158,25 @@ export class ProjectMemory {
     if (current !== input.expectedHash) throw invalid(`${input.name} mudou desde que foi aberto`);
     unlinkSync(file);
     this.record("delete", input.name, current, null);
+  }
+
+  /** What the context holds at the start for a session in `project`, and what the memory leaves out. */
+  budget(_project: string): ContextBudget {
+    return {
+      sources: [],
+      startTokens: -1,
+      memory: {
+        limitLines: MEMORY_LIMIT_LINES,
+        limitBytes: MEMORY_LIMIT_BYTES,
+        indexLines: -1,
+        indexBytes: -1,
+        loadedLines: -1,
+        loadedBytes: -1,
+        cutBy: null,
+        leftOutLines: [],
+        leftOutFiles: [],
+      },
+    };
   }
 
   private claudeDir(): string {
