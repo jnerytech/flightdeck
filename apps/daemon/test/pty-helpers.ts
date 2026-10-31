@@ -13,6 +13,8 @@ export interface FakePty {
   written: string[];
   resized: Array<[number, number]>;
   killed: boolean;
+  /** The process id the fake gives out. */
+  pid: number;
   /** Output of the process. */
   emit(data: string | Uint8Array): void;
   /** The process ends by itself. */
@@ -36,11 +38,13 @@ export function fakePtys() {
       written: [],
       resized: [],
       killed: false,
+      pid: 1000 + spawned.length,
       emit: (data) => start.onData(typeof data === "string" ? encoder.encode(data) : data),
       exit: (code) => start.onExit(code),
     };
     spawned.push(fake);
     return {
+      pid: fake.pid,
       write: (data) => {
         fake.written.push(data);
         fake.emit(data);
