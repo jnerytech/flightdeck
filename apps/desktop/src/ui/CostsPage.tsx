@@ -228,7 +228,17 @@ export function CostsPage(props: {
             })}
           </InlineNotice>
         )}
-        {hosts.length === 0 && <EmptyState icon={Coins} title={t("costsUi.noHost")} />}
+        {hosts.length === 0 && (
+          <EmptyState
+            icon={Coins}
+            title={t("costsUi.noHost")}
+            action={
+              <Button variant="link" onClick={() => props.store.router.push({ name: "add-host" })}>
+                {t("costsUi.noHostLink")}
+              </Button>
+            }
+          />
+        )}
         {loading && <LoadingState label={t("costsUi.loading")} />}
         {empty && (
           <EmptyState

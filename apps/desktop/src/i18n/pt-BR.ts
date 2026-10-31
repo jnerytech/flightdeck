@@ -379,6 +379,8 @@ export const ptBR = {
     loadingProjects: "Carregando projetos",
     loadingBoard: "Carregando o board",
     emptyHistory: "Nenhuma sessão no histórico.",
+    emptyHistoryHint: "Comece uma sessão e ela entra aqui quando terminar.",
+    emptyHistoryLink: "Nova sessão",
     emptyProjects: "Nenhum projeto cadastrado.",
     addProject: "Adicionar projeto",
     emptyCards: "Nenhum card neste projeto.",
@@ -1171,6 +1173,9 @@ export const ptBR = {
     status: "Estado",
     any: "Qualquer",
     empty: "Nenhuma mensagem",
+    emptyHint:
+      "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
+    emptyLink: "Abrir Times",
     to: "para",
     open: "Abrir a sessão",
     statuses: {
@@ -1263,6 +1268,8 @@ export const ptBR = {
     filterPlaceholder: "Ferramenta ou motivo",
     loading: "Carregando as decisões",
     empty: "Nenhuma decisão automática ainda",
+    emptyHint:
+      "As decisões aparecem quando um projeto liga a aprovação automática e uma sessão pede permissão.",
     noMatch: "Nenhuma decisão corresponde ao filtro",
     allow: "Aprovou",
     ask: "Perguntou a você",
@@ -1534,6 +1541,7 @@ export const ptBR = {
     empty: "Nenhum custo neste período",
     emptyAction: "Ver os últimos 30 dias",
     noHost: "Nenhum host informa custos ainda.",
+    noHostLink: "Adicionar host",
     estimated: "Custo estimado",
     tokens: "Tokens",
     cacheSavings: "Economia do cache",

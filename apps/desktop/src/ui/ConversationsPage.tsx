@@ -123,7 +123,18 @@ export function ConversationsPage(props: {
       }
     >
       {shown.length === 0 && (
-        <EmptyState icon={MessagesSquare} title={t("conversationsUi.empty")} />
+        <EmptyState
+          icon={MessagesSquare}
+          title={t("conversationsUi.empty")}
+          action={
+            <>
+              <p className="text-muted-foreground text-xs">{t("conversationsUi.emptyHint")}</p>
+              <Button variant="link" onClick={() => props.go({ name: "teams" })}>
+                {t("conversationsUi.emptyLink")}
+              </Button>
+            </>
+          }
+        />
       )}
       <ul aria-label={t("conversationsUi.list")} className="flex max-w-3xl flex-col gap-2">
         {shown.map((row) => {

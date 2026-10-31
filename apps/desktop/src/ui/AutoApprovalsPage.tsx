@@ -122,7 +122,13 @@ export function AutoApprovalsPage(props: { store: AppStore; hostId: string }) {
         <section className="flex flex-col gap-2">
           {loading && <LoadingState label={t("autoApprovalsUi.loading")} />}
           {decisions?.length === 0 && (
-            <EmptyState icon={ShieldCheck} title={t("autoApprovalsUi.empty")} />
+            <EmptyState
+              icon={ShieldCheck}
+              title={t("autoApprovalsUi.empty")}
+              action={
+                <p className="text-muted-foreground text-xs">{t("autoApprovalsUi.emptyHint")}</p>
+              }
+            />
           )}
           {decisions !== null && decisions.length > 0 && shown.length === 0 && (
             <p className="text-muted-foreground text-sm">{t("autoApprovalsUi.noMatch")}</p>

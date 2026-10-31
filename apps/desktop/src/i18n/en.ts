@@ -382,6 +382,8 @@ export const en: Dictionary = {
     loadingProjects: "Loading projects",
     loadingBoard: "Loading the board",
     emptyHistory: "No sessions in the history.",
+    emptyHistoryHint: "Start a session and it shows up here once it ends.",
+    emptyHistoryLink: "New session",
     emptyProjects: "No projects yet.",
     addProject: "Add project",
     emptyCards: "No cards in this project.",
@@ -1168,6 +1170,9 @@ export const en: Dictionary = {
     status: "State",
     any: "Any",
     empty: "No messages",
+    emptyHint:
+      "Messages between sessions show up here once sessions can message each other, for example in a team.",
+    emptyLink: "Open Teams",
     to: "to",
     open: "Open the session",
     statuses: {
@@ -1261,6 +1266,8 @@ export const en: Dictionary = {
     filterPlaceholder: "Tool or reason",
     loading: "Loading the decisions",
     empty: "No automatic decisions yet",
+    emptyHint:
+      "Decisions show up when a project turns automatic approval on and a session asks for permission.",
     noMatch: "No decision matches the filter",
     allow: "Approved",
     ask: "Asked you",
@@ -1531,6 +1538,7 @@ export const en: Dictionary = {
     empty: "No cost in this period",
     emptyAction: "See the last 30 days",
     noHost: "No host reports costs yet.",
+    noHostLink: "Add a host",
     estimated: "Estimated cost",
     tokens: "Tokens",
     cacheSavings: "Cache savings",

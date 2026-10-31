@@ -92,7 +92,21 @@ export function HistoryList(props: {
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {loading && <LoadingState label={t("states.loadingSessions")} />}
         {!loading && sessions?.length === 0 && (
-          <EmptyState icon={History} title={t("states.emptyHistory")} />
+          <EmptyState
+            icon={History}
+            title={t("states.emptyHistory")}
+            action={
+              <>
+                <p className="text-muted-foreground text-xs">{t("states.emptyHistoryHint")}</p>
+                <Button
+                  variant="link"
+                  onClick={() => store.router.push({ name: "new-session", host: hostId })}
+                >
+                  {t("states.emptyHistoryLink")}
+                </Button>
+              </>
+            }
+          />
         )}
         {!loading && sessions && sessions.length > 0 && (
           <ul aria-label={t("historyUi.list")} className="flex flex-col">
