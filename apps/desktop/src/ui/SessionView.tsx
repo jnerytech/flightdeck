@@ -1,6 +1,7 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { ActionButton } from "@/components/feedback/action-button";
 import {
   Composer,
   Message,
@@ -9,7 +10,6 @@ import {
   Timeline,
 } from "@/components/session/parts";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
@@ -158,11 +158,19 @@ export function SessionView(props: {
   const [closing, setClosing] = useState(false);
   const closed = session.status === "ended" || session.status === "error";
 
+  const box = useRef<HTMLTextAreaElement>(null);
+  /** The session is being ended: Encerrar is busy until the daemon says so. */
+  const [ending, setEnding] = useState(false);
+
   const submit = () => {
     const value = text.trim();
-    if (!value) return;
+    if (!value) {
+      // A click with nothing to send is not dead: the cursor goes where the text is typed.
+      box.current?.focus();
+      return undefined;
+    }
     setText("");
-    void actions.send(value);
+    return actions.send(value);
   };
 
   return (
@@ -190,17 +198,22 @@ export function SessionView(props: {
             {props.persona}
             {props.terminal}
             {closed ? (
-              <Button variant="outline" size="sm" onClick={() => void actions.resume()}>
+              <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
                 {t("session.resume")}
-              </Button>
+              </ActionButton>
             ) : (
               <>
-                <Button variant="outline" size="sm" onClick={() => void actions.interrupt()}>
+                <ActionButton variant="outline" size="sm" onClick={() => actions.interrupt()}>
                   {t("session.interrupt")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setClosing(true)}>
+                </ActionButton>
+                <ActionButton
+                  variant="outline"
+                  size="sm"
+                  pending={ending}
+                  onClick={() => setClosing(true)}
+                >
                   {t("session.end")}
-                </Button>
+                </ActionButton>
                 {closing && (
                   <ConfirmDialog
                     message={t("session.endMessage")}
@@ -208,7 +221,8 @@ export function SessionView(props: {
                     destructive
                     onConfirm={() => {
                       setClosing(false);
-                      void actions.close();
+                      setEnding(true);
+                      void actions.close().finally(() => setEnding(false));
                     }}
                     onCancel={() => setClosing(false)}
                   />
@@ -247,6 +261,7 @@ export function SessionView(props: {
       />
       <Composer>
         <Textarea
+          ref={box}
           aria-label={t("session.message")}
           placeholder={t("session.placeholder")}
           value={text}
@@ -256,11 +271,11 @@ export function SessionView(props: {
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
-              submit();
+              void submit();
             }
           }}
         />
-        <Button onClick={submit}>{t("session.send")}</Button>
+        <ActionButton onClick={submit}>{t("session.send")}</ActionButton>
       </Composer>
     </SessionPane>
   );
