@@ -50,6 +50,7 @@ import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
+import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { runMessageCli } from "./messaging/cli.ts";
 import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
@@ -892,6 +893,10 @@ export async function startDaemon(
     forker: new Forker({ runtime, manager, rewinder }),
     mcp: new McpConfig(),
     agentcfg,
+    // Phase 26: the project's auto memory; its writes are recorded by name and hash only.
+    memory: new ProjectMemory({
+      record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
+    }),
     ...(updater ? { updater } : {}),
     hostName: config.hostName,
     bind: config.bind,

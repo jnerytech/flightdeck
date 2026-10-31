@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { startDaemon } from "../src/main.ts";
 import { decisionLog, type MemoryDecision, ProjectMemory } from "../src/memory/memory.ts";
 import { startServer } from "../src/server.ts";
 import { git, gitRepo, newBoard } from "./board-helpers.ts";
@@ -601,5 +602,48 @@ describe("memoria: o registro das decisões", () => {
       },
     ]);
     expect(readFileSync(file, "utf8")).not.toContain("segredo-de-teste");
+  });
+});
+
+describe("memoria: o daemon inteiro", () => {
+  test("o daemon de verdade anuncia memory e grava a decisão ao lado dos dados", async () => {
+    const base = tempDir("fd-daemon-");
+    const { repo } = gitRepo();
+    const config = join(base, "config.json");
+    writeFileSync(
+      config,
+      JSON.stringify({
+        hostName: "h",
+        port: 0,
+        token: "memoria-daemon-token-0123456789",
+        dataDir: join(base, "data"),
+        allowedRoots: [join(repo, "..")],
+        runtime: "fake",
+        hooks: { port: 0 },
+      }),
+    );
+    const quiet = { log: () => {}, error: () => {} };
+    const daemon = await startDaemon({ command: "start", config, runtime: "fake" }, {}, quiet);
+    try {
+      const client = new FrameClient(daemon.url);
+      await client.request("hello", { token: "memoria-daemon-token-0123456789", client: "t" });
+      expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
+        "memory",
+      );
+      const project = await client.data<{ id: string }>("project.add", { path: repo });
+      const written = await client.data<{ hash: string }>("memory.write", {
+        projectId: project?.id,
+        name: "a.md",
+        content: "x\n",
+        expectedHash: null,
+        confirm: true,
+      });
+      expect(written?.hash).toBe(sha("x\n"));
+      const log = readFileSync(join(base, "data", "memory-decisions.jsonl"), "utf8").trim();
+      expect(JSON.parse(log)).toMatchObject({ action: "write", name: "a.md", after: sha("x\n") });
+      client.close();
+    } finally {
+      await daemon.stop();
+    }
   });
 });

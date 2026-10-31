@@ -6,6 +6,7 @@
  */
 import { createHash } from "node:crypto";
 import {
+  appendFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -111,8 +112,11 @@ function repoRoot(project: string): string {
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */
-export function decisionLog(_path: string): (decision: MemoryDecision) => void {
-  return () => {};
+export function decisionLog(path: string): (decision: MemoryDecision) => void {
+  return (decision) => {
+    mkdirSync(dirname(path), { recursive: true });
+    appendFileSync(path, `${JSON.stringify(decision)}\n`);
+  };
 }
 
 /** Where the organization's CLAUDE.md lives on this platform. */

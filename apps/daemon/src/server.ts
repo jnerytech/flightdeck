@@ -503,6 +503,11 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   const projectPath = (projectId: string) => board().getProject(projectId).path;
 
+  function memory(): ProjectMemory {
+    if (!opts.memory) throw new FlightdeckError("invalid_state", "memória indisponível");
+    return opts.memory;
+  }
+
   function rewinder(): Rewinder {
     if (!opts.rewinder) throw new FlightdeckError("invalid_state", "voltar arquivos indisponível");
     return opts.rewinder;
@@ -1006,38 +1011,29 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, written);
       }
       case "memory.list":
-        return ok(command.type, { dir: "", exists: true, files: [] });
-      case "memory.read":
-        return ok(command.type, {
-          name: "",
-          hash: "",
-          bytes: 0,
-          lines: 0,
-          inIndex: false,
-          content: "",
-        });
-      case "memory.write":
-        return ok(command.type, { hash: "" });
-      case "memory.delete":
-        return ok(command.type, { name: "" });
+        return ok(command.type, memory().list(projectPath(command.payload.projectId)));
+      case "memory.read": {
+        const { projectId, name } = command.payload;
+        return ok(command.type, memory().read(projectPath(projectId), name));
+      }
+      case "memory.write": {
+        const { projectId, confirm, ...input } = command.payload;
+        return ok(
+          command.type,
+          memory().write(projectPath(projectId), { ...input, confirm: confirm === true }),
+        );
+      }
+      case "memory.delete": {
+        const { projectId, confirm, ...input } = command.payload;
+        memory().remove(projectPath(projectId), { ...input, confirm: confirm === true });
+        return ok(command.type, { name: input.name });
+      }
       case "memory.budget":
-        return ok(command.type, {
-          sources: [],
-          startTokens: 0,
-          memory: {
-            limitLines: 0,
-            limitBytes: 0,
-            indexLines: 0,
-            indexBytes: 0,
-            loadedLines: 0,
-            loadedBytes: 0,
-            cutBy: null,
-            leftOutLines: [],
-            leftOutFiles: [],
-          },
-        });
+        return ok(command.type, memory().budget(projectPath(command.payload.projectId)));
       case "memory.suggest":
-        return ok(command.type, { suggestions: [{ kind: "orphan", files: [] }] });
+        return ok(command.type, {
+          suggestions: memory().suggest(projectPath(command.payload.projectId)),
+        });
       case "session.fork": {
         if (!opts.forker) throw new FlightdeckError("invalid_state", "bifurcar indisponível");
         return ok(command.type, await opts.forker.fork(command.payload));
