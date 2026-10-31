@@ -101,6 +101,7 @@ jobs:
           bun run smoke:checkpoints
           bun run smoke:automation
           bun run smoke:terminal
+          bun run smoke:run
           bun run smoke:ssh
           bun run smoke:vault
           bun run smoke:actions

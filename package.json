@@ -32,6 +32,7 @@
     "smoke:automation": "bun run scripts/smoke-automation.ts",
     "smoke:checkpoints": "bun run scripts/smoke-checkpoints.ts",
     "smoke:terminal": "bun run scripts/smoke-terminal.ts",
+    "smoke:run": "bun run scripts/smoke-run.ts",
     "smoke:ssh": "bun run scripts/smoke-ssh.ts",
     "smoke:snippets": "bun run scripts/smoke-snippets.ts",
     "smoke:personas": "bun run scripts/smoke-personas.ts",
