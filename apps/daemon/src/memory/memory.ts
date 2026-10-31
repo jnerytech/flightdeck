@@ -4,6 +4,23 @@
  * a write asks for confirm and for the hash of the content that was opened, stays inside the
  * memory folder, and leaves a record of the decision (never the content).
  */
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { frontmatter } from "../agentcfg/files.ts";
+import { userHome } from "../config.ts";
+import { FlightdeckError } from "../errors.ts";
+import { isInside } from "../paths.ts";
+import { whichOnPath } from "../which.ts";
 
 export interface MemoryFile {
   name: string;
@@ -55,25 +72,138 @@ export interface ProjectMemoryOptions {
   record?: (decision: MemoryDecision) => void;
 }
 
+const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
+const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const bad = (message: string) => new FlightdeckError("bad_request", message);
+
+/** A plain file name ending in .md: nothing that leaves the folder, nothing hidden. */
+const NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,98}\.md$/;
+const INDEX = "MEMORY.md";
+
+const lineCount = (text: string) =>
+  text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+
+/** The repository's own folder when `project` is inside one (a worktree answers for its main one). */
+function repoRoot(project: string): string {
+  const real = realpathSync.native(resolve(project));
+  const proc = Bun.spawnSync([whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"], {
+    cwd: real,
+    env: process.env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (proc.exitCode !== 0) return real;
+  const out = proc.stdout.toString().trim();
+  const common = realpathSync.native(isAbsolute(out) ? out : resolve(real, out));
+  return common.endsWith(".git") ? dirname(common) : real;
+}
+
 export class ProjectMemory {
   constructor(private readonly opts: ProjectMemoryOptions = {}) {}
 
   /** The memory folder of the project the way Claude Code names it (all worktrees share one). */
-  dir(_project: string): string {
-    return "";
+  dir(project: string): string {
+    const slug = repoRoot(project).replace(/[^A-Za-z0-9]/g, "-");
+    return join(this.claudeDir(), "projects", slug, "memory");
   }
 
-  list(_project: string): MemoryListing {
-    return { dir: "", exists: true, files: [] };
+  list(project: string): MemoryListing {
+    const dir = this.dir(project);
+    if (!existsSync(dir)) return { dir, exists: false, files: [] };
+    this.safeDir(dir);
+    const names = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isFile() && NAME.test(e.name))
+      .map((e) => e.name)
+      .sort();
+    const index = existsSync(join(dir, INDEX)) ? readFileSync(join(dir, INDEX), "utf8") : "";
+    return { dir, exists: true, files: names.map((name) => this.describe(dir, name, index)) };
   }
 
-  read(_project: string, _name: string): MemoryFile & { content: string } {
-    return { name: "", hash: "", bytes: 0, lines: 0, inIndex: false, content: "" };
+  read(project: string, name: string): MemoryFile & { content: string } {
+    const dir = this.dir(project);
+    const file = this.file(dir, name);
+    if (!existsSync(file)) throw new FlightdeckError("not_found", `${name} não existe`);
+    const index = existsSync(join(dir, INDEX)) ? readFileSync(join(dir, INDEX), "utf8") : "";
+    return { ...this.describe(dir, name, index), content: readFileSync(file, "utf8") };
   }
 
-  write(_project: string, _input: MemoryWrite): { hash: string } {
-    return { hash: "" };
+  write(project: string, input: MemoryWrite): { hash: string } {
+    if (!input.confirm) throw invalid("gravar pede confirm: true");
+    const dir = this.dir(project);
+    const file = this.file(dir, input.name);
+    const current = existsSync(file) ? sha(readFileSync(file)) : null;
+    if (current !== input.expectedHash) {
+      throw invalid(
+        input.expectedHash === null
+          ? `${input.name} já existe`
+          : `${input.name} mudou desde que foi aberto`,
+      );
+    }
+    mkdirSync(dir, { recursive: true });
+    this.safeDir(dir);
+    writeFileSync(file, input.content);
+    const hash = sha(input.content);
+    this.record("write", input.name, current, hash);
+    return { hash };
   }
 
-  remove(_project: string, _input: MemoryRemove): void {}
+  remove(project: string, input: MemoryRemove): void {
+    if (!input.confirm) throw invalid("apagar pede confirm: true");
+    const file = this.file(this.dir(project), input.name);
+    if (!existsSync(file)) throw new FlightdeckError("not_found", `${input.name} não existe`);
+    const current = sha(readFileSync(file));
+    if (current !== input.expectedHash) throw invalid(`${input.name} mudou desde que foi aberto`);
+    unlinkSync(file);
+    this.record("delete", input.name, current, null);
+  }
+
+  private claudeDir(): string {
+    return this.opts.claudeDir ?? join(userHome(), ".claude");
+  }
+
+  private record(
+    action: MemoryDecision["action"],
+    name: string,
+    before: string | null,
+    after: string | null,
+  ) {
+    const at = new Date((this.opts.clock ?? Date.now)()).toISOString();
+    this.opts.record?.({ action, name, before, after, at });
+  }
+
+  /** The file's path, refused when the name is not a plain .md name or the folder leads outside. */
+  private file(dir: string, name: string): string {
+    if (!NAME.test(name)) throw bad(`nome inválido para a memória: ${name}`);
+    if (existsSync(dir)) this.safeDir(dir);
+    const file = join(dir, name);
+    if (lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink()) {
+      throw bad(`${name} é um link`);
+    }
+    return file;
+  }
+
+  /** The memory folder must resolve inside the Claude config folder, never through a link out. */
+  private safeDir(dir: string): void {
+    const root = realpathSync.native(this.claudeDir());
+    if (!isInside(root, realpathSync.native(dir))) {
+      throw bad("a pasta de memória fica fora da pasta do Claude");
+    }
+  }
+
+  private describe(dir: string, name: string, index: string): MemoryFile {
+    const bytes = readFileSync(join(dir, name));
+    const text = bytes.toString("utf8");
+    const data = name === INDEX ? null : frontmatter(text);
+    const type = typeof data?.type === "string" ? data.type : undefined;
+    const description = typeof data?.description === "string" ? data.description : undefined;
+    return {
+      name,
+      hash: sha(bytes),
+      bytes: bytes.length,
+      lines: lineCount(text),
+      ...(type ? { type } : {}),
+      ...(description ? { description } : {}),
+      inIndex: name === INDEX || index.includes(name),
+    };
+  }
 }
