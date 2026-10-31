@@ -192,8 +192,9 @@ describe("run-ui: o preview em uma aba", () => {
 
 describe("run-ui: Run e Stop no card", () => {
   /** The card's screen of a host whose project has the committed run.yaml. */
-  async function cardScreen() {
+  async function cardScreen(trusted = false) {
     const ctx = await setup();
+    if (trusted) await ctx.store.runTrust(ctx.hostId, ctx.projectId, sha256(YAML));
     render(<App store={ctx.store} />);
     await act(async () => {
       ctx.store.router.push({
@@ -231,27 +232,43 @@ describe("run-ui: Run e Stop no card", () => {
     await act(async () => {
       if (confirm) fireEvent.click(confirm);
     });
-    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+      ),
+    ).toBe(true);
     expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).toBeNull();
   });
 
   test("Run mostra o setup, depois cada processo com o log e o preview; Stop encerra tudo", async () => {
-    const { store, hostId, projectId, runHost } = await cardScreen();
-    await store.runTrust(hostId, projectId, sha256(YAML));
-    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    const { store, hostId, runHost } = await cardScreen(true);
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+      ),
+    ).toBe(true);
     await press("Run");
-    expect(await shows(() => inPanel().queryByText("Preparando (setup)…") !== null)).toBe(true);
+    expect(
+      await shows(() => panel() !== null && inPanel().queryByText("Preparando (setup)…") !== null),
+    ).toBe(true);
     expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
     runHost?.finish("term-1", 0);
-    expect(await shows(() => inPanel().queryByText("Portas: web 41000") !== null)).toBe(true);
-    expect(inPanel().queryByText("web")).not.toBeNull();
+    expect(await shows(() => panel() !== null && inPanel().queryByText("web") !== null)).toBe(true);
+    expect(inPanel().queryByText("Portas: web 41000")).not.toBeNull();
     expect(inPanel().queryByText("rodando")).not.toBeNull();
     // The log is the process's terminal tab.
     await press("Ver log de web");
     expect(store.router.current).toMatchObject({ name: "terminal", host: hostId });
+    await act(async () => {
+      store.tabs.activate(store.tabs.tabs[0]?.id ?? "");
+    });
     // The preview opens once the process answers (the fixture's wait answers at once).
     expect(
-      await shows(() => inPanel().queryByRole("button", { name: "Abrir preview de web" }) !== null),
+      await shows(
+        () =>
+          panel() !== null &&
+          inPanel().queryByRole("button", { name: "Abrir preview de web" }) !== null,
+      ),
     ).toBe(true);
     await press("Abrir preview de web");
     expect(store.router.current).toEqual({
@@ -262,21 +279,38 @@ describe("run-ui: Run e Stop no card", () => {
     await act(async () => {
       store.tabs.activate(store.tabs.tabs[0]?.id ?? "");
     });
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Stop" }) !== null,
+      ),
+    ).toBe(true);
     await press("Stop");
-    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+      ),
+    ).toBe(true);
     expect(runHost?.spawned.at(-1)?.killed).toBe(true);
     expect(inPanel().queryByText("Encerrado")).not.toBeNull();
   });
 
   test("um setup que falha mostra o código, e o Run está lá para tentar de novo", async () => {
-    const { store, hostId, projectId, runHost } = await cardScreen();
-    await store.runTrust(hostId, projectId, sha256(YAML));
-    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    const { runHost } = await cardScreen(true);
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+      ),
+    ).toBe(true);
     await press("Run");
+    expect(
+      await shows(() => panel() !== null && inPanel().queryByText("Preparando (setup)…") !== null),
+    ).toBe(true);
     runHost?.finish("term-1", 3);
-    expect(await shows(() => inPanel().queryByText("o setup falhou (código 3)") !== null)).toBe(
-      true,
-    );
+    expect(
+      await shows(
+        () => panel() !== null && inPanel().queryByText("o setup falhou (código 3)") !== null,
+      ),
+    ).toBe(true);
     expect(inPanel().queryByText("Falhou")).not.toBeNull();
     expect(inPanel().queryByRole("button", { name: "Run" })).not.toBeNull();
   });
