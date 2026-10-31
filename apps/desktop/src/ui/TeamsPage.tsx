@@ -25,7 +25,13 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [workers, setWorkers] = useState("2");
   const [persona, setPersona] = useState("");
+  /** The workers' personas, comma-separated, in the workers' order. */
+  const [workerPersonas, setWorkerPersonas] = useState("");
   const create = async () => {
+    const personas = workerPersonas
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
     const count = Number.parseInt(workers, 10);
     const team = await store.hostCommand(hostId, "teams.create", {
       projectId: projectId || (projects[0]?.id ?? ""),
@@ -33,6 +39,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
       ...(name.trim() ? { name: name.trim() } : {}),
       workers: Number.isInteger(count) && count > 0 ? count : 1,
       ...(persona.trim() ? { coordinatorPersona: persona.trim() } : {}),
+      ...(personas.length > 0 ? { workerPersonas: personas } : {}),
     });
     if (team) props.onCreated();
   };
@@ -84,6 +91,15 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
         "persona",
         t("teamsUi.coordinatorPersona"),
         <Input id={`${id}-persona`} value={persona} onChange={(e) => setPersona(e.target.value)} />,
+      )}
+      {field(
+        "worker-personas",
+        t("teamsUi.workerPersonas"),
+        <Input
+          id={`${id}-worker-personas`}
+          value={workerPersonas}
+          onChange={(e) => setWorkerPersonas(e.target.value)}
+        />,
       )}
       <div className="flex gap-2">
         <Button disabled={!goal.trim()} onClick={() => void create()}>

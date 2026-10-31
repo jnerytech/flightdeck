@@ -1125,6 +1125,7 @@ export const ptBR = {
     project: "Projeto",
     workers: "Executoras",
     coordinatorPersona: "Persona da coordenadora (opcional)",
+    workerPersonas: "Personas das executoras (opcional, separadas por vírgula)",
     create: "Criar time",
     cancel: "Cancelar",
     states: { active: "Ativo", paused: "Pausado", closed: "Encerrado" },

@@ -1127,6 +1127,7 @@ export const en: Dictionary = {
     project: "Project",
     workers: "Workers",
     coordinatorPersona: "Coordinator persona (optional)",
+    workerPersonas: "Workers' personas (optional, comma-separated)",
     create: "Create team",
     cancel: "Cancel",
     states: { active: "Active", paused: "Paused", closed: "Closed" },
