@@ -148,7 +148,9 @@ describe("worktree: criação em paralelo", () => {
     expect(new Set(slugs).size).toBe(titles.length);
     expect(slugs.slice(0, 3).sort()).toEqual(["mesmo", "mesmo-2", "mesmo-3"]);
     expect(git(repo, "branch", "--list", "fd/*").split("\n")).toHaveLength(titles.length);
-  });
+    // 16 real `git worktree add`, one after the other by design (0.10.1): a slow Windows runner
+    // passes the 5 s default.
+  }, 30_000);
 });
 
 describe("worktree: falhas do git", () => {
