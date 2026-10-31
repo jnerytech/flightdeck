@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { FlightdeckError } from "../errors.ts";
 import type { RunConfig, RunConfigs } from "./config.ts";
 import { type CardPorts, interpolatePorts, type PortMap, portEnv } from "./ports.ts";
+import { type ReadyResult, waitForServer } from "./preview.ts";
 
 /** One process of the card's run, as the UI shows it: a tab (terminal) with a state. */
 export interface RunProcessState {
@@ -9,6 +10,10 @@ export interface RunProcessState {
   terminalId: string;
   status: "running" | "exited";
   exitCode: number | null;
+  /** The address the process serves, when the run.yaml gives a `ready.http`. */
+  url: string | null;
+  /** The preview: `none` without a `ready.http` (or after the process ended). */
+  ready: "none" | "waiting" | "ready" | "timeout";
 }
 
 export interface RunState {
@@ -44,6 +49,8 @@ export interface RunManagerOptions {
   /** The card and its project, as the board has them. */
   card(cardId: string): { id: string; projectId: string; worktreePath: string | null };
   project(projectId: string): { id: string; path: string; baseBranch: string };
+  /** Waits for a process's `ready.http` to answer; the real HTTP wait when absent. */
+  waitReady?: (url: string, stopped: () => boolean) => Promise<ReadyResult>;
 }
 
 interface ProcessEntry extends RunProcessState {
@@ -197,7 +204,8 @@ export class RunManager {
             interpolatePorts(value, entry.ports),
           ]),
         );
-        this.track(entry, proc.name, spawn(proc.name, proc.cmd, extra));
+        const url = proc.ready ? interpolatePorts(proc.ready.http, entry.ports) : null;
+        this.track(entry, proc.name, spawn(proc.name, proc.cmd, extra), url);
       }
       this.emit(entry);
     } catch (error) {
@@ -227,18 +235,34 @@ export class RunManager {
     entry.setup = "done";
   }
 
-  private track(entry: Entry, name: string, started: ReturnType<RunHost["spawn"]>): void {
+  private track(
+    entry: Entry,
+    name: string,
+    started: ReturnType<RunHost["spawn"]>,
+    url: string | null,
+  ): void {
     const process: ProcessEntry = {
       name,
       terminalId: started.terminalId,
       status: "running",
       exitCode: null,
+      url,
+      ready: url ? "waiting" : "none",
       exited: started.exited,
     };
     entry.processes.push(process);
+    if (url) {
+      const wait = this.opts.waitReady ?? waitForServer;
+      void wait(url, () => entry.stopped || process.status === "exited").then((result) => {
+        if (result === "stopped" || process.status !== "running") return;
+        process.ready = result;
+        this.emit(entry);
+      });
+    }
     void started.exited.then((code) => {
       process.status = "exited";
       process.exitCode = code;
+      process.ready = "none";
       if (!entry.stopped && entry.processes.every((p) => p.status === "exited")) {
         entry.status = "ended";
       }
@@ -283,11 +307,13 @@ export class RunManager {
       setup: entry.setup,
       setupTerminalId: entry.setupTerminalId,
       ports: { ...entry.ports },
-      processes: entry.processes.map(({ name, terminalId, status, exitCode }) => ({
+      processes: entry.processes.map(({ name, terminalId, status, exitCode, url, ready }) => ({
         name,
         terminalId,
         status,
         exitCode,
+        url,
+        ready,
       })),
       error: entry.error,
     };
