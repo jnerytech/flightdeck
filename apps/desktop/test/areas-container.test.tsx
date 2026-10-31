@@ -117,7 +117,7 @@ describe("areas: a tela se adapta à largura da sua área", () => {
     }
   });
 
-  test("a screen never picks its columns from the window width: no sm:, md:, lg: or xl: in a screen", () => {
+  test("a screen never picks its columns from the window width: no sm:, md:, lg: or xl: in a screen (dialogs and sheets size to the window)", () => {
     const root = resolve(import.meta.dir, "../src");
     const files = [
       ...readdirSync(join(root, "ui")).map((f) => join(root, "ui", f)),
@@ -126,7 +126,7 @@ describe("areas: a tela se adapta à largura da sua área", () => {
       ),
     ].filter((file) => file.endsWith(".tsx") || file.endsWith(".ts"));
     const offenders = files.filter((file) =>
-      /["'` ](sm|md|lg|xl|2xl):[a-z[]/.test(readFileSync(file, "utf8")),
+      /["'` ](sm|md|lg|xl|2xl):(?!max-w-)[a-z[]/.test(readFileSync(file, "utf8")),
     );
     expect(offenders.map((f) => f.slice(root.length))).toEqual([]);
   });
