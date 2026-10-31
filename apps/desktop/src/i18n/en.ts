@@ -1773,6 +1773,20 @@ export const en: Dictionary = {
     mcp: "MCP servers",
     sensitiveHook: "Attention: this hook can decide for you",
     hash: "Content hash: {hash}",
+    folder: "Folder of a local plugin",
+    folderPreview: "Preview the folder",
+    install: "Install {name}",
+    installShort: "Install",
+    installConfirm: "Install",
+    installHint:
+      "See what the plugin brings before installing. The confirmation holds for this content.",
+    installed: "Installed.",
+    noPreview:
+      "The content of {name} cannot be shown before installing: the plugin comes from another repository.",
+    validateRefused: "validate refused the plugin:",
+    commandShown:
+      "The marketplace declares this command. It only runs if you accept exactly this one:",
+    acceptCommand: "Accept this command",
   },
   memoryUi: {
     list: "Memories",

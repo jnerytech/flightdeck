@@ -2,6 +2,7 @@ import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { InstallDialog, type InstallSource } from "@/components/plugins/install-dialog";
 import { InventoryView } from "@/components/plugins/inventory-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -31,6 +33,8 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
   const hostId = host?.id;
   const [list, setList] = useState<PluginList | null>(null);
   const [looking, setLooking] = useState<InstalledPlugin | null>(null);
+  const [installing, setInstalling] = useState<InstallSource | null>(null);
+  const [folder, setFolder] = useState("");
 
   const reload = useCallback(async () => {
     if (!hostId) return;
@@ -57,6 +61,23 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             <TabsTrigger value="marketplaces">{t("pluginsUi.tabMarketplaces")}</TabsTrigger>
           </TabsList>
           <TabsContent value="installed">
+            <div className="mb-3 flex flex-col gap-1 text-sm">
+              <label htmlFor="plugins-folder">{t("pluginsUi.folder")}</label>
+              <div className="flex gap-2">
+                <Input
+                  id="plugins-folder"
+                  value={folder}
+                  onChange={(e) => setFolder(e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  disabled={folder.trim() === ""}
+                  onClick={() => setInstalling({ dir: folder.trim() })}
+                >
+                  {t("pluginsUi.folderPreview")}
+                </Button>
+              </div>
+            </div>
             {list.installed.length === 0 && <EmptyState title={t("pluginsUi.noneInstalled")} />}
             <ul aria-label={t("pluginsUi.installedList")} className="flex flex-col gap-2">
               {list.installed.map((plugin) => (
@@ -110,6 +131,16 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
                   {plugin.description && (
                     <p className="text-muted-foreground text-sm">{plugin.description}</p>
                   )}
+                  <div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t("pluginsUi.install", { name: plugin.name })}
+                      onClick={() => setInstalling({ plugin: plugin.id })}
+                    >
+                      {t("pluginsUi.installShort")}
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -136,6 +167,18 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             </ul>
           </TabsContent>
         </Tabs>
+      )}
+      {installing && hostId && (
+        <InstallDialog
+          store={store}
+          hostId={hostId}
+          source={installing}
+          onClose={() => setInstalling(null)}
+          onDone={() => {
+            setInstalling(null);
+            void reload();
+          }}
+        />
       )}
       {looking && (
         <Dialog open onOpenChange={(open) => !open && setLooking(null)}>

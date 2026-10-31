@@ -1776,6 +1776,20 @@ export const ptBR = {
     mcp: "Servidores MCP",
     sensitiveHook: "Atenção: este hook pode decidir por você",
     hash: "Hash do conteúdo: {hash}",
+    folder: "Pasta de um plugin local",
+    folderPreview: "Prévia da pasta",
+    install: "Instalar {name}",
+    installShort: "Instalar",
+    installConfirm: "Instalar",
+    installHint:
+      "Veja o que o plugin traz antes de instalar. A confirmação vale para este conteúdo.",
+    installed: "Instalado.",
+    noPreview:
+      "O conteúdo de {name} não pode ser mostrado antes de instalar: o plugin vem de outro repositório.",
+    validateRefused: "O validate recusou o plugin:",
+    commandShown:
+      "O marketplace declara este comando. Ele só roda se você aceitar exatamente este:",
+    acceptCommand: "Aceitar este comando",
   },
   memoryUi: {
     list: "Memórias",
