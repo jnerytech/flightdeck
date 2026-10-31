@@ -118,6 +118,7 @@ export function FormActions(props: {
             {props.cancel}
           </Button>
         )}
+        {props.extra}
         <Button
           type="submit"
           disabled={props.disabled}

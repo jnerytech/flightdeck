@@ -5,11 +5,12 @@ import type {
   WorkflowInfo,
 } from "@flightdeck/protocol";
 import { useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import {
@@ -126,134 +127,133 @@ export function AutomationForm(props: {
         <DialogHeader>
           <DialogTitle>{t(initial ? "automationsUi.editTitle" : "automationsUi.new")}</DialogTitle>
         </DialogHeader>
-        <p className="text-muted-foreground text-sm">
-          {t("automationsUi.form.step", {
-            n: step + 1,
-            title: t(`automationsUi.form.steps.${STEPS[step]}` as Key),
-          })}
-        </p>
-        {step === 0 && (
-          <div className="flex flex-col gap-3">
-            <select
-              aria-label={t("automationsUi.form.trigger")}
-              className={SELECT}
-              value={draft.trigger}
-              onChange={(e) => pickTrigger(e.target.value as TriggerType)}
-            >
-              {TRIGGER_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {t(`automationsUi.form.triggerTypes.${type}` as Key)}
-                </option>
-              ))}
-            </select>
-            {draft.trigger === "cron" && (
-              <>
+        <Form variant="dialog" onSubmit={() => (step < 2 ? setStep(step + 1) : void save())}>
+          <p className="text-muted-foreground text-sm">
+            {t("automationsUi.form.step", {
+              n: step + 1,
+              title: t(`automationsUi.form.steps.${STEPS[step]}` as Key),
+            })}
+          </p>
+          {step === 0 && (
+            <div className="flex flex-col gap-3">
+              <select
+                aria-label={t("automationsUi.form.trigger")}
+                className={SELECT}
+                value={draft.trigger}
+                onChange={(e) => pickTrigger(e.target.value as TriggerType)}
+              >
+                {TRIGGER_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`automationsUi.form.triggerTypes.${type}` as Key)}
+                  </option>
+                ))}
+              </select>
+              {draft.trigger === "cron" && (
+                <>
+                  <Input
+                    aria-label={t("automationsUi.form.cron")}
+                    placeholder={t("automationsUi.form.cronHint")}
+                    value={draft.expr}
+                    onChange={(e) => set({ expr: e.target.value })}
+                  />
+                  <Input
+                    aria-label={t("automationsUi.form.tz")}
+                    value={draft.tz}
+                    onChange={(e) => set({ tz: e.target.value })}
+                  />
+                </>
+              )}
+              {draft.trigger === "issue_label" && (
                 <Input
-                  aria-label={t("automationsUi.form.cron")}
-                  placeholder={t("automationsUi.form.cronHint")}
-                  value={draft.expr}
-                  onChange={(e) => set({ expr: e.target.value })}
+                  aria-label={t("automationsUi.form.label")}
+                  value={draft.label}
+                  onChange={(e) => set({ label: e.target.value })}
                 />
-                <Input
-                  aria-label={t("automationsUi.form.tz")}
-                  value={draft.tz}
-                  onChange={(e) => set({ tz: e.target.value })}
-                />
-              </>
-            )}
-            {draft.trigger === "issue_label" && (
+              )}
+            </div>
+          )}
+          {step === 1 && (
+            <div className="flex flex-col gap-3">
+              <select
+                aria-label={t("automationsUi.form.action")}
+                className={SELECT}
+                value={draft.action}
+                onChange={(e) => set({ action: e.target.value as ActionType })}
+              >
+                {actions.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`automationsUi.form.actionTypes.${type}` as Key)}
+                  </option>
+                ))}
+              </select>
+              {draft.action === "start_workflow" &&
+                (usable.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    {t("automationsUi.form.noWorkflows")}
+                  </p>
+                ) : (
+                  <select
+                    aria-label={t("automationsUi.form.workflow")}
+                    className={SELECT}
+                    value={workflow}
+                    onChange={(e) => set({ workflow: e.target.value })}
+                  >
+                    {usable.map((w) => (
+                      <option key={w.name} value={w.name}>
+                        {w.trusted ? w.name : t("automationsUi.form.untrusted", { name: w.name })}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+            </div>
+          )}
+          {step === 2 && (
+            <div className="flex flex-col gap-3">
               <Input
-                aria-label={t("automationsUi.form.label")}
-                value={draft.label}
-                onChange={(e) => set({ label: e.target.value })}
+                aria-label={t("automationsUi.form.name")}
+                value={draft.name}
+                onChange={(e) => set({ name: e.target.value })}
               />
-            )}
-          </div>
-        )}
-        {step === 1 && (
-          <div className="flex flex-col gap-3">
-            <select
-              aria-label={t("automationsUi.form.action")}
-              className={SELECT}
-              value={draft.action}
-              onChange={(e) => set({ action: e.target.value as ActionType })}
-            >
-              {actions.map((type) => (
-                <option key={type} value={type}>
-                  {t(`automationsUi.form.actionTypes.${type}` as Key)}
-                </option>
-              ))}
-            </select>
-            {draft.action === "start_workflow" &&
-              (usable.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  {t("automationsUi.form.noWorkflows")}
-                </p>
-              ) : (
-                <select
-                  aria-label={t("automationsUi.form.workflow")}
-                  className={SELECT}
-                  value={workflow}
-                  onChange={(e) => set({ workflow: e.target.value })}
-                >
-                  {usable.map((w) => (
-                    <option key={w.name} value={w.name}>
-                      {w.trusted ? w.name : t("automationsUi.form.untrusted", { name: w.name })}
-                    </option>
-                  ))}
-                </select>
-              ))}
-          </div>
-        )}
-        {step === 2 && (
-          <div className="flex flex-col gap-3">
-            <Input
-              aria-label={t("automationsUi.form.name")}
-              value={draft.name}
-              onChange={(e) => set({ name: e.target.value })}
-            />
-            <Input
-              type="number"
-              min={1}
-              aria-label={t("automationsUi.form.max")}
-              value={draft.max}
-              onChange={(e) => set({ max: e.target.value })}
-            />
-            {carriesThirdParty(draft.trigger) && (
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex flex-col text-sm">
-                  {t("automationsUi.form.external")}
-                  <span className="text-muted-foreground text-xs">
-                    {t("automationsUi.form.externalHint")}
+              <Input
+                type="number"
+                min={1}
+                aria-label={t("automationsUi.form.max")}
+                value={draft.max}
+                onChange={(e) => set({ max: e.target.value })}
+              />
+              {carriesThirdParty(draft.trigger) && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex flex-col text-sm">
+                    {t("automationsUi.form.external")}
+                    <span className="text-muted-foreground text-xs">
+                      {t("automationsUi.form.externalHint")}
+                    </span>
                   </span>
-                </span>
-                <Switch
-                  aria-label={t("automationsUi.form.external")}
-                  checked={draft.external}
-                  onCheckedChange={(external) => set({ external })}
-                />
-              </div>
-            )}
-            <p className="text-muted-foreground text-xs">
-              {t(initial?.enabled ? "automationsUi.form.savedOff" : "automationsUi.form.bornOff")}
-            </p>
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="ghost" onClick={props.onClose}>
-            {t("common.cancel")}
-          </Button>
-          {step > 0 && (
-            <Button variant="outline" onClick={() => setStep(step - 1)}>
-              {t("automationsUi.form.back")}
-            </Button>
+                  <Switch
+                    aria-label={t("automationsUi.form.external")}
+                    checked={draft.external}
+                    onCheckedChange={(external) => set({ external })}
+                  />
+                </div>
+              )}
+              <p className="text-muted-foreground text-xs">
+                {t(initial?.enabled ? "automationsUi.form.savedOff" : "automationsUi.form.bornOff")}
+              </p>
+            </div>
           )}
-          {step < 2 ? (
-            <Button onClick={() => setStep(step + 1)}>{t("automationsUi.form.next")}</Button>
-          ) : (
-            <Button onClick={() => void save()}>{t("automationsUi.form.save")}</Button>
-          )}
-        </DialogFooter>
+          <FormActions
+            submit={t(step < 2 ? "automationsUi.form.next" : "automationsUi.form.save")}
+            cancel={t("common.cancel")}
+            onCancel={props.onClose}
+            extra={
+              step > 0 && (
+                <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+                  {t("automationsUi.form.back")}
+                </Button>
+              )
+            }
+          />
+        </Form>
       </AppDialogContent>
     </Dialog>
   );

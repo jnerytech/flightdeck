@@ -2,14 +2,15 @@ import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Form, FormActions } from "@/components/layout/form";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   commandLine,
@@ -289,51 +290,54 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
                 : t("agent.mcp.formNew")}
             </DialogTitle>
           </DialogHeader>
-          <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
-          <Input
-            aria-label={t("agent.mcp.name")}
-            disabled={draft?.editing}
-            placeholder={t("agent.mcp.name")}
-            {...field("name")}
-          />
-          <select
-            aria-label={t("agent.mcp.transport")}
-            className={SELECT}
-            value={draft?.transport ?? "stdio"}
-            onChange={(e) =>
-              setDraft((d) =>
-                d ? { ...d, transport: e.target.value as McpDraft["transport"] } : d,
-              )
-            }
-          >
-            {TRANSPORTS.map((transport) => (
-              <option key={transport} value={transport}>
-                {transport}
-              </option>
-            ))}
-          </select>
-          {draft?.transport === "stdio" ? (
-            <>
-              <Input aria-label={t("agent.mcp.command")} {...field("command")} />
-              <Textarea aria-label={t("agent.mcp.args")} {...area("args")} />
-              <Textarea aria-label={t("agent.mcp.env")} {...area("env")} />
-            </>
-          ) : (
-            <>
-              <Input aria-label={t("agent.mcp.url")} {...field("url")} />
-              <Textarea aria-label={t("agent.mcp.headers")} {...area("headers")} />
-            </>
-          )}
-          {problem && (
-            <InlineNotice tone={problem === "retype" ? "warn" : "error"}>
-              {t(`agent.mcp.${problem}`)}
-            </InlineNotice>
-          )}
-          <DialogFooter>
-            <Button disabled={problem !== null} onClick={() => void save()}>
-              {t("agent.mcp.save")}
-            </Button>
-          </DialogFooter>
+          <Form variant="dialog" onSubmit={() => void save()}>
+            <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
+            <Input
+              aria-label={t("agent.mcp.name")}
+              disabled={draft?.editing}
+              placeholder={t("agent.mcp.name")}
+              {...field("name")}
+            />
+            <select
+              aria-label={t("agent.mcp.transport")}
+              className={SELECT}
+              value={draft?.transport ?? "stdio"}
+              onChange={(e) =>
+                setDraft((d) =>
+                  d ? { ...d, transport: e.target.value as McpDraft["transport"] } : d,
+                )
+              }
+            >
+              {TRANSPORTS.map((transport) => (
+                <option key={transport} value={transport}>
+                  {transport}
+                </option>
+              ))}
+            </select>
+            {draft?.transport === "stdio" ? (
+              <>
+                <Input aria-label={t("agent.mcp.command")} {...field("command")} />
+                <Textarea aria-label={t("agent.mcp.args")} {...area("args")} />
+                <Textarea aria-label={t("agent.mcp.env")} {...area("env")} />
+              </>
+            ) : (
+              <>
+                <Input aria-label={t("agent.mcp.url")} {...field("url")} />
+                <Textarea aria-label={t("agent.mcp.headers")} {...area("headers")} />
+              </>
+            )}
+            {problem && (
+              <InlineNotice tone={problem === "retype" ? "warn" : "error"}>
+                {t(`agent.mcp.${problem}`)}
+              </InlineNotice>
+            )}
+            <FormActions
+              submit={t("agent.mcp.save")}
+              disabled={problem !== null}
+              cancel={t("common.cancel")}
+              onCancel={() => setDraft(null)}
+            />
+          </Form>
         </AppDialogContent>
       </Dialog>
     </div>

@@ -1,12 +1,13 @@
 import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
 import { useId, useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { ActionSeed } from "../lib/snippets.ts";
@@ -148,141 +149,148 @@ export function ActionForm(props: {
             {t(initial ? "actionsUi.form.editTitle" : "actionsUi.form.newTitle")}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
-          {field("actionsUi.form.name", draft.name, (name) => set({ name }), initial !== null)}
-          {field("actionsUi.form.description", draft.description, (description) =>
-            set({ description }),
-          )}
-          <label className="flex flex-col gap-1 text-sm" htmlFor={`${ids}-run`}>
-            {t("actionsUi.form.run")}
-            <Textarea
-              id={`${ids}-run`}
-              value={draft.run}
-              onChange={(e) => set({ run: e.target.value })}
-              className="font-mono"
-            />
-          </label>
-          {field("actionsUi.form.ssh", draft.ssh, (ssh) => set({ ssh }))}
-          {field("actionsUi.form.cwd", draft.cwd, (cwd) => set({ cwd }))}
-          {field("actionsUi.form.timeout", draft.timeoutS, (timeoutS) => set({ timeoutS }))}
-          <label className="flex flex-col gap-1 text-sm">
-            {t("actionsUi.form.approval")}
-            <select
-              aria-label={t("actionsUi.form.approval")}
-              className={SELECT}
-              value={draft.approval}
-              onChange={(e) => set({ approval: e.target.value as Draft["approval"] })}
-            >
-              <option value="">{t("actionsUi.form.approvalDefault")}</option>
-              {APPROVALS.map((a) => (
-                <option key={a} value={a}>
-                  {t(`actionsUi.approval.${a}`)}
-                </option>
-              ))}
-            </select>
-          </label>
+        <Form variant="dialog" onSubmit={() => void save()}>
+          <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
+            {field("actionsUi.form.name", draft.name, (name) => set({ name }), initial !== null)}
+            {field("actionsUi.form.description", draft.description, (description) =>
+              set({ description }),
+            )}
+            <label className="flex flex-col gap-1 text-sm" htmlFor={`${ids}-run`}>
+              {t("actionsUi.form.run")}
+              <Textarea
+                id={`${ids}-run`}
+                value={draft.run}
+                onChange={(e) => set({ run: e.target.value })}
+                className="font-mono"
+              />
+            </label>
+            {field("actionsUi.form.ssh", draft.ssh, (ssh) => set({ ssh }))}
+            {field("actionsUi.form.cwd", draft.cwd, (cwd) => set({ cwd }))}
+            {field("actionsUi.form.timeout", draft.timeoutS, (timeoutS) => set({ timeoutS }))}
+            <label className="flex flex-col gap-1 text-sm">
+              {t("actionsUi.form.approval")}
+              <select
+                aria-label={t("actionsUi.form.approval")}
+                className={SELECT}
+                value={draft.approval}
+                onChange={(e) => set({ approval: e.target.value as Draft["approval"] })}
+              >
+                <option value="">{t("actionsUi.form.approvalDefault")}</option>
+                {APPROVALS.map((a) => (
+                  <option key={a} value={a}>
+                    {t(`actionsUi.approval.${a}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm">{t("actionsUi.form.envTitle")}</legend>
-            {draft.env.map((row, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
-              <div key={i} className="flex items-center gap-2">
-                <Input
-                  aria-label={t("actionsUi.form.envName", { n: i + 1 })}
-                  value={row.name}
-                  onChange={(e) =>
-                    set({
-                      env: draft.env.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)),
-                    })
-                  }
-                />
-                <SecretPicker
-                  secrets={secrets}
-                  value={row.secretId}
-                  label={t("actionsUi.form.envSecret", { n: i + 1 })}
-                  onChange={(secretId) =>
-                    set({ env: draft.env.map((r, j) => (j === i ? { ...r, secretId } : r)) })
-                  }
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("actionsUi.form.envRemove", { n: i + 1 })}
-                  onClick={() => set({ env: draft.env.filter((_, j) => j !== i) })}
-                >
-                  <X aria-hidden="true" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              onClick={() => set({ env: [...draft.env, { name: "", secretId: "" }] })}
-            >
-              <Plus aria-hidden="true" />
-              {t("actionsUi.form.envAdd")}
-            </Button>
-          </fieldset>
-
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm">{t("actionsUi.form.paramsTitle")}</legend>
-            {draft.params.map((row, i) => {
-              const edit = (patch: Partial<typeof row>) =>
-                set({ params: draft.params.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
-              return (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-sm">{t("actionsUi.form.envTitle")}</legend>
+              {draft.env.map((row, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
                 <div key={i} className="flex items-center gap-2">
                   <Input
-                    aria-label={t("actionsUi.form.paramName", { n: i + 1 })}
+                    aria-label={t("actionsUi.form.envName", { n: i + 1 })}
                     value={row.name}
-                    onChange={(e) => edit({ name: e.target.value })}
+                    onChange={(e) =>
+                      set({
+                        env: draft.env.map((r, j) =>
+                          j === i ? { ...r, name: e.target.value } : r,
+                        ),
+                      })
+                    }
                   />
-                  <Input
-                    aria-label={t("actionsUi.form.paramPattern", { n: i + 1 })}
-                    value={row.pattern}
-                    onChange={(e) => edit({ pattern: e.target.value })}
-                  />
-                  <Input
-                    aria-label={t("actionsUi.form.paramDefault", { n: i + 1 })}
-                    value={row.default}
-                    onChange={(e) => edit({ default: e.target.value })}
+                  <SecretPicker
+                    secrets={secrets}
+                    value={row.secretId}
+                    label={t("actionsUi.form.envSecret", { n: i + 1 })}
+                    onChange={(secretId) =>
+                      set({ env: draft.env.map((r, j) => (j === i ? { ...r, secretId } : r)) })
+                    }
                   />
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={t("actionsUi.form.paramRemove", { n: i + 1 })}
-                    onClick={() => set({ params: draft.params.filter((_, j) => j !== i) })}
+                    aria-label={t("actionsUi.form.envRemove", { n: i + 1 })}
+                    onClick={() => set({ env: draft.env.filter((_, j) => j !== i) })}
                   >
                     <X aria-hidden="true" />
                   </Button>
                 </div>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              onClick={() =>
-                set({ params: [...draft.params, { name: "", pattern: "", default: "" }] })
-              }
-            >
-              <Plus aria-hidden="true" />
-              {t("actionsUi.form.paramAdd")}
-            </Button>
-          </fieldset>
-          {error && (
-            <p role="alert" className="text-sm text-status-error">
-              {error}
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={props.onClose}>
-            {t("actionsUi.form.cancel")}
-          </Button>
-          <Button onClick={() => void save()}>{t("actionsUi.form.save")}</Button>
-        </DialogFooter>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onClick={() => set({ env: [...draft.env, { name: "", secretId: "" }] })}
+              >
+                <Plus aria-hidden="true" />
+                {t("actionsUi.form.envAdd")}
+              </Button>
+            </fieldset>
+
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-sm">{t("actionsUi.form.paramsTitle")}</legend>
+              {draft.params.map((row, i) => {
+                const edit = (patch: Partial<typeof row>) =>
+                  set({ params: draft.params.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity besides their place
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      aria-label={t("actionsUi.form.paramName", { n: i + 1 })}
+                      value={row.name}
+                      onChange={(e) => edit({ name: e.target.value })}
+                    />
+                    <Input
+                      aria-label={t("actionsUi.form.paramPattern", { n: i + 1 })}
+                      value={row.pattern}
+                      onChange={(e) => edit({ pattern: e.target.value })}
+                    />
+                    <Input
+                      aria-label={t("actionsUi.form.paramDefault", { n: i + 1 })}
+                      value={row.default}
+                      onChange={(e) => edit({ default: e.target.value })}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("actionsUi.form.paramRemove", { n: i + 1 })}
+                      onClick={() => set({ params: draft.params.filter((_, j) => j !== i) })}
+                    >
+                      <X aria-hidden="true" />
+                    </Button>
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onClick={() =>
+                  set({ params: [...draft.params, { name: "", pattern: "", default: "" }] })
+                }
+              >
+                <Plus aria-hidden="true" />
+                {t("actionsUi.form.paramAdd")}
+              </Button>
+            </fieldset>
+            {error && (
+              <p role="alert" className="text-sm text-status-error">
+                {error}
+              </p>
+            )}
+          </div>
+          <FormActions
+            submit={t("actionsUi.form.save")}
+            cancel={t("actionsUi.form.cancel")}
+            onCancel={props.onClose}
+          />
+        </Form>
       </AppDialogContent>
     </Dialog>
   );

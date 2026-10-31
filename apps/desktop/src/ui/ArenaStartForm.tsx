@@ -1,16 +1,11 @@
 import type { EffortLevel } from "@flightdeck/protocol";
 import { type ReactNode, useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -61,56 +56,65 @@ export function ArenaStartForm(props: {
           <DialogTitle>{t("arenaUi.start")}</DialogTitle>
           <DialogDescription>{t("arenaUi.hint")}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2">
-          {drafts.map((draft, i) => {
-            const n = i + 1;
-            return (
-              // The rows have no identity beyond their position: the last one is what goes.
-              // biome-ignore lint/suspicious/noArrayIndexKey: positional rows
-              <div key={i} className="flex items-center gap-2">
-                <Input
-                  aria-label={t("arenaUi.model", { n })}
-                  placeholder={t("arenaUi.modelPlaceholder")}
-                  value={draft.model}
-                  onChange={(e) => edit(i, { model: e.target.value })}
-                />
-                <select
-                  aria-label={t("arenaUi.effort", { n })}
-                  className={SELECT}
-                  value={draft.effort}
-                  onChange={(e) => edit(i, { effort: e.target.value })}
+        <Form variant="dialog" onSubmit={start}>
+          <div className="flex flex-col gap-2">
+            {drafts.map((draft, i) => {
+              const n = i + 1;
+              return (
+                // The rows have no identity beyond their position: the last one is what goes.
+                // biome-ignore lint/suspicious/noArrayIndexKey: positional rows
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    aria-label={t("arenaUi.model", { n })}
+                    placeholder={t("arenaUi.modelPlaceholder")}
+                    value={draft.model}
+                    onChange={(e) => edit(i, { model: e.target.value })}
+                  />
+                  <select
+                    aria-label={t("arenaUi.effort", { n })}
+                    className={SELECT}
+                    value={draft.effort}
+                    onChange={(e) => edit(i, { effort: e.target.value })}
+                  >
+                    <option value="">{t("arenaUi.effortDefault")}</option>
+                    {EFFORTS.map((effort) => (
+                      <option key={effort} value={effort}>
+                        {effort}
+                      </option>
+                    ))}
+                  </select>
+                  {props.persona?.(n, draft.persona, (persona) => edit(i, { persona }))}
+                  {n === drafts.length && n > MIN && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDrafts(drafts.slice(0, -1))}
+                    >
+                      {t("arenaUi.remove", { n })}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <FormActions
+            submit={t("arenaUi.begin")}
+            cancel={t("common.cancel")}
+            onCancel={props.onClose}
+            extra={
+              drafts.length < MAX && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDrafts([...drafts, { model: "", effort: "", persona: "" }])}
                 >
-                  <option value="">{t("arenaUi.effortDefault")}</option>
-                  {EFFORTS.map((effort) => (
-                    <option key={effort} value={effort}>
-                      {effort}
-                    </option>
-                  ))}
-                </select>
-                {props.persona?.(n, draft.persona, (persona) => edit(i, { persona }))}
-                {n === drafts.length && n > MIN && (
-                  <Button variant="ghost" size="sm" onClick={() => setDrafts(drafts.slice(0, -1))}>
-                    {t("arenaUi.remove", { n })}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <DialogFooter>
-          {drafts.length < MAX && (
-            <Button
-              variant="outline"
-              onClick={() => setDrafts([...drafts, { model: "", effort: "", persona: "" }])}
-            >
-              {t("arenaUi.add")}
-            </Button>
-          )}
-          <Button variant="ghost" onClick={props.onClose}>
-            {t("common.cancel")}
-          </Button>
-          <Button onClick={start}>{t("arenaUi.begin")}</Button>
-        </DialogFooter>
+                  {t("arenaUi.add")}
+                </Button>
+              )
+            }
+          />
+        </Form>
       </AppDialogContent>
     </Dialog>
   );
