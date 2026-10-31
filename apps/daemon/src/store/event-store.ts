@@ -73,6 +73,13 @@ interface PermissionRow {
 
 const now = () => new Date().toISOString();
 
+/** What was applied to the open session, else what it was opened with. */
+function personaOf(row: SessionRow): { persona?: SessionPersona } {
+  if (row.applied_persona) return { persona: JSON.parse(row.applied_persona) as SessionPersona };
+  if (row.persona) return { persona: personaBadge(JSON.parse(row.persona) as PersonaSnapshot) };
+  return {};
+}
+
 function toSummary(row: SessionRow): SessionSummary {
   return {
     id: row.id,
@@ -85,12 +92,7 @@ function toSummary(row: SessionRow): SessionSummary {
     lastSeq: row.last_seq,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    // What was applied to the open session, else what it was opened with.
-    ...(row.applied_persona
-      ? { persona: JSON.parse(row.applied_persona) as SessionPersona }
-      : row.persona
-        ? { persona: personaBadge(JSON.parse(row.persona) as PersonaSnapshot) }
-        : {}),
+    ...personaOf(row),
   };
 }
 

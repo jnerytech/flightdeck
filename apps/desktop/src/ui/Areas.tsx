@@ -4,12 +4,19 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
+import type { Orientation } from "../lib/workspace.ts";
 import { Screen } from "./Screens.tsx";
 import { TabBar } from "./TabBar.tsx";
 
 const STEP = 0.05;
 
 type ScreenProps = Parameters<typeof Screen>[0];
+
+/** The grid of the areas: rows when split horizontally, columns when vertically. */
+function gridStyle(split: Orientation | null, template: string) {
+  if (split === "horizontal") return { gridTemplateRows: template };
+  return split ? { gridTemplateColumns: template } : undefined;
+}
 
 /** The window's one or two areas, each with its tab bar and screen, and the divider between them. */
 export function Areas(props: {
@@ -80,17 +87,7 @@ export function Areas(props: {
   const template = `${fraction}fr 6px ${1 - fraction}fr`;
 
   return (
-    <div
-      ref={box}
-      className="grid min-h-0 flex-1"
-      style={
-        split === "horizontal"
-          ? { gridTemplateRows: template }
-          : split
-            ? { gridTemplateColumns: template }
-            : undefined
-      }
-    >
+    <div ref={box} className="grid min-h-0 flex-1" style={gridStyle(split, template)}>
       {workspace.areas.flatMap((area, i) => {
         const pane = (
           <section

@@ -38,7 +38,9 @@ function parseField(text: string, label: string, min: number, max: number): Set<
       }
       low = Number(from);
       // "5/10" runs from 5 to the end of the field; a plain "5" is just 5.
-      high = to !== undefined ? Number(to) : step !== undefined ? max : low;
+      high = low;
+      if (to !== undefined) high = Number(to);
+      else if (step !== undefined) high = max;
     }
     if (low < min || high > max || low > high) {
       throw new Error(`cron: ${label} fora de ${min}-${max}: ${part}`);

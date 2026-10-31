@@ -70,8 +70,8 @@ export class Workspace {
       .map((area) => restoreArea(area, newId))
       .filter((area): area is Tabs => area !== null);
     if (areas.length === 0) return new Workspace({ name: "home" }, newId);
-    const split =
-      areas.length === 2 ? (data.split === "horizontal" ? "horizontal" : "vertical") : null;
+    let split: Orientation | null = null;
+    if (areas.length === 2) split = data.split === "horizontal" ? "horizontal" : "vertical";
     const fraction = typeof data.fraction === "number" ? data.fraction : 0.5;
     return new Workspace({ name: "home" }, newId, {
       areas,
