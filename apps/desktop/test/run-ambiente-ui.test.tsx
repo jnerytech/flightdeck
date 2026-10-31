@@ -1,15 +1,23 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { git, gitRepo } from "../../daemon/test/board-helpers.ts";
 import { AppStore, sessionKey } from "../src/lib/app-store.ts";
+import { WORKSPACE_KEY } from "../src/lib/workspace.ts";
+import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { App } = await import("../src/ui/App.tsx");
 
 // Real git, a daemon and a fake runtime: more than the default 5 s.
 setDefaultTimeout(30_000);
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
+  cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
@@ -105,5 +113,73 @@ describe("run-ui: o estado do Run na loja", () => {
     await store.runStart(hostId, cardId);
     expect(store.getState().runEnvs[key]).toBeUndefined();
     expect(store.getState().error ?? "").toContain("não confiado");
+  });
+});
+
+describe("run-ui: o preview em uma aba", () => {
+  function shown() {
+    const mem = memoryPlatform(false, "pt-BR");
+    const opened: string[] = [];
+    mem.win.open = (url) => {
+      opened.push(String(url));
+      return null;
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    return { store, opened, items: mem.items };
+  }
+  const frame = () => document.querySelector("iframe");
+
+  test("a rota preview mostra o app do card num quadro e o botão abre o mesmo endereço no navegador", async () => {
+    const { store, opened } = shown();
+    await act(async () => {
+      store.tabs.open({ name: "preview", url: "http://127.0.0.1:41000/", title: "web" });
+    });
+    expect(frame()?.getAttribute("src")).toBe("http://127.0.0.1:41000/");
+    expect(frame()?.getAttribute("title")).toBe("Preview de web");
+    const button = screen.queryByRole("button", { name: "Abrir no navegador" });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      if (button) fireEvent.click(button);
+    });
+    expect(opened).toEqual(["http://127.0.0.1:41000/"]);
+    expect(screen.queryAllByRole("tab").map((tab) => tab.textContent)).toContain("web");
+  });
+
+  test("um endereço fora do loopback não abre quadro nem botão: a tela recusa", async () => {
+    const { store, opened } = shown();
+    await act(async () => {
+      store.tabs.open({ name: "preview", url: "http://example.com/", title: "fora" });
+    });
+    expect(frame()).toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir no navegador" })).toBeNull();
+    expect(screen.queryByText("Só endereços de 127.0.0.1 e localhost abrem aqui.")).not.toBeNull();
+    expect(opened).toEqual([]);
+  });
+
+  test("a aba de preview não volta ao reabrir o app: o endereço pode ser de outro programa agora", async () => {
+    const { store, items } = shown();
+    await act(async () => {
+      store.tabs.open({ name: "preview", url: "http://127.0.0.1:41000/", title: "web" });
+    });
+    const kept = JSON.parse(items.get(WORKSPACE_KEY) ?? "null");
+    expect(JSON.stringify(kept)).not.toContain("41000");
+    const next = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    expect(next.workspace.tabs.router.current.name).toBe("home");
+  });
+
+  test("a CSP do app deixa quadros só em http(s) 127.0.0.1 e localhost", () => {
+    const conf = JSON.parse(
+      readFileSync(resolve(import.meta.dir, "../src-tauri/tauri.conf.json"), "utf8"),
+    ) as { app: { security: { csp: string } } };
+    const csp = conf.app.security.csp;
+    const directive = csp
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("frame-src"));
+    expect(directive).toBe(
+      "frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*",
+    );
+    expect(csp).toContain("default-src 'self'");
   });
 });
