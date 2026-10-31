@@ -70,6 +70,13 @@ describe("snippets-ui: the screen", () => {
     expect(screen.queryByText("Nenhum snippet.")).not.toBeNull();
   });
 
+  test("the empty list offers its own button to write the first snippet", async () => {
+    await open();
+    await click("Criar o primeiro snippet");
+    await settle(() => screen.queryByLabelText("Nome") !== null);
+    expect(screen.queryByLabelText("Nome")).not.toBeNull();
+  });
+
   test("each snippet shows its name, type, where it lives and its tags", async () => {
     await open(async ({ save }) => {
       await save({ name: "status", type: "command", run: "git status", tags: ["git"] });

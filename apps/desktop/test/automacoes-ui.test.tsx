@@ -122,6 +122,15 @@ describe("automacoes-ui: the screen", () => {
     expect(screen.queryByRole("button", { name: "Nova automação" })).not.toBeNull();
   });
 
+  test("the empty list offers its own button to create the first automation", async () => {
+    await online();
+    await click("Automações de repo");
+    await settle(() => screen.queryByText("Nenhuma automação neste projeto") !== null);
+    await click("Criar a primeira automação");
+    await settle(() => screen.queryByLabelText("Gatilho") !== null);
+    expect(screen.queryByLabelText("Gatilho")).not.toBeNull();
+  });
+
   test("a daemon without the automation feature has no Automações button", async () => {
     await online(["workflows"]);
     expect(screen.queryByRole("button", { name: "Automações de repo" })).toBeNull();

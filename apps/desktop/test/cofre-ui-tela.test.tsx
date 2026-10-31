@@ -52,6 +52,17 @@ describe("cofre-ui: the screen", () => {
     expect(screen.queryByRole("list", { name: "Segredos" })).toBeNull();
   });
 
+  test("the empty vault offers its own button to keep the first secret", async () => {
+    await open();
+    const button = screen.queryByRole("button", { name: "Guardar o primeiro segredo" });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    await settle(() => screen.queryByLabelText("Nome") !== null);
+    expect(screen.queryByLabelText("Nome")).not.toBeNull();
+  });
+
   test("each secret shows its name, type and tags", async () => {
     await open(async (store) => {
       await store.addSecret({

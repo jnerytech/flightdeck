@@ -117,6 +117,19 @@ describe("acoes-ui-lista: as ações de um projeto", () => {
     expect(screen.queryByText("Nenhuma ação neste projeto")).not.toBeNull();
   });
 
+  test("sem ações, a tela oferece o botão de criar a primeira", async () => {
+    const d = await online();
+    await act(async () => {
+      await d.actions.remove(d.project.id, "deploy-staging");
+      await d.actions.remove(d.project.id, "logs-prod");
+    });
+    await open();
+    await settle(() => screen.queryByText("Nenhuma ação neste projeto") !== null);
+    await click("Criar a primeira ação");
+    await settle(() => screen.queryByLabelText("Nome da ação") !== null);
+    expect(screen.queryByLabelText("Nome da ação")).not.toBeNull();
+  });
+
   test("uma ação do arquivo versionado aparece como versionada, e o erro de outra é mostrado", async () => {
     const d = await online();
     mkdirSync(join(d.repo, ".flightdeck"), { recursive: true });

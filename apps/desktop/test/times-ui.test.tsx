@@ -146,6 +146,14 @@ async function create(name: string, workers = "1") {
 const row = (name: string) => screen.queryByRole("listitem", { name: `Time ${name}` });
 
 describe("times-ui: the teams of a host", () => {
+  test("the empty list offers its own button to create the first team", async () => {
+    await open();
+    await settle(() => screen.queryByText("Nenhum time ainda") !== null);
+    await click("Criar o primeiro time");
+    await settle(() => screen.queryByLabelText("Objetivo") !== null);
+    expect(screen.queryByLabelText("Objetivo")).not.toBeNull();
+  });
+
   test("Novo time creates a team with its goal, project and workers; it is listed with its coordinator and workers", async () => {
     const { teams } = await open();
     await click("Novo time");

@@ -97,6 +97,17 @@ describe("conexoes-ui: the screen", () => {
     expect(rows()).toEqual([]);
   });
 
+  test("the empty list offers its own button to add the first target", async () => {
+    await open({ targets: [] });
+    const button = screen.queryByRole("button", { name: "Cadastrar o primeiro destino" });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    await settle(() => screen.queryByLabelText("Nome") !== null);
+    expect(screen.queryByLabelText("Nome")).not.toBeNull();
+  });
+
   test("the search narrows the list by name, host or user, and the tag and via filters narrow it too", async () => {
     await open();
     const type = async (label: string, value: string) => {
