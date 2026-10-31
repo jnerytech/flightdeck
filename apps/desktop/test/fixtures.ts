@@ -24,6 +24,7 @@ import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
 import { packPersonas } from "../../daemon/src/personas/pack.ts";
 import { agentPublisher } from "../../daemon/src/personas/publish.ts";
 import { Personas } from "../../daemon/src/personas/store.ts";
+import { claudeCli, filePins, Plugins } from "../../daemon/src/plugins/plugins.ts";
 import { QuotaHistory } from "../../daemon/src/quota/history.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { UsageLedger } from "../../daemon/src/quota/usage.ts";
@@ -93,6 +94,8 @@ export function daemon(
     mcpServers?: string[];
     /** The project's auto memory and its context budget (phase 26), under this daemon's claude-home. */
     memory?: boolean;
+    /** The Claude Code plugins (phase 26), through a `claude` the test puts first on PATH. */
+    plugins?: boolean;
     /** The project's issues (phase 13), read through the `gh` and `az` on the PATH. */
     issues?: boolean;
     /** The projects' automations (phase 13); the scheduler is not started. */
@@ -187,6 +190,9 @@ export function daemon(
         claudeDir: join(root, "claude-home"),
         managedClaudeMd: join(root, "managed", "CLAUDE.md"),
       })
+    : undefined;
+  const plugins = options.plugins
+    ? new Plugins({ cli: claudeCli(), pins: filePins(join(root, "plugin-pins.json")) })
     : undefined;
   const board = new Board({ db: store.db, manager, allowedRoots: [root], quota });
   cleanups.push(() => board.stop());
@@ -299,6 +305,7 @@ export function daemon(
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
       ...(memory ? { memory } : {}),
+      ...(plugins ? { plugins } : {}),
       ...(issues ? { issues } : {}),
       ...(options.issues && issues ? { issues } : {}),
       ...(automations ? { automations } : {}),
