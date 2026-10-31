@@ -59,8 +59,16 @@ function cli(os: ReturnType<typeof fakeOs>) {
     exit: (code) => exits.push(code),
     onSignal: () => {},
     serviceContext: os.ctx,
+    serviceHealthTimeoutMs: 100,
   };
   return { deps, out, exits };
+}
+
+/** A stand-in for the daemon the service starts: answers `/health` and returns its port. */
+function healthServer() {
+  const daemon = Bun.serve({ port: 0, fetch: () => Response.json({ ok: true }) });
+  stops.push(async () => daemon.stop(true));
+  return daemon.port;
 }
 
 function configFile(content?: object) {
@@ -135,8 +143,13 @@ describe("servico", () => {
       "claude.exe": "C:\\Users\\dev\\.local\\bin\\claude.exe",
       claude: "C:\\npm\\claude.cmd",
     });
-    const { deps, exits } = cli(os);
-    const file = configFile({ token: "t".repeat(32), allowedRoots: ["C:\\code"] });
+    const { deps, exits, out } = cli(os);
+    const file = configFile({
+      token: "t".repeat(32),
+      allowedRoots: ["C:\\code"],
+      dataDir: tempDir(),
+      port: healthServer(),
+    });
     await runCli(["service", "install", "--config", file], deps);
     expect(exits).toEqual([0]);
     expect(os.written.get("C:\\Temp\\flightdeckd-task.xml")).toContain(
@@ -152,11 +165,26 @@ describe("servico", () => {
         "C:\\Temp\\flightdeckd-task.xml",
         "/F",
       ],
+      ["schtasks", "/Run", "/TN", "Flightdeck\\flightdeckd"],
     ]);
+    expect(out.join("\n")).toContain("daemon do serviço respondendo");
     const saved = JSON.parse(readFileSync(file, "utf8"));
     expect(saved.claude).toEqual({ executablePath: "C:\\Users\\dev\\.local\\bin\\claude.exe" });
     expect(saved.allowedRoots).toEqual(["C:\\code"]);
     expect(saved.token).toBe("t".repeat(32));
+  });
+
+  test("install sem resposta do daemon no /health sai com 1, com o serviço já instalado", async () => {
+    const os = fakeOs("win32");
+    const { deps, exits, out } = cli(os);
+    const closed = Bun.serve({ port: 0, fetch: () => new Response("") });
+    const port = closed.port;
+    await closed.stop(true);
+    const file = configFile({ token: "t".repeat(32), dataDir: tempDir(), port });
+    await runCli(["service", "install", "--config", file], deps);
+    expect(exits).toEqual([1]);
+    expect(os.calls.map((c) => c[1])).toEqual(["/Create", "/Run"]);
+    expect(out.join("\n")).toContain("não respondeu em /health");
   });
 
   test("só o claude.cmd no Windows: grava e avisa", async () => {
@@ -173,12 +201,13 @@ describe("servico", () => {
   test("install no Linux instala a unit e registra o caminho do claude", async () => {
     const os = fakeOs("linux", { claude: "/usr/local/bin/claude" });
     const { deps, out, exits } = cli(os);
-    const file = configFile({ token: "t".repeat(32) });
+    const file = configFile({ token: "t".repeat(32), dataDir: tempDir(), port: healthServer() });
     await runCli(["service", "install", "--config", file], deps);
     expect(exits).toEqual([0]);
     expect(os.written.has("/home/dev/.config/systemd/user/flightdeckd.service")).toBe(true);
     expect(loadConfig(file).claude?.executablePath ?? "").toBe("/usr/local/bin/claude");
     expect(out.join("\n")).toContain("serviço flightdeckd habilitado e iniciado");
+    expect(out.join("\n")).toContain("daemon do serviço respondendo");
   });
 
   test("uninstall e status no Linux e no Windows", async () => {
