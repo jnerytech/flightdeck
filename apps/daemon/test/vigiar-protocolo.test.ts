@@ -232,11 +232,28 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     await merged(az, client, cardId);
   });
 
-  test("the PR can open with a description generated from the card's sessions", async () => {
+  test("the description is offered for the person to edit, and the PR opens only with what is confirmed", async () => {
     const { az, client, cardId } = await boot();
-    await client.data("card.pr.create", { cardId, generate: true });
+    const offered = await client.data<{ text: string; redacted: number }>("watch.describe", {
+      cardId,
+    });
+    expect(offered?.text).toContain("Login");
+    expect(offered?.redacted).toBe(0);
+    // Offering it opens nothing.
+    expect(az.calls().some((args) => args.includes("create"))).toBe(false);
+    expect(await client.request("watch.describe", { cardId: "nao-existe" })).toMatchObject({
+      ok: false,
+      error: { code: "not_found" },
+    });
+    const secret = await client.request("card.pr.create", {
+      cardId,
+      description: "token ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+    });
+    expect(secret).toMatchObject({ ok: false, error: { code: "bad_request" } });
+    expect(az.calls().some((args) => args.includes("create"))).toBe(false);
+    await client.data("card.pr.create", { cardId, description: `${offered?.text} (editado)` });
     const create = az.calls().find((args) => args.includes("create")) ?? [];
-    expect(create[create.indexOf("--description") + 1]).toContain("Login");
+    expect(create[create.indexOf("--description") + 1]).toContain("(editado)");
     await merged(az, client, cardId);
   });
 });
