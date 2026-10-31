@@ -4,6 +4,7 @@ import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
 import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";
 import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
+import { ProjectMemory } from "../../daemon/src/memory/memory.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
@@ -90,6 +91,8 @@ export function daemon(
     agentcfg?: boolean;
     /** The MCP servers a live session of the fake runtime reports (phase 12). */
     mcpServers?: string[];
+    /** The project's auto memory and its context budget (phase 26), under this daemon's claude-home. */
+    memory?: boolean;
     /** The project's issues (phase 13), read through the `gh` and `az` on the PATH. */
     issues?: boolean;
     /** The projects' automations (phase 13); the scheduler is not started. */
@@ -178,6 +181,12 @@ export function daemon(
     : undefined;
   const agentcfg = options.agentcfg
     ? new AgentConfig({ claudeDir: join(root, "claude-home") })
+    : undefined;
+  const memory = options.memory
+    ? new ProjectMemory({
+        claudeDir: join(root, "claude-home"),
+        managedClaudeMd: join(root, "managed", "CLAUDE.md"),
+      })
     : undefined;
   const board = new Board({ db: store.db, manager, allowedRoots: [root], quota });
   cleanups.push(() => board.stop());
@@ -289,6 +298,7 @@ export function daemon(
       ...(review ?? {}),
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
+      ...(memory ? { memory } : {}),
       ...(issues ? { issues } : {}),
       ...(options.issues && issues ? { issues } : {}),
       ...(automations ? { automations } : {}),
@@ -340,6 +350,7 @@ export function daemon(
     snapshots,
     mcp,
     agentcfg,
+    memory,
     central,
     maintenance,
     settingsFile,
