@@ -30,6 +30,7 @@ describe("run-config: o esquema", () => {
     const { config, errors } = parseRunConfig(EXAMPLE);
     expect(errors).toEqual([]);
     expect(config).toEqual({
+      exclusive: false,
       setup: ["bun", "install"],
       run: [
         {
@@ -47,10 +48,18 @@ describe("run-config: o esquema", () => {
   test("sem setup nem portas, só com um processo, também carrega", () => {
     const { config } = parseRunConfig('run:\n  - name: app\n    cmd: ["./app"]\n');
     expect(config).toEqual({
+      exclusive: false,
       setup: null,
       run: [{ name: "app", cmd: ["./app"], env: {}, ready: null }],
       ports: [],
     });
+  });
+
+  test("exclusive: true é o modo não concorrente do projeto: um card rodando de cada vez", () => {
+    const run = 'run:\n  - { name: a, cmd: ["x"] }\n';
+    expect(parseRunConfig(`exclusive: true\n${run}`).config?.exclusive).toBe(true);
+    expect(parseRunConfig(`exclusive: false\n${run}`).config?.exclusive).toBe(false);
+    expect(errorsOf(`exclusive: sim\n${run}`)).toEqual(["exclusive: tipo inválido"]);
   });
 
   test("YAML quebrado e campo desconhecido são erros, e a configuração fica nula", () => {
@@ -126,7 +135,12 @@ describe("run-config: o esquema", () => {
 
 describe("run-config: comando fora do arquivo", () => {
   test("só os comandos do arquivo são declarados, como escritos, e qualquer outro é recusado", () => {
-    const config = parseRunConfig(EXAMPLE).config ?? { setup: null, run: [], ports: [] };
+    const config = parseRunConfig(EXAMPLE).config ?? {
+      exclusive: false,
+      setup: null,
+      run: [],
+      ports: [],
+    };
     expect(parseRunConfig(EXAMPLE).config).not.toBeNull();
     expect(declaredCommands(config)).toEqual([
       ["bun", "install"],
