@@ -26,7 +26,8 @@ async function setup(ssh?: { name: string; tags: string[] }) {
 }
 
 const sshTab = () => screen.queryByRole("tab", { name: /^SSH · / });
-const wrapper = () => sshTab()?.parentElement ?? null;
+// Since phase 14 on main the tab is the element that is marked (no wrapper around it).
+const wrapper = () => sshTab();
 
 describe("conexoes-ui: the tab of a SSH terminal", () => {
   test("the tab is named after the destino and carries its tags", async () => {
@@ -56,8 +57,6 @@ describe("conexoes-ui: the tab of a SSH terminal", () => {
     await setup();
     expect(sshTab()).toBeNull();
     expect(screen.queryByRole("tab", { name: "Terminal" })).not.toBeNull();
-    expect(
-      screen.queryByRole("tab", { name: "Terminal" })?.parentElement?.getAttribute("data-prod"),
-    ).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Terminal" })?.getAttribute("data-prod")).toBeNull();
   });
 });
