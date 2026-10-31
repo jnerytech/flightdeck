@@ -1,8 +1,17 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
+import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { inspectPlugin } from "../src/plugins/inventory.ts";
+import { claudeCli, filePins, type Pin, type PinStore, Plugins } from "../src/plugins/plugins.ts";
 import { tempDir } from "./helpers.ts";
 
 const codeOf = (fn: () => unknown): string => {
@@ -213,5 +222,220 @@ describe("plugins: o inventário", () => {
     expect(inventory.skills).toEqual(["a"]);
     expect(inventory.problems).toEqual(["plugin.json: não é um JSON válido"]);
     expect(codeOf(() => inspectPlugin(join(tempDir("fd-none-"), "nada")))).toBe("not_found");
+  });
+});
+
+describe("plugins: pela CLI", () => {
+  const fakes: FakeCli[] = [];
+  afterEach(() => {
+    for (const fake of fakes.splice(0)) fake.restore();
+  });
+
+  /** A `claude` that answers the rules, a marketplace folder with two plugins, and one installed. */
+  function world(rules: (ctx: { installed: string; marketplace: string }) => FakeRule[]) {
+    const installed = plugin({
+      ".claude-plugin/plugin.json": MANIFEST,
+      "hooks/hooks.json": JSON.stringify({
+        hooks: { PreToolUse: [{ hooks: [{ type: "command", command: "guard.sh" }] }] },
+      }),
+      "skills/deploy/SKILL.md": skill("deploy"),
+    });
+    const marketplace = join(tempDir("fd-market-"), "acme");
+    for (const [path, body] of Object.entries({
+      ".claude-plugin/marketplace.json": JSON.stringify({
+        name: "acme",
+        plugins: [
+          { name: "deploy-tools", source: "./plugins/deploy-tools" },
+          { name: "outro", source: "./plugins/outro" },
+          { name: "remoto", source: { source: "github", repo: "acme/remoto" } },
+        ],
+      }),
+      "plugins/deploy-tools/.claude-plugin/plugin.json": MANIFEST,
+      "plugins/deploy-tools/skills/deploy/SKILL.md": skill("deploy"),
+      "plugins/outro/.claude-plugin/plugin.json": JSON.stringify({
+        name: "outro",
+        version: "0.1.0",
+      }),
+    })) {
+      mkdirSync(dirname(join(marketplace, path)), { recursive: true });
+      writeFileSync(join(marketplace, path), body);
+    }
+    const fake = installFakeCli("claude", rules({ installed, marketplace }));
+    fakes.push(fake);
+    const pins = memoryPins();
+    return {
+      installed,
+      marketplace,
+      fake,
+      pins,
+      plugins: new Plugins({ cli: claudeCli(), pins, clock: () => Date.UTC(2026, 9, 31, 12) }),
+    };
+  }
+
+  function memoryPins(): PinStore & { data: Record<string, Pin> } {
+    const data: Record<string, Pin> = {};
+    return {
+      data,
+      all: () => ({ ...data }),
+      set: (id, pin) => {
+        data[id] = pin;
+      },
+      delete: (id) => {
+        delete data[id];
+      },
+    };
+  }
+
+  const LISTING = (ctx: { installed: string; marketplace: string }): FakeRule[] => [
+    {
+      args: ["marketplace", "list"],
+      stdout: JSON.stringify([
+        { name: "acme", source: "github", repo: "acme/plugins", installLocation: ctx.marketplace },
+      ]),
+    },
+    {
+      args: ["list", "--json"],
+      stdout: JSON.stringify({
+        installed: [
+          {
+            id: "deploy-tools@acme",
+            version: "1.2.0",
+            scope: "user",
+            enabled: true,
+            installPath: ctx.installed,
+          },
+          {
+            id: "quebrado@acme",
+            version: "0.0.1",
+            scope: "project",
+            enabled: false,
+            installPath: "/nao/existe",
+            errors: ["falhou ao carregar"],
+          },
+        ],
+        available: [
+          {
+            pluginId: "outro@acme",
+            name: "outro",
+            marketplaceName: "acme",
+            description: "Outro",
+            version: "0.1.0",
+          },
+        ],
+      }),
+    },
+  ];
+
+  test("list junta o que está instalado, o que o marketplace oferece e os marketplaces, cada instalado com o inventário", async () => {
+    const { plugins, installed, marketplace, fake } = world(LISTING);
+    const list = await plugins.list();
+    expect(list.marketplaces).toEqual([
+      { name: "acme", source: "github", origin: "acme/plugins", location: marketplace },
+    ]);
+    expect(list.available).toEqual([
+      {
+        id: "outro@acme",
+        name: "outro",
+        marketplace: "acme",
+        description: "Outro",
+        version: "0.1.0",
+      },
+    ]);
+    const [deploy, broken] = list.installed;
+    expect(deploy).toMatchObject({
+      id: "deploy-tools@acme",
+      name: "deploy-tools",
+      marketplace: "acme",
+      version: "1.2.0",
+      scope: "user",
+      enabled: true,
+      path: installed,
+      pinned: null,
+      errors: [],
+    });
+    expect(deploy?.inventory?.skills).toEqual(["deploy"]);
+    expect(deploy?.inventory?.attention).toBe(true);
+    expect(broken).toMatchObject({
+      id: "quebrado@acme",
+      enabled: false,
+      inventory: null,
+      errors: ["falhou ao carregar"],
+    });
+    expect(fake.calls().map((c) => c.join(" "))).toEqual([
+      "plugin list --json --available",
+      "plugin marketplace list --json",
+    ]);
+  });
+
+  test("um plugin carregado no lugar usa a pasta de origem (readFromFolder)", async () => {
+    const { plugins } = world((ctx) => [
+      LISTING(ctx)[0] as FakeRule,
+      {
+        args: ["list", "--json"],
+        stdout: JSON.stringify({
+          installed: [
+            {
+              id: "deploy-tools@acme",
+              version: "1",
+              scope: "user",
+              enabled: true,
+              installPath: "/nao/existe",
+              readFromFolder: join(ctx.marketplace, "plugins/deploy-tools"),
+            },
+          ],
+          available: [],
+        }),
+      },
+    ]);
+    const [one] = (await plugins.list()).installed;
+    expect(one?.inventory?.skills).toEqual(["deploy"]);
+  });
+
+  test("detail devolve um instalado; um id que não existe é not_found", async () => {
+    const { plugins } = world(LISTING);
+    expect((await plugins.detail("deploy-tools@acme")).inventory?.manifest?.name).toBe(
+      "deploy-tools",
+    );
+    await expect(plugins.detail("nada@acme")).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  test("uma CLI que falha, ou que não devolve JSON, é invalid_state com o motivo", async () => {
+    const failing = world(() => [{ args: ["list"], code: 1 }]);
+    await expect(failing.plugins.list()).rejects.toMatchObject({ code: "invalid_state" });
+    const garbled = world(() => [{ args: ["list"], stdout: "isto não é json" }]);
+    await expect(garbled.plugins.list()).rejects.toMatchObject({ code: "invalid_state" });
+  });
+
+  test("sem o claude no PATH, o motivo é claro e nada roda", async () => {
+    const plugins = new Plugins({ cli: claudeCli({ executable: () => null }), pins: memoryPins() });
+    await expect(plugins.list()).rejects.toMatchObject({ code: "invalid_state" });
+  });
+
+  test("fixar guarda a versão e o hash do que está instalado, e soltar tira; um plugin que não existe é not_found", async () => {
+    const { plugins, pins, installed } = world(LISTING);
+    const pinned = await plugins.pin("deploy-tools@acme", true);
+    expect(pinned.pinned).toEqual({
+      version: "1.2.0",
+      hash: inspectPlugin(installed).hash,
+      at: "2026-10-31T12:00:00.000Z",
+    });
+    expect(pins.data["deploy-tools@acme"]).toEqual(pinned.pinned as Pin);
+    expect((await plugins.list()).installed[0]?.pinned).toEqual(pinned.pinned);
+    expect((await plugins.pin("deploy-tools@acme", false)).pinned).toBeNull();
+    expect(pins.data).toEqual({});
+    await expect(plugins.pin("nada@acme", true)).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  test("os fixados ficam num arquivo e voltam na próxima abertura", () => {
+    const file = join(tempDir("fd-pins-"), "dados", "plugin-pins.json");
+    const a = filePins(file);
+    expect(a.all()).toEqual({});
+    a.set("x@m", { version: "1", hash: "h", at: "2026-10-31T12:00:00.000Z" });
+    a.set("y@m", { version: "2", hash: "g", at: "2026-10-31T12:00:00.000Z" });
+    a.delete("y@m");
+    expect(Object.keys(filePins(file).all())).toEqual(["x@m"]);
+    expect(JSON.parse(readFileSync(file, "utf8"))["x@m"].version).toBe("1");
+    writeFileSync(file, "não é json");
+    expect(filePins(file).all()).toEqual({});
   });
 });
