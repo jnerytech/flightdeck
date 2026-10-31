@@ -68,6 +68,28 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
       });
     expect(await personaOf("coordenadora")).toBe("revisor");
     expect(await personaOf("executora 1")).toBe("qa");
+    // A persona the host does not know is refused; taking one away clears the session's.
+    expect(
+      await client.request("teams.create", {
+        projectId: project?.id,
+        goal: "com uma persona que não existe",
+        workers: 1,
+        coordinatorPersona: "nao-existe",
+      }),
+    ).toMatchObject({ ok: false, error: { message: "a persona nao-existe não existe" } });
+    type Teams = {
+      teams: Array<{ id: string; members: Array<{ name: string; persona: string | null }> }>;
+    };
+    const coordinatorOf = async () =>
+      (await client.data<Teams>("teams.list", {}))?.teams
+        .find((t) => t.id === team?.id)
+        ?.members.find((m) => m.name.endsWith("coordenadora"));
+    const updated = await client.request("teams.update", {
+      team: team?.id,
+      persona: { member: (await coordinatorOf())?.name, persona: null },
+    });
+    expect(updated).toMatchObject({ ok: true });
+    expect((await coordinatorOf())?.persona).toBeNull();
     // Without one, the coordinator is the pack's coordenador.
     await client.data("teams.create", {
       projectId: project?.id,
