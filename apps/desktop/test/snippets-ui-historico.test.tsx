@@ -165,4 +165,12 @@ describe("snippets-ui: import from the shell history", () => {
     const listed = await store.hostCommand(hostId, "snippets.list", {});
     expect(listed?.snippets.map((s) => s.run)).toEqual(["git status"]);
   });
+
+  test("closing the panel and opening it again shows the history again", async () => {
+    await open();
+    await click("Importar do histórico do shell");
+    expect(screen.queryByRole("button", { name: "Importar selecionados" })).toBeNull();
+    await click("Importar do histórico do shell");
+    expect(screen.queryByRole("button", { name: "Importar selecionados" })).not.toBeNull();
+  });
 });

@@ -218,4 +218,26 @@ describe("snippets-uso: the palette", () => {
     await click("Copiar");
     expect(copied).toEqual([]);
   });
+
+  test("a field typed in is what gets copied, and Escape closes the dialog", async () => {
+    const { copied } = await open(false);
+    await palette("eco");
+    await choose("Snippet: eco");
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("msg") as HTMLElement, {
+        target: { value: "tchau" },
+      });
+    });
+    await click("Copiar");
+    expect(copied).toEqual(["echo tchau"]);
+    await palette("eco");
+    await choose("Snippet: eco");
+    const use = screen.queryByLabelText("msg");
+    expect(use).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(use as HTMLElement, { key: "Escape" });
+    });
+    await act(() => Bun.sleep(100));
+    expect(screen.queryByLabelText("msg")).toBeNull();
+  });
 });

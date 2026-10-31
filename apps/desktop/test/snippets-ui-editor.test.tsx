@@ -181,4 +181,23 @@ describe("snippets-ui: the editor", () => {
     expect(screen.queryByRole("button", { name: "Salvar snippet" })).toBeNull();
     expect(rowNames()).toEqual([]);
   });
+
+  test("Editar a command with variables brings back their defaults and options", async () => {
+    await open(async ({ save }) => {
+      await save({
+        name: "testes",
+        type: "command",
+        run: "bun test {{arquivo}}",
+        vars: { arquivo: { default: "a.test.ts", options: ["a.test.ts", "b.test.ts"] } },
+      });
+    });
+    await click("Editar testes");
+    expect((screen.queryByLabelText("Padrão de arquivo") as HTMLInputElement).value).toBe(
+      "a.test.ts",
+    );
+    expect(
+      (screen.queryByLabelText("Opções de arquivo (separadas por vírgula)") as HTMLInputElement)
+        .value,
+    ).toBe("a.test.ts, b.test.ts");
+  });
 });
