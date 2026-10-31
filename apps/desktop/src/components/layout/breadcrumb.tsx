@@ -24,7 +24,7 @@ export function Breadcrumb(props: { crumbs: Crumb[]; label: string; onGo(route: 
                 {crumb.route ? (
                   <button
                     type="button"
-                    className="truncate rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex min-h-6 items-center truncate rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => crumb.route && props.onGo(crumb.route)}
                   >
                     {crumb.label}
