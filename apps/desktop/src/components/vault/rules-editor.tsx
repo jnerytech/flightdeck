@@ -111,7 +111,7 @@ export function RulesEditor(props: {
             className="flex flex-col gap-2 rounded-md border p-3"
           >
             <legend className="px-1 font-medium">{t("vaultRulesUi.rule", { n })}</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 @2xl:grid-cols-3">
               {choice(i, "requester", at(t("vaultRulesUi.requester")), [
                 ["", t("vaultRulesUi.any")],
                 ...REQUESTERS.map((r): [string, string] => [r, t(`actionsUi.requester.${r}`)]),
@@ -156,7 +156,7 @@ export function RulesEditor(props: {
                 </label>
               ))}
             </fieldset>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 @2xl:grid-cols-3">
               {text(i, "from", at(t("vaultRulesUi.from")), "time")}
               {text(i, "to", at(t("vaultRulesUi.to")), "time")}
               {choice(i, "outsideWindow", at(t("vaultRulesUi.outside")), decisions)}

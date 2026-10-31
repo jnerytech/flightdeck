@@ -305,7 +305,7 @@ export function CostsPage(props: {
                 </div>
               </Panel>
             </section>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 @3xl:grid-cols-3">
               <Breakdown
                 name={t("costsUi.byProject")}
                 rows={summary.byProject.map((p) => ({

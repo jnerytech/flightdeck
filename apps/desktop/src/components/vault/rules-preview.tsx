@@ -33,7 +33,7 @@ export function RulesPreview(props: { store: AppStore; secretId: string }) {
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border p-3">
       <legend className="px-1 font-medium">{t("vaultRulesUi.preview.title")}</legend>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 @2xl:grid-cols-3">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-requester`}>{t("vaultRulesUi.preview.requester")}</label>
           <select

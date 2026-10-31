@@ -34,7 +34,7 @@ export function ArenaView(props: {
   return (
     <section
       aria-label={t("arenaUi.comparison")}
-      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      className="grid gap-3 @2xl:grid-cols-2 @7xl:grid-cols-4"
     >
       {props.arena.variants.map((variant) => (
         <VariantColumn key={variant.id} variant={variant} {...props} />

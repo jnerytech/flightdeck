@@ -99,8 +99,9 @@ export function Areas(props: {
             <TabBar store={store} state={state} tabs={area}>
               {i === 0 && buttons}
             </TabBar>
-            {/* Screens that are a Page scroll by themselves; the others scroll here. */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            {/* Screens that are a Page scroll by themselves; the others scroll here. The area is the
+                container its screens lay out against. */}
+            <div className="@container min-h-0 flex-1 overflow-y-auto">
               <Screen {...props.screen} route={area.router.current as Route} />
             </div>
           </section>

@@ -437,6 +437,7 @@ export const ptBR = {
     seeSessions: "Ver as sessões",
     choose: "Escolha um pedido para ver os detalhes.",
     resize: "Redimensionar a lista",
+    back: "Voltar à lista",
     loopTitle: "Laço pausado",
     loopRow: "Laço pausado: {from} e {to}",
     release: "Soltar o par",
@@ -444,6 +445,7 @@ export const ptBR = {
   hub: {
     pick: "Escolha uma sessão para ver a conversa.",
     resize: "Redimensionar a lista",
+    back: "Voltar à lista",
     filterLabel: "Filtrar sessões",
     filterPlaceholder: "Filtrar",
     filters: "Filtros",

@@ -292,7 +292,7 @@ export function Screen(props: ScreenProps) {
           </div>
         }
         onClose={() => go({ name: "history", host: hostId })}
-        labels={{ resize: t("hub.resize") }}
+        labels={{ resize: t("hub.resize"), back: t("hub.back") }}
         initialWidth={store.listWidth()}
         onResize={(width) => store.setListWidth(width)}
       />
@@ -337,7 +337,7 @@ export function Screen(props: ScreenProps) {
         </div>
       }
       onClose={() => go({ name: "hub" })}
-      labels={{ resize: t("hub.resize") }}
+      labels={{ resize: t("hub.resize"), back: t("hub.back") }}
       initialWidth={store.listWidth()}
       onResize={(width) => store.setListWidth(width)}
     />

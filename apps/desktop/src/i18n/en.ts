@@ -439,6 +439,7 @@ export const en: Dictionary = {
     seeSessions: "See the sessions",
     choose: "Choose a request to see its details.",
     resize: "Resize the list",
+    back: "Back to the list",
     loopTitle: "Loop paused",
     loopRow: "Loop paused: {from} and {to}",
     release: "Free the pair",
@@ -446,6 +447,7 @@ export const en: Dictionary = {
   hub: {
     pick: "Choose a session to see the conversation.",
     resize: "Resize the list",
+    back: "Back to the list",
     filterLabel: "Filter sessions",
     filterPlaceholder: "Filter",
     filters: "Filters",

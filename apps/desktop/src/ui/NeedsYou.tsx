@@ -254,7 +254,7 @@ export function NeedsYou(props: {
         </div>
       }
       onClose={() => setSelected(null)}
-      labels={{ resize: t("needsYou.resize") }}
+      labels={{ resize: t("needsYou.resize"), back: t("needsYou.back") }}
       initialWidth={store.listWidth()}
       onResize={(width) => store.setListWidth(width)}
     />

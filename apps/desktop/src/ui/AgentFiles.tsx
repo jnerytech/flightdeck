@@ -184,7 +184,7 @@ export function AgentFiles(props: {
     (opened.path === "CLAUDE.local.md" ? t("agent.localFile") : t("agent.versioned"));
 
   return (
-    <div className="grid gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="grid gap-4 @3xl:grid-cols-[18rem_minmax(0,1fr)]">
       <div className="flex flex-col gap-3">
         <div>
           <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
@@ -259,7 +259,7 @@ export function AgentFiles(props: {
               </InlineNotice>
             )}
             {form && (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 @2xl:grid-cols-2">
                 <Input aria-label={t("agent.files.name")} {...edit("name")} />
                 <Input aria-label={t("agent.files.description")} {...edit("description")} />
                 {kind === "agent" && (
