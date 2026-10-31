@@ -15,9 +15,13 @@ export interface SpawnedRun {
  */
 export function fakeRunHost() {
   const spawned: SpawnedRun[] = [];
+  /** Programs the host refuses to open (terminals off, the limit reached). */
+  const refused = new Map<string, string>();
   const ends = new Map<string, (code: number) => void>();
   const host: RunHost = {
     spawn: (request) => {
+      const why = refused.get(request.argv[0] ?? "");
+      if (why !== undefined) throw new Error(why);
       const terminalId = `term-${spawned.length + 1}`;
       const run: SpawnedRun = { terminalId, ...request, killed: false };
       spawned.push(run);
@@ -33,6 +37,7 @@ export function fakeRunHost() {
   return {
     host,
     spawned,
+    refused,
     finish: (terminalId: string, code: number) => ends.get(terminalId)?.(code),
     /** The spawns whose argv starts with `program`. */
     of: (program: string) => spawned.filter((s) => s.argv[0] === program),

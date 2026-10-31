@@ -84,6 +84,31 @@ describe("run-execucao: o setup", () => {
     expect(s.of("serve")).toHaveLength(2);
   });
 
+  test("um processo que o sistema recusa (terminais desligados, limite) falha o Run com o motivo e encerra os que subiram", async () => {
+    const s = setup(runConfig({ setup: null }));
+    s.refused.set("api", "limite de 10 terminais por host");
+    await s.manager.start("card-a");
+    await until(() => s.status("card-a") === "failed");
+    const state = s.manager.state("card-a");
+    expect(state.error).toBe("não consegui iniciar api: limite de 10 terminais por host");
+    expect(s.of("serve")[0]?.killed).toBe(true);
+    expect(state.processes.map((p) => p.status)).toEqual(["exited"]);
+    s.refused.delete("api");
+    await s.manager.start("card-a");
+    expect(s.of("api")).toHaveLength(1);
+  });
+
+  test("um setup que o sistema recusa falha o Run com o motivo", async () => {
+    const s = setup();
+    s.refused.set("prepare", "terminal desligado neste host");
+    await s.manager.start("card-a");
+    await until(() => s.status("card-a") === "failed");
+    expect(s.manager.state("card-a").error).toBe(
+      "não consegui iniciar o setup: terminal desligado neste host",
+    );
+    expect(s.manager.state("card-a").setup).toBe("failed");
+  });
+
   test("o setup também não roda de novo depois de o daemon reiniciar", async () => {
     const s = setup();
     await started(s);
