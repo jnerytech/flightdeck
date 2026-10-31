@@ -201,4 +201,30 @@ describe("cofre-ui: backup", () => {
     expect(screen.queryByText(/^Novos:/)).toBeNull();
     expect(screen.queryByText(/Não foi possível ler/)).toBeNull();
   });
+
+  test("going back to Manter o que está no cofre after choosing the backup keeps the local secret", async () => {
+    const { store } = await open(await backupText());
+    await store.vault.restore(
+      {
+        id: "shared-id",
+        name: "github",
+        type: "token",
+        description: "",
+        tags: [],
+        createdAt: 1,
+        lastUsedAt: null,
+        allowedHosts: ["local"],
+      },
+      "local-value",
+    );
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    for (const label of ["Substituir pelo backup", "Manter o que está no cofre"]) {
+      await act(async () => {
+        fireEvent.click(screen.queryByLabelText(label) as HTMLElement);
+      });
+    }
+    await click("Aplicar");
+    expect(await store.vault.value("shared-id")).toBe("local-value");
+  });
 });

@@ -125,4 +125,18 @@ describe("cofre-ui: edit and details", () => {
     await open({ type: "password", value: VALUE });
     expect(screen.queryByRole("button", { name: /Copiar chave pública/ })).toBeNull();
   });
+
+  test("unticking an allowed host takes it off the secret", async () => {
+    const { store, meta } = await open({ type: "password", value: VALUE });
+    await click("Editar deploy");
+    const box = screen.queryByLabelText("box");
+    await act(async () => {
+      fireEvent.click(box as HTMLElement);
+    });
+    await act(async () => {
+      fireEvent.click(box as HTMLElement);
+    });
+    await click("Salvar alterações");
+    expect(store.vault.list()[0]).toMatchObject({ id: meta.id, allowedHosts: ["local"] });
+  });
 });
