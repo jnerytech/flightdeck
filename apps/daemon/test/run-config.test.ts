@@ -61,6 +61,11 @@ describe("run-config: o esquema", () => {
     ]);
   });
 
+  test("tipos errados dizem o que faltou: run que não é lista, processo que não é objeto", () => {
+    expect(errorsOf("run: 5\n")).toEqual(["run: tipo inválido"]);
+    expect(errorsOf("run:\n  - 3\n")).toEqual(["run.0: precisa ser um objeto"]);
+  });
+
   test("o comando é uma lista de textos: um texto só (que iria a um shell) é recusado", () => {
     expect(errorsOf('run:\n  - name: a\n    cmd: "bun run dev"\n')).toEqual([
       "run.0.cmd: precisa ser uma lista de textos",
