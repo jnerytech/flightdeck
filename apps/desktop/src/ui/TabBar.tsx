@@ -65,7 +65,7 @@ export function TabBar(props: {
   const activeLabel = active ? title(active, state, store) : "";
   return (
     <div className="flex h-9 items-end gap-1 border-b px-2">
-      {/* Only tabs in the tablist; the buttons act on the active tab and sit after it. */}
+      {/* Only tabs (and the presentation wrappers that hold them) in the tablist; the move and pin buttons act on the active tab and sit after it. */}
       <div role="tablist" aria-label={t("tabs.list")} className="flex min-w-0 items-end gap-0.5">
         {tabs.tabs.map((tab) => {
           const label = title(tab, state, store);
@@ -77,59 +77,83 @@ export function TabBar(props: {
           // A production server is easy to mistake for another: its tab gets a red border.
           const prod = ssh ? isProd(ssh.tags) : undefined;
           return (
-            <button
+            // The wrapper is invisible to the tablist: the tab and its × are siblings inside it.
+            <div
               key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              {...(tab.pinned ? { "aria-label": label } : {})}
+              role="presentation"
               {...(prod === undefined ? {} : { "data-prod": String(prod) })}
               className={cn(
-                "flex min-w-0 max-w-48 items-center gap-1.5 rounded-t-md border border-b-0 px-2 py-1.5 text-sm",
+                "group flex min-w-0 max-w-48 items-center rounded-t-md border border-b-0 text-sm",
                 selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
                 prod && "border-2 border-destructive",
               )}
-              onClick={() => tabs.activate(tab.id)}
-              onAuxClick={(e) => {
-                // The middle button closes a tab (App opens items in a new tab with it).
-                if (e.button !== 1) return;
-                e.stopPropagation();
-                store.closeTab(tabs, tab.id);
-              }}
-              draggable
-              onDragStart={() => {
-                dragged.current = tab.id;
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                const id = dragged.current;
-                dragged.current = null;
-                if (id) tabs.move(id, tabs.tabs.indexOf(tab));
-              }}
             >
-              <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
-              {!tab.pinned && <span className="truncate">{label}</span>}
-              {!tab.pinned &&
-                ssh?.tags.map((tag) => (
-                  <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
-                    {tag}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                {...(tab.pinned ? { "aria-label": label } : { "aria-keyshortcuts": "Delete" })}
+                className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => tabs.activate(tab.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Delete") store.closeTab(tabs, tab.id);
+                }}
+                onAuxClick={(e) => {
+                  // The middle button closes a tab (App opens items in a new tab with it).
+                  if (e.button !== 1) return;
+                  e.stopPropagation();
+                  store.closeTab(tabs, tab.id);
+                }}
+                draggable
+                onDragStart={() => {
+                  dragged.current = tab.id;
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  const id = dragged.current;
+                  dragged.current = null;
+                  if (id) tabs.move(id, tabs.tabs.indexOf(tab));
+                }}
+              >
+                <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
+                {!tab.pinned && <span className="truncate">{label}</span>}
+                {!tab.pinned &&
+                  ssh?.tags.map((tag) => (
+                    <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
+                      {tag}
+                    </span>
+                  ))}
+                {badge && (
+                  <span
+                    data-badge={badge}
+                    className={cn(
+                      "shrink-0 rounded-full px-1.5 text-xs",
+                      badge === "needs-you"
+                        ? "bg-status-needs-you text-background"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                    title={t(`tabs.badge.${badge}`)}
+                  >
+                    {tab.pinned ? "" : t(`tabs.badge.${badge}`)}
                   </span>
-                ))}
-              {badge && (
-                <span
-                  data-badge={badge}
+                )}
+              </button>
+              {!tab.pinned && (
+                <button
+                  type="button"
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  aria-label={t("tabs.close", { title: label })}
                   className={cn(
-                    "shrink-0 rounded-full px-1.5 text-xs",
-                    badge === "needs-you"
-                      ? "bg-status-needs-you text-background"
-                      : "bg-muted text-muted-foreground",
+                    "mr-1 flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
+                    !selected && "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
                   )}
-                  title={t(`tabs.badge.${badge}`)}
+                  onClick={() => store.closeTab(tabs, tab.id)}
                 >
-                  {tab.pinned ? "" : t(`tabs.badge.${badge}`)}
-                </span>
+                  <X className="size-3.5" aria-hidden />
+                </button>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -153,17 +177,6 @@ export function TabBar(props: {
           >
             {active.pinned ? <PinOff /> : <Pin />}
           </Button>
-          {!active.pinned && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              aria-label={t("tabs.close", { title: activeLabel })}
-              onClick={() => store.closeTab(tabs, active.id)}
-            >
-              <X />
-            </Button>
-          )}
         </div>
       )}
       <Button
