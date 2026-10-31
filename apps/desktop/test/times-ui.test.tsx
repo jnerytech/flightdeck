@@ -163,6 +163,22 @@ describe("times-ui: the teams of a host", () => {
     expect(item.textContent).toContain("login · executora 2");
   });
 
+  test("Novo time takes the workers' personas, one per worker in order", async () => {
+    const { teams } = await open();
+    await click("Novo time");
+    await change("Objetivo", "com personas");
+    await change("Nome do time", "tp");
+    await change("Executoras", "2");
+    await change("Personas das executoras (opcional, separadas por vírgula)", "qa, revisor");
+    await click("Criar time");
+    await settle(() => row("tp") !== null);
+    const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
+    expect(members.filter((m) => m.name.includes("executora")).map((m) => m.persona)).toEqual([
+      "qa",
+      "revisor",
+    ]);
+  });
+
   test("Pausar and Retomar change the team's state; Mandar a todos sends to every member", async () => {
     const { teams, client } = await open();
     await click("Novo time");
