@@ -160,4 +160,30 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await poll(() => d.ptys.spawned.length === 1);
     expect(d.ptys.spawned[0]?.argv.slice(-2)).toEqual(["--persona", "qa"]);
   });
+
+  test("Iniciar em arena takes a persona per variant, and the comparison shows it", async () => {
+    const { store, hostId, projectId, d } = await open();
+    const card = d.board.createCard(projectId, { title: "Comparar", description: "faça" });
+    await act(async () => {
+      store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
+    });
+    await act(() => Bun.sleep(150));
+    await click("Iniciar em arena");
+    await settle(() => options("Persona da variante 1").length > 1);
+    await fill("Persona da variante 1", "host:seguranca");
+    const dialog = screen.queryByRole("dialog", { name: "Iniciar em arena" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
+    for (let i = 0; i < 100 && (await d.board.arena(card.id)).variants.length < 2; i++) {
+      await act(() => Bun.sleep(20));
+    }
+    expect((await d.board.arena(card.id)).variants.map((v) => v.persona)).toEqual([
+      "seguranca",
+      null,
+    ]);
+    const region = () => screen.queryByRole("region", { name: "Variante a" });
+    await settle(() => region()?.textContent?.includes("Revisor de segurança") === true);
+    expect(region()?.textContent).toContain("Revisor de segurança");
+  });
 });
