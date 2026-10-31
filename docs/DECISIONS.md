@@ -2336,7 +2336,7 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
   3. sessions with a standard name, in name order, with numbers compared as numbers (`· 2` before `· 10`);
   4. latest activity.
   - The groups are still ordered by latest activity.
-- **The persona filter lists the personas of the standard names.** It is kept with the other filters.
+- **The persona filter is phase 20's** (by the persona a session runs in). Phase 21 had its own, from the standard names; it went away when phase 20 landed, and the standard names keep their order inside the filtered list.
 - **The hub reloads once the host's `host.info` arrives.** Otherwise the first visit, made before the app knew the host has `names`, would show folder titles.
 
 ## Conversations, Teams and the palette

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { HUB_FILTER_KEY, loadHubFilter } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -25,7 +24,7 @@ async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
 }
 
 const PROJECT = "github.com/acme/flightdeck";
-const managed = (id: string, updatedAt: string) => ({
+const managed = (id: string, updatedAt: string, persona?: string) => ({
   id,
   name: null,
   cwd: `/r/${id}`,
@@ -37,6 +36,7 @@ const managed = (id: string, updatedAt: string) => ({
   createdAt: "2026-10-30T10:00:00.000Z",
   updatedAt,
   projectKey: PROJECT,
+  ...(persona ? { persona: { id: persona, name: persona, icon: null } } : {}),
 });
 const named = (sessionId: string, persona: string, number: number) => ({
   sessionId,
@@ -56,15 +56,15 @@ const group = () =>
   ].map((li) => li.getAttribute("aria-label") ?? "");
 
 /** Three idle sessions of one project, the newest first by activity, on Sessões. */
-async function open(features: string[]) {
+async function open(features: string[], personas: Record<string, string> = {}) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
   daemon.hub.managed = [
-    managed("m3", "2026-10-30T12:03:00.000Z"),
-    managed("m2", "2026-10-30T12:02:00.000Z"),
-    managed("m1", "2026-10-30T12:01:00.000Z"),
+    managed("m3", "2026-10-30T12:03:00.000Z", personas.m3),
+    managed("m2", "2026-10-30T12:02:00.000Z", personas.m2),
+    managed("m1", "2026-10-30T12:01:00.000Z", personas.m1),
   ];
   daemon.hub.names = [
     named("m1", "revisor", 10),
@@ -98,27 +98,15 @@ describe("nomes-ui: the standard names in Sessões", () => {
     expect(daemon.commands.some((c) => c.type === "names.list")).toBe(false);
   });
 
-  test("the persona filter keeps the sessions of one persona", async () => {
-    await open(["names"]);
+  test("with phase 20's persona filter, the sessions of one persona keep their standard names in order", async () => {
+    await open(["names"], { m1: "revisor", m2: "revisor" });
+    await settle(() => group()[0] === "flightdeck · geral · 1");
     await sidebar.openFilters();
     const persona = screen.queryByLabelText("Persona") as HTMLSelectElement | null;
     expect(persona).not.toBeNull();
-    expect([...(persona?.options ?? [])].map((o) => o.textContent)).toEqual([
-      "Todas as personas",
-      "geral",
-      "revisor",
-    ]);
     await act(async () => {
       fireEvent.change(persona as HTMLElement, { target: { value: "revisor" } });
     });
     expect(group()).toEqual(["flightdeck · revisor · 2", "flightdeck · revisor · 10"]);
-  });
-
-  test("the persona filter is kept with the others; none kept means all", () => {
-    const stored = (value: object) => ({
-      getItem: (key: string) => (key === HUB_FILTER_KEY ? JSON.stringify(value) : null),
-    });
-    expect(loadHubFilter(stored({ persona: "revisor" })).persona).toBe("revisor");
-    expect(loadHubFilter(stored({})).persona).toBeUndefined();
   });
 });
