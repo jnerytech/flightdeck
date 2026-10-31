@@ -147,6 +147,7 @@ export function TerminalPage(props: {
 
   return (
     <Page
+      fill
       title={t("terminalUi.title")}
       subtitle={<span role="status">{status}</span>}
       actions={
@@ -200,7 +201,7 @@ export function TerminalPage(props: {
         data-terminal-area
         role="application"
         aria-label={t("terminalUi.title")}
-        className="h-[60vh] w-full"
+        className="min-h-80 w-full flex-1"
         onContextMenu={(e) => {
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY });

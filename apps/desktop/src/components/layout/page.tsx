@@ -3,13 +3,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 /**
  * Every screen: title, subtitle, actions on the right and an optional toolbar, fixed above a body
- * that scrolls by itself (the shell never scrolls).
+ * that scrolls by itself (the shell never scrolls), or, with `fill`, fills the rest of the height.
  */
 export function Page(props: {
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   toolbar?: ReactNode;
+  /** The body is a column that fills the rest of the height (a terminal), not a scrolling page. */
+  fill?: boolean;
   children: ReactNode;
 }) {
   const id = useId();
@@ -31,9 +33,15 @@ export function Page(props: {
         </div>
         {props.toolbar}
       </div>
-      <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
-        <div className="px-6 py-4">{props.children}</div>
-      </ScrollArea>
+      {props.fill ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-4">
+          {props.children}
+        </div>
+      ) : (
+        <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
+          <div className="px-6 py-4">{props.children}</div>
+        </ScrollArea>
+      )}
     </section>
   );
 }
