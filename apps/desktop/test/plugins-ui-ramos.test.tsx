@@ -296,3 +296,50 @@ describe("plugins-ui: atualização, casos de borda", () => {
     expect(screen.queryByText("O conteúdo da nova versão não pôde ser mostrado.")).not.toBeNull();
   });
 });
+
+describe("plugins-ui: fechar com Esc", () => {
+  const escape = async () => {
+    await act(async () => {
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    });
+    await act(() => Bun.sleep(100));
+  };
+
+  test("Esc fecha o diálogo de instalar e o de atualizar sem fazer nada", async () => {
+    const { fake } = await open(
+      (ctx) => [
+        { args: ["marketplace", "update"], stdout: ok("marketplace-update") },
+        {
+          args: ["list", "--json", "--available"],
+          stdout: JSON.stringify({
+            installed: [
+              {
+                id: "deploy-tools@acme",
+                version: "1.2.0",
+                scope: "user",
+                enabled: true,
+                installPath: ctx.installed,
+              },
+            ],
+            available: [{ pluginId: "outro@acme", name: "outro", marketplaceName: "acme" }],
+          }),
+        },
+      ],
+      ({ marketplace }) =>
+        write(join(marketplace, "plugins/deploy-tools"), {
+          ".claude-plugin/plugin.json": JSON.stringify({ name: "deploy-tools", version: "1.3.0" }),
+        }),
+    );
+    await click("Atualizar deploy-tools");
+    await settle(() => dialog("Atualizar deploy-tools") !== null);
+    await escape();
+    expect(dialog("Atualizar deploy-tools")).toBeNull();
+    await tab("Disponíveis");
+    await settle(() => screen.queryByRole("button", { name: "Instalar outro" }) !== null);
+    await click("Instalar outro");
+    await settle(() => dialog("Instalar outro") !== null);
+    await escape();
+    expect(dialog("Instalar outro")).toBeNull();
+    expect(calls(fake).filter((c) => /^plugin (install|update|uninstall)/.test(c))).toEqual([]);
+  });
+});
