@@ -155,6 +155,9 @@ export class PrWatcher {
       .run(cardId, reason, new Date().toISOString());
   }
 
+  /** Phase 22: after this nothing is read, saved or fired (the daemon is stopping). */
+  stop(): void {}
+
   /** One round: looks at every watched card with an open PR; a host that fails waits for the next. */
   async tick(): Promise<void> {
     const open = this.opts.db

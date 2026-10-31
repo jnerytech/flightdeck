@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli } from "../src/board/pr.ts";
+import { AzureDevOpsCli, type PrProvider } from "../src/board/pr.ts";
 import { PrWatcher, type WatchTrigger } from "../src/watch/watch.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -281,5 +281,54 @@ describe("vigiar-ado: the watcher", () => {
     az.respond([{ args: ["repos", "pr", "show"], code: 1 }]);
     await watcher.tick();
     expect(triggers).toEqual([]);
+  });
+
+  test("a watcher that stops reads nothing more, and a look in flight saves and fires nothing", async () => {
+    const { ctx, card } = await watched([]);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = 0;
+    const provider = (slow: boolean): PrProvider => ({
+      create: async () => PR,
+      url: async () => null,
+      status: async () => ({ state: "open", checks: null }),
+      comments: async () => [],
+      buildLog: async () => "",
+      health: async () => {
+        asked++;
+        if (slow) await gate;
+        return {
+          checks: [{ name: "CI", state: "failing", kind: "build", buildId: "88" }],
+          conflicts: false,
+        };
+      },
+    });
+    const fired: WatchTrigger[] = [];
+    const make = (slow: boolean, into: WatchTrigger[]) =>
+      new PrWatcher({
+        db: ctx.store.db,
+        board: ctx.board,
+        provider: () => provider(slow),
+        onTrigger: (trigger) => {
+          into.push(trigger);
+        },
+      });
+    const watcher = make(true, fired);
+    watcher.setEnabled(card.id, true);
+    const inFlight = watcher.tick();
+    await Bun.sleep(20);
+    watcher.stop();
+    release();
+    await inFlight;
+    expect(fired).toEqual([]);
+    const asking = asked;
+    await watcher.tick();
+    expect(asked).toBe(asking);
+    // Nothing was saved either: a watcher that starts later finds everything new.
+    const later: WatchTrigger[] = [];
+    await make(false, later).tick();
+    expect(later.map((t) => t.failed.map((c) => c.name))).toEqual([["CI"]]);
   });
 });

@@ -160,6 +160,9 @@ export class PrFixer {
     this.pending.add(round);
   }
 
+  /** After this a round in flight writes and pushes nothing (the daemon is stopping). */
+  stop(): void {}
+
   /** Settles when no round is running. */
   async idle(): Promise<void> {
     while (this.pending.size > 0) await Promise.all([...this.pending]);

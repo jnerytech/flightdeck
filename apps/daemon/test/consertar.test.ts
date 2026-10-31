@@ -199,6 +199,56 @@ describe("consertar: what goes wrong inside a round", () => {
   });
 });
 
+describe("consertar: surprises and shutdown", () => {
+  test("an error nobody expected ends the round as failed, and the card asks for you", async () => {
+    const f = await fixture();
+    f.host.statusFails = true;
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    // The round does not crash the daemon: waiting for it gives no error.
+    expect(
+      await f.fixer.idle().then(
+        () => null,
+        (error: Error) => error.message,
+      ),
+    ).toBeNull();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("failed");
+    expect(round?.summary).toContain("unexpected error: boom");
+    expect(f.watcher.status(f.card.id).status).toBe("needs_you");
+    expect(f.gitCalls.some((args) => args[0] === "push")).toBe(false);
+  });
+
+  test("a round in flight when the fixer stops writes and pushes nothing", async () => {
+    let change: () => void = () => {};
+    const f = await fixture({ settings: { checks: ["bun test"] }, duringChecks: () => change() });
+    change = () => f.fixer.stop();
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    expect(f.fixer.rounds(f.card.id)[0]?.status).toBe("running");
+    expect(f.gitCalls.some((args) => args[0] === "push")).toBe(false);
+    expect(f.commitsAhead()).toBe("1");
+  });
+
+  test("a round the daemon left running when it stopped is failed when it starts again", async () => {
+    const f = await fixture();
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    f.store.db.query("UPDATE pr_watch_rounds SET status = 'running', ended_at = NULL").run();
+    expect(f.fixer.rounds(f.card.id)[0]?.status).toBe("running");
+    const { PrFixer } = await import("../src/watch/fix.ts");
+    new PrFixer({
+      db: f.store.db,
+      board: f.board,
+      watcher: f.watcher,
+      checks: { run: async () => ({ exitCode: 0, output: "" }) },
+    });
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("failed");
+    expect(round?.summary).toContain("the daemon stopped");
+    expect(round?.endedAt).not.toBeNull();
+  });
+});
+
 describe("consertar: the limits", () => {
   /** Runs `n` rounds in a row, each with something to push and the cost given. */
   async function rounds(f: Awaited<ReturnType<typeof fixture>>, n: number, cost: number) {

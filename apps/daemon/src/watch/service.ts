@@ -31,6 +31,8 @@ export class PrWatch {
 
   stop(): void {
     if (this.timer) clearInterval(this.timer);
+    this.opts.watcher.stop();
+    this.opts.fixer.stop();
   }
 
   info(cardId: string): WatchInfo {

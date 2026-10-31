@@ -80,11 +80,15 @@ export async function fixture(options: FixtureOptions = {}) {
     log: "ERRO: 3 testes falharam",
     comments: [] as PrComment[],
     logFails: false,
+    statusFails: false,
   };
   const provider: PrProvider = {
     create: async () => PR,
     url: async () => null,
-    status: async () => ({ state: host.state, checks: null }),
+    status: async () => {
+      if (host.statusFails) throw new Error("boom");
+      return { state: host.state, checks: null };
+    },
     comments: async () => host.comments,
     health: async () => ({ checks: [], conflicts: false }),
     buildLog: async () => {
