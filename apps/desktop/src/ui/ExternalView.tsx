@@ -1,6 +1,7 @@
 import { Radio } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { PersonaSwitch } from "@/components/personas/persona-switch";
 import { Composer, SessionHeader, SessionPane } from "@/components/session/parts";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,14 @@ export function ExternalView(props: {
               >
                 {t("claudeHere.viewTerminal")}
               </Button>
+            )}
+            {session?.controllable && hasFeature(host?.hostInfo?.features, "personas", false) && (
+              <PersonaSwitch
+                store={store}
+                hostId={hostId}
+                target={{ claudeSessionId: id }}
+                current={null}
+              />
             )}
             {session?.cwd && (
               <TerminalButton
