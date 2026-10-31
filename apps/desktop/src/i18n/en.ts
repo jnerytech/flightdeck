@@ -27,6 +27,13 @@ export const en: Dictionary = {
       clear: "Back to normal",
       note: "In an open session, the persona works as an instruction in the conversation, not in the system prompt.",
     },
+    subagents: {
+      label: "Personas as subagents",
+      all: "All: the pack's, the host's and the project's",
+      project: "Only the project's",
+      none: "None",
+      hint: "The project's sessions get the personas as persona-<id> agents, for Claude to delegate to.",
+    },
     picker: {
       label: "Persona",
       none: "None",

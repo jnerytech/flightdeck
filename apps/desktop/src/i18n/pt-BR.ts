@@ -29,6 +29,13 @@ export const ptBR = {
       clear: "Voltar ao normal",
       note: "Numa sessão aberta, a persona vale como instrução da conversa, não do sistema.",
     },
+    subagents: {
+      label: "Personas como subagentes",
+      all: "Todas: do pacote, do host e do projeto",
+      project: "Só as do projeto",
+      none: "Nenhuma",
+      hint: "As sessões do projeto ganham as personas como agentes persona-<id>, para o Claude delegar.",
+    },
     picker: {
       label: "Persona",
       none: "Nenhuma",

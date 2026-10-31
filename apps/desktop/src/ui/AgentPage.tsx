@@ -1,6 +1,8 @@
 import { Page } from "@/components/layout/page";
+import { SubagentsSwitch } from "@/components/personas/subagents-switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AppStore } from "../lib/app-store.ts";
+import { hasFeature } from "../lib/version.ts";
 import { AgentFiles } from "./AgentFiles.tsx";
 import { AgentMcp } from "./AgentMcp.tsx";
 
@@ -13,8 +15,12 @@ export function AgentPage(props: {
 }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
+  const host = store.getState().hosts.find((h) => h.id === hostId);
   return (
     <Page title={t("agent.title", { project: props.projectName })} subtitle={t("agent.subtitle")}>
+      {hasFeature(host?.hostInfo?.features, "personas", false) && (
+        <SubagentsSwitch store={store} hostId={hostId} projectId={projectId} />
+      )}
       <Tabs defaultValue="mcp">
         <TabsList aria-label={t("agent.tabs")}>
           <TabsTrigger value="mcp">{t("agent.tabMcp")}</TabsTrigger>
