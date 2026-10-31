@@ -34,7 +34,7 @@ export interface IssueProvider {
 }
 
 /** GitHub authors whose content is yours: you, and people with write access to the repository. */
-const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+export const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 const GH_FIELDS = "number,title,body,url,author,labels,createdAt,authorAssociation";
 
 interface GhIssue {
