@@ -190,7 +190,10 @@ export class SessionManager {
     return session;
   }
 
-  create(payload: CommandPayload<"session.create">): { sessionId: string } {
+  create(
+    payload: CommandPayload<"session.create">,
+    _extra: { unattended?: boolean } = {},
+  ): { sessionId: string } {
     const cwd = resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const id = ulid();
     // Resolved before anything is created: a missing, untrusted or invalid persona leaves no session.

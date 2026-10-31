@@ -27,6 +27,10 @@ export interface WatchSettings {
   maxTurns: number | null;
   /** The persona the fixing session runs in. */
   persona: string;
+  /** Rounds in a row that fail before the card asks for you. */
+  maxFailures: number;
+  /** Estimated cost of every fixing round of the project in a day, in US$; `null` for no limit. */
+  dailyUsd: number | null;
 }
 
 export interface PrWatcherOptions {
@@ -42,9 +46,11 @@ const DEFAULT_SETTINGS: WatchSettings = {
   enabled: false,
   maxRounds: 3,
   checks: [],
-  budgetUsd: null,
-  maxTurns: null,
+  budgetUsd: 5,
+  maxTurns: 30,
   persona: "revisor",
+  maxFailures: 2,
+  dailyUsd: 20,
 };
 
 /** What the last look found, to tell what got worse at the next one. */
@@ -107,6 +113,13 @@ export class PrWatcher {
       )
       .run(cardId, enabled === null ? null : Number(enabled), new Date().toISOString());
   }
+
+  /** `needs_you` once a limit was hit or a round failed for good; `setEnabled` starts over. */
+  status(_cardId: string): { status: "watching" | "needs_you"; reason: string | null } {
+    return { status: "watching", reason: null };
+  }
+
+  markNeedsYou(_cardId: string, _reason: string): void {}
 
   /** One round: looks at every watched card with an open PR; a host that fails waits for the next. */
   async tick(): Promise<void> {

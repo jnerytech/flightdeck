@@ -179,9 +179,11 @@ describe("vigiar-ado: the watcher", () => {
       enabled: false,
       maxRounds: 3,
       checks: [],
-      budgetUsd: null,
-      maxTurns: null,
+      budgetUsd: 5,
+      maxTurns: 30,
       persona: "revisor",
+      maxFailures: 2,
+      dailyUsd: 20,
     });
     watcher.setSettings(project.id, { enabled: true, maxRounds: 2 });
     expect(watcher.settings(project.id)).toMatchObject({ enabled: true, maxRounds: 2 });

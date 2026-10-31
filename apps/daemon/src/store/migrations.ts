@@ -637,8 +637,30 @@ export const MIGRATIONS: readonly string[] = [
     card_id    TEXT PRIMARY KEY,
     enabled    INTEGER,
     snapshot   TEXT,
+    -- watching, or needs_you with the reason; the rounds before round_base do not count
+    status     TEXT NOT NULL DEFAULT 'watching',
+    reason     TEXT,
+    round_base INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE pr_watch_rounds (
+    id         TEXT PRIMARY KEY,
+    card_id    TEXT NOT NULL,
+    n          INTEGER NOT NULL,
+    status     TEXT NOT NULL,
+    trigger    TEXT NOT NULL,
+    summary    TEXT,
+    session_id TEXT,
+    cost_usd   REAL NOT NULL DEFAULT 0,
+    turns      INTEGER NOT NULL DEFAULT 0,
+    started_at TEXT NOT NULL,
+    ended_at   TEXT
+  );
+
+  CREATE INDEX pr_watch_rounds_card ON pr_watch_rounds (card_id);
+
+  ALTER TABLE card_runs ADD COLUMN fix_prompt TEXT;
 
   CREATE TABLE pr_watch_project (
     project_id TEXT PRIMARY KEY,

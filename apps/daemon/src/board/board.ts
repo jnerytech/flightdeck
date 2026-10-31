@@ -62,6 +62,14 @@ import {
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
 
+/** How a fix run (phase 22) ended: its first turn's result. */
+export interface FixResult {
+  sessionId: string | null;
+  costUsd: number;
+  isError: boolean;
+  error: string | null;
+}
+
 const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
 
 export const DEFAULT_PROMPT_TEMPLATE =
@@ -708,6 +716,14 @@ export class Board {
   onChecksFailing(listener: (cardId: string, failed: string[]) => void): () => void {
     this.checkWatchers.add(listener);
     return () => this.checkWatchers.delete(listener);
+  }
+
+  /** Phase 22: a run with a prompt of its own, settled when its first turn ends. */
+  async fixCard(
+    _id: string,
+    _opts: { prompt: string; persona?: PersonaRef | undefined },
+  ): Promise<FixResult> {
+    return { sessionId: null, costUsd: 0, isError: false, error: null };
   }
 
   /** Gets every card after each change; returns the function that stops it. */
