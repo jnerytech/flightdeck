@@ -598,6 +598,8 @@ export const Card = z.object({
       label: z.string(),
       model: z.string().nullable(),
       effort: EffortLevel.nullable(),
+      /** Phase 20: the id of the persona the variant runs in. */
+      persona: z.string().nullable().optional(),
     })
     .nullable()
     .default(null),

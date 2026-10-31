@@ -447,7 +447,13 @@ export class Board {
       issueExternal?: boolean;
       /** An arena variant: the arena's card, and what makes it different. */
       arenaOf?: string;
-      variant?: { label: string; model: string | null; effort: EffortLevel | null };
+      variant?: {
+        label: string;
+        model: string | null;
+        effort: EffortLevel | null;
+        /** Phase 20: the id of the persona the variant runs in. */
+        persona?: string | null;
+      };
     },
   ): Card {
     this.getProject(projectId);
@@ -519,12 +525,18 @@ export class Board {
           title: `${card.title} (${label})`,
           description: card.description,
           arenaOf: cardId,
-          variant: { label, model: wanted.model ?? null, effort: wanted.effort ?? null },
+          variant: {
+            label,
+            model: wanted.model ?? null,
+            effort: wanted.effort ?? null,
+            persona: wanted.persona?.id ?? wanted.persona?.definition?.id ?? null,
+          },
         });
         made.push(variant.id);
         await this.startCard(variant.id, {
           workflow: input.workflow,
           inputs: input.inputs,
+          persona: wanted.persona,
         });
       }
     } catch (error) {
@@ -571,7 +583,7 @@ export class Board {
       label: card.variant?.label ?? "?",
       model: card.variant?.model ?? null,
       effort: card.variant?.effort ?? null,
-      persona: null,
+      persona: card.variant?.persona ?? null,
       branch: card.branch,
       worktreePath: card.worktreePath,
       queued: card.queued,
