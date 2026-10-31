@@ -189,3 +189,140 @@ describe("run-ui: o preview em uma aba", () => {
     expect(csp).toContain("default-src 'self'");
   });
 });
+
+describe("run-ui: Run e Stop no card", () => {
+  /** The card's screen of a host whose project has the committed run.yaml. */
+  async function cardScreen() {
+    const ctx = await setup();
+    render(<App store={ctx.store} />);
+    await act(async () => {
+      ctx.store.router.push({
+        name: "card",
+        host: ctx.hostId,
+        projectId: ctx.projectId,
+        cardId: ctx.cardId,
+      });
+    });
+    return ctx;
+  }
+  const panel = () => screen.queryByRole("region", { name: "Ambiente de execução" });
+  const inPanel = () => within(panel() as HTMLElement);
+  const press = async (name: string) => {
+    const button = panel() ? inPanel().queryByRole("button", { name }) : null;
+    expect(button).not.toBeNull();
+    await act(async () => {
+      if (button) fireEvent.click(button);
+    });
+  };
+  /** Waits for what the panel shows, answering whether it did. */
+  const shows = (check: () => boolean) => until(check, 3000);
+
+  test("com o run.yaml ainda não confiado, o painel lista os comandos e só o Confiar libera o Run", async () => {
+    await cardScreen();
+    expect(await shows(() => panel() !== null)).toBe(true);
+    expect(inPanel().queryByText("prepare")).not.toBeNull();
+    expect(inPanel().queryByText("serve --port {{port.web}}")).not.toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+    await press("Confiar neste run.yaml");
+    const dialog = screen.queryByRole("alertdialog");
+    expect(dialog).not.toBeNull();
+    const confirm = within(dialog as HTMLElement).queryByRole("button", { name: "Confiar" });
+    expect(confirm).not.toBeNull();
+    await act(async () => {
+      if (confirm) fireEvent.click(confirm);
+    });
+    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).toBeNull();
+  });
+
+  test("Run mostra o setup, depois cada processo com o log e o preview; Stop encerra tudo", async () => {
+    const { store, hostId, projectId, runHost } = await cardScreen();
+    await store.runTrust(hostId, projectId, sha256(YAML));
+    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    await press("Run");
+    expect(await shows(() => inPanel().queryByText("Preparando (setup)…") !== null)).toBe(true);
+    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+    runHost?.finish("term-1", 0);
+    expect(await shows(() => inPanel().queryByText("Portas: web 41000") !== null)).toBe(true);
+    expect(inPanel().queryByText("web")).not.toBeNull();
+    expect(inPanel().queryByText("rodando")).not.toBeNull();
+    // The log is the process's terminal tab.
+    await press("Ver log de web");
+    expect(store.router.current).toMatchObject({ name: "terminal", host: hostId });
+    // The preview opens once the process answers (the fixture's wait answers at once).
+    expect(
+      await shows(() => inPanel().queryByRole("button", { name: "Abrir preview de web" }) !== null),
+    ).toBe(true);
+    await press("Abrir preview de web");
+    expect(store.router.current).toEqual({
+      name: "preview",
+      url: "http://127.0.0.1:41000/",
+      title: "web",
+    });
+    await act(async () => {
+      store.tabs.activate(store.tabs.tabs[0]?.id ?? "");
+    });
+    await press("Stop");
+    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    expect(runHost?.spawned.at(-1)?.killed).toBe(true);
+    expect(inPanel().queryByText("Encerrado")).not.toBeNull();
+  });
+
+  test("um setup que falha mostra o código, e o Run está lá para tentar de novo", async () => {
+    const { store, hostId, projectId, runHost } = await cardScreen();
+    await store.runTrust(hostId, projectId, sha256(YAML));
+    expect(await shows(() => inPanel().queryByRole("button", { name: "Run" }) !== null)).toBe(true);
+    await press("Run");
+    runHost?.finish("term-1", 3);
+    expect(await shows(() => inPanel().queryByText("o setup falhou (código 3)") !== null)).toBe(
+      true,
+    );
+    expect(inPanel().queryByText("Falhou")).not.toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Run" })).not.toBeNull();
+  });
+
+  test("um run.yaml com erros mostra os erros e não oferece Confiar nem Run", async () => {
+    const ctx = await setup();
+    git(join(ctx.root, "run-app"), "checkout", "-q", "-b", "main-2");
+    writeFileSync(
+      join(ctx.root, "run-app", ".flightdeck", "run.yaml"),
+      'run:\n  - name: a\n    cmd: "x"\n',
+    );
+    git(join(ctx.root, "run-app"), "commit", "-qam", "run.yaml quebrado");
+    git(join(ctx.root, "run-app"), "branch", "-f", "main");
+    render(<App store={ctx.store} />);
+    await act(async () => {
+      ctx.store.router.push({
+        name: "card",
+        host: ctx.hostId,
+        projectId: ctx.projectId,
+        cardId: ctx.cardId,
+      });
+    });
+    expect(await shows(() => panel() !== null)).toBe(true);
+    expect(
+      await shows(
+        () => inPanel().queryByText("run.0.cmd: precisa ser uma lista de textos") !== null,
+      ),
+    ).toBe(true);
+    expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+  });
+
+  test("sem run.yaml no projeto, o card não mostra o painel", async () => {
+    const ctx = await setup();
+    git(join(ctx.root, "run-app"), "rm", "-q", ".flightdeck/run.yaml");
+    git(join(ctx.root, "run-app"), "commit", "-qm", "sem run.yaml");
+    render(<App store={ctx.store} />);
+    await act(async () => {
+      ctx.store.router.push({
+        name: "card",
+        host: ctx.hostId,
+        projectId: ctx.projectId,
+        cardId: ctx.cardId,
+      });
+    });
+    await Bun.sleep(400);
+    expect(panel()).toBeNull();
+  });
+});
