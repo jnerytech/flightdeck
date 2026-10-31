@@ -78,10 +78,10 @@ describe("form-enter: dialogs are forms", () => {
   test("Nova automação: Enter advances a step until the last, and then saves", async () => {
     const s = store();
     const asked: string[] = [];
-    s.hostRequest = (async (_host: string, type: string) => {
+    s.hostCommand = (async (_host: string, type: string) => {
       asked.push(type);
-      return { ok: false, code: "bad_request", message: "recusado" };
-    }) as typeof s.hostRequest;
+      return null;
+    }) as typeof s.hostCommand;
     render(
       <TContext.Provider value={s.i18n.t}>
         <AutomationForm
@@ -104,7 +104,7 @@ describe("form-enter: dialogs are forms", () => {
     expect(asked).toEqual([]);
     expect(type("Salvar")).toBe("submit");
     await submit(formAround(screen.queryByRole("button", { name: "Salvar" })));
-    expect(asked).toEqual(["automations.save"]);
+    expect(asked).toEqual(["automation.save"]);
   });
 
   test("Novo servidor MCP: Enter saves into the .mcp.json", async () => {
