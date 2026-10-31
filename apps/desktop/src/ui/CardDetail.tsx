@@ -150,7 +150,11 @@ export function CardDetail(props: {
 
   const startArena = async (list: ArenaVariantInput[]) => {
     setArenaForm(false);
-    setArena(await store.hostCommand(hostId, "card.startArena", { cardId, variants: list }));
+    const variants = list.map(({ persona, ...rest }) => {
+      const ref = persona ? store.personaRef(persona) : null;
+      return { ...rest, ...(ref ? { persona: ref } : {}) };
+    });
+    setArena(await store.hostCommand(hostId, "card.startArena", { cardId, variants }));
   };
 
   const chooseVariant = async () => {
@@ -350,6 +354,17 @@ export function CardDetail(props: {
           <ArenaStartForm
             onStart={(list) => void startArena(list)}
             onClose={() => setArenaForm(false)}
+            {...(hasFeature(host?.hostInfo?.features, "personas", false) && {
+              persona: (n: number, value: string, onChange: (value: string) => void) => (
+                <PersonaPicker
+                  store={store}
+                  hostId={hostId}
+                  label={t("arenaUi.persona", { n })}
+                  value={value}
+                  onChange={onChange}
+                />
+              ),
+            })}
           />
         )}
         {choosing && (
@@ -366,6 +381,11 @@ export function CardDetail(props: {
             arena={arena}
             loadDiff={(variantId) => store.hostCommand(hostId, "card.diff", { cardId: variantId })}
             onChoose={setChoosing}
+            personaName={(id) =>
+              props.state.personas[hostId]?.find((p) => p.id === id)?.name ??
+              store.globalPersonas.list().find((p) => p.id === id)?.name ??
+              id
+            }
           />
         )}
         <div className="flex items-start gap-2">

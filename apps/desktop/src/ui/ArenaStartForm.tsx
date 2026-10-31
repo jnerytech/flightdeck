@@ -1,5 +1,5 @@
 import type { EffortLevel } from "@flightdeck/protocol";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,21 +21,26 @@ const MAX = 4;
 interface Draft {
   model: string;
   effort: string;
+  persona: string;
 }
 
 export interface ArenaVariantInput {
   model?: string;
   effort?: EffortLevel;
+  /** Phase 20: a value of the persona picker (a host: or app: prefix and the id). */
+  persona?: string;
 }
 
 /** "Iniciar em arena": 2 to 4 variants of the card's request, each with its own model and effort. */
 export function ArenaStartForm(props: {
   onStart(variants: ArenaVariantInput[]): void;
   onClose(): void;
+  /** Phase 20: the persona picker of variant `n`, when the host keeps personas. */
+  persona?(n: number, value: string, onChange: (value: string) => void): ReactNode;
 }) {
   const t = useT();
   const [drafts, setDrafts] = useState<Draft[]>(() =>
-    Array.from({ length: MIN }, () => ({ model: "", effort: "" })),
+    Array.from({ length: MIN }, () => ({ model: "", effort: "", persona: "" })),
   );
   const edit = (index: number, patch: Partial<Draft>) =>
     setDrafts(drafts.map((draft, i) => (i === index ? { ...draft, ...patch } : draft)));
@@ -45,6 +50,7 @@ export function ArenaStartForm(props: {
       drafts.map((draft) => ({
         ...(draft.model.trim() ? { model: draft.model.trim() } : {}),
         ...(draft.effort ? { effort: draft.effort as EffortLevel } : {}),
+        ...(draft.persona ? { persona: draft.persona } : {}),
       })),
     );
 
@@ -81,6 +87,7 @@ export function ArenaStartForm(props: {
                     </option>
                   ))}
                 </select>
+                {props.persona?.(n, draft.persona, (persona) => edit(i, { persona }))}
                 {n === drafts.length && n > MIN && (
                   <Button variant="ghost" size="sm" onClick={() => setDrafts(drafts.slice(0, -1))}>
                     {t("arenaUi.remove", { n })}
@@ -94,7 +101,7 @@ export function ArenaStartForm(props: {
           {drafts.length < MAX && (
             <Button
               variant="outline"
-              onClick={() => setDrafts([...drafts, { model: "", effort: "" }])}
+              onClick={() => setDrafts([...drafts, { model: "", effort: "", persona: "" }])}
             >
               {t("arenaUi.add")}
             </Button>

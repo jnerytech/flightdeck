@@ -1192,6 +1192,8 @@ export const en: Dictionary = {
     model: "Model of variant {n}",
     modelPlaceholder: "Model (host default)",
     effort: "Effort of variant {n}",
+    persona: "Variant {n} persona",
+    personaValue: "persona {name}",
     effortDefault: "Default effort",
     add: "Add variant",
     remove: "Remove variant {n}",

@@ -27,6 +27,8 @@ export function ArenaView(props: {
   arena: Arena;
   loadDiff(variantId: string): Promise<CardDiff | null>;
   onChoose(variant: ArenaVariant): void;
+  /** Phase 20: the name of a variant's persona, by its id. */
+  personaName?(id: string): string;
 }) {
   const t = useT();
   return (
@@ -45,6 +47,8 @@ function VariantColumn(props: {
   variant: ArenaVariant;
   loadDiff(variantId: string): Promise<CardDiff | null>;
   onChoose(variant: ArenaVariant): void;
+  /** Phase 20: the name of a variant's persona, by its id. */
+  personaName?(id: string): string;
 }) {
   const t = useT();
   const { variant } = props;
@@ -69,6 +73,8 @@ function VariantColumn(props: {
       <p className="text-muted-foreground text-xs">
         {variant.model ?? t("arenaUi.modelDefault")}
         {variant.effort && ` · ${t("arenaUi.effortValue", { effort: variant.effort })}`}
+        {variant.persona &&
+          ` · ${t("arenaUi.personaValue", { name: props.personaName?.(variant.persona) ?? variant.persona })}`}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
         <dt className="text-muted-foreground">{t("arenaUi.duration")}</dt>

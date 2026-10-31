@@ -1189,6 +1189,8 @@ export const ptBR = {
     model: "Modelo da variante {n}",
     modelPlaceholder: "Modelo (padrão do host)",
     effort: "Esforço da variante {n}",
+    persona: "Persona da variante {n}",
+    personaValue: "persona {name}",
     effortDefault: "Esforço padrão",
     add: "Adicionar variante",
     remove: "Remover variante {n}",
