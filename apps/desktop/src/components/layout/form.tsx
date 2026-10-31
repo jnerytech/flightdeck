@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useContext, useId } from "react";
+import { Spinner } from "@/components/feedback/busy";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -123,9 +124,11 @@ export function FormActions(props: {
         {props.extra}
         <Button
           type="submit"
-          disabled={props.disabled}
+          disabled={props.disabled || props.busy}
+          aria-busy={props.busy || undefined}
           {...(reason ? { "aria-describedby": id } : {})}
         >
+          {props.busy && <Spinner />}
           {props.submit}
         </Button>
       </div>
