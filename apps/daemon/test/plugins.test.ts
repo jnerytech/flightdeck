@@ -1054,6 +1054,34 @@ describe("plugins: pela CLI", () => {
       code: "invalid_state",
     });
   });
+
+  test("a prévia de atualização também aponta os monitores e os servidores MCP que entram e saem", async () => {
+    const { plugins, marketplace, installed } = world((ctx) =>
+      everything(ctx, [{ args: ["marketplace", "update"], stdout: OK("marketplace-update") }]),
+    );
+    const source = join(marketplace, "plugins/deploy-tools");
+    mkdirSync(join(installed, "monitors"), { recursive: true });
+    writeFileSync(
+      join(installed, "monitors/monitors.json"),
+      JSON.stringify([{ name: "velho", command: "a.sh", description: "d" }]),
+    );
+    writeFileSync(
+      join(installed, ".mcp.json"),
+      JSON.stringify({ mcpServers: { antigo: { command: "node" } } }),
+    );
+    mkdirSync(join(source, "monitors"), { recursive: true });
+    writeFileSync(
+      join(source, "monitors/monitors.json"),
+      JSON.stringify([{ name: "novo", command: "b.sh", description: "d" }]),
+    );
+    writeFileSync(
+      join(source, ".mcp.json"),
+      JSON.stringify({ mcpServers: { moderno: { command: "node" } } }),
+    );
+    const { diff } = await plugins.previewUpdate("deploy-tools@acme");
+    expect(diff.monitors).toEqual({ added: ["novo"], removed: ["velho"] });
+    expect(diff.mcpServers).toEqual({ added: ["moderno"], removed: ["antigo"] });
+  });
 });
 
 describe("plugins: protocolo", () => {
