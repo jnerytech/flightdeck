@@ -21,7 +21,7 @@ async function twoTabs() {
 }
 
 const closeButton = (title: string) => {
-  const found = screen.queryByRole("button", { name: `Fechar aba ${title}` });
+  const found = screen.queryByLabelText(`Fechar aba ${title}`);
   expect(found).not.toBeNull();
   return found as HTMLElement;
 };
@@ -39,7 +39,11 @@ describe("abas: o × de cada aba", () => {
       expect(close.parentElement).toBe(tab(title).parentElement);
       expect(close.parentElement?.getAttribute("role")).toBe("presentation");
       expect(tab(title).querySelector("button")).toBeNull();
+      // axe refuses a button among the tabs of a tablist: the mouse gets the ×, the keyboard and
+      // the screen reader get Delete (announced on the tab).
+      expect(close.getAttribute("aria-hidden")).toBe("true");
       expect(close.getAttribute("tabindex")).toBe("-1");
+      expect(tab(title).getAttribute("aria-keyshortcuts")).toBe("Delete");
       expect(close.className).toContain("size-6");
     }
   });
@@ -59,8 +63,8 @@ describe("abas: o × de cada aba", () => {
     await act(async () => {
       store.tabs.pin(store.tabs.activeId, true);
     });
-    expect(screen.queryByRole("button", { name: "Fechar aba Precisa de você" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Fechar aba Sessões" })).not.toBeNull();
+    expect(screen.queryByLabelText("Fechar aba Precisa de você")).toBeNull();
+    expect(screen.queryByLabelText("Fechar aba Sessões")).not.toBeNull();
   });
 
   test("the × shows on the active tab, and on the others under the pointer or the keyboard focus", async () => {

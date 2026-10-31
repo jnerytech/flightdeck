@@ -58,7 +58,7 @@ describe("abas: a barra de abas", () => {
     expect(names()).toEqual(["Precisa de você"]);
   });
 
-  test("the active tab's buttons pin it (icon only, on the left) and close it; the middle button closes any tab", async () => {
+  test("the active tab's button pins it (icon only, on the left), its × closes it; the middle button closes any tab", async () => {
     const store = setup();
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
@@ -72,7 +72,11 @@ describe("abas: a barra de abas", () => {
     });
     // The buttons are the active tab's: Sessões now.
     expect(screen.queryByRole("button", { name: "Desafixar aba Precisa de você" })).toBeNull();
-    await press("Fechar aba Sessões");
+    await act(async () => {
+      const close = screen.queryByLabelText("Fechar aba Sessões");
+      expect(close).not.toBeNull();
+      fireEvent.click(close as HTMLElement);
+    });
     expect(names()).toEqual(["Precisa de você"]);
     await act(async () => {
       store.tabs.open({ name: "costs" });

@@ -53,7 +53,7 @@ describe("abas: acessibilidade da barra de abas", () => {
       store.tabs.open({ name: "needs-you" });
       store.tabs.open({ name: "costs" });
     });
-    expect(screen.queryAllByRole("button", { name: /^Fechar aba / })).toHaveLength(3);
+    expect(screen.queryAllByLabelText(/^Fechar aba /)).toHaveLength(3);
     expect(await violations()).toEqual([]);
   });
 
