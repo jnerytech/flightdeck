@@ -52,7 +52,9 @@ async function traced(options: Parameters<typeof fixture>[0] = {}) {
 describe("rastro: from the card and its PR to sessions, cost, rounds and work item", () => {
   test("the trail lists the card's runs and the fixing sessions, with cost and checkpoints, the rounds and the work item", async () => {
     const f = await traced({ settings: { checks: [] } });
-    f.store.db.query("UPDATE cards SET issue_ref = 'AB#12' WHERE id = ?").run(f.card.id);
+    f.store.db
+      .query("UPDATE cards SET issue_ref = 'azure:acme/proj#12' WHERE id = ?")
+      .run(f.card.id);
     await f.fixer.onTrigger(f.trigger({ comments: [work(0.6)] }));
     await f.fixer.idle();
     const trace = f.traces.trace(f.card.id);
@@ -61,7 +63,7 @@ describe("rastro: from the card and its PR to sessions, cost, rounds and work it
       cardId: f.card.id,
       title: "Login",
       prUrl: PR_URL,
-      workItem: "AB#12",
+      workItem: "azure:acme/proj#12",
       costUsd: 1.5,
     });
     expect(trace.sessions.map((s) => s.kind)).toEqual(["run", "fix"]);
@@ -105,7 +107,7 @@ describe("rastro: from the card and its PR to sessions, cost, rounds and work it
   test("the generated description tells what the sessions did, the rounds and the work item", async () => {
     const f = await traced({ settings: { checks: [] } });
     f.store.db
-      .query("UPDATE cards SET issue_ref = 'AB#12', description = ? WHERE id = ?")
+      .query("UPDATE cards SET issue_ref = 'azure:acme/proj#12', description = ? WHERE id = ?")
       .run("Fazer o login funcionar", f.card.id);
     await f.fixer.onTrigger(f.trigger({ comments: [work(0, "troque o nome")] }));
     await f.fixer.idle();
