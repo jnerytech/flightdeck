@@ -133,11 +133,14 @@ describe("engine-agent", () => {
   test("a execução segura a vaga do card até terminar", async () => {
     const yaml =
       "steps:\n  - id: a\n    agent: { prompt: a }\n  - id: b\n    agent: { prompt: '[tool] b' }\n";
-    const { board, project, start, runWhen, allow } = await setup(yaml, {
+    const { board, project, store, start, runWhen, allow } = await setup(yaml, {
       board: { maxParallelRuns: 1 },
     });
     await start();
-    const asking = await runWhen((r) => r.steps[1]?.sessionId != null);
+    // Step b holds the slot while its permission request is open: allow only once it is.
+    const asking = await runWhen(
+      (r) => store.pendingPermissions(r.steps[1]?.sessionId ?? "").length > 0,
+    );
     const other = board.createCard(project.id, { title: "Outro", description: "oi" });
     await board.startCard(other.id);
     await Bun.sleep(50);
