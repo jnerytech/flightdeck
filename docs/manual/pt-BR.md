@@ -670,15 +670,15 @@ steps:
         agent: { continue: implement, prompt: "Os testes falharam:\n{{loop.lastCheck.output}}" }
   - id: review
     parallel:
-      - agent: { prompt: "Revise o diff com foco em segurança." }
-      - agent: { prompt: "Revise o diff com foco em legibilidade." }
+      - agent: { persona: seguranca, prompt: "Revise o diff com foco em segurança." }
+      - agent: { persona: revisor, prompt: "Revise o diff com foco em legibilidade." }
   - id: pr
     pr: {}
 ```
 
 | Etapa | O que faz |
 | --- | --- |
-| `agent` | Abre uma sessão na worktree do card. Com `continue: <id>`, manda a mensagem à sessão daquela etapa. A saída é o texto do assistente no turno. |
+| `agent` | Abre uma sessão na worktree do card. Com `continue: <id>`, manda a mensagem à sessão daquela etapa. Com `persona: <id>`, a sessão abre naquela persona. A saída é o texto do assistente no turno. |
 | `check` | Roda o comando na worktree. Guarda o código de retorno e os últimos 8 KB da saída. Se o comando falhar, a execução falha. |
 | `gate` | Pausa até você aprovar ou recusar, com nota opcional. A nota é a saída do gate. |
 | `loop` | Roda o `check` do `until`. Enquanto ele falhar, roda o `do` (no máximo `max` vezes). Esgotado o `max`, a execução pausa. |

@@ -687,15 +687,15 @@ steps:
         agent: { continue: implement, prompt: "The tests failed:\n{{loop.lastCheck.output}}" }
   - id: review
     parallel:
-      - agent: { prompt: "Review the diff with a focus on security." }
-      - agent: { prompt: "Review the diff with a focus on readability." }
+      - agent: { persona: seguranca, prompt: "Review the diff with a focus on security." }
+      - agent: { persona: revisor, prompt: "Review the diff with a focus on readability." }
   - id: pr
     pr: {}
 ```
 
 | Step | What it does |
 | --- | --- |
-| `agent` | Opens a session in the card's worktree. With `continue: <id>`, sends the message to that step's session. The output is the assistant's text in the turn. |
+| `agent` | Opens a session in the card's worktree. With `continue: <id>`, sends the message to that step's session. With `persona: <id>`, the session opens in that persona. The output is the assistant's text in the turn. |
 | `check` | Runs the command in the worktree. Keeps the exit code and the last 8 KB of output. If the command fails, the run fails. |
 | `gate` | Pauses until you approve or reject, with an optional note. The note is the gate's output. |
 | `loop` | Runs the `check` of `until`. While it fails, runs the `do` (at most `max` times). When `max` is exhausted, the run pauses. |
