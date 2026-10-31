@@ -44,6 +44,7 @@ async function open() {
 }
 
 async function tab(name: string) {
+  await settle(() => screen.queryByRole("tab", { name }) !== null);
   const element = screen.queryByRole("tab", { name });
   expect(element).not.toBeNull();
   await act(async () => {
@@ -59,6 +60,7 @@ describe("plugins-ui: a tela", () => {
   test("o item Plugins da barra abre a tela, com as três abas", async () => {
     await open();
     expect(screen.queryByRole("heading", { name: "Plugins", level: 1 })).not.toBeNull();
+    await settle(() => screen.queryByRole("tab", { name: "Marketplaces" }) !== null);
     for (const name of ["Instalados", "Disponíveis", "Marketplaces"]) {
       expect(screen.queryByRole("tab", { name })).not.toBeNull();
     }
