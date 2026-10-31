@@ -159,4 +159,18 @@ describe("conexoes-ui: ssh asks for a password", () => {
     await click("Salvar destino");
     expect(d.sent("ssh.save").at(-1)).toMatchObject({ auth: "password", secretRef: null });
   });
+  test("a host that refuses to be followed for askpass stays online and quiet", async () => {
+    const d = sshDaemon(cleanups, {
+      targets: [sshTarget({ id: "t1", name: "vps" })],
+      refuse: ["askpass.watch"],
+    });
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+    render(<App store={store} />);
+    await settle(() => d.sent("askpass.watch").length > 0);
+    await act(() => Bun.sleep(30));
+    expect(store.getState().hosts[0]?.status).toBe("online");
+    expect(store.getState().notices).toEqual([]);
+  });
 });

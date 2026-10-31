@@ -14,6 +14,8 @@ export interface SshDaemonOptions {
   importSkipped?: Array<{ alias: string; reason: string }>;
   /** The daemon announces `ssh` in `host.info`. */
   feature?: boolean;
+  /** Commands the daemon answers with an error (an older or a broken host). */
+  refuse?: string[];
 }
 
 /** A target as the daemon stores it, with the defaults `ssh.save` fills in. */
@@ -54,6 +56,7 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
     const ack = (data?: unknown): Answer => ({ data });
     const fail = (code: string, message: string): Answer => ({ error: { code, message } });
     const find = (targetId: unknown) => targets.find((t) => t.id === targetId);
+    if (options.refuse?.includes(type)) return fail("internal", `recusado: ${type}`);
     switch (type) {
       case "hello":
         return ack({
