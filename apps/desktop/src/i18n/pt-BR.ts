@@ -1352,6 +1352,7 @@ export const ptBR = {
     template: "Modelo de instruções",
     templatePlaceholder: "Instruções anexadas ao prompt de todo card",
     save: "Salvar projeto",
+    columnPersona: "Persona padrão em {column}",
     register: "Cadastrar projeto",
     hostLimit: "Limite do host",
     parallel: "Execuções em paralelo",

@@ -1,10 +1,11 @@
-import type { Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
+import type { BoardColumn, Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +24,11 @@ interface Draft {
   prProvider: PrProviderKind;
   setupScript: string;
   promptTemplate: string;
+  /** Phase 20: the default persona of each column, a plain id or "". */
+  personaByColumn: Partial<Record<BoardColumn, string>>;
 }
+
+const COLUMNS: BoardColumn[] = ["backlog", "in_progress", "waiting", "review", "done"];
 
 const EMPTY: Draft = {
   path: "",
@@ -32,6 +37,7 @@ const EMPTY: Draft = {
   prProvider: "none",
   setupScript: "",
   promptTemplate: "",
+  personaByColumn: {},
 };
 
 const fromProject = (p: Project): Draft => ({
@@ -41,6 +47,7 @@ const fromProject = (p: Project): Draft => ({
   prProvider: p.prProvider,
   setupScript: p.setupScript ?? "",
   promptTemplate: p.promptTemplate,
+  personaByColumn: p.personaByColumn,
 });
 
 /** Projects of one host (register and edit) and the host's limit of parallel runs. */
@@ -60,6 +67,8 @@ export function ProjectsPage(props: {
   rules: boolean;
   /** The host announces `agentcfg` (phase 12): the project's Agente screen. */
   agent: boolean;
+  /** The host announces `personas` (phase 20): a default persona per board column. */
+  personas?: boolean;
   onOpenAgent(project: { id: string; name: string }): void;
   /** Only the picker for Board or Workflows (a nav item with several projects). */
   focus?: "board" | "workflows";
@@ -98,6 +107,12 @@ export function ProjectsPage(props: {
           projectId: editing,
           ...fields,
           promptTemplate: draft.promptTemplate,
+          ...(props.personas && {
+            // An emptied column takes its default away.
+            personaByColumn: Object.fromEntries(
+              COLUMNS.map((column) => [column, draft.personaByColumn[column] || null]),
+            ),
+          }),
         })
       : await store.hostCommand(hostId, "project.add", {
           path: draft.path,
@@ -112,7 +127,7 @@ export function ProjectsPage(props: {
     }
   };
 
-  const field = (key: keyof Draft) => ({
+  const field = (key: Exclude<keyof Draft, "personaByColumn">) => ({
     value: draft[key],
     onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
   });
@@ -245,6 +260,26 @@ export function ProjectsPage(props: {
             placeholder={t("projectsUi.templatePlaceholder")}
             {...field("promptTemplate")}
           />
+          {editing &&
+            props.personas &&
+            COLUMNS.map((column) => (
+              <PersonaPicker
+                key={column}
+                store={store}
+                hostId={hostId}
+                label={t("projectsUi.columnPersona", {
+                  column: t(`kanban.columns.${column}`),
+                })}
+                value={draft.personaByColumn[column] ?? ""}
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    personaByColumn: { ...draft.personaByColumn, [column]: value },
+                  })
+                }
+                idsOnly
+              />
+            ))}
           {editing && list?.projects.find((p) => p.id === editing)?.worktreeInclude === false && (
             <div className="flex flex-col gap-2">
               <InlineNotice tone="info">{t("projectsUi.worktreeIncludeMissing")}</InlineNotice>

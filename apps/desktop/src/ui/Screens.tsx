@@ -510,6 +510,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           hostName={host?.name ?? route.host}
           rules={hasFeature(host?.hostInfo?.features, "rules", false)}
+          personas={hasFeature(host?.hostInfo?.features, "personas", false)}
           agent={hasFeature(host?.hostInfo?.features, "agentcfg", false)}
           onOpenAgent={({ id, name }) =>
             go({ name: "agent", host: route.host, projectId: id, projectName: name })

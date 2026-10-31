@@ -1354,6 +1354,7 @@ export const en: Dictionary = {
     template: "Instructions template",
     templatePlaceholder: "Instructions appended to every card's prompt",
     save: "Save project",
+    columnPersona: "Default persona in {column}",
     register: "Register project",
     hostLimit: "Host limit",
     parallel: "Parallel runs",
