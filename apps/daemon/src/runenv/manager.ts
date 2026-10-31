@@ -65,6 +65,16 @@ interface Entry {
   stopped: boolean;
 }
 
+/** The system refused to open a process (the terminal is off, the limit is reached). */
+class StartError extends Error {
+  constructor(
+    readonly what: string,
+    reason: string,
+  ) {
+    super(reason);
+  }
+}
+
 const LIVE: ReadonlySet<RunState["status"]> = new Set(["setup", "running"]);
 
 /** The processes of the cards' run environments: setup once, then each one in its own tab. */
@@ -163,60 +173,88 @@ export class RunManager {
 
   private async execute(entry: Entry, config: RunConfig, cwd: string): Promise<void> {
     const env = portEnv(entry.ports);
-    if (config.setup && entry.setup !== "done") {
-      entry.setup = "running";
-      const setup = this.opts.host.spawn({
-        argv: config.setup.map((part) => interpolatePorts(part, entry.ports)),
-        cwd,
-        env,
-      });
-      entry.setupTerminalId = setup.terminalId;
-      entry.setupExited = setup.exited;
-      this.emit(entry);
-      const code = await setup.exited;
-      if (entry.stopped) return;
-      if (code !== 0) {
-        entry.setup = "failed";
-        entry.status = "failed";
-        entry.error = `o setup falhou (código ${code})`;
-        this.emit(entry);
-        return;
+    const spawn = (what: string, argv: string[], extra: Record<string, string> = {}) => {
+      try {
+        return this.opts.host.spawn({
+          argv: argv.map((part) => interpolatePorts(part, entry.ports)),
+          cwd,
+          env: { ...env, ...extra },
+        });
+      } catch (error) {
+        throw new StartError(what, (error as Error).message);
       }
-      this.markSetupDone(entry.cardId);
-      entry.setup = "done";
+    };
+    try {
+      if (config.setup && entry.setup !== "done") {
+        await this.runSetup(entry, spawn("o setup", config.setup));
+        if (entry.status !== "setup") return;
+      }
+      entry.status = "running";
+      for (const proc of config.run) {
+        const extra = Object.fromEntries(
+          Object.entries(proc.env).map(([key, value]) => [
+            key,
+            interpolatePorts(value, entry.ports),
+          ]),
+        );
+        this.track(entry, proc.name, spawn(proc.name, proc.cmd, extra));
+      }
+      this.emit(entry);
+    } catch (error) {
+      await this.fail(entry, error as StartError);
     }
-    entry.status = "running";
-    for (const proc of config.run) {
-      const started = this.opts.host.spawn({
-        argv: proc.cmd.map((part) => interpolatePorts(part, entry.ports)),
-        cwd,
-        env: {
-          ...env,
-          ...Object.fromEntries(
-            Object.entries(proc.env).map(([key, value]) => [
-              key,
-              interpolatePorts(value, entry.ports),
-            ]),
-          ),
-        },
-      });
-      const process: ProcessEntry = {
-        name: proc.name,
-        terminalId: started.terminalId,
-        status: "running",
-        exitCode: null,
-        exited: started.exited,
-      };
-      entry.processes.push(process);
-      void started.exited.then((code) => {
-        process.status = "exited";
-        process.exitCode = code;
-        if (!entry.stopped && entry.processes.every((p) => p.status === "exited")) {
-          entry.status = "ended";
-        }
-        this.emit(entry);
-      });
+  }
+
+  /** The setup runs to its end; `entry.status` stays `setup` only when it worked. */
+  private async runSetup(entry: Entry, setup: { terminalId: string; exited: Promise<number> }) {
+    entry.setup = "running";
+    entry.setupTerminalId = setup.terminalId;
+    entry.setupExited = setup.exited;
+    this.emit(entry);
+    const code = await setup.exited;
+    if (entry.stopped) {
+      entry.status = "ended";
+      return;
     }
+    if (code !== 0) {
+      entry.setup = "failed";
+      entry.status = "failed";
+      entry.error = `o setup falhou (código ${code})`;
+      this.emit(entry);
+      return;
+    }
+    this.markSetupDone(entry.cardId);
+    entry.setup = "done";
+  }
+
+  private track(entry: Entry, name: string, started: ReturnType<RunHost["spawn"]>): void {
+    const process: ProcessEntry = {
+      name,
+      terminalId: started.terminalId,
+      status: "running",
+      exitCode: null,
+      exited: started.exited,
+    };
+    entry.processes.push(process);
+    void started.exited.then((code) => {
+      process.status = "exited";
+      process.exitCode = code;
+      if (!entry.stopped && entry.processes.every((p) => p.status === "exited")) {
+        entry.status = "ended";
+      }
+      this.emit(entry);
+    });
+  }
+
+  /** A start the system refused: what already runs ends, and the reason is shown. */
+  private async fail(entry: Entry, error: StartError): Promise<void> {
+    entry.stopped = true;
+    const running = entry.processes.filter((p) => p.status === "running");
+    for (const process of running) this.opts.host.kill(process.terminalId);
+    await Promise.all(running.map((p) => p.exited));
+    if (entry.setup === "running" || entry.status === "setup") entry.setup = "failed";
+    entry.status = "failed";
+    entry.error = `não consegui iniciar ${error.what}: ${error.message}`;
     this.emit(entry);
   }
 
