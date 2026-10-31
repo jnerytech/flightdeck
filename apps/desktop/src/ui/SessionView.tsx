@@ -125,6 +125,8 @@ export function SessionView(props: {
   terminal?: ReactNode;
   /** "Linha do tempo" (phase 12), when the host has checkpoints. */
   timeline?: ReactNode;
+  /** "Aplicar persona" (phase 20), when the host keeps personas. */
+  persona?: ReactNode;
   /** Estimated cost of the session and its subagents (phase 8); `null` when unknown. */
   costUsd?: number | null;
   /** The app's translator and clock (phase 10); pt-BR and the real clock when absent. */
@@ -177,6 +179,7 @@ export function SessionView(props: {
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
             {props.timeline}
+            {props.persona}
             {props.terminal}
             {closed ? (
               <Button variant="outline" size="sm" onClick={() => void actions.resume()}>

@@ -23,6 +23,12 @@ export const ptBR = {
     title: "Personas",
     subtitle:
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
+    apply: {
+      label: "Aplicar persona",
+      apply: "Aplicar",
+      clear: "Voltar ao normal",
+      note: "Numa sessão aberta, a persona vale como instrução da conversa, não do sistema.",
+    },
     picker: {
       label: "Persona",
       none: "Nenhuma",

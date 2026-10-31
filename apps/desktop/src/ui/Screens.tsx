@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
+import { PersonaSwitch } from "@/components/personas/persona-switch";
 import { useT } from "@/i18n/context";
 import {
   type AppState,
@@ -151,6 +152,16 @@ function ManagedSession(props: {
               claudeSessionId={session.claudeSessionId}
               cwd={summary?.cwd ?? session.cwd ?? ""}
               busy={isBusy(session.status)}
+            />
+          )
+        }
+        persona={
+          hasFeature(host?.hostInfo?.features, "personas", false) && (
+            <PersonaSwitch
+              store={store}
+              hostId={hostId}
+              target={{ sessionId }}
+              current={state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.persona ?? null}
             />
           )
         }

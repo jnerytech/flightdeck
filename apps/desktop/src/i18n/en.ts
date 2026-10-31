@@ -21,6 +21,12 @@ export const en: Dictionary = {
     title: "Personas",
     subtitle:
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
+    apply: {
+      label: "Apply persona",
+      apply: "Apply",
+      clear: "Back to normal",
+      note: "In an open session, the persona works as an instruction in the conversation, not in the system prompt.",
+    },
     picker: {
       label: "Persona",
       none: "None",
