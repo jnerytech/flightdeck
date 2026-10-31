@@ -2363,3 +2363,10 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 - **`--yes --folders` is the non-interactive mode, and a closed input fails.** An input that ends exits 1 with the way out, never loops.
 - **`doctor` makes no change but the config file.** `loadConfig` creates a missing config with a token, so a first `doctor` run leaves one.
 - **The app shows the first steps only with no host.** Three numbered steps plus the `doctor` line, each command with a copy button. Probe errors say the cause and the fix (`hostForm.probeRefused`, `hostForm.probeUnreachable`); the older `messages.*` labels keep their short text, which the host status uses.
+
+## The × on every tab
+
+- **The × is `aria-hidden` with `tabindex="-1"`, and the tab announces Delete.** The pattern from the UX research (a `role="presentation"` wrapper holding the `role="tab"` button and a sibling labelled × button inside the tablist) fails axe-core 4.10.2: `aria-required-children` (critical), "Element has children which are not allowed: button[aria-label]". `role="none"` on the × or on the wrapper does not help.
+- **The mouse gets the ×; the keyboard and the screen reader get Delete and Ctrl+W.** Every closable tab carries `aria-keyshortcuts="Delete"`. This is the VS Code approach.
+- **The × shows on the active tab, on hover and on focus-within, at 24 px.** A pinned tab has no ×.
+- **Tests find the × by its label.** An `aria-hidden` button has an empty accessible name, so `getByRole("button", { name })` never finds it; use `getByLabelText`.
