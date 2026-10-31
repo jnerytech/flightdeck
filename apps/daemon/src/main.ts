@@ -42,6 +42,7 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
+import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
@@ -123,6 +124,7 @@ export interface CliArgs {
     | "start"
     | "pair"
     | "setup"
+    | "doctor"
     | "service"
     | "history"
     | "hooks"
@@ -197,6 +199,7 @@ const USAGE = [
   "     flightdeckd restore <arquivo> [--config <arquivo>]   (com o daemon parado)",
   "     flightdeckd update --from <binário> [--allow-downgrade] [--config <arquivo>]",
   "     flightdeckd setup [--yes --folders <a,b>] [--config <arquivo>]   (primeira execução guiada)",
+  "     flightdeckd doctor [--config <arquivo>]   (o que falta para funcionar e como consertar)",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
@@ -268,6 +271,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       case "start":
       case "pair":
       case "setup":
+      case "doctor":
         args.command = flag;
         break;
       case "--yes":
@@ -1006,6 +1010,33 @@ async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<stri
   if (pending) yield pending;
 }
 
+/** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
+async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
+  const file = configPath(args);
+  const ctx = (deps.serviceContext ?? osServiceContext)(false);
+  const settings = claudeSettingsPath();
+  const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
+  let config: Config | null = null;
+  const load = () => {
+    config ??= loadConfig(file);
+    return config;
+  };
+  const report = await runDoctor({
+    config: load,
+    isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+    serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
+    healthy: () => waitHealthy(healthUrl(load()), 1_000, 250),
+    tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
+    hooks: () => hooksStatus(settings, hookTarget(load(), self)),
+    claudePath: () => whichOnPath("claude"),
+  });
+  for (const item of report.checks) {
+    deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);
+    if (item.fix) deps.log.log(`     -> ${item.fix}`);
+  }
+  return report.ok ? 0 : 1;
+}
+
 /** `flightdeckd setup`: the guided first run (folders, service started now, pair link). */
 async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
@@ -1514,6 +1545,10 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     if (args.command === "history") {
       runReindex(args, deps);
       deps.exit(0);
+      return null;
+    }
+    if (args.command === "doctor") {
+      deps.exit(await runDoctorCommand(args, deps));
       return null;
     }
     if (args.command === "setup") {
