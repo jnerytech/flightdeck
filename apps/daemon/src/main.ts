@@ -1061,6 +1061,14 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   }
   // The service only gets --config when the user gave one, always as an absolute path.
   printResult(deps, await installService(ctx, args.config ? resolve(args.config) : null));
+  if (ctx.dryRun) return;
+  // The Windows task only has a logon trigger and systemd may be slow: start it now and check.
+  if (ctx.platform === "win32") await startService(ctx);
+  const url = healthUrl(loadConfig(file));
+  if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
+    throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
+  }
+  deps.log.log(`daemon do serviço respondendo em ${url}`);
 }
 
 /**
