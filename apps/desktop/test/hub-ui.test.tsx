@@ -10,6 +10,7 @@ import {
   HUB_FILTER_KEY,
   type HubRow,
   hubGroups,
+  sharedMeta,
   loadHubFilter,
   saveHubFilter,
 } from "../src/lib/hub.ts";
@@ -162,6 +163,35 @@ const hubRow = (patch: Partial<HubRow>): HubRow => ({
   summary: null,
   persona: null,
   ...patch,
+});
+
+describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
+  test("a host shared by every row of a group is said once, in its header; each row keeps only what differs", async () => {
+    await setup();
+    const region = screen.getByRole("region", { name: "Projeto central" });
+    const header = region.querySelector("[data-slot='group-meta']");
+    expect(header?.textContent).toBe("alfa");
+    for (const title of ["repo-run", "repo-ask", "Gerenciada"]) {
+      const meta = (item(title) as HTMLElement).querySelector("[data-slot='row-meta']");
+      expect(meta?.textContent ?? "").not.toContain("alfa");
+    }
+    expect(
+      (item("repo-run") as HTMLElement).querySelector("[data-slot='row-meta']")?.textContent,
+    ).toBe("terminal");
+    expect(
+      (item("Gerenciada") as HTMLElement).querySelector("[data-slot='row-meta']")?.textContent,
+    ).toBe("Flightdeck");
+  });
+
+  test("a group whose rows all come from the same host and origin has no per-row meta at all", () => {
+    expect(sharedMeta([hubRow({}), hubRow({ key: "k2" })])).toEqual({
+      hostName: "alfa",
+      origin: "flightdeck",
+    });
+    expect(
+      sharedMeta([hubRow({}), hubRow({ key: "k2", hostName: "beta", origin: "terminal" })]),
+    ).toEqual({ hostName: null, origin: null });
+  });
 });
 
 describe("hub-ui", () => {
