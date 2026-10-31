@@ -454,13 +454,13 @@ describe("terminal-daemon", () => {
       onData: () => {},
       onExit: () => {},
     };
-    bunPty(spawn, 20)(start).kill();
+    bunPty(spawn, 20, "linux")(start).kill();
     expect(signals).toEqual(["SIGHUP"]);
     await Bun.sleep(60);
     expect(signals).toEqual(["SIGHUP", "SIGKILL"]);
     // A process that ends within the grace gets nothing more.
     signals.length = 0;
-    bunPty(spawn, 20)(start).kill();
+    bunPty(spawn, 20, "linux")(start).kill();
     ended(129);
     await Bun.sleep(60);
     expect(signals).toEqual(["SIGHUP"]);
