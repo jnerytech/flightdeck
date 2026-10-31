@@ -72,6 +72,7 @@ describe("terminal-ui: abrir um terminal", () => {
     store.openTerminal = async () => {
       opened++;
       await gate;
+      return null;
     };
     const button = () => screen.queryByRole("button", { name: "Novo terminal" }) as HTMLElement;
     await act(async () => {
