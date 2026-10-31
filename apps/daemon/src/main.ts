@@ -55,7 +55,7 @@ import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
 import { trackNames } from "./names/track.ts";
-import { pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { OpenSessionPersonas } from "./personas/open-session.ts";
@@ -959,7 +959,8 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
   if (args.rotate) rotateToken(file);
   const config = loadConfig(file);
-  const address = pairingAddress(config.bind, await tailscaleIp(deps.exec ?? spawnExec));
+  const tailscale = await tailscaleIp(deps.exec ?? spawnExec);
+  const address = pairingAddress(config.bind, tailscale);
   const link = formatPairingLink({
     address,
     port: config.port,
@@ -968,6 +969,11 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   });
   deps.log.log(link);
   deps.log.log(await renderQr(link));
+  if (tailscale && loopbackOnly(config.bind)) {
+    deps.log.error(
+      `o daemon escuta só em ${config.bind}: outra máquina não conecta no link acima. Para parear pela Tailscale (${tailscale}), ponha "bind": "0.0.0.0" e as faixas da Tailscale em "allowedNetworks" na config (veja o manual) e reinicie o daemon.`,
+    );
+  }
 }
 
 /**
