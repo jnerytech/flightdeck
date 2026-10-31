@@ -33,8 +33,15 @@ const entry = (alias: string, exists = false): SshImportEntry => ({
   exists,
 });
 
-async function open(importEntries: SshImportEntry[]) {
-  const d = sshDaemon(cleanups, { targets: [sshTarget({ id: "t1", name: "vps" })], importEntries });
+async function open(
+  importEntries: SshImportEntry[],
+  importSkipped: Array<{ alias: string; reason: string }> = [],
+) {
+  const d = sshDaemon(cleanups, {
+    targets: [sshTarget({ id: "t1", name: "vps" })],
+    importEntries,
+    importSkipped,
+  });
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   await store.addHost({ name: "pc", url: d.url, token: TOKEN });
@@ -91,5 +98,20 @@ describe("conexoes-ui: import from the SSH config", () => {
     await click("Importar do SSH config");
     expect(screen.queryByText("Nada para importar.")).not.toBeNull();
     expect(d.sent("ssh.import.apply")).toEqual([]);
+  });
+
+  test("Cancelar closes the preview without importing anything", async () => {
+    const { d } = await open([entry("web")]);
+    await click("Importar do SSH config");
+    expect(screen.queryByRole("button", { name: "Importar selecionados" })).not.toBeNull();
+    await click("Cancelar");
+    expect(screen.queryByRole("button", { name: "Importar selecionados" })).toBeNull();
+    expect(d.sent("ssh.import.apply")).toEqual([]);
+  });
+  test("an entry the daemon did not import is listed with its reason", async () => {
+    await open([entry("web"), entry("db")], [{ alias: "db", reason: "nome repetido" }]);
+    await click("Importar do SSH config");
+    await click("Importar selecionados");
+    expect(screen.queryByText("db: nome repetido")).not.toBeNull();
   });
 });

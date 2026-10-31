@@ -231,4 +231,41 @@ describe("conexoes-ui: the connection test", () => {
       (screen.queryByRole("button", { name: "Testar conexão" }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
+
+  test("the jump, the host that opens it, keep-alive, compression and local forwards are saved; ForwardAgent ticked and then cleared stays off", async () => {
+    const { d, store } = await open();
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await click("Editar lab");
+    await fill("Salto (ProxyJump)", "t1");
+    await fill("Aberto pelo host", hostId);
+    await fill("Manter a conexão viva (segundos)", "30");
+    await tick("Compressão");
+    await fill("Encaminhamentos locais (um por linha)", "8080:localhost:80\n\n9090:db:5432");
+    await tick("Encaminhar o agente (ForwardAgent)");
+    await click("Ligar o encaminhamento");
+    await tick("Encaminhar o agente (ForwardAgent)");
+    await click("Salvar destino");
+    const sent = d.sent("ssh.save")[0] as Record<string, unknown>;
+    expect(sent).toMatchObject({
+      id: "t2",
+      jump: "t1",
+      viaHost: hostId,
+      options: {
+        serverAliveInterval: 30,
+        compression: true,
+        localForward: ["8080:localhost:80", "9090:db:5432"],
+      },
+    });
+    expect((sent.options as Record<string, unknown>).forwardAgent).toBeUndefined();
+    expect(sent.confirm).toBeUndefined();
+  });
+
+  test("Cancelar closes the form without saving", async () => {
+    const { d } = await open();
+    await click("Editar lab");
+    await fill("Nome", "outro");
+    await click("Cancelar");
+    expect(screen.queryByRole("button", { name: "Salvar destino" })).toBeNull();
+    expect(d.sent("ssh.save")).toEqual([]);
+  });
 });

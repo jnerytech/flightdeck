@@ -10,6 +10,8 @@ export interface SshDaemonOptions {
   hostKey?: SshHostKeyCheck;
   test?: SshTestResult;
   importEntries?: SshImportEntry[];
+  /** What `ssh.import.apply` reports as not imported, with the reason. */
+  importSkipped?: Array<{ alias: string; reason: string }>;
   /** The daemon announces `ssh` in `host.info`. */
   feature?: boolean;
 }
@@ -140,7 +142,7 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
           targets.push(target);
           return target;
         });
-        return ack({ created, skipped: [] });
+        return ack({ created, skipped: options.importSkipped ?? [] });
       }
       default:
         if (type.endsWith(".watch")) return ack();
