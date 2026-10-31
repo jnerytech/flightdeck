@@ -1232,6 +1232,41 @@ To use one:
   Flightdeck never runs a snippet for Claude: a command Claude runs goes through Claude Code's own
   permissions.
 
+## Personas
+
+A **persona** is an engineering role Claude takes in a session: a name, a description, an icon, a
+suggested model, effort, tools and permission mode, and the instructions of the role. The
+**Personas** screen (sidebar, for hosts that keep them) lists them by where they live:
+
+- **Pack**: ten come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
+  performance, code reviewer, docs, frontend, DBA and the team coordinator of phase 21). Editing one
+  keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
+- **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
+  you **Trust** first) and **Global (this app)**, kept in the app.
+- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. A
+  persona never holds a secret: one is refused with the reason.
+- **Publish as agent** writes the persona to `.claude/agents/persona-<id>.md` through the
+  agent editor, with confirmation, so it also works for plain `claude`.
+
+Using one:
+
+- **+ New session**, **Ctrl+K** (**New session as <persona>**), **Card persona** next to **Start**,
+  and each variant of **Start in arena** have a **Persona** field. The session opens in it: the
+  instructions go after the system prompt, with the model, effort and tools it suggests. A persona
+  only takes away: its tools are a subset of the session's, and its permission mode counts only
+  when it is less permissive.
+- **Claude here** has its own picker and runs `flightdeckd claude --persona <id>` (the host's, the
+  project's and the pack's; the app's own have no id on the host).
+- On an open session (managed, or a terminal session you can control), **Apply persona** sends the
+  role as a message, and **Back to normal** ends it. The app says so: in an open session the persona
+  is an instruction of the conversation, not of the system.
+- **Personas as subagents** on the project's agent screen: **All** (the pack's, the host's and the
+  project's), **Only the project's** or **None**. They reach the sessions as `persona-<id>` agents,
+  for Claude to delegate to.
+- The project form has a **Default persona** per board column: a card that starts from that column
+  opens in it, unless you chose another.
+- The session list shows each session's persona and filters by it; **Costs** has **By persona**.
+
 ## Costs, budgets and quota
 
 ### Plan quota

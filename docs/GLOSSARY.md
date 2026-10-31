@@ -19,6 +19,10 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | histórico | history | As conversas já gravadas pelo Claude Code, que o app só lê |
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
 | snippet | snippet | Um comando ou prompt salvo, com variáveis `{{nome}}`; global (do app), do host ou do projeto |
+| persona | persona | Um papel de engenharia que o Claude assume numa sessão; do pacote, do host, do projeto ou global (do app) |
+| pacote | pack | As personas que vêm prontas com o Flightdeck; editada, vira "Pacote, editada" |
+| Aplicar persona | Apply persona | Manda o papel a uma sessão já aberta, como instrução da conversa; "Voltar ao normal" encerra |
+| subagente persona | persona subagent | Uma persona oferecida ao Claude como agente `persona-<id>`, para ele delegar |
 | destino SSH | SSH destination | Um servidor cadastrado em Conexões (host, porta, usuário, autenticação, etiquetas); a tela se chama Conexões / Connections |
 | chave do servidor | server key | A chave que o servidor SSH mostra; o app guarda o fingerprint e bloqueia se ele mudar |
 | cofre | vault | Onde ficam os segredos (chaves SSH, senhas, tokens, variáveis de ambiente), no cofre de credenciais do sistema |

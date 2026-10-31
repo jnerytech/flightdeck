@@ -1214,6 +1214,41 @@ Para usar:
   Flightdeck nunca roda um snippet pelo Claude: um comando que o Claude roda passa pelas permissões
   do próprio Claude Code.
 
+## Personas
+
+Uma **persona** é um papel de engenharia que o Claude assume numa sessão: nome, descrição, ícone,
+modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções do papel. A tela
+**Personas** (barra lateral, para hosts que as guardam) lista pelo lugar onde ficam:
+
+- **Pacote**: dez vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
+  performance, revisor de código, docs, frontend, DBA e o coordenador de time da Fase 21). Editar
+  uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
+- **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
+  você **Confia** antes) e **Globais (deste app)**, guardadas no app.
+- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. Uma
+  persona nunca guarda segredo: a que tiver é recusada com o motivo.
+- **Publicar como agente** grava a persona em `.claude/agents/persona-<id>.md` pelo
+  editor de agentes, com confirmação, e ela vale também para o `claude` puro.
+
+Para usar:
+
+- **+ Nova sessão**, **Ctrl+K** (**Nova sessão como <persona>**), **Persona do card** ao lado de
+  **Iniciar** e cada variante de **Iniciar em arena** têm um campo **Persona**. A sessão abre nela:
+  as instruções vão depois do prompt do sistema, com o modelo, o esforço e as ferramentas sugeridos.
+  Uma persona só tira: as ferramentas dela são parte das da sessão, e o modo dela só vale quando é
+  menos permissivo.
+- **Claude aqui** tem o seu seletor e roda `flightdeckd claude --persona <id>` (as do host, do
+  projeto e do pacote; as do app não têm id no host).
+- Numa sessão aberta (gerenciada, ou do terminal que você controla), **Aplicar persona** manda o
+  papel como mensagem, e **Voltar ao normal** encerra. O app avisa: numa sessão aberta, a persona
+  vale como instrução da conversa, não do sistema.
+- **Personas como subagentes**, na tela de agente do projeto: **Todas** (do pacote, do host e do
+  projeto), **Só as do projeto** ou **Nenhuma**. Elas chegam às sessões como agentes
+  `persona-<id>`, para o Claude delegar.
+- O formulário do projeto tem uma **Persona padrão** por coluna do board: um card que inicia daquela
+  coluna abre nela, a não ser que você escolha outra.
+- A lista de sessões mostra a persona de cada uma e filtra por ela; **Custos** tem **Por persona**.
+
 ## Custos, orçamentos e cota
 
 ### Cota do plano

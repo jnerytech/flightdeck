@@ -54,6 +54,9 @@ sessões num lugar só, sem abrir cada máquina.
 - Snippets: comandos e prompts salvos (globais, por host ou versionados no projeto), usados pelo
   Ctrl+K, numa aba de terminal ou com `/` numa sessão, importados do histórico do shell com os
   segredos ocultos.
+- Personas: papéis de engenharia que o Claude assume numa sessão (um pacote de dez, mais as suas
+  por host, projeto ou app), escolhidas ao iniciar uma sessão, um card ou uma variante da arena,
+  aplicadas a uma sessão aberta ou oferecidas ao Claude como subagentes.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.
