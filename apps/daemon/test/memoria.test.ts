@@ -647,3 +647,44 @@ describe("memoria: o daemon inteiro", () => {
     }
   });
 });
+
+describe("memoria: ramos do orçamento e dos nomes", () => {
+  test("regras em subpastas entram, arquivos que não são .md e pastas fundas demais ficam de fora, e skills sem SKILL.md ou sem nome são ignoradas", () => {
+    const ctx = setup();
+    const at = (root: string, path: string, text: string) => {
+      mkdirSync(join(root, path, ".."), { recursive: true });
+      writeFileSync(join(root, path), text);
+    };
+    at(ctx.repo, ".claude/rules/a/b.md", "b".repeat(8));
+    at(ctx.repo, ".claude/rules/nota.txt", "x");
+    at(ctx.repo, ".claude/rules/1/2/3/4/5/6/7/fundo.md", "x");
+    at(ctx.repo, ".claude/skills/sem-arquivo/leia.txt", "x");
+    at(ctx.repo, ".claude/skills/sem-nome/SKILL.md", "sem frontmatter\n");
+    at(ctx.repo, ".claude/skills/solto.txt", "x");
+    const paths = ctx.memory
+      .budget(ctx.repo)
+      .sources.filter((s) => s.kind === "rules" || s.kind === "skills")
+      .map((s) => s.path.replace(ctx.repo, "."));
+    expect(paths).toEqual(["./.claude/rules/a/b.md"]);
+  });
+
+  test("um arquivo de memória que é um link não é lido nem gravado", () => {
+    const { memory, repo, dir, put } = setup();
+    put("MEMORY.md", "x\n");
+    const outside = join(tempDir("fd-outside-"), "alvo.md");
+    writeFileSync(outside, "fora\n");
+    symlinkSync(outside, join(dir, "link.md"));
+    expect(codeOf(() => memory.read(repo, "link.md"))).toBe("bad_request");
+    expect(
+      codeOf(() =>
+        memory.write(repo, {
+          name: "link.md",
+          content: "x",
+          expectedHash: sha("fora\n"),
+          confirm: true,
+        }),
+      ),
+    ).toBe("bad_request");
+    expect(readFileSync(outside, "utf8")).toBe("fora\n");
+  });
+});
