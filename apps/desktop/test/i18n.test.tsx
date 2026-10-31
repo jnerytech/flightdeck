@@ -130,13 +130,21 @@ describe("i18n", () => {
     expect(formatAgo(20_000, ptT)).toBe("agora");
   });
 
+  test("the credential and connection errors say what to run, in both languages", () => {
+    for (const t of [ptT, enT]) {
+      expect(translateError("unauthorized", "x", t).title).toContain("flightdeckd pair");
+      expect(translateError("offline", "x", t).title).toContain("flightdeckd start");
+    }
+  });
+
   test("erros do daemon traduzidos pelo code, com a mensagem como detalhe; código desconhecido usa a mensagem", () => {
     expect(translateError("invalid_state", "sessão possivelmente em uso", ptT)).toEqual({
       title: "Não dá para fazer isso agora.",
       detail: "sessão possivelmente em uso",
     });
     expect(translateError("offline", "host desconhecido", enT)).toEqual({
-      title: "The host is offline.",
+      title:
+        "The host is offline: check that the daemon runs there (flightdeckd start) and that the network reaches its address.",
       detail: "host desconhecido",
     });
     expect(translateError("quota_exceeded", "cota estourada", enT)).toEqual({
