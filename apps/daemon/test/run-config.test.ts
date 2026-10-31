@@ -130,6 +130,9 @@ describe("run-config: o esquema", () => {
       "run.0.ready.http: precisa ser http ou https",
     ]);
     expect(errorsOf(withReady("não é url"))).toEqual(["run.0.ready.http: URL inválida"]);
+    expect(errorsOf(withReady("http://user:pw@127.0.0.1:3000/"))).toEqual([
+      "run.0.ready.http: sem usuário nem senha no endereço",
+    ]);
   });
 });
 
