@@ -22,6 +22,7 @@ import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
 import { type ContextBudget, contextBudget } from "./budget.ts";
+import { suggestCleanup } from "./suggest.ts";
 
 export interface MemoryFile {
   name: string;
@@ -186,8 +187,8 @@ export class ProjectMemory {
   }
 
   /** Entries that look duplicated, old, orphaned, broken or in contradiction. Read only. */
-  suggest(_project: string): MemorySuggestion[] {
-    return [];
+  suggest(project: string): MemorySuggestion[] {
+    return suggestCleanup(this.dir(project), (this.opts.clock ?? Date.now)());
   }
 
   private claudeDir(): string {
