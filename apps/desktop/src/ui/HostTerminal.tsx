@@ -1,5 +1,6 @@
 import type { TerminalInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { AsyncButton } from "@/components/feedback/busy";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -79,9 +80,9 @@ export function HostTerminal(props: { store: AppStore; host: HostView }) {
               </ul>
             )}
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => void store.openTerminal(host.id)}>
+              <AsyncButton size="sm" onClick={() => store.openTerminal(host.id)}>
                 {t("hostTerminal.open")}
-              </Button>
+              </AsyncButton>
               <Button variant="outline" size="sm" onClick={() => setAsking("off")}>
                 {t("hostTerminal.turnOff")}
               </Button>
