@@ -119,4 +119,18 @@ describe("snippets-uso: in a terminal tab", () => {
     });
     expect(store.getState().snippetChoice).toEqual({ hostId: null, snippetId: eco.id });
   });
+
+  test("Escape closes the list without choosing", async () => {
+    const { x, store } = await setup();
+    await act(async () => {
+      x.chord(" ");
+    });
+    await settle(() => offered().length > 0);
+    await act(async () => {
+      fireEvent.keyDown(picker() as HTMLElement, { key: "Escape" });
+    });
+    await settle(() => picker() === null);
+    expect(picker()).toBeNull();
+    expect(store.getState().snippetChoice).toBeNull();
+  });
 });

@@ -150,4 +150,14 @@ describe("snippets-ui: the screen", () => {
     await click("Confiar no arquivo");
     expect(screen.queryByText("Confiável: os comandos do arquivo podem rodar.")).not.toBeNull();
   });
+
+  test("cancelling the removal keeps the snippet", async () => {
+    await open(async ({ save }) => {
+      await save({ name: "status", type: "command", run: "git status" });
+    });
+    await click("Remover status");
+    await click("Cancelar");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(rowNames()).toEqual(["status"]);
+  });
 });

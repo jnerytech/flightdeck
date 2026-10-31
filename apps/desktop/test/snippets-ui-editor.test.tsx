@@ -160,4 +160,25 @@ describe("snippets-ui: the editor", () => {
     expect(within(list).queryByText("Arquivo versionado")).not.toBeNull();
     expect(await Bun.file(`${repo}/.flightdeck/snippets.yaml`).text()).toContain("bun run lint");
   });
+
+  test("a name the host refuses for another reason shows that reason and saves nothing", async () => {
+    await open();
+    await click("Novo snippet");
+    await fill("Nome", "x".repeat(65));
+    await fill("Comando", "echo oi");
+    await click("Salvar snippet");
+    expect(screen.queryByRole("alert")?.textContent).toContain("nome de 1 a 64 caracteres");
+    expect(screen.queryByRole("button", { name: "Transformar em ação" })).toBeNull();
+    expect(rowNames()).toEqual([]);
+  });
+
+  test("Cancelar closes the editor without saving", async () => {
+    await open();
+    await click("Novo snippet");
+    await fill("Nome", "rascunho");
+    await fill("Comando", "echo oi");
+    await click("Cancelar");
+    expect(screen.queryByRole("button", { name: "Salvar snippet" })).toBeNull();
+    expect(rowNames()).toEqual([]);
+  });
 });

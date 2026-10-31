@@ -151,4 +151,18 @@ describe("snippets-ui: import from the shell history", () => {
     expect(JSON.stringify(store.getState())).not.toContain(ENV_VALUE);
     expect(JSON.stringify(store.getState())).not.toContain(VAULT_VALUE);
   });
+
+  test("a line ticked and then unticked is not imported", async () => {
+    const { store, hostId } = await open();
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("git status") as HTMLElement);
+      fireEvent.click(screen.queryByLabelText("docker compose up -d") as HTMLElement);
+    });
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("docker compose up -d") as HTMLElement);
+    });
+    await click("Importar selecionados");
+    const listed = await store.hostCommand(hostId, "snippets.list", {});
+    expect(listed?.snippets.map((s) => s.run)).toEqual(["git status"]);
+  });
 });

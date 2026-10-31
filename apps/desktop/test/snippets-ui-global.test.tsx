@@ -111,4 +111,15 @@ describe("snippets-ui: the global snippets", () => {
     await click("Salvar snippet");
     expect(screen.queryByRole("alert")?.textContent).toContain("O snippet tem um segredo");
   });
+
+  test("a name the app refuses for another reason shows that reason and keeps nothing", async () => {
+    const { store } = await open();
+    await click("Novo snippet");
+    await fill("Nome", "x".repeat(65));
+    await fill("Comando", "echo oi");
+    await fill("Onde guardar", "global");
+    await click("Salvar snippet");
+    expect(screen.queryByRole("alert")?.textContent).toContain("nome de 1 a 64 caracteres");
+    expect(store.globalSnippets.list().map((s) => s.name)).toEqual(["global-um"]);
+  });
 });
