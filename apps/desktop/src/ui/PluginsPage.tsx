@@ -4,6 +4,7 @@ import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { InstallDialog, type InstallSource } from "@/components/plugins/install-dialog";
 import { InventoryView } from "@/components/plugins/inventory-view";
+import { UpdateDialog } from "@/components/plugins/update-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /**
  * Phase 26: the Claude Code plugins of the first online host that keeps them. A plugin runs code
@@ -35,6 +37,59 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
   const [looking, setLooking] = useState<InstalledPlugin | null>(null);
   const [installing, setInstalling] = useState<InstallSource | null>(null);
   const [folder, setFolder] = useState("");
+  const [updating, setUpdating] = useState<InstalledPlugin | null>(null);
+  const [asking, setAsking] = useState<
+    | { kind: "remove"; plugin: InstalledPlugin }
+    | { kind: "add" }
+    | { kind: "drop"; name: string }
+    | null
+  >(null);
+  const [source, setSource] = useState("");
+
+  /** A change that went through: the message of the CLI, and the lists again. */
+  const done = async (message: string | null, ok: boolean) => {
+    if (ok && message) store.success(message);
+    await reload();
+  };
+  const pin = async (plugin: InstalledPlugin) => {
+    if (!hostId) return;
+    await store.hostCommand(hostId, "plugins.pin", { plugin: plugin.id, pinned: !plugin.pinned });
+    await reload();
+  };
+  const confirmed = async () => {
+    const asked = asking;
+    setAsking(null);
+    if (!asked || !hostId) return;
+    if (asked.kind === "remove") {
+      const scope = ["user", "project", "local"].includes(asked.plugin.scope)
+        ? (asked.plugin.scope as "user" | "project" | "local")
+        : undefined;
+      const result = await store.hostCommand(hostId, "plugins.uninstall", {
+        plugin: asked.plugin.id,
+        ...(scope ? { scope } : {}),
+        confirm: true,
+      });
+      await done(t("pluginsUi.removed"), result?.outcome === "ok");
+    } else if (asked.kind === "add") {
+      const result = await store.hostCommand(hostId, "plugins.marketplaceAdd", {
+        source: source.trim(),
+        confirm: true,
+      });
+      setSource("");
+      await done(t("pluginsUi.marketplaceAdded"), result?.outcome === "ok");
+    } else {
+      const result = await store.hostCommand(hostId, "plugins.marketplaceRemove", {
+        name: asked.name,
+        confirm: true,
+      });
+      await done(t("pluginsUi.marketplaceRemoved"), result?.outcome === "ok");
+    }
+  };
+  const refreshMarketplace = async (name: string) => {
+    if (!hostId) return;
+    const result = await store.hostCommand(hostId, "plugins.marketplaceUpdate", { name });
+    await done(t("pluginsUi.marketplaceUpdated"), result?.outcome === "ok");
+  };
 
   const reload = useCallback(async () => {
     if (!hostId) return;
@@ -97,7 +152,41 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
                     {plugin.inventory?.attention && (
                       <Badge variant="destructive">{t("pluginsUi.attention")}</Badge>
                     )}
+                    {plugin.pinned && (
+                      <Badge variant="outline">
+                        {t("pluginsUi.pinned", { version: plugin.pinned.version })}
+                      </Badge>
+                    )}
                     <span className="flex-1" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={plugin.pinned !== null}
+                      aria-label={t("pluginsUi.update", { name: plugin.name })}
+                      onClick={() => setUpdating(plugin)}
+                    >
+                      {t("pluginsUi.updateShort")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={
+                        plugin.pinned
+                          ? t("pluginsUi.unpin", { name: plugin.name })
+                          : t("pluginsUi.pin", { name: plugin.name })
+                      }
+                      onClick={() => void pin(plugin)}
+                    >
+                      {plugin.pinned ? t("pluginsUi.unpinShort") : t("pluginsUi.pinShort")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t("pluginsUi.remove", { name: plugin.name })}
+                      onClick={() => setAsking({ kind: "remove", plugin })}
+                    >
+                      {t("pluginsUi.removeShort")}
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -146,6 +235,23 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             </ul>
           </TabsContent>
           <TabsContent value="marketplaces">
+            <div className="mb-3 flex flex-col gap-1 text-sm">
+              <label htmlFor="plugins-source">{t("pluginsUi.source")}</label>
+              <div className="flex gap-2">
+                <Input
+                  id="plugins-source"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  disabled={source.trim() === ""}
+                  onClick={() => setAsking({ kind: "add" })}
+                >
+                  {t("pluginsUi.addMarketplace")}
+                </Button>
+              </div>
+            </div>
             {list.marketplaces.length === 0 && (
               <EmptyState title={t("pluginsUi.noneMarketplaces")} />
             )}
@@ -162,6 +268,23 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
                   {market.origin && (
                     <span className="break-all text-muted-foreground text-sm">{market.origin}</span>
                   )}
+                  <span className="flex-1" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t("pluginsUi.refreshMarketplace", { name: market.name })}
+                    onClick={() => void refreshMarketplace(market.name)}
+                  >
+                    {t("pluginsUi.refreshShort")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t("pluginsUi.dropMarketplace", { name: market.name })}
+                    onClick={() => setAsking({ kind: "drop", name: market.name })}
+                  >
+                    {t("pluginsUi.removeShort")}
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -178,6 +301,39 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             setInstalling(null);
             void reload();
           }}
+        />
+      )}
+      {updating && hostId && (
+        <UpdateDialog
+          store={store}
+          hostId={hostId}
+          plugin={updating}
+          onClose={() => setUpdating(null)}
+          onDone={() => {
+            setUpdating(null);
+            void reload();
+          }}
+        />
+      )}
+      {asking && (
+        <ConfirmDialog
+          message={
+            asking.kind === "remove"
+              ? t("pluginsUi.removeMessage", { name: asking.plugin.name })
+              : asking.kind === "add"
+                ? t("pluginsUi.addMessage", { source })
+                : t("pluginsUi.dropMessage", { name: asking.name })
+          }
+          confirmLabel={
+            asking.kind === "remove"
+              ? t("pluginsUi.removeConfirm")
+              : asking.kind === "add"
+                ? t("pluginsUi.addConfirm")
+                : t("pluginsUi.dropConfirm")
+          }
+          destructive={asking.kind !== "add"}
+          onConfirm={() => void confirmed()}
+          onCancel={() => setAsking(null)}
         />
       )}
       {looking && (
