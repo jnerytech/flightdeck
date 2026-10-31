@@ -80,11 +80,16 @@ describe("custos-ui: a tela nunca fica em branco", () => {
   });
 
   test("sem host que informe custos, a tela diz isso em vez de ficar em branco", async () => {
-    await setup({ costs: false });
+    const { store } = await setup({ costs: false });
     await settle(() => text().includes("Nenhum host informa custos"));
     expect(text()).toContain("Nenhum host informa custos ainda.");
-    expect(within(main()).queryByRole("button", { name: "Adicionar host" })).not.toBeNull();
     expect(within(main()).queryByRole("heading", { name: "Custos" })).not.toBeNull();
+    const link = within(main()).queryByRole("button", { name: "Adicionar host" });
+    expect(link).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(link as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "add-host" });
   });
 
   test("o projeto de um custo aparece pelo nome da pasta, sem o host nem o caminho", () => {

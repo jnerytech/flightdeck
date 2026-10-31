@@ -89,7 +89,7 @@ describe("conversas-ui: the messages between sessions", () => {
   });
 
   test("with no messages, the screen says where they come from and links to Times", async () => {
-    await open(["messaging"], false);
+    const { store } = await open(["messaging"], false);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
     });
@@ -99,7 +99,12 @@ describe("conversas-ui: the messages between sessions", () => {
         "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
       ),
     ).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Abrir Times" })).not.toBeNull();
+    const link = screen.queryByRole("button", { name: "Abrir Times" });
+    expect(link).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(link as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "teams" });
   });
 
   test("the filters narrow by state and by team", async () => {

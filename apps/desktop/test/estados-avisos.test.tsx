@@ -204,7 +204,13 @@ describe("estados-avisos", () => {
     expect(
       screen.queryByText("Comece uma sessão e ela entra aqui quando terminar."),
     ).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Nova sessão" })).not.toBeNull();
+    const start = screen.queryByRole("button", { name: "Nova sessão" });
+    expect(start).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(start as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "new-session", host: hostId });
+    await act(async () => store.router.push({ name: "history", host: hostId }));
 
     await act(async () => store.router.push({ name: "projects", host: hostId }));
     await settle(() => screen.queryByText("Nenhum projeto cadastrado.") !== null);
