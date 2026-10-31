@@ -161,6 +161,11 @@ describe("times-ui: the teams of a host", () => {
     expect(item.textContent).toContain("Ativo");
     expect(item.textContent).toContain("login · coordenadora");
     expect(item.textContent).toContain("login · executora 2");
+    // A member's session state comes from the dictionary, never as the protocol's word.
+    const state = /(running|waiting|idle|ended|Rodando|Esperando você|Ociosa|Encerrada)/;
+    await settle(() => state.test(row("login")?.textContent ?? ""));
+    expect(row("login")?.textContent).toMatch(state);
+    expect(row("login")?.textContent).not.toMatch(/(running|waiting|idle|ended)/);
   });
 
   test("Novo time takes the workers' personas, one per worker in order", async () => {
