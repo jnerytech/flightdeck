@@ -155,4 +155,13 @@ describe("personas-ui: the editor", () => {
     expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
     expect(store.globalPersonas.list()).toEqual([]);
   });
+
+  test("the icon typed is kept with the persona", async () => {
+    const { store } = await open();
+    await newPersona();
+    await fill("Ícone", "flask");
+    await fill("Onde guardar", "app");
+    await click("Salvar persona");
+    expect(store.globalPersonas.list()[0]?.icon).toBe("flask");
+  });
 });
