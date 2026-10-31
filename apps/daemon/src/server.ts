@@ -69,6 +69,7 @@ import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
+import type { Plugins } from "./plugins/plugins.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
@@ -143,6 +144,8 @@ export interface ServerOptions {
   agentcfg?: AgentConfig;
   /** Phase 26: the project's auto memory (`memory.*`). */
   memory?: ProjectMemory;
+  /** Phase 26: the Claude Code plugins (`plugins.*`). */
+  plugins?: Plugins;
   /** Phase 12: the project's MCP servers (`mcp.*`). */
   mcp?: McpConfig;
   /** Phase 12: `session.fork`. */
@@ -342,6 +345,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
     ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
     ...(opts.memory ? ["memory"] : []),
+    ...(opts.plugins ? ["plugins"] : []),
     // Phase 13: the arena is the board's; issues and automations are services of their own.
     ...(opts.board ? ["arena"] : []),
     ...(opts.issues ? ["issues"] : []),
@@ -1010,6 +1014,62 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
         return ok(command.type, written);
       }
+      case "plugins.list":
+        return ok(command.type, { installed: [], available: [], marketplaces: [] });
+      case "plugins.detail":
+      case "plugins.pin":
+        return ok(command.type, {
+          id: "",
+          name: "",
+          marketplace: "",
+          version: "",
+          scope: "",
+          enabled: false,
+          path: "",
+          pinned: null,
+          inventory: null,
+          errors: [],
+        });
+      case "plugins.preview":
+        return ok(command.type, { plugin: "", inventory: null, hash: null });
+      case "plugins.previewUpdate": {
+        const none = { added: [], removed: [] };
+        return ok(command.type, {
+          plugin: "",
+          from: { version: "", hash: "" },
+          to: { version: "", hash: "" },
+          inventory: {
+            manifest: null,
+            hooks: [],
+            monitors: [],
+            skills: [],
+            agents: [],
+            commands: [],
+            mcpServers: [],
+            attention: false,
+            hash: "",
+            files: 0,
+            bytes: 0,
+            problems: [],
+          },
+          diff: {
+            hooks: none,
+            monitors: none,
+            skills: none,
+            agents: none,
+            commands: none,
+            mcpServers: none,
+          },
+          unchanged: true,
+        });
+      }
+      case "plugins.install":
+      case "plugins.update":
+      case "plugins.uninstall":
+      case "plugins.marketplaceAdd":
+      case "plugins.marketplaceRemove":
+      case "plugins.marketplaceUpdate":
+        return ok(command.type, { outcome: "unchanged", message: "" });
       case "memory.list":
         return ok(command.type, memory().list(projectPath(command.payload.projectId)));
       case "memory.read": {

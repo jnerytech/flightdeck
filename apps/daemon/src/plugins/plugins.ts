@@ -546,6 +546,11 @@ export function claudeCli(
   };
 }
 
+/** A recorder that appends each decision as a line of JSON to `path`. */
+export function pluginDecisionLog(_path: string): (decision: PluginDecision) => void {
+  return () => {};
+}
+
 /** Pins kept in a JSON file; one that cannot be read is no pin at all. */
 export function filePins(path: string): PinStore {
   const read = (): Record<string, Pin> => {
