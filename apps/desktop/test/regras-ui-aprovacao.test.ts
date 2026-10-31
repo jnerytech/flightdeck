@@ -92,6 +92,17 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     expect(payload("vault.approve")).toEqual({ requestId: "r1", via: "app", scope: "once" });
   });
 
+  test("the rule a request suggests matches what asked: the requester and the action by name", async () => {
+    const { store, push } = await setup();
+    push({});
+    await settle(() => needsYou(store.getState()).length === 1);
+    expect(needsYou(store.getState())[0]?.vaultRule?.match).toEqual({
+      requester: "claude",
+      purpose: "action",
+      action: "deploy",
+    });
+  });
+
   test("a request that needs holding is high risk, the tray only opens it, and the approval says it was held 2 s", async () => {
     const { store, hostId, push, payload, types } = await setup();
     push({ needsHold: true });
