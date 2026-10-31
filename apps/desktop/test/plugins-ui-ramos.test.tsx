@@ -298,7 +298,7 @@ describe("plugins-ui: atualização, casos de borda", () => {
 });
 
 describe("plugins-ui: fechar com Esc", () => {
-  const escape = async () => {
+  const pressEsc = async () => {
     await act(async () => {
       fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     });
@@ -332,13 +332,13 @@ describe("plugins-ui: fechar com Esc", () => {
     );
     await click("Atualizar deploy-tools");
     await settle(() => dialog("Atualizar deploy-tools") !== null);
-    await escape();
+    await pressEsc();
     expect(dialog("Atualizar deploy-tools")).toBeNull();
     await tab("Disponíveis");
     await settle(() => screen.queryByRole("button", { name: "Instalar outro" }) !== null);
     await click("Instalar outro");
     await settle(() => dialog("Instalar outro") !== null);
-    await escape();
+    await pressEsc();
     expect(dialog("Instalar outro")).toBeNull();
     expect(calls(fake).filter((c) => /^plugin (install|update|uninstall)/.test(c))).toEqual([]);
   });
