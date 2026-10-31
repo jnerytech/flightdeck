@@ -58,7 +58,7 @@ describe("abas: a barra de abas", () => {
     expect(names()).toEqual(["Precisa de você"]);
   });
 
-  test("the close button closes that tab; Fixar aba keeps only its icon, on the left", async () => {
+  test("the active tab's buttons pin it (icon only, on the left) and close it; the middle button closes any tab", async () => {
     const store = setup();
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
@@ -67,7 +67,23 @@ describe("abas: a barra de abas", () => {
     expect(names()).toEqual(["Precisa de você", "Sessões"]);
     expect(screen.queryByRole("button", { name: "Desafixar aba Precisa de você" })).not.toBeNull();
     expect(screen.queryByText("Precisa de você", { selector: "[role=tab] span" })).toBeNull();
+    await act(async () => {
+      fireEvent.click(tabs()[1] as HTMLElement);
+    });
+    // The buttons are the active tab's: Sessões now.
+    expect(screen.queryByRole("button", { name: "Desafixar aba Precisa de você" })).toBeNull();
     await press("Fechar aba Sessões");
+    expect(names()).toEqual(["Precisa de você"]);
+    await act(async () => {
+      store.tabs.open({ name: "costs" });
+      store.tabs.activate(store.tabs.tabs[0]?.id as string);
+    });
+    await act(async () => {
+      fireEvent(
+        tabs()[1] as HTMLElement,
+        new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
+      );
+    });
     expect(names()).toEqual(["Precisa de você"]);
   });
 
