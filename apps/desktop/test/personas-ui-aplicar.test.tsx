@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import type { ExternalSession } from "@flightdeck/protocol";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -73,5 +74,63 @@ describe("personas-ui: applying a persona to an open session", () => {
     await click("Voltar ao normal");
     await poll(() => !d.manager.get(sessionId).persona);
     expect(d.manager.get(sessionId).persona ?? null).toBeNull();
+  });
+
+  test("a controllable terminal session has Aplicar persona too, by its Claude session id; one that is not controllable has not", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const { hostId, repo } = await personasHost(cleanups, store);
+    render(<App store={store} />);
+    await settle(
+      () => store.getState().hosts[0]?.hostInfo?.features?.includes("personas") === true,
+    );
+    const external = (claudeSessionId: string, controllable: boolean): ExternalSession => ({
+      claudeSessionId,
+      cwd: repo,
+      transcriptPath: null,
+      source: null,
+      status: "idle",
+      statusReason: null,
+      launchId: null,
+      controllable,
+      projectKey: null,
+      startedAt: "2026-10-31T12:00:00Z",
+      lastEventAt: "2026-10-31T12:00:00Z",
+      endedAt: null,
+    });
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        externals: {
+          [`${hostId}/c-1`]: external("c-1", true),
+          [`${hostId}/c-2`]: external("c-2", false),
+        },
+      });
+    });
+    const asked: Array<{ type: string; payload: unknown }> = [];
+    const command = store.hostCommand.bind(store);
+    store.hostCommand = (async (id: string, type: never, payload: never) => {
+      asked.push({ type, payload });
+      return command(id, type, payload);
+    }) as typeof store.hostCommand;
+    await act(async () => {
+      store.router.push({ name: "external", host: hostId, claudeSessionId: "c-2" });
+    });
+    await act(() => Bun.sleep(150));
+    expect(screen.queryByLabelText("Aplicar persona")).toBeNull();
+    await act(async () => {
+      store.router.push({ name: "external", host: hostId, claudeSessionId: "c-1" });
+    });
+    await settle(() => options("Aplicar persona").length > 1);
+    expect(options("Aplicar persona")).toContain("QA / testes");
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Aplicar persona") as HTMLElement, {
+        target: { value: "host:qa" },
+      });
+    });
+    await click("Aplicar");
+    expect(asked.find((a) => a.type === "session.applyPersona")?.payload).toEqual({
+      claudeSessionId: "c-1",
+      persona: { id: "qa", language: "pt-BR" },
+    });
   });
 });
