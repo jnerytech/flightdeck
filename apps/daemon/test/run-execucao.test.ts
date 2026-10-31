@@ -19,26 +19,32 @@ function setup(initial: RunConfig = runConfig()) {
   const ports = new CardPorts({ db: store.db, isFree: async () => true });
   const noWorktree = new Set<string>();
   const failing = new Set<string>();
-  const manager = new RunManager({
-    configs: {
-      resolve: async (project) => {
-        if (failing.has(project.id)) throw new Error("run.yaml não confiado; confie nele no card");
-        return config;
+  const makeManager = () =>
+    new RunManager({
+      db: store.db,
+      configs: {
+        resolve: async (project) => {
+          if (failing.has(project.id))
+            throw new Error("run.yaml não confiado; confie nele no card");
+          return config;
+        },
       },
-    },
-    ports,
-    host: fake.host,
-    card: (cardId) => ({
-      id: cardId,
-      projectId: "proj",
-      worktreePath: noWorktree.has(cardId) ? null : WORKTREE(cardId),
-    }),
-    project: (id) => ({ id, path: "/repo", baseBranch: "main" }),
-  });
+      ports,
+      host: fake.host,
+      card: (cardId) => ({
+        id: cardId,
+        projectId: "proj",
+        worktreePath: noWorktree.has(cardId) ? null : WORKTREE(cardId),
+      }),
+      project: (id) => ({ id, path: "/repo", baseBranch: "main" }),
+    });
+  const manager = makeManager();
   const states: RunState[] = [];
   manager.watch((state) => states.push(state));
   const status = (cardId: string) => manager.state(cardId).status;
   return {
+    /** The daemon starts again over the same database. */
+    restarted: makeManager,
     manager,
     ports,
     states,
@@ -74,6 +80,16 @@ describe("run-execucao: o setup", () => {
     expect(s.manager.state("card-a").setup).toBe("done");
     await s.manager.stop("card-a");
     await s.manager.start("card-a");
+    expect(s.of("prepare")).toHaveLength(1);
+    expect(s.of("serve")).toHaveLength(2);
+  });
+
+  test("o setup também não roda de novo depois de o daemon reiniciar", async () => {
+    const s = setup();
+    await started(s);
+    await s.manager.stop("card-a");
+    const next = s.restarted();
+    await next.start("card-a");
     expect(s.of("prepare")).toHaveLength(1);
     expect(s.of("serve")).toHaveLength(2);
   });
