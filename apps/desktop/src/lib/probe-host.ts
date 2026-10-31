@@ -51,7 +51,7 @@ export function probeHost(
       finish({
         ok: false,
         error: t(
-          event.code === CLOSE_UNAUTHORIZED ? "messages.tokenRefused" : "messages.cannotConnect",
+          event.code === CLOSE_UNAUTHORIZED ? "hostForm.probeRefused" : "hostForm.probeUnreachable",
         ),
       }),
     );

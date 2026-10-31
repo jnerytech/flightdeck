@@ -814,6 +814,13 @@ export const en: Dictionary = {
   },
   welcome: {
     addHost: "Add a host with the flightdeckd address and token.",
+    stepsLabel: "First steps",
+    step1: "On the computer that runs Claude Code, install and start the daemon:",
+    step2: "Copy the pairing link it prints at the end (it also shows a QR code).",
+    step3: "Paste the link below and press Test and add.",
+    trouble:
+      "Not connecting? On that computer run the command below: it says what is missing and how to fix it.",
+    copy: "Copy {command}",
   },
   external: {
     line: "{host} · terminal · {state}",
@@ -1589,6 +1596,9 @@ export const en: Dictionary = {
     submit: "Test and add",
     missing: "fill in name, address, port and token",
     badPort: "invalid port",
+    probeRefused: "token refused: run flightdeckd pair on the host and paste the new link",
+    probeUnreachable:
+      "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
   },
   hostPage: {
     incompatible: "incompatible: update the daemon",

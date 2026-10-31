@@ -31,6 +31,7 @@ import { ConnectionsPage } from "./ConnectionsPage.tsx";
 import { ConversationsPage } from "./ConversationsPage.tsx";
 import { CostsPage } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
+import { FirstRun } from "./FirstRun.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { HostPage } from "./HostPage.tsx";
@@ -199,7 +200,10 @@ function AddHost(props: {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
       {props.empty && (
-        <p className="text-muted-foreground text-sm">{props.store.i18n.t("welcome.addHost")}</p>
+        <>
+          <p className="text-muted-foreground text-sm">{props.store.i18n.t("welcome.addHost")}</p>
+          <FirstRun onCopy={(text) => void props.store.copyText(text)} />
+        </>
       )}
       <HostForm
         {...(props.draft

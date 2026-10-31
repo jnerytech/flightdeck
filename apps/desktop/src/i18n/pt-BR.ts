@@ -812,6 +812,13 @@ export const ptBR = {
   },
   welcome: {
     addHost: "Adicione um host com o endereço e o token do flightdeckd.",
+    stepsLabel: "Primeiros passos",
+    step1: "No computador que roda o Claude Code, instale e inicie o daemon:",
+    step2: "Copie o link de pareamento que ele mostra no final (também mostra um QR code).",
+    step3: "Cole o link abaixo e clique em Testar e adicionar.",
+    trouble:
+      "Não conectou? No mesmo computador, rode o comando abaixo: ele diz o que falta e como consertar.",
+    copy: "Copiar {command}",
   },
   external: {
     line: "{host} · terminal · {state}",
@@ -1592,6 +1599,9 @@ export const ptBR = {
     submit: "Testar e adicionar",
     missing: "preencha nome, endereço, porta e token",
     badPort: "porta inválida",
+    probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
+    probeUnreachable:
+      "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
   },
   hostPage: {
     incompatible: "incompatível: atualize o daemon",
