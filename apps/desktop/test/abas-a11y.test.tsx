@@ -2,11 +2,12 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
-import { registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, render } = await import("@testing-library/react");
+const { act, cleanup, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const axe = (await import("axe-core")).default;
@@ -42,6 +43,17 @@ describe("abas: acessibilidade da barra de abas", () => {
       store.tabs.open({ name: "costs" });
       store.tabs.pin(store.tabs.activeId, true);
     });
+    expect(await violations()).toEqual([]);
+  });
+
+  test("a close button next to every tab, inside the tablist's presentation wrappers, is axe-clean", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      store.tabs.open({ name: "costs" });
+    });
+    expect(screen.queryAllByRole("button", { name: /^Fechar aba / })).toHaveLength(3);
     expect(await violations()).toEqual([]);
   });
 
