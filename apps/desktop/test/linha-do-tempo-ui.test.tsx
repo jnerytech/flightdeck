@@ -274,11 +274,11 @@ describe("linha-do-tempo-ui", () => {
   test("fechar a prévia e o formulário de bifurcar não faz nada, e Fechar esconde a linha do tempo", async () => {
     const { repo, runtime } = await setup();
     await openTimeline();
-    // The dialog's own close button (Esc would also reach the sheet under happy-dom).
+    // The dialog's own × (Esc would also reach the sheet under happy-dom), named from the dictionary.
     const dismiss = async (name: string) => {
       const dialog = within(screen.queryByRole("dialog", { name }) as HTMLElement);
       await act(async () => {
-        fireEvent.click(dialog.queryByRole("button", { name: "Close" }) as HTMLElement);
+        fireEvent.click(dialog.queryByRole("button", { name: "Fechar" }) as HTMLElement);
       });
       await settle(() => screen.queryByRole("dialog", { name }) === null);
       expect(screen.queryByRole("dialog", { name })).toBeNull();
