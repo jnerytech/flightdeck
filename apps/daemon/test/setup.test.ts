@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
-import { runSetup, type SetupDeps } from "../src/setup.ts";
+import { createPrompt, runSetup, type SetupDeps } from "../src/setup.ts";
 import { tempDir } from "./helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
@@ -19,7 +19,6 @@ function harness(
   const home = tempDir("fd-setup-home-");
   const configFile = join(tempDir("fd-setup-"), "config.json");
   if (options.config) writeFileSync(configFile, JSON.stringify(options.config));
-  const answers = [...(options.answers ?? [])];
   const calls: string[] = [];
   const asked: string[] = [];
   const out: string[] = [];
@@ -60,6 +59,8 @@ function harness(
     mkdirSync(path, { recursive: true });
     return path;
   };
+  // Unless a test says otherwise, the user gives one folder and then finishes.
+  const answers = [...(options.answers ?? [dir("code"), ""])];
   return { deps, home, configFile, calls, asked, out, dir };
 }
 
@@ -102,7 +103,10 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
-    const insist = harness({ confirms: { "without project folders": true, hooks: false } });
+    const insist = harness({
+      answers: [""],
+      confirms: { "without project folders": true, hooks: false },
+    });
     await runSetup(insist.deps);
     expect(loadConfig(insist.configFile).allowedRoots).toEqual([]);
     expect(insist.calls).toEqual(["binary", "service", "pair"]);
@@ -146,6 +150,57 @@ describe("setup", () => {
     const h = harness();
     h.deps.installBinary = () => false;
     await runSetup(h.deps);
-    expect(h.out.join("\n")).toContain("running from source");
+    expect(h.out.join("\n")).toContain("Running from source");
+  });
+
+  test("--yes takes the folders from the command line and asks nothing", async () => {
+    const h = harness({ tailscale: "100.64.0.9" });
+    const a = h.dir("a");
+    const b = h.dir("b");
+    h.asked.length = 0;
+    await runSetup(h.deps, { yes: true, folders: [a, b] });
+    expect(h.asked).toEqual([]);
+    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
+    expect(loadConfig(h.configFile).bind).toBe("127.0.0.1");
+    expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
+  });
+
+  test("--yes refuses a folder that does not exist, and no folder at all, before changing anything", async () => {
+    const h = harness();
+    await expect(
+      runSetup(h.deps, { yes: true, folders: [join(h.home, "missing")] }),
+    ).rejects.toThrow("is not a folder that exists");
+    await expect(runSetup(h.deps, { yes: true, folders: [] })).rejects.toThrow("pass --folders");
+    expect(h.calls).toEqual([]);
+  });
+
+  test("--yes keeps the folders already in the config when none is given", async () => {
+    const h = harness({ config: { token: "t".repeat(32), allowedRoots: ["/srv/old"] } });
+    await runSetup(h.deps, { yes: true, folders: [] });
+    expect(loadConfig(h.configFile).allowedRoots).toEqual(["/srv/old"]);
+  });
+});
+
+describe("prompt", () => {
+  async function* lines(...items: string[]) {
+    for (const item of items) yield item;
+  }
+
+  test("asks, confirms with a default on an empty answer, and asks again on an unclear one", async () => {
+    const written: string[] = [];
+    const prompt = createPrompt(lines("hello", "", "n", "maybe", "y"), (s) => written.push(s));
+    expect(await prompt.ask("name? ")).toBe("hello");
+    expect(await prompt.confirm("ok?", true)).toBe(true);
+    expect(await prompt.confirm("ok?", true)).toBe(false);
+    expect(await prompt.confirm("ok?", false)).toBe(true);
+    expect(written.join("")).toContain("name? ");
+    expect(written.join("")).toContain("[Y/n]");
+    expect(written.join("")).toContain("Please answer y or n");
+  });
+
+  test("input that ends fails with a clear message instead of answering nothing forever", async () => {
+    const prompt = createPrompt(lines(), () => {});
+    await expect(prompt.ask("name? ")).rejects.toThrow("input closed");
+    await expect(prompt.confirm("ok?", true)).rejects.toThrow("--yes --folders");
   });
 });
