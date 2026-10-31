@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { isPreviewUrl } from "@flightdeck/protocol";
 import { RunManager } from "../src/runenv/manager.ts";
 import { CardPorts } from "../src/runenv/ports.ts";
-import { httpReady, type ReadyResult, waitReady } from "../src/runenv/preview.ts";
+import { httpReady, type ReadyResult, waitForServer, waitReady } from "../src/runenv/preview.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { poll } from "./helpers.ts";
 import { fakeRunHost, runConfig } from "./run-helpers.ts";
@@ -122,6 +122,16 @@ describe("preview: espera o ready", () => {
     expect(await httpReady(url)).toBe(true);
     await server.stop(true);
     expect(await httpReady(url)).toBe(false);
+  });
+});
+
+describe("preview: a espera de verdade", () => {
+  test("um servidor no ar é ready logo, e um Run parado nem sonda", async () => {
+    const server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("ok") });
+    const url = `http://127.0.0.1:${server.port}/`;
+    expect(await waitForServer(url, () => false)).toBe("ready");
+    expect(await waitForServer(url, () => true)).toBe("stopped");
+    await server.stop(true);
   });
 });
 
