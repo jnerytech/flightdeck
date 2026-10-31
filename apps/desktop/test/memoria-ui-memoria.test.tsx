@@ -36,7 +36,12 @@ async function open(seed: (put: (name: string, text: string) => void) => void = 
   render(<App store={store} />);
   await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("memory") === true);
   await act(async () => {
-    store.router.push({ name: "agent", host: h.hostId, projectId: h.projectId, projectName: "repo" });
+    store.router.push({
+      name: "agent",
+      host: h.hostId,
+      projectId: h.projectId,
+      projectName: "repo",
+    });
   });
   await settle(() => screen.queryByRole("tab", { name: "Memória" }) !== null);
   const tab = screen.queryByRole("tab", { name: "Memória" });
@@ -140,7 +145,9 @@ describe("memoria-ui: a memória do projeto", () => {
     await settle(() => names().length === 1);
     await click("Nova memória");
     await fill("Nome do arquivo", "../fora");
-    expect((screen.queryByRole("button", { name: "Criar" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.queryByRole("button", { name: "Criar" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
     await fill("Nome do arquivo", "feedback_testes");
     await click("Criar");
     await fill("Conteúdo de feedback_testes.md", "Teste primeiro.\n");
@@ -174,7 +181,8 @@ describe("memoria-ui: sugestões de limpeza", () => {
   test("aponta duplicadas, links quebrados, soltas, antigas e contradições, e não muda nada sozinha", async () => {
     const { dir } = await open((put) => {
       put("MEMORY.md", "- [A](a.md)\n- [B](b.md)\n- [Some](sumiu.md)\n- [C](c.md)\n- [D](d.md)\n");
-      const fm = (d: string) => `---\nname: n\ndescription: ${d}\ntype: feedback\n---\ncorpo ${d}\n`;
+      const fm = (d: string) =>
+        `---\nname: n\ndescription: ${d}\ntype: feedback\n---\ncorpo ${d}\n`;
       put("a.md", fm("always run the tests before commit"));
       put("b.md", fm("never run the tests before commit"));
       put("c.md", "---\nname: n\ndescription: igual\ntype: user\n---\nigual\n");
