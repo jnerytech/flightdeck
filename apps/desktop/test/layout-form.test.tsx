@@ -152,3 +152,22 @@ describe("form-layout: a disabled primary button says why", () => {
     );
   });
 });
+
+describe("form-layout: a step back in a wizard", () => {
+  test("extra buttons sit between the cancel and the primary, so the primary stays last", () => {
+    const { container } = render(
+      <Form onSubmit={() => {}} variant="dialog">
+        <FormActions
+          submit="Próximo"
+          cancel="Cancelar"
+          onCancel={() => {}}
+          extra={<button type="button">Voltar</button>}
+        />
+      </Form>,
+    );
+    const labels = [...container.querySelectorAll("[data-actions] button")].map(
+      (b) => b.textContent,
+    );
+    expect(labels).toEqual(["Cancelar", "Voltar", "Próximo"]);
+  });
+});

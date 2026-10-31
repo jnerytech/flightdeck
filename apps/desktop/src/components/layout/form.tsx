@@ -98,6 +98,8 @@ export function FormActions(props: {
   /** The secondary button's label; the button only exists with `onCancel`. */
   cancel?: string;
   onCancel?(): void;
+  /** More secondary buttons (a wizard's "Voltar"), after the cancel and before the primary. */
+  extra?: ReactNode;
 }) {
   const variant = useContext(VariantContext);
   const id = useId();
