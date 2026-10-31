@@ -23,7 +23,7 @@ async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
 }
 
 /** A host with two snippets, a global one, and the app on that host's open terminal. */
-async function open(withTerminal = true) {
+async function open(withTerminal = true, extra: Array<Record<string, unknown>> = []) {
   const platform = memoryPlatform(false, "pt-BR");
   const copied: string[] = [];
   platform.platform.copyText = async (text) => {
@@ -39,6 +39,7 @@ async function open(withTerminal = true) {
     vars: { arquivo: { default: "a.ts" } },
   });
   await h.save({ name: "deploy", type: "command", run: "kubectl apply -f k8s", tags: ["k8s"] });
+  for (const input of extra) await h.save(input);
   store.globalSnippets.save({
     name: "eco",
     type: "command",
@@ -165,5 +166,56 @@ describe("snippets-uso: the palette", () => {
     await choose("Snippet: testes");
     await click("Copiar");
     expect(copied).toEqual(["bun test a.ts"]);
+  });
+
+  test("a host prompt with a field of options opens a new session filled with the option chosen", async () => {
+    const { store, hostId } = await open(false, [
+      {
+        name: "revisar",
+        type: "prompt",
+        text: "Revise {{alvo}}",
+        vars: { alvo: { default: "api", options: ["api", "web"] } },
+      },
+    ]);
+    await palette("revisar");
+    await choose("Snippet: revisar");
+    const field = screen.queryByLabelText("alvo") as HTMLSelectElement | null;
+    expect([...(field?.options ?? [])].map((o) => o.value)).toEqual(["api", "web"]);
+    await act(async () => {
+      fireEvent.change(field as HTMLSelectElement, { target: { value: "web" } });
+    });
+    await click("Nova sessão com este prompt");
+    expect(store.router.current).toMatchObject({
+      name: "new-session",
+      host: hostId,
+      prompt: "Revise web",
+    });
+  });
+
+  test("a host prompt removed while its dialog is open opens the new session with the prompt as written", async () => {
+    const { store, hostId } = await open(false, [
+      { name: "explicar", type: "prompt", text: "Explique {{tema}}" },
+    ]);
+    await palette("explicar");
+    await choose("Snippet: explicar");
+    const listed = await store.hostCommand(hostId, "snippets.list", {});
+    const id = listed?.snippets.find((x) => x.name === "explicar")?.id ?? "";
+    await store.hostCommand(hostId, "snippets.remove", { id });
+    await click("Nova sessão com este prompt");
+    expect(store.router.current).toMatchObject({
+      name: "new-session",
+      host: hostId,
+      prompt: "Explique {{tema}}",
+    });
+  });
+
+  test("a global command removed while its dialog is open is not copied", async () => {
+    const { store, copied } = await open(false);
+    await palette("eco");
+    await choose("Snippet: eco");
+    const eco = store.globalSnippets.list().find((x) => x.name === "eco");
+    store.globalSnippets.remove(eco?.id ?? "");
+    await click("Copiar");
+    expect(copied).toEqual([]);
   });
 });
