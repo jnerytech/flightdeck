@@ -17,6 +17,7 @@ import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
+import { ACOES_ACTION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -93,11 +94,15 @@ export interface DemoIds {
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
-/** One versioned action: the actions journey trusts it from the Ações screen. */
-const ACTIONS_YAML = `- name: versao
+/** One versioned action per language: the actions journey trusts it from the Ações screen. */
+const ACTIONS_YAML = Object.values(ACOES_ACTION)
+  .map(
+    (name) => `- name: ${name}
   description: Mostra a versão do Bun
   run: ["bun", "--version"]
-`;
+`,
+  )
+  .join("");
 
 const WORKFLOW = `steps:
   - id: plan

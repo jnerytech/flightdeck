@@ -11,7 +11,7 @@ import { type Lang, translator } from "../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import { DANGER_SESSION, type DemoIds } from "./demo-seed.ts";
 import { launchFirst } from "./lib/browser.ts";
-import { JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
+import { ACOES_ACTION, JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
 
 /** A failed journey leaves its print here; `E2E_ONLY=a,b` runs just those journeys. */
 const FAILURES_DIR = process.env.E2E_FAILURES ?? join(tmpdir(), "flightdeck-e2e");
@@ -241,9 +241,10 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       projectId: c.ids.project,
       projectName: "flightdeck-web",
     });
-    const row = c.page.getByRole("listitem", { name: c.t("actionsUi.row", { name: "versao" }) });
+    const name = ACOES_ACTION[c.lang] as string;
+    const row = c.page.getByRole("listitem", { name: c.t("actionsUi.row", { name }) });
     await row.getByText(c.t("actionsUi.notTrusted"), { exact: true }).waitFor({ timeout: WAIT });
-    await row.getByRole("button", { name: c.t("actionsUi.trust", { name: "versao" }) }).click();
+    await row.getByRole("button", { name: c.t("actionsUi.trust", { name }) }).click();
     await c.page
       .getByRole("alertdialog")
       .getByRole("button", { name: c.t("actionsUi.trustLabel"), exact: true })
