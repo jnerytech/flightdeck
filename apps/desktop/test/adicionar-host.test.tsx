@@ -57,10 +57,14 @@ describe("adicionar-host", () => {
     const ok = await probeHost(server.url, TOKEN);
     expect(ok).toMatchObject({ ok: true, info: { hostName: "h1", protocolVersion: 1 } });
     expect(ok.ok && typeof ok.info.arch).toBe("string");
-    expect(await probeHost(server.url, "errado")).toEqual({ ok: false, error: "token recusado" });
+    expect(await probeHost(server.url, "errado")).toEqual({
+      ok: false,
+      error: "token recusado: rode flightdeckd pair no host e cole o link novo",
+    });
     expect(await probeHost("ws://127.0.0.1:1/v1/ws", TOKEN)).toEqual({
       ok: false,
-      error: "não foi possível conectar",
+      error:
+        "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
     });
   });
 
