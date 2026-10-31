@@ -1860,6 +1860,88 @@ export const TeamsUpdatedFrame = z.object({
 });
 export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 
+/** Phase 22: how a card's PR is watched and fixed, per project. */
+export const WatchSettings = z.object({
+  enabled: z.boolean(),
+  /** Rounds of fixing per PR. */
+  maxRounds: z.number().int().min(1).max(10),
+  /** Commands that must pass in the card's worktree before anything is pushed. */
+  checks: z.array(z.string().min(1).max(400)).max(10),
+  /** Estimated cost of the rounds of a PR, in US$; `null` for no limit. */
+  budgetUsd: z.number().positive().nullable(),
+  maxTurns: z.number().int().positive().nullable(),
+  persona: z.string().min(1).max(40),
+  /** Rounds in a row that fail before the card asks for you. */
+  maxFailures: z.number().int().min(1).max(10),
+  /** Cost of every round of the project in a day, in US$; `null` for no limit. */
+  dailyUsd: z.number().positive().nullable(),
+});
+export type WatchSettings = z.infer<typeof WatchSettings>;
+
+export const FixRoundInfo = z.object({
+  id: z.string(),
+  cardId: z.string(),
+  n: z.number().int(),
+  status: z.enum(["running", "pushed", "failed", "stopped"]),
+  trigger: z.object({
+    failed: z.array(z.string()),
+    conflicts: z.boolean(),
+    comments: z.array(z.string()),
+  }),
+  summary: z.string().nullable(),
+  sessionId: z.string().nullable(),
+  costUsd: z.number(),
+  turns: z.number().int(),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+});
+export type FixRoundInfo = z.infer<typeof FixRoundInfo>;
+
+/** What the app shows of a card's watch. */
+export const WatchInfo = z.object({
+  cardId: z.string(),
+  enabled: z.boolean(),
+  /** `needs_you`: a limit was hit or a round failed for good; `reason` says which. */
+  status: z.enum(["watching", "needs_you"]),
+  reason: z.string().nullable(),
+  rounds: z.array(FixRoundInfo),
+});
+export type WatchInfo = z.infer<typeof WatchInfo>;
+
+export const WatchUpdatedFrame = z.object({ type: z.literal("watch.updated"), watch: WatchInfo });
+export type WatchUpdatedFrame = z.infer<typeof WatchUpdatedFrame>;
+
+export const TraceSessionInfo = z.object({
+  sessionId: z.string(),
+  claudeSessionId: z.string().nullable(),
+  name: z.string().nullable(),
+  kind: z.enum(["run", "fix"]),
+  startedAt: z.string(),
+  costUsd: z.number().nullable(),
+  checkpoints: z.number().int(),
+});
+
+/** The trail from a card and its PR to its sessions, cost, rounds and work item. */
+export const CardTraceInfo = z.object({
+  cardId: z.string(),
+  title: z.string(),
+  prUrl: z.string().nullable(),
+  workItem: z.string().nullable(),
+  sessions: z.array(TraceSessionInfo),
+  rounds: z.array(FixRoundInfo),
+  costUsd: z.number().nullable(),
+});
+export type CardTraceInfo = z.infer<typeof CardTraceInfo>;
+
+export const UrlTraceInfo = z.object({
+  via: z.enum(["card", "history", "none"]),
+  trace: CardTraceInfo.nullable(),
+  sessions: z.array(
+    z.object({ claudeSessionId: z.string(), title: z.string().nullable(), cwd: z.string() }),
+  ),
+});
+export type UrlTraceInfo = z.infer<typeof UrlTraceInfo>;
+
 /** Phase 17: how an action asks for approval. */
 export const ActionApproval = z.enum(["always", "never", "first-per-session"]);
 
@@ -1968,7 +2050,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
-  cmd("card.pr.create", CardIdPayload),
+  cmd("card.pr.create", z.object({ cardId: z.string(), generate: z.boolean().optional() })),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
   cmd("external.list", z.object({}).strict()),
@@ -2214,6 +2296,16 @@ export const Command = z.discriminatedUnion("type", [
   /** With `as`, only a member of the team may ask (the MCP tool does). */
   cmd("teams.status", z.object({ team: z.string().min(1), as: SessionIdentity.optional() })),
   cmd("teams.watch", z.object({}).strict()),
+  /** Phase 22: the PR watch of a project (the settings) and of a card (the switch, the rounds). */
+  cmd(
+    "watch.settings",
+    z.object({ projectId: z.string().min(1), patch: WatchSettings.partial().strict().optional() }),
+  ),
+  cmd("watch.set", z.object({ cardId: z.string().min(1), enabled: z.boolean().nullable() })),
+  cmd("watch.get", z.object({ cardId: z.string().min(1) })),
+  cmd("watch.trace", z.object({ cardId: z.string().min(1) })),
+  cmd("watch.byUrl", z.object({ url: z.string().min(1).max(2000) })),
+  cmd("watch.watch", z.object({}).strict()),
   /** Phase 19: the rules of one secret, replaced whole (the ones that break the ceiling are refused). */
   cmd(
     "vault.rules.set",
@@ -3175,6 +3267,12 @@ export interface CommandResults {
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
   "teams.watch": undefined;
+  "watch.settings": WatchSettings;
+  "watch.set": WatchInfo;
+  "watch.get": WatchInfo;
+  "watch.trace": CardTraceInfo;
+  "watch.byUrl": UrlTraceInfo;
+  "watch.watch": undefined;
   "messages.send": SendResult;
   "messages.list": { messages: MessageInfo[] };
   "messages.sessions": { sessions: MessagingSession[] };
@@ -3646,6 +3744,7 @@ export const ServerMessage = z.union([
   VaultUsed,
   VaultAlertFrame,
   TeamsUpdatedFrame,
+  WatchUpdatedFrame,
   MessagesUpdatedFrame,
   MessagesRelayFrame,
   MessagingAlertFrame,

@@ -116,7 +116,12 @@ import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
 import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
+import { PrFixer } from "./watch/fix.ts";
+import { PrWatch } from "./watch/service.ts";
+import { Traces } from "./watch/trace.ts";
+import { PrWatcher } from "./watch/watch.ts";
 import { whichOnPath } from "./which.ts";
+import { shellCheckRunner } from "./workflows/check-runner.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
@@ -610,10 +615,13 @@ export async function startDaemon(
   budgets.start();
   history.onChange(() => usageIndex.request());
   usageIndex.start();
+  // Phase 22: the PR description generated from the card's sessions (the trail is built below).
+  let traces: Traces | null = null;
   const board = new Board({
     db: store.db,
     manager,
     quota,
+    prDescription: (cardId) => traces?.describe(cardId) ?? "",
     allowedRoots: config.allowedRoots,
     maxParallelRuns: config.maxParallelRuns,
     budgets,
@@ -834,6 +842,52 @@ export async function startDaemon(
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
+  // Phase 22: the PRs of the cards are watched and fixed, inside their limits.
+  const prWatcher = new PrWatcher({
+    db: store.db,
+    board,
+    onTrigger: (trigger) => prFixer.onTrigger(trigger),
+  });
+  const prFixer = new PrFixer({
+    db: store.db,
+    board,
+    watcher: prWatcher,
+    checks: shellCheckRunner(),
+    onUpdate: (cardId) => prWatch.notify(cardId),
+  });
+  traces = new Traces({
+    db: store.db,
+    board,
+    fixer: prFixer,
+    claudeSessionOf: (sessionId) => manager.get(sessionId).claudeSessionId,
+    describeSession: (sessionId) => ({
+      name: manager.get(sessionId).name,
+      request:
+        store
+          .eventsSince(sessionId, 0)
+          .map((envelope) => envelope.event)
+          .flatMap((event) => (event.type === "message.user" ? [event.text] : []))[0] ?? null,
+    }),
+    sessionCosts: (ids) => costs.sessions(ids),
+    cardCost: (cardId) => costs.card(cardId),
+    checkpoints: (claudeSessionId) => snapshots.list(claudeSessionId).length,
+    search: (query) => {
+      const seen = new Map<
+        string,
+        { claudeSessionId: string; title: string | null; cwd: string }
+      >();
+      for (const hit of history.search({ query: `"${query.replaceAll('"', "")}"`, limit: 20 })) {
+        seen.set(hit.claudeSessionId, {
+          claudeSessionId: hit.claudeSessionId,
+          title: hit.title,
+          cwd: hit.cwd,
+        });
+      }
+      return [...seen.values()];
+    },
+  });
+  const prWatch = new PrWatch({ board, watcher: prWatcher, fixer: prFixer, traces });
+  prWatch.start(board.prPollIntervalMs);
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({
@@ -844,6 +898,7 @@ export async function startDaemon(
     names,
     idle,
     teams,
+    watch: prWatch,
     vault,
     log: logger.log.bind(logger),
     actions,
@@ -976,6 +1031,7 @@ export async function startDaemon(
         actions.stop();
         vault.stop();
         await automations.idle();
+        prWatch.stop();
         board.stop();
         terminals.stop();
         await central.stop();

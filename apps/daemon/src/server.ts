@@ -37,6 +37,7 @@ import {
   type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
+  type WatchUpdatedFrame,
   WS_PATH,
 } from "@flightdeck/protocol";
 import type { ServerWebSocket } from "bun";
@@ -93,6 +94,7 @@ import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
+import type { PrWatch } from "./watch/service.ts";
 import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -129,6 +131,8 @@ export interface ServerOptions {
   vault?: Vault;
   /** Phase 21: the teams (`teams.*`). */
   teams?: Teams;
+  /** Phase 22: the PR watch of the cards. */
+  watch?: PrWatch;
   /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
   messaging?: Messaging;
   /** Phase 21: the standard names of the sessions (`names.list`, and the rename of a session). */
@@ -258,6 +262,8 @@ interface Connection {
   unwatchMessages?: () => void;
   /** Stops the `teams.watch` stream, when active. */
   unwatchTeams?: () => void;
+  /** Stops the `watch.watch` stream, when active. */
+  unwatchPrs?: () => void;
   lastRttMs?: number;
 }
 
@@ -293,7 +299,8 @@ type Outgoing =
   | MessagesRelayFrame
   | MessagingAlertFrame
   | IdleFiredFrame
-  | TeamsUpdatedFrame;
+  | TeamsUpdatedFrame
+  | WatchUpdatedFrame;
 
 function send(ws: Socket, message: Outgoing): void {
   sendFrame(ws, message);
@@ -377,6 +384,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Phase 21: messages between sessions, teams and the standard session names.
     ...(opts.messaging ? ["messaging"] : []),
     ...(opts.teams ? ["teams"] : []),
+    // Phase 22: watching a card's PR and fixing it.
+    ...(opts.watch ? ["watch"] : []),
     ...(opts.names ? ["names"] : []),
   ];
   let pingSeq = 0;
@@ -471,6 +480,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function names(): Names {
     if (!opts.names) throw featureOff("names");
     return opts.names;
+  }
+
+  function watching(): PrWatch {
+    if (!opts.watch) throw new FlightdeckError("invalid_state", "vigia de PR indisponível");
+    return opts.watch;
   }
 
   function teams(): Teams {
@@ -897,6 +911,25 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { team, as } = command.payload;
         const asker = as ? messaging().whoIs(as).id : undefined;
         return ok(command.type, teams().status(team, asker));
+      }
+      case "watch.settings":
+        return ok(
+          command.type,
+          watching().settings(command.payload.projectId, command.payload.patch),
+        );
+      case "watch.set":
+        return ok(command.type, watching().set(command.payload.cardId, command.payload.enabled));
+      case "watch.get":
+        return ok(command.type, watching().info(command.payload.cardId));
+      case "watch.trace":
+        return ok(command.type, watching().trace(command.payload.cardId));
+      case "watch.byUrl":
+        return ok(command.type, watching().byUrl(command.payload.url));
+      case "watch.watch": {
+        const service = watching();
+        ws.data.unwatchPrs?.();
+        ws.data.unwatchPrs = service.watch((frame) => send(ws, frame));
+        return ok(command.type);
       }
       case "teams.watch": {
         const service = teams();
@@ -1625,7 +1658,12 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.message":
         return ok(command.type, board().message(command.payload.cardId, command.payload.text));
       case "card.pr.create":
-        return ok(command.type, await board().createPr(command.payload.cardId));
+        return ok(
+          command.type,
+          await board().createPr(command.payload.cardId, {
+            generate: command.payload.generate ?? false,
+          }),
+        );
       case "card.complete": {
         const { cardId, confirm } = command.payload;
         return ok(command.type, await board().completeCard(cardId, confirm === true));
@@ -1719,6 +1757,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchVault?.();
         ws.data.unwatchMessages?.();
         ws.data.unwatchTeams?.();
+        ws.data.unwatchPrs?.();
         for (const unsubscribe of ws.data.subscriptions.values()) unsubscribe();
         ws.data.subscriptions.clear();
       },
