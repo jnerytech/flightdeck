@@ -294,3 +294,21 @@ describe("snippets-modelo: segredos", () => {
     expect(refused(command("ls", { name: "ls" }))).toBe("ok");
   });
 });
+
+describe("snippets-modelo: a failure that is not the snippet's", () => {
+  test("a scanner that breaks surfaces its own error, not a refusal of the snippet", () => {
+    const broken = new SecretScanner();
+    broken.scan = () => {
+      throw new TypeError("the scanner broke");
+    };
+    let thrown: unknown;
+    try {
+      normalizeSnippet(command("bun test"), broken);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect((thrown as Error).message).toBe("the scanner broke");
+    expect((thrown as { code?: string }).code).toBeUndefined();
+  });
+});
