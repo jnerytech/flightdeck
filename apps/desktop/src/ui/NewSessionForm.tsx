@@ -26,7 +26,7 @@ export function joinPath(root: string, sub: string): string {
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
 export function NewSessionForm(props: {
   host: HostView;
-  onCreate(payload: CommandPayload<"session.create">): void;
+  onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
   /** The first prompt, filled in (a snippet, phase 18). */
   prompt?: string;
   /** More fields above Criar sessão: the persona picker (phase 20). */
