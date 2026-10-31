@@ -49,34 +49,36 @@ export function TabBar(props: {
   useSyncExternalStore(tabs.subscribe, () => tabs.version);
   /** The tab being dragged to a new place. */
   const dragged = useRef<string | null>(null);
+  const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
+  const activeLabel = active ? title(active, state, store) : "";
   return (
-    <div
-      role="tablist"
-      aria-label={t("tabs.list")}
-      className="flex h-9 items-end gap-0.5 border-b px-2"
-    >
-      {tabs.tabs.map((tab) => {
-        const label = title(tab, state, store);
-        const kind = tabKind(tab.router.current);
-        const Icon = ICONS[kind];
-        const active = tab.id === tabs.activeId;
-        const badge = tabBadge(tab.router.current, state);
-        return (
-          <div
-            key={tab.id}
-            role="presentation"
-            className={cn(
-              "group flex max-w-48 items-center rounded-t-md border border-b-0 text-sm",
-              active ? "bg-background" : "bg-muted/40 text-muted-foreground",
-            )}
-          >
+    <div className="flex h-9 items-end gap-1 border-b px-2">
+      {/* Only tabs in the tablist; the buttons act on the active tab and sit after it. */}
+      <div role="tablist" aria-label={t("tabs.list")} className="flex min-w-0 items-end gap-0.5">
+        {tabs.tabs.map((tab) => {
+          const label = title(tab, state, store);
+          const kind = tabKind(tab.router.current);
+          const Icon = ICONS[kind];
+          const selected = tab.id === tabs.activeId;
+          const badge = tabBadge(tab.router.current, state);
+          return (
             <button
+              key={tab.id}
               type="button"
               role="tab"
-              aria-selected={active}
+              aria-selected={selected}
               {...(tab.pinned ? { "aria-label": label } : {})}
-              className="flex min-w-0 items-center gap-1.5 px-2 py-1.5"
+              className={cn(
+                "flex min-w-0 max-w-48 items-center gap-1.5 rounded-t-md border border-b-0 px-2 py-1.5 text-sm",
+                selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
+              )}
               onClick={() => tabs.activate(tab.id)}
+              onAuxClick={(e) => {
+                // The middle button closes a tab (App opens items in a new tab with it).
+                if (e.button !== 1) return;
+                e.stopPropagation();
+                store.closeTab(tabs, tab.id);
+              }}
               draggable
               onDragStart={() => {
                 dragged.current = tab.id;
@@ -105,38 +107,42 @@ export function TabBar(props: {
                 </span>
               )}
             </button>
+          );
+        })}
+      </div>
+      {active && (
+        <div className="mb-0.5 flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            aria-label={t("tabs.moveToOther", { title: activeLabel })}
+            onClick={() => store.workspace.moveToOtherArea(active.id)}
+          >
+            <ArrowLeftRight />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            aria-label={t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
+            onClick={() => tabs.pin(active.id, !active.pinned)}
+          >
+            {active.pinned ? <PinOff /> : <Pin />}
+          </Button>
+          {!active.pinned && (
             <Button
               variant="ghost"
               size="icon"
               className="size-6"
-              aria-label={t("tabs.moveToOther", { title: label })}
-              onClick={() => store.workspace.moveToOtherArea(tab.id)}
+              aria-label={t("tabs.close", { title: activeLabel })}
+              onClick={() => store.closeTab(tabs, active.id)}
             >
-              <ArrowLeftRight />
+              <X />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              aria-label={t(tab.pinned ? "tabs.unpin" : "tabs.pin", { title: label })}
-              onClick={() => tabs.pin(tab.id, !tab.pinned)}
-            >
-              {tab.pinned ? <PinOff /> : <Pin />}
-            </Button>
-            {!tab.pinned && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                aria-label={t("tabs.close", { title: label })}
-                onClick={() => store.closeTab(tabs, tab.id)}
-              >
-                <X />
-              </Button>
-            )}
-          </div>
-        );
-      })}
+          )}
+        </div>
+      )}
       <Button
         variant="ghost"
         size="icon"
