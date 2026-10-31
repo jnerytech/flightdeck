@@ -173,7 +173,7 @@ describe("rastro: from the card and its PR to sessions, cost, rounds and work it
     const before = git(f.remote, "rev-list", "--all", "--count");
     await expect(
       f.board.createPr(f.card.id, { description: "usa ghp_abcdefghijklmnopqrstuvwxyz0123456789" }),
-    ).rejects.toThrow("segredo");
+    ).rejects.toThrow("secret");
     expect(az.calls()).toEqual([]);
     expect(git(f.remote, "rev-list", "--all", "--count")).toBe(before);
     expect(f.board.getCard(f.card.id).prUrl).toBeNull();
