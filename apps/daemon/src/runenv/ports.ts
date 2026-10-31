@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { createServer } from "node:net";
 import { FlightdeckError } from "../errors.ts";
 import { portVariable } from "./config.ts";
 
@@ -14,13 +15,12 @@ const LAST_PORT = 65535;
 export type PortProbe = (port: number) => Promise<boolean>;
 
 /** The real probe: a port is free when a server can listen on it on the loopback address. */
-export async function loopbackFree(port: number): Promise<boolean> {
-  try {
-    Bun.listen({ hostname: "127.0.0.1", port, socket: { data() {}, open() {} } }).stop(true);
-    return true;
-  } catch {
-    return false;
-  }
+export function loopbackFree(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.once("error", () => resolve(false));
+    server.listen(port, "127.0.0.1", () => server.close(() => resolve(true)));
+  });
 }
 
 export type PortMap = Record<string, number>;
