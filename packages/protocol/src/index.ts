@@ -619,6 +619,8 @@ export const ArenaVariant = z.object({
   label: z.string(),
   model: z.string().nullable(),
   effort: EffortLevel.nullable(),
+  /** Phase 20: the id of the persona the variant runs in; `null` for none. */
+  persona: z.string().nullable(),
   branch: z.string().nullable(),
   worktreePath: z.string().nullable(),
   /** Started and waiting for a free slot. */
@@ -1821,7 +1823,14 @@ export const Command = z.discriminatedUnion("type", [
     z.object({
       cardId: z.string(),
       variants: z
-        .array(z.object({ model: z.string().min(1).optional(), effort: EffortLevel.optional() }))
+        .array(
+          z.object({
+            model: z.string().min(1).optional(),
+            effort: EffortLevel.optional(),
+            /** Phase 20: the persona the variant's session opens in. */
+            persona: PersonaRef.optional(),
+          }),
+        )
         .min(2)
         .max(4),
       workflow: z.string().min(1).optional(),

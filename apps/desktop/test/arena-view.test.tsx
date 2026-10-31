@@ -15,6 +15,7 @@ const variant = (over: Partial<ArenaVariant>): ArenaVariant => ({
   label: "a",
   model: null,
   effort: null,
+  persona: null,
   branch: "fd/x-a",
   worktreePath: "/tmp/x-a",
   queued: false,

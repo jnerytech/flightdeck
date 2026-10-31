@@ -405,3 +405,27 @@ describe("personas-integracoes: custo por persona", () => {
     expect(summary.totals.costUsd).toBe(127);
   });
 });
+
+describe("personas-integracoes: arena", () => {
+  test("each variant of an arena opens in its own persona, and the comparison says which", async () => {
+    const { board, repo, manager } = setup();
+    const project = await board.addProject({ path: repo, promptTemplate: "" });
+    const card = board.createCard(project.id, { title: "Tarefa", description: "faça" });
+    const arena = await board.startArena(card.id, {
+      variants: [{ persona: { id: "seguranca" } }, { persona: { id: "qa" } }, {}],
+    });
+    const sessions = await Promise.all(
+      arena.variants.map((v) => cardWhen(board, v.id, (c) => c.sessionId !== null)),
+    );
+    expect(sessions.map((c) => manager.get(c?.sessionId ?? "").persona?.id ?? null)).toEqual([
+      "seguranca",
+      "qa",
+      null,
+    ]);
+    expect((await board.arena(card.id)).variants.map((v) => v.persona)).toEqual([
+      "seguranca",
+      "qa",
+      null,
+    ]);
+  });
+});

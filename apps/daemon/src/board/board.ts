@@ -489,7 +489,11 @@ export class Board {
   async startArena(
     cardId: string,
     input: {
-      variants: Array<{ model?: string | undefined; effort?: EffortLevel | undefined }>;
+      variants: Array<{
+        model?: string | undefined;
+        effort?: EffortLevel | undefined;
+        persona?: PersonaRef | undefined;
+      }>;
       workflow?: string | undefined;
       inputs?: Record<string, string> | undefined;
     },
@@ -567,6 +571,7 @@ export class Board {
       label: card.variant?.label ?? "?",
       model: card.variant?.model ?? null,
       effort: card.variant?.effort ?? null,
+      persona: null,
       branch: card.branch,
       worktreePath: card.worktreePath,
       queued: card.queued,
