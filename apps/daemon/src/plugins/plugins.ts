@@ -89,7 +89,13 @@ export interface PluginsOptions {
 }
 
 export interface PluginDecision {
-  action: "install" | "update" | "uninstall" | "marketplace-add" | "marketplace-remove";
+  action:
+    | "install"
+    | "update"
+    | "uninstall"
+    | "marketplace-add"
+    | "marketplace-remove"
+    | "rollback";
   /** The plugin id, or the marketplace name or source. */
   target: string;
   /** The content hash that was confirmed, when there is one. */
@@ -130,7 +136,7 @@ export interface UpdatePreview {
 
 /** What a change that went to the CLI came to. */
 export interface ChangeResult {
-  outcome: "ok" | "failed" | "unchanged" | "needs-command-confirmation";
+  outcome: "ok" | "failed" | "unchanged" | "needs-command-confirmation" | "rolled-back";
   message: string;
   /** A command the marketplace declares, to be shown to the person: only its `sha256` accepts it. */
   shownCommand?: { command?: string; plugin?: string; sha256: string };

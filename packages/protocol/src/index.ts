@@ -1681,7 +1681,7 @@ export type PluginUpdatePreview = z.infer<typeof PluginUpdatePreview>;
 
 /** What a change that went to the CLI came to. */
 export const PluginChange = z.object({
-  outcome: z.enum(["ok", "failed", "unchanged", "needs-command-confirmation"]),
+  outcome: z.enum(["ok", "failed", "unchanged", "needs-command-confirmation", "rolled-back"]),
   message: z.string(),
   /** A command the marketplace declares: only this `sha256`, sent back after the person saw it, accepts it. */
   shownCommand: z

