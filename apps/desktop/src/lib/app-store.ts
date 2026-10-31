@@ -234,6 +234,8 @@ export type HostCommandType = Extract<
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
+  | `memory.${string}`
+  | `plugins.${string}`
   | "session.applyPersona"
   | "session.clearPersona"
   | `askpass.${string}`
