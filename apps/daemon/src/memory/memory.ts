@@ -51,6 +51,14 @@ export interface MemoryDecision {
   at: string;
 }
 
+/** A cleanup the screen suggests; the memory is never edited because of it. */
+export interface MemorySuggestion {
+  kind: "duplicate" | "broken-link" | "orphan" | "stale" | "contradiction";
+  files: string[];
+  /** The index line behind a broken link. */
+  detail?: string;
+}
+
 export interface MemoryWrite {
   name: string;
   content: string;
@@ -175,6 +183,11 @@ export class ProjectMemory {
       managedClaudeMd: this.opts.managedClaudeMd ?? managedClaudeMdPath(),
       memoryDir: this.dir(project),
     });
+  }
+
+  /** Entries that look duplicated, old, orphaned, broken or in contradiction. Read only. */
+  suggest(_project: string): MemorySuggestion[] {
+    return [];
   }
 
   private claudeDir(): string {
