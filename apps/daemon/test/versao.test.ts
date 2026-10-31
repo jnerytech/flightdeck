@@ -9,15 +9,15 @@ const ROOT = join(import.meta.dir, "..", "..", "..");
 const json = (path: string) => JSON.parse(readFileSync(join(ROOT, path), "utf8"));
 
 describe("versao", () => {
-  test("protocol, daemon, desktop and tauri.conf.json share the product version, 0.20.0", () => {
+  test("protocol, daemon, desktop and tauri.conf.json share the product version, 0.21.0", () => {
     const protocol = json("packages/protocol/package.json").version;
     const daemon = json("apps/daemon/package.json").version;
     const desktop = json("apps/desktop/package.json").version;
     // tauri.conf.json takes it from the desktop's package.json.
     const tauri = json("apps/desktop/src-tauri/tauri.conf.json").version;
     expect(tauri).toBe("../package.json");
-    expect([protocol, daemon, desktop]).toEqual(["0.20.0", "0.20.0", "0.20.0"]);
-    expect(DAEMON_VERSION).toBe("0.20.0");
+    expect([protocol, daemon, desktop]).toEqual(["0.21.0", "0.21.0", "0.21.0"]);
+    expect(DAEMON_VERSION).toBe("0.21.0");
   });
 
   test("flightdeckd --version imprime a versão e o protocolo e sai com 0", async () => {
