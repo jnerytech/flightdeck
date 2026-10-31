@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { killTree, terminalRunHost } from "../src/runenv/host.ts";
+import { bunPty } from "../src/terminal/pty.ts";
 import { TerminalManager } from "../src/terminal/terminal-manager.ts";
 import { poll, workspace } from "./helpers.ts";
 import { fakePtys } from "./pty-helpers.ts";
@@ -113,6 +114,40 @@ describe("run-processos: killTree", () => {
     ).not.toThrow();
   });
 
+  test("nunca o grupo do próprio daemon, nem o init, nem um pid sem sentido", () => {
+    const signals: Array<[number, string]> = [];
+    for (const pid of [process.pid, 1, 0, -5, Number.NaN]) {
+      killTree(pid, { platform: "linux", signal: (p, signal) => void signals.push([p, signal]) });
+    }
+    expect(signals).toEqual([]);
+  });
+
+  test("o filho de um PTY lidera o próprio grupo, longe do grupo do daemon: é esse grupo que o Stop mata", async () => {
+    // `ps` is not on Windows, where taskkill takes the tree by parent.
+    if (process.platform === "win32") return;
+    const ps = (pid: number) =>
+      Bun.spawnSync(["ps", "-o", "pgid=", "-p", String(pid)])
+        .stdout.toString()
+        .trim();
+    const pty = bunPty()({
+      argv: [process.execPath, "-e", "setInterval(()=>{},1000)"],
+      cwd: process.cwd(),
+      env: { PATH: process.env.PATH ?? "" },
+      cols: 80,
+      rows: 24,
+      onData: () => {},
+      onExit: () => {},
+    });
+    const child = pty.pid ?? -1;
+    try {
+      expect(await poll(() => ps(child) !== "", 3000)).toBe(true);
+      expect(ps(child)).toBe(String(child));
+      expect(ps(child)).not.toBe(ps(process.pid));
+    } finally {
+      killTree(child);
+    }
+  });
+
   test("de verdade: um processo e o filho dele, que ignoram SIGHUP e SIGTERM, somem com a árvore", async () => {
     const ignores =
       'process.on("SIGHUP",()=>{});process.on("SIGTERM",()=>{});setInterval(()=>{},1000)';
@@ -134,15 +169,23 @@ describe("run-processos: killTree", () => {
         return false;
       }
     };
+    // Outside the run's tree: the test's own process and a process started beside the parent.
+    const sibling = Bun.spawn([process.execPath, "-e", "setInterval(()=>{},1000)"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    });
     try {
       expect(alive(parent.pid)).toBe(true);
       expect(alive(childPid)).toBe(true);
       killTree(parent.pid);
       expect(await poll(() => !alive(parent.pid), 3000)).toBe(true);
       expect(await poll(() => !alive(childPid), 3000)).toBe(true);
+      // Only the run's tree went: this process and its sibling are still here.
+      expect(alive(process.pid)).toBe(true);
+      expect(alive(sibling.pid)).toBe(true);
     } finally {
       // Whatever the assertions said, nothing is left running.
-      for (const pid of [childPid, parent.pid]) {
+      for (const pid of [childPid, parent.pid, sibling.pid]) {
         try {
           process.kill(pid, "SIGKILL");
         } catch {
