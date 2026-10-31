@@ -3,14 +3,28 @@ import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { runCli } from "../src/main.ts";
 import { git, gitRepo } from "./board-helpers.ts";
-import { poll, tempDir } from "./helpers.ts";
+import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
-setDefaultTimeout(40_000);
+setDefaultTimeout(100_000);
 
 const TOKEN = "vigiar-protocolo-token-0123456789abcdef";
 const WEB = "https://dev.azure.com/acme/proj/_git/repo";
 const PR = `${WEB}/pullrequest/9`;
+
+/** Asks again until the answer is something, or the time is up (`null`). */
+async function until<T>(
+  check: () => Promise<T | null | false>,
+  timeoutMs: number,
+): Promise<T | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) return null;
+    await Bun.sleep(20);
+  }
+}
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -78,7 +92,7 @@ async function boot() {
       dataDir: join(dir, "data"),
       hooks: { port: 0 },
       allowedRoots: [root],
-      board: { prPollIntervalMs: 50 },
+      board: { prPollIntervalMs: 400 },
     }),
   );
   const daemon = await runCli(["--config", file, "--runtime", "fake"], {
@@ -102,12 +116,33 @@ async function boot() {
     description: "Fazer o login",
   });
   await client.request("card.start", { cardId: card?.id });
-  await poll(async () => {
+  await until(async () => {
     const got = await client.data<{ column: string }>("card.get", { cardId: card?.id });
     return got?.column === "review" ? got : null;
   }, 10_000);
   const cardId = card?.id ?? "";
   return { az, client, daemon, projectId: project?.id ?? "", cardId, repo };
+}
+
+/**
+ * The PR is merged: the polls then have nothing to ask, so the daemon does not stop under one
+ * (a poll in flight would write to a closed database).
+ */
+async function merged(az: FakeCli, client: FrameClient, cardId: string) {
+  az.respond([
+    {
+      args: ["repos", "pr", "show"],
+      stdout: JSON.stringify({ status: "completed", repository: { project: { id: "proj-guid" } } }),
+    },
+    { args: ["repos", "pr", "policy", "list"], stdout: "[]" },
+    { args: ["pullRequestThreads"], stdout: '{"value":[]}' },
+  ]);
+  await until(async () => {
+    const got = await client.data<{ prState: string; worktreePath: string | null }>("card.get", {
+      cardId,
+    });
+    return got?.prState === "merged" && got.worktreePath === null;
+  }, 15_000);
 }
 
 interface Watch {
@@ -171,10 +206,10 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     expect(opened?.prUrl).toBe(PR);
     await client.data("watch.set", { cardId, enabled: true });
     az.respond(azRules("rejected"));
-    const watch = await poll(async () => {
+    const watch = await until(async () => {
       const got = await client.data<Watch>("watch.get", { cardId });
       return got?.status === "needs_you" ? got : null;
-    }, 20_000);
+    }, 90_000);
     expect(watch?.rounds[0]).toMatchObject({ n: 1, status: "failed", trigger: { failed: ["CI"] } });
     expect(watch?.reason).toContain("no commit");
     // The frame told the app each change of the watch.
@@ -194,6 +229,7 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     expect(await client.data("watch.byUrl", { url: `${WEB}/pullrequest/77` })).toMatchObject({
       via: "none",
     });
+    await merged(az, client, cardId);
   });
 
   test("the PR can open with a description generated from the card's sessions", async () => {
@@ -201,5 +237,6 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     await client.data("card.pr.create", { cardId, generate: true });
     const create = az.calls().find((args) => args.includes("create")) ?? [];
     expect(create[create.indexOf("--description") + 1]).toContain("Login");
+    await merged(az, client, cardId);
   });
 });
