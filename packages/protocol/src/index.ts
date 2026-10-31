@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type RunConfigInfo, RunState } from "./run.ts";
 
 export const PROTOCOL_VERSION = 1;
 /** Oldest client protocol this daemon still serves. */
@@ -2602,6 +2603,14 @@ export const Command = z.discriminatedUnion("type", [
     "workflow.trust",
     z.object({ projectId: z.string(), name: z.string().min(1), hash: z.string().min(1) }),
   ),
+  // Phase 24: the run environment of a card (scripts, a block of ports, a preview).
+  cmd("runenv.config", z.object({ projectId: z.string() })),
+  /** `hash` is the run.yaml the user reviewed; one that changed since is refused. */
+  cmd("runenv.trust", z.object({ projectId: z.string(), hash: z.string().min(1) })),
+  cmd("runenv.start", z.object({ cardId: z.string() })),
+  cmd("runenv.stop", z.object({ cardId: z.string() })),
+  cmd("runenv.get", z.object({ cardId: z.string() })),
+  cmd("runenv.watch", z.object({}).strict()),
   cmd("run.get", z.object({ runId: z.string() })),
   cmd("run.watch", z.object({}).strict()),
   /** Only the user answers gates: there is no MCP tool for it. */
@@ -3341,6 +3350,12 @@ export interface CommandResults {
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;
+  "runenv.config": RunConfigInfo;
+  "runenv.trust": RunConfigInfo;
+  "runenv.start": RunState;
+  "runenv.stop": RunState;
+  "runenv.get": RunState;
+  "runenv.watch": undefined;
   "run.get": WorkflowRun;
   "run.watch": undefined;
   "gate.respond": WorkflowRun;
@@ -3552,6 +3567,10 @@ export const ExternalPermissionFrame = z.object({
 export type ExternalPermissionFrame = z.infer<typeof ExternalPermissionFrame>;
 
 /** Sent after `run.watch` with the whole workflow run after each change. Not a session event. */
+/** A card's run environment changed (after `runenv.watch`). */
+export const RunEnvUpdated = z.object({ type: z.literal("runenv.updated"), state: RunState });
+export type RunEnvUpdated = z.infer<typeof RunEnvUpdated>;
+
 export const RunUpdated = z.object({ type: z.literal("run.updated"), run: WorkflowRun });
 export type RunUpdated = z.infer<typeof RunUpdated>;
 
@@ -3758,6 +3777,7 @@ export const ServerMessage = z.union([
   ExternalUpdated,
   ExternalPermissionFrame,
   RunUpdated,
+  RunEnvUpdated,
   QuotaUpdated,
   AskpassRequest,
   BudgetUpdated,

@@ -26,6 +26,7 @@ import {
   Pong,
   PROTOCOL_VERSION,
   type QuotaUpdated,
+  type RunEnvUpdated,
   type RunUpdated,
   type SessionLine,
   type SessionStatus,
@@ -80,6 +81,8 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
+import type { RunConfigs } from "./runenv/config.ts";
+import type { RunManager } from "./runenv/manager.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
@@ -121,6 +124,8 @@ export interface ServerOptions {
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
+  /** The run environment of the cards: the run.yaml and the processes (phase 24). */
+  runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
@@ -246,6 +251,7 @@ interface Connection {
   unwatchExternal?: () => void;
   /** Stops the `run.watch` stream, when active. */
   unwatchRuns?: () => void;
+  unwatchRunEnv?: () => void;
   /** Stops the `quota.watch` stream, when active. */
   unwatchQuota?: () => void;
   /** Stops the `askpass.watch` stream, when active. */
@@ -285,6 +291,7 @@ type Outgoing =
   | ExternalUpdated
   | ExternalPermissionFrame
   | RunUpdated
+  | RunEnvUpdated
   | QuotaUpdated
   | BudgetUpdated
   | ChangesUpdated
@@ -357,6 +364,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.fsDirs ? ["fs.dirs"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
+    // Phase 24: the run.yaml of a card and its processes.
+    ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
     ...(opts.quota ? ["quota"] : []),
     // Project rules live in the board's projects.
@@ -692,6 +701,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       backlog: () => ws.getBufferedAmount(),
     };
     return ws.data.terminalSink;
+  }
+
+  function runenv() {
+    if (!opts.runenv) throw new FlightdeckError("invalid_state", "ambiente de execução desativado");
+    return opts.runenv;
   }
 
   function board(): Board {
@@ -1640,6 +1654,32 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchQuota = host.watch((state) => send(ws, { type: "quota.updated", ...state }));
         return ok(command.type);
       }
+      case "runenv.config":
+        return ok(
+          command.type,
+          await runenv().configs.info(board().getProject(command.payload.projectId)),
+        );
+      case "runenv.trust": {
+        const { projectId, hash } = command.payload;
+        return ok(command.type, await runenv().configs.trust(board().getProject(projectId), hash));
+      }
+      case "runenv.start":
+        return ok(command.type, await runenv().manager.start(command.payload.cardId));
+      case "runenv.stop":
+        return ok(command.type, await runenv().manager.stop(command.payload.cardId));
+      case "runenv.get":
+        return ok(command.type, runenv().manager.state(command.payload.cardId));
+      case "runenv.watch": {
+        // Ack, the runs going now, then every change.
+        const { manager } = runenv();
+        ws.data.unwatchRunEnv?.();
+        ws.data.unwatchRunEnv = manager.watch((state) =>
+          send(ws, { type: "runenv.updated", state }),
+        );
+        ok(command.type);
+        for (const state of manager.live()) send(ws, { type: "runenv.updated", state });
+        return;
+      }
       case "run.watch": {
         // Ack, the runs still going, then every change: the app sees open gates right away.
         const runs = board().workflows;
@@ -1752,6 +1792,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchBoard?.();
         ws.data.unwatchExternal?.();
         ws.data.unwatchRuns?.();
+        ws.data.unwatchRunEnv?.();
         ws.data.unwatchQuota?.();
         ws.data.unwatchAskpass?.();
         ws.data.unwatchBudgets?.();

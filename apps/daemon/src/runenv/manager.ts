@@ -163,6 +163,13 @@ export class RunManager {
     };
   }
 
+  /** The runs going now (a setup or processes), for whoever starts watching. */
+  live(): RunState[] {
+    return [...this.entries.values()]
+      .filter((e) => LIVE.has(e.status))
+      .map((e) => this.snapshot(e));
+  }
+
   /** Calls `listener` with the card's state at every change. */
   watch(listener: (state: RunState) => void): () => void {
     this.watchers.add(listener);
