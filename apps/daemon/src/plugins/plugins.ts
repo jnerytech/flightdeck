@@ -4,9 +4,10 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
+import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
 import { inspectPlugin, type PluginInventory } from "./inventory.ts";
 
@@ -128,6 +129,29 @@ export interface ChangeResult {
   shownCommand?: { command?: string; plugin?: string; sha256: string };
 }
 
+/** Added and removed lines of each kind of component between two inventories. */
+function diffOf(from: PluginInventory, to: PluginInventory): InventoryDiff {
+  const delta = (before: string[], after: string[]) => ({
+    added: after.filter((x) => !before.includes(x)),
+    removed: before.filter((x) => !after.includes(x)),
+  });
+  const hooks = (i: PluginInventory) => i.hooks.map((h) => `${h.event}: ${h.command ?? h.type}`);
+  return {
+    hooks: delta(hooks(from), hooks(to)),
+    monitors: delta(
+      from.monitors.map((m) => m.name),
+      to.monitors.map((m) => m.name),
+    ),
+    skills: delta(from.skills, to.skills),
+    agents: delta(from.agents, to.agents),
+    commands: delta(from.commands, to.commands),
+    mcpServers: delta(
+      from.mcpServers.map((m) => m.name),
+      to.mcpServers.map((m) => m.name),
+    ),
+  };
+}
+
 const invalid = (message: string) => new FlightdeckError("invalid_state", message);
 
 type Json = Record<string, unknown>;
@@ -205,82 +229,258 @@ export class Plugins {
     return { ...found, pinned: pin };
   }
 
-  async preview(_input: { plugin: string } | { dir: string }): Promise<PluginPreview> {
-    return { plugin: "", inventory: null, hash: null };
-  }
-
-  async previewUpdate(_id: string): Promise<UpdatePreview> {
-    const none = { added: [], removed: [] };
+  /** What an install would bring, read from the plugin's own folder. Nothing is installed. */
+  async preview(input: { plugin: string } | { dir: string }): Promise<PluginPreview> {
+    if ("dir" in input) {
+      const inventory = inspectPlugin(input.dir);
+      return {
+        plugin: inventory.manifest?.name ?? basename(input.dir),
+        ...(inventory.manifest?.version ? { version: inventory.manifest.version } : {}),
+        inventory,
+        hash: inventory.hash,
+        validation: await this.validate(input.dir),
+      };
+    }
+    const dir = await this.sourceDir(input.plugin);
+    if (!dir) return { plugin: input.plugin, inventory: null, hash: null, reason: "not-local" };
+    const inventory = inspectPlugin(dir);
     return {
-      plugin: "",
-      from: { version: "", hash: "" },
-      to: { version: "", hash: "" },
-      inventory: {
-        manifest: null,
-        hooks: [],
-        monitors: [],
-        skills: [],
-        agents: [],
-        commands: [],
-        mcpServers: [],
-        attention: false,
-        hash: "",
-        files: 0,
-        bytes: 0,
-        problems: [],
-      },
-      diff: {
-        hooks: none,
-        monitors: none,
-        skills: none,
-        agents: none,
-        commands: none,
-        mcpServers: none,
-      },
-      unchanged: true,
+      plugin: input.plugin,
+      ...(inventory.manifest?.version ? { version: inventory.manifest.version } : {}),
+      inventory,
+      hash: inventory.hash,
     };
   }
 
-  async install(_input: {
+  /** The marketplace's copy against the installed one, after refreshing the marketplace. */
+  async previewUpdate(id: string): Promise<UpdatePreview> {
+    const { marketplace } = split(id);
+    const refreshed = await this.opts.cli.run(["marketplace", "update", marketplace, "--json"]);
+    if (refreshed.code !== 0) {
+      throw invalid(
+        `não deu para atualizar o marketplace ${marketplace}: ${refreshed.stderr.trim()}`,
+      );
+    }
+    const installed = await this.detail(id);
+    const next = await this.preview({ plugin: id });
+    if (!next.inventory || !installed.inventory) {
+      throw invalid(`o conteúdo de ${id} não pode ser mostrado antes de atualizar`);
+    }
+    return {
+      plugin: id,
+      from: { version: installed.version, hash: installed.inventory.hash },
+      to: { version: next.inventory.manifest?.version ?? "", hash: next.inventory.hash },
+      inventory: next.inventory,
+      diff: diffOf(installed.inventory, next.inventory),
+      unchanged: installed.inventory.hash === next.inventory.hash,
+    };
+  }
+
+  /** Installs what was shown: the confirmation repeats the hash of the content, and only that. */
+  async install(input: {
     plugin?: string;
     dir?: string;
     scope?: "user" | "project" | "local";
     confirmHash: string;
     acceptCommand?: string;
   }): Promise<ChangeResult> {
-    return { outcome: "unchanged", message: "" };
+    const scope = input.scope ?? "user";
+    let name: string;
+    let args: string[];
+    if (input.dir) {
+      const shown = await this.preview({ dir: input.dir });
+      if (!shown.validation?.success) {
+        throw invalid(`o validate recusou o plugin: ${shown.validation?.errors.join("; ") ?? ""}`);
+      }
+      this.sameContent(shown.hash, input.confirmHash);
+      name = shown.plugin;
+      args = ["install", name, "--marketplace", input.dir, "--scope", scope, "--json"];
+    } else {
+      name = input.plugin ?? "";
+      const shown = await this.preview({ plugin: name });
+      if (shown.hash === null)
+        throw invalid(`o conteúdo de ${name} não pode ser mostrado antes de instalar`);
+      this.sameContent(shown.hash, input.confirmHash);
+      args = ["install", name, "--scope", scope, "--json"];
+    }
+    const result = await this.change(name, args, input.acceptCommand);
+    if (result.outcome === "ok") this.record("install", name, input.confirmHash);
+    return result;
   }
 
-  async update(_input: {
+  async update(input: {
     plugin: string;
     confirmHash: string;
     acceptCommand?: string;
   }): Promise<ChangeResult> {
-    return { outcome: "unchanged", message: "" };
+    const pin = this.opts.pins.all()[input.plugin];
+    if (pin)
+      throw invalid(
+        `${input.plugin} está fixado na versão ${pin.version}; solte antes de atualizar`,
+      );
+    const next = await this.previewUpdate(input.plugin);
+    if (next.unchanged)
+      return { outcome: "unchanged", message: "já está na versão do marketplace" };
+    this.sameContent(next.to.hash, input.confirmHash);
+    const result = await this.change(
+      input.plugin,
+      ["update", input.plugin, "--json"],
+      input.acceptCommand,
+    );
+    if (result.outcome === "ok") this.record("update", input.plugin, input.confirmHash);
+    return result;
   }
 
-  async uninstall(_input: {
+  async uninstall(input: {
     plugin: string;
     scope?: "user" | "project" | "local";
     confirm: boolean;
   }): Promise<ChangeResult> {
-    return { outcome: "unchanged", message: "" };
+    if (!input.confirm) throw invalid("remover pede confirm: true");
+    const args = [
+      "uninstall",
+      input.plugin,
+      ...(input.scope ? ["--scope", input.scope] : []),
+      "--json",
+    ];
+    const result = await this.change(input.plugin, args);
+    if (result.outcome === "ok") {
+      this.opts.pins.delete(input.plugin);
+      this.record("uninstall", input.plugin);
+    }
+    return result;
   }
 
-  async marketplaceAdd(_input: {
+  async marketplaceAdd(input: {
     source: string;
     scope?: "user" | "project" | "local";
     confirm: boolean;
   }): Promise<ChangeResult> {
-    return { outcome: "unchanged", message: "" };
+    if (!input.confirm) throw invalid("adicionar um marketplace pede confirm: true");
+    const args = [
+      "marketplace",
+      "add",
+      input.source,
+      ...(input.scope ? ["--scope", input.scope] : []),
+      "--json",
+    ];
+    const result = await this.change(input.source, args);
+    if (result.outcome === "ok") this.record("marketplace-add", input.source);
+    return result;
   }
 
-  async marketplaceRemove(_input: { name: string; confirm: boolean }): Promise<ChangeResult> {
-    return { outcome: "unchanged", message: "" };
+  async marketplaceRemove(input: { name: string; confirm: boolean }): Promise<ChangeResult> {
+    if (!input.confirm) throw invalid("remover um marketplace pede confirm: true");
+    const result = await this.change(input.name, ["marketplace", "remove", input.name, "--json"]);
+    if (result.outcome === "ok") this.record("marketplace-remove", input.name);
+    return result;
   }
 
-  async marketplaceUpdate(_name?: string): Promise<ChangeResult> {
-    return { outcome: "unchanged", message: "" };
+  async marketplaceUpdate(name?: string): Promise<ChangeResult> {
+    return this.change(
+      name ?? "",
+      name ? ["marketplace", "update", name, "--json"] : ["marketplace", "update"],
+    );
+  }
+
+  private readonly shown = new Map<string, string>();
+
+  private sameContent(shown: string | null, confirmed: string) {
+    if (shown !== confirmed) {
+      throw invalid("o conteúdo mudou desde que foi mostrado: veja a prévia de novo");
+    }
+  }
+
+  private record(action: PluginDecision["action"], target: string, hash?: string) {
+    this.opts.record?.({
+      action,
+      target,
+      ...(hash ? { hash } : {}),
+      at: new Date((this.opts.clock ?? Date.now)()).toISOString(),
+    });
+  }
+
+  /** The plugin's folder inside its marketplace, or null when it comes from elsewhere. */
+  private async sourceDir(id: string): Promise<string | null> {
+    const { name, marketplace } = split(id);
+    const markets = list(await this.json(["marketplace", "list", "--json"])).filter(isObject);
+    const location = text(markets.find((m) => m.name === marketplace)?.installLocation);
+    if (!location)
+      throw new FlightdeckError("not_found", `o marketplace ${marketplace} não existe`);
+    let catalog: unknown;
+    try {
+      catalog = JSON.parse(
+        readFileSync(join(location, ".claude-plugin", "marketplace.json"), "utf8"),
+      );
+    } catch {
+      throw invalid(`o catálogo do marketplace ${marketplace} não pôde ser lido`);
+    }
+    const entry = list(isObject(catalog) ? catalog.plugins : [])
+      .filter(isObject)
+      .find((p) => p.name === name);
+    if (!entry) throw new FlightdeckError("not_found", `${id} não existe no marketplace`);
+    const source = text(entry.source);
+    if (!source?.startsWith("./")) return null;
+    const dir = resolve(location, source);
+    if (!existsSync(dir) || !isInside(realpathSync.native(location), realpathSync.native(dir)))
+      return null;
+    return dir;
+  }
+
+  /** `claude plugin validate`: whether it passed and the errors of the manifest. */
+  private async validate(dir: string): Promise<{ success: boolean; errors: string[] }> {
+    const result = await this.opts.cli.run(["validate", dir, "--json"]);
+    try {
+      const report = JSON.parse(result.stdout) as Json;
+      const manifest = isObject(report.manifest) ? report.manifest : {};
+      const errors = list(manifest.errors)
+        .filter(isObject)
+        .map((e) => `${text(e.path) ?? ""}: ${text(e.message) ?? ""}`);
+      return { success: report.success === true && result.code === 0, errors };
+    } catch {
+      return { success: false, errors: [result.stderr.trim() || "o validate não respondeu"] };
+    }
+  }
+
+  /**
+   * Runs a change. A command the marketplace wants shown comes back to the caller; only its own
+   * sha256, sent back by the caller after the person saw it, is passed on. `-y` never is.
+   */
+  private async change(key: string, args: string[], acceptCommand?: string): Promise<ChangeResult> {
+    if (acceptCommand !== undefined && this.shown.get(key) !== acceptCommand) {
+      throw invalid("só se aceita o comando que foi mostrado: peça de novo para ver");
+    }
+    const sent = acceptCommand ? [...args, "--accept-command", acceptCommand] : args;
+    const result = await this.opts.cli.run(sent);
+    const line = result.stdout.trim().split(/\r?\n/).at(-1) ?? "";
+    let parsed: Json | null = null;
+    try {
+      const json = JSON.parse(line);
+      parsed = isObject(json) ? json : null;
+    } catch {
+      parsed = null;
+    }
+    if (!parsed || typeof parsed.outcome !== "string") {
+      return result.code === 0
+        ? { outcome: "ok", message: result.stdout.trim() }
+        : { outcome: "failed", message: result.stderr.trim() || `código ${result.code}` };
+    }
+    const message = text(parsed.message) ?? "";
+    const command = isObject(parsed.shownCommand) ? parsed.shownCommand : null;
+    if (parsed.outcome !== "ok" && command && text(command.sha256)) {
+      const sha256 = text(command.sha256) as string;
+      this.shown.set(key, sha256);
+      return {
+        outcome: "needs-command-confirmation",
+        message,
+        shownCommand: {
+          ...(text(command.command) ? { command: text(command.command) as string } : {}),
+          ...(text(command.plugin) ? { plugin: text(command.plugin) as string } : {}),
+          sha256,
+        },
+      };
+    }
+    return { outcome: parsed.outcome === "ok" ? "ok" : "failed", message };
   }
 
   private installed(item: Json, pins: Record<string, Pin>): InstalledPlugin {
