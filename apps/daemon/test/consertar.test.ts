@@ -82,7 +82,7 @@ async function fixture(options: FixtureOptions = {}) {
     state: "open" as PrState,
     log: "ERRO: 3 testes falharam",
     comments: [] as PrComment[],
-    merges: 0,
+    logFails: false,
   };
   const provider: PrProvider = {
     create: async () => PR,
@@ -90,7 +90,10 @@ async function fixture(options: FixtureOptions = {}) {
     status: async () => ({ state: host.state, checks: null }),
     comments: async () => host.comments,
     health: async () => ({ checks: [], conflicts: false }),
-    buildLog: async () => host.log,
+    buildLog: async () => {
+      if (host.logFails) throw new Error("sem log");
+      return host.log;
+    },
   };
   const board = new Board({
     db: store.db,
@@ -329,6 +332,50 @@ describe("consertar: a round of fixing", () => {
   });
 });
 
+describe("consertar: what goes wrong inside a round", () => {
+  test("a session that fails ends the round as failed, with the reason", async () => {
+    const f = await fixture();
+    await f.fixer.onTrigger(f.trigger({ comments: [comment("1/1", "[fail] quebra o runtime")] }));
+    await f.fixer.idle();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("failed");
+    expect(round?.summary).toContain("the session failed");
+    expect(f.gitCalls.some((args) => args[0] === "push")).toBe(false);
+  });
+
+  test("a card that is already queued cannot take the round's run: the round fails and says so", async () => {
+    const f = await fixture();
+    f.quota.record([
+      { window: "five_hour", utilization: 0.95, status: "allowed", resetsAt: f.now() + 60_000 },
+    ]);
+    await f.board.startCard(f.card.id);
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("failed");
+    expect(round?.summary).toContain("could not start the session");
+  });
+
+  test("a build log the host cannot give is said so in the prompt, and the round goes on", async () => {
+    const f = await fixture();
+    f.host.logFails = true;
+    await f.fixer.onTrigger(f.trigger({ failed: [failing()], comments: [work()] }));
+    await f.fixer.idle();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("pushed");
+    expect(f.promptOf(round?.sessionId ?? null)).toContain("(the log could not be read)");
+  });
+
+  test("a review's summary (no file) is told apart from a comment on a line", async () => {
+    const f = await fixture();
+    const review: PrComment = { ...work(), id: "review-1", path: null, line: null, kind: "review" };
+    review.body = `[commit] ${review.body}`;
+    await f.fixer.onTrigger(f.trigger({ comments: [review] }));
+    await f.fixer.idle();
+    expect(f.promptOf(f.fixer.rounds(f.card.id)[0]?.sessionId ?? null)).toContain("review by Ana");
+  });
+});
+
 describe("consertar: the limits", () => {
   /** Runs `n` rounds in a row, each with something to push and the cost given. */
   async function rounds(f: Awaited<ReturnType<typeof fixture>>, n: number, cost: number) {
@@ -456,13 +503,12 @@ describe("consertar: the session runs under the usual rules", () => {
     tool: string,
   ) {
     const abort = new AbortController();
-    const call = (
-      start?.canUseTool as unknown as (
-        name: string,
-        input: object,
-        ctx: object,
-      ) => Promise<{ behavior: string; message?: string }>
-    )(tool, {}, { signal: abort.signal, toolUseId: "t", suggestions: [] });
+    const gate = start?.canUseTool as unknown as (
+      name: string,
+      input: object,
+      ctx: object,
+    ) => Promise<{ behavior: string; message?: string }>;
+    const call = gate(tool, {}, { signal: abort.signal, toolUseId: "t", suggestions: [] });
     const answer = await Promise.race([call, Bun.sleep(300).then(() => ({ behavior: "pending" }))]);
     abort.abort();
     await call.catch(() => {});
