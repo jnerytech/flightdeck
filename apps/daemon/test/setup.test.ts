@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
-import { stableBinPath } from "../src/update.ts";
 import { createPrompt, installStableBinary, runSetup, type SetupDeps } from "../src/setup.ts";
+import { stableBinPath } from "../src/update.ts";
 import { tempDir } from "./helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];

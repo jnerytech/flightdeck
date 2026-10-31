@@ -55,7 +55,6 @@ import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
 import { trackNames } from "./names/track.ts";
-import { createPrompt, installStableBinary, runSetup } from "./setup.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
@@ -86,6 +85,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { createPrompt, installStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { Snippets } from "./snippets/store.ts";
