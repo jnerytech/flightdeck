@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
-import { createPrompt, runSetup, type SetupDeps } from "../src/setup.ts";
+import { type CliDeps, runCli } from "../src/main.ts";
+import { stableBinPath } from "../src/update.ts";
+import { createPrompt, installStableBinary, runSetup, type SetupDeps } from "../src/setup.ts";
 import { tempDir } from "./helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
@@ -202,5 +204,125 @@ describe("prompt", () => {
     const prompt = createPrompt(lines(), () => {});
     await expect(prompt.ask("name? ")).rejects.toThrow("input closed");
     await expect(prompt.confirm("ok?", true)).rejects.toThrow("--yes --folders");
+  });
+});
+
+describe("setup command", () => {
+  function cliHarness(stdin?: (dir: string) => string) {
+    const out: string[] = [];
+    const exits: number[] = [];
+    const written = new Map<string, string>();
+    const daemon = Bun.serve({ port: 0, fetch: () => Response.json({ ok: true }) });
+    const dir = tempDir("fd-setup-cli-");
+    const file = join(dir, "config.json");
+    writeFileSync(file, JSON.stringify({ token: "t".repeat(32), dataDir: dir, port: daemon.port }));
+    const deps: CliDeps = {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+      exec: async () => ({ code: 1, stdout: "" }),
+      serviceHealthTimeoutMs: 2_000,
+      serviceContext: (dryRun) => ({
+        platform: "linux",
+        home: "/home/dev",
+        user: "dev",
+        command: ["/home/dev/.local/bin/flightdeckd"],
+        systemRoot: "",
+        tempDir: "/tmp",
+        dryRun,
+        exec: async (cmd) => ({ code: 0, stdout: cmd[0] === "loginctl" ? "Linger=yes\n" : "" }),
+        writeFile: (path, content) => {
+          written.set(path, content);
+        },
+        removeFile: () => {},
+        which: () => null,
+      }),
+      ...(stdin
+        ? {
+            stdin: new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode(stdin(dir)));
+                controller.close();
+              },
+            }),
+          }
+        : {}),
+    };
+    return { deps, out, exits, written, file, dir, stop: () => daemon.stop(true) };
+  }
+
+  test("--yes sets everything up: folders, service started, pair link printed", async () => {
+    const h = cliHarness();
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.exits).toEqual([0]);
+    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect(h.written.has("/home/dev/.config/systemd/user/flightdeckd.service")).toBe(true);
+    expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
+    expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
+  });
+
+  test("interactive: reads the answers from the input", async () => {
+    const h = cliHarness((dir) => `${join(dir, "project")}\n\nn\n`);
+    mkdirSync(join(h.dir, "project"));
+    await runCli(["setup", "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.exits).toEqual([0]);
+    expect(loadConfig(h.file).allowedRoots).toEqual([join(h.dir, "project")]);
+  });
+
+  test("input that ends exits 1 with the way out", async () => {
+    const h = cliHarness(() => "");
+    await runCli(["setup", "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.exits).toEqual([1]);
+    expect(h.out.join("\n")).toContain("--yes --folders");
+  });
+});
+
+describe("stable binary", () => {
+  const platform = "linux";
+
+  test("running from source leaves everything alone", () => {
+    const home = tempDir("fd-stable-");
+    const stable = stableBinPath(home, platform);
+    expect(installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
+      "source",
+    );
+    expect(existsSync(stable)).toBe(false);
+  });
+
+  test("a binary that is already at the stable place stays", () => {
+    const home = tempDir("fd-stable-");
+    const stable = stableBinPath(home, platform);
+    mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
+    writeFileSync(stable, "daemon");
+    expect(installStableBinary([stable], stable, platform)).toBe("already");
+    expect(readFileSync(stable, "utf8")).toBe("daemon");
+  });
+
+  test("a stable binary that exists is kept: replacing it is what update does", () => {
+    const home = tempDir("fd-stable-");
+    const stable = stableBinPath(home, platform);
+    mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
+    writeFileSync(stable, "installed");
+    const other = join(home, "download", "flightdeckd");
+    mkdirSync(join(home, "download"));
+    writeFileSync(other, "downloaded");
+    expect(installStableBinary([other], stable, platform)).toBe("kept");
+    expect(readFileSync(stable, "utf8")).toBe("installed");
+  });
+
+  test("the running binary is copied to ~/.flightdeck/bin, executable", () => {
+    const home = tempDir("fd-stable-");
+    const stable = stableBinPath(home, platform);
+    const other = join(home, "flightdeckd");
+    writeFileSync(other, "downloaded");
+    expect(installStableBinary([other], stable, platform)).toBe("copied");
+    expect(readFileSync(stable, "utf8")).toBe("downloaded");
+    expect(statSync(stable).mode & 0o111).not.toBe(0);
   });
 });
