@@ -7,7 +7,7 @@ import type {
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { PermissionDecision } from "../runtime/types.ts";
-import type { EventStore } from "../store/event-store.ts";
+import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { checkUpdates } from "./permission-updates.ts";
@@ -31,6 +31,13 @@ interface Pending {
   resolve: (decision: PermissionDecision) => void;
   detach: () => void;
 }
+
+/** The stored status of each way a request is answered. */
+const STATUS_OF: Record<"allow" | "deny" | "cancelled", Exclude<PermissionStatus, "pending">> = {
+  allow: "allowed",
+  deny: "denied",
+  cancelled: "cancelled",
+};
 
 /**
  * Turns `canUseTool` calls into persisted `pending` requests and resolves them when a client
@@ -151,7 +158,7 @@ export class PermissionBroker {
     if (!pending) return;
     this.open.delete(id);
     pending.detach();
-    const status = decision === "allow" ? "allowed" : decision === "deny" ? "denied" : "cancelled";
+    const status = STATUS_OF[decision];
     this.store.resolvePermission(id, status, message);
     this.hooks.emit(pending.sessionId, {
       type: "permission.resolved",

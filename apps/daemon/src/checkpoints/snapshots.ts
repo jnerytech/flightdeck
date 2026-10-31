@@ -42,7 +42,9 @@ export function snapshotForHook(
   event: string,
   payload: { session_id?: unknown; cwd?: unknown; prompt?: unknown },
 ): SnapshotInput | null {
-  const kind = event === "UserPromptSubmit" ? "before" : event === "Stop" ? "after" : null;
+  let kind: SnapshotInput["kind"] | null = null;
+  if (event === "UserPromptSubmit") kind = "before";
+  else if (event === "Stop") kind = "after";
   if (!kind || typeof payload.cwd !== "string" || typeof payload.session_id !== "string") {
     return null;
   }
