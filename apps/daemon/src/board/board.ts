@@ -1319,12 +1319,15 @@ export class Board {
         .query<{ id: string }, []>("SELECT id FROM cards WHERE pr_state = 'open'")
         .all();
       const failed = (id: string) => (error: unknown) => {
+        // After stop() the failure is the shutdown's (a closed database): nothing to record.
+        if (this.stopped) return;
         const notice = error instanceof Error ? error.message : String(error);
         this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
         // The card may have been discarded while the provider was answering.
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };
       for (const { id } of open) await this.pollPr(id).catch(failed(id));
+      if (this.stopped) return;
       // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
       // notice): finish again, without asking the provider. Pending changes wait for the user,
       // as in completeCard, and a card started again (notice cleared) is left alone.
@@ -1348,6 +1351,7 @@ export class Board {
     // From the main repository: a cwd inside the worktree would lock it while it is removed.
     const cwd = project.path;
     const { state, checks, failed } = await provider.status({ cwd, url: card.prUrl });
+    if (this.stopped) return;
     this.db
       .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
       .run(state, checks, id);
