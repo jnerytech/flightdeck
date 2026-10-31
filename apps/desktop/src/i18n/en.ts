@@ -601,7 +601,8 @@ export const en: Dictionary = {
       "The host refused the token: pair again with the host's new link (flightdeckd pair).",
     not_found: "Not found on the host.",
     invalid_state: "That can't be done right now.",
-    forbidden_cwd: "The folder is outside the host's allowed folders.",
+    forbidden_cwd:
+      "The folder is outside the host's allowed folders. Add it with flightdeckd setup or in allowedRoots, in ~/.flightdeck/config.json.",
     protocol_incompatible:
       "The host's version doesn't work with this app: update the host and the app to the same version.",
     internal: "Internal error on the host: check the daemon's log; Details carry its message.",
@@ -1868,15 +1869,18 @@ export const en: Dictionary = {
   messages: {
     shortcutTaken:
       "The shortcut {accelerator} could not be registered: another program probably uses it. Choose another.",
-    terminalFailed: "The terminal did not open: {error}",
-    updateCheckFailed: "could not check for updates: {error}",
-    updateInstallFailed: "The update was not installed: {error}",
+    terminalFailed:
+      "The terminal did not open: {error}. Use Copy command and paste it into your terminal.",
+    updateCheckFailed:
+      "could not check for updates: {error}. Check the network and try again in Settings.",
+    updateInstallFailed:
+      "The update was not installed: {error}. Try again; if it repeats, download the new version's installer.",
     daemonUpdateLate: "the daemon did not come back on version {version} in time",
     budgetTitle: "Budget",
     budgetBody: "{host}: {label} at {percent}% of {limit}",
     tokenRefused: "token refused: copy the host's new link (flightdeckd pair) and paste it again.",
     cannotConnect:
-      "could not connect: check the address and that the daemon is running (flightdeckd start).",
+      "could not connect: check the address and that the daemon is running (flightdeckd start); if that does not fix it, run flightdeckd doctor.",
     shortcutFormat: "expected format: Modifiers+Key, for example Ctrl+Alt+F",
     shortcutModifier: "use at least Ctrl, Alt or Super",
     shortcutReserved: "Ctrl+K opens the search inside the app; choose another shortcut",

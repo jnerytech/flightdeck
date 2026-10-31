@@ -599,7 +599,8 @@ export const ptBR = {
       "O host recusou o token: pareie de novo com o link novo do host (flightdeckd pair).",
     not_found: "Não encontrado no host.",
     invalid_state: "Não dá para fazer isso agora.",
-    forbidden_cwd: "A pasta está fora das pastas permitidas do host.",
+    forbidden_cwd:
+      "A pasta está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     protocol_incompatible:
       "Versão do host incompatível com este app: atualize o host e o app para a mesma versão.",
     internal: "Erro interno no host: veja o log do daemon; os Detalhes trazem a mensagem.",
@@ -1870,15 +1871,17 @@ export const ptBR = {
   messages: {
     shortcutTaken:
       "O atalho {accelerator} não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.",
-    terminalFailed: "Terminal não abriu: {error}",
-    updateCheckFailed: "não consegui procurar atualização: {error}",
-    updateInstallFailed: "A atualização não foi instalada: {error}",
+    terminalFailed: "Terminal não abriu: {error}. Use Copiar comando e cole no seu terminal.",
+    updateCheckFailed:
+      "não consegui procurar atualização: {error}. Confira a rede e tente de novo em Configurações.",
+    updateInstallFailed:
+      "A atualização não foi instalada: {error}. Tente de novo; se repetir, baixe o instalador da versão nova.",
     daemonUpdateLate: "o daemon não voltou na versão {version} a tempo",
     budgetTitle: "Orçamento",
     budgetBody: "{host}: {label} em {percent}% de {limit}",
     tokenRefused: "token recusado: copie o link novo do host (flightdeckd pair) e cole de novo.",
     cannotConnect:
-      "não foi possível conectar: confira o endereço e se o daemon está rodando (flightdeckd start).",
+      "não foi possível conectar: confira o endereço e se o daemon está rodando (flightdeckd start); se não resolver, rode flightdeckd doctor.",
     shortcutFormat: "formato esperado: Modificadores+Tecla, por exemplo Ctrl+Alt+F",
     shortcutModifier: "use ao menos Ctrl, Alt ou Super",
     shortcutReserved: "Ctrl+K abre a busca dentro do app; escolha outro atalho",
