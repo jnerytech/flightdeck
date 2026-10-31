@@ -288,7 +288,7 @@ describe("abrir-terminal", () => {
     await poll(() => store.getState().hosts[0]?.hostInfo, 3000);
     await store.openInTerminal(hostId, { cwd: d.project, claudeSessionId: null });
     expect(store.getState().error ?? "").toContain(
-      "Terminal não abriu: Error: wt.exe não encontrado",
+      "Terminal não abriu: Error: wt.exe não encontrado. Use Copiar comando e cole no seu terminal.",
     );
     expect(copied).toEqual([]);
   });

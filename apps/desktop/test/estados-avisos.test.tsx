@@ -74,6 +74,7 @@ describe("estados-avisos", () => {
     });
     await settle(() => alerts().length === 2);
     expect(alertTexts().join(" | ")).toContain("A pasta está fora das pastas permitidas do host.");
+    expect(alertTexts().join(" | ")).toContain("flightdeckd setup");
     expect(alertTexts().join(" | ")).toContain("Não encontrado no host.");
     const notFound = alerts().find((a) => (a.textContent ?? "").includes("Não encontrado"));
     // The daemon's own message is behind "Detalhes".

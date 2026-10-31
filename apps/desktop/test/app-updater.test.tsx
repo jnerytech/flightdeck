@@ -96,7 +96,9 @@ describe("app-updater", () => {
     await waitFor(() => expect(text()).toContain("Flightdeck 0.9.1 disponível"));
     await click("Instalar e reiniciar");
     await waitFor(() =>
-      expect(text()).toContain("A atualização não foi instalada: signature verification failed"),
+      expect(text()).toContain(
+        "A atualização não foi instalada: signature verification failed. Tente de novo; se repetir, baixe o instalador da versão nova.",
+      ),
     );
   });
 
@@ -124,7 +126,11 @@ describe("app-updater", () => {
       throw new Error("sem rede");
     };
     await start(mem);
-    await waitFor(() => expect(text()).toContain("não consegui procurar atualização: sem rede"));
+    await waitFor(() =>
+      expect(text()).toContain(
+        "não consegui procurar atualização: sem rede. Confira a rede e tente de novo em Configurações.",
+      ),
+    );
   });
 
   test("procura de novo a cada intervalo enquanto o aviso estiver ligado", async () => {
