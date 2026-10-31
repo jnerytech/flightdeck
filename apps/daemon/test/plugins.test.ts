@@ -237,6 +237,89 @@ describe("plugins: o inventário", () => {
     expect(inventory.problems).toEqual(["plugin.json: não é um JSON válido"]);
     expect(codeOf(() => inspectPlugin(join(tempDir("fd-none-"), "nada")))).toBe("not_found");
   });
+
+  test("monitores num arquivo do manifesto, skills na raiz, agentes e comandos por caminho, MCP em arquivo ou pacote", () => {
+    const dir = plugin({
+      ".claude-plugin/plugin.json": JSON.stringify({
+        name: "formas",
+        monitors: "./config/mon.json",
+        skills: ["./"],
+        agents: ["./meus/agente.md", "./pasta-de-agentes", 3],
+        commands: ["./cmds", "./solto.md", "./não-existe"],
+        mcpServers: [
+          "./mcp/servers.json",
+          "./bundle.mcpb",
+          "https://x.example/s.mcpb",
+          { inline: { url: "https://i.example/mcp" } },
+          7,
+        ],
+      }),
+      "config/mon.json": JSON.stringify([
+        { name: "m", command: "c.sh", description: "d", when: "on-skill-invoke:x" },
+        5,
+        { name: "sem-comando" },
+      ]),
+      "SKILL.md": skill("raiz"),
+      "meus/agente.md": "---\nname: agente\ndescription: d\n---\nx\n",
+      "pasta-de-agentes/outro.md": "sem frontmatter\n",
+      "pasta-de-agentes/nota.txt": "x",
+      "cmds/um.md": "x\n",
+      "solto.md": "x\n",
+      "mcp/servers.json": JSON.stringify({ arquivo: { command: "node" }, 5: 1, ruim: "x" }),
+    });
+    const inventory = inspectPlugin(dir);
+    expect(inventory.monitors).toEqual([
+      { name: "m", command: "c.sh", description: "d", when: "on-skill-invoke:x" },
+    ]);
+    expect(inventory.skills).toEqual(["raiz"]);
+    expect(inventory.agents).toEqual(["agente", "outro"]);
+    expect(inventory.commands).toEqual(["um", "solto"]);
+    expect(inventory.mcpServers.map((m) => [m.name, m.transport])).toEqual([
+      ["arquivo", "stdio"],
+      ["bundle.mcpb", "bundle"],
+      ["s.mcpb", "bundle"],
+      ["inline", "http"],
+    ]);
+  });
+
+  test("os hooks mostram o args, a URL ou o prompt; um hook sem tipo é command; o que não é objeto é ignorado", () => {
+    const inventory = inspectPlugin(
+      plugin({
+        ".claude-plugin/plugin.json": JSON.stringify({
+          name: "h",
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  { command: "run", args: ["a", "b"] },
+                  { type: "http", url: "https://h.example" },
+                  { type: "prompt", prompt: "diga oi" },
+                  "x",
+                  {},
+                ],
+              },
+              "fora",
+            ],
+          },
+        }),
+        "hooks/hooks.json": "{ quebrado",
+      }),
+    );
+    expect(inventory.hooks.map((h) => [h.type, h.command])).toEqual([
+      ["command", "run a b"],
+      ["http", "https://h.example"],
+      ["prompt", "diga oi"],
+      ["command", undefined],
+    ]);
+    expect(inventory.problems).toEqual(["hooks/hooks.json: não é um JSON válido"]);
+  });
+
+  test("um plugin com arquivos demais é recusado", () => {
+    const dir = tempDir("fd-many-");
+    mkdirSync(join(dir, "p"), { recursive: true });
+    for (let i = 0; i < 5001; i++) writeFileSync(join(dir, "p", `f${i}`), "");
+    expect(codeOf(() => inspectPlugin(join(dir, "p")))).toBe("bad_request");
+  });
 });
 
 describe("plugins: pela CLI", () => {
@@ -856,6 +939,120 @@ describe("plugins: pela CLI", () => {
     expect(result.message).toContain("conferir");
     expect(changes(fake).filter((c) => c.includes("uninstall"))).toEqual([]);
     expect(decisions).toEqual([]);
+  });
+
+  test("list aceita a lista como um vetor e um marketplace sem local nem origem", async () => {
+    const { plugins } = world((ctx) => [
+      {
+        args: ["marketplace", "list"],
+        stdout: JSON.stringify([
+          { name: "solto", source: "url", url: "https://x.example/m.git" },
+          { name: "sem" },
+        ]),
+      },
+      {
+        args: ["list", "--json"],
+        stdout: JSON.stringify([
+          {
+            id: "a@solto",
+            version: "1",
+            scope: "user",
+            enabled: false,
+            installPath: ctx.installed,
+          },
+        ]),
+      },
+    ]);
+    const list = await plugins.list();
+    expect(list.installed.map((p) => [p.id, p.enabled])).toEqual([["a@solto", false]]);
+    expect(list.available).toEqual([]);
+    expect(list.marketplaces).toEqual([
+      { name: "solto", source: "url", origin: "https://x.example/m.git" },
+      { name: "sem", source: "" },
+    ]);
+  });
+
+  test("a prévia de atualização falha com o motivo: marketplace que não atualiza, ou um plugin de outro repositório", async () => {
+    const stale = world((ctx) => everything(ctx, [{ args: ["marketplace", "update"], code: 1 }]));
+    await expect(stale.plugins.previewUpdate("deploy-tools@acme")).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+    const remote = world((ctx) => [
+      { args: ["marketplace", "update"], stdout: OK("marketplace-update") },
+      LISTING(ctx)[0] as FakeRule,
+      {
+        args: ["list", "--json"],
+        stdout: JSON.stringify({
+          installed: [
+            {
+              id: "remoto@acme",
+              version: "1",
+              scope: "user",
+              enabled: true,
+              installPath: ctx.installed,
+            },
+          ],
+          available: [],
+        }),
+      },
+    ]);
+    await expect(remote.plugins.previewUpdate("remoto@acme")).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+  });
+
+  test("o catálogo do marketplace ilegível, uma origem fora da pasta ou que sumiu: não há prévia", async () => {
+    const broken = world(LISTING);
+    writeFileSync(join(broken.marketplace, ".claude-plugin/marketplace.json"), "não é json");
+    await expect(broken.plugins.preview({ plugin: "deploy-tools@acme" })).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+    const odd = world(LISTING);
+    writeFileSync(
+      join(odd.marketplace, ".claude-plugin/marketplace.json"),
+      JSON.stringify({
+        name: "acme",
+        plugins: [
+          { name: "fora", source: "./../fora" },
+          { name: "sumiu", source: "./plugins/sumiu" },
+        ],
+      }),
+    );
+    expect((await odd.plugins.preview({ plugin: "fora@acme" })).reason).toBe("not-local");
+    expect((await odd.plugins.preview({ plugin: "sumiu@acme" })).reason).toBe("not-local");
+  });
+
+  test("o validate que não devolve JSON recusa o plugin com o motivo", async () => {
+    const dir = plugin({ ".claude-plugin/plugin.json": MANIFEST });
+    const { plugins } = world((ctx) =>
+      everything(ctx, [{ args: ["validate", "--json"], code: 1, stdout: "isto não é json" }]),
+    );
+    expect((await plugins.preview({ dir })).validation?.success).toBe(false);
+  });
+
+  test("uma resposta da CLI sem linha de JSON vale pelo código de saída: ok com o texto, ou falha com o erro", async () => {
+    const fine = world((ctx) =>
+      everything(ctx, [{ args: ["marketplace", "update"], stdout: "feito\n" }]),
+    );
+    expect(await fine.plugins.marketplaceUpdate()).toEqual({ outcome: "ok", message: "feito" });
+    expect(calls(fine.fake)).toEqual(["plugin marketplace update"]);
+    const bad = world((ctx) => everything(ctx, [{ args: ["marketplace", "update"], code: 3 }]));
+    expect(await bad.plugins.marketplaceUpdate("acme")).toEqual({
+      outcome: "failed",
+      message: "código 3",
+    });
+  });
+
+  test("uma lista que não é vetor nem objeto não tem instalados, e um id sem marketplace não existe", async () => {
+    const { plugins } = world((ctx) => [
+      LISTING(ctx)[0] as FakeRule,
+      { args: ["list", "--json"], stdout: JSON.stringify("nada") },
+    ]);
+    expect((await plugins.list()).installed).toEqual([]);
+    await expect(plugins.detail("semarroba")).rejects.toMatchObject({ code: "not_found" });
+    await expect(plugins.previewUpdate("semarroba")).rejects.toMatchObject({
+      code: "invalid_state",
+    });
   });
 });
 
