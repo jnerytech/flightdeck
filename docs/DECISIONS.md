@@ -1801,6 +1801,7 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **"Open in a new tab" without touching every list:** `Ctrl+click` and the middle button set a one-event flag on the focused tabs (`openNextInNewTab`), and the next navigation opens a tab instead of replacing the current one. The middle button fires no `click`, so the capture listener clicks the item itself.
 - **Menu entry:** **Abrir em nova aba** is in the host's menu (sidebar) and in a session row's menu. The other items (board cards, projects, history rows) open in a new tab by `Ctrl+click` or the middle button: the board card's menu has only **Iniciar**, and the project and history rows have no menu.
 - **The plus button:** the spec opens a new tab with `Ctrl+T`. Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself, so the web entry (the demo and the e2e) needs a button: **Nova aba**, at the end of the bar, opens a tab on the palette like `Ctrl+T`.
+- **Only tabs in the tablist:** axe (`aria-required-children`) refuses buttons inside a `tablist`, so the move, pin and close buttons are the active tab's and sit right after the tabs, next to **Nova aba**. Any tab closes with the middle button, or with `Ctrl+W` once active.
 - **Unread:** a session tab gets **Não lida** when the session goes from running to idle while no area's active tab shows it, and loses it when it is shown.
 - **Closed tabs:** the last 20 are kept with their screen only (not their history).
 

@@ -1142,7 +1142,8 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   fim da barra abre uma aba nova na paleta `Ctrl+K`.
 - **A barra:** cada aba mostra o ícone do tipo e o título, e um selo quando uma sessão nela
   precisa de você, está rodando ou respondeu sem nenhuma aba mostrando (**Não lida**). **Fixar**
-  deixa a aba à esquerda, só com o ícone. Arraste uma aba sobre outra para reordenar.
+  deixa a aba à esquerda, só com o ícone. Os botões de fixar, mover e fechar, depois das abas,
+  agem na aba ativa; o botão do meio fecha qualquer aba. Arraste uma aba sobre outra para reordenar.
 - **Atalhos:**
 
   | Atalho | Ação |

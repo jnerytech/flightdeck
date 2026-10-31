@@ -1164,7 +1164,8 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   button at the end of the bar opens a new tab on the `Ctrl+K` palette.
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
-  left with its icon only. Drag a tab onto another to reorder it.
+  left with its icon only. The pin, move and close buttons after the tabs act on the active one;
+  the middle button closes any tab. Drag a tab onto another to reorder it.
 - **Shortcuts:**
 
   | Shortcut | Action |
