@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -641,7 +642,6 @@ describe("plugins: pela CLI", () => {
     await good.plugins.install({ dir, confirmHash: inspectPlugin(dir).hash });
     expect(calls(good.fake)).toEqual([
       `plugin validate ${dir} --json`,
-      `plugin validate ${dir} --json`,
       `plugin install deploy-tools --marketplace ${dir} --scope user --json`,
     ]);
   });
@@ -683,7 +683,7 @@ describe("plugins: pela CLI", () => {
     );
     const source = join(marketplace, "plugins/deploy-tools");
     // Same content as installed: nothing to do, and the CLI never updates.
-    writeFileSync(join(installed, ".claude-plugin/plugin.json"), MANIFEST);
+    cpSync(installed, source, { recursive: true });
     expect(await plugins.update({ plugin: "deploy-tools@acme", confirmHash: "x" })).toMatchObject({
       outcome: "unchanged",
     });
