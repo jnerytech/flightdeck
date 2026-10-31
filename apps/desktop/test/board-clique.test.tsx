@@ -129,4 +129,22 @@ describe("board-clique: the board and the card say why a button is off", () => {
     expect(open?.disabled).toBe(true);
     expect(screen.queryByText("Inicie o card antes de abrir o PR")).not.toBeNull();
   });
+
+  test("the new-card dialog is a form: Enter in the title creates the card, and Cancelar does not submit", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await click("Novo card");
+    await type("Título do card", "Pelo Enter");
+    const create = screen.queryByRole("button", { name: "Criar card" }) as HTMLButtonElement | null;
+    expect(create?.type).toBe("submit");
+    expect(create?.form).not.toBeNull();
+    expect(
+      (screen.queryByRole("button", { name: "Cancelar" }) as HTMLButtonElement | null)?.type,
+    ).toBe("button");
+    await act(async () => {
+      fireEvent.submit(create?.form as HTMLFormElement);
+    });
+    await settle(() => cardItem("Pelo Enter") !== null);
+    expect(cardItem("Pelo Enter")).not.toBeNull();
+  });
 });
