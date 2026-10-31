@@ -667,4 +667,13 @@ export const MIGRATIONS: readonly string[] = [
     settings   TEXT NOT NULL
   );
   `,
+  // Phase 24: the content hashes of a project's run.yaml the user trusted (like the workflows').
+  `
+  CREATE TABLE trusted_run_configs (
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    hash       TEXT NOT NULL,
+    trusted_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, hash)
+  );
+  `,
 ];
