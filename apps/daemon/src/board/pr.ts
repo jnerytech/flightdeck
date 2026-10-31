@@ -230,10 +230,10 @@ const GH_BUCKETS: Record<string, PrCheck["state"]> = {
 };
 
 /** What a build log keeps in all: the end of the logs of what failed. */
-const BUILD_LOG_BYTES = 16 * 1024;
+export const BUILD_LOG_BYTES = 16 * 1024;
 
 /** The last `limit` bytes of a text, with a mark when something was left out. */
-function tail(text: string, limit: number): string {
+export function tail(text: string, limit: number): string {
   const bytes = Buffer.from(text);
   if (bytes.length <= limit) return text;
   return `[…]\n${bytes

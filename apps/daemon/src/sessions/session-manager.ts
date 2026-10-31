@@ -103,6 +103,8 @@ export class SessionManager {
   private readonly broker: PermissionBroker;
   private readonly risk: RiskClassifier;
   private readonly live = new Map<string, LiveSession>();
+  /** Phase 22: sessions Flightdeck opened by itself (see `create`). */
+  private readonly unattended = new Set<string>();
   /** Phase 13: the effort of a session started with one (arena variants); not kept across restarts. */
   private readonly efforts = new Map<string, EffortLevel>();
   private readonly listeners = new Map<string, Set<EventListener>>();
@@ -190,9 +192,13 @@ export class SessionManager {
     return session;
   }
 
+  /**
+   * `unattended` (phase 22) marks a session Flightdeck opens by itself, with no person in it:
+   * it never gets to use `run_with_secret`, which is for a person to approve each time.
+   */
   create(
     payload: CommandPayload<"session.create">,
-    _extra: { unattended?: boolean } = {},
+    extra: { unattended?: boolean } = {},
   ): { sessionId: string } {
     const cwd = resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const id = ulid();
@@ -203,6 +209,7 @@ export class SessionManager {
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
     const persona = resolved ? snapshotOf(resolved.persona, resolved.hash) : null;
     const name = payload.name ?? null;
+    if (extra.unattended) this.unattended.add(id);
     this.store.createSession({
       id,
       name,
@@ -454,18 +461,24 @@ export class SessionManager {
         FLIGHTDECK_SESSION: sessionId,
       },
       canUseTool: (toolName, input, ctx) =>
-        persona && !toolAllowed(persona.tools, toolName)
+        this.unattended.has(sessionId) && /(^|__)run_with_secret$/.test(toolName)
           ? Promise.resolve({
               behavior: "deny",
-              message: `a persona ${persona.name} não usa a ferramenta ${toolName}`,
+              message:
+                "run_with_secret is not available in a session Flightdeck started by itself: a person approves each use",
             })
-          : this.broker.request(
-              sessionId,
-              toolName,
-              input,
-              ctx.signal,
-              parseSuggestions(ctx.suggestions),
-            ),
+          : persona && !toolAllowed(persona.tools, toolName)
+            ? Promise.resolve({
+                behavior: "deny",
+                message: `a persona ${persona.name} não usa a ferramenta ${toolName}`,
+              })
+            : this.broker.request(
+                sessionId,
+                toolName,
+                input,
+                ctx.signal,
+                parseSuggestions(ctx.suggestions),
+              ),
       ...(resume ? { resume } : {}),
       ...(session.model ? { model: session.model } : {}),
       ...(this.efforts.has(sessionId)

@@ -239,6 +239,8 @@ export class Board {
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
+  /** Phase 22: the fix runs waiting for their first turn to end, by card. */
+  private readonly fixes = new Map<string, (result: FixResult) => void>();
   private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
@@ -718,12 +720,38 @@ export class Board {
     return () => this.checkWatchers.delete(listener);
   }
 
-  /** Phase 22: a run with a prompt of its own, settled when its first turn ends. */
+  /**
+   * Phase 22: a run with a prompt of its own (it waits in the same queue, quota and budgets as
+   * any run), in a session nobody sits in; settled when its first turn ends.
+   */
   async fixCard(
-    _id: string,
-    _opts: { prompt: string; persona?: PersonaRef | undefined },
+    id: string,
+    opts: { prompt: string; persona?: PersonaRef | undefined },
   ): Promise<FixResult> {
-    return { sessionId: null, costUsd: 0, isError: false, error: null };
+    const settled = new Promise<FixResult>((resolve) => this.fixes.set(id, resolve));
+    try {
+      await this.startCard(id, {
+        fix: { prompt: opts.prompt },
+        ...(opts.persona ? { persona: opts.persona } : {}),
+      });
+    } catch (error) {
+      this.fixes.delete(id);
+      throw error;
+    }
+    return settled;
+  }
+
+  private settleFix(id: string, result: Partial<FixResult>): void {
+    const done = this.fixes.get(id);
+    if (!done) return;
+    this.fixes.delete(id);
+    done({
+      sessionId: this.getCard(id).sessionId,
+      costUsd: 0,
+      isError: false,
+      error: null,
+      ...result,
+    });
   }
 
   /** Gets every card after each change; returns the function that stops it. */
@@ -747,6 +775,8 @@ export class Board {
       inputs?: Record<string, string> | undefined;
       /** The persona to open the session in; else the default of the card's column. */
       persona?: PersonaRef | undefined;
+      /** Phase 22 (`fixCard`): the run's prompt, instead of the card's description. */
+      fix?: { prompt: string } | undefined;
     } = {},
   ): Promise<Card> {
     const card = this.getCard(id);
@@ -769,8 +799,10 @@ export class Board {
     const standard = this.getProject(card.projectId).personaByColumn[card.column];
     const persona = options.persona ?? (standard ? { id: standard } : null);
     this.db
-      .query("INSERT INTO card_runs (id, card_id, queued_at, persona) VALUES (?, ?, ?, ?)")
-      .run(runId, id, now(), persona ? JSON.stringify(persona) : null);
+      .query(
+        "INSERT INTO card_runs (id, card_id, queued_at, persona, fix_prompt) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(runId, id, now(), persona ? JSON.stringify(persona) : null, options.fix?.prompt ?? null);
     this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
     this.place(id, { type: "started" });
     this.pump();
@@ -876,6 +908,7 @@ export class Board {
 
   /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
   private failRun(id: string, runId: string, notice: string): void {
+    this.settleFix(id, { isError: true, error: notice });
     this.workflows.fail(runId, notice);
     this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
     this.place(id, { type: "failed" });
@@ -914,17 +947,22 @@ export class Board {
       .filter((part) => part.trim())
       .join("\n\n");
     const { variant } = card;
-    const asked = this.db
-      .query<{ persona: string | null }, [string]>("SELECT persona FROM card_runs WHERE id = ?")
-      .get(runId)?.persona;
-    const { sessionId } = this.opts.manager.create({
-      cwd: worktree,
-      prompt,
-      name: card.title,
-      ...(variant?.model ? { model: variant.model } : {}),
-      ...(variant?.effort ? { effort: variant.effort } : {}),
-      ...(asked ? { persona: JSON.parse(asked) as PersonaRef } : {}),
-    });
+    const run = this.db
+      .query<{ persona: string | null; fix_prompt: string | null }, [string]>(
+        "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
+      )
+      .get(runId);
+    const { sessionId } = this.opts.manager.create(
+      {
+        cwd: worktree,
+        prompt: run?.fix_prompt ?? prompt,
+        name: card.title,
+        ...(variant?.model ? { model: variant.model } : {}),
+        ...(variant?.effort ? { effort: variant.effort } : {}),
+        ...(run?.persona ? { persona: JSON.parse(run.persona) as PersonaRef } : {}),
+      },
+      { unattended: run?.fix_prompt != null },
+    );
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);
     this.follow(id, sessionId, 0);
@@ -992,6 +1030,7 @@ export class Board {
         .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
         .run(now(), id);
       this.workflows.abandon(id, "card parado antes de começar");
+      this.settleFix(id, { isError: true, error: "stopped before it started" });
       this.place(id, { type: "moved", column: "backlog" });
     } else if (card.workflowRunId) {
       await this.workflows.interrupt(card.workflowRunId);
@@ -1370,7 +1409,17 @@ export class Board {
   private onSessionEvent(cardId: string, event: SessionEvent): void {
     if (event.type === "session.status")
       this.place(cardId, { type: "session", status: event.status });
-    if (event.type === "turn.result") this.place(cardId, { type: "turn", isError: event.isError });
+    if (event.type === "turn.result") {
+      this.place(cardId, { type: "turn", isError: event.isError });
+      this.settleFix(cardId, {
+        costUsd: event.costUsd ?? 0,
+        isError: event.isError,
+        error: event.isError ? event.subtype : null,
+      });
+    }
+    if (event.type === "session.error") {
+      this.settleFix(cardId, { isError: true, error: event.message });
+    }
     if (event.type === "session.status" && FREES_SLOT.has(event.status)) this.release(cardId);
   }
 }

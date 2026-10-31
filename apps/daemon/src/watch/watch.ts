@@ -42,6 +42,9 @@ export interface PrWatcherOptions {
   onTrigger?: (trigger: WatchTrigger) => void | Promise<void>;
 }
 
+/** The rounds a card has kept so far, as SQL (a value of `round_base`). */
+const COUNT_ROUNDS = "(SELECT COUNT(*) FROM pr_watch_rounds WHERE card_id = ?1)";
+
 const DEFAULT_SETTINGS: WatchSettings = {
   enabled: false,
   maxRounds: 3,
@@ -103,23 +106,54 @@ export class PrWatcher {
     return this.settings(this.opts.board.getCard(cardId).projectId).enabled;
   }
 
-  /** The card's own choice; `null` goes back to the project's default. Everything is news again. */
+  /**
+   * The card's own choice; `null` goes back to the project's default. Everything is news again,
+   * and the rounds done so far stop counting against the limits.
+   */
   setEnabled(cardId: string, enabled: boolean | null): void {
     this.opts.db
       .query(
-        `INSERT INTO pr_watch (card_id, enabled, snapshot, updated_at) VALUES (?, ?, NULL, ?)
+        `INSERT INTO pr_watch (card_id, enabled, snapshot, status, reason, round_base, updated_at)
+         VALUES (?1, ?2, NULL, 'watching', NULL, ${COUNT_ROUNDS}, ?3)
          ON CONFLICT (card_id) DO UPDATE SET enabled = excluded.enabled, snapshot = NULL,
+           status = 'watching', reason = NULL, round_base = excluded.round_base,
            updated_at = excluded.updated_at`,
       )
       .run(cardId, enabled === null ? null : Number(enabled), new Date().toISOString());
   }
 
   /** `needs_you` once a limit was hit or a round failed for good; `setEnabled` starts over. */
-  status(_cardId: string): { status: "watching" | "needs_you"; reason: string | null } {
-    return { status: "watching", reason: null };
+  status(cardId: string): { status: "watching" | "needs_you"; reason: string | null } {
+    const row = this.opts.db
+      .query<{ status: "watching" | "needs_you"; reason: string | null }, [string]>(
+        "SELECT status, reason FROM pr_watch WHERE card_id = ?",
+      )
+      .get(cardId);
+    return row ?? { status: "watching", reason: null };
   }
 
-  markNeedsYou(_cardId: string, _reason: string): void {}
+  /** How many rounds of this card count against the limits: those since the last (re)start. */
+  roundsSinceStart(cardId: string): number {
+    const row = this.opts.db
+      .query<{ n: number }, [string, string]>(
+        `SELECT (SELECT COUNT(*) FROM pr_watch_rounds WHERE card_id = ?1)
+                - COALESCE((SELECT round_base FROM pr_watch WHERE card_id = ?2), 0) AS n`,
+      )
+      .get(cardId, cardId);
+    return row?.n as number;
+  }
+
+  /** The card waits for you: nothing more is fixed until you turn Vigiar off and on again. */
+  markNeedsYou(cardId: string, reason: string): void {
+    this.opts.db
+      .query(
+        `INSERT INTO pr_watch (card_id, enabled, snapshot, status, reason, updated_at)
+         VALUES (?, NULL, NULL, 'needs_you', ?, ?)
+         ON CONFLICT (card_id) DO UPDATE SET status = 'needs_you', reason = excluded.reason,
+           updated_at = excluded.updated_at`,
+      )
+      .run(cardId, reason, new Date().toISOString());
+  }
 
   /** One round: looks at every watched card with an open PR; a host that fails waits for the next. */
   async tick(): Promise<void> {
@@ -129,7 +163,8 @@ export class PrWatcher {
       )
       .all();
     for (const { id } of open) {
-      if (this.enabled(id)) await this.look(id).catch(() => {});
+      if (this.enabled(id) && this.status(id).status === "watching")
+        await this.look(id).catch(() => {});
     }
   }
 
