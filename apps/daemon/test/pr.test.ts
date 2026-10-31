@@ -263,3 +263,35 @@ describe("pr: erros e configuração", () => {
     expect(Config.parse({}).board.prPollIntervalMs).toBeUndefined();
   });
 });
+
+describe("pr: a poll in flight when the board stops", () => {
+  test("it writes nothing and fails nothing once the board is stopped, even if the database is closed", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const provider = {
+      create: async () => GH_URL,
+      url: async () => null,
+      status: async () => {
+        await gate;
+        throw new Error("o host caiu");
+      },
+      comments: async () => [],
+      health: async () => ({ checks: [], conflicts: false }),
+      buildLog: async () => "",
+    };
+    const ctx = newBoard({ prProvider: () => provider });
+    const project = await ctx.board.addProject({ path: ctx.repo, prProvider: "github" });
+    const card = ctx.board.createCard(project.id, { title: "Login", description: "d" });
+    ctx.store.db
+      .query("UPDATE cards SET pr_url = ?, pr_state = 'open' WHERE id = ?")
+      .run(GH_URL, card.id);
+    const polling = ctx.board.pollPrs();
+    await Bun.sleep(20);
+    ctx.board.stop();
+    ctx.store.db.close();
+    release();
+    await expect(polling).resolves.toBeUndefined();
+  });
+});
