@@ -595,17 +595,20 @@ export const ptBR = {
   },
   errors: {
     bad_request: "O host recusou o pedido.",
-    unauthorized: "O host recusou o token.",
+    unauthorized:
+      "O host recusou o token: pareie de novo com o link novo do host (flightdeckd pair).",
     not_found: "Não encontrado no host.",
     invalid_state: "Não dá para fazer isso agora.",
     forbidden_cwd: "A pasta está fora das pastas permitidas do host.",
-    protocol_incompatible: "Versão do host incompatível com este app.",
-    internal: "Erro interno no host.",
+    protocol_incompatible:
+      "Versão do host incompatível com este app: atualize o host e o app para a mesma versão.",
+    internal: "Erro interno no host: veja o log do daemon; os Detalhes trazem a mensagem.",
     invalid_permission_update: "Essa regra de permissão não é aceita.",
     update_verification_failed: "A atualização não passou na verificação.",
     update_needs_service: "Para atualizar, o host precisa rodar como serviço.",
-    offline: "O host está offline.",
-    timeout: "O host não respondeu a tempo.",
+    offline:
+      "O host está offline: confira se o daemon roda lá (flightdeckd start) e se a rede alcança o endereço.",
+    timeout: "O host não respondeu a tempo: tente de novo; se repetir, confira a rede e o daemon.",
     file_conflict: "O arquivo mudou no disco depois de aberto.",
   },
   common: {
@@ -1873,8 +1876,9 @@ export const ptBR = {
     daemonUpdateLate: "o daemon não voltou na versão {version} a tempo",
     budgetTitle: "Orçamento",
     budgetBody: "{host}: {label} em {percent}% de {limit}",
-    tokenRefused: "token recusado",
-    cannotConnect: "não foi possível conectar",
+    tokenRefused: "token recusado: copie o link novo do host (flightdeckd pair) e cole de novo.",
+    cannotConnect:
+      "não foi possível conectar: confira o endereço e se o daemon está rodando (flightdeckd start).",
     shortcutFormat: "formato esperado: Modificadores+Tecla, por exemplo Ctrl+Alt+F",
     shortcutModifier: "use ao menos Ctrl, Alt ou Super",
     shortcutReserved: "Ctrl+K abre a busca dentro do app; escolha outro atalho",
