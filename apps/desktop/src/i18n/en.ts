@@ -991,6 +991,11 @@ export const en: Dictionary = {
     turnOffMessage: "Turning them off ends the terminals open on this host.",
     none: "No terminal open.",
   },
+  runEnv: {
+    openBrowser: "Open in browser",
+    previewFrame: "Preview of {title}",
+    previewRefused: "Only 127.0.0.1 and localhost addresses open here.",
+  },
   tabs: {
     openInNew: "Open in new tab",
     moveToOther: "Move tab {title} to the other area",

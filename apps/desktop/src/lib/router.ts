@@ -39,6 +39,8 @@ export type Route =
   | { name: "auto-approvals"; host: string }
   /** A host's embedded terminal (phase 14). */
   | { name: "terminal"; host: string; terminalId: string }
+  /** A card's running app, in a frame (phase 24); only loopback addresses open. */
+  | { name: "preview"; url: string; title: string }
   | { name: "settings" }
   /** The Custos screen (phase 8, track A). */
   | { name: "costs" }
@@ -134,6 +136,7 @@ const NAMES: Record<Route["name"], true> = {
   actions: true,
   "auto-approvals": true,
   terminal: true,
+  preview: true,
   settings: true,
   costs: true,
   connections: true,

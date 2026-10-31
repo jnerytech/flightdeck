@@ -39,6 +39,7 @@ import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { PersonasPage } from "./PersonasPage.tsx";
 import { PluginsPage } from "./PluginsPage.tsx";
+import { PreviewPage } from "./PreviewPage.tsx";
 import { ProjectsPage } from "./ProjectsPage.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
@@ -612,6 +613,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       );
     case "auto-approvals":
       return <AutoApprovalsPage key={route.host} store={store} hostId={route.host} />;
+    case "preview":
+      return <PreviewPage key={route.url} store={store} url={route.url} title={route.title} />;
     case "terminal":
       return (
         <TerminalPage

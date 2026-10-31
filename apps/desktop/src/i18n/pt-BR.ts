@@ -987,6 +987,11 @@ export const ptBR = {
     turnOffMessage: "Desligar encerra os terminais abertos neste host.",
     none: "Nenhum terminal aberto.",
   },
+  runEnv: {
+    openBrowser: "Abrir no navegador",
+    previewFrame: "Preview de {title}",
+    previewRefused: "Só endereços de 127.0.0.1 e localhost abrem aqui.",
+  },
   tabs: {
     openInNew: "Abrir em nova aba",
     moveToOther: "Mover a aba {title} para a outra área",

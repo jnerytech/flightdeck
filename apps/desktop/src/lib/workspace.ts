@@ -10,6 +10,12 @@ export interface WorkspaceSnapshot {
   fraction: number;
 }
 
+/**
+ * Screens that are not kept between starts: the host form (it can hold a token) and the preview
+ * (its address may belong to another program by then).
+ */
+const NOT_KEPT: ReadonlySet<string> = new Set(["add-host", "preview"]);
+
 /** Where the window's layout is kept. */
 export const WORKSPACE_KEY = "flightdeck.workspace";
 
@@ -87,7 +93,7 @@ export class Workspace {
       v: 1,
       areas: this.areas
         .map((area) => {
-          const kept = area.tabs.filter((tab) => tab.router.current.name !== "add-host");
+          const kept = area.tabs.filter((tab) => !NOT_KEPT.has(tab.router.current.name));
           return {
             tabs: kept.map((tab) => ({ route: tab.router.current, pinned: tab.pinned })),
             active: Math.max(
@@ -213,7 +219,7 @@ function restoreArea(stored: unknown, newId?: () => string): Tabs | null {
       (tab) =>
         typeof tab.route?.name === "string" &&
         ROUTE_NAMES.has(tab.route.name) &&
-        tab.route.name !== "add-host",
+        !NOT_KEPT.has(tab.route.name),
     );
   if (entries.length === 0) return null;
   const active = Number.isInteger(area.active) ? (area.active as number) : 0;
