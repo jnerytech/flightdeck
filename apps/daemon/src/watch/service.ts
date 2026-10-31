@@ -62,6 +62,12 @@ export class PrWatch {
     return this.opts.traces.trace(cardId);
   }
 
+  /** The PR description for the person to edit and confirm; nothing is opened. */
+  describe(cardId: string): { text: string; redacted: number } {
+    this.opts.board.getCard(cardId);
+    return this.opts.traces.describe(cardId);
+  }
+
   byUrl(url: string): UrlTraceInfo {
     return this.opts.traces.byUrl(url);
   }

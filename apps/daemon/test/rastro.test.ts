@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { AzureDevOpsCli } from "../src/board/pr.ts";
+import { SecretScanner } from "../src/snippets/model.ts";
 import { Traces } from "../src/watch/trace.ts";
+import { git } from "./board-helpers.ts";
 import { cleanups, fixture, work } from "./watch-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -12,11 +14,8 @@ afterEach(async () => {
 
 /** The fixture with a trail over it: the claude ids, the costs and the checkpoints are the test's. */
 async function traced(options: Parameters<typeof fixture>[0] = {}) {
-  let traces: Traces | null = null;
-  const f = await fixture({
-    ...options,
-    board: { prDescription: (id) => traces?.describe(id) ?? "", ...options.board },
-  });
+  const scanner = new SecretScanner();
+  const f = await fixture({ ...options, board: { scanner, ...options.board } });
   const costs: Record<string, number> = {};
   const checkpoints: Record<string, number> = {};
   const hits: Array<{ claudeSessionId: string; title: string | null; cwd: string }> = [];
@@ -26,7 +25,8 @@ async function traced(options: Parameters<typeof fixture>[0] = {}) {
       .eventsSince(sessionId, 0)
       .map((e) => e.event)
       .flatMap((e) => (e.type === "message.user" ? [e.text] : []))[0] ?? null;
-  traces = new Traces({
+  const traces = new Traces({
+    scanner,
     db: f.store.db,
     board: f.board,
     fixer: f.fixer,
@@ -111,14 +111,32 @@ describe("rastro: from the card and its PR to sessions, cost, rounds and work it
       .run("Fazer o login funcionar", f.card.id);
     await f.fixer.onTrigger(f.trigger({ comments: [work(0, "troque o nome")] }));
     await f.fixer.idle();
-    const text = f.traces.describe(f.card.id);
+    const { text, redacted } = f.traces.describe(f.card.id);
+    expect(redacted).toBe(0);
     expect(text).toContain("Login");
     expect(text).toContain("Fazer o login funcionar");
     expect(text).toContain("Round 1 (pushed)");
     expect(text).toContain("AB#12");
   });
 
-  test("with generate, the PR opens with the generated description, and az takes it as one safe line", async () => {
+  test("the description is made from the sessions, and a line that carries a secret is taken out of it", async () => {
+    const f = await traced({ settings: { checks: [] } });
+    const token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+    f.store.db
+      .query("UPDATE cards SET description = ? WHERE id = ?")
+      .run(`Fazer o login\nusa o token ${token} do deploy\nsegunda linha`, f.card.id);
+    await f.fixer.onTrigger(f.trigger({ comments: [work(0, `senha=hunter2hunter2`)] }));
+    await f.fixer.idle();
+    const { text, redacted } = f.traces.describe(f.card.id);
+    expect(text).not.toContain(token);
+    expect(text).not.toContain("hunter2");
+    expect(text).toContain("Fazer o login");
+    expect(text).toContain("segunda linha");
+    expect(text).toContain("[line removed: it looked like a secret]");
+    expect(redacted).toBeGreaterThan(0);
+  });
+
+  test("the PR opens with the text the person confirmed, and az takes it as one safe line", async () => {
     const az = installFakeCli("az", [
       { args: ["repos", "pr", "list"], stdout: "[]" },
       {
@@ -132,35 +150,33 @@ describe("rastro: from the card and its PR to sessions, cost, rounds and work it
     cleanups.push(az.restore);
     const f = await traced({ board: { prProvider: () => new AzureDevOpsCli() } });
     f.store.db
-      .query("UPDATE cards SET description = ?, pr_url = NULL, pr_state = NULL WHERE id = ?")
-      .run('Faz <b>"o login"</b> & mais | 100%\nsegunda linha', f.card.id);
-    await f.board.createPr(f.card.id, { generate: true });
+      .query(
+        "UPDATE cards SET description = 'do cartão', pr_url = NULL, pr_state = NULL WHERE id = ?",
+      )
+      .run(f.card.id);
+    await f.board.createPr(f.card.id, {
+      description: 'Faz <b>"o login"</b> & mais | 100%\nsegunda linha',
+    });
     const create = az.calls().find((args) => args.includes("create")) ?? [];
     const description = create[create.indexOf("--description") + 1] ?? "";
     expect(description).toContain("login");
-    expect(description).toContain("Login");
     expect(description).toContain("segunda linha");
+    expect(description).not.toContain("do cartão");
     expect(description).not.toMatch(/[\r\n<>&|^"%]/);
-    // Without it, the PR keeps the card's own description.
+  });
+
+  test("a confirmed text with a secret is refused before anything is pushed or opened", async () => {
+    const az = installFakeCli("az", []);
+    cleanups.push(az.restore);
+    const f = await traced({ board: { prProvider: () => new AzureDevOpsCli() } });
     f.store.db.query("UPDATE cards SET pr_url = NULL, pr_state = NULL WHERE id = ?").run(f.card.id);
-    az.respond([
-      { args: ["repos", "pr", "list"], stdout: "[]" },
-      {
-        args: ["repos", "pr", "create"],
-        stdout: JSON.stringify({
-          pullRequestId: 10,
-          repository: { webUrl: "https://dev.azure.com/acme/proj/_git/repo" },
-        }),
-      },
-    ]);
-    await f.board.createPr(f.card.id);
-    const plain =
-      az
-        .calls()
-        .filter((args) => args.includes("create"))
-        .at(-1) ?? [];
-    expect(plain[plain.indexOf("--description") + 1]).not.toContain("Round");
-    expect(plain[plain.indexOf("--description") + 1]).toContain("segunda linha");
+    const before = git(f.remote, "rev-list", "--all", "--count");
+    await expect(
+      f.board.createPr(f.card.id, { description: "usa ghp_abcdefghijklmnopqrstuvwxyz0123456789" }),
+    ).rejects.toThrow("segredo");
+    expect(az.calls()).toEqual([]);
+    expect(git(f.remote, "rev-list", "--all", "--count")).toBe(before);
+    expect(f.board.getCard(f.card.id).prUrl).toBeNull();
   });
 });
 

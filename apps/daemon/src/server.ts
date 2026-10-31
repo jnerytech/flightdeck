@@ -923,6 +923,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, watching().info(command.payload.cardId));
       case "watch.trace":
         return ok(command.type, watching().trace(command.payload.cardId));
+      case "watch.describe":
+        return ok(command.type, watching().describe(command.payload.cardId));
       case "watch.byUrl":
         return ok(command.type, watching().byUrl(command.payload.url));
       case "watch.watch": {
@@ -1661,7 +1663,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(
           command.type,
           await board().createPr(command.payload.cardId, {
-            generate: command.payload.generate ?? false,
+            ...(command.payload.description === undefined
+              ? {}
+              : { description: command.payload.description }),
           }),
         );
       case "card.complete": {

@@ -615,13 +615,11 @@ export async function startDaemon(
   budgets.start();
   history.onChange(() => usageIndex.request());
   usageIndex.start();
-  // Phase 22: the PR description generated from the card's sessions (the trail is built below).
-  let traces: Traces | null = null;
   const board = new Board({
     db: store.db,
     manager,
     quota,
-    prDescription: (cardId) => traces?.describe(cardId) ?? "",
+    scanner: snippetScanner,
     allowedRoots: config.allowedRoots,
     maxParallelRuns: config.maxParallelRuns,
     budgets,
@@ -855,7 +853,8 @@ export async function startDaemon(
     checks: shellCheckRunner(),
     onUpdate: (cardId) => prWatch.notify(cardId),
   });
-  traces = new Traces({
+  const traces = new Traces({
+    scanner: snippetScanner,
     db: store.db,
     board,
     fixer: prFixer,

@@ -190,6 +190,7 @@ const validCommands: Record<CommandType, unknown> = {
   "watch.get": { cardId: "c1" },
   "watch.trace": { cardId: "c1" },
   "watch.byUrl": { url: "https://dev.azure.com/acme/proj/_git/repo/pullrequest/9" },
+  "watch.describe": { cardId: "c1" },
   "watch.watch": {},
   "messages.send": { as: { session: "s1" }, to: "pc/s2", text: "oi" },
   "messages.list": { team: "t1", session: "s1", host: "pc", status: "queued", days: 7, limit: 10 },

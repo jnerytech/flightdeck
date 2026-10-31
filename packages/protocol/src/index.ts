@@ -2050,7 +2050,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
-  cmd("card.pr.create", z.object({ cardId: z.string(), generate: z.boolean().optional() })),
+  /** With `description`: the text the person confirmed for the PR, instead of the card's own. */
+  cmd(
+    "card.pr.create",
+    z.object({ cardId: z.string(), description: z.string().max(8000).optional() }),
+  ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
   cmd("external.list", z.object({}).strict()),
@@ -2304,6 +2308,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("watch.set", z.object({ cardId: z.string().min(1), enabled: z.boolean().nullable() })),
   cmd("watch.get", z.object({ cardId: z.string().min(1) })),
   cmd("watch.trace", z.object({ cardId: z.string().min(1) })),
+  /** The PR description made from the card's sessions, for the person to edit: nothing is opened. */
+  cmd("watch.describe", z.object({ cardId: z.string().min(1) })),
   cmd("watch.byUrl", z.object({ url: z.string().min(1).max(2000) })),
   cmd("watch.watch", z.object({}).strict()),
   /** Phase 19: the rules of one secret, replaced whole (the ones that break the ceiling are refused). */
@@ -3271,6 +3277,7 @@ export interface CommandResults {
   "watch.set": WatchInfo;
   "watch.get": WatchInfo;
   "watch.trace": CardTraceInfo;
+  "watch.describe": { text: string; redacted: number };
   "watch.byUrl": UrlTraceInfo;
   "watch.watch": undefined;
   "messages.send": SendResult;

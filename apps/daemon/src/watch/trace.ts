@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { Board } from "../board/board.ts";
 import { closingLine } from "../issues/providers.ts";
+import type { SecretScanner } from "../snippets/model.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
@@ -47,6 +48,8 @@ export interface TracesOptions {
   sessionCosts: (claudeSessionIds: string[]) => Record<string, number>;
   cardCost: (cardId: string) => number | null;
   checkpoints: (claudeSessionId: string) => number;
+  /** Looks for secrets in text: the lines of the description that have one are taken out. */
+  scanner: Pick<SecretScanner, "scan">;
   /** The history index (phase 5): the sessions whose text has the query. */
   search: (query: string) => Array<{ claudeSessionId: string; title: string | null; cwd: string }>;
 }
@@ -120,7 +123,7 @@ export class Traces {
    * The PR's description, from what the card's sessions did: the card's text, the sessions, the
    * rounds of fixing and the line that links the work item.
    */
-  describe(cardId: string): string {
+  describe(cardId: string): { text: string; redacted: number } {
     const trace = this.trace(cardId);
     const card = this.opts.board.getCard(cardId);
     const worked = trace.sessions
@@ -132,7 +135,7 @@ export class Traces {
     const fixes = trace.rounds.map(
       (r) => `- Round ${r.n} (${r.status}): ${firstLine(r.summary, 160)}`,
     );
-    return [
+    const text = [
       `## ${card.title}`,
       card.description.trim(),
       ...(worked.length > 0 ? ["## Sessions", worked.join("\n")] : []),
@@ -141,5 +144,6 @@ export class Traces {
     ]
       .filter((part) => part)
       .join("\n\n");
+    return { text, redacted: 0 };
   }
 }

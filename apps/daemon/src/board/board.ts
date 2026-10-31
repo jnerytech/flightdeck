@@ -23,6 +23,7 @@ import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
@@ -95,8 +96,8 @@ export interface BoardOptions {
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
-  /** Phase 22: the PR description made from the card's sessions, for `createPr` with `generate`. */
-  prDescription?: (cardId: string) => string;
+  /** Phase 22: refuses a PR description that carries a secret. */
+  scanner?: Pick<SecretScanner, "scan">;
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
@@ -1104,9 +1105,9 @@ export class Board {
 
   /**
    * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
-   * `generate` (phase 22) makes the description from what the card's sessions did.
+   * `description` (phase 22) is the text the person confirmed, instead of the card's own.
    */
-  async createPr(id: string, options: { generate?: boolean } = {}): Promise<Card> {
+  async createPr(id: string, _options: { description?: string } = {}): Promise<Card> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
@@ -1120,12 +1121,9 @@ export class Board {
       head: branch,
       title: card.title,
       // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
-      body:
-        options.generate && this.opts.prDescription
-          ? this.opts.prDescription(id)
-          : [card.description, card.issueRef ? closingLine(card.issueRef) : null]
-              .filter((part) => part?.trim())
-              .join("\n\n"),
+      body: [card.description, card.issueRef ? closingLine(card.issueRef) : null]
+        .filter((part) => part?.trim())
+        .join("\n\n"),
     });
     this.db
       .query(
