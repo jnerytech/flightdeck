@@ -291,6 +291,8 @@ describe("acoes-protocolo: o daemon montado pelo main", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     const project = await client.data<{ id: string }>("project.add", { path: repo });
     const projectId = project?.id ?? "";
+    // Another destino is there: the name has to match, not just any destino.
+    await client.data("ssh.save", { name: "outro", host: "10.0.0.9", user: "deploy" });
     await client.data("actions.save", {
       projectId,
       definition: { name: "remoto", description: "remoto", ssh: "nao-existe", run: ["uptime"] },
