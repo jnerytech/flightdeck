@@ -240,4 +240,18 @@ describe("snippets-uso: the palette", () => {
     await act(() => Bun.sleep(100));
     expect(screen.queryByLabelText("msg")).toBeNull();
   });
+
+  test("a context field the person fills goes into the text", async () => {
+    const { store, copied } = await open(false);
+    store.globalSnippets.save({ name: "listar", type: "command", run: "ls {{cwd}}" });
+    await palette("listar");
+    await choose("Snippet: listar");
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("cwd (do contexto)") as HTMLElement, {
+        target: { value: "/srv/app" },
+      });
+    });
+    await click("Copiar");
+    expect(copied).toEqual(["ls /srv/app"]);
+  });
 });

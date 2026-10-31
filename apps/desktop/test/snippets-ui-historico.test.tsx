@@ -173,4 +173,22 @@ describe("snippets-ui: import from the shell history", () => {
     await click("Importar do histórico do shell");
     expect(screen.queryByRole("button", { name: "Importar selecionados" })).not.toBeNull();
   });
+
+  test("a line imported to the app next to a global snippet of the same name gets a name of its own", async () => {
+    const { store } = await open();
+    store.globalSnippets.save({ name: "bun-test", type: "command", run: "bun test --watch" });
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("bun test") as HTMLElement);
+      fireEvent.change(screen.queryByLabelText("Importar para") as HTMLElement, {
+        target: { value: "global" },
+      });
+    });
+    await click("Importar selecionados");
+    const names = store.globalSnippets.list().map((s) => s.name);
+    expect(names).toHaveLength(2);
+    expect(new Set(names).size).toBe(2);
+    expect(store.globalSnippets.list().find((s) => s.run === "bun test")?.name).not.toBe(
+      "bun-test",
+    );
+  });
 });
