@@ -438,6 +438,8 @@ export const ptBR = {
     filters: "Filtros",
     host: "Host",
     allHosts: "Todos os hosts",
+    persona: "Persona",
+    allPersonas: "Todas as personas",
     origin: "Origem",
     allOrigins: "Todas as origens",
     state: "Estado",

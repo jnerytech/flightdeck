@@ -82,7 +82,7 @@ export function loadHubFilter(storage: { getItem(key: string): string | null }):
     host: text("host"),
     origin: text("origin", ORIGINS) as HubFilter["origin"],
     state: text("state", STATES) as HubFilter["state"],
-    persona: "",
+    persona: text("persona"),
     pinnedOnly: stored.pinnedOnly === true,
     showArchived: stored.showArchived === true,
   };
@@ -186,7 +186,7 @@ export function hubRows(state: AppState): HubRow[] {
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
         summary: liveLine(s.summary, live),
-        persona: null,
+        persona: s.persona ?? null,
       };
     });
     const externals = Object.entries(state.externals)
@@ -203,7 +203,7 @@ export function hubRows(state: AppState): HubRow[] {
           controllable: s.controllable,
           lastActivity: s.lastEventAt,
           summary: s.summary ?? null,
-          persona: null,
+          persona: s.persona ?? null,
         };
       });
     const history = data.history
@@ -234,6 +234,7 @@ const matches = (row: HubRow, filter: HubFilter) =>
   (!filter.host || row.hostName === filter.host) &&
   (!filter.origin || row.origin === filter.origin) &&
   (!filter.state || row.state === filter.state) &&
+  (!filter.persona || row.persona?.id === filter.persona) &&
   (!filter.pinnedOnly || row.pinned) &&
   (filter.showArchived || !row.archived);
 

@@ -440,6 +440,8 @@ export const en: Dictionary = {
     filters: "Filters",
     host: "Host",
     allHosts: "All hosts",
+    persona: "Persona",
+    allPersonas: "All personas",
     origin: "Origin",
     allOrigins: "All origins",
     state: "State",

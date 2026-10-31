@@ -69,6 +69,12 @@ export function SessionsHub(props: {
 
   const rows = hubRows(state);
   const groups = hubGroups(rows, filter);
+  // The personas the sessions run in: the Persona filter offers only those.
+  const personas = [
+    ...new Map(
+      rows.flatMap((r) => (r.persona ? [[r.persona.id, r.persona] as const] : [])),
+    ).values(),
+  ];
   /** The rows as listed, top to bottom: what J and K walk. */
   const listed = groups.flatMap((g) => g.rows);
   /** The row the keyboard is on (-1: none yet). */
@@ -124,6 +130,7 @@ export function SessionsHub(props: {
     filter.host !== "",
     filter.origin !== "",
     filter.state !== "",
+    filter.persona !== "",
     filter.pinnedOnly,
     filter.showArchived,
   ].filter(Boolean).length;
@@ -187,6 +194,21 @@ export function SessionsHub(props: {
             <option value="idle">{t("hub.states.idle")}</option>
             <option value="ended">{t("hub.states.ended")}</option>
           </select>
+          {personas.length > 0 && (
+            <select
+              aria-label={t("hub.persona")}
+              className={SELECT_CLASS}
+              value={filter.persona}
+              onChange={(e) => set({ persona: e.target.value })}
+            >
+              <option value="">{t("hub.allPersonas")}</option>
+              {personas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -275,6 +297,11 @@ export function SessionsHub(props: {
                     <span className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline">
                       {origin ? `${row.hostName} · ${origin}` : row.hostName}
                     </span>
+                    {row.persona && (
+                      <span className="shrink-0 rounded bg-muted px-1 text-xs">
+                        {row.persona.name}
+                      </span>
+                    )}
                     {row.controllable && (
                       <>
                         <Radio
