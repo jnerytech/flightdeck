@@ -140,7 +140,7 @@ describe("layout", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Hosts" })).not.toBeNull();
     const grid = screen.queryByText("a")?.parentElement;
     expect(grid?.className.split(" ").sort()).toEqual(
-      ["gap-4", "grid", "grid-cols-1", "md:grid-cols-2", "xl:grid-cols-3"].sort(),
+      ["@3xl:grid-cols-2", "@7xl:grid-cols-3", "gap-4", "grid", "grid-cols-1"].sort(),
     );
     const inline = screen.queryByText("b")?.parentElement;
     expect(inline?.className.split(" ").sort()).toEqual(

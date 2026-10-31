@@ -212,7 +212,7 @@ describe("direcao-visual: lista e detalhe", () => {
         detail={detail === null ? null : <p>{detail}</p>}
         empty={<p>nada aberto</p>}
         onClose={onClose}
-        labels={{ resize: "Redimensionar a lista" }}
+        labels={{ resize: "Redimensionar a lista", back: "Voltar à lista" }}
       />,
     );
   const separator = () => screen.queryByRole("separator", { name: "Redimensionar a lista" });
