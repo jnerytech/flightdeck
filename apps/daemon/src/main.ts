@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, unwatchFile, watchFile } from "node:fs";
+import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
@@ -55,6 +55,7 @@ import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
 import { trackNames } from "./names/track.ts";
+import { createPrompt, installStableBinary, runSetup } from "./setup.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
@@ -121,6 +122,7 @@ export interface CliArgs {
   command:
     | "start"
     | "pair"
+    | "setup"
     | "service"
     | "history"
     | "hooks"
@@ -166,6 +168,9 @@ export interface CliArgs {
   runtime?: RuntimeKind;
   /** `pair --rotate`: generate a new token first. */
   rotate?: true;
+  /** `setup --yes --folders a,b`: no questions, the folders come from here. */
+  yes?: true;
+  folders?: string[];
   /** `hook session-start --url <receptor> --token <hooks.token>`, as `hooks install` writes it. */
   url?: string;
   token?: string;
@@ -191,6 +196,7 @@ const USAGE = [
   "     flightdeckd backup [--out <arquivo>] [--config <arquivo>]",
   "     flightdeckd restore <arquivo> [--config <arquivo>]   (com o daemon parado)",
   "     flightdeckd update --from <binário> [--allow-downgrade] [--config <arquivo>]",
+  "     flightdeckd setup [--yes --folders <a,b>] [--config <arquivo>]   (primeira execução guiada)",
   "     flightdeckd pair [--rotate] [--config <arquivo>]",
   "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
@@ -261,7 +267,17 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         break;
       case "start":
       case "pair":
+      case "setup":
         args.command = flag;
+        break;
+      case "--yes":
+        args.yes = true;
+        break;
+      case "--folders":
+        args.folders = value()
+          .split(",")
+          .map((folder) => folder.trim())
+          .filter(Boolean);
         break;
       case "--rotate":
         args.rotate = true;
@@ -976,6 +992,66 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   }
 }
 
+/** Lines of `stream`, as a `createPrompt` input. */
+async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  let pending = "";
+  const decoder = new TextDecoder();
+  for await (const chunk of stream) {
+    pending += decoder.decode(chunk, { stream: true });
+    for (let end = pending.indexOf("\n"); end >= 0; end = pending.indexOf("\n")) {
+      yield pending.slice(0, end).replace(/\r$/, "");
+      pending = pending.slice(end + 1);
+    }
+  }
+  if (pending) yield pending;
+}
+
+/** `flightdeckd setup`: the guided first run (folders, service started now, pair link). */
+async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
+  const file = configPath(args);
+  const ctxOf = deps.serviceContext ?? osServiceContext;
+  const base = ctxOf(false);
+  const stable = stableBinPath(base.home, base.platform);
+  let command = base.command;
+  const prompt = createPrompt(linesOf(deps.stdin ?? Bun.stdin.stream()), (text) =>
+    process.stdout.write(text),
+  );
+  const install = (): CliArgs => ({ command: "service", action: "install", config: file });
+  await runSetup(
+    {
+      ...prompt,
+      log: deps.log,
+      configFile: file,
+      home: base.home,
+      isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+      tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
+      installBinary: () => {
+        const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
+        const placed = installStableBinary(self, stable, base.platform);
+        if (placed === "source") return false;
+        command = [stable];
+        deps.log.log(
+          placed === "kept"
+            ? `${stable} already exists and stays (update replaces it)`
+            : `flightdeckd at ${stable}`,
+        );
+        return true;
+      },
+      installService: async () => {
+        const ctx = ctxOf(false);
+        if ((await serviceCommand(ctx)) !== null) await stopInstalledDaemon(install(), ctx, deps);
+        await runService(install(), {
+          ...deps,
+          serviceContext: (dryRun) => ({ ...ctxOf(dryRun), command }),
+        });
+      },
+      installHooks: () => runHooks({ command: "hooks", action: "install", config: file }, deps),
+      pair: () => runPair({ command: "pair", config: file }, deps),
+    },
+    { ...(args.yes ? { yes: true } : {}), ...(args.folders ? { folders: args.folders } : {}) },
+  );
+}
+
 /**
  * `flightdeckd service install|uninstall|status`. With `--dry-run` nothing is written, not even
  * the config, so `loadConfig` (which creates a missing file) is never called in that mode.
@@ -1437,6 +1513,11 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     }
     if (args.command === "history") {
       runReindex(args, deps);
+      deps.exit(0);
+      return null;
+    }
+    if (args.command === "setup") {
+      await runSetupCommand(args, deps);
       deps.exit(0);
       return null;
     }
