@@ -157,6 +157,16 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(600);
       },
     },
+    // Phase 20: the persona library (the pack in the app's language) and the editor's preview.
+    { name: "personas", route: { name: "personas" } },
+    {
+      name: "personas-editor",
+      route: { name: "personas" },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Nova persona|New persona)$/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
     // The timeline of a session, and its two dialogs.
     {
       name: "linha-do-tempo",
