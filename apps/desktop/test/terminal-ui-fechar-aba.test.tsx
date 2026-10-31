@@ -51,7 +51,7 @@ const click = async (target: HTMLElement | null) => {
 describe("terminal-ui: fechar a aba de um terminal", () => {
   test("closing a terminal tab asks; Cancelar keeps it", async () => {
     const { store } = await setup();
-    await click(screen.queryByRole("button", { name: "Fechar aba Terminal" }));
+    await click(screen.queryByLabelText("Fechar aba Terminal"));
     expect(dialog()).not.toBeNull();
     expect(inDialog("Desanexar")).not.toBeNull();
     expect(inDialog("Encerrar processo")).not.toBeNull();
@@ -62,7 +62,7 @@ describe("terminal-ui: fechar a aba de um terminal", () => {
 
   test("Desanexar closes the tab and keeps the terminal running on the host", async () => {
     const { store, hostId, ptys, terminalId } = await setup();
-    await click(screen.queryByRole("button", { name: "Fechar aba Terminal" }));
+    await click(screen.queryByLabelText("Fechar aba Terminal"));
     await click(inDialog("Desanexar"));
     await waitFor(() => expect(store.tabs.tabs).toHaveLength(1));
     expect(ptys.spawned[0]?.killed).toBe(false);
