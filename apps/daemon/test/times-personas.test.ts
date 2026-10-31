@@ -90,6 +90,14 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
     });
     expect(updated).toMatchObject({ ok: true });
     expect((await coordinatorOf())?.persona).toBeNull();
+    // Giving one back applies it to the coordinator's open session. The coordinator is
+    // a managed session from the start, on every platform, unlike a worker's card.
+    const given = await client.request("teams.update", {
+      team: team?.id,
+      persona: { member: (await coordinatorOf())?.name, persona: "qa" },
+    });
+    expect(given).toMatchObject({ ok: true });
+    expect((await coordinatorOf())?.persona).toBe("qa");
     // Without one, the coordinator is the pack's coordenador.
     await client.data("teams.create", {
       projectId: project?.id,
