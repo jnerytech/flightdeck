@@ -1130,6 +1130,12 @@ export const ptBR = {
     cancel: "Cancelar",
     states: { active: "Ativo", paused: "Pausado", closed: "Encerrado" },
     pausedByQuota: "pausado pela cota",
+    sessionStates: {
+      running: "Rodando",
+      waiting: "Esperando você",
+      idle: "Ociosa",
+      ended: "Encerrada",
+    },
     coordinator: "coordenadora",
     worker: "executora",
     lastReport: "Último relato",

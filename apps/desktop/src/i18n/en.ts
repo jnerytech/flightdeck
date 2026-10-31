@@ -1132,6 +1132,7 @@ export const en: Dictionary = {
     cancel: "Cancel",
     states: { active: "Active", paused: "Paused", closed: "Closed" },
     pausedByQuota: "paused by the quota",
+    sessionStates: { running: "Running", waiting: "Needs you", idle: "Idle", ended: "Ended" },
     coordinator: "coordinator",
     worker: "worker",
     lastReport: "Last report",

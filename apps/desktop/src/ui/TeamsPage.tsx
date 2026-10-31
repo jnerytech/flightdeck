@@ -134,7 +134,9 @@ function Member(props: {
         </Badge>
         {member.persona && <Badge variant="outline">{member.persona}</Badge>}
         {member.sessionState && (
-          <span className="text-muted-foreground">{member.sessionState}</span>
+          <span className="text-muted-foreground">
+            {t(`teamsUi.sessionStates.${member.sessionState}`)}
+          </span>
         )}
         {member.cardId && <span className="font-mono text-muted-foreground">{member.cardId}</span>}
       </div>
