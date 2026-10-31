@@ -3,6 +3,7 @@ import { LANG_KEY, LANGS, type Lang } from "../i18n/index.ts";
 import { saveHosts } from "../lib/hosts.ts";
 import type { Route } from "../lib/router.ts";
 import { THEME_KEY, type ThemeMode } from "../lib/theme.ts";
+import { WORKSPACE_KEY } from "../lib/workspace.ts";
 import type { Platform } from "../platform/types.ts";
 
 const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), token: z.string() });
@@ -48,9 +49,14 @@ export function initialRoute(search: string): Route | null {
 
 const THEMES: readonly ThemeMode[] = ["light", "dark", "system"];
 
-/** `?theme=` and `?lang=` of the demo's address, stored as the user's choices (prints). */
+/**
+ * `?theme=` and `?lang=` of the demo's address, stored as the user's choices (prints). An address
+ * with `?route=` shows that one screen: it opens on a fresh window, not on the tabs and split an
+ * earlier page of the same browser kept.
+ */
 export function applyDemoPrefs(storage: Platform["storage"], search: string): void {
   const params = new URLSearchParams(search);
+  if (params.has("route")) storage.setItem(WORKSPACE_KEY, "null");
   const theme = params.get("theme") as ThemeMode | null;
   const lang = params.get("lang") as Lang | null;
   if (theme && THEMES.includes(theme)) storage.setItem(THEME_KEY, theme);
