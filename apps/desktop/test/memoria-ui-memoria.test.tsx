@@ -199,7 +199,7 @@ describe("memoria-ui: sugestões de limpeza", () => {
     expect(text).toContain("Contradição: a.md, b.md");
     expect(text).toContain("Nada é alterado sozinho");
     const before = readFileSync(join(dir, "c.md"), "utf8");
-    await click("Abrir c.md");
+    await click("Ver c.md");
     expect(readFileSync(join(dir, "c.md"), "utf8")).toBe(before);
     expect(screen.queryByLabelText("Conteúdo de c.md")).not.toBeNull();
   });
