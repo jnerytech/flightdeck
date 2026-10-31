@@ -676,4 +676,11 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (project_id, hash)
   );
   `,
+  // Phase 24: the block of 10 ports each card holds until it is concluded.
+  `
+  CREATE TABLE card_ports (
+    card_id     TEXT PRIMARY KEY,
+    block_start INTEGER NOT NULL UNIQUE
+  );
+  `,
 ];
