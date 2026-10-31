@@ -15,6 +15,8 @@ export interface TreeKillDeps {
  * is already gone is not an error.
  */
 export function killTree(pid: number, deps: TreeKillDeps = {}): void {
+  // Never this daemon's own group (-pid would be it), init's, or a pid that is not one.
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return;
   const platform = deps.platform ?? process.platform;
   try {
     if (platform === "win32")
