@@ -1106,7 +1106,7 @@ export class Board {
    * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
    * `generate` (phase 22) makes the description from what the card's sessions did.
    */
-  async createPr(id: string, _options: { generate?: boolean } = {}): Promise<Card> {
+  async createPr(id: string, options: { generate?: boolean } = {}): Promise<Card> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
@@ -1120,9 +1120,12 @@ export class Board {
       head: branch,
       title: card.title,
       // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
-      body: [card.description, card.issueRef ? closingLine(card.issueRef) : null]
-        .filter((part) => part?.trim())
-        .join("\n\n"),
+      body:
+        options.generate && this.opts.prDescription
+          ? this.opts.prDescription(id)
+          : [card.description, card.issueRef ? closingLine(card.issueRef) : null]
+              .filter((part) => part?.trim())
+              .join("\n\n"),
     });
     this.db
       .query(
