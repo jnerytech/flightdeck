@@ -2211,11 +2211,10 @@ export class AppStore {
         secretId: request.secretId,
         match: {
           requester: request.requester,
+          // actionPolicy only asks for a request that names an action or a command.
           ...(free
             ? { purpose: "run_with_secret" }
-            : request.action === undefined
-              ? { purpose: "ssh" }
-              : { purpose: "action", action: request.action }),
+            : { purpose: "action", action: request.action as string }),
         },
       },
     };
