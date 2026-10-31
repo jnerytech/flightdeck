@@ -3,6 +3,7 @@ import { SubagentsSwitch } from "@/components/personas/subagents-switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
+import { AgentContext } from "./AgentContext.tsx";
 import { AgentFiles } from "./AgentFiles.tsx";
 import { AgentMcp } from "./AgentMcp.tsx";
 import { AgentMemory } from "./AgentMemory.tsx";
@@ -30,10 +31,16 @@ export function AgentPage(props: {
           <TabsTrigger value="agent">{t("agent.tabAgents")}</TabsTrigger>
           <TabsTrigger value="skill">{t("agent.tabSkills")}</TabsTrigger>
           {withMemory && <TabsTrigger value="memory">{t("agent.tabMemory")}</TabsTrigger>}
+          {withMemory && <TabsTrigger value="context">{t("agent.tabContext")}</TabsTrigger>}
         </TabsList>
         <TabsContent value="mcp">
           <AgentMcp store={store} hostId={hostId} projectId={projectId} />
         </TabsContent>
+        {withMemory && (
+          <TabsContent value="context">
+            <AgentContext store={store} hostId={hostId} projectId={projectId} />
+          </TabsContent>
+        )}
         {withMemory && (
           <TabsContent value="memory">
             <AgentMemory store={store} hostId={hostId} projectId={projectId} />
