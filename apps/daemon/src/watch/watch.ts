@@ -75,6 +75,8 @@ function isTrustedComment(comment: PrComment): boolean {
 
 /** Watches the open PRs of cards: reads their builds, conflicts and comments each round. */
 export class PrWatcher {
+  private stopped = false;
+
   constructor(private readonly opts: PrWatcherOptions) {}
 
   settings(projectId: string): WatchSettings {
@@ -156,16 +158,20 @@ export class PrWatcher {
   }
 
   /** Phase 22: after this nothing is read, saved or fired (the daemon is stopping). */
-  stop(): void {}
+  stop(): void {
+    this.stopped = true;
+  }
 
   /** One round: looks at every watched card with an open PR; a host that fails waits for the next. */
   async tick(): Promise<void> {
+    if (this.stopped) return;
     const open = this.opts.db
       .query<{ id: string }, []>(
         "SELECT id FROM cards WHERE pr_state = 'open' AND pr_url IS NOT NULL",
       )
       .all();
     for (const { id } of open) {
+      if (this.stopped) return;
       if (this.enabled(id) && this.status(id).status === "watching")
         await this.look(id).catch(() => {});
     }
@@ -190,6 +196,7 @@ export class PrWatcher {
       provider.health(where),
       provider.comments(where),
     ]);
+    if (this.stopped) return;
     const before = this.snapshot(cardId);
     const failing = health.checks.filter((c) => c.kind === "build" && c.state === "failing");
     const now: Snapshot = {
@@ -208,6 +215,7 @@ export class PrWatcher {
     if (trigger.failed.length > 0 || trigger.conflicts || trigger.comments.length > 0) {
       await this.opts.onTrigger?.(trigger);
     }
+    if (this.stopped) return;
     this.opts.db
       .query(
         `INSERT INTO pr_watch (card_id, enabled, snapshot, updated_at) VALUES (?, NULL, ?, ?)

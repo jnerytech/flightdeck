@@ -131,10 +131,19 @@ function buildPrompt(input: {
 
 /** Runs the rounds of fixing a watched PR, inside their limits. */
 export class PrFixer {
+  private stopped = false;
   private readonly running = new Set<string>();
   private readonly pending = new Set<Promise<void>>();
 
-  constructor(private readonly opts: PrFixerOptions) {}
+  constructor(private readonly opts: PrFixerOptions) {
+    // A round the daemon left running when it stopped will never end by itself.
+    opts.db
+      .query(
+        `UPDATE pr_watch_rounds SET status = 'failed', summary = 'the daemon stopped during the round',
+           ended_at = ? WHERE status = 'running'`,
+      )
+      .run(new Date().toISOString());
+  }
 
   private get now(): number {
     return (this.opts.clock ?? Date.now)();
@@ -161,7 +170,9 @@ export class PrFixer {
   }
 
   /** After this a round in flight writes and pushes nothing (the daemon is stopping). */
-  stop(): void {}
+  stop(): void {
+    this.stopped = true;
+  }
 
   /** Settles when no round is running. */
   async idle(): Promise<void> {
@@ -221,6 +232,7 @@ export class PrFixer {
   }
 
   private needsYou(cardId: string, reason: string): void {
+    if (this.stopped) return;
     this.opts.watcher.markNeedsYou(cardId, reason);
     this.opts.onUpdate?.(cardId);
   }
@@ -256,6 +268,7 @@ export class PrFixer {
       summary: string,
       spent: { sessionId?: string | null; costUsd?: number; turns?: number } = {},
     ) => {
+      if (this.stopped) return;
       db.query(
         `UPDATE pr_watch_rounds SET status = ?, summary = ?, session_id = COALESCE(?, session_id),
            cost_usd = ?, turns = ?, ended_at = ? WHERE id = ?`,
@@ -271,6 +284,34 @@ export class PrFixer {
       this.opts.onUpdate?.(cardId);
     };
 
+    try {
+      await this.play({ trigger, n, branch, worktree, settings, project, card, provider, end });
+    } catch (error) {
+      if (this.stopped) return;
+      const message = `unexpected error: ${error instanceof Error ? error.message : String(error)}`;
+      this.failed(cardId, end, message);
+      this.needsYou(cardId, message);
+    }
+  }
+
+  private async play(input: {
+    trigger: WatchTrigger;
+    n: number;
+    branch: string;
+    worktree: string;
+    settings: WatchSettings;
+    project: ReturnType<PrFixerOptions["board"]["getProject"]>;
+    card: ReturnType<PrFixerOptions["board"]["getCard"]>;
+    provider: PrProvider | null;
+    end: (
+      status: FixRound["status"],
+      summary: string,
+      spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
+    ) => void;
+  }): Promise<void> {
+    const { board, watcher } = this.opts;
+    const { trigger, n, branch, worktree, settings, project, card, provider, end } = input;
+    const { cardId } = trigger;
     const logs = await this.logs(provider, card.prUrl as string, project.path, trigger);
     const fixed = await board
       .fixCard(cardId, {
@@ -288,6 +329,7 @@ export class PrFixer {
       .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
     if (fixed instanceof Error)
       return this.failed(cardId, end, `could not start the session: ${fixed.message}`);
+    if (this.stopped) return;
     const spent = { sessionId: fixed.sessionId, costUsd: fixed.costUsd, turns: 1 };
     if (fixed.isError) return this.failed(cardId, end, `the session failed: ${fixed.error}`, spent);
 
@@ -310,6 +352,7 @@ export class PrFixer {
         );
       }
     }
+    if (this.stopped) return;
     if (!watcher.enabled(cardId))
       return end("stopped", "Vigiar was turned off: nothing was pushed", spent);
     const state = (await provider?.status({ cwd: project.path, url: card.prUrl as string }))?.state;
