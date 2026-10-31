@@ -200,6 +200,11 @@ describe("estados-avisos", () => {
     await act(async () => store.router.push({ name: "history", host: hostId }));
     await settle(() => screen.queryByText("Nenhuma sessão no histórico.") !== null);
     expect(screen.queryByText("Nenhuma sessão no histórico.")).not.toBeNull();
+    // A pointer to where history comes from: a session, with a link to start one.
+    expect(
+      screen.queryByText("Comece uma sessão e ela entra aqui quando terminar."),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova sessão" })).not.toBeNull();
 
     await act(async () => store.router.push({ name: "projects", host: hostId }));
     await settle(() => screen.queryByText("Nenhum projeto cadastrado.") !== null);

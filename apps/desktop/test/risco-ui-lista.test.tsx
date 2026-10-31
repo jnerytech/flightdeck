@@ -166,6 +166,11 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
     await click("Aprovações automáticas");
     await settle(() => screen.queryByText("Nenhuma decisão automática ainda") !== null);
     expect(screen.queryByText("Nenhuma decisão automática ainda")).not.toBeNull();
+    expect(
+      screen.queryByText(
+        "As decisões aparecem quando um projeto liga a aprovação automática e uma sessão pede permissão.",
+      ),
+    ).not.toBeNull();
     expect(screen.queryByText("Nenhuma sessão suspensa")).not.toBeNull();
   });
 

@@ -83,6 +83,7 @@ describe("custos-ui: a tela nunca fica em branco", () => {
     await setup({ costs: false });
     await settle(() => text().includes("Nenhum host informa custos"));
     expect(text()).toContain("Nenhum host informa custos ainda.");
+    expect(within(main()).queryByRole("button", { name: "Adicionar host" })).not.toBeNull();
     expect(within(main()).queryByRole("heading", { name: "Custos" })).not.toBeNull();
   });
 

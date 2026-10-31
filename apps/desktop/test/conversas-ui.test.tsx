@@ -38,23 +38,25 @@ const message = (over: Record<string, unknown>) => ({
 });
 
 /** The app on a daemon that announces messaging, with two messages, on Conversas. */
-async function open(features = ["messaging"]) {
+async function open(features = ["messaging"], seeded = true) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
-  daemon.messaging.messages = [
-    message({}),
-    message({
-      id: "m2",
-      status: "refused",
-      reason: "laço: o par está pausado",
-      text: "de novo",
-      createdAt: "2026-10-30T12:05:00.000Z",
-      deliveredAt: null,
-      teamId: "t1",
-    }),
-  ];
+  daemon.messaging.messages = !seeded
+    ? []
+    : [
+        message({}),
+        message({
+          id: "m2",
+          status: "refused",
+          reason: "laço: o par está pausado",
+          text: "de novo",
+          createdAt: "2026-10-30T12:05:00.000Z",
+          deliveredAt: null,
+          teamId: "t1",
+        }),
+      ];
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -84,6 +86,20 @@ describe("conversas-ui: the messages between sessions", () => {
     expect(oldest).toContain("pode revisar o login?");
     expect(oldest).toContain("Entregue");
     expect(oldest).toContain("alfa");
+  });
+
+  test("with no messages, the screen says where they come from and links to Times", async () => {
+    await open(["messaging"], false);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => screen.queryByText("Nenhuma mensagem") !== null);
+    expect(
+      screen.queryByText(
+        "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir Times" })).not.toBeNull();
   });
 
   test("the filters narrow by state and by team", async () => {
