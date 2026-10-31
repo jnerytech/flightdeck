@@ -1082,6 +1082,28 @@ describe("plugins: pela CLI", () => {
     expect(diff.monitors).toEqual({ added: ["novo"], removed: ["velho"] });
     expect(diff.mcpServers).toEqual({ added: ["moderno"], removed: ["antigo"] });
   });
+
+  test("um nome, id ou fonte que começa com - nunca vira uma opção da CLI: é recusado antes de qualquer chamada", async () => {
+    const { plugins, fake } = world((ctx) =>
+      everything(ctx, [{ args: ["install"], stdout: OK("install") }]),
+    );
+    const bad = "--prune";
+    const refusals = [
+      plugins.detail(bad),
+      plugins.preview({ plugin: bad }),
+      plugins.previewUpdate(bad),
+      plugins.install({ plugin: bad, confirmHash: "x" }),
+      plugins.update({ plugin: bad, confirmHash: "x" }),
+      plugins.uninstall({ plugin: bad, confirm: true }),
+      plugins.pin(bad, true),
+      plugins.marketplaceAdd({ source: bad, confirm: true }),
+      plugins.marketplaceRemove({ name: bad, confirm: true }),
+      plugins.marketplaceUpdate(bad),
+    ];
+    for (const refusal of refusals)
+      await expect(refusal).rejects.toMatchObject({ code: "bad_request" });
+    expect(fake.calls()).toEqual([]);
+  });
 });
 
 describe("plugins: protocolo", () => {
