@@ -74,6 +74,9 @@ sessões num lugar só, sem abrir cada máquina.
   confiança piora, a sessão do card conserta dentro de limites de rodadas, custo e tempo, roda os
   seus checks locais e faz push só da branch do próprio card. Cole o link de um PR no Ctrl+K para
   achar o card ou as sessões.
+- Um ambiente de execução por card: scripts para prepará-lo e rodá-lo a partir de um
+  `.flightdeck/run.yaml` confiado, um bloco de portas próprio para dois cards rodarem lado a lado,
+  cada processo numa aba de terminal e um preview do app rodando (só loopback).
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.
@@ -209,6 +212,9 @@ só. Os hosts são independentes: nada é copiado entre eles.
 - **Terminais.** Um terminal embutido é um shell completo no host. Ele vem ligado só quando o
   daemon escuta em loopback; ligá-lo num host alcançável por outras redes pede confirmação. O
   conteúdo nunca vai para o log nem para o banco.
+- **Comandos de execução são confiados por hash.** O que o `.flightdeck/run.yaml` declara só roda
+  depois de você revisar e confiar naquele conteúdo exato, como argv sem shell, na worktree do
+  card; o preview só abre `127.0.0.1` e `localhost`.
 - **Nada é aprovado sem um clique.** Os comandos `check` de um workflow só rodam se você confiou
   no workflow, e um arquivo alterado pede confiança de novo.
 - **Segredos fora do transcript.** Uma ação roda o `run` como lista de argumentos, nunca por um

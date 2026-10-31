@@ -69,6 +69,9 @@ sessions from one place, without opening each machine.
 - Watch and fix a card's PR: when a build, a policy, a conflict or a trusted comment gets worse,
   the card's session fixes it within round, cost and time limits, runs your local checks and pushes
   only the card's own branch. Paste a PR link in Ctrl+K to find its card or sessions.
+- A run environment per card: scripts to prepare and run it from a trusted `.flightdeck/run.yaml`,
+  a block of ports of its own so two cards run side by side, each process in a terminal tab, and a
+  preview of the running app (loopback only).
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
@@ -202,6 +205,9 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
 - **Terminals.** An embedded terminal is a full shell on the host. It is on by itself only when
   the daemon listens on loopback; turning it on for a host reachable from other networks asks
   for confirmation. Its content never goes to the log or to the database.
+- **Run commands are trusted by hash.** What `.flightdeck/run.yaml` declares runs only after you
+  review and trust that exact content, as argv with no shell, in the card's worktree; the preview
+  opens only `127.0.0.1` and `localhost`.
 - **Nothing is approved without a click.** Workflow `check` commands run only if you trusted the
   workflow, and a changed file asks for trust again.
 - **Secrets stay out of the transcript.** An action runs `run` as a list of arguments, never

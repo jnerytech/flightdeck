@@ -56,6 +56,11 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | Desanexar | Detach | Closes the terminal's tab and leaves the process running on the host |
 | Encerrar processo | End process | Closes the terminal's tab and ends the process |
 | Claude aqui | Claude here | `flightdeckd claude` in a terminal tab, in a folder, a project or a card's worktree; the session is controllable from the app |
+| run.yaml | run.yaml | The file `.flightdeck/run.yaml` of the base branch that declares a project's setup, processes and ports; it runs only after the user trusts its hash |
+| Run | Run | Starts a card's run environment: the setup once, then each process in a terminal tab |
+| Stop | Stop | Ends a card's processes and everything they started |
+| bloco de portas | port block | The 10 ports a card holds, from `run.portBase`, until it is done |
+| Preview | Preview | The tab that shows a card's running app in a frame, only on 127.0.0.1 and localhost |
 | ação | action | A command declared with places for vault secrets and parameters; Claude calls it by name and never receives the secret |
 | confiada | trusted | An action whose declaration and executed files the user accepted; a change asks again |
 | execuções | runs | The history of an action: who asked, exit code, duration and the masked output |
