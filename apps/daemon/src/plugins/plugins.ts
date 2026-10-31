@@ -4,7 +4,14 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -547,8 +554,11 @@ export function claudeCli(
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */
-export function pluginDecisionLog(_path: string): (decision: PluginDecision) => void {
-  return () => {};
+export function pluginDecisionLog(path: string): (decision: PluginDecision) => void {
+  return (decision) => {
+    mkdirSync(dirname(path), { recursive: true });
+    appendFileSync(path, `${JSON.stringify(decision)}\n`);
+  };
 }
 
 /** Pins kept in a JSON file; one that cannot be read is no pin at all. */

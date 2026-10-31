@@ -64,6 +64,7 @@ import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
+import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -894,6 +895,14 @@ export async function startDaemon(
     mcp: new McpConfig(),
     agentcfg,
     // Phase 26: the project's auto memory; its writes are recorded by name and hash only.
+    // Phase 26: Claude Code's plugins through its own CLI; pins and decisions sit by the data.
+    plugins: new Plugins({
+      cli: claudeCli({
+        executable: () => claudePath ?? whichOnPath("claude"),
+      }),
+      pins: filePins(join(config.dataDir, "plugin-pins.json")),
+      record: pluginDecisionLog(join(config.dataDir, "plugin-decisions.jsonl")),
+    }),
     memory: new ProjectMemory({
       record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
     }),

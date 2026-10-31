@@ -507,6 +507,11 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   const projectPath = (projectId: string) => board().getProject(projectId).path;
 
+  function pluginsApi(): Plugins {
+    if (!opts.plugins) throw new FlightdeckError("invalid_state", "plugins indisponíveis");
+    return opts.plugins;
+  }
+
   function memory(): ProjectMemory {
     if (!opts.memory) throw new FlightdeckError("invalid_state", "memória indisponível");
     return opts.memory;
@@ -1015,61 +1020,50 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, written);
       }
       case "plugins.list":
-        return ok(command.type, { installed: [], available: [], marketplaces: [] });
+        return ok(command.type, await pluginsApi().list());
       case "plugins.detail":
-      case "plugins.pin":
-        return ok(command.type, {
-          id: "",
-          name: "",
-          marketplace: "",
-          version: "",
-          scope: "",
-          enabled: false,
-          path: "",
-          pinned: null,
-          inventory: null,
-          errors: [],
-        });
-      case "plugins.preview":
-        return ok(command.type, { plugin: "", inventory: null, hash: null });
-      case "plugins.previewUpdate": {
-        const none = { added: [], removed: [] };
-        return ok(command.type, {
-          plugin: "",
-          from: { version: "", hash: "" },
-          to: { version: "", hash: "" },
-          inventory: {
-            manifest: null,
-            hooks: [],
-            monitors: [],
-            skills: [],
-            agents: [],
-            commands: [],
-            mcpServers: [],
-            attention: false,
-            hash: "",
-            files: 0,
-            bytes: 0,
-            problems: [],
-          },
-          diff: {
-            hooks: none,
-            monitors: none,
-            skills: none,
-            agents: none,
-            commands: none,
-            mcpServers: none,
-          },
-          unchanged: true,
-        });
+        return ok(command.type, await pluginsApi().detail(command.payload.plugin));
+      case "plugins.preview": {
+        const { plugin, dir } = command.payload;
+        return ok(
+          command.type,
+          await pluginsApi().preview(dir !== undefined ? { dir } : { plugin: plugin as string }),
+        );
       }
+      case "plugins.previewUpdate":
+        return ok(command.type, await pluginsApi().previewUpdate(command.payload.plugin));
       case "plugins.install":
+        return ok(command.type, await pluginsApi().install(command.payload));
       case "plugins.update":
-      case "plugins.uninstall":
-      case "plugins.marketplaceAdd":
-      case "plugins.marketplaceRemove":
+        return ok(command.type, await pluginsApi().update(command.payload));
+      case "plugins.uninstall": {
+        const { confirm, ...input } = command.payload;
+        return ok(
+          command.type,
+          await pluginsApi().uninstall({ ...input, confirm: confirm === true }),
+        );
+      }
+      case "plugins.pin":
+        return ok(
+          command.type,
+          await pluginsApi().pin(command.payload.plugin, command.payload.pinned),
+        );
+      case "plugins.marketplaceAdd": {
+        const { confirm, ...input } = command.payload;
+        return ok(
+          command.type,
+          await pluginsApi().marketplaceAdd({ ...input, confirm: confirm === true }),
+        );
+      }
+      case "plugins.marketplaceRemove": {
+        const { confirm, ...input } = command.payload;
+        return ok(
+          command.type,
+          await pluginsApi().marketplaceRemove({ ...input, confirm: confirm === true }),
+        );
+      }
       case "plugins.marketplaceUpdate":
-        return ok(command.type, { outcome: "unchanged", message: "" });
+        return ok(command.type, await pluginsApi().marketplaceUpdate(command.payload.name));
       case "memory.list":
         return ok(command.type, memory().list(projectPath(command.payload.projectId)));
       case "memory.read": {
