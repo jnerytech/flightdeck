@@ -1,5 +1,6 @@
 import type { Arena, ArenaVariant, StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -208,15 +209,16 @@ export function CardDetail(props: {
           {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
           {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
           {card.issueRef && (
-            <Button
+            <ActionButton
               variant="outline"
               size="sm"
               disabled={!issueUrl(card.issueRef)}
+              disabledReason={t("cardUi.noIssueLink")}
               aria-label={t("issuesUi.openIssue", { issue: issueLabel(card.issueRef) })}
               onClick={() => store.openLink(issueUrl(card.issueRef as string) ?? "")}
             >
               {issueLabel(card.issueRef)}
-            </Button>
+            </ActionButton>
           )}
           {card.issueExternal && <ExternalSeal t={t} />}
           {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
@@ -243,12 +245,12 @@ export function CardDetail(props: {
             className="min-h-20 flex-1"
             onChange={(e) => setDescription(e.target.value)}
           />
-          <Button
+          <ActionButton
             variant="outline"
-            onClick={() => void store.hostCommand(hostId, "card.update", { cardId, description })}
+            onClick={() => store.hostCommand(hostId, "card.update", { cardId, description })}
           >
             {t("cardUi.saveDescription")}
-          </Button>
+          </ActionButton>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -288,10 +290,10 @@ export function CardDetail(props: {
               onChange={setPersona}
             />
           )}
-          <Button
+          <ActionButton
             onClick={() => {
               const ref = store.personaRef(persona);
-              void store.hostCommand(hostId, "card.start", {
+              return store.hostCommand(hostId, "card.start", {
                 cardId,
                 ...(chosen ? { workflow: chosen.name, inputs } : {}),
                 ...(ref ? { persona: ref } : {}),
@@ -299,19 +301,21 @@ export function CardDetail(props: {
             }}
           >
             {t("cardUi.start")}
-          </Button>
-          <Button
+          </ActionButton>
+          <ActionButton
             variant="outline"
-            onClick={() => void store.hostCommand(hostId, "card.stop", { cardId })}
+            onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
           >
             {t("cardUi.stop")}
-          </Button>
-          <Button
+          </ActionButton>
+          <ActionButton
             variant="outline"
-            onClick={() => void store.hostCommand(hostId, "card.pr.create", { cardId })}
+            disabled={!card.worktreePath || Boolean(card.prUrl)}
+            disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
+            onClick={() => store.hostCommand(hostId, "card.pr.create", { cardId })}
           >
             {t("cardUi.openPr")}
-          </Button>
+          </ActionButton>
           <Button
             variant="outline"
             onClick={() => setConfirming({ kind: "complete", warning: null })}

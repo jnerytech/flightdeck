@@ -1315,6 +1315,7 @@ export const en: Dictionary = {
     chooseConfirm: "Choose variant",
   },
   kanban: {
+    needTitle: "Give the card a title",
     card: "Card {title}",
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
@@ -1336,6 +1337,9 @@ export const en: Dictionary = {
     create: "Create card",
   },
   cardUi: {
+    noIssueLink: "This issue has no link we can open",
+    needWorktree: "Start the card before opening its PR",
+    prAlreadyOpen: "The PR is already open",
     notFound: "Card not found.",
     cost: "Card cost",
     back: "Back to the board",

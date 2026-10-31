@@ -1,6 +1,7 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { Columns3, ListTodo, MoreHorizontal, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
@@ -163,9 +164,13 @@ export function BoardView(props: {
   };
 
   const create = () => {
-    if (!title.trim()) return;
-    void store.hostCommand(hostId, "card.create", { projectId, title: title.trim(), description });
+    const made = store.hostCommand(hostId, "card.create", {
+      projectId,
+      title: title.trim(),
+      description,
+    });
     close();
+    return made;
   };
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
@@ -288,7 +293,13 @@ export function BoardView(props: {
             <Button variant="outline" onClick={close}>
               {t("common.cancel")}
             </Button>
-            <Button onClick={create}>{t("kanban.create")}</Button>
+            <ActionButton
+              disabled={!title.trim()}
+              disabledReason={t("kanban.needTitle")}
+              onClick={create}
+            >
+              {t("kanban.create")}
+            </ActionButton>
           </DialogFooter>
         </AppDialogContent>
       </Dialog>

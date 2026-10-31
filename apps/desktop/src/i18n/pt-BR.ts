@@ -1317,6 +1317,7 @@ export const ptBR = {
     chooseConfirm: "Escolher variante",
   },
   kanban: {
+    needTitle: "Dê um título ao card",
     card: "Card {title}",
     queued: "na fila",
     waitingQuotaUntil: "aguardando cota até {time}",
@@ -1338,6 +1339,9 @@ export const ptBR = {
     create: "Criar card",
   },
   cardUi: {
+    noIssueLink: "Esta issue não tem link para abrir",
+    needWorktree: "Inicie o card antes de abrir o PR",
+    prAlreadyOpen: "O PR já está aberto",
     notFound: "Card não encontrado.",
     cost: "Custo do card",
     back: "Voltar ao board",
