@@ -43,6 +43,7 @@ const EOF_GRACE_MS = 100;
 export function bunPty(
   spawn: SpawnFn = Bun.spawn as unknown as SpawnFn,
   killGraceMs = KILL_GRACE_MS,
+  platform: NodeJS.Platform = process.platform,
 ): PtyFactory {
   return (start) => {
     let exitCode: number | null = null;
@@ -85,9 +86,19 @@ export function bunPty(
       },
       // SIGHUP is what a closing terminal sends: an interactive shell ignores SIGTERM but not
       // SIGHUP, and passes it on to its jobs. Whatever is still there after the grace is killed.
-      // On Windows the signal is ignored and the process is terminated.
+      // Windows has no signals: the process (and the ConPTY's tree) is terminated, as before. A
+      // signal the system refuses falls back to the same plain kill.
       kill: () => {
-        proc.kill("SIGHUP");
+        if (platform === "win32") {
+          proc.kill();
+          return;
+        }
+        try {
+          proc.kill("SIGHUP");
+        } catch {
+          proc.kill();
+          return;
+        }
         setTimeout(() => {
           if (!ended) proc.kill("SIGKILL");
         }, killGraceMs);
