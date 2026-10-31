@@ -98,7 +98,7 @@ export function TabBar(props: {
                   className={cn(
                     "shrink-0 rounded-full px-1.5 text-xs",
                     badge === "needs-you"
-                      ? "bg-status-needs-you text-white"
+                      ? "bg-status-needs-you text-background"
                       : "bg-muted text-muted-foreground",
                   )}
                   title={t(`tabs.badge.${badge}`)}
