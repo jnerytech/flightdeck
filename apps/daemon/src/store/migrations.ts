@@ -683,4 +683,11 @@ export const MIGRATIONS: readonly string[] = [
     block_start INTEGER NOT NULL UNIQUE
   );
   `,
+  // Phase 24: the cards whose run setup already ran (it runs once per card).
+  `
+  CREATE TABLE card_setup_done (
+    card_id TEXT PRIMARY KEY,
+    done_at TEXT NOT NULL
+  );
+  `,
 ];
