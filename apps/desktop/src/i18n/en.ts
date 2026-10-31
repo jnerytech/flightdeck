@@ -1425,6 +1425,8 @@ export const en: Dictionary = {
     cacheSavings: "Cache savings",
     byProject: "By project",
     byModel: "By model",
+    byPersona: "By persona",
+    noPersona: "No persona",
     byOrigin: "By origin",
     divergence: "the price table may be out of date: {models}",
     divergenceItem: "{model} (computed {computed}, SDK {sdk})",

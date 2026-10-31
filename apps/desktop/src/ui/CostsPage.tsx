@@ -66,6 +66,19 @@ export function CostsPage(props: {
   /** The host the user picked; until then (or if it left), the first one that announces costs. */
   const [chosen, setChosen] = useState("");
   const hostId = hosts.some((h) => h.id === chosen) ? chosen : (hosts[0]?.id ?? "");
+  const withPersonas = hasFeature(
+    hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "personas",
+    false,
+  );
+  // The names of the personas the breakdown shows (phase 20).
+  useEffect(() => {
+    if (withPersonas) void store.loadPersonas(hostId);
+  }, [store, hostId, withPersonas]);
+  const personaName = (id: string | null) =>
+    id === null
+      ? t("costsUi.noPersona")
+      : (state.personas[hostId]?.find((p) => p.id === id)?.name ?? id);
   const [period, setPeriod] = useState<Period>("7d");
   const today = store.today();
   const [range, setRange] = useState(periodRange("7d", today));
@@ -298,6 +311,15 @@ export function CostsPage(props: {
                 name={t("costsUi.byOrigin")}
                 rows={summary.byOrigin.map((o) => ({ label: o.origin, costUsd: o.costUsd }))}
               />
+              {withPersonas && (
+                <Breakdown
+                  name={t("costsUi.byPersona")}
+                  rows={summary.byPersona.map((p) => ({
+                    label: personaName(p.persona),
+                    costUsd: p.costUsd,
+                  }))}
+                />
+              )}
             </div>
             <QuotaCharts key={hostId} store={store} hostId={hostId} />
             <section aria-label={t("costsUi.top")}>

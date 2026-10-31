@@ -1423,6 +1423,8 @@ export const ptBR = {
     cacheSavings: "Economia do cache",
     byProject: "Por projeto",
     byModel: "Por modelo",
+    byPersona: "Por persona",
+    noPersona: "Sem persona",
     byOrigin: "Por origem",
     divergence: "tabela de preços pode estar desatualizada: {models}",
     divergenceItem: "{model} (calculado {computed}, SDK {sdk})",
