@@ -114,4 +114,16 @@ describe("memoria-ui: o orçamento de contexto", () => {
     expect(budget()).not.toBeNull();
     expect(screen.queryByText(/Só as primeiras/)).toBeNull();
   });
+
+  test("passando de 25 KB com poucas linhas, o aviso diz que o corte foi pelo tamanho", async () => {
+    await open(({ put }) => {
+      const lines = Array.from(
+        { length: 30 },
+        (_, i) => `- ${String(i).padStart(2, "0")} ${"x".repeat(1020)}`,
+      );
+      put("MEMORY.md", `${lines.join("\n")}\n`);
+    });
+    await settle(() => screen.queryByText(/Só os primeiros 25 KB do MEMORY.md entram/) !== null);
+    expect(screen.queryByText(/Só os primeiros 25 KB do MEMORY.md entram/)).not.toBeNull();
+  });
 });

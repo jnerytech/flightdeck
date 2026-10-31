@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
+import { tempDir } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { memoriaHost } from "./memoria-ui-setup.ts";
@@ -210,5 +211,23 @@ describe("memoria-ui: sugestões de limpeza", () => {
     });
     await settle(() => screen.queryByText("Nenhuma sugestão: a memória está em ordem.") !== null);
     expect(screen.queryByText("Nenhuma sugestão: a memória está em ordem.")).not.toBeNull();
+  });
+});
+
+describe("memoria-ui: quando a memória não pode ser lida", () => {
+  test("uma pasta de memória que leva para fora é recusada pelo daemon, e a aba mostra que não há memória", async () => {
+    const outside = tempDir("fd-outside-");
+    const { dir } = await open((put) => put("MEMORY.md", INDEX));
+    rmSync(dir, { recursive: true, force: true });
+    symlinkSync(outside, dir);
+    const tab = screen.queryByRole("tab", { name: "Memória" });
+    await act(async () => {
+      fireEvent.mouseDown(screen.queryByRole("tab", { name: "MCP" }) as HTMLElement, { button: 0 });
+    });
+    await act(async () => {
+      fireEvent.mouseDown(tab as HTMLElement, { button: 0 });
+    });
+    await settle(() => screen.queryByText("Ainda não há memória neste projeto.") !== null);
+    expect(screen.queryByText("Ainda não há memória neste projeto.")).not.toBeNull();
   });
 });
