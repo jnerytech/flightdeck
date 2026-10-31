@@ -211,6 +211,37 @@ interface GhCheck {
   context?: string;
 }
 
+/** The parts of a GitHub PR URL, the names checked before they reach `gh`. */
+function ghParts(url: string): { owner: string; repo: string; number: string; prUrl: string } {
+  const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
+  if (!match) throw new FlightdeckError("invalid_state", `URL de PR do GitHub inválida: ${url}`);
+  const [, rawOwner, rawRepo, number] = match as unknown as [string, string, string, string];
+  const owner = urlName("dono", rawOwner);
+  const repo = urlName("repositório", rawRepo);
+  // Rebuilt: the stored URL may carry anything around the part that matched.
+  return { owner, repo, number, prUrl: `https://github.com/${owner}/${repo}/pull/${number}` };
+}
+
+const GH_BUCKETS: Record<string, PrCheck["state"]> = {
+  pass: "passing",
+  skipping: "passing",
+  fail: "failing",
+  cancel: "failing",
+};
+
+/** What a build log keeps in all: the end of the logs of what failed. */
+const BUILD_LOG_BYTES = 16 * 1024;
+
+/** The last `limit` bytes of a text, with a mark when something was left out. */
+function tail(text: string, limit: number): string {
+  const bytes = Buffer.from(text);
+  if (bytes.length <= limit) return text;
+  return `[…]\n${bytes
+    .subarray(bytes.length - limit)
+    .toString("utf8")
+    .replace(/^\uFFFD+/, "")}`;
+}
+
 /** GitHub through `gh`. */
 export class GithubCli implements PrProvider {
   async create(opts: CreatePr): Promise<string> {
@@ -251,13 +282,7 @@ export class GithubCli implements PrProvider {
    * (GraphQL, a query: nothing is written).
    */
   async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
-    const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
-    if (!match) throw new FlightdeckError("invalid_state", `URL de PR do GitHub inválida: ${url}`);
-    const [, rawOwner, rawRepo, number] = match as unknown as [string, string, string, string];
-    const owner = urlName("dono", rawOwner);
-    const repo = urlName("repositório", rawRepo);
-    // Rebuilt: the stored URL may carry anything around the part that matched.
-    const prUrl = `https://github.com/${owner}/${repo}/pull/${number}`;
+    const { owner, repo, number, prUrl } = ghParts(url);
     // Every page, 100 at a time (the REST default is 30): `--slurp` wraps the pages in an array.
     // A plain GET: no -f/-F field, which would make `gh api` a POST.
     const pages = await cliJson<GhComment[][]>(
@@ -333,12 +358,53 @@ export class GithubCli implements PrProvider {
     ];
   }
 
-  async health(_opts: { cwd: string; url: string }): Promise<PrHealth> {
-    return { checks: [], conflicts: false };
+  /**
+   * `gh pr checks` (it exits non-zero while a check fails or is pending, with the JSON on
+   * stdout all the same) and the PR's `mergeable` state.
+   */
+  async health({ cwd, url }: { cwd: string; url: string }): Promise<PrHealth> {
+    const { prUrl } = ghParts(url);
+    const result = await cli("gh", ["pr", "checks", prUrl, "--json", "name,bucket,link"], cwd);
+    if (!result.stdout.trim()) {
+      throw new FlightdeckError("invalid_state", `gh pr checks falhou: ${result.stderr.trim()}`);
+    }
+    const rows = JSON.parse(result.stdout) as Array<{ name: string; bucket: string; link: string }>;
+    const { mergeable } = await cliJson<{ mergeable: string }>(
+      "gh",
+      ["pr", "view", prUrl, "--json", "mergeable"],
+      cwd,
+    );
+    return {
+      checks: rows.map((row): PrCheck => {
+        const runId = /\/actions\/runs\/(\d+)/.exec(row.link)?.[1] ?? null;
+        return {
+          name: row.name,
+          state: GH_BUCKETS[row.bucket] ?? "pending",
+          kind: runId === null ? "policy" : "build",
+          buildId: runId,
+        };
+      }),
+      conflicts: mergeable === "CONFLICTING",
+    };
   }
 
-  async buildLog(_opts: { cwd: string; url: string; buildId: string }): Promise<string> {
-    return "";
+  /** The end of what failed in a run of GitHub Actions, 16 KB at most. */
+  async buildLog({
+    cwd,
+    url,
+    buildId,
+  }: {
+    cwd: string;
+    url: string;
+    buildId: string;
+  }): Promise<string> {
+    const { owner, repo } = ghParts(url);
+    const text = await cliOk(
+      "gh",
+      ["run", "view", urlName("run", buildId), "--repo", `${owner}/${repo}`, "--log-failed"],
+      cwd,
+    );
+    return tail(text, BUILD_LOG_BYTES);
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
@@ -405,19 +471,6 @@ interface AzRecord {
   name: string;
   result: string | null;
   log: { id: number } | null;
-}
-
-/** What a build log keeps in all: the end of the logs of what failed. */
-const BUILD_LOG_BYTES = 16 * 1024;
-
-/** The last `limit` bytes of a text, with a mark when something was left out. */
-function tail(text: string, limit: number): string {
-  const bytes = Buffer.from(text);
-  if (bytes.length <= limit) return text;
-  return `[…]\n${bytes
-    .subarray(bytes.length - limit)
-    .toString("utf8")
-    .replace(/^\uFFFD+/, "")}`;
 }
 
 /** Azure DevOps through `az repos` (organization and project detected from the remote). */
