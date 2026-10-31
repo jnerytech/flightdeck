@@ -171,3 +171,29 @@ describe("form-layout: a step back in a wizard", () => {
     expect(labels).toEqual(["Cancelar", "Voltar", "Próximo"]);
   });
 });
+
+describe("form-layout: a primary that is working", () => {
+  test("busy disables the primary at once, marks it aria-busy and shows a spinner", () => {
+    const { container } = render(
+      <Form onSubmit={() => {}}>
+        <FormActions submit="Conectar" busy />
+      </Form>,
+    );
+    const primary = screen.queryByRole("button", { name: "Conectar" }) as HTMLButtonElement;
+    expect(primary.disabled).toBe(true);
+    expect(primary.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector("[data-actions] svg.animate-spin")).not.toBeNull();
+  });
+
+  test("not busy: the primary is enabled, not aria-busy and has no spinner", () => {
+    const { container } = render(
+      <Form onSubmit={() => {}}>
+        <FormActions submit="Conectar" />
+      </Form>,
+    );
+    const primary = screen.queryByRole("button", { name: "Conectar" }) as HTMLButtonElement;
+    expect(primary.disabled).toBe(false);
+    expect(primary.getAttribute("aria-busy")).toBeNull();
+    expect(container.querySelector("svg.animate-spin")).toBeNull();
+  });
+});

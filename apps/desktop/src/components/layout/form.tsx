@@ -93,6 +93,8 @@ export function FormActions(props: {
   /** The primary button's label: the verb of what the form does. */
   submit: string;
   disabled?: boolean;
+  /** The form is working (a command is running): the primary shows a spinner and does nothing. */
+  busy?: boolean;
   /** Why the primary button is disabled: shown under the buttons, never silent. */
   disabledReason?: ReactNode;
   /** The secondary button's label; the button only exists with `onCancel`. */
