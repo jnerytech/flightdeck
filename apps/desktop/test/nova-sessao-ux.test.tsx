@@ -144,4 +144,23 @@ describe("nova-sessao-ux: the form says what it needs", () => {
       screen.queryByRole("button", { name: /Create session/ })?.getAttribute("aria-busy"),
     ).toBeNull();
   });
+
+  test("a host with no allowed folder says so instead of a silent button", async () => {
+    const { TContext } = await import("../src/i18n/context.tsx");
+    const { translator } = await import("../src/i18n/index.ts");
+    const empty = { id: "h2", name: "vazio", info: { allowedRoots: [] } } as unknown as typeof host;
+    render(
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={empty} onCreate={() => {}} />
+      </TContext.Provider>,
+    );
+    await fill("First prompt", "faça isto");
+    expect(
+      (screen.queryByRole("button", { name: "Create session" }) as HTMLButtonElement | null)
+        ?.disabled,
+    ).toBe(true);
+    expect(
+      screen.queryByText("This host has no allowed folder: add one in its settings"),
+    ).not.toBeNull();
+  });
 });
