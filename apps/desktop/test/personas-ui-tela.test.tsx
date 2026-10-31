@@ -142,4 +142,24 @@ describe("personas-ui: the library", () => {
     await settle(() => existsSync(join(repo, ".claude", "agents", "persona-seguranca.md")));
     expect(existsSync(join(repo, ".claude", "agents", "persona-seguranca.md"))).toBe(true);
   });
+
+  test("Cancelar keeps everything: the removal, the publication and the editor", async () => {
+    const { repo } = await open(async (store, h) => {
+      await store.hostCommand(h.hostId, "personas.save", {
+        scope: "host",
+        persona: { id: "do-host", name: "Do host", description: "Minha", body: "Oi." },
+      });
+    });
+    await click("Remover Do host");
+    await click("Cancelar");
+    expect(names()).toContain("Do host");
+    await choose("Projeto", repo);
+    await click("Publicar Revisor de segurança como agente do projeto");
+    await click("Cancelar");
+    expect(existsSync(join(repo, ".claude", "agents", "persona-seguranca.md"))).toBe(false);
+    await click("Nova persona");
+    expect(screen.queryByRole("button", { name: "Salvar persona" })).not.toBeNull();
+    await click("Cancelar");
+    expect(screen.queryByRole("button", { name: "Salvar persona" })).toBeNull();
+  });
 });

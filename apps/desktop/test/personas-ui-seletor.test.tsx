@@ -186,4 +186,33 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await settle(() => region()?.textContent?.includes("Revisor de segurança") === true);
     expect(region()?.textContent).toContain("Revisor de segurança");
   });
+
+  test("an arena variant in an app persona shows its name, and its id once the app no longer has it", async () => {
+    const { store, hostId, projectId, d } = await open();
+    const card = d.board.createCard(projectId, { title: "Comparar app", description: "faça" });
+    await act(async () => {
+      store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
+    });
+    await act(() => Bun.sleep(150));
+    await click("Iniciar em arena");
+    await settle(() => options("Persona da variante 1").length > 1);
+    await fill("Persona da variante 1", "app:minha");
+    const dialog = screen.queryByRole("dialog", { name: "Iniciar em arena" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
+    const region = () => screen.queryByRole("region", { name: "Variante a" });
+    await settle(() => region()?.textContent?.includes("Minha persona") === true);
+    expect(region()?.textContent).toContain("Minha persona");
+    const minha = store.globalPersonas.list().find((p) => p.id === "minha");
+    await act(async () => {
+      store.globalPersonas.remove(minha?.id ?? "");
+      store.router.push({ name: "home" });
+    });
+    await act(async () => {
+      store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
+    });
+    await settle(() => region()?.textContent?.includes("persona minha") === true);
+    expect(region()?.textContent).toContain("persona minha");
+  });
 });

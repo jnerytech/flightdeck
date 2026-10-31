@@ -12,7 +12,7 @@ import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
 
 registerDom();
-const { act, cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -82,5 +82,36 @@ describe("personas-ui: the central", () => {
     await settle(() => item() !== null);
     expect(item()).not.toBeNull();
     expect(within(item() as HTMLElement).queryByText("QA / testes")).not.toBeNull();
+  });
+
+  test("the Persona filter of the central lists the personas of its sessions and narrows the list", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const { d, repo } = await personasHost(cleanups, store);
+    const qa = d.manager.create({ cwd: repo, prompt: "oi", name: "Em QA", persona: { id: "qa" } });
+    const plain = d.manager.create({ cwd: repo, prompt: "oi", name: "Sem papel" });
+    await poll(() => d.manager.get(qa.sessionId).status === "idle");
+    await poll(() => d.manager.get(plain.sessionId).status === "idle");
+    render(<App store={store} />);
+    const item = (name: string) => screen.queryByRole("listitem", { name });
+    await settle(() => item("Em QA") !== null && item("Sem papel") !== null);
+    const trigger = screen.queryByRole("button", { name: /^Filtros/ });
+    expect(trigger).not.toBeNull();
+    await act(async () => {
+      fireEvent.pointerDown(trigger as HTMLElement, { button: 0 });
+      fireEvent.click(trigger as HTMLElement);
+    });
+    await settle(() => screen.queryByLabelText("Persona") !== null);
+    const field = screen.queryByLabelText("Persona") as HTMLSelectElement | null;
+    expect([...(field?.options ?? [])].map((o) => o.textContent)).toEqual([
+      "Todas as personas",
+      "QA / testes",
+    ]);
+    await act(async () => {
+      fireEvent.change(field as HTMLSelectElement, { target: { value: "qa" } });
+    });
+    await settle(() => item("Sem papel") === null);
+    expect(item("Em QA")).not.toBeNull();
+    expect(item("Sem papel")).toBeNull();
   });
 });

@@ -145,4 +145,14 @@ describe("personas-ui: the editor", () => {
       modified: true,
     });
   });
+
+  test("a secret in a persona kept in the app is refused the same way, and the app keeps nothing", async () => {
+    const { store } = await open();
+    await newPersona();
+    await fill("Onde guardar", "app");
+    await fill("Instruções", "Use o token ghp_abcdefghijklmnopqrstuvwxyz0123456789 no deploy.");
+    await click("Salvar persona");
+    expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
+    expect(store.globalPersonas.list()).toEqual([]);
+  });
 });
