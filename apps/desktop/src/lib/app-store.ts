@@ -27,6 +27,8 @@ import type {
   Project,
   QuotaState,
   RiskLevel,
+  RunConfigInfo,
+  RunState,
   SessionEventOf,
   SessionMeta,
   SessionNameInfo,
@@ -154,6 +156,8 @@ export interface AppState {
   searchOpen: boolean;
   /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
   closingTerminal: { areaId: string; tabId: string } | null;
+  /** The run environment of each card (phase 24), by `host/card`. */
+  runEnvs: Record<string, RunState>;
   /** Sessions that replied while no tab showed them (phase 14), by session key. */
   unread: Record<string, true>;
   /** Board cards seen so far, keyed by `sessionKey(hostId, cardId)`; kept by `card.updated`. */
@@ -236,6 +240,7 @@ export interface TerminalCommands extends TerminalHost {
 export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
+  | `runenv.${string}`
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
@@ -624,6 +629,7 @@ export class AppStore {
       search: null,
       searchOpen: false,
       closingTerminal: null,
+      runEnvs: {},
       unread: {},
       cards: {},
       runs: {},
@@ -1002,6 +1008,32 @@ export class AppStore {
 
   openSearch(): void {
     this.update({ searchOpen: true });
+  }
+
+  /** The run.yaml of a project on its base branch, with its validation and trust. */
+  runEnvConfig(hostId: string, projectId: string): Promise<RunConfigInfo | null> {
+    return this.hostCommand(hostId, "runenv.config", { projectId });
+  }
+
+  /** Trusts the run.yaml the user reviewed. */
+  runTrust(hostId: string, projectId: string, hash: string): Promise<RunConfigInfo | null> {
+    return this.hostCommand(hostId, "runenv.trust", { projectId, hash });
+  }
+
+  /** Run: the card's setup (once) and processes. A refusal goes to the banner. */
+  async runStart(hostId: string, cardId: string): Promise<void> {
+    const state = await this.hostCommand(hostId, "runenv.start", { cardId });
+    if (state) this.onRunEnv(hostId, state);
+  }
+
+  /** Stop: ends the card's processes and everything they started. */
+  async runStop(hostId: string, cardId: string): Promise<void> {
+    const state = await this.hostCommand(hostId, "runenv.stop", { cardId });
+    if (state) this.onRunEnv(hostId, state);
+  }
+
+  private onRunEnv(hostId: string, state: RunState): void {
+    this.update({ runEnvs: { ...this.state.runEnvs, [sessionKey(hostId, state.cardId)]: state } });
   }
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
@@ -1644,6 +1676,7 @@ export class AppStore {
         });
       },
       onRunUpdated: (run) => this.onRun(config.id, run),
+      onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
       onTerminal: (frame) => {
@@ -1673,6 +1706,7 @@ export class AppStore {
     conn.watchHistory();
     conn.watchExternal();
     conn.watchRuns();
+    conn.watchRunEnv();
     conn.watchQuota();
     conn.watchBudgets();
     conn.watchVault();

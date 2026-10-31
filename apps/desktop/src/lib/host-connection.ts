@@ -18,6 +18,7 @@ import {
   PROTOCOL_VERSION,
   parseServerMessage,
   type QuotaState,
+  type RunState,
   type SessionSubscribeResult,
   type TeamsUpdatedFrame,
   type TerminalData,
@@ -88,6 +89,8 @@ export interface HostConnectionOptions {
   onWatch?(frame: WatchUpdatedFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
+  /** A card's run environment changed (after `watchRunEnv`, phase 24). */
+  onRunEnvUpdated?(state: RunState): void;
   /** The host's plan quota changed (after `watchQuota`). */
   onQuotaUpdated?(state: QuotaState): void;
   /** A budget changed, crossed a threshold or entered a new period (after `watchBudgets`). */
@@ -132,6 +135,7 @@ export class HostConnection {
   private watchingHistory = false;
   private watchingExternal = false;
   private watchingRuns = false;
+  private watchingRunEnv = false;
   private watchingQuota = false;
   private watchingBudgets = false;
   private watchingVault = false;
@@ -161,6 +165,7 @@ export class HostConnection {
           if (this.watchingExternal) this.send("external.watch", {}).catch(ignore);
           // The runs still going come first, so open gates show up right away.
           if (this.watchingRuns) this.send("run.watch", {}).catch(ignore);
+          if (this.watchingRunEnv) this.send("runenv.watch", {}).catch(ignore);
           if (this.watchingQuota) this.send("quota.watch", {}).catch(ignore);
           // Daemons before phase 8 have no budgets: the error is ignored.
           if (this.watchingBudgets) this.send("budget.watch", {}).catch(ignore);
@@ -196,6 +201,7 @@ export class HostConnection {
         return this.opts.onMessages?.(message);
       }
       if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
+      if (message.type === "runenv.updated") return this.opts.onRunEnvUpdated?.(message.state);
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
       }
@@ -301,6 +307,11 @@ export class HostConnection {
   /** Streams `run.updated` from the next (re)connect on; call it before `connect`. */
   watchRuns(): void {
     this.watchingRuns = true;
+  }
+
+  /** Streams `runenv.updated` from the next (re)connect on; call it before `connect`. */
+  watchRunEnv(): void {
+    this.watchingRunEnv = true;
   }
 
   unsubscribe(sessionId: string): void {
