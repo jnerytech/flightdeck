@@ -163,4 +163,22 @@ describe("nova-sessao-ux: the form says what it needs", () => {
       screen.queryByText("This host has no allowed folder: add one in its settings"),
     ).not.toBeNull();
   });
+
+  test("every field of the form has the same width, and the button sits at the fields' left edge", async () => {
+    const { TContext } = await import("../src/i18n/context.tsx");
+    const { translator } = await import("../src/i18n/index.ts");
+    const { container } = render(
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={host} onCreate={() => {}} extra={<select aria-label="Persona" />} />
+      </TContext.Provider>,
+    );
+    const fields = [...container.querySelectorAll("select, input, textarea")].filter(
+      (el) => !el.closest("[aria-label='Persona']") && el.getAttribute("aria-label") !== "Persona",
+    );
+    expect(fields.length).toBeGreaterThan(4);
+    const narrow = fields.filter((el) => !/\bw-full\b/.test(el.className));
+    expect(narrow.map((el) => el.tagName)).toEqual([]);
+    const button = container.querySelector("button[type='submit']");
+    expect(button?.className ?? "").toContain("self-start");
+  });
 });
