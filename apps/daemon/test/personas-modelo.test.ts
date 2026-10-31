@@ -501,3 +501,21 @@ describe("personas-modelo: pelo protocolo", () => {
     expect(await featuresOf(null)).not.toContain("personas");
   });
 });
+
+describe("personas-modelo: a failure that is not the persona's", () => {
+  test("a scanner that breaks surfaces its own error, not a refusal of the persona", () => {
+    const broken = {
+      scan: (): never => {
+        throw new TypeError("the scanner broke");
+      },
+    };
+    let thrown: unknown;
+    try {
+      normalizePersona({ id: "x", name: "X", description: "d", body: "Oi." }, broken);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect((thrown as { code?: string }).code).toBeUndefined();
+  });
+});
