@@ -19,6 +19,7 @@ are written in Portuguese.
   - [Starting the daemon](#starting-the-daemon)
   - [Connecting the desktop app](#connecting-the-desktop-app)
 - [Service](#service)
+  - [First run: flightdeckd setup](#first-run-flightdeckd-setup)
   - [Installing as a service](#installing-as-a-service)
   - [WSL from Windows](#wsl-from-windows)
 - [Remote access over Tailscale](#remote-access-over-tailscale)
@@ -156,9 +157,9 @@ the `latest.json` and `daemon-latest.json` manifests used by the
    [Signed automatic update](#signed-automatic-update).)
 3. **Daemon:** on each host, with Claude Code installed and logged in:
    - on Linux, `chmod +x` the binary before using it;
-   - run `<binary> update --from <binary>`, which installs it in `~/.flightdeck/bin`;
-   - then `~/.flightdeck/bin/flightdeckd service install` (see
-     [Installing as a service](#installing-as-a-service)).
+   - run `<binary> setup`: it copies the binary to `~/.flightdeck/bin`, asks for your project
+     folders, installs and **starts** the service and prints the pairing link (see
+     [First run: flightdeckd setup](#first-run-flightdeckd-setup)).
 
 ### From source
 
@@ -257,6 +258,32 @@ requests show up as inline cards with **Approve** and **Deny**. The app reconnec
 
 ## Service
 
+### First run: flightdeckd setup
+
+```sh
+flightdeckd setup                          # asks, step by step
+flightdeckd setup --yes --folders ~/code   # no questions, for scripts (folders separated by commas)
+flightdeckd doctor                         # what is missing, with the command that fixes each thing
+```
+
+`setup` does, in this order:
+
+1. copies the running binary to `~/.flightdeck/bin` (when one is already there it stays: `update`
+   replaces it);
+2. asks for the project folders, one per answer, and refuses a folder that does not exist: they
+   become `allowedRoots` in the config;
+3. when Tailscale is up, asks whether you use Flightdeck from other devices (the default is
+   **no**). Yes binds the daemon to the Tailscale address only, never to every interface, and
+   lets in only loopback and the Tailscale ranges;
+4. offers to install the Claude Code hooks;
+5. installs the service **and starts it now**, waiting for `/health`;
+6. prints the pairing link and the QR code.
+
+When the input ends (a script without `--yes`), `setup` stops with exit code 1 instead of
+looping. `service install` also starts the service now on its own. `doctor` checks the config,
+the folders, the service, the daemon's `/health`, `claude`, the hooks and Tailscale, one line
+each, and prints the fix of every failure; it exits 1 when a check fails.
+
 ### Installing as a service
 
 The daemon survives a reboot and a closed SSH session by running as a service of its own user:
@@ -286,7 +313,8 @@ flightdeckd service uninstall           # stops the daemon and removes the servi
   `sudo loginctl enable-linger $USER` for you to run (it never runs anything with sudo).
 - **Windows:** creates the scheduled task `Flightdeck\flightdeckd` at the user's logon, without
   elevated privileges and without a visible window (it imports an XML with
-  `schtasks /Create /XML`; the console is hidden by `conhost.exe --headless`).
+  `schtasks /Create /XML`; the console is hidden by `conhost.exe --headless`). The task only has a
+  logon trigger, so `install` runs it right away (`schtasks /Run`) and waits for `/health`.
 - The service command is the compiled binary; when running from source, it becomes
   `bun run apps/daemon/src/bin.ts start`.
 - A service does not inherit the shell's `PATH`: `install` writes the path of `claude` to
@@ -333,7 +361,9 @@ flightdeckd pair            # prints flightdeck://<ip>:<port>?name=…&token=…
 flightdeckd pair --rotate   # generates a new token; the running daemon drops whoever used the old one
 ```
 
-The address is the Tailscale IP (`tailscale ip -4`) when there is one, otherwise `bind`. In the
+The address is what the daemon listens on: `bind`, or the Tailscale IP (`tailscale ip -4`) when
+the daemon listens on every interface. A daemon on the loopback gets a `127.0.0.1` link plus a
+hint on how to open it to Tailscale, because a link with the Tailscale IP would not connect. In the
 app, paste the link into **Add host** or open it directly (`flightdeck://` is registered with the
 system); the app fills in the form, tests the connection with `hello` and `host.info`, and only
 saves after you confirm.

@@ -2353,3 +2353,13 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
   - the mod `flightdeck-actions` is now `flightdeck`;
   - the command `/flightdeck-actions` is now `/flightdeck`;
   - the tools `mcp__flightdeck-actions__*` are now `mcp__flightdeck__*`.
+
+## First run: setup, doctor and the pair link
+
+- **The pair link carries what the daemon listens on.** The Tailscale IP only enters when the daemon listens on every interface; a loopback daemon gets a `127.0.0.1` link and a hint. A link nobody can use is worse than none.
+- **`service install` starts the service.** The Windows task only has a logon trigger, so it also runs `schtasks /Run`. Both systems wait for `/health` and exit 1 with the address when nothing answers.
+- **`flightdeckd setup` keeps an installed binary.** The binary in `~/.flightdeck/bin` is replaced only by `update`, with the service stopped: a running `.exe` cannot be overwritten on Windows.
+- **The Tailscale offer defaults to no and binds to the Tailscale address.** It never binds `0.0.0.0`. The cost: with Tailscale down at boot the daemon cannot bind and does not start; `doctor` says so.
+- **`--yes --folders` is the non-interactive mode, and a closed input fails.** An input that ends exits 1 with the way out, never loops.
+- **`doctor` makes no change but the config file.** `loadConfig` creates a missing config with a token, so a first `doctor` run leaves one.
+- **The app shows the first steps only with no host.** Three numbered steps plus the `doctor` line, each command with a copy button. Probe errors say the cause and the fix (`hostForm.probeRefused`, `hostForm.probeUnreachable`); the older `messages.*` labels keep their short text, which the host status uses.

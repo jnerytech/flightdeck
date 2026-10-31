@@ -19,6 +19,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Subir o daemon](#subir-o-daemon)
   - [Conectar o app desktop](#conectar-o-app-desktop)
 - [Serviço](#serviço)
+  - [Primeira execução: flightdeckd setup](#primeira-execução-flightdeckd-setup)
   - [Instalar como serviço](#instalar-como-serviço)
   - [WSL a partir do Windows](#wsl-a-partir-do-windows)
 - [Acesso remoto pela Tailscale](#acesso-remoto-pela-tailscale)
@@ -146,9 +147,9 @@ A release traz também as assinaturas (`.sig`) do instalador NSIS e dos daemons 
    outra coisa: veja [Atualização automática assinada](#atualização-automática-assinada).)
 3. **Daemon:** em cada host, com o Claude Code instalado e logado:
    - no Linux, `chmod +x` no binário antes de usar;
-   - rode `<binário> update --from <binário>`, que instala em `~/.flightdeck/bin`;
-   - depois, `~/.flightdeck/bin/flightdeckd service install` (veja
-     [Instalar como serviço](#instalar-como-serviço)).
+   - rode `<binário> setup`: ele copia o binário para `~/.flightdeck/bin`, pergunta as pastas
+     dos projetos, instala e **inicia** o serviço e imprime o link de pareamento (veja
+     [Primeira execução: flightdeckd setup](#primeira-execução-flightdeckd-setup)).
 
 ### A partir do código-fonte
 
@@ -247,6 +248,32 @@ e retoma cada sessão do último evento visto.
 
 ## Serviço
 
+### Primeira execução: flightdeckd setup
+
+```sh
+flightdeckd setup                          # pergunta, passo a passo
+flightdeckd setup --yes --folders ~/code   # sem perguntas, para scripts (pastas separadas por vírgula)
+flightdeckd doctor                         # o que falta, com o comando que conserta cada coisa
+```
+
+O `setup` faz, nesta ordem:
+
+1. copia o binário em execução para `~/.flightdeck/bin` (se já houver um lá, ele fica: quem
+   troca é o `update`);
+2. pergunta as pastas dos projetos, uma por resposta, e recusa pasta que não existe: elas viram
+   `allowedRoots` na config;
+3. com a Tailscale ativa, pergunta se você usa o Flightdeck de outros dispositivos (o padrão é
+   **não**). Sim liga o daemon só no endereço da Tailscale, nunca em todas as interfaces, e deixa
+   entrar só o loopback e as faixas da Tailscale;
+4. oferece instalar os hooks do Claude Code;
+5. instala o serviço **e o inicia agora**, esperando o `/health`;
+6. imprime o link de pareamento e o QR.
+
+Quando a entrada acaba (um script sem `--yes`), o `setup` para com código 1 em vez de ficar em
+laço. O `service install` também inicia o serviço agora, sozinho. O `doctor` confere a config,
+as pastas, o serviço, o `/health` do daemon, o `claude`, os hooks e a Tailscale, uma linha cada,
+e imprime o conserto de cada falha; sai com 1 quando uma checagem falha.
+
 ### Instalar como serviço
 
 O daemon sobrevive a reboot e a SSH fechado rodando como serviço do próprio usuário:
@@ -321,7 +348,9 @@ flightdeckd pair            # imprime flightdeck://<ip>:<porta>?name=…&token=�
 flightdeckd pair --rotate   # gera token novo; o daemon em execução derruba quem usava o antigo
 ```
 
-O endereço é o IP da Tailscale (`tailscale ip -4`) quando existe, senão o `bind`. No app, cole o
+O endereço é o que o daemon escuta: o `bind`, ou o IP da Tailscale (`tailscale ip -4`) quando o
+daemon escuta em todas as interfaces. Um daemon no loopback recebe um link `127.0.0.1` e uma
+dica de como abri-lo para a Tailscale, porque um link com o IP da Tailscale não conectaria. No app, cole o
 link em **Adicionar host** ou abra-o direto (`flightdeck://` está registrado no sistema); o app
 preenche o formulário, testa a conexão com `hello` e `host.info` e só salva depois que você
 confirma.
