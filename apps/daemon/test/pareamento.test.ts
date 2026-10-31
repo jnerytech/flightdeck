@@ -117,22 +117,50 @@ describe("pareamento", () => {
     });
   });
 
-  test("endereço: IP da Tailscale quando existe, senão o bind (0.0.0.0 vira 127.0.0.1)", () => {
-    expect(pairingAddress("127.0.0.1", "100.64.1.2")).toBe("100.64.1.2");
-    expect(pairingAddress("192.168.0.10", null)).toBe("192.168.0.10");
+  test("endereço: o que o daemon escuta; a Tailscale só entra quando ele escuta nela", () => {
+    // Loopback: nenhuma outra máquina chega, a Tailscale não ajuda.
+    expect(pairingAddress("127.0.0.1", "100.64.1.2")).toBe("127.0.0.1");
+    expect(pairingAddress("::1", "100.64.1.2")).toBe("::1");
+    expect(pairingAddress("localhost", "100.64.1.2")).toBe("localhost");
+    // Todas as interfaces: a Tailscale, se houver; senão o loopback.
+    expect(pairingAddress("0.0.0.0", "100.64.1.2")).toBe("100.64.1.2");
+    expect(pairingAddress("::", "100.64.1.2")).toBe("100.64.1.2");
     expect(pairingAddress("0.0.0.0", null)).toBe("127.0.0.1");
     expect(pairingAddress("::", null)).toBe("::1");
+    // Um endereço próprio: ele mesmo, mesmo com a Tailscale no PATH.
+    expect(pairingAddress("192.168.0.10", null)).toBe("192.168.0.10");
+    expect(pairingAddress("192.168.0.10", "100.64.1.2")).toBe("192.168.0.10");
+    expect(pairingAddress("100.64.1.2", "100.64.1.2")).toBe("100.64.1.2");
   });
 
-  test("flightdeckd pair imprime o link e o QR", async () => {
+  test("flightdeckd pair imprime o link e o QR; com o daemon só no loopback, o link é do loopback e o aviso diz como abrir", async () => {
     const { file, token } = config();
     const { cli, out, exits, calls } = deps("100.64.1.2");
     expect(await runCli(["pair", "--config", file], cli)).toBeNull();
     expect(exits).toEqual([0]);
     expect(calls).toEqual([["tailscale", "ip", "-4"]]);
-    const link = formatPairingLink({ address: "100.64.1.2", port: 7421, name: "orange pi", token });
+    const link = formatPairingLink({ address: "127.0.0.1", port: 7421, name: "orange pi", token });
     expect(out[0]).toBe(link);
     expect(out.slice(1).join("\n")).toMatch(/[█▀▄]/);
+    expect(out.some((line) => line.includes("o daemon escuta só em 127.0.0.1"))).toBe(true);
+    expect(out.some((line) => line.includes("100.64.1.2"))).toBe(true);
+  });
+
+  test("com o daemon em todas as interfaces e a Tailscale no ar, o link leva o IP da Tailscale, sem aviso", async () => {
+    const { file, token } = config({ bind: "0.0.0.0" });
+    const { cli, out } = deps("100.64.1.2");
+    await runCli(["pair", "--config", file], cli);
+    expect(out[0]).toBe(
+      formatPairingLink({ address: "100.64.1.2", port: 7421, name: "orange pi", token }),
+    );
+    expect(out.some((line) => line.includes("escuta só em"))).toBe(false);
+  });
+
+  test("sem Tailscale, o loopback não leva aviso nenhum", async () => {
+    const { file } = config();
+    const { cli, out } = deps(null);
+    await runCli(["pair", "--config", file], cli);
+    expect(out.some((line) => line.includes("escuta só em"))).toBe(false);
   });
 
   test("pair sem Tailscale usa o bind", async () => {
