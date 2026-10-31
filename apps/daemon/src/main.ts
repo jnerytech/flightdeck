@@ -993,7 +993,7 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   deps.log.log(await renderQr(link));
   if (tailscale && loopbackOnly(config.bind)) {
     deps.log.error(
-      `o daemon escuta só em ${config.bind}: outra máquina não conecta no link acima. Para parear pela Tailscale (${tailscale}), ponha "bind": "0.0.0.0" e as faixas da Tailscale em "allowedNetworks" na config (veja o manual) e reinicie o daemon.`,
+      `the daemon listens only on ${config.bind}: another machine cannot use the link above. To pair over Tailscale (${tailscale}), run "flightdeckd setup" and accept the Tailscale question.`,
     );
   }
 }

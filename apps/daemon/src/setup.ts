@@ -128,7 +128,7 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
     allowedRoots: roots,
     ...(remote
       ? {
-          bind: "0.0.0.0",
+          bind: tailscale,
           allowedNetworks: [...new Set([...config.allowedNetworks, ...TAILSCALE_NETWORKS])],
         }
       : {}),
