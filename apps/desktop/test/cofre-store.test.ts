@@ -98,4 +98,14 @@ describe("cofre-store", () => {
     await Bun.sleep(150);
     expect(seen).toEqual([]);
   });
+  test("a listener that stops listening gets no more outcomes", async () => {
+    const { store, daemon, meta, outcomes } = await setup();
+    const late: VaultOutcome[] = [];
+    const stop = store.onVaultOutcome((outcome) => late.push(outcome));
+    stop();
+    daemon.push({ ...FRAME, secretId: meta.id });
+    await settle(() => outcomes.length > 0);
+    expect(outcomes).toHaveLength(1);
+    expect(late).toEqual([]);
+  });
 });

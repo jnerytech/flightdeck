@@ -58,4 +58,19 @@ describe("cofre-store: a tool of the shell that fails", () => {
     });
     expect(errors(store)).toEqual(["the shell broke"]);
   });
+  test("a clipboard that cannot be cleared after a copy stays quiet: the copy already succeeded", async () => {
+    const { platform } = memoryPlatform();
+    const copied: string[] = [];
+    platform.copyText = async (text) => {
+      if (text === "") throw new Error("the clipboard broke");
+      copied.push(text);
+    };
+    const store = new AppStore(platform, { baseDelayMs: 60_000 });
+    stores.push(store);
+    const meta = await store.addSecret({ name: "deploy", type: "token", value: "v-123" });
+    expect(await store.copySecret(meta.id, 5)).toBe(true);
+    await Bun.sleep(40);
+    expect(copied).toEqual(["v-123"]);
+    expect(errors(store)).toEqual([]);
+  });
 });
