@@ -142,7 +142,7 @@ describe("pareamento", () => {
     const link = formatPairingLink({ address: "127.0.0.1", port: 7421, name: "orange pi", token });
     expect(out[0]).toBe(link);
     expect(out.slice(1).join("\n")).toMatch(/[█▀▄]/);
-    expect(out.some((line) => line.includes("o daemon escuta só em 127.0.0.1"))).toBe(true);
+    expect(out.some((line) => line.includes("the daemon listens only on 127.0.0.1"))).toBe(true);
     expect(out.some((line) => line.includes("100.64.1.2"))).toBe(true);
   });
 
@@ -153,14 +153,14 @@ describe("pareamento", () => {
     expect(out[0]).toBe(
       formatPairingLink({ address: "100.64.1.2", port: 7421, name: "orange pi", token }),
     );
-    expect(out.some((line) => line.includes("escuta só em"))).toBe(false);
+    expect(out.some((line) => line.includes("listens only on"))).toBe(false);
   });
 
   test("sem Tailscale, o loopback não leva aviso nenhum", async () => {
     const { file } = config();
     const { cli, out } = deps(null);
     await runCli(["pair", "--config", file], cli);
-    expect(out.some((line) => line.includes("escuta só em"))).toBe(false);
+    expect(out.some((line) => line.includes("listens only on"))).toBe(false);
   });
 
   test("pair sem Tailscale usa o bind", async () => {

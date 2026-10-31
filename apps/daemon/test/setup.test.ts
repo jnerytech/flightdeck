@@ -21,6 +21,7 @@ function harness(
   const home = tempDir("fd-setup-home-");
   const configFile = join(tempDir("fd-setup-"), "config.json");
   if (options.config) writeFileSync(configFile, JSON.stringify(options.config));
+  const defaults = new Map<string, boolean>();
   const calls: string[] = [];
   const asked: string[] = [];
   const out: string[] = [];
@@ -31,6 +32,7 @@ function harness(
     },
     confirm: async (question, fallback) => {
       asked.push(question);
+      defaults.set(question.includes("Tailscale") ? "Tailscale" : question, fallback);
       for (const [needle, answer] of Object.entries(options.confirms ?? {})) {
         if (question.includes(needle)) return answer;
       }
@@ -63,7 +65,7 @@ function harness(
   };
   // Unless a test says otherwise, the user gives one folder and then finishes.
   const answers = [...(options.answers ?? [dir("code"), ""])];
-  return { deps, home, configFile, calls, asked, out, dir };
+  return { deps, home, configFile, calls, asked, defaults, out, dir };
 }
 
 describe("setup", () => {
@@ -114,14 +116,14 @@ describe("setup", () => {
     expect(insist.calls).toEqual(["binary", "service", "pair"]);
   });
 
-  test("with Tailscale, saying yes listens on every interface but only lets Tailscale and loopback in", async () => {
+  test("with Tailscale, saying yes listens on the Tailscale address only, never on every interface", async () => {
     const h = harness({ tailscale: "100.64.0.9", confirms: { Tailscale: true } });
     const good = h.dir("code");
     const answers = [good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     const config = loadConfig(h.configFile);
-    expect(config.bind).toBe("0.0.0.0");
+    expect(config.bind).toBe("100.64.0.9");
     expect(config.allowedNetworks).toEqual(["127.0.0.0/8", "::1/128", ...TAILSCALE_NETWORKS]);
   });
 
@@ -130,6 +132,8 @@ describe("setup", () => {
     no.dir("code");
     await runSetup(no.deps);
     expect(loadConfig(no.configFile).bind).toBe("127.0.0.1");
+    expect(no.asked.find((q) => q.includes("Tailscale"))).toBeDefined();
+    expect(no.defaults.get("Tailscale")).toBe(false);
     const none = harness();
     await runSetup(none.deps);
     expect(none.asked.some((q) => q.includes("Tailscale"))).toBe(false);
