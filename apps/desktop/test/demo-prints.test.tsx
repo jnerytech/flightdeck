@@ -10,6 +10,7 @@ import {
 import { LANG_KEY } from "../src/i18n/index.ts";
 import { loadHosts } from "../src/lib/hosts.ts";
 import { THEME_KEY } from "../src/lib/theme.ts";
+import { WORKSPACE_KEY } from "../src/lib/workspace.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -77,6 +78,18 @@ describe("demo-prints", () => {
     applyDemoPrefs(platform.storage, "?theme=roxo&lang=fr");
     expect(items.get(THEME_KEY)).toBe("dark");
     expect(items.get(LANG_KEY)).toBe("en");
+  });
+
+  test("an address with ?route= opens on a fresh window, so a split kept by an earlier print does not leak", () => {
+    const { platform, items } = memoryPlatform();
+    items.set(WORKSPACE_KEY, '{"v":1}');
+    applyDemoPrefs(platform.storage, "?theme=dark");
+    expect(items.get(WORKSPACE_KEY)).toBe('{"v":1}');
+    applyDemoPrefs(
+      platform.storage,
+      `?route=${encodeURIComponent(JSON.stringify({ name: "hub" }))}`,
+    );
+    expect(items.has(WORKSPACE_KEY)).toBe(false);
   });
 
   test("FLIGHTDECK_ENTRY=web troca a entrada do index.html pela web", () => {
