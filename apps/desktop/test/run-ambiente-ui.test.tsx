@@ -117,7 +117,9 @@ describe("run-ui: o estado do Run na loja", () => {
 });
 
 describe("run-ui: o preview em uma aba", () => {
-  function shown() {
+  /** The app with one host (without any, every screen is the form that adds the first). */
+  async function shown() {
+    const d = makeDaemon(cleanups);
     const mem = memoryPlatform(false, "pt-BR");
     const opened: string[] = [];
     mem.win.open = (url) => {
@@ -125,13 +127,17 @@ describe("run-ui: o preview em uma aba", () => {
       return null;
     };
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
     render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    });
     return { store, opened, items: mem.items };
   }
   const frame = () => document.querySelector("iframe");
 
   test("a rota preview mostra o app do card num quadro e o botão abre o mesmo endereço no navegador", async () => {
-    const { store, opened } = shown();
+    const { store, opened } = await shown();
     await act(async () => {
       store.tabs.open({ name: "preview", url: "http://127.0.0.1:41000/", title: "web" });
     });
@@ -147,7 +153,7 @@ describe("run-ui: o preview em uma aba", () => {
   });
 
   test("um endereço fora do loopback não abre quadro nem botão: a tela recusa", async () => {
-    const { store, opened } = shown();
+    const { store, opened } = await shown();
     await act(async () => {
       store.tabs.open({ name: "preview", url: "http://example.com/", title: "fora" });
     });
@@ -158,7 +164,7 @@ describe("run-ui: o preview em uma aba", () => {
   });
 
   test("a aba de preview não volta ao reabrir o app: o endereço pode ser de outro programa agora", async () => {
-    const { store, items } = shown();
+    const { store, items } = await shown();
     await act(async () => {
       store.tabs.open({ name: "preview", url: "http://127.0.0.1:41000/", title: "web" });
     });
