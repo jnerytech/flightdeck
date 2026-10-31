@@ -208,10 +208,14 @@ describe("prompt", () => {
 });
 
 describe("setup command", () => {
-  function cliHarness(stdin?: (dir: string) => string) {
+  function cliHarness(
+    stdin?: (dir: string) => string,
+    options: { selfCommand?: (dir: string) => string[]; installed?: boolean } = {},
+  ) {
     const out: string[] = [];
     const exits: number[] = [];
     const written = new Map<string, string>();
+    const calls: string[][] = [];
     const daemon = Bun.serve({ port: 0, fetch: () => Response.json({ ok: true }) });
     const dir = tempDir("fd-setup-cli-");
     const file = join(dir, "config.json");
@@ -222,16 +226,24 @@ describe("setup command", () => {
       exit: (code) => exits.push(code),
       onSignal: () => {},
       exec: async () => ({ code: 1, stdout: "" }),
+      ...(options.selfCommand ? { selfCommand: options.selfCommand(dir) } : {}),
       serviceHealthTimeoutMs: 2_000,
       serviceContext: (dryRun) => ({
         platform: "linux",
-        home: "/home/dev",
+        home: dir,
         user: "dev",
         command: ["/home/dev/.local/bin/flightdeckd"],
         systemRoot: "",
         tempDir: "/tmp",
         dryRun,
-        exec: async (cmd) => ({ code: 0, stdout: cmd[0] === "loginctl" ? "Linger=yes\n" : "" }),
+        exec: async (cmd) => {
+          calls.push(cmd);
+          if (cmd[0] === "loginctl") return { code: 0, stdout: "Linger=yes\n" };
+          if (cmd.includes("cat") && options.installed) {
+            return { code: 0, stdout: "ExecStart=/old/flightdeckd start\n" };
+          }
+          return { code: 0, stdout: "" };
+        },
         writeFile: (path, content) => {
           written.set(path, content);
         },
@@ -249,7 +261,7 @@ describe("setup command", () => {
           }
         : {}),
     };
-    return { deps, out, exits, written, file, dir, stop: () => daemon.stop(true) };
+    return { deps, out, exits, written, calls, file, dir, stop: () => daemon.stop(true) };
   }
 
   test("--yes sets everything up: folders, service started, pair link printed", async () => {
@@ -260,9 +272,37 @@ describe("setup command", () => {
     await h.stop();
     expect(h.exits).toEqual([0]);
     expect(loadConfig(h.file).allowedRoots).toEqual([project]);
-    expect(h.written.has("/home/dev/.config/systemd/user/flightdeckd.service")).toBe(true);
+    expect(h.written.has(`${h.dir}/.config/systemd/user/flightdeckd.service`)).toBe(true);
     expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
     expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
+  });
+
+  test("a compiled binary is copied to ~/.flightdeck/bin and the service runs that copy", async () => {
+    const h = cliHarness(undefined, {
+      selfCommand: (dir) => [join(dir, "download", "flightdeckd")],
+    });
+    mkdirSync(join(h.dir, "download"));
+    writeFileSync(join(h.dir, "download", "flightdeckd"), "binary");
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    const stable = join(h.dir, ".flightdeck", "bin", "flightdeckd");
+    expect(h.exits).toEqual([0]);
+    expect(readFileSync(stable, "utf8")).toBe("binary");
+    const unit = h.written.get(`${h.dir}/.config/systemd/user/flightdeckd.service`) ?? "";
+    expect(unit).toContain(`ExecStart=${stable} `);
+  });
+
+  test("a service that is already installed is stopped before it is installed again", async () => {
+    const h = cliHarness(undefined, { installed: true });
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.exits).toEqual([0]);
+    const names = h.calls.map((c) => c.slice(0, 3).join(" "));
+    expect(names.indexOf("systemctl --user stop")).toBeGreaterThan(-1);
   });
 
   test("interactive: reads the answers from the input", async () => {
