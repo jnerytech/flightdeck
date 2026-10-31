@@ -63,6 +63,8 @@ function shots(ids: DemoIds): Shot[] {
     },
     { name: "sessao-aprovacao", route: { name: "session", host: ALFA, id: ids.waitingSession } },
     { name: "sessao", route: { name: "session", host: ALFA, id: ids.idleSession } },
+    // The form with its Criar sessão off and the reason beside it.
+    { name: "nova-sessao", route: { name: "new-session", host: ALFA } },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
     {
       name: "card",
