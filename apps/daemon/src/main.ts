@@ -921,7 +921,9 @@ export async function startDaemon(
 
   logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
   if (config.allowedRoots.length === 0) {
-    logger.error("aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada");
+    logger.error(
+      'aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada (rode "flightdeckd setup")',
+    );
   }
 
   let stopped: Promise<void> | null = null;
