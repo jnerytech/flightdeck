@@ -159,6 +159,26 @@
   html:is(.dark) {
     color-scheme: dark;
   }
+  /* Tailwind's reset leaves the arrow on every control: clickable things show the pointer. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  [role="switch"],
+  [role="checkbox"],
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: default;
+  }
+  /* Pressed: a one-pixel push, at once, before the work behind the click finishes. */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: translateY(1px);
+  }
   /* 13 px is the base step; the interface font is Inter. */
   body {
     @apply bg-background font-sans text-sm text-foreground antialiased;
