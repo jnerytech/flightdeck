@@ -123,7 +123,7 @@ function insideProject(project: string, rel: string): string {
 const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []);
 
 /** CLAUDE.md files under the project (not in .git or node_modules), plus the root CLAUDE.local.md. */
-function claudeMds(root: string): string[] {
+export function claudeMds(root: string): string[] {
   const found = existsSync(join(root, "CLAUDE.local.md")) ? ["CLAUDE.local.md"] : [];
   const walk = (dir: string, rel: string, depth: number) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

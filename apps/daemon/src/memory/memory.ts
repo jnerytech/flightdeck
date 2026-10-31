@@ -21,7 +21,7 @@ import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
-import { type ContextBudget, MEMORY_LIMIT_BYTES, MEMORY_LIMIT_LINES } from "./budget.ts";
+import { type ContextBudget, contextBudget } from "./budget.ts";
 
 export interface MemoryFile {
   name: string;
@@ -101,6 +101,13 @@ function repoRoot(project: string): string {
   return common.endsWith(".git") ? dirname(common) : real;
 }
 
+/** Where the organization's CLAUDE.md lives on this platform. */
+function managedClaudeMdPath(): string {
+  if (process.platform === "win32") return "C:\\Program Files\\ClaudeCode\\CLAUDE.md";
+  if (process.platform === "darwin") return "/Library/Application Support/ClaudeCode/CLAUDE.md";
+  return "/etc/claude-code/CLAUDE.md";
+}
+
 export class ProjectMemory {
   constructor(private readonly opts: ProjectMemoryOptions = {}) {}
 
@@ -161,22 +168,13 @@ export class ProjectMemory {
   }
 
   /** What the context holds at the start for a session in `project`, and what the memory leaves out. */
-  budget(_project: string): ContextBudget {
-    return {
-      sources: [],
-      startTokens: -1,
-      memory: {
-        limitLines: MEMORY_LIMIT_LINES,
-        limitBytes: MEMORY_LIMIT_BYTES,
-        indexLines: -1,
-        indexBytes: -1,
-        loadedLines: -1,
-        loadedBytes: -1,
-        cutBy: null,
-        leftOutLines: [],
-        leftOutFiles: [],
-      },
-    };
+  budget(project: string): ContextBudget {
+    return contextBudget({
+      project,
+      claudeDir: this.claudeDir(),
+      managedClaudeMd: this.opts.managedClaudeMd ?? managedClaudeMdPath(),
+      memoryDir: this.dir(project),
+    });
   }
 
   private claudeDir(): string {
