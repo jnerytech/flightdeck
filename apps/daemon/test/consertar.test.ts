@@ -411,6 +411,22 @@ describe("consertar: the limits", () => {
     expect(f.manager.list()).toHaveLength(sessions);
   });
 
+  test("stopping the card while its round waits in the queue ends the round, which can start again later", async () => {
+    const f = await fixture();
+    f.quota.record([
+      { window: "five_hour", utilization: 0.95, status: "allowed", resetsAt: f.now() + 60_000 },
+    ]);
+    void f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await cardWhen(f.board, f.card.id, (c) => c.queued);
+    await f.board.stopCard(f.card.id);
+    await f.fixer.idle();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("failed");
+    expect(round?.summary).toContain("stopped");
+    // The failure counts, but a stop is not a reason to ask for you.
+    expect(f.watcher.status(f.card.id).status).toBe("watching");
+  });
+
   test("the PR is merged or closed while the checks run, or Vigiar is turned off: nothing is pushed", async () => {
     let change: () => void = () => {};
     const f = await fixture({ settings: { checks: ["bun test"] }, duringChecks: () => change() });
