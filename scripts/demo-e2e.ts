@@ -211,26 +211,33 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page
       .getByText(c.t("terminalUi.state.live"), { exact: true })
       .waitFor({ timeout: WAIT });
+    // The shell draws its prompt before it reads: type only after something is on the screen.
+    await waitFor(
+      async () => ((await rows.first().textContent()) ?? "").trim() !== "",
+      "o prompt do shell",
+    );
     await c.page.locator(".xterm").first().click();
     await c.page.keyboard.type(`echo ${marker}\n`);
-    // The typed line and the echo's output.
-    await waitFor(async () => (await shown()) >= 2, "o eco do terminal");
+    // The typed line and the echo's output (a slow runner gets twice the wait).
+    await waitFor(async () => (await shown()) >= 2, "o eco do terminal", WAIT * 2);
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.detach"), exact: true }).click();
     const attach = c.t("hostTerminal.attach", { cwd: "" }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // The newest live terminal is this run's: one left by a run that failed comes first.
     await c.page
       .getByRole("button", { name: new RegExp(`^${attach}`) })
-      .first()
+      .last()
       .click();
-    await waitFor(async () => (await shown()) >= 2, "o scrollback ao anexar de novo");
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await waitFor(async () => (await shown()) >= 2, "o scrollback ao anexar de novo", WAIT * 2);
     // Ends it: the demo keeps its state, and the other language's run lists only its own.
+    const live = c.page.getByRole("button", { name: new RegExp(`^${attach}`) });
+    const before = await live.count();
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
-    await waitFor(
-      async () =>
-        (await c.page.getByRole("button", { name: new RegExp(`^${attach}`) }).count()) === 0,
-      "o terminal encerrado",
-    );
+    await waitFor(async () => (await live.count()) < Math.max(before, 1), "o terminal encerrado");
   },
 
   // 10. The project's versioned action is not trusted; trusting it asks first and then says so.
