@@ -79,6 +79,7 @@ describe("daemon", () => {
     expect(daemon.url).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/v1\/ws$/);
     expect(out.lines.some((l) => l.includes("listening on"))).toBe(true);
     expect(out.lines.some((l) => l.includes("allowedRoots está vazio"))).toBe(true);
+    expect(out.lines.some((l) => l.includes('rode "flightdeckd setup"'))).toBe(true);
     expect(out.lines.join("\n")).not.toContain("t".repeat(32));
     const health = await fetch(daemon.url.replace("ws://", "http://").replace("/v1/ws", "/health"));
     expect(await health.json()).toEqual({ ok: true });
