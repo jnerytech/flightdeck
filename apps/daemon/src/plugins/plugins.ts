@@ -76,6 +76,56 @@ export interface PluginsOptions {
   cli: PluginCli;
   pins: PinStore;
   clock?: () => number;
+  /** Told of every install, update, removal and marketplace change that landed. */
+  record?: (decision: PluginDecision) => void;
+}
+
+export interface PluginDecision {
+  action: "install" | "update" | "uninstall" | "marketplace-add" | "marketplace-remove";
+  /** The plugin id, or the marketplace name or source. */
+  target: string;
+  /** The content hash that was confirmed, when there is one. */
+  hash?: string;
+  at: string;
+}
+
+/** What the person sees before an install or update, and the hash the confirmation must repeat. */
+export interface PluginPreview {
+  plugin: string;
+  version?: string;
+  /** Null when the content cannot be shown (a plugin fetched from another repository). */
+  inventory: PluginInventory | null;
+  hash: string | null;
+  reason?: "not-local";
+  /** The CLI's validation of a local plugin folder. */
+  validation?: { success: boolean; errors: string[] };
+}
+
+export interface InventoryDiff {
+  hooks: { added: string[]; removed: string[] };
+  monitors: { added: string[]; removed: string[] };
+  skills: { added: string[]; removed: string[] };
+  agents: { added: string[]; removed: string[] };
+  commands: { added: string[]; removed: string[] };
+  mcpServers: { added: string[]; removed: string[] };
+}
+
+export interface UpdatePreview {
+  plugin: string;
+  from: { version: string; hash: string };
+  to: { version: string; hash: string };
+  inventory: PluginInventory;
+  diff: InventoryDiff;
+  /** The marketplace has the same content already installed. */
+  unchanged: boolean;
+}
+
+/** What a change that went to the CLI came to. */
+export interface ChangeResult {
+  outcome: "ok" | "failed" | "unchanged" | "needs-command-confirmation";
+  message: string;
+  /** A command the marketplace declares, to be shown to the person: only its `sha256` accepts it. */
+  shownCommand?: { command?: string; plugin?: string; sha256: string };
 }
 
 const invalid = (message: string) => new FlightdeckError("invalid_state", message);
@@ -153,6 +203,84 @@ export class Plugins {
     };
     this.opts.pins.set(id, pin);
     return { ...found, pinned: pin };
+  }
+
+  async preview(_input: { plugin: string } | { dir: string }): Promise<PluginPreview> {
+    return { plugin: "", inventory: null, hash: null };
+  }
+
+  async previewUpdate(_id: string): Promise<UpdatePreview> {
+    const none = { added: [], removed: [] };
+    return {
+      plugin: "",
+      from: { version: "", hash: "" },
+      to: { version: "", hash: "" },
+      inventory: {
+        manifest: null,
+        hooks: [],
+        monitors: [],
+        skills: [],
+        agents: [],
+        commands: [],
+        mcpServers: [],
+        attention: false,
+        hash: "",
+        files: 0,
+        bytes: 0,
+        problems: [],
+      },
+      diff: {
+        hooks: none,
+        monitors: none,
+        skills: none,
+        agents: none,
+        commands: none,
+        mcpServers: none,
+      },
+      unchanged: true,
+    };
+  }
+
+  async install(_input: {
+    plugin?: string;
+    dir?: string;
+    scope?: "user" | "project" | "local";
+    confirmHash: string;
+    acceptCommand?: string;
+  }): Promise<ChangeResult> {
+    return { outcome: "unchanged", message: "" };
+  }
+
+  async update(_input: {
+    plugin: string;
+    confirmHash: string;
+    acceptCommand?: string;
+  }): Promise<ChangeResult> {
+    return { outcome: "unchanged", message: "" };
+  }
+
+  async uninstall(_input: {
+    plugin: string;
+    scope?: "user" | "project" | "local";
+    confirm: boolean;
+  }): Promise<ChangeResult> {
+    return { outcome: "unchanged", message: "" };
+  }
+
+  async marketplaceAdd(_input: {
+    source: string;
+    scope?: "user" | "project" | "local";
+    confirm: boolean;
+  }): Promise<ChangeResult> {
+    return { outcome: "unchanged", message: "" };
+  }
+
+  async marketplaceRemove(_input: { name: string; confirm: boolean }): Promise<ChangeResult> {
+    return { outcome: "unchanged", message: "" };
+  }
+
+  async marketplaceUpdate(_name?: string): Promise<ChangeResult> {
+    return { outcome: "unchanged", message: "" };
   }
 
   private installed(item: Json, pins: Record<string, Pin>): InstalledPlugin {
