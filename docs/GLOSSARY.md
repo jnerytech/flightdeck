@@ -20,6 +20,10 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
 | snippet | snippet | Um comando ou prompt salvo, com variáveis `{{nome}}`; global (do app), do host ou do projeto |
 | persona | persona | Um papel de engenharia que o Claude assume numa sessão; do pacote, do host, do projeto ou global (do app) |
+| memória | memory | A memória automática do Claude Code de um projeto (`MEMORY.md` e um arquivo por tópico); só é editada por uma ação explícita, com hash e confirmação |
+| orçamento de contexto | context budget | O que entra no contexto na partida de uma sessão, fonte por fonte, com uma estimativa de tokens |
+| plugin | plugin | Uma extensão do Claude Code (hooks, monitores, skills, agentes, comandos, MCP); roda código na máquina, por isso se mostra o que instala antes |
+| fixar versão | pin version | Impede a atualização de um plugin até a pessoa soltar |
 | pacote | pack | As personas que vêm prontas com o Flightdeck; editada, vira "Pacote, editada" |
 | Aplicar persona | Apply persona | Manda o papel a uma sessão já aberta, como instrução da conversa; "Voltar ao normal" encerra |
 | subagente persona | persona subagent | Uma persona oferecida ao Claude como agente `persona-<id>`, para ele delegar |

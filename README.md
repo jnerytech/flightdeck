@@ -59,6 +59,10 @@ sessions from one place, without opening each machine.
   Mensagens tab per session; a team pauses by itself when the plan quota crosses the limit.
 - Snippets: saved commands and prompts (global, per host or versioned in the project), used from
   Ctrl+K, a terminal tab or `/` in a session, imported from the shell history with secrets hidden.
+- Memory, context and plugins: the Claude Code memory of a project (read, edited with a hash and a
+  confirmation, with cleanup suggestions) and the budget of what enters the context at the start;
+  the plugins of the host, each shown with what it installs (hooks, monitors, skills, agents,
+  commands, MCP) before any install, update or removal.
 - Personas: engineering roles Claude takes in a session (a pack of ten, plus your own per host,
   project or app), chosen when a session, card or arena variant starts, applied to an open session,
   or offered to Claude as subagents.

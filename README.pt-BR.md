@@ -63,6 +63,10 @@ sessões num lugar só, sem abrir cada máquina.
 - Snippets: comandos e prompts salvos (globais, por host ou versionados no projeto), usados pelo
   Ctrl+K, numa aba de terminal ou com `/` numa sessão, importados do histórico do shell com os
   segredos ocultos.
+- Memória, contexto e plugins: a memória do Claude Code de um projeto (lida, editada com hash e
+  confirmação, com sugestões de limpeza) e o orçamento do que entra no contexto na partida; os
+  plugins do host, cada um mostrado com o que instala (hooks, monitores, skills, agentes, comandos,
+  MCP) antes de qualquer instalação, atualização ou remoção.
 - Personas: papéis de engenharia que o Claude assume numa sessão (um pacote de dez, mais as suas
   por host, projeto ou app), escolhidas ao iniciar uma sessão, um card ou uma variante da arena,
   aplicadas a uma sessão aberta ou oferecidas ao Claude como subagentes.
