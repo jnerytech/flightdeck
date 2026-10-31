@@ -94,10 +94,16 @@ describe("vigiar-ado: builds, policies and conflicts through az", () => {
   });
 
   test("a PR that merges cleanly has no conflict, and a queued evaluation is pending", async () => {
-    fakeAz([show("succeeded"), evaluations(evaluation("queued", "CI", 5))]);
+    const unnamed = {
+      ...evaluation("approved", "x"),
+      configuration: { type: { displayName: "Build" } },
+    };
+    fakeAz([show("succeeded"), evaluations(evaluation("queued", "CI", 5), unnamed)]);
     const health = await new AzureDevOpsCli().health({ cwd: tempDir(), url: PR });
     expect(health.conflicts).toBe(false);
-    expect(health.checks.map((c) => c.state)).toEqual(["pending"]);
+    expect(health.checks.map((c) => c.state)).toEqual(["pending", "passing"]);
+    // A policy with no name of its own goes by its type's.
+    expect(health.checks.map((c) => c.name)).toEqual(["CI", "Build"]);
   });
 
   test("buildLog gives the end of the log of each task that failed, cut at 16 KB", async () => {
