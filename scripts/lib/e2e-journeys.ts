@@ -14,6 +14,12 @@ export const JOURNEYS: readonly string[] = [
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
 
+/**
+ * The versioned action the acoes journey trusts, one per language: the demo keeps its state
+ * between runs, so the second language would find the first one's already trusted.
+ */
+export const ACOES_ACTION: Readonly<Record<string, string>> = { "pt-BR": "versao", en: "versao" };
+
 export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 800 },
   { width: 800, height: 600 },

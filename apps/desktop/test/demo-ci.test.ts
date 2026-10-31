@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
-import { JOURNEYS, LANGUAGES, VIEWPORTS } from "../../../scripts/lib/e2e-journeys.ts";
+import { ACOES_ACTION, JOURNEYS, LANGUAGES, VIEWPORTS } from "../../../scripts/lib/e2e-journeys.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const read = (file: string) => readFileSync(resolve(ROOT, file), "utf8");
@@ -80,5 +80,9 @@ describe("demo-prints: axe e CI", () => {
       { width: 1280, height: 800 },
       { width: 800, height: 600 },
     ]);
+  });
+  test("e2e acoes: each language trusts its own versioned action, untouched by the other run", () => {
+    expect(Object.keys(ACOES_ACTION)).toEqual([...LANGUAGES]);
+    expect(new Set(Object.values(ACOES_ACTION)).size).toBe(LANGUAGES.length);
   });
 });
