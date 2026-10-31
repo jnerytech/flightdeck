@@ -3,7 +3,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
 const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * Phase 20: which persona a session opens in. The value is `host:<id>` (the pack's, the host's or
