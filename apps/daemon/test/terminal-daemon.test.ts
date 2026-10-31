@@ -466,6 +466,42 @@ describe("terminal-daemon", () => {
     expect(signals).toEqual(["SIGHUP"]);
   });
 
+  test("on Windows kill terminates the process as before (there is no SIGHUP), and a signal the system refuses falls back to a plain kill", async () => {
+    const signals: Array<string | undefined> = [];
+    const spawn: SpawnFn = () => ({
+      exited: new Promise<number>(() => {}),
+      terminal: { write: () => 0, resize: () => {} },
+      kill: (signal) => {
+        if (signal === "SIGHUP") throw new Error("Unknown signal: SIGHUP");
+        signals.push(signal);
+      },
+    });
+    const start = {
+      argv: ["pwsh"],
+      cwd: "C:\\w",
+      env: {},
+      cols: 80,
+      rows: 24,
+      onData: () => {},
+      onExit: () => {},
+    };
+    const kill = (platform: NodeJS.Platform) => {
+      try {
+        bunPty(spawn, 20, platform)(start).kill();
+        return "ok";
+      } catch (error) {
+        return (error as Error).message;
+      }
+    };
+    expect(kill("win32")).toBe("ok");
+    expect(signals).toEqual([undefined]);
+    await Bun.sleep(60);
+    expect(signals).toEqual([undefined]);
+    signals.length = 0;
+    expect(kill("linux")).toBe("ok");
+    expect(signals).toEqual([undefined]);
+  });
+
   test("o adaptador do Bun também informa o fim quando o PTY não avisa o fim da saída", async () => {
     let ended!: (code: number) => void;
     const spawn: SpawnFn = () => ({
