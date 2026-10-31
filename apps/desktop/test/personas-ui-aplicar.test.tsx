@@ -70,10 +70,15 @@ describe("personas-ui: applying a persona to an open session", () => {
     await click("Aplicar");
     await poll(() => d.manager.get(sessionId).persona?.id === "qa");
     expect(d.manager.get(sessionId).persona).toMatchObject({ id: "qa", name: "QA / testes" });
+    // The switch is marked in the conversation, where the role message went.
+    await settle(() => screen.queryByText("Persona aplicada: QA / testes") !== null);
+    expect(screen.queryByText("Persona aplicada: QA / testes")).not.toBeNull();
     await settle(() => screen.queryByRole("button", { name: "Voltar ao normal" }) !== null);
     await click("Voltar ao normal");
     await poll(() => !d.manager.get(sessionId).persona);
     expect(d.manager.get(sessionId).persona ?? null).toBeNull();
+    await settle(() => screen.queryByText("Fora do papel: QA / testes") !== null);
+    expect(screen.queryByText("Fora do papel: QA / testes")).not.toBeNull();
   });
 
   test("a controllable terminal session has Aplicar persona too, by its Claude session id; one that is not controllable has not", async () => {

@@ -35,7 +35,9 @@ export type ChatItem =
       durationMs: number;
       costUsd?: number;
     }
-  | { kind: "error"; seq: number; code: string; message: string };
+  | { kind: "error"; seq: number; code: string; message: string }
+  /** A persona applied to the session or left (phase 20). */
+  | { kind: "persona"; seq: number; applied: boolean; name: string };
 
 export interface SessionState {
   /** Last persisted seq applied; used for `sinceSeq` on reconnect. */

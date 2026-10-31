@@ -62,12 +62,15 @@ describe("desktop: estado da sessão", () => {
     expect(s.lastSeq).toBe(6);
   });
 
-  test("as marcas de persona avançam a posição mas não viram item da conversa", () => {
+  test("applying and leaving a persona are marked on the session's timeline", () => {
     let s = emptySession();
     const persona = { id: "seg", name: "Segurança", icon: null };
     s = applyEnvelope(s, env(1, { type: "persona.applied", persona }));
     s = applyEnvelope(s, env(2, { type: "persona.cleared", persona }));
-    expect(s.items).toEqual([]);
+    expect(s.items).toEqual([
+      { kind: "persona", seq: 1, applied: true, name: "Segurança" },
+      { kind: "persona", seq: 2, applied: false, name: "Segurança" },
+    ]);
     expect(s.lastSeq).toBe(2);
   });
 
