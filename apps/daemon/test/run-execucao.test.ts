@@ -157,8 +157,22 @@ describe("run-execucao: os processos", () => {
     const state = s.manager.state("card-a");
     expect(state.ports).toEqual({ web: 41000, api: 41001 });
     expect(state.processes).toEqual([
-      { name: "web", terminalId: web?.terminalId ?? "", status: "running", exitCode: null },
-      { name: "api", terminalId: api?.terminalId ?? "", status: "running", exitCode: null },
+      {
+        name: "web",
+        terminalId: web?.terminalId ?? "",
+        status: "running",
+        exitCode: null,
+        url: null,
+        ready: "none",
+      },
+      {
+        name: "api",
+        terminalId: api?.terminalId ?? "",
+        status: "running",
+        exitCode: null,
+        url: null,
+        ready: "none",
+      },
     ]);
   });
 
