@@ -29,6 +29,7 @@ import {
   hubGroups,
   hubRows,
   sessionLineText,
+  sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -254,142 +255,170 @@ export function SessionsHub(props: {
             </Button>
           </div>
         )}
-        {groups.map((group) => (
-          <section
-            key={group.key}
-            aria-label={t("hub.project", { name: group.name })}
-            className="flex flex-col gap-1"
-          >
-            <h3 className="px-2 font-medium text-muted-foreground text-xs">{group.name}</h3>
-            <ul className="flex flex-col">
-              {group.rows.map((row) => {
-                const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
-                const line = sessionLineText(row.summary, store.now(), t);
-                const origin = t(`hub.originTags.${row.origin}` as Key);
-                return (
-                  <li
-                    key={row.key}
-                    aria-label={row.title}
-                    aria-current={props.isOpen(row) ? "true" : undefined}
-                    data-active={listed[cursor]?.key === row.key}
-                    className={cn(
-                      "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
-                      props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
-                    )}
+        {groups.map((group) => {
+          const shared = sharedMeta(group.rows);
+          return (
+            <section
+              key={group.key}
+              aria-label={t("hub.project", { name: group.name })}
+              className="flex flex-col gap-1"
+            >
+              <div className="flex items-baseline gap-2 px-2 text-xs">
+                <h3 className="shrink-0 font-medium text-muted-foreground">{group.name}</h3>
+                {(shared.hostName || shared.origin) && (
+                  <span
+                    data-slot="group-meta"
+                    className="min-w-0 truncate text-muted-foreground/80"
                   >
-                    <StatusDot
-                      tone={TONES[row.state]}
-                      label={t(`hub.stateDots.${row.state}` as Key)}
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCursor(listed.findIndex((r) => r.key === row.key));
-                            props.onOpen(row);
-                          }}
-                          className="min-w-0 flex-1 truncate text-left font-medium text-sm"
-                        >
-                          {row.title}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{row.title}</TooltipContent>
-                    </Tooltip>
-                    <span className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline">
-                      {origin ? `${row.hostName} · ${origin}` : row.hostName}
-                    </span>
-                    {row.persona && (
-                      <span className="shrink-0 rounded bg-muted px-1 text-xs">
-                        {row.persona.name}
-                      </span>
-                    )}
-                    {row.controllable && (
-                      <>
-                        <Radio
-                          aria-hidden="true"
-                          className="size-3 shrink-0 text-muted-foreground"
-                        />
-                        <span className="sr-only">{t("hub.controllable")}</span>
-                      </>
-                    )}
-                    {cost !== undefined && (
-                      <output
-                        aria-label={t("hub.cost", { title: row.title })}
-                        className="shrink-0 text-muted-foreground text-xs tabular-nums"
-                      >
-                        {usd(cost)}
-                      </output>
-                    )}
-                    <time
-                      dateTime={new Date(row.lastActivity).toISOString()}
-                      title={store.formatDateTime(row.lastActivity)}
-                      className="shrink-0 text-muted-foreground text-xs tabular-nums"
-                    >
-                      {store.formatWhen(row.lastActivity)}
-                    </time>
-                    {row.claudeSessionId && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={t("hub.actions", { title: row.title })}
-                            className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                          >
-                            <MoreHorizontal />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              store.tabs.openNextInNewTab();
-                              props.onOpen(row);
-                            }}
-                          >
-                            {t("tabs.openInNew")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              setRenaming(row);
-                              setName(row.title);
-                            }}
-                          >
-                            {t("hub.rename")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
-                            {row.pinned ? t("hub.unpin") : t("hub.pin")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => meta(row, { archived: !row.archived })}>
-                            {row.archived ? t("hub.unarchive") : t("hub.archive")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              void store.copyText(
-                                `flightdeckd claude --resume ${row.claudeSessionId}`,
-                              )
-                            }
-                          >
-                            {t("hub.copyCommand")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    <span
-                      data-slot="summary"
+                    {[shared.hostName, shared.origin && t(`hub.originTags.${shared.origin}` as Key)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
+              </div>
+              <ul className="flex flex-col">
+                {group.rows.map((row) => {
+                  const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
+                  const line = sessionLineText(row.summary, store.now(), t);
+                  // What the whole group shares is in its header; the row keeps what differs.
+                  const rowMeta = [
+                    shared.hostName === null ? row.hostName : null,
+                    shared.origin === null ? t(`hub.originTags.${row.origin}` as Key) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <li
+                      key={row.key}
+                      aria-label={row.title}
+                      aria-current={props.isOpen(row) ? "true" : undefined}
+                      data-active={listed[cursor]?.key === row.key}
                       className={cn(
-                        "truncate text-muted-foreground text-xs",
-                        props.density === "compact" ? "sr-only" : "basis-full pl-4",
+                        "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
+                        props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
                       )}
                     >
-                      {line}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+                      <StatusDot
+                        tone={TONES[row.state]}
+                        label={t(`hub.stateDots.${row.state}` as Key)}
+                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCursor(listed.findIndex((r) => r.key === row.key));
+                              props.onOpen(row);
+                            }}
+                            className="min-w-0 flex-1 truncate text-left font-medium text-sm"
+                          >
+                            {row.title}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{row.title}</TooltipContent>
+                      </Tooltip>
+                      {rowMeta && (
+                        <span
+                          data-slot="row-meta"
+                          className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline"
+                        >
+                          {rowMeta}
+                        </span>
+                      )}
+                      {row.persona && (
+                        <span className="shrink-0 rounded bg-muted px-1 text-xs">
+                          {row.persona.name}
+                        </span>
+                      )}
+                      {row.controllable && (
+                        <>
+                          <Radio
+                            aria-hidden="true"
+                            className="size-3 shrink-0 text-muted-foreground"
+                          />
+                          <span className="sr-only">{t("hub.controllable")}</span>
+                        </>
+                      )}
+                      {cost !== undefined && (
+                        <output
+                          aria-label={t("hub.cost", { title: row.title })}
+                          className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                        >
+                          {usd(cost)}
+                        </output>
+                      )}
+                      <time
+                        dateTime={new Date(row.lastActivity).toISOString()}
+                        title={store.formatDateTime(row.lastActivity)}
+                        className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                      >
+                        {store.formatWhen(row.lastActivity)}
+                      </time>
+                      {row.claudeSessionId && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={t("hub.actions", { title: row.title })}
+                              className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                            >
+                              <MoreHorizontal />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                store.tabs.openNextInNewTab();
+                                props.onOpen(row);
+                              }}
+                            >
+                              {t("tabs.openInNew")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                setRenaming(row);
+                                setName(row.title);
+                              }}
+                            >
+                              {t("hub.rename")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
+                              {row.pinned ? t("hub.unpin") : t("hub.pin")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => meta(row, { archived: !row.archived })}
+                            >
+                              {row.archived ? t("hub.unarchive") : t("hub.archive")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                void store.copyText(
+                                  `flightdeckd claude --resume ${row.claudeSessionId}`,
+                                )
+                              }
+                            >
+                              {t("hub.copyCommand")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      <span
+                        data-slot="summary"
+                        className={cn(
+                          "truncate text-muted-foreground text-xs",
+                          props.density === "compact" ? "sr-only" : "basis-full pl-4",
+                        )}
+                      >
+                        {line}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
       </div>
     </Page>
   );

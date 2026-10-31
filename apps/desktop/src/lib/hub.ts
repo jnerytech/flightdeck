@@ -309,3 +309,16 @@ function idleFor(ms: number, t: T): string {
   if (minutes < 60) return t("line.minutes", { n: minutes });
   return t("line.hours", { n: Math.floor(minutes / 60) });
 }
+
+/** What every row of a group shares (shown once, in its header); null where the rows differ. */
+export function sharedMeta(rows: HubRow[]): {
+  hostName: string | null;
+  origin: HubOrigin | null;
+} {
+  const [first] = rows;
+  if (!first) return { hostName: null, origin: null };
+  return {
+    hostName: rows.every((r) => r.hostName === first.hostName) ? first.hostName : null,
+    origin: rows.every((r) => r.origin === first.origin) ? first.origin : null,
+  };
+}
