@@ -59,6 +59,35 @@ describe("terminal-ui: abrir um terminal", () => {
     expect(ptys.spawned[0]?.cwd).toBe(root);
   });
 
+  test("Novo terminal shows it is working at once, takes no second click meanwhile, and comes back", async () => {
+    const { store } = await setup();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Novo terminal" })).not.toBeNull(),
+    );
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let opened = 0;
+    store.openTerminal = async () => {
+      opened++;
+      await gate;
+    };
+    const button = () => screen.queryByRole("button", { name: "Novo terminal" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(button());
+      fireEvent.click(button());
+    });
+    expect(opened).toBe(1);
+    expect(button().getAttribute("aria-busy")).toBe("true");
+    expect((button() as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(button().getAttribute("aria-busy")).toBeNull());
+    expect((button() as HTMLButtonElement).disabled).toBe(false);
+  });
+
   test("the host page lists the live terminals, and Abrir opens one in a new tab", async () => {
     const { store, hostId, root } = await setup();
     const { terminalId } = await store.terminalHost(hostId).open(root, 80, 24);
