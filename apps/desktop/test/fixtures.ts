@@ -32,6 +32,9 @@ import { Changes, type WatchFn } from "../../daemon/src/review/changes.ts";
 import { ReviewComments } from "../../daemon/src/review/comments.ts";
 import { ReviewFiles } from "../../daemon/src/review/files.ts";
 import { SessionFiles } from "../../daemon/src/review/session-files.ts";
+import { RunConfigs } from "../../daemon/src/runenv/config.ts";
+import { RunManager } from "../../daemon/src/runenv/manager.ts";
+import { CardPorts } from "../../daemon/src/runenv/ports.ts";
 import { FakeRuntime } from "../../daemon/src/runtime/fake-runtime.ts";
 import { type RunningServer, startServer } from "../../daemon/src/server.ts";
 import { SessionManager } from "../../daemon/src/sessions/session-manager.ts";
@@ -43,6 +46,7 @@ import { EventStore } from "../../daemon/src/store/event-store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
+import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -104,6 +108,8 @@ export function daemon(
     autoApprove?: boolean;
     /** The risk classifier of the permission requests (phase 13), over the daemon's root. */
     risk?: (root: string) => RiskClassifier;
+    /** The cards' run environment (phase 24): a fake process host, ports always free. */
+    runenv?: boolean;
     /** The host's embedded terminals (phase 14), over fake PTYs that echo what is written; "off" has them turned off. */
     terminals?: boolean | "off";
     /** The actions that use a vault secret (phase 17), over this daemon's database. */
@@ -196,6 +202,19 @@ export function daemon(
     : undefined;
   const board = new Board({ db: store.db, manager, allowedRoots: [root], quota });
   cleanups.push(() => board.stop());
+  const runHost = options.runenv ? fakeRunHost() : undefined;
+  const runConfigs = new RunConfigs({ db: store.db });
+  const runManager = runHost
+    ? new RunManager({
+        db: store.db,
+        configs: runConfigs,
+        ports: new CardPorts({ db: store.db, isFree: async () => true }),
+        host: runHost.host,
+        card: (id) => board.getCard(id),
+        project: (id) => board.getProject(id),
+        waitReady: async () => "ready",
+      })
+    : undefined;
   // Hooks go to a settings.json of this daemon only, never the home of the test process.
   const settingsFile = join(root, "claude-home", "settings.json");
   const configFile = join(root, "config.json");
@@ -366,6 +385,7 @@ export function daemon(
     automations,
     autoApprove,
     ptys,
+    runHost,
     actions,
   };
 }
