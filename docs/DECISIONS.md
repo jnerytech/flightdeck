@@ -2342,7 +2342,7 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 ## Conversations, Teams and the palette
 
 - **Clicking a message opens its session, not the message.** The spec asks for "a sessão no ponto da mensagem". Messages are not events of the session's transcript, so there is no point to scroll to. The click opens the recipient session; its Messages tab lists the message.
-- **Conversations filters by state and by one text box.** The spec lists filters by team, session and host. The text box matches the team, the session addresses and the host, so it covers all three without three more selects.
+- **Conversations filters by state and by one text box.** The spec lists filters by team, session and host. The text box matches the message's text, the team's id, both sessions' ids and both hosts (and the host's name in the app), so it covers all three without three more selects.
 - **Novo time takes the workers' personas** as one comma-separated field, in the workers' order (`workerPersonas`). A worker without one has no persona.
 - **A member's session state** in Teams comes from the dictionaries (`teamsUi.sessionStates`).
 - **The palette uses the standard names.** A live session (managed or from the terminal) shows its standard name when it has no name of its own. Any of its aliases finds it, the old one of a rename included. The palette loads the names when it opens, with the hub.
