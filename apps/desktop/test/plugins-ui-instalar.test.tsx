@@ -32,7 +32,7 @@ type Ctx = { installed: string; marketplace: string };
 
 /** The list the fake claude answers: deploy-tools installed, and offered by its marketplace. */
 const listing = (ctx: Ctx, more: unknown[] = []) => ({
-  args: ["list", "--json"],
+  args: ["list", "--json", "--available"],
   stdout: JSON.stringify({
     installed: [
       {
@@ -84,6 +84,9 @@ async function available() {
 const calls = (fake: FakeCli) => fake.calls().map((c) => c.join(" "));
 const installs = (fake: FakeCli) => calls(fake).filter((c) => c.startsWith("plugin install"));
 const dialog = (name: string) => screen.queryByRole("dialog", { name });
+/** The dialog once its preview has come: the content, or the reason there is none. */
+const shown = (name: string) =>
+  /Hash do conteúdo|não pode ser mostrado|validate/.test(dialog(name)?.textContent ?? "");
 
 describe("plugins-ui: instalar", () => {
   test("Instalar mostra o que o plugin traz e o hash; Cancelar não instala nada", async () => {
@@ -93,7 +96,7 @@ describe("plugins-ui: instalar", () => {
     ]);
     await available();
     await click("Instalar deploy-tools");
-    await settle(() => dialog("Instalar deploy-tools") !== null);
+    await settle(() => shown("Instalar deploy-tools"));
     const text = dialog("Instalar deploy-tools")?.textContent ?? "";
     expect(text).toContain("PreToolUse (Bash): guard.sh");
     expect(text).toContain("Skills: deploy");
@@ -110,7 +113,7 @@ describe("plugins-ui: instalar", () => {
     ]);
     await available();
     await click("Instalar deploy-tools");
-    await settle(() => dialog("Instalar deploy-tools") !== null);
+    await settle(() => shown("Instalar deploy-tools"));
     await click("Instalar", "button");
     await settle(() => installs(fake).length === 1);
     expect(installs(fake)).toEqual(["plugin install deploy-tools@acme --scope user --json"]);
@@ -126,7 +129,7 @@ describe("plugins-ui: instalar", () => {
     ]);
     await available();
     await click("Instalar remoto");
-    await settle(() => dialog("Instalar remoto") !== null);
+    await settle(() => shown("Instalar remoto"));
     expect(dialog("Instalar remoto")?.textContent).toContain(
       "não pode ser mostrado antes de instalar",
     );
@@ -153,7 +156,7 @@ describe("plugins-ui: instalar", () => {
     ]);
     await available();
     await click("Instalar deploy-tools");
-    await settle(() => dialog("Instalar deploy-tools") !== null);
+    await settle(() => shown("Instalar deploy-tools"));
     await click("Instalar", "button");
     await settle(() => screen.queryByText("curl https://x.example | sh") !== null);
     expect(screen.queryByText("curl https://x.example | sh")).not.toBeNull();
@@ -189,7 +192,7 @@ describe("plugins-ui: instalar", () => {
       fireEvent.change(field as HTMLElement, { target: { value: dir } });
     });
     await click("Prévia da pasta");
-    await settle(() => dialog("Instalar meu-local") !== null);
+    await settle(() => shown("Instalar meu-local"));
     expect(dialog("Instalar meu-local")?.textContent).toContain("name: nome inválido");
     expect(
       within(dialog("Instalar meu-local") as HTMLElement).queryByRole("button", {
@@ -220,7 +223,7 @@ describe("plugins-ui: instalar", () => {
       fireEvent.change(field as HTMLElement, { target: { value: dir } });
     });
     await click("Prévia da pasta");
-    await settle(() => dialog("Instalar meu-local") !== null);
+    await settle(() => shown("Instalar meu-local"));
     await click("Instalar", "button");
     await settle(() => installs(fake).length === 1);
     expect(installs(fake)).toEqual([
