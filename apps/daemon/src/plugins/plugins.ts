@@ -165,6 +165,14 @@ function diffOf(from: PluginInventory, to: PluginInventory): InventoryDiff {
   };
 }
 
+const bad = (message: string) => new FlightdeckError("bad_request", message);
+
+/** A value that goes to the CLI as an argument: never one that would read as an option. */
+function arg(value: string): string {
+  if (value.startsWith("-")) throw bad(`valor recusado: ${value}`);
+  return value;
+}
+
 const invalid = (message: string) => new FlightdeckError("invalid_state", message);
 
 type Json = Record<string, unknown>;
@@ -221,6 +229,7 @@ export class Plugins {
 
   /** One installed plugin, with what it installs. */
   async detail(id: string): Promise<InstalledPlugin> {
+    arg(id);
     const found = (await this.list()).installed.find((plugin) => plugin.id === id);
     if (!found) throw new FlightdeckError("not_found", `${id} não está instalado`);
     return found;
@@ -228,6 +237,7 @@ export class Plugins {
 
   /** Fixes the installed version, or lets it go. */
   async pin(id: string, pinned: boolean): Promise<InstalledPlugin> {
+    arg(id);
     const found = await this.detail(id);
     if (!pinned) {
       this.opts.pins.delete(id);
@@ -244,6 +254,7 @@ export class Plugins {
 
   /** What an install would bring, read from the plugin's own folder. Nothing is installed. */
   async preview(input: { plugin: string } | { dir: string }): Promise<PluginPreview> {
+    arg("dir" in input ? input.dir : input.plugin);
     if ("dir" in input) {
       const inventory = inspectPlugin(input.dir);
       return {
@@ -267,6 +278,7 @@ export class Plugins {
 
   /** The marketplace's copy against the installed one, after refreshing the marketplace. */
   async previewUpdate(id: string): Promise<UpdatePreview> {
+    arg(id);
     const { marketplace } = split(id);
     const refreshed = await this.opts.cli.run(["marketplace", "update", marketplace, "--json"]);
     if (refreshed.code !== 0) {
@@ -297,6 +309,7 @@ export class Plugins {
     confirmHash: string;
     acceptCommand?: string;
   }): Promise<ChangeResult> {
+    arg(input.plugin ?? input.dir ?? "");
     const scope = input.scope ?? "user";
     let name: string;
     let args: string[];
@@ -329,6 +342,7 @@ export class Plugins {
     confirmHash: string;
     acceptCommand?: string;
   }): Promise<ChangeResult> {
+    arg(input.plugin);
     const pin = this.opts.pins.all()[input.plugin];
     if (pin)
       throw invalid(
@@ -355,6 +369,7 @@ export class Plugins {
     scope?: "user" | "project" | "local";
     confirm: boolean;
   }): Promise<ChangeResult> {
+    arg(input.plugin);
     if (!input.confirm) throw invalid("remover pede confirm: true");
     const args = [
       "uninstall",
@@ -375,6 +390,7 @@ export class Plugins {
     scope?: "user" | "project" | "local";
     confirm: boolean;
   }): Promise<ChangeResult> {
+    arg(input.source);
     if (!input.confirm) throw invalid("adicionar um marketplace pede confirm: true");
     const args = [
       "marketplace",
@@ -389,6 +405,7 @@ export class Plugins {
   }
 
   async marketplaceRemove(input: { name: string; confirm: boolean }): Promise<ChangeResult> {
+    arg(input.name);
     if (!input.confirm) throw invalid("remover um marketplace pede confirm: true");
     const result = await this.change(input.name, ["marketplace", "remove", input.name, "--json"]);
     if (result.outcome === "ok") this.record("marketplace-remove", input.name);
@@ -396,6 +413,7 @@ export class Plugins {
   }
 
   async marketplaceUpdate(name?: string): Promise<ChangeResult> {
+    if (name) arg(name);
     return this.change(
       name ?? "",
       name ? ["marketplace", "update", name, "--json"] : ["marketplace", "update"],
