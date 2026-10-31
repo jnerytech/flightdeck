@@ -613,6 +613,8 @@ export const ptBR = {
     placeholder: "Mensagem (Ctrl+Enter envia)",
     send: "Enviar",
     turnDone: "turno concluído · {seconds} s",
+    personaApplied: "Persona aplicada: {name}",
+    personaCleared: "Fora do papel: {name}",
     turnFailed: "turno com erro · {seconds} s",
   },
   reader: {

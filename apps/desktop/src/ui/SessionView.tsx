@@ -106,6 +106,14 @@ function TimelineItem(props: {
         </div>
       );
     }
+    case "persona":
+      return (
+        <div className="text-muted-foreground text-xs">
+          {props.t(item.applied ? "session.personaApplied" : "session.personaCleared", {
+            name: item.name,
+          })}
+        </div>
+      );
     case "error":
       return (
         <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>

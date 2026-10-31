@@ -615,6 +615,8 @@ export const en: Dictionary = {
     placeholder: "Message (Ctrl+Enter sends)",
     send: "Send",
     turnDone: "turn finished · {seconds} s",
+    personaApplied: "Persona applied: {name}",
+    personaCleared: "Out of the role: {name}",
     turnFailed: "turn failed · {seconds} s",
   },
   reader: {

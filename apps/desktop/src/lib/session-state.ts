@@ -146,10 +146,15 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         }),
         streaming: "",
       };
-    // Applying or leaving a persona is marked on the timeline (the message itself is in the chat).
+    // Applying or leaving a persona is marked on the timeline, next to the role message.
     case "persona.applied":
     case "persona.cleared":
-      return next;
+      return push({
+        kind: "persona",
+        seq,
+        applied: event.type === "persona.applied",
+        name: event.persona.name,
+      });
     default:
       return push({ kind: "error", seq, code: event.code, message: event.message });
   }
