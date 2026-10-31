@@ -72,6 +72,10 @@ import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
 import { SessionFiles } from "./review/session-files.ts";
+import { RunConfigs } from "./runenv/config.ts";
+import { terminalRunHost } from "./runenv/host.ts";
+import { RunManager } from "./runenv/manager.ts";
+import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -508,6 +512,8 @@ export async function startDaemon(
     pty?: PtyFactory;
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
+    /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
+    portProbe?: (port: number) => Promise<boolean>;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
@@ -887,6 +893,26 @@ export async function startDaemon(
   });
   const prWatch = new PrWatch({ board, watcher: prWatcher, fixer: prFixer, traces });
   prWatch.start(board.prPollIntervalMs);
+  // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
+  const runConfigs = new RunConfigs({ db: store.db });
+  const cardPorts = new CardPorts({
+    db: store.db,
+    base: config.run.portBase,
+    ...(options.portProbe ? { isFree: options.portProbe } : {}),
+  });
+  const runManager = new RunManager({
+    db: store.db,
+    configs: runConfigs,
+    ports: cardPorts,
+    host: terminalRunHost(terminals),
+    card: (id) => board.getCard(id),
+    project: (id) => board.getProject(id),
+  });
+  // A card that is done stops its processes and gives its ports back.
+  const unwatchRunEnv = [
+    cardPorts.follow((listener) => board.watch(listener)),
+    runManager.follow((listener) => board.watch(listener)),
+  ];
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({
@@ -906,6 +932,7 @@ export async function startDaemon(
     automations,
     history,
     board,
+    runenv: { configs: runConfigs, manager: runManager },
     quota,
     usage,
     costs,
@@ -1031,6 +1058,7 @@ export async function startDaemon(
         vault.stop();
         await automations.idle();
         prWatch.stop();
+        for (const unwatch of unwatchRunEnv) unwatch();
         board.stop();
         terminals.stop();
         await central.stop();

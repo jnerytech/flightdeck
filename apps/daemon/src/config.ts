@@ -7,6 +7,7 @@ import { z } from "zod";
 import { PricingConfig } from "./costs/pricing.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 import { validRegex } from "./permissions/risk.ts";
+import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
 export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
@@ -123,6 +124,18 @@ export const Config = z.object({
       idleMinutes: z.number().int().min(1).max(35_000).default(120),
     })
     .default(() => ({ max: 10, idleMinutes: 120 })),
+  /** The run environment of the cards (phase 24). */
+  run: z
+    .object({
+      /** Where the cards' blocks of 10 ports start; the last block must still fit under 65536. */
+      portBase: z
+        .number()
+        .int()
+        .min(1024)
+        .max(65535 - BLOCK_SIZE + 1)
+        .default(DEFAULT_PORT_BASE),
+    })
+    .default(() => ({ portBase: DEFAULT_PORT_BASE })),
   /** API prices (phase 8): overrides of the default table, model by model. */
   pricing: PricingConfig.default(() => ({ models: {}, fastMultiplier: {} })),
   /** Phase 13: how often the issue search of `issue_label` automations runs (5 min when absent). */
