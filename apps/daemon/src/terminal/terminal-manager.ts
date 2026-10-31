@@ -59,8 +59,8 @@ export interface OpenRequest {
   env?: Record<string, string>;
   /** The cwd is the daemon own folder: it needs no place in `allowedRoots`. Daemon code only. */
   internal?: boolean;
-  /** Called when the process ends. Daemon code only. */
-  onExit?: () => void;
+  /** Called with the exit code when the process ends. Daemon code only. */
+  onExit?: (exitCode: number) => void;
   cols: number;
   rows: number;
 }
@@ -126,7 +126,7 @@ interface Entry {
   ring: Ring;
   clients: Map<TerminalSink, Client>;
   /** Run when the process ends (daemon code that opened it). */
-  afterExit: (() => void) | undefined;
+  afterExit: ((exitCode: number) => void) | undefined;
   exitCode: number | null;
   /** Being ended on purpose: it goes when the process does. */
   closing: boolean;
@@ -301,6 +301,12 @@ export class TerminalManager {
     this.startIdle(entry);
     this.log(`terminal ${id} aberto em ${cwd} (${entry.program})`);
     return this.info(entry);
+  }
+
+  /** The process id of a live terminal, when its PTY has one. */
+  pidOf(terminalId: string): number | null {
+    const entry = this.entries.get(terminalId);
+    return entry && entry.exitCode === null ? (entry.pty.pid ?? null) : null;
   }
 
   write(terminalId: string, data: string): void {
@@ -491,7 +497,7 @@ export class TerminalManager {
     if (!entry || entry.exitCode !== null) return;
     entry.exitCode = exitCode;
     this.log(`terminal ${id} encerrado (código ${exitCode})`);
-    entry.afterExit?.();
+    entry.afterExit?.(exitCode);
     // The pending output goes first, then the end.
     if (this.flush(entry)) this.scheduleFlush();
     if (entry.closing) this.remove(entry);

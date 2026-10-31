@@ -12,6 +12,8 @@ export interface PtyStart {
 }
 
 export interface Pty {
+  /** The process id, when the system gives one (a fake has the one it is told). */
+  pid?: number;
   write(data: string): void;
   resize(cols: number, rows: number): void;
   kill(): void;
@@ -23,6 +25,7 @@ export type PtyFactory = (start: PtyStart) => Pty;
 export type SpawnFn = (argv: string[], options: Record<string, unknown>) => SpawnedProcess;
 
 export interface SpawnedProcess {
+  pid?: number;
   exited: Promise<number>;
   terminal?: { write(data: string): number; resize(cols: number, rows: number): void } | undefined;
   kill(signal?: string): void;
@@ -78,6 +81,7 @@ export function bunPty(
       report();
     });
     return {
+      ...(proc.pid === undefined ? {} : { pid: proc.pid }),
       write: (data) => {
         proc.terminal?.write(data);
       },
