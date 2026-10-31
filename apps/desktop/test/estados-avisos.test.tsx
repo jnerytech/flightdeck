@@ -162,13 +162,21 @@ describe("estados-avisos", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
+    // When the skeleton mounts and unmounts, seen by the DOM itself: it can show inside the push.
+    const shown: { at: number | null; gone: number | null } = { at: null, gone: null };
+    const skeleton = '[role="status"][aria-label="Carregando sessões"]';
+    const observer = new MutationObserver(() => {
+      const present = document.querySelector(skeleton) !== null;
+      if (present && shown.at === null) shown.at = performance.now();
+      if (!present && shown.at !== null && shown.gone === null) shown.gone = performance.now();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    cleanups.push(() => observer.disconnect());
     await act(async () => store.router.push({ name: "history", host: hostId }));
-    const started = performance.now();
-    await settle(() => screen.queryByRole("status", { name: "Carregando sessões" }) !== null);
-    expect(screen.queryByRole("status", { name: "Carregando sessões" })).not.toBeNull();
     await settle(() => screen.queryByRole("list", { name: "Sessões do histórico" }) !== null);
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).not.toBeNull();
-    expect(performance.now() - started).toBeGreaterThanOrEqual(100);
+    expect(shown.at).not.toBeNull();
+    expect((shown.gone ?? 0) - (shown.at ?? 0)).toBeGreaterThanOrEqual(100);
     expect(screen.queryByRole("status", { name: "Carregando sessões" })).toBeNull();
   });
 
