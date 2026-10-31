@@ -317,7 +317,10 @@ export class Plugins {
       args = ["install", name, "--scope", scope, "--json"];
     }
     const result = await this.change(name, args, input.acceptCommand);
-    if (result.outcome === "ok") this.record("install", name, input.confirmHash);
+    if (result.outcome !== "ok") return result;
+    const checked = await this.verify(name, scope, input.confirmHash);
+    if (checked) return checked;
+    this.record("install", name, input.confirmHash);
     return result;
   }
 
@@ -340,7 +343,10 @@ export class Plugins {
       ["update", input.plugin, "--json"],
       input.acceptCommand,
     );
-    if (result.outcome === "ok") this.record("update", input.plugin, input.confirmHash);
+    if (result.outcome !== "ok") return result;
+    const checked = await this.verify(input.plugin, "user", input.confirmHash);
+    if (checked) return checked;
+    this.record("update", input.plugin, input.confirmHash);
     return result;
   }
 
@@ -397,6 +403,40 @@ export class Plugins {
   }
 
   private readonly shown = new Map<string, string>();
+
+  /**
+   * The CLI fetches on its own, so what it left may not be what was shown: the installed folder
+   * is hashed again, and anything else than the confirmed content is uninstalled at once.
+   * Null when it matches.
+   */
+  private async verify(
+    target: string,
+    scope: string,
+    confirmHash: string,
+  ): Promise<ChangeResult | null> {
+    const found = (await this.list()).installed.find(
+      (p) => p.id === target || (!target.includes("@") && p.name === target),
+    );
+    if (!found?.inventory) {
+      return {
+        outcome: "failed",
+        message: `não foi possível conferir o conteúdo instalado de ${target}`,
+      };
+    }
+    if (found.inventory.hash === confirmHash) return null;
+    const undone = await this.change(found.id, [
+      "uninstall",
+      found.id,
+      "--scope",
+      found.scope || scope,
+      "--json",
+    ]);
+    this.record("rollback", found.id, confirmHash);
+    return {
+      outcome: "rolled-back",
+      message: `o conteúdo instalado de ${found.id} é diferente do que foi mostrado; o plugin foi removido (${undone.outcome})`,
+    };
+  }
 
   private sameContent(shown: string | null, confirmed: string) {
     if (shown !== confirmed) {
