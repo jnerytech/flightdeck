@@ -1,8 +1,8 @@
 import { parsePairingLink } from "@flightdeck/protocol";
-import { useId, useState } from "react";
-import { Spinner, useBusy } from "@/components/feedback/busy";
+import { useState } from "react";
+import { useBusy } from "@/components/feedback/busy";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Button } from "@/components/ui/button";
+import { Field, Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 
@@ -39,7 +39,6 @@ export function HostForm(props: {
   onSubmit(draft: HostDraft): unknown;
 }) {
   const t = useT();
-  const id = useId();
   const [busy, run] = useBusy();
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
   const [link, setLink] = useState("");
@@ -50,10 +49,9 @@ export function HostForm(props: {
   const error = problem ?? props.error ?? null;
 
   return (
-    <form
-      className="mx-auto flex w-full max-w-md flex-col gap-4 p-6"
-      onSubmit={(e) => {
-        e.preventDefault();
+    <Form
+      className="mx-auto p-6"
+      onSubmit={() => {
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
           setProblem(t("hostForm.missing"));
           return;
@@ -70,58 +68,59 @@ export function HostForm(props: {
       }}
     >
       {props.notice && <InlineNotice>{props.notice}</InlineNotice>}
-      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-link`}>
-        {t("hostForm.link")}
-        <Input
-          id={`${id}-link`}
-          value={link}
-          placeholder="flightdeck://…"
-          onChange={(e) => {
-            setLink(e.target.value);
-            const parsed = parsePairingLink(e.target.value);
-            setLinkError(parsed.ok || !e.target.value ? null : parsed.error);
-            if (parsed.ok) {
-              setDraft(draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token));
-            }
-          }}
-        />
-      </label>
-      {linkError && <small className="text-status-error text-xs">{linkError}</small>}
-      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-name`}>
-        {t("hostForm.name")}
-        <Input
-          id={`${id}-name`}
-          value={draft.name}
-          onChange={set("name")}
-          placeholder={t("hostForm.namePlaceholder")}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-address`}>
-        {t("hostForm.address")}
-        <Input
-          id={`${id}-address`}
-          value={draft.address}
-          onChange={set("address")}
-          placeholder="100.64.0.1"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-port`}>
-        {t("hostForm.port")}
-        <Input id={`${id}-port`} value={draft.port} onChange={set("port")} inputMode="numeric" />
-      </label>
-      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-token`}>
-        {t("hostForm.token")}
-        <Input id={`${id}-token`} type="password" value={draft.token} onChange={set("token")} />
-      </label>
+      <Field label={t("hostForm.link")} error={linkError}>
+        {(control) => (
+          <Input
+            {...control}
+            value={link}
+            placeholder="flightdeck://…"
+            onChange={(e) => {
+              setLink(e.target.value);
+              const parsed = parsePairingLink(e.target.value);
+              setLinkError(parsed.ok || !e.target.value ? null : parsed.error);
+              if (parsed.ok) {
+                setDraft(draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token));
+              }
+            }}
+          />
+        )}
+      </Field>
+      <Field label={t("hostForm.name")}>
+        {(control) => (
+          <Input
+            {...control}
+            value={draft.name}
+            onChange={set("name")}
+            placeholder={t("hostForm.namePlaceholder")}
+          />
+        )}
+      </Field>
+      <Field label={t("hostForm.address")}>
+        {(control) => (
+          <Input
+            {...control}
+            value={draft.address}
+            onChange={set("address")}
+            placeholder="100.64.0.1"
+          />
+        )}
+      </Field>
+      <Field label={t("hostForm.port")}>
+        {(control) => (
+          <Input {...control} value={draft.port} onChange={set("port")} inputMode="numeric" />
+        )}
+      </Field>
+      <Field label={t("hostForm.token")}>
+        {(control) => (
+          <Input {...control} type="password" value={draft.token} onChange={set("token")} />
+        )}
+      </Field>
       {error && (
         <p role="alert" className="text-sm text-status-error">
           {error}
         </p>
       )}
-      <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
-        {busy && <Spinner />}
-        {t("hostForm.submit")}
-      </Button>
-    </form>
+      <FormActions submit={t("hostForm.submit")} busy={busy} />
+    </Form>
   );
 }
