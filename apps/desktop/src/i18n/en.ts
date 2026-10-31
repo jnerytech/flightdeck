@@ -22,6 +22,7 @@ export const en: Dictionary = {
     subtitle:
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
     apply: {
+      active: "Active persona",
       label: "Apply persona",
       apply: "Apply",
       clear: "Back to normal",
@@ -658,6 +659,8 @@ export const en: Dictionary = {
     mode: "Permission mode",
     prompt: "First prompt",
     create: "Create session",
+    needPrompt: "Write the first prompt to create the session",
+    needFolder: "This host has no allowed folder: add one in its settings",
   },
   modes: {
     option: "{name}: {description}",

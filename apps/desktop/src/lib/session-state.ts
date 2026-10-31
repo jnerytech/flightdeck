@@ -5,6 +5,7 @@ import type {
   PermissionResolution,
   PermissionUpdate,
   RiskLevel,
+  SessionPersona,
   SessionStatus,
   ToolInput,
 } from "@flightdeck/protocol";
@@ -46,6 +47,8 @@ export interface SessionState {
   statusReason?: string;
   cwd?: string;
   model?: string;
+  /** The persona the session runs in (phase 20), from how it opened and from what was applied since. */
+  persona?: SessionPersona;
   /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */
   claudeSessionId?: string;
   items: ChatItem[];
@@ -85,7 +88,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
     case "session.summary":
       return state;
     case "session.created":
-      return { ...next, cwd: event.cwd };
+      return { ...next, cwd: event.cwd, ...(event.persona ? { persona: event.persona } : {}) };
     case "session.status":
       return { ...next, status: event.status, statusReason: event.reason };
     case "session.init":
@@ -148,13 +151,16 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
       };
     // Applying or leaving a persona is marked on the timeline, next to the role message.
     case "persona.applied":
-    case "persona.cleared":
-      return push({
+    case "persona.cleared": {
+      const { persona: _left, ...rest } = push({
         kind: "persona",
         seq,
         applied: event.type === "persona.applied",
         name: event.persona.name,
       });
+      // The session is in the persona just applied, or in none after one was left.
+      return event.type === "persona.applied" ? { ...rest, persona: event.persona } : rest;
+    }
     default:
       return push({ kind: "error", seq, code: event.code, message: event.message });
   }

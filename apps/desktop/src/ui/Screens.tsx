@@ -164,7 +164,11 @@ function ManagedSession(props: {
               store={store}
               hostId={hostId}
               target={{ sessionId }}
-              current={state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.persona ?? null}
+              current={
+                session.persona ??
+                state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.persona ??
+                null
+              }
             />
           )
         }
@@ -672,7 +676,7 @@ function NewSession(props: {
       // The created session opens by itself (AppStore.createSession).
       onCreate={(payload) => {
         const ref = props.store.personaRef(persona);
-        void props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });
+        return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });
       }}
     />
   );

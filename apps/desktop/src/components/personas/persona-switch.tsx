@@ -19,22 +19,30 @@ export function PersonaSwitch(props: {
   const t = useT();
   const { store, hostId, target } = props;
   const [value, setValue] = useState("");
-  const [current, setCurrent] = useState(props.current);
+  // What an apply or a clear answered (a terminal session has no events to follow); else the
+  // persona the session is known to be in.
+  const [answered, setAnswered] = useState<{ persona: SessionPersona | null } | null>(null);
+  const current = answered ? answered.persona : props.current;
   const apply = async () => {
     const persona = store.personaRef(value);
     if (!persona) return;
     const done = await store.hostCommand(hostId, "session.applyPersona", { ...target, persona });
-    if (done) setCurrent(done.persona);
+    if (done) setAnswered({ persona: done.persona });
   };
   const clear = async () => {
     const done = await store.hostCommand(hostId, "session.clearPersona", {
       ...target,
       language: store.i18n.lang,
     });
-    if (done) setCurrent(null);
+    if (done) setAnswered({ persona: null });
   };
   return (
     <div className="flex flex-col gap-1 text-sm">
+      {current && (
+        <p role="note" aria-label={t("personas.apply.active")} className="font-medium">
+          {current.name}
+        </p>
+      )}
       <div className="flex flex-wrap items-end gap-2">
         <PersonaPicker
           store={store}

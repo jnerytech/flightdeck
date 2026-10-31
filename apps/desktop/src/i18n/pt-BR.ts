@@ -24,6 +24,7 @@ export const ptBR = {
     subtitle:
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
     apply: {
+      active: "Persona ativa",
       label: "Aplicar persona",
       apply: "Aplicar",
       clear: "Voltar ao normal",
@@ -656,6 +657,8 @@ export const ptBR = {
     mode: "Modo de permissão",
     prompt: "Primeiro prompt",
     create: "Criar sessão",
+    needPrompt: "Escreva o primeiro prompt para criar a sessão",
+    needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
   },
   modes: {
     option: "{name}: {description}",

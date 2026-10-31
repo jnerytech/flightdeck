@@ -1,6 +1,6 @@
 import type { CommandPayload, PermissionMode } from "@flightdeck/protocol";
 import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
@@ -40,6 +40,8 @@ export function NewSessionForm(props: {
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
   const [prompt, setPrompt] = useState(props.prompt ?? "");
+  /** The session is being created: the button is busy and a second press does nothing. */
+  const [creating, setCreating] = useState(false);
   const field = "flex flex-col gap-1 text-sm";
   const select =
     "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -48,16 +50,21 @@ export function NewSessionForm(props: {
       className="mx-auto flex max-w-xl flex-col gap-4 p-6"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!root || !prompt.trim()) return;
-        props.onCreate({
+        if (!root || !prompt.trim() || creating) return;
+        const done = props.onCreate({
           cwd: joinPath(root, sub),
           prompt: prompt.trim(),
           permissionMode: mode,
           ...(name.trim() ? { name: name.trim() } : {}),
         });
+        if (typeof (done as PromiseLike<unknown> | undefined)?.then === "function") {
+          setCreating(true);
+          const finished = () => setCreating(false);
+          (done as PromiseLike<unknown>).then(finished, finished);
+        }
       }}
     >
-      <h2 className="font-semibold text-xl">Nova sessão em {props.host.name}</h2>
+      <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
       <label className={field}>
         {t("newSession.folder")}
         <select className={select} value={root} onChange={(e) => setRoot(e.target.value)}>
@@ -118,9 +125,15 @@ export function NewSessionForm(props: {
         />
       </label>
       {props.extra}
-      <Button type="submit" className="self-start">
+      <ActionButton
+        type="submit"
+        className="self-start"
+        pending={creating}
+        disabled={!root || !prompt.trim()}
+        disabledReason={t(root ? "newSession.needPrompt" : "newSession.needFolder")}
+      >
         {t("newSession.create")}
-      </Button>
+      </ActionButton>
     </form>
   );
 }
