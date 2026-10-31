@@ -135,7 +135,7 @@ export class Traces {
     const fixes = trace.rounds.map(
       (r) => `- Round ${r.n} (${r.status}): ${firstLine(r.summary, 160)}`,
     );
-    const text = [
+    const draft = [
       `## ${card.title}`,
       card.description.trim(),
       ...(worked.length > 0 ? ["## Sessions", worked.join("\n")] : []),
@@ -144,6 +144,16 @@ export class Traces {
     ]
       .filter((part) => part)
       .join("\n\n");
-    return { text, redacted: 0 };
+    // Session text can carry a token or a password: a line that looks like one is taken out.
+    let redacted = 0;
+    const text = draft
+      .split("\n")
+      .map((line) => {
+        if (this.opts.scanner.scan(line).length === 0) return line;
+        redacted++;
+        return "[line removed: it looked like a secret]";
+      })
+      .join("\n");
+    return { text, redacted };
   }
 }

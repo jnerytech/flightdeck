@@ -1107,7 +1107,14 @@ export class Board {
    * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
    * `description` (phase 22) is the text the person confirmed, instead of the card's own.
    */
-  async createPr(id: string, _options: { description?: string } = {}): Promise<Card> {
+  async createPr(id: string, options: { description?: string } = {}): Promise<Card> {
+    const found = options.description ? (this.opts.scanner?.scan(options.description) ?? []) : [];
+    if (found.length > 0) {
+      throw new FlightdeckError(
+        "bad_request",
+        `the description looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
+      );
+    }
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
@@ -1121,9 +1128,11 @@ export class Board {
       head: branch,
       title: card.title,
       // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
-      body: [card.description, card.issueRef ? closingLine(card.issueRef) : null]
-        .filter((part) => part?.trim())
-        .join("\n\n"),
+      body:
+        options.description ??
+        [card.description, card.issueRef ? closingLine(card.issueRef) : null]
+          .filter((part) => part?.trim())
+          .join("\n\n"),
     });
     this.db
       .query(
