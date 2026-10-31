@@ -41,10 +41,7 @@ describe("ux-basicos: click feedback", () => {
       <Breadcrumb
         label="Caminho"
         onGo={() => {}}
-        crumbs={[
-          { label: "Hosts", route: { name: "hub" } },
-          { label: "Atual" },
-        ]}
+        crumbs={[{ label: "Hosts", route: { name: "hub" } }, { label: "Atual" }]}
       />,
     );
     const step = screen.queryByRole("button", { name: "Hosts" });
