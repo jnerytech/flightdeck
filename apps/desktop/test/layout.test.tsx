@@ -123,6 +123,18 @@ describe("layout", () => {
     expect(viewport?.textContent ?? "").not.toContain("Nova sessão");
   });
 
+  test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
+    render(
+      <Page title="Terminal" fill>
+        <div data-testid="filho">conteúdo</div>
+      </Page>,
+    );
+    const body = screen.queryByTestId("filho")?.parentElement;
+    expect(body?.className).toContain("flex-col");
+    expect(body?.className).toContain("flex-1");
+    expect(document.querySelector("[data-slot='scroll-area-viewport']")).toBeNull();
+  });
+
   test("Section, Grid por colunas e Stack/Inline com a escala", () => {
     render(
       <Stack gap={6}>
