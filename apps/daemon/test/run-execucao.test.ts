@@ -159,6 +159,18 @@ describe("run-execucao: os processos", () => {
     expect(s.states.at(-1)?.cardId).toBe("card-a");
   });
 
+  test("quem para de acompanhar não recebe mais nada", async () => {
+    const s = setup(runConfig({ setup: null }));
+    const heard: string[] = [];
+    const stop = s.manager.watch((state) => heard.push(state.status));
+    await s.manager.start("card-a");
+    const count = heard.length;
+    expect(count).toBeGreaterThan(0);
+    stop();
+    await s.manager.stop("card-a");
+    expect(heard).toHaveLength(count);
+  });
+
   test("Run com o card já rodando devolve o estado, sem subir nada de novo", async () => {
     const s = setup();
     await started(s);
