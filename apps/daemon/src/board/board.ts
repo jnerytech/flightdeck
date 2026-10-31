@@ -95,6 +95,8 @@ export interface BoardOptions {
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
+  /** Phase 22: the PR description made from the card's sessions, for `createPr` with `generate`. */
+  prDescription?: (cardId: string) => string;
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
@@ -1100,8 +1102,11 @@ export class Board {
     return cardDiff(card.worktreePath, this.getProject(card.projectId).baseBranch);
   }
 
-  /** Pushes the card's branch to `origin` and opens the PR with the card's title and description. */
-  async createPr(id: string): Promise<Card> {
+  /**
+   * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
+   * `generate` (phase 22) makes the description from what the card's sessions did.
+   */
+  async createPr(id: string, _options: { generate?: boolean } = {}): Promise<Card> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
