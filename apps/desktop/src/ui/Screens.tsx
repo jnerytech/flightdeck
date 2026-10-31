@@ -38,6 +38,7 @@ import { HostPage } from "./HostPage.tsx";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { PersonasPage } from "./PersonasPage.tsx";
+import { PluginsPage } from "./PluginsPage.tsx";
 import { ProjectsPage } from "./ProjectsPage.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
@@ -407,6 +408,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <ConversationsPage store={store} state={state} go={go} />;
     case "personas":
       return <PersonasPage store={store} state={state} />;
+    case "plugins":
+      return <PluginsPage store={store} state={state} />;
     case "snippets":
       return <SnippetsPage store={store} state={state} go={go} />;
     case "connections":

@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   Plane,
   Plus,
+  Puzzle,
   Search,
   SunMoon,
   TriangleAlert,
@@ -190,6 +191,15 @@ export function Sidebar(props: {
             icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
             label={t("sidebar.teams")}
             onClick={() => go({ name: "teams" })}
+          />
+        )}
+        {/* Hosts from phase 26 keep Claude Code's plugins. */}
+        {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "plugins", false)) && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Puzzle aria-hidden="true" className={icon} />}
+            label={t("sidebar.plugins")}
+            onClick={() => go({ name: "plugins" })}
           />
         )}
         {/* Hosts from phase 20 keep engineering personas. */}
