@@ -27,6 +27,18 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     sessions: [] as unknown[],
     send: { id: "m-sent", status: "queued", reason: null } as unknown,
   };
+  /** Phase 22: what `watch.get`, `watch.set` and `watch.describe` answer, for a test to set. */
+  const watch = {
+    info: { cardId: "", enabled: false, status: "watching", reason: null, rounds: [] } as {
+      cardId: string;
+      enabled: boolean;
+      status: string;
+      reason: string | null;
+      rounds: unknown[];
+    },
+    describe: { text: "", redacted: 0 },
+    card: {} as unknown,
+  };
   /** What `vault.rules.preview` answers (phase 19). */
   const preview = {
     verdict: {
@@ -130,6 +142,21 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           messaging.paused = messaging.paused.filter((p) => !(set.unpause ?? []).includes(p));
           return ack({ policy: messaging.policy, paused: messaging.paused });
         }
+        if (type === "watch.get")
+          return ack({ ...watch.info, cardId: (payload as { cardId: string }).cardId });
+        if (type === "watch.set") {
+          const set = payload as { cardId: string; enabled: boolean | null };
+          watch.info = {
+            ...watch.info,
+            cardId: set.cardId,
+            enabled: set.enabled === true,
+            status: "watching",
+            reason: null,
+          };
+          return ack(watch.info);
+        }
+        if (type === "watch.describe") return ack(watch.describe);
+        if (type === "card.pr.create") return ack(watch.card);
         if (type === "teams.list") return ack({ teams: messaging.teams });
         if (type === "teams.status") {
           const team = messaging.teams.find(
@@ -170,6 +197,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     preview,
     audit,
     streams,
+    watch,
     messaging,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
