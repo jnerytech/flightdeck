@@ -21,6 +21,8 @@ export interface RunProcess {
 }
 
 export interface RunConfig {
+  /** One card runs at a time in this project (the "não concorrente" mode). */
+  exclusive: boolean;
   /** The preparation, run once per card; `null` when there is none. */
   setup: string[] | null;
   run: RunProcess[];
@@ -53,6 +55,7 @@ const ProcessSchema = z.strictObject({
   ready: z.strictObject({ http: text }).optional(),
 });
 const RunConfigSchema = z.strictObject({
+  exclusive: z.boolean().default(false),
   setup: argv.optional(),
   run: z.array(ProcessSchema).min(1, "precisa de ao menos um item"),
   ports: z
@@ -145,6 +148,7 @@ export function parseRunConfig(source: string): ParsedRunConfig {
     };
   }
   const config: RunConfig = {
+    exclusive: parsed.data.exclusive,
     setup: parsed.data.setup ?? null,
     run: parsed.data.run.map((p) => ({
       name: p.name,
