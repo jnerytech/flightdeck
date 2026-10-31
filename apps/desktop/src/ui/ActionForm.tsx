@@ -2,16 +2,11 @@ import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { ActionSeed } from "../lib/snippets.ts";
@@ -147,7 +142,7 @@ export function ActionForm(props: {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <AppDialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
             {t(initial ? "actionsUi.form.editTitle" : "actionsUi.form.newTitle")}
@@ -288,7 +283,7 @@ export function ActionForm(props: {
           </Button>
           <Button onClick={() => void save()}>{t("actionsUi.form.save")}</Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

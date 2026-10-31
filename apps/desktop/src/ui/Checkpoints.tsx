@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -20,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { formatDateTime } from "../i18n/format.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { type Turn, turnsOf } from "../lib/turns.ts";
@@ -84,7 +84,7 @@ function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDone(): v
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <AppDialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("timeline.rewindTitle", { n: turn.ordinal })}</DialogTitle>
           <DialogDescription>{t("timeline.rewindNote")}</DialogDescription>
@@ -106,7 +106,7 @@ function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDone(): v
             {t("timeline.rewindConfirm")}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
@@ -155,7 +155,7 @@ function ForkDialog(
 
   return (
     <Dialog open onOpenChange={(next) => !next && props.onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <AppDialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("timeline.forkTitle", { n: turn.ordinal })}</DialogTitle>
           <DialogDescription>{t("timeline.forkDescription")}</DialogDescription>
@@ -222,7 +222,7 @@ function ForkDialog(
             </>
           )}
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { AppDialogContent } from "../feedback/dialog-content.tsx";
 import type { SnippetChoice } from "./snippet-use";
 
 interface Offer {
@@ -48,7 +49,7 @@ export function SnippetPicker(props: {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <AppDialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("snippets.picker")}</DialogTitle>
         </DialogHeader>
@@ -66,7 +67,7 @@ export function SnippetPicker(props: {
             </button>
           ))}
         </div>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

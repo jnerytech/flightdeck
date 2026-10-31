@@ -5,16 +5,11 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   commandLine,
@@ -286,7 +281,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
         />
       )}
       <Dialog open={draft !== null} onOpenChange={(open) => !open && setDraft(null)}>
-        <DialogContent aria-describedby={undefined}>
+        <AppDialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>
               {draft?.editing
@@ -339,7 +334,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
               {t("agent.mcp.save")}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </div>
   );

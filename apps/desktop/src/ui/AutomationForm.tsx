@@ -6,15 +6,10 @@ import type {
 } from "@flightdeck/protocol";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import {
@@ -127,7 +122,7 @@ export function AutomationForm(props: {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <AppDialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t(initial ? "automationsUi.editTitle" : "automationsUi.new")}</DialogTitle>
         </DialogHeader>
@@ -259,7 +254,7 @@ export function AutomationForm(props: {
             <Button onClick={() => void save()}>{t("automationsUi.form.save")}</Button>
           )}
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

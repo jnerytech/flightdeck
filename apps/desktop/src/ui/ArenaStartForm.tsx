@@ -3,7 +3,6 @@ import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -56,7 +56,7 @@ export function ArenaStartForm(props: {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent>
+      <AppDialogContent>
         <DialogHeader>
           <DialogTitle>{t("arenaUi.start")}</DialogTitle>
           <DialogDescription>{t("arenaUi.hint")}</DialogDescription>
@@ -111,7 +111,7 @@ export function ArenaStartForm(props: {
           </Button>
           <Button onClick={start}>{t("arenaUi.begin")}</Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

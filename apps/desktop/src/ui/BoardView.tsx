@@ -8,13 +8,7 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
@@ -273,7 +268,7 @@ export function BoardView(props: {
         />
       )}
       <Dialog open={creating} onOpenChange={(open) => (open ? setCreating(true) : close())}>
-        <DialogContent aria-describedby={undefined}>
+        <AppDialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{t("kanban.newCard")}</DialogTitle>
           </DialogHeader>
@@ -295,7 +290,7 @@ export function BoardView(props: {
             </Button>
             <Button onClick={create}>{t("kanban.create")}</Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </Page>
   );

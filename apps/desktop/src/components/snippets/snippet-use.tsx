@@ -1,17 +1,12 @@
 import type { SnippetContext } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "@/lib/app-store";
 import type { AppSnippet } from "@/lib/global-snippets";
+import { AppDialogContent } from "../feedback/dialog-content.tsx";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
@@ -221,7 +216,7 @@ export function SnippetUse(props: {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <AppDialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("snippets.use.title", { name: snippet.name })}</DialogTitle>
         </DialogHeader>
@@ -299,7 +294,7 @@ export function SnippetUse(props: {
             {t("snippets.use.copy")}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
