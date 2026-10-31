@@ -107,4 +107,22 @@ describe("snippets-cli: flightdeckd snippet list and get, the bridge the mod use
     expect(missing.exits).toEqual([1]);
     expect(missing.errors).toContain("not_found");
   });
+
+  test("with no daemon up, snippet list says it could not connect, with exit 1", async () => {
+    const dead = join(tempDir(), "config.json");
+    writeFileSync(
+      dead,
+      JSON.stringify({ token: TOKEN, port: 1, dataDir: join(tempDir(), "data") }),
+    );
+    const errors: string[] = [];
+    const exits: number[] = [];
+    await runCli(["snippet", "list", "--config", dead], {
+      env: {},
+      log: { log: () => {}, error: (m) => errors.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+    });
+    expect(exits).toEqual([1]);
+    expect(errors.join(" ")).toContain("não consegui conectar no daemon");
+  });
 });
