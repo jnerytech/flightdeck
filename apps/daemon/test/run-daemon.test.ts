@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
 import { git, gitRepo } from "./board-helpers.ts";
-import { poll, tempDir } from "./helpers.ts";
+import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { fakePtys } from "./pty-helpers.ts";
 
@@ -83,13 +83,13 @@ async function daemon() {
     });
     const id = created?.id ?? "";
     await client.data("card.start", { cardId: id });
-    const ready = await poll(
-      async () =>
-        (await client.data<{ worktreePath: string | null }>("card.get", { cardId: id }))
-          ?.worktreePath,
-      10_000,
-    );
-    return { id, worktree: (await ready) ?? "" };
+    let worktree = "";
+    for (let i = 0; i < 200 && !worktree; i++) {
+      const got = await client.data<{ worktreePath: string | null }>("card.get", { cardId: id });
+      worktree = got?.worktreePath ?? "";
+      if (!worktree) await Bun.sleep(50);
+    }
+    return { id, worktree };
   };
   return { client, ptys, projectId, card };
 }
@@ -128,11 +128,12 @@ describe("run-daemon: o daemon liga tudo", () => {
     expect((await client.data<WireRun>("runenv.start", { cardId: a.id }))?.ports.web).toBe(52000);
     expect((await client.data<WireRun>("runenv.start", { cardId: b.id }))?.ports.web).toBe(52010);
     await client.data("card.move", { cardId: a.id, column: "done" });
-    const ended = await poll(
-      async () =>
-        (await client.data<WireRun>("runenv.get", { cardId: a.id }))?.status === "ended" || null,
-    );
-    expect(await ended).toBe(true);
+    let status = "";
+    for (let i = 0; i < 100 && status !== "ended"; i++) {
+      status = (await client.data<WireRun>("runenv.get", { cardId: a.id }))?.status ?? "";
+      if (status !== "ended") await Bun.sleep(20);
+    }
+    expect(status).toBe("ended");
     expect(ptys.spawned[0]?.killed).toBe(true);
     expect(ptys.spawned[1]?.killed).toBe(false);
     const c = await card("C");
