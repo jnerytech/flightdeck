@@ -71,42 +71,49 @@ export function paletteSections(
     target: { kind: "terminal", hostId, target },
   });
 
-  const sessions = online.flatMap((host) => [
-    ...host.sessions
-      .filter((s) => LIVE.has(s.status))
-      .map((s): PaletteItem => {
-        const target: PaletteTarget = { kind: "session", hostId: host.id, sessionId: s.id };
-        const claudeSessionId =
-          state.sessions[sessionKey(host.id, s.id)]?.claudeSessionId ??
-          state.hub[host.id]?.managed.find((m) => m.id === s.id)?.claudeSessionId;
-        return {
-          id: `session:${host.id}/${s.id}`,
-          label: s.name ?? basename(s.cwd),
-          detail: `${host.name} · ${s.cwd}`,
-          target,
-          actions: [
-            { label: t("palette.open"), target },
-            ...(claudeSessionId ? [terminal(host.id, { cwd: s.cwd, claudeSessionId })] : []),
-          ],
-        };
-      }),
-    ...Object.entries(state.externals)
-      .filter(([key, s]) => key.startsWith(`${host.id}/`) && s.status !== "ended")
-      .map(([key, s]): PaletteItem => {
-        const id = s.claudeSessionId;
-        const target: PaletteTarget = { kind: "external", hostId: host.id, claudeSessionId: id };
-        return {
-          id: `external:${key}`,
-          label: state.meta[key]?.name ?? basename(s.cwd ?? id),
-          detail: `${host.name} · ${t("palette.terminalDetail")}`,
-          target,
-          actions: [
-            { label: t("palette.open"), target },
-            ...(s.cwd ? [terminal(host.id, { cwd: s.cwd, claudeSessionId: id })] : []),
-          ],
-        };
-      }),
-  ]);
+  const sessions = online.flatMap((host) => {
+    // Phase 21: the standard names of the host; an alias addresses its session here too.
+    const names = new Map((state.names?.[host.id] ?? []).map((n) => [n.sessionId, n]));
+    const keywords = (id: string) => names.get(id)?.aliases.join(" ");
+    return [
+      ...host.sessions
+        .filter((s) => LIVE.has(s.status))
+        .map((s): PaletteItem => {
+          const target: PaletteTarget = { kind: "session", hostId: host.id, sessionId: s.id };
+          const claudeSessionId =
+            state.sessions[sessionKey(host.id, s.id)]?.claudeSessionId ??
+            state.hub[host.id]?.managed.find((m) => m.id === s.id)?.claudeSessionId;
+          return {
+            id: `session:${host.id}/${s.id}`,
+            label: s.name ?? names.get(s.id)?.display ?? basename(s.cwd),
+            detail: `${host.name} · ${s.cwd}`,
+            target,
+            ...(names.has(s.id) ? { keywords: keywords(s.id) } : {}),
+            actions: [
+              { label: t("palette.open"), target },
+              ...(claudeSessionId ? [terminal(host.id, { cwd: s.cwd, claudeSessionId })] : []),
+            ],
+          };
+        }),
+      ...Object.entries(state.externals)
+        .filter(([key, s]) => key.startsWith(`${host.id}/`) && s.status !== "ended")
+        .map(([key, s]): PaletteItem => {
+          const id = s.claudeSessionId;
+          const target: PaletteTarget = { kind: "external", hostId: host.id, claudeSessionId: id };
+          return {
+            id: `external:${key}`,
+            label: state.meta[key]?.name ?? names.get(id)?.display ?? basename(s.cwd ?? id),
+            detail: `${host.name} · ${t("palette.terminalDetail")}`,
+            target,
+            ...(names.has(id) ? { keywords: keywords(id) } : {}),
+            actions: [
+              { label: t("palette.open"), target },
+              ...(s.cwd ? [terminal(host.id, { cwd: s.cwd, claudeSessionId: id })] : []),
+            ],
+          };
+        }),
+    ];
+  });
 
   const cards = online.flatMap((host) =>
     Object.entries(state.cards)
