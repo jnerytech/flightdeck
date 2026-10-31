@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -37,10 +38,10 @@ export function EditSecretForm(props: {
   };
 
   return (
-    <form
-      className="mb-4 flex flex-col gap-3 rounded-lg border p-4"
-      onSubmit={(event) => {
-        event.preventDefault();
+    <Form
+      variant="panel"
+      className="mb-4"
+      onSubmit={() => {
         if (name.trim() !== "") save();
       }}
     >
@@ -73,14 +74,12 @@ export function EditSecretForm(props: {
           </label>
         ))}
       </fieldset>
-      <div className="flex gap-2">
-        <Button type="submit" disabled={name.trim() === ""}>
-          {t("vault.editSave")}
-        </Button>
-        <Button type="button" variant="ghost" onClick={props.onClose}>
-          {t("common.cancel")}
-        </Button>
-      </div>
-    </form>
+      <FormActions
+        submit={t("vault.editSave")}
+        disabled={name.trim() === ""}
+        cancel={t("common.cancel")}
+        onCancel={props.onClose}
+      />
+    </Form>
   );
 }

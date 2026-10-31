@@ -1,5 +1,6 @@
 import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,10 +96,10 @@ export function PersonaEditor(props: {
   const toolList = split(tools);
 
   return (
-    <form
-      className="mb-4 flex flex-col gap-3 rounded-lg border p-4"
-      onSubmit={(event) => {
-        event.preventDefault();
+    <Form
+      variant="panel"
+      className="mb-4"
+      onSubmit={() => {
         if (ready) void save();
       }}
     >
@@ -190,14 +191,12 @@ export function PersonaEditor(props: {
           {error}
         </p>
       )}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={!ready}>
-          {t("personas.editor.save")}
-        </Button>
-        <Button type="button" variant="ghost" onClick={props.onClose}>
-          {t("common.cancel")}
-        </Button>
-      </div>
-    </form>
+      <FormActions
+        submit={t("personas.editor.save")}
+        disabled={!ready}
+        cancel={t("common.cancel")}
+        onCancel={props.onClose}
+      />
+    </Form>
   );
 }

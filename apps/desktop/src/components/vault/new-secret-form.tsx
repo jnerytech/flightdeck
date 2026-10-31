@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,10 +50,10 @@ export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
 
   const named = name.trim() !== "";
   return (
-    <form
-      className="mb-4 flex flex-col gap-3 rounded-lg border p-4"
-      onSubmit={(event) => {
-        event.preventDefault();
+    <Form
+      variant="panel"
+      className="mb-4"
+      onSubmit={() => {
         if (named && value !== "") void save();
       }}
     >
@@ -121,20 +122,32 @@ export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
           </Button>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={!named || value === ""}>
-          {t("vault.save")}
-        </Button>
-        <Button type="button" variant="outline" disabled={!named} onClick={() => void generate()}>
-          {t("vault.generate")}
-        </Button>
-        <Button type="button" variant="outline" disabled={!named} onClick={() => void importFile()}>
-          {t("vault.importFile")}
-        </Button>
-        <Button type="button" variant="ghost" onClick={props.onClose}>
-          {t("common.cancel")}
-        </Button>
-      </div>
-    </form>
+      <FormActions
+        submit={t("vault.save")}
+        disabled={!named || value === ""}
+        cancel={t("common.cancel")}
+        onCancel={props.onClose}
+        extra={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!named}
+              onClick={() => void generate()}
+            >
+              {t("vault.generate")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!named}
+              onClick={() => void importFile()}
+            >
+              {t("vault.importFile")}
+            </Button>
+          </>
+        }
+      />
+    </Form>
   );
 }

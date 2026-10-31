@@ -1,5 +1,6 @@
 import type { SshAuth, SshTarget } from "@flightdeck/protocol";
 import { useId, useState } from "react";
+import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -128,10 +129,10 @@ export function TargetForm(props: {
   );
 
   return (
-    <form
-      className="mb-4 flex flex-col gap-3 rounded-lg border p-4"
-      onSubmit={(event) => {
-        event.preventDefault();
+    <Form
+      variant="panel"
+      className="mb-4"
+      onSubmit={() => {
         if (ready) void save();
       }}
     >
@@ -261,17 +262,19 @@ export function TargetForm(props: {
         </div>
       )}
       {testResult && <p role="status">{testResult}</p>}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={!ready}>
-          {t("connections.form.save")}
-        </Button>
-        <Button type="button" variant="outline" disabled={!target} onClick={() => void test()}>
-          {t("connections.form.test")}
-        </Button>
-        <Button type="button" variant="ghost" onClick={props.onClose}>
-          {t("common.cancel")}
-        </Button>
-      </div>
+      <FormActions
+        submit={t("connections.form.save")}
+        disabled={!ready}
+        cancel={t("common.cancel")}
+        onCancel={props.onClose}
+        extra={
+          <>
+            <Button type="button" variant="outline" disabled={!target} onClick={() => void test()}>
+              {t("connections.form.test")}
+            </Button>
+          </>
+        }
+      />
       {askingAgent && (
         <ConfirmDialog
           message={t("connections.form.forwardAgentMessage")}
@@ -283,6 +286,6 @@ export function TargetForm(props: {
           onCancel={() => setAskingAgent(false)}
         />
       )}
-    </form>
+    </Form>
   );
 }
