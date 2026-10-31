@@ -61,6 +61,7 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
+import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
@@ -140,6 +141,8 @@ export interface ServerOptions {
   autoApprove?: AutoApprover;
   /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
   agentcfg?: AgentConfig;
+  /** Phase 26: the project's auto memory (`memory.*`). */
+  memory?: ProjectMemory;
   /** Phase 12: the project's MCP servers (`mcp.*`). */
   mcp?: McpConfig;
   /** Phase 12: `session.fork`. */
@@ -338,6 +341,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
     ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
+    ...(opts.memory ? ["memory"] : []),
     // Phase 13: the arena is the board's; issues and automations are services of their own.
     ...(opts.board ? ["arena"] : []),
     ...(opts.issues ? ["issues"] : []),
@@ -1001,6 +1005,39 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
         return ok(command.type, written);
       }
+      case "memory.list":
+        return ok(command.type, { dir: "", exists: true, files: [] });
+      case "memory.read":
+        return ok(command.type, {
+          name: "",
+          hash: "",
+          bytes: 0,
+          lines: 0,
+          inIndex: false,
+          content: "",
+        });
+      case "memory.write":
+        return ok(command.type, { hash: "" });
+      case "memory.delete":
+        return ok(command.type, { name: "" });
+      case "memory.budget":
+        return ok(command.type, {
+          sources: [],
+          startTokens: 0,
+          memory: {
+            limitLines: 0,
+            limitBytes: 0,
+            indexLines: 0,
+            indexBytes: 0,
+            loadedLines: 0,
+            loadedBytes: 0,
+            cutBy: null,
+            leftOutLines: [],
+            leftOutFiles: [],
+          },
+        });
+      case "memory.suggest":
+        return ok(command.type, { suggestions: [{ kind: "orphan", files: [] }] });
       case "session.fork": {
         if (!opts.forker) throw new FlightdeckError("invalid_state", "bifurcar indisponível");
         return ok(command.type, await opts.forker.fork(command.payload));

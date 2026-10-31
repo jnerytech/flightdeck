@@ -98,6 +98,18 @@ const validCommands: Record<CommandType, unknown> = {
   "mcp.remove": { projectId: "p1", name: "eco", confirm: true },
   "mcp.toggle": { projectId: "p1", name: "eco", enabled: false, confirm: true, sessionId: "s1" },
   "agentcfg.list": { projectId: "p1", kind: "agent" },
+  "memory.list": { projectId: "p1" },
+  "memory.read": { projectId: "p1", name: "MEMORY.md" },
+  "memory.write": {
+    projectId: "p1",
+    name: "a.md",
+    content: "x\n",
+    expectedHash: null,
+    confirm: true,
+  },
+  "memory.delete": { projectId: "p1", name: "a.md", expectedHash: "abc", confirm: true },
+  "memory.budget": { projectId: "p1" },
+  "memory.suggest": { projectId: "p1" },
   "agentcfg.read": { projectId: "p1", kind: "claudemd", path: "CLAUDE.md", origin: "user" },
   "agentcfg.write": {
     projectId: "p1",

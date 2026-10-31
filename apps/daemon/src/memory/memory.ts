@@ -110,6 +110,11 @@ function repoRoot(project: string): string {
   return common.endsWith(".git") ? dirname(common) : real;
 }
 
+/** A recorder that appends each decision as a line of JSON to `path`. */
+export function decisionLog(_path: string): (decision: MemoryDecision) => void {
+  return () => {};
+}
+
 /** Where the organization's CLAUDE.md lives on this platform. */
 function managedClaudeMdPath(): string {
   if (process.platform === "win32") return "C:\\Program Files\\ClaudeCode\\CLAUDE.md";

@@ -1514,6 +1514,66 @@ export const AgentCfgItem = z.object({
 });
 export type AgentCfgItem = z.infer<typeof AgentCfgItem>;
 
+/** Phase 26: the auto memory of a project (`~/.claude/projects/<project>/memory`). */
+export const MemoryFile = z.object({
+  name: z.string(),
+  /** sha256 of the file's bytes, to send back as `expectedHash`. */
+  hash: z.string(),
+  bytes: z.number().int().nonnegative(),
+  lines: z.number().int().nonnegative(),
+  type: z.string().optional(),
+  description: z.string().optional(),
+  /** `MEMORY.md` mentions the file (the index itself counts). */
+  inIndex: z.boolean(),
+});
+export type MemoryFile = z.infer<typeof MemoryFile>;
+
+export const MemoryListing = z.object({
+  dir: z.string(),
+  exists: z.boolean(),
+  files: z.array(MemoryFile),
+});
+export type MemoryListing = z.infer<typeof MemoryListing>;
+
+/** One source of the context at the start of a session, with an estimate of its tokens. */
+export const BudgetSource = z.object({
+  kind: z.enum(["managed", "user", "project", "local", "rules", "skills", "memory"]),
+  path: z.string(),
+  bytes: z.number().int().nonnegative(),
+  tokens: z.number().int().nonnegative(),
+  /** `start` is in the context from the first message; `on-demand` only when Claude reads it. */
+  load: z.enum(["start", "on-demand"]),
+  note: z.string().optional(),
+});
+export type BudgetSource = z.infer<typeof BudgetSource>;
+
+export const ContextBudget = z.object({
+  sources: z.array(BudgetSource),
+  startTokens: z.number().int().nonnegative(),
+  memory: z.object({
+    limitLines: z.number().int(),
+    limitBytes: z.number().int(),
+    indexLines: z.number().int().nonnegative(),
+    indexBytes: z.number().int().nonnegative(),
+    loadedLines: z.number().int().nonnegative(),
+    loadedBytes: z.number().int().nonnegative(),
+    /** What stopped the loading of the index; null when all of it fits. */
+    cutBy: z.enum(["lines", "bytes"]).nullable(),
+    leftOutLines: z.array(z.string()),
+    leftOutFiles: z.array(z.string()),
+  }),
+});
+export type ContextBudget = z.infer<typeof ContextBudget>;
+
+/** A cleanup the screen suggests; the memory is never edited because of it. */
+export const MemorySuggestion = z.object({
+  kind: z.enum(["duplicate", "broken-link", "orphan", "stale", "contradiction"]),
+  files: z.array(z.string()),
+  /** The index line behind a broken link. */
+  detail: z.string().optional(),
+});
+export type MemorySuggestion = z.infer<typeof MemorySuggestion>;
+
 /** Phase 16: who asks for a secret. `you` is only for uses the app itself started. */
 export const VaultRequester = z.enum(["you", "claude", "automation", "workflow"]);
 export type VaultRequester = z.infer<typeof VaultRequester>;
@@ -2199,6 +2259,34 @@ export const Command = z.discriminatedUnion("type", [
       origin: AgentCfgOrigin.optional(),
     }),
   ),
+  /** Phase 26: the project's auto memory. Writes need `confirm` and the hash that was opened. */
+  cmd("memory.list", z.object({ projectId: z.string() }).strict()),
+  cmd("memory.read", z.object({ projectId: z.string(), name: z.string().min(1) }).strict()),
+  cmd(
+    "memory.write",
+    z
+      .object({
+        projectId: z.string(),
+        name: z.string().min(1),
+        content: z.string(),
+        expectedHash: z.string().nullable(),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
+  cmd(
+    "memory.delete",
+    z
+      .object({
+        projectId: z.string(),
+        name: z.string().min(1),
+        expectedHash: z.string(),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
+  cmd("memory.budget", z.object({ projectId: z.string() }).strict()),
+  cmd("memory.suggest", z.object({ projectId: z.string() }).strict()),
   cmd("hooks.status", z.object({}).strict()),
   /** Writes to the host user's ~/.claude/settings.json: only with `confirm: true`. */
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
@@ -2866,6 +2954,12 @@ export interface CommandResults {
   "mcp.toggle": { servers: McpServerView[] };
   "mcp.status": { servers: McpLiveStatus[] };
   "agentcfg.list": { items: AgentCfgItem[] };
+  "memory.list": MemoryListing;
+  "memory.read": MemoryFile & { content: string };
+  "memory.write": { hash: string };
+  "memory.delete": { name: string };
+  "memory.budget": ContextBudget;
+  "memory.suggest": { suggestions: MemorySuggestion[] };
   "actions.list": ActionList;
   "actions.save": ActionInfo;
   "actions.remove": ActionList;

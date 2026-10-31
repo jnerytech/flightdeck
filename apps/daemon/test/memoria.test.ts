@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -10,9 +10,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { type MemoryDecision, ProjectMemory } from "../src/memory/memory.ts";
-import { git, gitRepo } from "./board-helpers.ts";
+import { decisionLog, type MemoryDecision, ProjectMemory } from "../src/memory/memory.ts";
+import { startServer } from "../src/server.ts";
+import { git, gitRepo, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const codeOf = (fn: () => unknown): string => {
@@ -447,5 +449,157 @@ describe("memoria: limpeza sugerida", () => {
   test("sem pasta de memória não há o que sugerir", () => {
     const { memory, repo } = setup();
     expect(memory.suggest(repo)).toEqual([]);
+  });
+});
+
+describe("memoria: protocolo", () => {
+  const TOKEN = "memoria-token-0123456789abcdef";
+  const cleanups: Array<() => unknown> = [];
+  afterEach(async () => {
+    for (const fn of cleanups.splice(0).reverse()) await fn();
+  });
+
+  async function served(withMemory = true) {
+    const claudeDir = tempDir("fd-claude-");
+    const { board, manager, repo } = newBoard();
+    const memory = new ProjectMemory({ claudeDir, clock: () => Date.UTC(2026, 9, 31, 12) });
+    const dir = join(claudeDir, "projects", slugOf(repo), "memory");
+    const put = (name: string, text: string) => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, name), text);
+    };
+    const { id: projectId } = await board.addProject({ path: repo });
+    const server = startServer({
+      manager,
+      board,
+      ...(withMemory ? { memory } : {}),
+      features: undefined,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    return { client, projectId, dir, put };
+  }
+
+  test("host.info anuncia memory só quando a memória está ligada", async () => {
+    const on = await served();
+    expect((await on.client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
+      "memory",
+    );
+    const off = await served(false);
+    expect(
+      (await off.client.data<{ features: string[] }>("host.info", {}))?.features,
+    ).not.toContain("memory");
+    expect(await off.client.request("memory.list", { projectId: off.projectId })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+  });
+
+  test("memory.list, read, write e delete por projeto, com o hash e a confirmação", async () => {
+    const { client, projectId, dir, put } = await served();
+    put("MEMORY.md", "- [A](a.md)\n");
+    put("a.md", "a\n");
+    const listed = await client.data<{ exists: boolean; files: Array<{ name: string }> }>(
+      "memory.list",
+      { projectId },
+    );
+    expect(listed?.exists).toBe(true);
+    expect(listed?.files.map((f) => f.name)).toEqual(["MEMORY.md", "a.md"]);
+    const read = await client.data<{ content: string; hash: string }>("memory.read", {
+      projectId,
+      name: "a.md",
+    });
+    expect(read).toMatchObject({ content: "a\n", hash: sha("a\n") });
+    const edit = { projectId, name: "a.md", content: "b\n", expectedHash: sha("a\n") };
+    expect(await client.request("memory.write", edit)).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+    expect(readFileSync(join(dir, "a.md"), "utf8")).toBe("a\n");
+    expect(await client.data("memory.write", { ...edit, confirm: true })).toEqual({
+      hash: sha("b\n"),
+    });
+    expect(
+      await client.request("memory.delete", { projectId, name: "a.md", expectedHash: sha("b\n") }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+    expect(
+      await client.data("memory.delete", {
+        projectId,
+        name: "a.md",
+        expectedHash: sha("b\n"),
+        confirm: true,
+      }),
+    ).toEqual({
+      name: "a.md",
+    });
+    expect(existsSync(join(dir, "a.md"))).toBe(false);
+    expect(await client.request("memory.read", { projectId, name: "../x.md" })).toMatchObject({
+      ok: false,
+      error: { code: "bad_request" },
+    });
+  });
+
+  test("memory.budget e memory.suggest respondem o que o módulo calcula", async () => {
+    const { client, projectId, put } = await served();
+    put("MEMORY.md", "- [Some](sumiu.md)\n");
+    const budget = await client.data<{
+      memory: { indexLines: number; loadedLines: number };
+      sources: Array<{ kind: string }>;
+    }>("memory.budget", { projectId });
+    expect(budget?.memory).toMatchObject({
+      indexLines: 1,
+      loadedLines: 1,
+      limitLines: 200,
+      limitBytes: 25600,
+    });
+    expect(budget?.sources.map((s) => s.kind)).toContain("memory");
+    expect(await client.data("memory.suggest", { projectId })).toEqual({
+      suggestions: [{ kind: "broken-link", files: ["sumiu.md"], detail: "- [Some](sumiu.md)" }],
+    });
+  });
+});
+
+describe("memoria: o registro das decisões", () => {
+  test("cada decisão vira uma linha de JSON no arquivo, na ordem, só com o que o registro tem", () => {
+    const file = join(tempDir("fd-log-"), "dados", "memory-decisions.jsonl");
+    const record = decisionLog(file);
+    const claudeDir = tempDir("fd-claude-");
+    const { repo } = gitRepo();
+    const memory = new ProjectMemory({ claudeDir, clock: () => Date.UTC(2026, 9, 31, 12), record });
+    memory.write(repo, {
+      name: "a.md",
+      content: "segredo-de-teste\n",
+      expectedHash: null,
+      confirm: true,
+    });
+    memory.remove(repo, { name: "a.md", expectedHash: sha("segredo-de-teste\n"), confirm: true });
+    const lines = readFileSync(file, "utf8").trim().split("\n");
+    expect(lines.map((l) => JSON.parse(l))).toEqual([
+      {
+        action: "write",
+        name: "a.md",
+        before: null,
+        after: sha("segredo-de-teste\n"),
+        at: "2026-10-31T12:00:00.000Z",
+      },
+      {
+        action: "delete",
+        name: "a.md",
+        before: sha("segredo-de-teste\n"),
+        after: null,
+        at: "2026-10-31T12:00:00.000Z",
+      },
+    ]);
+    expect(readFileSync(file, "utf8")).not.toContain("segredo-de-teste");
   });
 });
