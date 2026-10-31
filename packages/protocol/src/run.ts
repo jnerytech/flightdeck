@@ -5,12 +5,16 @@ import { z } from "zod";
 
 const LOOPBACK: ReadonlySet<string> = new Set(["127.0.0.1", "localhost"]);
 
-/** The preview opens http(s) on this machine (127.0.0.1 or localhost), and nowhere else. */
+/** The preview opens http(s) on this machine (127.0.0.1 or localhost), without credentials, and nowhere else. */
 export function isPreviewUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     return (
-      (parsed.protocol === "http:" || parsed.protocol === "https:") && LOOPBACK.has(parsed.hostname)
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      LOOPBACK.has(parsed.hostname) &&
+      // Credentials in an address are never needed for a local dev server.
+      !parsed.username &&
+      !parsed.password
     );
   } catch {
     return false;
