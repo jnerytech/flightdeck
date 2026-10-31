@@ -4,7 +4,11 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import type { PluginInventory } from "./inventory.ts";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { FlightdeckError } from "../errors.ts";
+import { whichOnPath } from "../which.ts";
+import { inspectPlugin, type PluginInventory } from "./inventory.ts";
 
 export interface CliResult {
   code: number;
@@ -74,44 +78,166 @@ export interface PluginsOptions {
   clock?: () => number;
 }
 
+const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+
+type Json = Record<string, unknown>;
+const isObject = (value: unknown): value is Json =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+/** The id `name@marketplace` split at its last `@`. */
+function split(id: string): { name: string; marketplace: string } {
+  const at = id.lastIndexOf("@");
+  return at < 0
+    ? { name: id, marketplace: "" }
+    : { name: id.slice(0, at), marketplace: id.slice(at + 1) };
+}
+
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
 
   async list(): Promise<PluginList> {
-    void this.opts;
-    return { installed: [], available: [], marketplaces: [] };
-  }
-
-  /** One installed plugin, with what it installs. */
-  async detail(_id: string): Promise<InstalledPlugin> {
+    const listed = await this.json(["list", "--json", "--available"]);
+    const markets = await this.json(["marketplace", "list", "--json"]);
+    const pins = this.opts.pins.all();
+    const installedRaw = Array.isArray(listed)
+      ? listed
+      : isObject(listed)
+        ? list(listed.installed)
+        : [];
+    const availableRaw = isObject(listed) ? list(listed.available) : [];
     return {
-      id: "",
-      name: "",
-      marketplace: "",
-      version: "",
-      scope: "",
-      enabled: false,
-      path: "",
-      pinned: null,
-      inventory: null,
-      errors: [],
+      installed: installedRaw.filter(isObject).map((item) => this.installed(item, pins)),
+      available: availableRaw.filter(isObject).map((item) => ({
+        id: text(item.pluginId) ?? "",
+        name: text(item.name) ?? "",
+        marketplace: text(item.marketplaceName) ?? "",
+        ...(text(item.description) ? { description: text(item.description) as string } : {}),
+        ...(text(item.version) ? { version: text(item.version) as string } : {}),
+      })),
+      marketplaces: list(markets)
+        .filter(isObject)
+        .map((item) => {
+          const origin = text(item.repo) ?? text(item.url) ?? text(item.path);
+          return {
+            name: text(item.name) ?? "",
+            source: text(item.source) ?? "",
+            ...(origin ? { origin } : {}),
+            ...(text(item.installLocation)
+              ? { location: text(item.installLocation) as string }
+              : {}),
+          };
+        }),
     };
   }
 
+  /** One installed plugin, with what it installs. */
+  async detail(id: string): Promise<InstalledPlugin> {
+    const found = (await this.list()).installed.find((plugin) => plugin.id === id);
+    if (!found) throw new FlightdeckError("not_found", `${id} não está instalado`);
+    return found;
+  }
+
   /** Fixes the installed version, or lets it go. */
-  async pin(_id: string, _pinned: boolean): Promise<InstalledPlugin> {
-    return this.detail(_id);
+  async pin(id: string, pinned: boolean): Promise<InstalledPlugin> {
+    const found = await this.detail(id);
+    if (!pinned) {
+      this.opts.pins.delete(id);
+      return { ...found, pinned: null };
+    }
+    const pin: Pin = {
+      version: found.version,
+      hash: found.inventory?.hash ?? "",
+      at: new Date((this.opts.clock ?? Date.now)()).toISOString(),
+    };
+    this.opts.pins.set(id, pin);
+    return { ...found, pinned: pin };
+  }
+
+  private installed(item: Json, pins: Record<string, Pin>): InstalledPlugin {
+    const id = text(item.id) ?? "";
+    const path = text(item.readFromFolder) ?? text(item.installPath) ?? "";
+    let inventory: PluginInventory | null = null;
+    try {
+      inventory = inspectPlugin(path);
+    } catch {
+      // A folder that is gone or too big shows no inventory; the CLI's own errors still show.
+    }
+    return {
+      id,
+      ...split(id),
+      version: text(item.version) ?? "",
+      scope: text(item.scope) ?? "",
+      enabled: item.enabled === true,
+      path,
+      pinned: pins[id] ?? null,
+      inventory,
+      errors: list(item.errors).map(String),
+    };
+  }
+
+  /** Runs the CLI and parses its stdout as JSON; the reason when it fails. */
+  private async json(args: string[]): Promise<unknown> {
+    const result = await this.opts.cli.run(args);
+    if (result.code !== 0) {
+      throw invalid(
+        `claude plugin ${args[0]} falhou: ${result.stderr.trim() || `código ${result.code}`}`,
+      );
+    }
+    try {
+      return JSON.parse(result.stdout);
+    } catch {
+      throw invalid(`claude plugin ${args[0]} não devolveu JSON`);
+    }
   }
 }
 
 /** The CLI found on PATH (`claude plugin ...`), with the environment of the daemon. */
 export function claudeCli(
-  _options: { timeoutMs?: number; executable?: () => string | null } = {},
+  options: { timeoutMs?: number; executable?: () => string | null } = {},
 ): PluginCli {
-  return { run: async () => ({ code: -1, stdout: "", stderr: "" }) };
+  return {
+    run: async (args) => {
+      const executable = (options.executable ?? (() => whichOnPath("claude")))();
+      if (!executable) throw invalid("o claude não foi encontrado no PATH");
+      const proc = Bun.spawn([executable, "plugin", ...args], {
+        env: process.env,
+        stdin: "ignore",
+        stdout: "pipe",
+        stderr: "pipe",
+        timeout: options.timeoutMs ?? 120_000,
+      });
+      const [stdout, stderr, code] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+      return { code, stdout, stderr };
+    },
+  };
 }
 
-/** Pins kept in a JSON file. */
-export function filePins(_path: string): PinStore {
-  return { all: () => ({}), set: () => {}, delete: () => {} };
+/** Pins kept in a JSON file; one that cannot be read is no pin at all. */
+export function filePins(path: string): PinStore {
+  const read = (): Record<string, Pin> => {
+    try {
+      const data = JSON.parse(readFileSync(path, "utf8"));
+      return isObject(data) ? (data as Record<string, Pin>) : {};
+    } catch {
+      return {};
+    }
+  };
+  const write = (pins: Record<string, Pin>) => {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify(pins, null, 2));
+  };
+  return {
+    all: read,
+    set: (id, pin) => write({ ...read(), [id]: pin }),
+    delete: (id) => {
+      const { [id]: _gone, ...rest } = read();
+      write(rest);
+    },
+  };
 }
