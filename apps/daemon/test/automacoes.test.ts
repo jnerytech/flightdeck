@@ -66,6 +66,8 @@ function prHost() {
     }),
     url: async () => null,
     comments: async () => [],
+    health: async () => ({ checks: [], conflicts: false }),
+    buildLog: async () => "",
   };
   return { state, provider };
 }

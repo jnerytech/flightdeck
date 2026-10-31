@@ -108,6 +108,23 @@ export function prMessage(comments: readonly PrComment[]): string {
   ].join("\n");
 }
 
+/** One check of a PR: a build or a policy the host evaluates (phase 22). */
+export interface PrCheck {
+  name: string;
+  state: "passing" | "failing" | "pending";
+  /** A build can be read for its log; any other policy cannot be fixed by code. */
+  kind: "build" | "policy";
+  /** The host's id of the build behind the check, to fetch its log. */
+  buildId: string | null;
+}
+
+/** What the PR watcher reads of a PR each round (phase 22). */
+export interface PrHealth {
+  checks: PrCheck[];
+  /** The PR cannot be merged into its target as it is. */
+  conflicts: boolean;
+}
+
 /** A PR host reached through its CLI, which must be installed and logged in on this host. */
 export interface PrProvider {
   /** Opens the PR (or reuses the one already open for `head`) and returns its URL. */
@@ -117,6 +134,10 @@ export interface PrProvider {
   url(opts: { cwd: string; head: string }): Promise<string | null>;
   /** The PR's review comments and review summaries. */
   comments(opts: { cwd: string; url: string }): Promise<PrComment[]>;
+  /** Phase 22: the PR's builds and policies, and whether it conflicts with its target. */
+  health(opts: { cwd: string; url: string }): Promise<PrHealth>;
+  /** Phase 22: the end of the log of what failed in a build, at most 16 KB. */
+  buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
 }
 
 /** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
@@ -312,6 +333,14 @@ export class GithubCli implements PrProvider {
     ];
   }
 
+  async health(_opts: { cwd: string; url: string }): Promise<PrHealth> {
+    return { checks: [], conflicts: false };
+  }
+
+  async buildLog(_opts: { cwd: string; url: string; buildId: string }): Promise<string> {
+    return "";
+  }
+
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
     const result = await cli("gh", ["pr", "view", head, "--json", "url"], cwd);
     if (result.code !== 0) return null;
@@ -379,6 +408,14 @@ export class AzureDevOpsCli implements PrProvider {
       return AZ_PASS.has(status) ? ("passing" as const) : ("pending" as const);
     });
     return { state: AZ_STATES[pr.status] ?? "open", checks: summarize(checks) };
+  }
+
+  async health(_opts: { cwd: string; url: string }): Promise<PrHealth> {
+    return { checks: [], conflicts: false };
+  }
+
+  async buildLog(_opts: { cwd: string; url: string; buildId: string }): Promise<string> {
+    return "";
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {

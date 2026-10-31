@@ -632,4 +632,17 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX session_aliases_session ON session_aliases (session_id);
   `,
+  `
+  CREATE TABLE pr_watch (
+    card_id    TEXT PRIMARY KEY,
+    enabled    INTEGER,
+    snapshot   TEXT,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE pr_watch_project (
+    project_id TEXT PRIMARY KEY,
+    settings   TEXT NOT NULL
+  );
+  `,
 ];
