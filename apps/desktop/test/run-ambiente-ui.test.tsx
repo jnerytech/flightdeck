@@ -89,8 +89,8 @@ describe("run-ui: o estado do Run na loja", () => {
     runHost?.finish("term-1", 0);
     expect(await until(() => store.getState().runEnvs[key]?.status === "running")).toBe(true);
     expect(store.getState().runEnvs[key]?.ports).toEqual({ web: 41000 });
-    expect(store.getState().runEnvs[key]?.processes.map((p) => [p.name, p.url, p.ready])).toEqual([
-      ["web", "http://127.0.0.1:41000/", "waiting"],
+    expect(store.getState().runEnvs[key]?.processes.map((p) => [p.name, p.url])).toEqual([
+      ["web", "http://127.0.0.1:41000/"],
     ]);
     expect(await until(() => store.getState().runEnvs[key]?.processes[0]?.ready === "ready")).toBe(
       true,

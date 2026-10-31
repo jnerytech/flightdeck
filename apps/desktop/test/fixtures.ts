@@ -330,6 +330,7 @@ export function daemon(
       ...(automations ? { automations } : {}),
       ...(autoApprove ? { autoApprove } : {}),
       ...(terminals ? { terminals } : {}),
+      ...(runManager ? { runenv: { configs: runConfigs, manager: runManager } } : {}),
       ...(actions ? { actions } : {}),
       ...(snippets
         ? {
