@@ -255,11 +255,12 @@ describe("hub-ui", () => {
     expect(ask.className).not.toContain("bg-status-needs-you");
     expect(ask.querySelector("svg[data-icon='needs-you']")).toBeNull();
     expect(badge("repo-ask", "precisa de você")?.className).toContain("bg-status-needs-you");
-    expect(within(ask).queryByText(/^alfa/)).not.toBeNull();
+    // The host is the same for the whole group: it is in the header, not on the row.
+    expect(within(ask).queryByText(/^alfa/)).toBeNull();
     expect(badge("repo-run", "rodando")?.className).toContain("bg-status-running");
     expect(badge("Gerenciada", "ociosa")?.className).toContain("bg-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
-    expect(item("Do histórico")?.textContent ?? "").toContain("alfa · histórico");
+    expect(item("Do histórico")?.textContent ?? "").toContain("histórico");
     expect(item("Do histórico")?.querySelector("time")?.getAttribute("title")).toBe(
       "01/09/2026, 07:00",
     );
