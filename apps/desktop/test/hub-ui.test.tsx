@@ -160,6 +160,7 @@ const hubRow = (patch: Partial<HubRow>): HubRow => ({
   pinned: false,
   archived: false,
   summary: null,
+  persona: null,
   ...patch,
 });
 
@@ -187,6 +188,7 @@ describe("hub-ui", () => {
       host: "alfa",
       origin: "terminal",
       state: "idle",
+      persona: "qa",
       pinnedOnly: true,
       showArchived: true,
     });
@@ -194,6 +196,7 @@ describe("hub-ui", () => {
       host: "alfa",
       origin: "terminal",
       state: "idle",
+      persona: "qa",
       pinnedOnly: true,
       showArchived: true,
     });
@@ -202,6 +205,7 @@ describe("hub-ui", () => {
       host: "alfa",
       origin: "terminal",
       state: "idle",
+      persona: "qa",
       pinnedOnly: true,
       showArchived: true,
     });

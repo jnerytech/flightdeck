@@ -1,4 +1,10 @@
-import type { ExternalStatus, SessionLine, SessionMeta, SessionStatus } from "@flightdeck/protocol";
+import type {
+  ExternalStatus,
+  SessionLine,
+  SessionMeta,
+  SessionPersona,
+  SessionStatus,
+} from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { basename } from "./paths.ts";
@@ -27,6 +33,8 @@ export interface HubRow {
   archived: boolean;
   /** What the daemon says about it (phase 8); absent on older daemons. */
   summary: SessionLine | null;
+  /** The persona it runs in (phase 20). */
+  persona: SessionPersona | null;
 }
 
 export interface HubFilter {
@@ -35,6 +43,8 @@ export interface HubFilter {
   host: string;
   origin: "" | HubOrigin;
   state: "" | HubState;
+  /** A persona id, or "" for all (phase 20). */
+  persona: string;
   pinnedOnly: boolean;
   showArchived: boolean;
 }
@@ -47,6 +57,7 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
   host: "",
   origin: "",
   state: "",
+  persona: "",
   pinnedOnly: false,
   showArchived: false,
 };
@@ -71,6 +82,7 @@ export function loadHubFilter(storage: { getItem(key: string): string | null }):
     host: text("host"),
     origin: text("origin", ORIGINS) as HubFilter["origin"],
     state: text("state", STATES) as HubFilter["state"],
+    persona: "",
     pinnedOnly: stored.pinnedOnly === true,
     showArchived: stored.showArchived === true,
   };
@@ -174,6 +186,7 @@ export function hubRows(state: AppState): HubRow[] {
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
         summary: liveLine(s.summary, live),
+        persona: null,
       };
     });
     const externals = Object.entries(state.externals)
@@ -190,6 +203,7 @@ export function hubRows(state: AppState): HubRow[] {
           controllable: s.controllable,
           lastActivity: s.lastEventAt,
           summary: s.summary ?? null,
+          persona: null,
         };
       });
     const history = data.history
@@ -206,6 +220,7 @@ export function hubRows(state: AppState): HubRow[] {
           controllable: false,
           lastActivity: s.lastTs ?? "",
           summary: s.summary ?? null,
+          persona: null,
         };
       });
     return [...managed, ...externals, ...history];
