@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { packageOf, reachedPackages, staticImports } from "../lib/bundle-reach.ts";
+import { packageOf, reachedPackages, slashed, staticImports } from "../lib/bundle-reach.ts";
 
 describe("bundle-lazy: what an entry point loads at start-up", () => {
   test("staticImports lists value imports and re-exports, and skips types, dynamic imports and comments", () => {
@@ -43,6 +43,11 @@ describe("bundle-lazy: what an entry point loads at start-up", () => {
     expect(packageOf("./a.ts")).toBeNull();
     expect(packageOf("@/lib/b")).toBeNull();
     expect(packageOf("node:fs")).toBeNull();
+  });
+
+  test("slashed gives a chain the same names on every platform", () => {
+    expect(slashed("ui\\sub\\App.tsx", "\\")).toBe("ui/sub/App.tsx");
+    expect(slashed("ui/App.tsx", "/")).toBe("ui/App.tsx");
   });
 
   test("it follows relative and @/ imports and reports the chain to a watched package, not past a dynamic import", () => {

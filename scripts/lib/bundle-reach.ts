@@ -34,6 +34,11 @@ export interface Reached {
 const watches = (watched: string[], name: string) =>
   watched.some((w) => (w.endsWith("/") ? name.startsWith(w) : name === w));
 
+/** A path with `/` between its parts, whatever separator the platform uses. */
+export function slashed(path: string, _separator: string): string {
+  return path;
+}
+
 /**
  * Follows the static imports from `entries` through the files under `srcRoot` (relative paths and
  * `@/` for `srcRoot`) and returns, for each package in `watched`, the first chain that reaches it.

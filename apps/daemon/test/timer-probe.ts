@@ -3,6 +3,10 @@
  * Only those started from `apps/daemon/src` count, named by the file that started them, and
  * only the ones that live long: every interval and every timeout of a second or more.
  */
+export function fileOfStack(_stack: string): string | null {
+  return null;
+}
+
 export function probeTimers() {
   const alive = new Map<unknown, { file: string; ms: number }>();
   const real = {
