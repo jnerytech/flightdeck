@@ -42,6 +42,7 @@
     "smoke:otel": "bun run scripts/smoke-otel.ts",
     "smoke:perf": "bun run scripts/smoke-perf.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
+    "slot": "bun run scripts/slot.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
     "e2e": "bun run scripts/demo.ts --e2e",
