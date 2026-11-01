@@ -156,4 +156,38 @@ describe("projeto-chave", () => {
     expect(await cold).toBe("host:h1:/w");
     expect(keys.lookup("/w")).toBe("host:h1:/w");
   });
+
+  test("a folder that becomes a git repository later gets its repository's key, not the folder key it had", async () => {
+    const root = tempDir("fd-chave-pasta-");
+    const folder = join(root, "app");
+    mkdirSync(folder);
+    const keys = new ProjectKeys("h1");
+    expect(keys.keyFor(folder)).toBe(`host:h1:${folder}`);
+    expect(await keys.resolve(folder)).toBe(`host:h1:${folder}`);
+    git(folder, "init", "-q", "-b", "main");
+    git(folder, "remote", "add", "origin", "git@github.com:Acme/App.git");
+    expect(keys.keyFor(folder)).toBe("github.com/acme/app");
+    expect(await keys.resolve(folder)).toBe("github.com/acme/app");
+    expect(keys.lookup(folder)).toBe("github.com/acme/app");
+  });
+
+  test("a folder that stays without a repository keeps its cached key and git is not asked again", async () => {
+    const folder = tempDir("fd-chave-pasta-");
+    const calls: string[][] = [];
+    const keys = new ProjectKeys(
+      "h1",
+      (args) => {
+        calls.push(args);
+        return { code: 128, stdout: "" };
+      },
+      async (args) => {
+        calls.push(args);
+        return { code: 128, stdout: "" };
+      },
+    );
+    keys.keyFor(folder);
+    keys.keyFor(folder);
+    await keys.resolve(folder);
+    expect(calls).toHaveLength(1);
+  });
 });
