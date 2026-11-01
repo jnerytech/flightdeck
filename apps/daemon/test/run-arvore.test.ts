@@ -56,7 +56,9 @@ describe("run-arvore: whoever kills a tree and then uses its files or ports wait
         undefined,
         50,
         async (pid) => {
-          process.kill(-pid, "SIGKILL");
+          // The command itself, not its group: a negative pid is POSIX only, and on Windows it
+          // throws, leaving the command running until the test times out.
+          process.kill(pid, "SIGKILL");
           await Bun.sleep(120);
           gone.push("tree");
         },
