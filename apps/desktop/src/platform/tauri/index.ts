@@ -94,7 +94,7 @@ export function tauriPlatform(
       probe: () => call<{ windows: boolean; wt: boolean }>("terminal_probe"),
       open: (program, args) => call("terminal_open", { program, args }),
     },
-    // WebView2's save dialog; no dialog plugin, so the Rust shell stays as it is.
+    // WebView2's save dialog (the dialog plugin is only used from Rust: vault_pick_file, pick_folder).
     saveFile: (name, text) => saveWithPicker(win, name, text),
     globalShortcut: {
       supported: true,

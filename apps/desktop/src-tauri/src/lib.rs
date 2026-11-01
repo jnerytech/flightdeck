@@ -208,7 +208,9 @@ async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
         return Ok(None);
     };
     let path = picked.into_path().map_err(|e| e.to_string())?;
-    Ok(Some(path.to_string_lossy().into_owned()))
+    // A path that is not valid UTF-8 would reach the daemon changed: refuse it here instead.
+    let text = path.to_str().ok_or("the folder's name is not valid text")?;
+    Ok(Some(text.to_string()))
 }
 
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
@@ -498,7 +500,8 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        // Phase 16: only the Rust side opens the dialog, to pick a key file for the vault.
+        // Only the Rust side opens the dialog (a key file for the vault, a folder for a session); the
+        // webview has no `dialog:*` permission.
         .plugin(tauri_plugin_dialog::init())
         .manage(PickedFile::default())
         .setup(|app| {
