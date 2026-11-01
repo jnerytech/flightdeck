@@ -1,3 +1,6 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 /** Settings of the e2e runner (`@playwright/test`), kept here so they are unit tested. */
 
 export const E2E_TEST_DIR = "scripts/e2e";
@@ -14,18 +17,34 @@ export interface RunnerSettings {
 }
 
 export function runnerSettings(env: Record<string, string | undefined>): RunnerSettings {
+  const ci = Boolean(env.CI);
+  const reporter: RunnerSettings["reporter"] = [
+    ["list"],
+    ["html", { open: "never", outputFolder: "playwright-report" }],
+  ];
+  if (ci) reporter.push(["github"]);
   return {
-    retries: 0,
-    workers: 0,
-    fullyParallel: true,
-    forbidOnly: false,
-    reporter: [],
-    use: { trace: "off", screenshot: "off", video: "off" },
-    outputDir: "",
+    // A retried pass is reported as flaky, never hidden.
+    retries: ci ? 1 : 0,
+    // The journeys share the seeded demo, and the second language relies on the first one's state.
+    workers: 1,
+    fullyParallel: false,
+    forbidOnly: ci,
+    reporter,
+    use: {
+      trace: "retain-on-failure",
+      screenshot: "only-on-failure",
+      video: "retain-on-failure",
+    },
+    outputDir: env.E2E_FAILURES || join(tmpdir(), "flightdeck-e2e"),
   };
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** The `--grep` for `E2E_ONLY=a,b`: test titles end in the journey name, after the language. */
 export function grepFor(only: string | undefined): RegExp | undefined {
-  return only ? /x/ : undefined;
+  const names = (only ?? "").split(",").filter(Boolean);
+  if (names.length === 0) return undefined;
+  return new RegExp(`(^| )(${names.map(escapeRegExp).join("|")})$`);
 }
