@@ -19,6 +19,7 @@ import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } fro
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
+import { TimingBreakdown } from "./TimingBreakdown.tsx";
 
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
@@ -71,6 +72,11 @@ export const CostsPage = memo(function CostsPage(props: {
   const withPersonas = hasFeature(
     hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "personas",
+    false,
+  );
+  const withTelemetry = hasFeature(
+    hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "telemetry",
     false,
   );
   // The names of the personas the breakdown shows (phase 20).
@@ -229,6 +235,21 @@ export const CostsPage = memo(function CostsPage(props: {
             })}
           </InlineNotice>
         )}
+        {status && status.telemetryDivergences.length > 0 && (
+          <InlineNotice>
+            {t("telemetry.divergence", {
+              items: status.telemetryDivergences
+                .map((d) =>
+                  t("telemetry.divergenceItem", {
+                    session: d.claudeSessionId.slice(0, 8),
+                    computed: usd(d.computedUsd),
+                    telemetry: usd(d.telemetryUsd),
+                  }),
+                )
+                .join("; "),
+            })}
+          </InlineNotice>
+        )}
         {hosts.length === 0 && (
           <EmptyState
             icon={Coins}
@@ -311,6 +332,7 @@ export const CostsPage = memo(function CostsPage(props: {
               )}
             </div>
             <QuotaCharts key={hostId} store={store} hostId={hostId} />
+            {withTelemetry && <TimingBreakdown key={hostId} store={store} hostId={hostId} />}
             <section aria-label={t("costsUi.top")}>
               <Panel title={t("costsUi.top")}>
                 <ul className="flex flex-col">

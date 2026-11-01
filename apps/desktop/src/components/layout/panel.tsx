@@ -8,6 +8,8 @@ export function Panel(props: {
   as?: "section" | "li";
   /** `sm` is the padding of an item in a list; `md` is a block of the screen. */
   size?: "md" | "sm";
+  /** Names the block for assistive technology. */
+  label?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -15,6 +17,7 @@ export function Panel(props: {
   const small = props.size === "sm";
   return (
     <Tag
+      aria-label={props.label}
       className={cn(
         "flex flex-col rounded-lg border bg-card",
         small ? "gap-2 p-3" : "gap-3 p-4",

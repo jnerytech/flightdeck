@@ -126,6 +126,7 @@ function ManagedSession(props: {
       claudeSessionId={claudeId}
       enabled={hasFeature(host?.hostInfo?.features, "review", false)}
       messagingId={hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null}
+      telemetry={hasFeature(host?.hostInfo?.features, "telemetry", false)}
     >
       <SessionView
         t={store.i18n.t}
@@ -502,6 +503,7 @@ function routeScreen(props: ScreenProps): ReactNode {
               ? route.claudeSessionId
               : null
           }
+          telemetry={hasFeature(hostOf(route.host)?.hostInfo?.features, "telemetry", false)}
         >
           <ExternalView
             store={store}

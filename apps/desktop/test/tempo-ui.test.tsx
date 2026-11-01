@@ -142,6 +142,41 @@ describe("tempo-ui: the Tempo tab of a session", () => {
     expect(bars.map((w) => Math.round(w))).toEqual([28, 5, 100, 3, 100]);
   });
 
+  test("odd steps read plainly: a tool that failed with no reason, a long one, a permission a hook denied, an API error with no status", async () => {
+    await open(
+      ["telemetry"],
+      [
+        {
+          promptId: "p-9",
+          startedAt: 0,
+          endedAt: 90_000,
+          costUsd: 0,
+          waitMs: 0,
+          items: [
+            item({ kind: "tool", toolName: "Grep", durationMs: 90_000, success: false }),
+            item({ kind: "permission", toolName: "Bash", decision: "reject", source: "hook" }),
+            item({ kind: "permission", toolName: "Edit", decision: "accept", source: "config" }),
+            item({
+              kind: "permission",
+              toolName: "Read",
+              decision: "accept",
+              source: "classifier",
+            }),
+            item({ kind: "error" }),
+          ],
+        },
+      ],
+    );
+    await click("Tempo");
+    await settle(() => (timeline()?.textContent ?? "").includes("Grep"));
+    const text = timeline()?.textContent ?? "";
+    expect(text).toContain("Grep · 1 min · falhou");
+    expect(text).toContain("Permissão para Bash: negada por um hook");
+    expect(text).toContain("Permissão para Edit: permitida pelas configurações");
+    expect(text).toContain("Permissão para Read: permitida");
+    expect(text).toContain("Erro de API");
+  });
+
   test("a session with no timing data says how it gets some", async () => {
     await open(["telemetry"], []);
     await click("Tempo");
@@ -205,7 +240,7 @@ describe("tempo-ui: Custos", () => {
     await settle(() => region("Tempo por projeto") !== null);
     const text = region("Tempo por projeto")?.textContent ?? "";
     expect(text).toContain("kA");
-    expect(text).toContain("esperou 8 s por você");
+    expect(text).toContain("esperou 7 s por você");
     expect(text).toContain("Bash");
     expect(text).toContain("3.0 s");
   });
