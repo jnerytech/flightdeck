@@ -1,8 +1,9 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { sessionKey } from "@/lib/app-store";
+import { useStoreState } from "@/lib/use-store";
 import type { Key } from "../../i18n/index.ts";
 
 /**
@@ -12,9 +13,7 @@ import type { Key } from "../../i18n/index.ts";
 export function PrWatchPanel(props: { store: AppStore; hostId: string; cardId: string }) {
   const t = useT();
   const { store, hostId, cardId } = props;
-  const watch = useSyncExternalStore(store.subscribe, store.getState).watches[
-    sessionKey(hostId, cardId)
-  ];
+  const watch = useStoreState(store).watches[sessionKey(hostId, cardId)];
   useEffect(() => {
     void store.loadWatch(hostId, cardId);
   }, [store, hostId, cardId]);
