@@ -47,7 +47,7 @@ function manualTimers() {
 }
 
 describe("ao-vivo: history.changed", () => {
-  function setup(watchDebounceMs?: number) {
+  async function setup(watchDebounceMs?: number) {
     const store = new EventStore(":memory:");
     const root = tempDir();
     const file = writeTranscript(root, "-p", "s1", [
@@ -70,12 +70,13 @@ describe("ao-vivo: history.changed", () => {
     indexer.start();
     cleanups.push(() => indexer.stop());
     timers.flush(); // boot pass, which also publishes the first indexing
+    await indexer.idle(); // the pass runs in the background and gives the loop back between files
     changes.length = 0;
-    return { file, timers, watched, changes };
+    return { file, timers, watched, changes, indexer };
   }
 
-  test("linha nova no transcript observado gera history.changed no intervalo configurado", () => {
-    const { file, timers, watched, changes } = setup(300);
+  test("linha nova no transcript observado gera history.changed no intervalo configurado", async () => {
+    const { file, timers, watched, changes, indexer } = await setup(300);
     appendFileSync(
       file,
       `${userLine({ uuid: "u2", text: "segunda", cwd: "/p", ts: "2026-10-29T10:01:00.000Z" })}\n`,
@@ -86,13 +87,14 @@ describe("ao-vivo: history.changed", () => {
     expect(timers.timeouts.map((t) => t.ms)).toEqual([300]);
     expect(changes).toEqual([]);
     timers.flush();
+    await indexer.idle();
     expect(changes.map((c) => [c.claudeSessionId, c.lastTs])).toEqual([
       ["s1", "2026-10-29T10:01:00.000Z"],
     ]);
   });
 
-  test("os padrões cabem nos 2 s da spec, e a varredura periódica continua como reserva", () => {
-    const { timers, watched } = setup();
+  test("os padrões cabem nos 2 s da spec, e a varredura periódica continua como reserva", async () => {
+    const { timers, watched } = await setup();
     watched[0]?.();
     expect(timers.timeouts[0]?.ms ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(2_000);
     expect(timers.intervals.map((i) => i.ms)).toEqual([10_000]);
