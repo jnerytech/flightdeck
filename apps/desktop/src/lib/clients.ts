@@ -49,6 +49,8 @@ export interface ClientsData {
   v: 1;
   clients: Client[];
   overrides: Record<string, string | null>;
+  /** The month limit in US$ of the clients that have one, by client id. */
+  budgets: Record<string, number>;
 }
 
 export interface ClientsOptions {
@@ -92,9 +94,10 @@ const DataSchema = z.object({
   v: z.literal(1),
   clients: z.array(ClientSchema),
   overrides: z.record(z.string(), z.string().nullable()),
+  budgets: z.record(z.string(), z.number()).default({}),
 });
 
-const empty = (): ClientsData => ({ v: 1, clients: [], overrides: {} });
+const empty = (): ClientsData => ({ v: 1, clients: [], overrides: {}, budgets: {} });
 
 /** The index `index` clamped to a list of `length` items. */
 const clamp = (index: number, length: number) => Math.max(0, Math.min(index, length - 1));
@@ -200,6 +203,7 @@ export class Clients {
       ...data,
       clients: data.clients.filter((c) => c.id !== id),
       overrides: Object.fromEntries(Object.entries(data.overrides).filter(([, to]) => to !== id)),
+      budgets: Object.fromEntries(Object.entries(data.budgets).filter(([key]) => key !== id)),
     });
     return true;
   }
@@ -264,6 +268,27 @@ export class Clients {
     });
   }
 
+  /** The month limit of each client that has one. */
+  budgets(): Record<string, number> {
+    return this.read().budgets;
+  }
+
+  /** Sets a client's month limit in US$; false for a limit that is not positive or a client that is gone. */
+  setBudget(clientId: string, limitUsd: number): boolean {
+    if (!(limitUsd > 0) || !Number.isFinite(limitUsd)) return false;
+    const data = this.read();
+    if (!data.clients.some((c) => c.id === clientId)) return false;
+    this.write({ ...data, budgets: { ...data.budgets, [clientId]: limitUsd } });
+    return true;
+  }
+
+  clearBudget(clientId: string): void {
+    const data = this.read();
+    if (!(clientId in data.budgets)) return;
+    const { [clientId]: _gone, ...budgets } = data.budgets;
+    this.write({ ...data, budgets });
+  }
+
   exportJson(): string {
     return JSON.stringify(this.read());
   }
@@ -294,7 +319,11 @@ export class Clients {
     for (const [key, to] of Object.entries(parsed.data.overrides)) {
       if (to === null || clients.some((c) => c.id === to)) overrides[key] = to;
     }
-    this.write({ v: 1, clients, overrides });
+    const budgets = { ...data.budgets };
+    for (const [id, limit] of Object.entries(parsed.data.budgets)) {
+      if (clients.some((c) => c.id === id)) budgets[id] = limit;
+    }
+    this.write({ v: 1, clients, overrides, budgets });
     return result;
   }
 
