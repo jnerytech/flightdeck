@@ -1,8 +1,10 @@
-import { describe as suite, expect, test } from "bun:test";
+import { expect, describe as suite, test } from "bun:test";
 import { registerDom } from "./dom.ts";
 import { plainWaiter, settleMaybe, settlePlain, WaitTimeout, waiter } from "./wait.ts";
 
 registerDom();
+
+const never = Boolean(process.env.FD_NEVER_SET_THIS);
 
 suite("wait: a wait that runs out of time throws and says what it waited for", () => {
   test("it returns once the check holds", async () => {
@@ -12,9 +14,9 @@ suite("wait: a wait that runs out of time throws and says what it waited for", (
   });
 
   test("on timeout it throws WaitTimeout with the timeout and the check's own source", async () => {
-    const error = await settlePlain(() => 1 + 1 === 3, 60).catch((e: unknown) => e);
+    const error = await settlePlain(() => never, 60).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(WaitTimeout);
-    expect((error as Error).message).toBe("timeout (60 ms) waiting for: () => 1 + 1 === 3");
+    expect((error as Error).message).toBe("timeout (60 ms) waiting for: () => never");
   });
 
   test("a label given by the test replaces the source", async () => {
