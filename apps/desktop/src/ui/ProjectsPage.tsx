@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
+import { FolderPicker } from "./FolderPicker.tsx";
 import { RulesSection } from "./RulesSection.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 
@@ -81,6 +82,8 @@ export function ProjectsPage(props: {
   const loading = useMinLoading(list === null);
   const { t } = props.store.i18n;
   const pathField = useRef<HTMLInputElement>(null);
+  const [browsing, setBrowsing] = useState(false);
+  const host = store.getState().hosts.find((h) => h.id === hostId);
 
   const reload = useCallback(async () => {
     const result = await store.hostCommand(hostId, "project.list", {});
@@ -231,6 +234,28 @@ export function ProjectsPage(props: {
             disabled={editing !== null}
             {...field("path")}
           />
+          {editing === null && host && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => setBrowsing(true)}
+            >
+              {t("folderPicker.browse")}
+            </Button>
+          )}
+          {browsing && host && (
+            <FolderPicker
+              store={store}
+              host={host}
+              onPick={(path) => {
+                setBrowsing(false);
+                setDraft({ ...draft, path });
+              }}
+              onClose={() => setBrowsing(false)}
+            />
+          )}
           <Input
             aria-label={t("projectsUi.name")}
             placeholder={t("projectsUi.name")}

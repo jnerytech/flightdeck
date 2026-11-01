@@ -1,12 +1,14 @@
 import type { CommandPayload, PermissionMode } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
-import type { HostView } from "../lib/app-store.ts";
+import type { AppStore, HostView } from "../lib/app-store.ts";
 import { trimTrailingSeparators } from "../lib/paths.ts";
+import { FolderPicker } from "./FolderPicker.tsx";
 
 const MODES: PermissionMode[] = [
   "default",
@@ -26,6 +28,8 @@ export function joinPath(root: string, sub: string): string {
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
 export function NewSessionForm(props: {
   host: HostView;
+  /** Lets the folder be browsed on the host; without it the folder is typed. */
+  store?: AppStore;
   onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
   /** The first prompt, filled in (a snippet, phase 18). */
   prompt?: string;
@@ -39,6 +43,30 @@ export function NewSessionForm(props: {
   const [picked, setRoot] = useState<string | null>(null);
   const root = picked ?? roots[0] ?? "";
   const [sub, setSub] = useState("");
+  const [browsing, setBrowsing] = useState(false);
+  /** A folder the host resolved to a path none of its configured roots start: kept as a root. */
+  const [extra, setExtra] = useState<string | null>(null);
+  const folders = extra && !roots.includes(extra) ? [...roots, extra] : roots;
+  const pick = (path: string) => {
+    setBrowsing(false);
+    // The configured root that holds it, the longest one; its rest is the subfolder.
+    const holder = roots
+      .filter(
+        (r) =>
+          path === r ||
+          path.startsWith(`${trimTrailingSeparators(r)}/`) ||
+          path.startsWith(`${trimTrailingSeparators(r)}\\`),
+      )
+      .sort((a, b) => b.length - a.length)[0];
+    if (holder) {
+      setRoot(holder);
+      setSub(path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""));
+    } else {
+      setExtra(path);
+      setRoot(path);
+      setSub("");
+    }
+  };
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
   const [prompt, setPrompt] = useState(props.prompt ?? "");
@@ -70,7 +98,7 @@ export function NewSessionForm(props: {
       <label className={field}>
         {t("newSession.folder")}
         <select className={select} value={root} onChange={(e) => setRoot(e.target.value)}>
-          {roots.map((r) => (
+          {folders.map((r) => (
             <option key={r} value={r}>
               {r}
             </option>
@@ -86,6 +114,24 @@ export function NewSessionForm(props: {
           placeholder={t("newSession.optional")}
         />
       </label>
+      {props.store && (
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          onClick={() => setBrowsing(true)}
+        >
+          {t("folderPicker.browse")}
+        </Button>
+      )}
+      {browsing && props.store && (
+        <FolderPicker
+          store={props.store}
+          host={props.host}
+          onPick={pick}
+          onClose={() => setBrowsing(false)}
+        />
+      )}
       <label className={field} htmlFor={`${id}-name`}>
         {t("newSession.name")}
         <Input

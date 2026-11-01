@@ -664,6 +664,7 @@ function NewSession(props: {
   return (
     <NewSessionForm
       key={`${host.id}/${props.prompt ?? ""}`}
+      store={props.store}
       host={host}
       {...(props.prompt ? { prompt: props.prompt } : {})}
       extra={
