@@ -177,9 +177,22 @@ describe("fs-dirs: the fs.dirs command", () => {
       port: 0,
       token: TOKEN,
       allowedRoots: [root],
+      fsDirs: true,
     });
     stops.push(() => server.stop());
     const info = await ask(server, "host.info", {});
     expect(info?.ok && (info.data as { features: string[] }).features).toContain("fs.dirs");
+    // A server that was not given it announces nothing: the other tests count the features.
+    const bare = startServer({
+      manager: ctx.manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+    });
+    stops.push(() => bare.stop());
+    const none = await ask(bare, "host.info", {});
+    expect(none?.ok && (none.data as { features: string[] }).features).toEqual([]);
   });
 });

@@ -273,6 +273,8 @@ export function daemon(
     const server = startServer({
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
       ...(features ? { features } : {}),
+      // The folder picker is on, like in the real daemon.
+      fsDirs: true,
       manager,
       history,
       board,

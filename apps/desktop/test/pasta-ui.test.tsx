@@ -177,4 +177,32 @@ describe("pasta: escolher uma pasta do host", () => {
     await press("Cancelar");
     expect(closed()).toBe(1);
   });
+
+  test("an empty folder says so; a folder with more than 500 says it was cut; a key it does not know does nothing", async () => {
+    const { root } = await setup();
+    mkdirSync(join(root, "many"));
+    for (let i = 0; i < 501; i++) mkdirSync(join(root, "many", `d${String(i).padStart(3, "0")}`));
+    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press("alfa");
+    await press("interna");
+    await waitFor(() =>
+      expect(within(dialog() as HTMLElement).queryByText("Nenhuma subpasta aqui.") !== null).toBe(
+        true,
+      ),
+    );
+    const list = within(dialog() as HTMLElement).queryByRole("list", {
+      name: "Pastas",
+    }) as HTMLElement;
+    await act(async () => {
+      fireEvent.keyDown(list, { key: "a" });
+    });
+    await press("Pastas do host");
+    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press("many");
+    await waitFor(() =>
+      expect(
+        within(dialog() as HTMLElement).queryByText(/Só as primeiras 500 pastas/) !== null,
+      ).toBe(true),
+    );
+  });
 });

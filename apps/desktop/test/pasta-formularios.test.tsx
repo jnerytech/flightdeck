@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
+import type { HostView } from "../src/lib/app-store.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
 registerDom();
@@ -111,5 +112,78 @@ describe("pasta: o seletor nos formulários", () => {
         join(root, "alfa"),
       ),
     );
+  });
+
+  /** Changes what the app knows about its host, as a daemon of another kind would have said. */
+  const rewrite = async (
+    store: InstanceType<typeof AppStore>,
+    hostId: string,
+    change: (host: HostView) => Partial<HostView>,
+  ) => {
+    const hosts = store.getState().hosts.map((h) => (h.id === hostId ? { ...h, ...change(h) } : h));
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({ hosts });
+    });
+  };
+
+  test("a host that does not announce fs.dirs gets no Procurar… button", async () => {
+    const { store, hostId } = await setup();
+    await rewrite(store, hostId, (h) => ({
+      hostInfo: { ...(h.hostInfo as object), features: [] } as unknown as HostView["hostInfo"],
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByLabelText("Subpasta") !== null).toBe(true));
+    expect(screen.queryByRole("button", { name: "Procurar…" }) === null).toBe(true);
+  });
+
+  test("Nova sessão: a folder the host resolved outside its configured roots becomes a root of its own", async () => {
+    const { store, hostId, root, manager } = await setup();
+    // The configured root is a name the host's real folders do not start with (a link, say).
+    await rewrite(store, hostId, (h) => ({
+      info: {
+        ...(h.info as object),
+        allowedRoots: ["/somewhere/else"],
+      } as unknown as HostView["info"],
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Procurar…" }) !== null).toBe(true),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await chooseAlfa(root);
+    await waitFor(() => expect(dialog() === null).toBe(true));
+    expect((screen.getByLabelText("Pasta") as HTMLSelectElement).value).toBe(join(root, "alfa"));
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Primeiro prompt"), { target: { value: "oi" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Criar sessão" }));
+    });
+    await waitFor(() => expect(manager.list()[0]?.cwd).toBe(join(root, "alfa")));
+  });
+
+  test("Cancelar closes the picker of Nova sessão and of Projetos without changing the form", async () => {
+    const { store, hostId } = await setup();
+    for (const route of [
+      { name: "new-session", host: hostId },
+      { name: "projects", host: hostId },
+    ] as const) {
+      await act(async () => {
+        store.router.push(route);
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Procurar…" }) !== null).toBe(true),
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+      });
+      await pressInDialog("Cancelar");
+      await waitFor(() => expect(dialog() === null).toBe(true));
+    }
   });
 });
