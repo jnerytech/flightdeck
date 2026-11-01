@@ -37,7 +37,7 @@ const FOLDER_KEY = /^host:([^:]+):(.+)$/;
 /** Which client each project belongs to right now, and what that means for a selection. */
 export class ClientScope {
   private readonly projects: Map<string, KnownProject>;
-  private readonly hostByName: Map<string, string>;
+  private readonly hostsByName: Map<string, Set<string>>;
   private readonly resolved = new Map<string, string>();
 
   constructor(
@@ -46,7 +46,17 @@ export class ClientScope {
     hosts: ScopeHost[] = [],
   ) {
     this.projects = new Map(projects.map((p) => [p.key, p]));
-    this.hostByName = new Map(hosts.flatMap((h) => h.names.map((name) => [name, h.id] as const)));
+    this.hostsByName = new Map();
+    for (const host of hosts) {
+      for (const name of host.names) {
+        this.hostsByName.set(name, (this.hostsByName.get(name) ?? new Set()).add(host.id));
+      }
+    }
+  }
+
+  /** The host names that more than one host answers to; a folder key with one is not placed by host. */
+  get ambiguousNames(): string[] {
+    return [...this.hostsByName].filter(([, ids]) => ids.size > 1).map(([name]) => name);
   }
 
   /** Whether any client exists; with none the screens show everything and no chips. */
@@ -58,7 +68,9 @@ export class ClientScope {
   private known(key: string): KnownProject {
     const base = this.projects.get(key) ?? { key, cwds: [] };
     const named = FOLDER_KEY.exec(key);
-    const hostId = named?.[1] ? this.hostByName.get(named[1]) : undefined;
+    const ids = named?.[1] ? this.hostsByName.get(named[1]) : undefined;
+    // Two hosts with one name: the key does not say which, so it is not guessed.
+    const hostId = ids?.size === 1 ? [...ids][0] : undefined;
     return hostId && named?.[2] ? { key, cwds: [...base.cwds, { hostId, path: named[2] }] } : base;
   }
 
