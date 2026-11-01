@@ -1148,7 +1148,8 @@ não tem, o app não mostra nem pergunta nada.
   ainda não foi confirmado numa sessão real em segundo plano (veja DECISIONS); o caminho seguro é
   **Trazer para o terminal** e responder lá.
 - **Iniciar uma:** marque **Iniciar em segundo plano** no formulário de nova sessão (o host precisa
-  oferecer), ou rode `flightdeckd claude --bg "prompt"`. A sessão roda com o canal do Flightdeck e
+  oferecer), aperte **Iniciar em segundo plano** num card que ainda não tem sessão (o Claude Code o
+  põe num worktree próprio; o texto do card é o prompt), ou rode `flightdeckd claude --bg "prompt"`. A sessão roda com o canal do Flightdeck e
   a persona, e aparece em Sessões.
 - **Bom saber:** o Claude Code move uma sessão em segundo plano que edita arquivos para um git
   worktree próprio em `.claude/worktrees/`. Desligar ou reiniciar a máquina as para (aparecem

@@ -315,6 +315,20 @@ export const CardDetail = memo(function CardDetail(props: {
           >
             {t("cardUi.start")}
           </ActionButton>
+          {hasFeature(host?.hostInfo?.features, "bg", false) && !card.sessionId && (
+            <ActionButton
+              variant="outline"
+              onClick={async () => {
+                const started = await store.startBackground(hostId, {
+                  cardId,
+                  ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+                });
+                if (started) store.router.push({ name: "hub" });
+              }}
+            >
+              {t("bg.start")}
+            </ActionButton>
+          )}
           <ActionButton
             variant="outline"
             onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}

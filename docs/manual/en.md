@@ -1171,7 +1171,8 @@ app shows nothing and asks nothing.
   confirmed on a real background session yet (see DECISIONS); the sure way is **Bring to the
   terminal** and answering there.
 - **Starting one:** tick **Start in the background** in the new-session form (the host must offer
-  it), or run `flightdeckd claude --bg "prompt"`. The session runs with the Flightdeck channel and
+  it), press **Start in the background** on a card that has no session yet (Claude Code puts it in
+  its own worktree; the card's text is the prompt), or run `flightdeckd claude --bg "prompt"`. The session runs with the Flightdeck channel and
   the persona, and shows up in Sessions.
 - **Good to know:** Claude Code moves a background session that edits files into its own git
   worktree under `.claude/worktrees/`. Shutting down or restarting the machine stops them (they
