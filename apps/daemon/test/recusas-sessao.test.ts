@@ -81,6 +81,25 @@ describe("recusas-sessao: folders and sessions refuse with a reason the app tran
     });
   });
 
+  test("delivering to a session whose runtime is gone is refused as not running (coverage of the guard in deliver)", async () => {
+    // Existing behaviour, tested directly: send() always starts a runtime first, so the guard in
+    // deliver() is only reached when the runtime entry is missing.
+    const { manager, project } = newManager();
+    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const internals = manager as unknown as {
+      live: Map<string, unknown>;
+      deliver(id: string, text: string): void;
+    };
+    const entry = internals.live.get(sessionId);
+    internals.live.delete(sessionId);
+    expect(refusal(() => internals.deliver(sessionId, "mais"))).toMatchObject({
+      code: "invalid_state",
+      reason: "session_not_running",
+    });
+    internals.live.set(sessionId, entry);
+    await manager.close(sessionId);
+  });
+
   test("the MCP controls of a session that is not running say so, for changing and for asking", async () => {
     const { manager } = newManager();
     expect(await refusalOf(() => manager.toggleMcpServer("nope", "x", true))).toMatchObject({
