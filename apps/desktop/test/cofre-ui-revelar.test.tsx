@@ -37,9 +37,7 @@ async function open() {
   const daemon = legacyDaemon(cleanups);
   await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
   await store.addSecret({ name: "github", type: "password", value: VALUE });
-  render(
-    <VaultPage store={store} state={store.getState()} revealMs={REVEAL_MS} clearMs={CLEAR_MS} />,
-  );
+  render(<VaultPage store={store} revealMs={REVEAL_MS} clearMs={CLEAR_MS} />);
   return { store, copied };
 }
 

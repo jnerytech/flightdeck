@@ -48,8 +48,9 @@ async function open(input: { type: "password" | "ssh-key"; value: string; lastUs
   const meta = await store.addSecret({ name: "deploy", type: input.type, value: input.value });
   if (input.lastUsedAt !== undefined) {
     await store.vault.restore({ ...meta, lastUsedAt: input.lastUsedAt }, input.value);
+    store.updateSecret(meta.id, {}); // tells the screen, which reads the store's secrets
   }
-  render(<VaultPage store={store} state={{ ...store.getState(), secrets: store.vault.list() }} />);
+  render(<VaultPage store={store} />);
   await settle(() => store.getState().hosts.length > 0);
   return { store, hostId, meta, copied };
 }

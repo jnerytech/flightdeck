@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "@/lib/app-store";
+import type { AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 import type { UsageEntry, UsageFilter } from "@/lib/vault-usage";
 
 const REQUESTERS = ["you", "claude", "automation", "workflow", "unknown"] as const;
@@ -9,10 +10,13 @@ const isRequester = (value: string): value is Requester => REQUESTERS.some((r) =
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
+const USAGELOG_KEYS = ["secrets", "vaultUsage", "hosts"] as const;
+
 /** Phase 16: what was asked of the vault, newest first; a line never holds a value. */
-export function UsageLog(props: { store: AppStore; state: AppState }) {
+export const UsageLog = memo(function UsageLog(props: { store: AppStore }) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, USAGELOG_KEYS);
   const [secretId, setSecretId] = useState("");
   const [requester, setRequester] = useState("");
   const filter: UsageFilter = {
@@ -82,4 +86,4 @@ export function UsageLog(props: { store: AppStore; state: AppState }) {
       )}
     </div>
   );
-}
+});

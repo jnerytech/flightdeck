@@ -1,6 +1,6 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { Columns3, ListTodo, MoreHorizontal, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -20,9 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
+import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
-import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
+import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
@@ -111,15 +112,17 @@ function CardTile(props: {
   );
 }
 
+const BOARDVIEW_KEYS = ["runs", "hosts", "cards"] as const;
+
 /** A project's board: five columns, drag and drop between and within them, text filter. */
-export function BoardView(props: {
+export const BoardView = memo(function BoardView(props: {
   store: AppStore;
-  state: AppState;
   hostId: string;
   projectId: string;
   onOpenCard(cardId: string): void;
 }) {
   const { store, hostId, projectId } = props;
+  const state = useStoreSlice(store, BOARDVIEW_KEYS);
   const [project, setProject] = useState<Project | null>(null);
   const [filter, setFilter] = useState("");
   const [title, setTitle] = useState("");
@@ -135,7 +138,7 @@ export function BoardView(props: {
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
   const withIssues = hasFeature(
-    props.state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "issues",
     false,
   );
@@ -147,7 +150,7 @@ export function BoardView(props: {
     });
   }, [store, hostId, projectId]);
 
-  const all = projectCards(props.state, hostId, projectId);
+  const all = projectCards(state, hostId, projectId);
   const shown = filterCards(all, filter);
 
   const drop = (column: BoardColumn, targetId?: string) => {
@@ -238,7 +241,7 @@ export function BoardView(props: {
                       card={card}
                       workflow={
                         card.workflowRunId
-                          ? props.state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
+                          ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
                           : undefined
                       }
                       formatTime={(iso) => store.formatTime(iso)}
@@ -313,4 +316,4 @@ export function BoardView(props: {
       </Dialog>
     </Page>
   );
-}
+});

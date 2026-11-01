@@ -1,5 +1,5 @@
 import { type SnippetContext, SnippetModelError } from "@flightdeck/protocol";
-import { useId, useState } from "react";
+import { memo, useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,7 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppState, AppStore } from "@/lib/app-store";
 import type { AppSnippet } from "@/lib/global-snippets";
+import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../feedback/dialog-content.tsx";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
@@ -23,7 +24,7 @@ export interface SnippetChoice {
 /** The snippet a choice names, from the host's list the palette read or from the app's globals. */
 export function chosenSnippet(
   store: AppStore,
-  state: AppState,
+  state: Pick<AppState, "snippets" | "externals" | "hosts">,
   choice: SnippetChoice,
 ): AppSnippet | undefined {
   if (choice.snippet) return choice.snippet;
@@ -32,20 +33,22 @@ export function chosenSnippet(
     : store.globalSnippets.list().find((s) => s.id === choice.snippetId);
 }
 
+const SNIPPETUSE_KEYS = ["hosts", "snippets", "externals"] as const;
+
 /**
  * Phase 18: fills a snippet's fields and uses it: pasted into the terminal on screen (with Enter
  * or not), run in a new terminal tab at a folder, or copied. A command of an untrusted versioned
  * file only pastes.
  */
-export function SnippetUse(props: {
+export const SnippetUse = memo(function SnippetUse(props: {
   store: AppStore;
-  state: AppState;
   choice: SnippetChoice;
   onClose(): void;
 }) {
   const t = useT();
   const id = useId();
-  const { store, state, choice } = props;
+  const { store, choice } = props;
+  const state = useStoreSlice(store, SNIPPETUSE_KEYS);
   const snippet = chosenSnippet(store, state, choice);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -301,4 +304,4 @@ export function SnippetUse(props: {
       </AppDialogContent>
     </Dialog>
   );
-}
+});

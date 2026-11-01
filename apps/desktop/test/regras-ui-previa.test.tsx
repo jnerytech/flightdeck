@@ -52,7 +52,7 @@ async function open(allowed = true) {
     tags: ["prod"],
     allowedHosts: allowed ? [hostId] : [],
   });
-  render(<VaultPage store={store} state={store.getState()} />);
+  render(<VaultPage store={store} />);
   await click("Regras de prod-key");
   const result = () => screen.queryByRole("status", { name: "Resultado da prévia" });
   return { store, daemon, secret, result };

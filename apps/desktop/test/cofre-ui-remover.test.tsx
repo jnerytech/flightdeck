@@ -26,7 +26,7 @@ async function open() {
     type: "password",
     value: "remove-test-value",
   });
-  const view = render(<VaultPage store={store} state={store.getState()} />);
+  const view = render(<VaultPage store={store} />);
   return { store, meta, view };
 }
 

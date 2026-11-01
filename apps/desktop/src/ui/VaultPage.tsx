@@ -1,5 +1,5 @@
 import { KeyRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import { TypedConfirm } from "@/components/vault/typed-confirm";
 import { UsageLog } from "@/components/vault/usage-log";
 import { VaultReport } from "@/components/vault/vault-report";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import type { SecretMeta } from "../lib/vault.ts";
 import { describeSecret, type SecretInfo } from "../lib/vault-types.ts";
 
@@ -118,10 +119,11 @@ function SecretRow(props: {
   );
 }
 
+const VAULTPAGE_KEYS = ["secrets", "hosts"] as const;
+
 /** Phase 16: the vault's screen. */
-export function VaultPage(props: {
+export const VaultPage = memo(function VaultPage(props: {
   store: AppStore;
-  state: AppState;
   /** How long a revealed value stays on screen. */
   revealMs?: number;
   /** How long a copied value stays on the clipboard. */
@@ -130,7 +132,8 @@ export function VaultPage(props: {
   rule?: { secretId: string; match: Record<string, string> };
 }) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, VAULTPAGE_KEYS);
   const [infos, setInfos] = useState<Record<string, SecretInfo>>({});
   const revealMs = props.revealMs ?? REVEAL_MS;
   const clearMs = props.clearMs ?? CLEAR_MS;
@@ -183,7 +186,6 @@ export function VaultPage(props: {
         <EditSecretForm
           key={editing.id}
           store={store}
-          state={state}
           secret={editing}
           onClose={() => setEditing(null)}
         />
@@ -236,13 +238,13 @@ export function VaultPage(props: {
           )}
         </TabsContent>
         <TabsContent value="usage">
-          <UsageLog store={store} state={state} />
+          <UsageLog store={store} />
         </TabsContent>
         <TabsContent value="backup">
           <BackupPanel store={store} />
         </TabsContent>
         <TabsContent value="report">
-          <VaultReport store={store} state={state} />
+          <VaultReport store={store} />
         </TabsContent>
       </Tabs>
       {asking && (
@@ -274,4 +276,4 @@ export function VaultPage(props: {
       )}
     </Page>
   );
-}
+});

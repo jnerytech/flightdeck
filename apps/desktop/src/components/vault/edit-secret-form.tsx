@@ -1,21 +1,24 @@
-import { useId, useState } from "react";
+import { memo, useId, useState } from "react";
 import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "@/lib/app-store";
+import type { AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 import type { SecretMeta } from "@/lib/vault";
 
+const EDITSECRETFORM_KEYS = ["hosts"] as const;
+
 /** Edits what a secret is called and where it may go; the value is never loaded here. */
-export function EditSecretForm(props: {
+export const EditSecretForm = memo(function EditSecretForm(props: {
   store: AppStore;
-  state: AppState;
   secret: SecretMeta;
   onClose(): void;
 }) {
   const t = useT();
   const id = useId();
-  const { store, state, secret } = props;
+  const { store, secret } = props;
+  const state = useStoreSlice(store, EDITSECRETFORM_KEYS);
   const [name, setName] = useState(secret.name);
   const [description, setDescription] = useState(secret.description);
   const [tags, setTags] = useState(secret.tags.join(", "));
@@ -82,4 +85,4 @@ export function EditSecretForm(props: {
       />
     </Form>
   );
-}
+});

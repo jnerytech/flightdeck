@@ -1,5 +1,5 @@
 import type { Arena, ArenaVariant, StepRun, WorkflowInfo } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
+import { useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
-import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
+import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { issueLabel, issueUrl } from "../lib/issues.ts";
 import { useSessionState } from "../lib/use-store.ts";
@@ -36,17 +37,19 @@ interface Confirming {
   warning: string | null;
 }
 
+const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
+
 /** One card: description, runs, the active run's conversation, its diff and the actions. */
-export function CardDetail(props: {
+export const CardDetail = memo(function CardDetail(props: {
   store: AppStore;
-  state: AppState;
   hostId: string;
   cardId: string;
   onBack(): void;
 }) {
   const t = useT();
   const { store, hostId, cardId } = props;
-  const card = props.state.cards[sessionKey(hostId, cardId)];
+  const state = useStoreSlice(store, CARDDETAIL_KEYS);
+  const card = state.cards[sessionKey(hostId, cardId)];
   const [description, setDescription] = useState(card?.description ?? "");
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
@@ -58,7 +61,7 @@ export function CardDetail(props: {
   const [draft, setDraft] = useState<{ text: string; redacted: number } | null>(null);
   const [choosing, setChoosing] = useState<ArenaVariant | null>(null);
   const sessionId = card?.sessionId ?? null;
-  const host = props.state.hosts.find((h) => h.id === hostId);
+  const host = state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
   const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
   const withReview = hasFeature(host?.hostInfo?.features, "review", false);
@@ -67,7 +70,7 @@ export function CardDetail(props: {
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
   const runId = card?.workflowRunId ?? null;
-  const run = runId ? props.state.runs[sessionKey(hostId, runId)] : undefined;
+  const run = runId ? state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
   const [opened, setOpened] = useState<{ stepId: string; attempt: number } | null>(null);
   /** Workflows the card can start with: trusted and valid on the project's base branch. */
@@ -411,7 +414,7 @@ export function CardDetail(props: {
             loadDiff={(variantId) => store.hostCommand(hostId, "card.diff", { cardId: variantId })}
             onChoose={setChoosing}
             personaName={(id) =>
-              props.state.personas[hostId]?.find((p) => p.id === id)?.name ??
+              state.personas[hostId]?.find((p) => p.id === id)?.name ??
               store.globalPersonas.list().find((p) => p.id === id)?.name ??
               id
             }
@@ -555,4 +558,4 @@ export function CardDetail(props: {
       </div>
     </Page>
   );
-}
+});

@@ -1,22 +1,26 @@
 import type { VaultDecisionInfo, VaultReportRow } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
-import type { AppState, AppStore } from "@/lib/app-store";
+import type { AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
 
 const DAYS = 30;
 const SELECT =
   "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+const VAULTREPORT_KEYS = ["secrets", "hosts"] as const;
+
 /**
  * Phase 19: what the rules of a host decided in the last 30 days, by secret, requester and
  * outcome (with its CSV), and each decision with its reason. Values never show: the daemon has none.
  */
-export function VaultReport(props: { store: AppStore; state: AppState }) {
+export const VaultReport = memo(function VaultReport(props: { store: AppStore }) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, VAULTREPORT_KEYS);
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "actions", false),
   );
@@ -113,4 +117,4 @@ export function VaultReport(props: { store: AppStore; state: AppState }) {
       )}
     </div>
   );
-}
+});

@@ -10,7 +10,11 @@ export const COLUMNS: ReadonlyArray<{ id: BoardColumn }> = [
 ];
 
 /** The project's cards on one host, in board order. */
-export function projectCards(state: AppState, hostId: string, projectId: string): Card[] {
+export function projectCards(
+  state: Pick<AppState, "cards">,
+  hostId: string,
+  projectId: string,
+): Card[] {
   return Object.entries(state.cards)
     .filter(([key, card]) => key.startsWith(`${hostId}/`) && card.projectId === projectId)
     .map(([, card]) => card)

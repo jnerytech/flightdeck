@@ -58,7 +58,7 @@ async function open(requests = true) {
     });
     await settle(() => store.getState().vaultUsage.length === 3);
   }
-  render(<VaultPage store={store} state={store.getState()} />);
+  render(<VaultPage store={store} />);
   const tab = screen.queryByRole("tab", { name: "Uso" });
   expect(tab).not.toBeNull();
   await act(async () => {

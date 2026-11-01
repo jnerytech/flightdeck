@@ -347,7 +347,6 @@ export function App({ store }: { store: AppStore }) {
           {state.snippetChoice && (
             <SnippetUse
               store={store}
-              state={state}
               choice={state.snippetChoice}
               onClose={() => store.chooseSnippet(null)}
             />

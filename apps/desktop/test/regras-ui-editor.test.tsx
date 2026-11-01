@@ -55,7 +55,7 @@ async function open(rules: unknown[] = []) {
     allowedHosts: [hostId],
   });
   if (rules.length > 0) await store.setVaultRules(deploy.id, rules);
-  render(<VaultPage store={store} state={store.getState()} />);
+  render(<VaultPage store={store} />);
   await click("Regras de deploy");
   const editor = () => screen.queryByRole("region", { name: "Regras de deploy" });
   expect(editor()).not.toBeNull();

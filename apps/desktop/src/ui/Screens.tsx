@@ -432,7 +432,6 @@ function routeScreen(props: ScreenProps): ReactNode {
         <VaultPage
           key={JSON.stringify(route.rule ?? null)}
           store={store}
-          state={state}
           {...(route.rule ? { rule: route.rule } : {})}
         />
       );
@@ -558,7 +557,6 @@ function routeScreen(props: ScreenProps): ReactNode {
         <BoardView
           key={`${route.host}/${route.projectId}`}
           store={store}
-          state={state}
           hostId={route.host}
           projectId={route.projectId}
           onOpenCard={(cardId) =>
@@ -571,7 +569,6 @@ function routeScreen(props: ScreenProps): ReactNode {
         <CardDetail
           key={route.cardId}
           store={store}
-          state={state}
           hostId={route.host}
           cardId={route.cardId}
           onBack={() => go({ name: "board", host: route.host, projectId: route.projectId })}

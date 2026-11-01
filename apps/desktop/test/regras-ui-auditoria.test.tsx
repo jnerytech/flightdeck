@@ -50,7 +50,7 @@ async function setup() {
 
 /** The vault screen on its Relatório tab. */
 async function report(store: InstanceType<typeof AppStore>) {
-  render(<VaultPage store={store} state={store.getState()} />);
+  render(<VaultPage store={store} />);
   const tab = screen.queryByRole("tab", { name: "Relatório" });
   expect(tab).not.toBeNull();
   await act(async () => {

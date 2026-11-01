@@ -170,6 +170,13 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { ConversationsPage } = await import("../src/ui/ConversationsPage.tsx");
     const { Settings } = await import("../src/ui/Settings.tsx");
     const { TargetForm } = await import("../src/components/connections/target-form.tsx");
+    const { SnippetUse } = await import("../src/components/snippets/snippet-use.tsx");
+    const { EditSecretForm } = await import("../src/components/vault/edit-secret-form.tsx");
+    const { UsageLog } = await import("../src/components/vault/usage-log.tsx");
+    const { VaultReport } = await import("../src/components/vault/vault-report.tsx");
+    const { VaultPage } = await import("../src/ui/VaultPage.tsx");
+    const { BoardView } = await import("../src/ui/BoardView.tsx");
+    const { CardDetail } = await import("../src/ui/CardDetail.tsx");
     const memo = Symbol.for("react.memo");
     for (const screen of [
       UpdateBanner,
@@ -185,6 +192,13 @@ describe("state-selectors: an unrelated change of the state does not render the 
       ConversationsPage,
       Settings,
       TargetForm,
+      SnippetUse,
+      EditSecretForm,
+      UsageLog,
+      VaultReport,
+      VaultPage,
+      BoardView,
+      CardDetail,
     ]) {
       expect((screen as unknown as { $$typeof: symbol }).$$typeof).toBe(memo);
     }
