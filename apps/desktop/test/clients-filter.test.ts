@@ -194,6 +194,37 @@ describe("clients-filter: two hosts with one daemon name", () => {
   });
 });
 
+describe("clients-filter: the projects a rule would claim", () => {
+  const projects: KnownProject[] = [
+    { key: "github.com/acme/api", cwds: [] },
+    { key: "github.com/acme/web", cwds: [{ hostId: "h1", path: "/work/acme/web" }] },
+    { key: "github.com/beta/app", cwds: [] },
+    { key: "host:alfa:/work/acme/tool", cwds: [] },
+  ];
+  const hosts = [{ id: "h1", names: ["Laptop", "alfa"] }];
+  const scope = new ClientScope({ clients: [], overrides: {} }, projects, hosts);
+
+  test("a remote rule lists the projects with that prefix", () => {
+    expect(scope.matching({ kind: "remote", pattern: "github.com/acme/*" })).toEqual([
+      "github.com/acme/api",
+      "github.com/acme/web",
+    ]);
+    expect(scope.matching({ kind: "remote", pattern: "nope/*" })).toEqual([]);
+  });
+
+  test("a folder rule lists projects by the folders they ran in, and by a folder key through the host's name", () => {
+    expect(scope.matching({ kind: "folder", path: "/work/acme" })).toEqual([
+      "github.com/acme/web",
+      "host:alfa:/work/acme/tool",
+    ]);
+    expect(scope.matching({ kind: "folder", path: "/work/acme", host: "h1" })).toEqual([
+      "github.com/acme/web",
+      "host:alfa:/work/acme/tool",
+    ]);
+    expect(scope.matching({ kind: "folder", path: "/work/acme", host: "ghost" })).toEqual([]);
+  });
+});
+
 describe("clients-filter: things that touch several projects", () => {
   const scope = new ClientScope({ clients: [acme, beta], overrides: {} }, []);
   const a = "github.com/acme/api";
