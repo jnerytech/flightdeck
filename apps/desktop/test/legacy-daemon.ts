@@ -32,6 +32,19 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     session: { prompts: [] as unknown[] },
     summary: { projects: [] as unknown[] },
   };
+  /** Phase 25: what `trace.get`, `trace.export` and `snapshots.files` answer. */
+  const trace = {
+    session: {
+      claudeSessionId: "c1",
+      turns: [] as unknown[],
+      costUsd: null as number | null,
+      durationMs: null as number | null,
+      costliest: null as string | null,
+      slowest: null as string | null,
+    },
+    export: { filename: "trace-c1.json", json: "{}", redacted: 0 },
+    files: { files: [] as unknown[], insertions: 0, deletions: 0 },
+  };
   /** Phase 22: what `watch.get`, `watch.set` and `watch.describe` answer, for a test to set. */
   const watch = {
     info: { cardId: "", enabled: false, status: "watching", reason: null, rounds: [] } as {
@@ -151,6 +164,9 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
         if (type === "vault.rules.preview") return ack(preview.verdict);
+        if (type === "trace.get") return ack(trace.session);
+        if (type === "trace.export") return ack(trace.export);
+        if (type === "snapshots.files") return ack(trace.files);
         if (type === "telemetry.session") return ack(telemetry.session);
         if (type === "telemetry.summary") return ack(telemetry.summary);
         if (type === "messages.list") return ack({ messages: messaging.messages });
@@ -229,6 +245,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     watch,
     messaging,
     telemetry,
+    trace,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));
