@@ -229,6 +229,52 @@ describe("pasta: o seletor nos formulários", () => {
     for (const release of held) release();
   });
 
+  test("Nova sessão: a late listing of a folder left behind does not take the picker back to it", async () => {
+    const { store, hostId, root } = await setup();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Procurar…" }) !== null).toBe(true),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await waitFor(() => expect(dialog() !== null).toBe(true));
+    await pressInDialog(new RegExp(`^${basename(root)}`));
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    // The answer for "interna" is held; "alfa" is asked for again and answered first.
+    const request = store.hostRequest.bind(store);
+    let release = () => {};
+    let answered: () => void = () => {};
+    const late = new Promise<void>((resolve) => {
+      answered = resolve;
+    });
+    store.hostRequest = (async (id: string, type: never, payload: never) => {
+      const path = (payload as { path?: string }).path ?? "";
+      const held = (type as string) === "fs.dirs" && path.endsWith("interna");
+      if (held)
+        await new Promise<void>((resume) => {
+          release = resume;
+        });
+      const result = await request(id, type, payload);
+      if (held) answered();
+      return result;
+    }) as typeof store.hostRequest;
+    await pressInDialog("interna");
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    await act(async () => {
+      release();
+      await late;
+    });
+    const crumb = (name: string) =>
+      within(dialog() as HTMLElement).queryByText(name, { selector: "[aria-current='location']" });
+    expect(crumb("alfa") !== null).toBe(true);
+    expect(crumb("interna") === null).toBe(true);
+  });
+
   test("Cancelar closes the picker of Nova sessão and of Projetos without changing the form", async () => {
     const { store, hostId } = await setup();
     for (const route of [

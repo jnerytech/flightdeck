@@ -33,6 +33,8 @@ export function FolderPicker(props: {
   /** The allowed roots, as the host resolves them: where the breadcrumb starts. */
   const [roots, setRoots] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** The folder just clicked, current from the click until its listing arrives (`undefined` is the roots). */
+  const [target, setTarget] = useState<{ path?: string } | null>(null);
   const [hidden, setHidden] = useState(false);
   const allowed = host.info?.allowedRoots ?? [];
 
@@ -44,11 +46,17 @@ export function FolderPicker(props: {
   const describe = (code: string, message: string) =>
     code === "forbidden_cwd" ? t("folderPicker.outside", { roots: allowed.join(", ") }) : message;
 
+  const opening = useRef(0);
+
   const open = async (path?: string) => {
+    const ticket = ++opening.current;
+    setTarget({ path });
     const result = await store.hostRequest(host.id, "fs.dirs", {
       ...(path === undefined ? {} : { path }),
       ...(hiddenNow.current ? { hidden: true } : {}),
     });
+    if (ticket !== opening.current) return;
+    setTarget(null);
     if (!result.ok) return setError(describe(result.code, result.message));
     setError(null);
     shown.current = result.data.path ?? undefined;
@@ -64,8 +72,11 @@ export function FolderPicker(props: {
     void openRef.current(shown.current);
   }, [hidden]);
 
-  const root = listing?.path ? roots.find((r) => isInside(listing.path as string, r)) : undefined;
-  const crumbs = listing?.path && root ? breadcrumbSteps(listing.path, root) : [];
+  // A folder is the current one as soon as it is clicked; its listing follows.
+  const loading = target !== null;
+  const current = (loading ? target.path : listing?.path) ?? undefined;
+  const root = current ? roots.find((r) => isInside(current, r)) : undefined;
+  const crumbs = current && root ? breadcrumbSteps(current, root) : [];
   const nativeDialog = store.canPickFolder() && isLocalUrl(host.url);
 
   const chooseWithSystem = async () => {
@@ -133,9 +144,15 @@ export function FolderPicker(props: {
             {listing.dirs.length === 0 && (
               <p className="text-muted-foreground text-sm">{t("folderPicker.empty")}</p>
             )}
+            {loading && (
+              <p role="status" className="text-muted-foreground text-sm">
+                {t("folderPicker.loading")}
+              </p>
+            )}
             <ul
               aria-label={t("folderPicker.list")}
-              className="flex max-h-72 flex-col overflow-y-auto"
+              aria-busy={loading}
+              className="flex max-h-72 flex-col overflow-y-auto aria-busy:opacity-60"
               onKeyDown={onKeyDown}
             >
               {listing.dirs.map((dir) => (
@@ -165,7 +182,7 @@ export function FolderPicker(props: {
           {t("folderPicker.hidden")}
         </label>
         <DialogFooter>
-          {listing?.parent !== undefined && listing?.path && (
+          {!loading && listing?.parent !== undefined && listing?.path && (
             <Button
               type="button"
               variant="ghost"
@@ -186,9 +203,9 @@ export function FolderPicker(props: {
           </Button>
           <ActionButton
             type="button"
-            disabled={!listing?.path}
+            disabled={!current}
             disabledReason={t("folderPicker.openFirst")}
-            onClick={() => listing?.path && props.onPick(listing.path)}
+            onClick={() => current && props.onPick(current)}
           >
             {t("folderPicker.choose")}
           </ActionButton>
