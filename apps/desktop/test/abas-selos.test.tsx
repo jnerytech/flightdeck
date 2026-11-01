@@ -87,10 +87,45 @@ describe("abas: selos e botão de aba nova", () => {
     expect(tabKind({ name: "reader", target: { hostId: "h", claudeSessionId: "c" } })).toBe(
       "reader",
     );
-    expect(tabKind({ name: "history", host: "h" })).toBe("reader");
     expect(tabKind({ name: "costs" })).toBe("costs");
     expect(tabKind({ name: "agent", host: "h", projectId: "p", projectName: "x" })).toBe("agent");
-    expect(tabKind({ name: "settings" })).toBe("screen");
+  });
+
+  test("each screen the sidebar lists has its own kind of tab", () => {
+    expect(tabKind({ name: "hub" })).toBe("sessions");
+    expect(tabKind({ name: "needs-you" })).toBe("needs-you");
+    expect(tabKind({ name: "history", host: "h" })).toBe("history");
+    expect(tabKind({ name: "conversations" })).toBe("conversations");
+    expect(tabKind({ name: "teams" })).toBe("teams");
+    expect(tabKind({ name: "personas" })).toBe("personas");
+    expect(tabKind({ name: "snippets" })).toBe("snippets");
+    expect(tabKind({ name: "connections" })).toBe("connections");
+    expect(tabKind({ name: "vault" })).toBe("vault");
+    expect(tabKind({ name: "settings" })).toBe("settings");
+    expect(tabKind({ name: "host", host: "h" })).toBe("screen");
+  });
+
+  test("a tab wears the icon of its sidebar entry, not a shared one", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    const sidebarIcon = (name: string) =>
+      screen.queryByRole("button", { name })?.querySelector("svg")?.getAttribute("class");
+    for (const [route, entry] of [
+      [{ name: "vault" }, "Cofre"],
+      [{ name: "personas" }, "Personas"],
+      [{ name: "conversations" }, "Conversas"],
+      [{ name: "costs" }, "Custos"],
+    ] as const) {
+      await act(async () => {
+        store.tabs.open(route);
+      });
+      const tab = screen.queryAllByRole("tab").at(-1);
+      const icon = tab?.querySelector("[data-icon]");
+      expect(icon?.getAttribute("data-icon")).toBe(route.name);
+      expect(icon?.getAttribute("class")).toContain(
+        (sidebarIcon(entry) ?? "").split(" ").find((c) => c.startsWith("lucide-")) ?? "never",
+      );
+    }
   });
 
   test("the tab shows the icon of its kind", async () => {
