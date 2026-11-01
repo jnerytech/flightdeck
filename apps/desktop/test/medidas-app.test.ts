@@ -74,11 +74,21 @@ describe("medidas-app: click to paint of the five actions", () => {
   });
 
   test("a storage that throws leaves the measures off", () => {
-    const spy = spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("blocked");
+    // The storage the code reads, whatever DOM another test file registered: its own getItem throws.
+    const real = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: () => {
+          throw new Error("blocked");
+        },
+      },
     });
-    startMeasure("send");
-    spy.mockRestore();
+    try {
+      startMeasure("send");
+    } finally {
+      if (real) Object.defineProperty(globalThis, "localStorage", real);
+    }
     expect(performance.getEntriesByType("mark")).toEqual([]);
   });
 
