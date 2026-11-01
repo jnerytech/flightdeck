@@ -106,9 +106,7 @@ export function SessionsHub(props: {
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
     () =>
-      store
-        .clientScope()
-        .filter(hubRows(state), state.clientSelection, (row) => row.projectKey),
+      store.clientScope().filter(hubRows(state), state.clientSelection, (row) => row.projectKey),
     [
       store,
       state.hosts,
