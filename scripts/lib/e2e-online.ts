@@ -18,5 +18,17 @@ export async function ensureOnline(
   probe: OnlineProbe,
   options: { waitMs?: number; pollMs?: number } = {},
 ): Promise<OnlineResult> {
-  return "gave-up";
+  const waitMs = options.waitMs ?? 8000;
+  const pollMs = options.pollMs ?? 250;
+  const waitFor = async () => {
+    const deadline = probe.now() + waitMs;
+    for (;;) {
+      if (await probe.online()) return true;
+      if (probe.now() >= deadline) return false;
+      await probe.sleep(pollMs);
+    }
+  };
+  if (await waitFor()) return "online";
+  await probe.reload();
+  return (await waitFor()) ? "reloaded" : "gave-up";
 }
