@@ -56,7 +56,7 @@ describe("botao-clique: the shared button answers a click", () => {
     expect(button).not.toBeNull();
     expect(button?.getAttribute("aria-busy")).toBe("true");
     expect(button?.disabled).toBe(true);
-    expect(button?.querySelector("[data-slot='spinner']")).not.toBeNull();
+    expect(button?.querySelector("svg.animate-spin")).not.toBeNull();
     expect(button?.textContent).toContain("Salvar");
   });
 
@@ -111,5 +111,28 @@ describe("botao-clique: the shared button answers a click", () => {
     await press("Ir");
     expect(calls).toBe(2);
     expect(screen.queryByRole("button", { name: "Ir" })?.getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("two clicks in the same event run the handler once", async () => {
+    const work = gate();
+    let calls = 0;
+    render(
+      <Button
+        onClick={() => {
+          calls++;
+          return work.promise;
+        }}
+      >
+        Abrir
+      </Button>,
+    );
+    const button = screen.queryByRole("button", { name: "Abrir" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
+    expect(calls).toBe(1);
+    work.open();
+    await tick();
   });
 });

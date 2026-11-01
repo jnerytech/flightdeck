@@ -18,7 +18,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { HostStatusBadge } = await import("../src/components/hosts/host-status-badge.tsx");
-const { AsyncButton } = await import("../src/components/feedback/busy.tsx");
+const { ActionButton } = await import("../src/components/feedback/action-button.tsx");
 const { ConfirmDialog } = await import("../src/ui/ConfirmDialog.tsx");
 
 setDefaultTimeout(20_000);
@@ -317,7 +317,7 @@ describe("estados-avisos", () => {
     let release: () => void = () => {};
     const calls: number[] = [];
     render(
-      <AsyncButton
+      <ActionButton
         onClick={() => {
           calls.push(1);
           return new Promise<void>((resolve) => {
@@ -326,7 +326,7 @@ describe("estados-avisos", () => {
         }}
       >
         Salvar
-      </AsyncButton>,
+      </ActionButton>,
     );
     const button = screen.queryByRole("button", { name: "Salvar" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
