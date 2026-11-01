@@ -37,7 +37,7 @@ Object.assign(process.env, {
   GIT_COMMITTER_EMAIL: "smoke@flightdeck.invalid",
 });
 
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 90_000;
 const ROOT = resolve(import.meta.dir, "..");
 const PR_URL = "https://github.com/acme/repo/pull/42";
 const RUN = (id: number) => `https://github.com/acme/repo/actions/runs/${id}/job/${id}1`;

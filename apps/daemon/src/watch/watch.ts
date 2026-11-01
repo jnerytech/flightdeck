@@ -199,7 +199,8 @@ export class PrWatcher {
       provider.health(where),
       provider.comments(where),
     ]);
-    if (this.stopped) return;
+    // The PR may have merged or closed while the host answered: a late answer fires nothing.
+    if (this.stopped || this.opts.board.getCard(cardId).prState !== "open") return;
     const before = this.snapshot(cardId);
     const failing = health.checks.filter((c) => c.kind === "build" && c.state === "failing");
     const now: Snapshot = {
