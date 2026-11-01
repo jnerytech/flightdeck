@@ -80,6 +80,23 @@ describe("plugins-ui: a pasta de um plugin local", () => {
     expect(field.value).toBe("/fora/das/pastas");
   });
 
+  test("Cancelar fecha o seletor e o campo fica como estava", async () => {
+    await open();
+    await settle(() => screen.queryByRole("button", { name: "Procurar…" }) !== null);
+    const field = screen.getByLabelText("Pasta de um plugin local") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "/digitada" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await settle(() => dialog() !== null);
+    await pressInDialog("Cancelar");
+    await settle(() => dialog() === null);
+    expect(dialog()).toBeNull();
+    expect(field.value).toBe("/digitada");
+  });
+
   test("diz que Procurar mostra só as pastas do host e que outra se digita", async () => {
     await open();
     await settle(() => screen.queryByLabelText("Pasta de um plugin local") !== null);
