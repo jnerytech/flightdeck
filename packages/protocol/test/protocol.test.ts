@@ -292,6 +292,8 @@ const validCommands: Record<CommandType, unknown> = {
   "costs.status": {},
   "telemetry.session": { claudeSessionId: "c-1" },
   "telemetry.summary": {},
+  "trace.get": { claudeSessionId: "c-1" },
+  "trace.export": { claudeSessionId: "c-1" },
   "telemetry.status": {},
   "telemetry.install": { confirm: true },
   "telemetry.uninstall": { confirm: true },
