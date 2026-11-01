@@ -147,6 +147,20 @@ describe("rastro-modelo: over the protocol", () => {
     expect(trace?.turns).toHaveLength(2);
   });
 
+  test("trace.export gives a file, with the content only when it is asked for", async () => {
+    const client = await served(true);
+    const bare = await client.data<{ filename: string; json: string }>("trace.export", {
+      claudeSessionId: SESSION,
+    });
+    expect(bare?.filename).toBe(`trace-${SESSION.slice(0, 8)}.json`);
+    const full = await client.data<{ json: string }>("trace.export", {
+      claudeSessionId: SESSION,
+      includeContent: true,
+    });
+    // The content is what makes the file with it longer than the one without.
+    expect((full?.json.length ?? 0) > (bare?.json.length ?? 0)).toBe(true);
+  });
+
   test("a host without it says the feature is off", async () => {
     const client = await served(false);
     const ack = (await client.request("trace.get", { claudeSessionId: SESSION })) as {
