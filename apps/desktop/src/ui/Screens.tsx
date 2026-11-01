@@ -30,6 +30,7 @@ import { AutomationsPage } from "./AutomationsPage.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { CardDetail } from "./CardDetail.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
+import { ClientsPage } from "./ClientsPage.tsx";
 import { ConnectionsPage } from "./ConnectionsPage.tsx";
 import { ConversationsPage } from "./ConversationsPage.tsx";
 import { CostsPage, type TopSession } from "./CostsPage.tsx";
@@ -456,6 +457,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <ConversationsPage store={store} go={go} />;
     case "personas":
       return <PersonasPage store={store} />;
+    case "clients":
+      return <ClientsPage store={store} state={state} />;
     case "plugins":
       return <PluginsPage store={store} />;
     case "snippets":

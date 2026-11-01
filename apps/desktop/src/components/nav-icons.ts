@@ -1,4 +1,5 @@
 import {
+  Briefcase,
   CircleAlert,
   Coins,
   Columns3,
@@ -27,6 +28,7 @@ export type NavKey =
   | "conversations"
   | "teams"
   | "personas"
+  | "clients"
   | "snippets"
   | "connections"
   | "vault"
@@ -45,6 +47,7 @@ export const NAV_ICONS: Record<NavKey, LucideIcon> = {
   conversations: MessagesSquare,
   teams: UsersRound,
   personas: Drama,
+  clients: Briefcase,
   snippets: SquareCode,
   connections: Network,
   vault: KeyRound,

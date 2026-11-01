@@ -121,6 +121,8 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       return path({ label: t("sidebar.connections") });
     case "personas":
       return path({ label: t("sidebar.personas") });
+    case "clients":
+      return path({ label: t("clients.title") });
     case "plugins":
       return path({ label: t("sidebar.plugins") });
     case "conversations":

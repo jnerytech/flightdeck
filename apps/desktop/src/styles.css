@@ -47,6 +47,14 @@
   --color-status-ended: var(--status-ended);
   --color-status-error: var(--status-error);
   --color-status-risk: var(--status-risk);
+  --color-client-indigo: var(--client-indigo);
+  --color-client-emerald: var(--client-emerald);
+  --color-client-amber: var(--client-amber);
+  --color-client-rose: var(--client-rose);
+  --color-client-sky: var(--client-sky);
+  --color-client-violet: var(--client-violet);
+  --color-client-teal: var(--client-teal);
+  --color-client-orange: var(--client-orange);
 
   /* Radius: 8 px for controls, 12 px for panels (and 6 px for small chips). */
   --radius-sm: 6px;
@@ -112,6 +120,15 @@
   --status-ended: oklch(0.54 0 0);
   --status-error: oklch(0.5 0.2 27);
   --status-risk: oklch(0.5 0.2 330);
+  /* A client's color, as a dot; the same in both themes, never the only sign of the client. */
+  --client-indigo: oklch(0.62 0.15 275);
+  --client-emerald: oklch(0.62 0.15 160);
+  --client-amber: oklch(0.7 0.15 80);
+  --client-rose: oklch(0.62 0.17 15);
+  --client-sky: oklch(0.64 0.12 230);
+  --client-violet: oklch(0.6 0.16 305);
+  --client-teal: oklch(0.6 0.1 190);
+  --client-orange: oklch(0.68 0.16 50);
 }
 
 .dark {

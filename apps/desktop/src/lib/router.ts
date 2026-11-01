@@ -52,6 +52,8 @@ export type Route =
   | { name: "snippets" }
   /** Engineering personas (phase 20). */
   | { name: "personas" }
+  /** Phase 29: the clients that group projects across hosts. */
+  | { name: "clients" }
   /** The Claude Code plugins (phase 26). */
   | { name: "plugins" }
   /** Phase 21: the messages between sessions. */
@@ -145,6 +147,7 @@ const NAMES: Record<Route["name"], true> = {
   connections: true,
   snippets: true,
   personas: true,
+  clients: true,
   plugins: true,
   conversations: true,
   teams: true,
