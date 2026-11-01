@@ -255,6 +255,7 @@ export type HostCommandType = Extract<
   | `rules.${string}`
   | `costs.${string}`
   | `telemetry.${string}`
+  | `trace.${string}`
   | `budget.${string}`
   | `changes.${string}`
   | `review.${string}`

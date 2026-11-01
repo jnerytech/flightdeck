@@ -128,13 +128,13 @@ const TRACE = {
   ],
 };
 
-async function open(features = ["trace"]) {
+async function open(features = ["trace"], session: unknown = TRACE) {
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
-  daemon.trace.session = TRACE;
+  daemon.trace.session = session as typeof daemon.trace.session;
   daemon.trace.files = {
     files: [{ path: "src/a.ts", change: "modified" }],
     insertions: 3,
@@ -165,6 +165,15 @@ describe("rastro-ui: the Rastro tab of a session", () => {
     expect(screen.queryByRole("button", { name: "Rastro" })).not.toBeNull();
   });
 
+  test("a session with nothing to trace says so", async () => {
+    await open(["trace"], { ...TRACE, turns: [], costUsd: null, durationMs: null });
+    await click("Rastro");
+    await settle(
+      () => screen.queryByText("Esta sessão ainda não tem nada para rastrear.") !== null,
+    );
+    expect(screen.queryByText("Esta sessão ainda não tem nada para rastrear.")).not.toBeNull();
+  });
+
   test("the tree nests turn, tools and subagents, with time, cost and tokens per node", async () => {
     const { daemon } = await open();
     await openTrace();
@@ -192,8 +201,8 @@ describe("rastro-ui: the Rastro tab of a session", () => {
     const text = region()?.textContent ?? "";
     expect(text.match(/mais caro/g)).toHaveLength(1);
     expect(text.match(/mais lento/g)).toHaveLength(1);
-    expect(at("turn:1")?.querySelector(":scope > [data-highlight='costliest']")).not.toBeNull();
-    expect(at("agent:a2")?.querySelector(":scope > [data-highlight='slowest']")).not.toBeNull();
+    expect(at("turn:1")?.querySelector("[data-highlight='costliest']")).not.toBeNull();
+    expect(at("agent:a2")?.querySelector("[data-highlight='slowest']")).not.toBeNull();
     const width = (id: string) => {
       const bar = at(id)?.querySelector(":scope > [data-bar]") as HTMLElement | null;
       return Number.parseFloat(bar?.style.width ?? "");
