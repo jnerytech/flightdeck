@@ -71,7 +71,12 @@ export function BudgetsSection(props: {
                 <li key={budget.id}>
                   <ListRow
                     title={
-                      <span className="whitespace-normal break-words">{budgetLine(budget, t)}</span>
+                      <span
+                        className="whitespace-normal break-words"
+                        title={budget.projectKey ?? undefined}
+                      >
+                        {budgetLine(budget, t)}
+                      </span>
                     }
                     trailing={
                       <Inline gap={1}>

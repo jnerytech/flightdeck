@@ -10,6 +10,13 @@ export const ACTION_LABELS: Record<Budget["action"], string> = {
 
 const PT = translator("pt-BR");
 
+/** The last folder of a project's key ("/srv/work/web" is "web"); a key that is no path stays. */
+export const projectName = (key: string): string =>
+  key
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .pop() ?? key;
+
 /** "orçamento do host (dia)". */
 export function budgetLabel(
   budget: Pick<Budget, "scope" | "projectKey" | "period">,
@@ -18,7 +25,7 @@ export function budgetLabel(
   const scope =
     budget.scope === "host"
       ? t("budgets.scopeHost")
-      : t("budgets.scopeProject", { project: budget.projectKey ?? "" });
+      : t("budgets.scopeProject", { project: projectName(budget.projectKey ?? "") });
   return t("budgets.label", {
     scope,
     period: t(budget.period === "day" ? "budgets.day" : "budgets.month"),
