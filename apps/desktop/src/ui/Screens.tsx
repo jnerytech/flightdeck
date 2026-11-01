@@ -16,9 +16,9 @@ import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
-import { emptySession } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
+import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ActionsPage } from "./ActionsPage.tsx";
 import { AgentPage } from "./AgentPage.tsx";
@@ -99,7 +99,7 @@ function ManagedSession(props: {
     }
   }, [store, state.selected, hostId, sessionId]);
   const summary = host?.sessions.find((s) => s.id === sessionId);
-  const session = state.sessions[sessionKey(hostId, sessionId)] ?? emptySession();
+  const session = useSessionState(store, sessionKey(hostId, sessionId));
   // Estimated cost of the session, once its claudeSessionId is known (phase 8): from its own
   // events, else from the Sessões list.
   const claudeId =

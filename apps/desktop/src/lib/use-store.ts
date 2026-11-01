@@ -1,10 +1,27 @@
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import type { AppState, AppStore } from "./app-store.ts";
 import type { SessionState } from "./session-state.ts";
 
-/** The app's state, for every screen but a session's own conversation. */
+/** Whether two states differ in nothing but the conversations (`sessions`). */
+function sameButSessions(a: AppState, b: AppState): boolean {
+  return (Object.keys(b) as Array<keyof AppState>).every(
+    (key) => key === "sessions" || a[key] === b[key],
+  );
+}
+
+/**
+ * The app's state, for every screen but a conversation: a session's events (a token a few times a
+ * second while it streams) change only `sessions`, and what does not read it keeps the state it
+ * had, so it does not render. A conversation reads its own with `useSessionState`.
+ */
 export function useStoreState(store: AppStore): AppState {
-  return useSyncExternalStore(store.subscribe, store.getState);
+  const held = useRef<AppState | null>(null);
+  return useSyncExternalStore(store.subscribe, () => {
+    const next = store.getState();
+    if (held.current && sameButSessions(held.current, next)) return held.current;
+    held.current = next;
+    return next;
+  });
 }
 
 const NO_SESSION: SessionState = {

@@ -17,6 +17,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
+import { useStoreState } from "../lib/use-store.ts";
 import { createXtermScreen, type XtermDeps, type XtermScreen } from "../lib/xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
@@ -45,7 +46,7 @@ export function TerminalPage(props: {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picking, setPicking] = useState(false);
   const [launchId, setLaunchId] = useState<string | null>(null);
-  const appState = useSyncExternalStore(store.subscribe, store.getState);
+  const appState = useStoreState(store);
   /** The session in the central of a "Claude aqui" terminal: same host, same launch. */
   const linked = Object.entries(appState.externals).find(
     ([key, external]) =>

@@ -13,7 +13,7 @@ import type { Key } from "../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { issueLabel, issueUrl } from "../lib/issues.ts";
-import { emptySession } from "../lib/session-state.ts";
+import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ArenaStartForm, type ArenaVariantInput } from "./ArenaStartForm.tsx";
 import { ArenaView, variantBusy } from "./ArenaView.tsx";
@@ -75,6 +75,10 @@ export function CardDetail(props: {
   const openedStep = run?.steps.find(
     (s) => s.stepId === opened?.stepId && s.attempt === opened.attempt,
   );
+  const openedSession = useSessionState(store, sessionKey(hostId, openedStep?.sessionId ?? ""));
+  const stepSession = openedStep?.sessionId ? openedSession : null;
+  const cardSession = useSessionState(store, sessionKey(hostId, sessionId ?? ""));
+  const session = sessionId ? cardSession : null;
 
   // Again whenever the card or its run moves on.
   const cardMoment = `${card?.updatedAt}/${run?.status}/${run?.steps.length}`;
@@ -181,13 +185,6 @@ export function CardDetail(props: {
     setOpened({ stepId: step.stepId, attempt: step.attempt });
     if (step.sessionId) store.select(hostId, step.sessionId);
   };
-  const stepSession = openedStep?.sessionId
-    ? (props.state.sessions[sessionKey(hostId, openedStep.sessionId)] ?? emptySession())
-    : null;
-
-  const session = sessionId
-    ? (props.state.sessions[sessionKey(hostId, sessionId)] ?? emptySession())
-    : null;
 
   const SELECT =
     "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";

@@ -1,6 +1,7 @@
-import { useEffect, useId, useSyncExternalStore } from "react";
+import { useEffect, useId } from "react";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { useStoreState } from "@/lib/use-store";
 
 const SELECT =
   "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -21,7 +22,7 @@ export function PersonaPicker(props: {
   const t = useT();
   const id = useId();
   const { store, hostId } = props;
-  const state = useSyncExternalStore(store.subscribe, store.getState);
+  const state = useStoreState(store);
   useEffect(() => {
     void store.loadPersonas(hostId);
   }, [store, hostId]);

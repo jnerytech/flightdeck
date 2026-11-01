@@ -13,6 +13,7 @@ import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
+import { useStoreState } from "../lib/use-store.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
@@ -96,7 +97,7 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
 }
 
 export function App({ store }: { store: AppStore }) {
-  const state = useSyncExternalStore(store.subscribe, store.getState);
+  const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
