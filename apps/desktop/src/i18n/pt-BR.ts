@@ -1743,6 +1743,18 @@ export const ptBR = {
     snippetTagHelp:
       "Os snippets com essa tag aparecem primeiro, e um snippet novo já nasce com ela.",
     saveDefaults: "Salvar padrões",
+    vaultTag: "Tag do cofre",
+    vaultTagHelp:
+      "Os segredos com essa tag são deste cliente: aparecem primeiro no cofre e a tag já vem num segredo novo.",
+    vaultScope: "Manter os segredos com essa tag só nos projetos do cliente",
+    vaultScopeMessage:
+      "Ligar o escopo do cofre de {name}? {secrets} segredo(s) com a tag {tag} passam a ter {rules} regra(s) geradas, na frente das suas.",
+    vaultScopeWarning:
+      "As regras geradas pedem aprovação nos projetos do cliente e fazem negar o Claude, as automações e os workflows em qualquer outro lugar. O seu uso direto no app não é afetado, e as suas regras seguem depois delas. Desligar volta tudo ao que era.",
+    vaultScopeConfirm: "Ligar",
+    vaultFindingsTitle: "Segredos que podem sair do cliente",
+    vaultFindingRule: "{secret}: uma regra libera ou pede o projeto de outro cliente ({items}).",
+    vaultFindingHosts: "{secret}: pode ir para hosts sem projetos do cliente ({items}).",
     switchTo: "Cliente: {name}",
     settingsHint: "Agrupe os projetos de vários hosts por cliente e filtre as telas por um deles.",
     othersWaiting: "Esperando por você em outros clientes: {count}",

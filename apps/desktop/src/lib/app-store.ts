@@ -2766,6 +2766,8 @@ export class AppStore {
         JSON.stringify(this.effectiveVaultRules(secret as SecretMeta, rules)),
       );
     }
+    // The screens that judge the rules (the clients' check) read them again.
+    this.update({ secrets: this.vault.list() });
     return { ok: true };
   }
 

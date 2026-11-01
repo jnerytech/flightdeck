@@ -1739,6 +1739,18 @@ export const en: Dictionary = {
     snippetTag: "Snippet tag",
     snippetTagHelp: "Snippets with this tag come first, and a new snippet starts with it.",
     saveDefaults: "Save defaults",
+    vaultTag: "Vault tag",
+    vaultTagHelp:
+      "Secrets with this tag are the client's: they come first in the vault and a new secret starts with it.",
+    vaultScope: "Keep the secrets with this tag in the client's projects only",
+    vaultScopeMessage:
+      "Turn on the vault scope of {name}? {secrets} secret(s) with the tag {tag} get {rules} generated rule(s) in front of their own.",
+    vaultScopeWarning:
+      "The generated rules ask for approval in the client's projects and deny Claude, automations and workflows anywhere else. Your own direct use in the app is not affected, and your own rules follow them. Turning it off restores everything.",
+    vaultScopeConfirm: "Turn on",
+    vaultFindingsTitle: "Secrets that could leave the client",
+    vaultFindingRule: "{secret}: a rule lets or asks for another client's project ({items}).",
+    vaultFindingHosts: "{secret}: can go to hosts with none of the client's projects ({items}).",
     switchTo: "Client: {name}",
     settingsHint: "Group the projects of several hosts by client and filter the screens by one.",
     othersWaiting: "Waiting for you in other clients: {count}",
