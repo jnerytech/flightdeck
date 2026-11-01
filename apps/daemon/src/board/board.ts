@@ -102,7 +102,7 @@ export interface BoardOptions {
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
-  projectKeys?: { keyFor(path: string): string };
+  projectKeys?: { keyFor(path: string): string; resolve?(path: string): Promise<string> };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
   worktreeIncludeLimit?: number;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
@@ -854,6 +854,9 @@ export class Board {
     if (queued && this.budgetBlocked(projectId)) return { queueReason: "budget", quotaUntil: null };
     return { queueReason: queued ? "slot" : null, quotaUntil: null };
   }
+
+  /** Looks up the key of every registered project, so what asks for it later finds it at hand. */
+  async warmProjectKeys(): Promise<void> {}
 
   /** A `queue` budget of the host or of the card's project is at 100%. */
   private budgetBlocked(projectId: string): boolean {

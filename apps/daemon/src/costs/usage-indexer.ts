@@ -36,6 +36,8 @@ export interface UsageIndexerOptions {
   pause?: () => Promise<void>;
   /** The most bytes of one file a pass reads before it pauses; the rest comes next. */
   sliceBytes?: number;
+  /** Looks the project keys of folders up without waiting for git, before a slice that names them is read. */
+  warmKeys?: (cwds: string[]) => Promise<unknown>;
   log?: (message: string) => void;
   /** After each pass, with the entries it added (budgets are checked again). */
   onPass?: (added: number) => void;

@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { installSleepingGit, type SleepingGit } from "../../../scripts/test/sleeping-git.ts";
+import { Board } from "../src/board/board.ts";
 import { excludeLocalSettings, excludeLocalSettingsAsync } from "../src/board/worktree.ts";
+import { ProjectKeys } from "../src/central/project-key.ts";
+import { UsageIndexer } from "../src/costs/usage-indexer.ts";
 import { ProjectMemory } from "../src/memory/memory.ts";
 import { startServer } from "../src/server.ts";
+import { EventStore } from "../src/store/event-store.ts";
 import { gitRepo, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
+import { writeUsageTranscript } from "./usage-helpers.ts";
 
 setDefaultTimeout(30_000);
 
@@ -115,5 +120,58 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     cleanups.push(() => again.restore());
     excludeLocalSettings(repo);
     expect(again.calls()).toEqual([]);
+  });
+
+  test("the usage indexer looks up the project of a transcript's folder without holding the event loop, and then keyFor asks git nothing", async () => {
+    const { repo } = gitRepo();
+    const root = join(tempDir("fd-usage-"), "projects");
+    mkdirSync(root);
+    writeUsageTranscript(root, "p", repo, { subagent: false });
+    const sleeping = installSleepingGit(300);
+    const keys = new ProjectKeys("h");
+    const indexer = new UsageIndexer({
+      db: new EventStore(":memory:").db,
+      roots: [root],
+      projectKey: (cwd) => keys.keyFor(cwd),
+      warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
+    });
+    const blocked = await longestBlockWhile(sleeping, () => indexer.pass());
+    expect(blocked).toBeLessThan(100);
+    const calls = sleeping.calls().length;
+    expect(calls).toBeGreaterThan(0);
+    // Cached now: the synchronous answer does not start another process.
+    keys.keyFor(repo);
+    expect(sleeping.calls()).toHaveLength(calls);
+  });
+
+  test("adding a project, and the daemon's start for the ones it has, look their keys up so the budget check and the vault find them cached", async () => {
+    const asked: string[][] = [];
+    const keys = new ProjectKeys(
+      "h",
+      (args) => {
+        asked.push(args);
+        return { code: 1, stdout: "" };
+      },
+      async () => ({ code: 1, stdout: "" }),
+    );
+    const { board, manager, store, root, repo } = newBoard({ projectKeys: keys });
+    const added = await board.addProject({ path: repo });
+    expect(typeof keys.lookup(repo)).toBe("string");
+    // A board that started later over the same projects has to warm them itself.
+    const later = new ProjectKeys(
+      "h",
+      () => ({ code: 1, stdout: "" }),
+      async () => ({ code: 1, stdout: "" }),
+    );
+    const restarted = new Board({
+      db: store.db,
+      manager,
+      allowedRoots: [root],
+      projectKeys: later,
+    });
+    expect(typeof later.lookup(added.path)).toBe("object");
+    await restarted.warmProjectKeys();
+    expect(typeof later.lookup(added.path)).toBe("string");
+    expect(asked).toEqual([]);
   });
 });
