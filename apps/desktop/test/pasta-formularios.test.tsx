@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { HostView } from "../src/lib/app-store.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -53,7 +53,7 @@ async function pressInDialog(name: string | RegExp) {
 /** Browses to `<root>/alfa` and chooses it. */
 async function chooseAlfa(root: string) {
   await waitFor(() => expect(dialog() !== null).toBe(true));
-  await pressInDialog(new RegExp(`^${root.split("/").at(-1)}`));
+  await pressInDialog(new RegExp(`^${basename(root)}`));
   await pressInDialog("alfa");
   await waitFor(() => expect(shown("interna")).toBe(true));
   await pressInDialog("Escolher esta pasta");
@@ -185,7 +185,7 @@ describe("pasta: o seletor nos formulários", () => {
       fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
     });
     await waitFor(() => expect(dialog() !== null).toBe(true));
-    await pressInDialog(new RegExp(`^${root.split("/").at(-1)}`));
+    await pressInDialog(new RegExp(`^${basename(root)}`));
     await pressInDialog("alfa");
     await waitFor(() => expect(shown("interna")).toBe(true));
     await pressInDialog("interna");

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -75,13 +75,13 @@ describe("pasta: escolher uma pasta do host", () => {
   test("it opens on the host's allowed folders, in a dialog", async () => {
     const { root } = await setup();
     await waitFor(() => expect(dialog()).not.toBeNull());
-    await waitFor(() => expect(button(new RegExp(`^${root.split("/").at(-1)}`))).not.toBeNull());
+    await waitFor(() => expect(button(new RegExp(`^${basename(root)}`))).not.toBeNull());
     expect(within(dialog() as HTMLElement).queryByText("Pastas do host")).not.toBeNull();
   });
 
   test("a folder opens into its subfolders: no files, no hidden ones, and a breadcrumb back", async () => {
     const { root } = await setup();
-    const rootName = root.split("/").at(-1) as string;
+    const rootName = basename(root);
     await press(new RegExp(`^${rootName}`));
     await waitFor(() => expect(shown("alfa")).toBe(true));
     expect(shown("beta")).toBe(true);
@@ -99,7 +99,7 @@ describe("pasta: escolher uma pasta do host", () => {
 
   test("Escolher esta pasta hands over the real path; at the list of roots it is disabled and says why", async () => {
     const { root, picked } = await setup();
-    const rootName = root.split("/").at(-1) as string;
+    const rootName = basename(root);
     await waitFor(() => expect(shown("Escolher esta pasta")).toBe(true));
     expect((button("Escolher esta pasta") as HTMLButtonElement).disabled).toBe(true);
     expect(within(dialog() as HTMLElement).queryByText("Abra uma pasta primeiro")).not.toBeNull();
@@ -112,7 +112,7 @@ describe("pasta: escolher uma pasta do host", () => {
 
   test("hidden folders show when asked", async () => {
     const { root } = await setup();
-    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press(new RegExp(`^${basename(root)}`));
     await waitFor(() => expect(shown("alfa")).toBe(true));
     const toggle = within(dialog() as HTMLElement).queryByRole("checkbox", {
       name: "Mostrar pastas ocultas",
@@ -126,7 +126,7 @@ describe("pasta: escolher uma pasta do host", () => {
 
   test("the arrow keys walk the list, Enter opens a folder and Backspace goes up", async () => {
     const { root } = await setup();
-    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press(new RegExp(`^${basename(root)}`));
     await waitFor(() => expect(shown("alfa")).toBe(true));
     const list = within(dialog() as HTMLElement).queryByRole("list", { name: "Pastas" });
     expect(list).not.toBeNull();
@@ -182,7 +182,7 @@ describe("pasta: escolher uma pasta do host", () => {
     const { root } = await setup();
     mkdirSync(join(root, "many"));
     for (let i = 0; i < 501; i++) mkdirSync(join(root, "many", `d${String(i).padStart(3, "0")}`));
-    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press(new RegExp(`^${basename(root)}`));
     await press("alfa");
     await press("interna");
     await waitFor(() =>
@@ -197,7 +197,7 @@ describe("pasta: escolher uma pasta do host", () => {
       fireEvent.keyDown(list, { key: "a" });
     });
     await press("Pastas do host");
-    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press(new RegExp(`^${basename(root)}`));
     await press("many");
     await waitFor(() =>
       expect(
@@ -208,7 +208,7 @@ describe("pasta: escolher uma pasta do host", () => {
 
   test("the up button (it has a name) goes to the folder above, and Esc closes the picker", async () => {
     const { root, closed } = await setup();
-    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press(new RegExp(`^${basename(root)}`));
     await press("alfa");
     await waitFor(() => expect(shown("interna")).toBe(true));
     await press("Subir um nível");
