@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import {
   type Ack,
   type AskpassRequest,
@@ -95,6 +94,7 @@ import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
+import { tokenMatches } from "./token.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
@@ -276,14 +276,9 @@ interface Connection {
   lastRttMs?: number;
 }
 
+export { tokenMatches };
+
 type Socket = ServerWebSocket<Connection>;
-
-const digest = (value: string) => createHash("sha256").update(value).digest();
-
-/** Constant-time token comparison (hashing first keeps the lengths equal). */
-export function tokenMatches(expected: string, given: string): boolean {
-  return timingSafeEqual(digest(expected), digest(given));
-}
 
 type Outgoing =
   | Ack

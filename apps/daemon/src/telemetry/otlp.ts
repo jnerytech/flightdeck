@@ -1,4 +1,5 @@
 import { gunzipSync } from "node:zlib";
+import { tokenMatches } from "../token.ts";
 
 /** One Claude Code event (an OTLP log record) in the shape the daemon keeps. */
 export interface OtlpEvent {
@@ -303,7 +304,7 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
     port: opts.port,
     async fetch(req) {
       const token = opts.token();
-      if (!token || req.headers.get("authorization") !== `Bearer ${token}`) {
+      if (!token || !tokenMatches(`Bearer ${token}`, req.headers.get("authorization") ?? "")) {
         return new Response("unauthorized", { status: 401 });
       }
       const path = new URL(req.url).pathname;
