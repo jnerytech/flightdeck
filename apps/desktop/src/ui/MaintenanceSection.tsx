@@ -80,12 +80,20 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
         {status ? (
           <Facts
             items={[
-              { label: t("maintenance.fields.db"), value: formatBytes(status.dbBytes) },
-              { label: t("maintenance.fields.sessions"), value: status.counts.sessions },
-              { label: t("maintenance.fields.events"), value: status.counts.events },
-              { label: t("maintenance.fields.external"), value: status.counts.externalSessions },
-              { label: t("maintenance.fields.lastBackup"), value: backupText },
-              { label: t("maintenance.fields.lastCleanup"), value: cleanupText },
+              { id: "db", label: t("maintenance.fields.db"), value: formatBytes(status.dbBytes) },
+              {
+                id: "sessions",
+                label: t("maintenance.fields.sessions"),
+                value: status.counts.sessions,
+              },
+              { id: "events", label: t("maintenance.fields.events"), value: status.counts.events },
+              {
+                id: "external",
+                label: t("maintenance.fields.external"),
+                value: status.counts.externalSessions,
+              },
+              { id: "lastBackup", label: t("maintenance.fields.lastBackup"), value: backupText },
+              { id: "lastCleanup", label: t("maintenance.fields.lastCleanup"), value: cleanupText },
             ]}
           />
         ) : (

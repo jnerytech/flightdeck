@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 /** One line of a `Facts` list: what it is and what it says. */
 export interface Fact {
+  /** Tells the line apart from the others, and stays with it as the list changes. */
+  id: string;
   label: ReactNode;
   value: ReactNode;
 }
@@ -10,16 +12,12 @@ export interface Fact {
 export function Facts(props: { items: Fact[] }) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-      {props.items.flatMap((item, i) => [
-        // biome-ignore lint/suspicious/noArrayIndexKey: the lines have no identity besides their place
-        <dt key={`t${i}`} className="text-muted-foreground">
-          {item.label}
-        </dt>,
-        // biome-ignore lint/suspicious/noArrayIndexKey: the lines have no identity besides their place
-        <dd key={`d${i}`} className="min-w-0">
-          {item.value}
-        </dd>,
-      ])}
+      {props.items.map((item) => (
+        <Fragment key={item.id}>
+          <dt className="text-muted-foreground">{item.label}</dt>
+          <dd className="min-w-0">{item.value}</dd>
+        </Fragment>
+      ))}
     </dl>
   );
 }

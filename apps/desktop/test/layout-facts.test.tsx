@@ -13,8 +13,8 @@ describe("layout-facts: a key/value list", () => {
     const { container } = render(
       <Facts
         items={[
-          { label: "Banco", value: "692.0 KB" },
-          { label: "Último backup", value: "nenhum ainda" },
+          { id: "db", label: "Banco", value: "692.0 KB" },
+          { id: "backup", label: "Último backup", value: "nenhum ainda" },
         ]}
       />,
     );
@@ -32,7 +32,7 @@ describe("layout-facts: a key/value list", () => {
   });
 
   test("the labels and the values are two columns of one grid, so the values line up", () => {
-    const { container } = render(<Facts items={[{ label: "a", value: "b" }]} />);
+    const { container } = render(<Facts items={[{ id: "a", label: "a", value: "b" }]} />);
     const className = container.querySelector("dl")?.className ?? "";
     expect(className).toContain("grid");
     expect(className).toContain("grid-cols-[auto_1fr]");
@@ -40,7 +40,7 @@ describe("layout-facts: a key/value list", () => {
   });
 
   test("a long value wraps inside its column instead of pushing the labels", () => {
-    const { container } = render(<Facts items={[{ label: "a", value: "b" }]} />);
+    const { container } = render(<Facts items={[{ id: "a", label: "a", value: "b" }]} />);
     expect(container.querySelector("dd")?.className ?? "").toContain("min-w-0");
   });
 });
