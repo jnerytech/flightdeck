@@ -15,13 +15,29 @@ import { useFormatNumber, useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
+import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
+import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
 
+/** The host choice that adds every host up (phase 29). */
+const ALL_HOSTS = "__all__";
+
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
+
+/** The costs of `ids` for the selected client, from the hosts' own `costs.summary`. */
+function askCosts(store: AppStore, ids: string[], filter: CostsFilter, selection: string) {
+  return loadCostsSummary({
+    hostIds: ids,
+    filter,
+    selection,
+    scope: store.clientScope(),
+    ask: (id, f) => store.hostCommand(id, "costs.summary", f),
+  });
+}
 
 export type TopSession = CostsSummary["topSessions"][number];
 
@@ -48,7 +64,13 @@ function Breakdown(props: { name: string; rows: Array<{ label: string; costUsd: 
   );
 }
 
-const COSTSPAGE_KEYS = ["personas", "hosts"] as const;
+const COSTSPAGE_KEYS = [
+  "personas",
+  "hosts",
+  "clientSelection",
+  "clientList",
+  "clientOverrides",
+] as const;
 
 /**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
@@ -68,25 +90,31 @@ export const CostsPage = memo(function CostsPage(props: {
   );
   /** The host the user picked; until then (or if it left), the first one that announces costs. */
   const [chosen, setChosen] = useState("");
-  const hostId = hosts.some((h) => h.id === chosen) ? chosen : (hosts[0]?.id ?? "");
-  const withPersonas = hasFeature(
-    hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-    "personas",
-    false,
+  const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
+  const hostId = acrossHosts
+    ? ALL_HOSTS
+    : hosts.some((h) => h.id === chosen)
+      ? chosen
+      : (hosts[0]?.id ?? "");
+  const hostIds = acrossHosts ? hosts.map((h) => h.id) : hostId ? [hostId] : [];
+  const personaHosts = hosts.filter(
+    (h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "personas", false),
   );
   const withTelemetry = hasFeature(
     hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "telemetry",
     false,
   );
+  const withPersonas = personaHosts.length > 0;
+  const personaKey = personaHosts.map((h) => h.id).join("|");
   // The names of the personas the breakdown shows (phase 20).
   useEffect(() => {
-    if (withPersonas) void store.loadPersonas(hostId);
-  }, [store, hostId, withPersonas]);
-  const personaName = (id: string | null) =>
-    id === null
-      ? t("costsUi.noPersona")
-      : (state.personas[hostId]?.find((p) => p.id === id)?.name ?? id);
+    for (const id of personaKey.split("|")) if (id) void store.loadPersonas(id);
+  }, [store, personaKey]);
+  const personaName = (id: string | null) => {
+    const found = personaHosts.flatMap((h) => state.personas[h.id] ?? []).find((p) => p.id === id);
+    return id === null ? t("costsUi.noPersona") : (found?.name ?? id);
+  };
   const [period, setPeriod] = useState<Period>("7d");
   const today = store.today();
   const [range, setRange] = useState(periodRange("7d", today));
@@ -97,19 +125,43 @@ export const CostsPage = memo(function CostsPage(props: {
   const [status, setStatus] = useState<CostsStatus | null>(null);
   const days = period === "range" ? range : periodRange(period, today);
   const filter: CostsFilter = { ...days, ...filters };
-  const key = JSON.stringify([hostId, filter]);
+  const selection = state.clientSelection;
+  const [sessionHost, setSessionHost] = useState<Record<string, string>>({});
+  const [failed, setFailed] = useState<string[]>([]);
+  // What the screen asks for: the hosts, the period, the filters, the client and how the client's
+  // projects are placed (a change to the clients asks again).
+  const placed = JSON.stringify([state.clientList, state.clientOverrides]);
+  const key = JSON.stringify([hostIds, filter, selection, placed]);
   useEffect(() => {
-    if (!hostId) return;
-    void store.hostCommand(hostId, "costs.summary", JSON.parse(key)[1]).then(setSummary);
-  }, [store, hostId, key]);
-  const daysKey = JSON.stringify([hostId, days]);
+    const [ids, asked] = JSON.parse(key) as [string[], CostsFilter];
+    if (ids.length === 0) return;
+    let live = true;
+    void askCosts(store, ids, asked, selection).then((loaded) => {
+      if (!live) return;
+      setSummary(loaded.summary);
+      setSessionHost(loaded.sessionHost);
+      setFailed(loaded.failed);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, key, selection]);
+  const daysKey = JSON.stringify([hostIds, days, selection, placed]);
   useEffect(() => {
-    if (!hostId) return;
-    void store.hostCommand(hostId, "costs.summary", JSON.parse(daysKey)[1]).then(setAll);
-  }, [store, hostId, daysKey]);
+    const [ids, asked] = JSON.parse(daysKey) as [string[], CostsFilter];
+    if (ids.length === 0) return;
+    let live = true;
+    void askCosts(store, ids, asked, selection).then((loaded) => {
+      if (live) setAll(loaded.summary);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, daysKey, selection]);
   useEffect(() => {
-    if (hostId) void store.hostCommand(hostId, "costs.status", {}).then(setStatus);
-  }, [store, hostId]);
+    if (hostId && !acrossHosts) void store.hostCommand(hostId, "costs.status", {}).then(setStatus);
+    else setStatus(null);
+  }, [store, hostId, acrossHosts]);
   const setFilter = (name: keyof typeof filters, value: string) => {
     const { [name]: _old, ...rest } = filters;
     setFilters(value ? { ...rest, [name]: value } : rest);
@@ -119,6 +171,12 @@ export const CostsPage = memo(function CostsPage(props: {
     if (file) await store.saveFile(file.filename, file.csv);
   };
   const byDay = summary?.byDay ?? [];
+  // The split by client is the whole spend of the period: it is not shown for one client.
+  const scope = store.clientScope();
+  const byClient =
+    summary && scope.active && selection === ALL_CLIENTS
+      ? costByClient(summary, scope, state.clientList, t("clients.unassigned"))
+      : [];
 
   const loading = useMinLoading(hostId !== "" && summary === null);
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
@@ -140,6 +198,7 @@ export const CostsPage = memo(function CostsPage(props: {
                 {h.name}
               </option>
             ))}
+            {hosts.length > 1 && <option value={ALL_HOSTS}>{t("costsUi.allHosts")}</option>}
           </NativeSelect>
           {PERIODS.map((p) => (
             <Button
@@ -213,9 +272,11 @@ export const CostsPage = memo(function CostsPage(props: {
               </option>
             ))}
           </NativeSelect>
-          <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
-            {t("costsUi.export")}
-          </Button>
+          {!acrossHosts && (
+            <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
+              {t("costsUi.export")}
+            </Button>
+          )}
         </Toolbar>
       }
     >
@@ -232,6 +293,33 @@ export const CostsPage = memo(function CostsPage(props: {
                   }),
                 )
                 .join("; "),
+            })}
+          </InlineNotice>
+        )}
+        {acrossHosts && state.hosts.some((h) => !hosts.includes(h)) && (
+          <InlineNotice>
+            {t("costsUi.hostsSkipped", {
+              hosts: state.hosts
+                .filter((h) => !hosts.includes(h))
+                .map((h) => h.name)
+                .join(", "),
+            })}
+          </InlineNotice>
+        )}
+        {failed.length > 0 && (
+          <InlineNotice>
+            {t("costsUi.hostsFailed", {
+              hosts: failed
+                .map((id) => state.hosts.find((h) => h.id === id)?.name ?? id)
+                .join(", "),
+            })}
+          </InlineNotice>
+        )}
+        {selection !== ALL_CLIENTS && (
+          <InlineNotice>
+            {t("costsUi.onlyClient", {
+              name:
+                state.clientList.find((c) => c.id === selection)?.name ?? t("clients.unassigned"),
             })}
           </InlineNotice>
         )}
@@ -313,6 +401,12 @@ export const CostsPage = memo(function CostsPage(props: {
                   costUsd: p.costUsd,
                 }))}
               />
+              {byClient.length > 0 && (
+                <Breakdown
+                  name={t("costsUi.byClient")}
+                  rows={byClient.map((c) => ({ label: c.name, costUsd: c.costUsd }))}
+                />
+              )}
               <Breakdown
                 name={t("costsUi.byModel")}
                 rows={summary.byModel.map((m) => ({ label: m.model, costUsd: m.costUsd }))}
@@ -331,7 +425,7 @@ export const CostsPage = memo(function CostsPage(props: {
                 />
               )}
             </div>
-            <QuotaCharts key={hostId} store={store} hostId={hostId} />
+            {!acrossHosts && <QuotaCharts key={hostId} store={store} hostId={hostId} />}
             {withTelemetry && <TimingBreakdown key={hostId} store={store} hostId={hostId} />}
             <section aria-label={t("costsUi.top")}>
               <Panel title={t("costsUi.top")}>
@@ -342,7 +436,9 @@ export const CostsPage = memo(function CostsPage(props: {
                         variant="ghost"
                         size="sm"
                         className="h-auto w-full justify-start whitespace-normal py-1 text-left"
-                        onClick={() => props.onOpenSession(hostId, s)}
+                        onClick={() =>
+                          props.onOpenSession(sessionHost[s.claudeSessionId] ?? hostId, s)
+                        }
                       >
                         {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectLabel(s.projectKey)} · ${usd(s.costUsd)}`}
                       </Button>
