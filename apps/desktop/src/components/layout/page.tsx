@@ -24,7 +24,9 @@ export function Page(props: {
             {props.subtitle && <p className="text-muted-foreground text-sm">{props.subtitle}</p>}
           </div>
           {props.actions && (
-            <div className="flex flex-wrap items-center gap-2">{props.actions}</div>
+            <div data-slot="page-actions" className="flex flex-wrap items-end gap-2">
+              {props.actions}
+            </div>
           )}
         </div>
         {props.toolbar}
