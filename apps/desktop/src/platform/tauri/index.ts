@@ -47,6 +47,7 @@ export function tauriPlatform(
       pickFile: () => call<PickedFile | null>("vault_pick_file"),
       removeFile: (path) => call("vault_remove_file", { path }),
     },
+    pickFolder: () => call<string | null>("pick_folder"),
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
       // The desktop plugin reports no clicks, so the link has nowhere to go (docs/DECISIONS.md).

@@ -1336,6 +1336,21 @@ export class AppStore {
     return true;
   }
 
+  /** Whether this app can open the system's folder dialog (the desktop app, not a browser). */
+  canPickFolder(): boolean {
+    return this.platform.pickFolder !== undefined;
+  }
+
+  /** The folder the user picks in the system dialog; null when they cancel or there is none. */
+  async pickFolder(): Promise<string | null> {
+    try {
+      return (await this.platform.pickFolder?.()) ?? null;
+    } catch (error) {
+      this.fail(error);
+      return null;
+    }
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);

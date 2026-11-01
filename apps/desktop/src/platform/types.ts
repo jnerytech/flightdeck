@@ -115,6 +115,11 @@ export interface Platform {
   /** Closing the window hides it to the tray instead of quitting. */
   setCloseToTray(enabled: boolean): Promise<void>;
   copyText(text: string): Promise<void>;
+  /**
+   * The system's folder dialog, for a folder of THIS machine; null when the user cancels. Absent
+   * in a browser. A folder it gives is only a suggestion: the host checks it against its roots.
+   */
+  pickFolder?(): Promise<string | null>;
   /** Saves `text` through the system's save dialog; `false` when the user cancels. */
   saveFile(name: string, text: string): Promise<boolean>;
   /** The system's language (`navigator.language`), for the app's first language (phase 10). */
