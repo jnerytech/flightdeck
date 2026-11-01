@@ -102,6 +102,8 @@ const MAX_MISSED_PINGS = 2;
 
 export interface ServerOptions {
   manager: SessionManager;
+  /** Looks up the project of a folder before a session is created in it (without blocking). */
+  warmProjectKey?: (cwd: string) => Promise<unknown>;
   hostName: string;
   bind: string;
   port: number;

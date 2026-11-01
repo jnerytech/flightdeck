@@ -21,7 +21,7 @@ import {
   installHooks,
   uninstallHooks,
 } from "./central/hooks-install.ts";
-import { ProjectKeys } from "./central/project-key.ts";
+import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { runClaude } from "./central/wrapper.ts";
 import { Forker } from "./checkpoints/fork.ts";
 import { Rewinder } from "./checkpoints/rewind.ts";
@@ -501,6 +501,8 @@ export async function startDaemon(
     onShutdown?: () => void;
     /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
     pty?: PtyFactory;
+    /** How the project key asks git; the process itself when absent (tests hold it). */
+    projectGit?: AsyncGitRunner;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);

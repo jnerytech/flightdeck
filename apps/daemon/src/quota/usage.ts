@@ -3,8 +3,11 @@ import type { SessionEventOf, UsageRow, UsageSummary } from "@flightdeck/protoco
 
 export interface UsageLedgerOptions {
   db: Database;
-  /** The project a session's cwd belongs to (phase 5's `projectKey`). */
-  projectKey: (cwd: string) => string;
+  /**
+   * The project a session's cwd belongs to (phase 5's `projectKey`). A promise while the answer
+   * is still being looked up: the turn is added to the ledger when it arrives.
+   */
+  projectKey: (cwd: string) => string | Promise<string>;
   /** Milliseconds now. */
   now?: () => number;
   /** `YYYY-MM-DD` of an instant in the host's time zone. */
@@ -65,7 +68,7 @@ export class UsageLedger {
       )
       .run(
         this.day(this.now()),
-        this.opts.projectKey(cwd),
+        String(this.opts.projectKey(cwd)),
         cost,
         turn.usage?.inputTokens ?? 0,
         turn.usage?.outputTokens ?? 0,

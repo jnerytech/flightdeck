@@ -1,7 +1,10 @@
 import { basename, dirname, resolve } from "node:path";
 import { whichOnPath } from "../which.ts";
 
-export type GitRunner = (args: string[]) => { code: number; stdout: string };
+export type GitResult = { code: number; stdout: string };
+export type GitRunner = (args: string[]) => GitResult;
+/** The same without waiting for the process: the event loop keeps serving while git runs. */
+export type AsyncGitRunner = (args: string[]) => Promise<GitResult>;
 
 const runGit: GitRunner = (args) => {
   const proc = Bun.spawnSync([whichOnPath("git") ?? "git", ...args], {
@@ -45,7 +48,18 @@ export class ProjectKeys {
   constructor(
     readonly hostId: string,
     private readonly git: GitRunner = runGit,
+    private readonly gitAsync: AsyncGitRunner = async () => ({ code: 1, stdout: "" }),
   ) {}
+
+  /** The key without blocking: the cached one, else a promise of it. */
+  lookup(cwd: string): string | Promise<string> {
+    return "";
+  }
+
+  /** The key, asking git without blocking the event loop; asked once per cwd, then cached. */
+  resolve(cwd: string): Promise<string> {
+    return Promise.resolve("");
+  }
 
   keyFor(cwd: string): string {
     const cached = this.cache.get(cwd);

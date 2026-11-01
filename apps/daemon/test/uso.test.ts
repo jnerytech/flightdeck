@@ -182,4 +182,96 @@ describe("uso", () => {
     // Windows runner a stalled process start once took this test past the 5 s default. The other
     // tests that start a daemon already give themselves 20 s.
   }, 20_000);
+
+  test("a turn whose project key is still being looked up reaches the ledger when the key arrives", async () => {
+    const gate = Promise.withResolvers<string>();
+    const { store, project } = newManager();
+    const ledger = new UsageLedger({
+      db: store.db,
+      projectKey: () => gate.promise,
+      day: () => "d",
+    });
+    const turn = { type: "turn.result", costUsd: 0.5, usage: { inputTokens: 3, outputTokens: 4 } };
+    ledger.record("s1", project, turn as never);
+    expect(ledger.summary(1).rows).toEqual([]);
+    gate.resolve("p:late");
+    await Bun.sleep(5);
+    expect(ledger.summary(1).rows).toEqual([
+      { day: "d", projectKey: "p:late", costUsd: 0.5, inputTokens: 3, outputTokens: 4, turns: 1 },
+    ]);
+  });
+
+  test("a key that arrives after the store was closed is dropped quietly", async () => {
+    const gate = Promise.withResolvers<string>();
+    const { store, project } = newManager();
+    const ledger = new UsageLedger({
+      db: store.db,
+      projectKey: () => gate.promise,
+      day: () => "d",
+    });
+    const rejections: unknown[] = [];
+    const onRejection = (reason: unknown) => rejections.push(reason);
+    process.on("unhandledRejection", onRejection);
+    try {
+      ledger.record("s1", project, { type: "turn.result", costUsd: 1 } as never);
+      expect(ledger.summary(1).rows).toEqual([]);
+      store.db.close();
+      gate.resolve("p:late");
+      await Bun.sleep(20);
+      expect(rejections).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onRejection);
+    }
+  });
+
+  test("with git held, the protocol keeps answering and the new session starts and is counted when git is released", async () => {
+    const dir = tempDir();
+    const { root, project } = workspace();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        allowedRoots: [root],
+        history: { roots: [join(dir, "nada")] },
+      }),
+    );
+    const gate = Promise.withResolvers<void>();
+    const asked: string[][] = [];
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+      {
+        projectGit: async (args) => {
+          asked.push(args);
+          await gate.promise;
+          return { code: 1, stdout: "" };
+        },
+      },
+    );
+    cleanups.push(() => daemon.stop());
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    // Not awaited: the new session's folder is looked up in git before it is created.
+    const created = client.request("session.create", { cwd: project, prompt: "[cost:0.5]" });
+    await poll(() => asked.length > 0, 2000);
+    expect(asked.length).toBeGreaterThan(0);
+    expect(await client.request("host.info", {})).toMatchObject({ ok: true });
+    expect(await client.data("usage.summary", {})).toEqual({ days: 7, rows: [] });
+    expect(await Promise.race([created, Promise.resolve("held")])).toBe("held");
+    gate.resolve();
+    expect(await created).toMatchObject({ ok: true });
+    let rows: Array<{ costUsd: number; projectKey: string }> = [];
+    for (const until = Date.now() + 5000; rows.length === 0 && Date.now() < until; ) {
+      rows = (await client.data<{ rows: typeof rows }>("usage.summary", {}))?.rows ?? [];
+      if (rows.length === 0) await Bun.sleep(10);
+    }
+    expect(rows).toEqual([expect.objectContaining({ costUsd: 0.5, turns: 1 })]);
+    expect(rows[0]?.projectKey).toStartWith("host:");
+    expect(rows[0]?.projectKey).toEndWith(project);
+  }, 20_000);
 });
