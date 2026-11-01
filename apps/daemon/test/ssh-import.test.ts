@@ -239,16 +239,27 @@ describe("ssh-import", () => {
       "nada",
     ]);
     const skipped = Object.fromEntries(result.skipped.map((s) => [s.alias, s.reason]));
-    expect(skipped.vps).toMatch(/já existe/);
+    const why = Object.fromEntries(result.skipped.map((s) => [s.alias, [s.why, s.params]]));
+    expect(skipped.vps).toMatch(/already exists/);
+    expect(why.vps).toEqual(["ssh_import_exists", undefined]);
     expect(skipped.far).toMatch(/bastion@bastion\.example\.com:2022/);
-    expect(skipped.two).toMatch(/vários/);
+    expect(why.far).toEqual([
+      "ssh_import_jump_unknown",
+      { jump: "bastion@bastion.example.com:2022" },
+    ]);
+    expect(skipped.two).toMatch(/several jumps/);
+    expect(why.two).toEqual(["ssh_import_multi_jump", { jump: "vps,inner" }]);
     // A ProxyJump that cannot be resolved is never dropped silently: the connection would go
     // straight to a host that may not be reachable that way.
     expect(targets.list().some((t) => t.name === "far" || t.name === "two")).toBe(false);
-    expect(skipped["loop-a"]).toMatch(/ciclo/);
-    expect(skipped["loop-b"]).toMatch(/ciclo/);
+    expect(skipped["loop-a"]).toMatch(/cycle/);
+    expect(skipped["loop-b"]).toMatch(/cycle/);
+    expect(new Set([why["loop-a"]?.[0], why["loop-b"]?.[0]])).toEqual(
+      new Set(["ssh_import_cycle", "ssh_import_jump_failed"]),
+    );
     expect(skipped.tok).toMatch(/invalid/);
-    expect(skipped.nada).toMatch(/não está/);
+    expect(skipped.nada).toMatch(/not in/);
+    expect(why.nada).toEqual(["ssh_import_not_in_config", undefined]);
     expect(result.created.map((t) => t.name)).toEqual(["inner"]);
   });
 

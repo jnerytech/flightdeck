@@ -231,6 +231,19 @@ describe("conexoes-ui: the connection test", () => {
     expect(screen.queryByText("Conexão ok.")).toBeNull();
   });
 
+  test("a failed test with a reason shows the app's sentence for it, not the daemon's English", async () => {
+    await open({
+      targets: [VPS],
+      test: { ok: false, error: "authentication refused", reason: "ssh_test_auth" },
+    });
+    await click("Editar vps");
+    await click("Testar conexão");
+    expect(screen.queryByRole("status")?.textContent).not.toBe("authentication refused");
+    expect(screen.queryByRole("status")?.textContent).toContain(
+      "O servidor recusou a autenticação",
+    );
+  });
+
   test("a destino that is not saved yet cannot be tested", async () => {
     await open({ targets: [] });
     await click("Novo destino");

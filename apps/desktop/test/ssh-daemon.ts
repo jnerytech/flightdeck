@@ -11,7 +11,12 @@ export interface SshDaemonOptions {
   test?: SshTestResult;
   importEntries?: SshImportEntry[];
   /** What `ssh.import.apply` reports as not imported, with the reason. */
-  importSkipped?: Array<{ alias: string; reason: string }>;
+  importSkipped?: Array<{
+    alias: string;
+    reason: string;
+    why?: string;
+    params?: Record<string, string | number>;
+  }>;
   /** The daemon announces `ssh` in `host.info`. */
   feature?: boolean;
   /** Commands the daemon answers with an error (an older or a broken host). */

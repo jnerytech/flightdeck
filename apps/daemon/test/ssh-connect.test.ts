@@ -534,21 +534,49 @@ describe("ssh-connect", () => {
     expect(argv.join(" ")).toContain("StrictHostKeyChecking=yes");
     // No terminal is opened for a test.
     expect(s.ptys.spawned).toEqual([]);
-    const translated: Array<[string, string]> = [
-      ["deploy@vps.example.com: Permission denied (publickey).", "autenticação recusada"],
-      ["ssh: connect to host vps.example.com port 2222: Connection refused", "conexão recusada"],
+    const translated: Array<[string, string, string | undefined, object | undefined]> = [
+      [
+        "deploy@vps.example.com: Permission denied (publickey).",
+        "authentication refused",
+        "ssh_test_auth",
+        undefined,
+      ],
+      [
+        "ssh: connect to host vps.example.com port 2222: Connection refused",
+        "connection refused",
+        "ssh_test_refused",
+        undefined,
+      ],
       [
         "ssh: Could not resolve hostname vps.example.com: Name or service not known",
-        "host não encontrado",
+        "host not found",
+        "ssh_test_host_unknown",
+        undefined,
       ],
-      ["ssh: connect to host vps.example.com port 2222: Connection timed out", "tempo esgotado"],
-      ["Host key verification failed.", "chave do servidor diferente da guardada"],
-      ["something odd happened", "something odd happened"],
-      ["", "o ssh terminou com código 255"],
+      [
+        "ssh: connect to host vps.example.com port 2222: Connection timed out",
+        "timed out",
+        "ssh_test_timeout",
+        undefined,
+      ],
+      [
+        "Host key verification failed.",
+        "the server key differs from the saved one",
+        "ssh_test_hostkey",
+        undefined,
+      ],
+      ["something odd happened", "something odd happened", undefined, undefined],
+      ["", "ssh exited with code 255", "ssh_test_exit", { code: 255 }],
     ];
-    for (const [stderr, text] of translated) {
+    for (const [stderr, text, reason, params] of translated) {
       s.answer(255, stderr);
-      expect(await s.probe(s.vps.id)).toEqual({ ok: false, error: text });
+      const got = await s.probe(s.vps.id);
+      expect(got).toEqual({
+        ok: false,
+        error: text,
+        ...(reason ? { reason } : {}),
+        ...(params ? { params } : {}),
+      });
     }
     // Only the last line of a long message, and not an endless one.
     s.answer(
@@ -574,7 +602,8 @@ ${"x".repeat(500)}`,
     s.servers.set("pw.example.com", scan("pw.example.com", KEY));
     const noPassword = await s.probe(password.id);
     expect(noPassword.ok).toBe(false);
-    expect(noPassword.error).toMatch(/senha/);
+    expect(noPassword.error).toMatch(/password/);
+    expect(noPassword.reason).toBe("ssh_test_no_password");
     expect(s.runs).toEqual([]);
     const vault = s.targets.save({
       name: "cofre",

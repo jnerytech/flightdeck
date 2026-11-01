@@ -84,6 +84,19 @@ const REASONS = [
   "ssh_key_perms",
   "ssh_agent_down",
   "ssh_add_refused",
+  "ssh_import_cycle",
+  "ssh_import_not_in_config",
+  "ssh_import_exists",
+  "ssh_import_multi_jump",
+  "ssh_import_jump_unknown",
+  "ssh_import_jump_failed",
+  "ssh_test_auth",
+  "ssh_test_refused",
+  "ssh_test_host_unknown",
+  "ssh_test_timeout",
+  "ssh_test_hostkey",
+  "ssh_test_exit",
+  "ssh_test_no_password",
 ];
 
 const cleanups: Array<() => unknown> = [];

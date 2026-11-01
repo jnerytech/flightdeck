@@ -35,7 +35,12 @@ const entry = (alias: string, exists = false): SshImportEntry => ({
 
 async function open(
   importEntries: SshImportEntry[],
-  importSkipped: Array<{ alias: string; reason: string }> = [],
+  importSkipped: Array<{
+    alias: string;
+    reason: string;
+    why?: string;
+    params?: Record<string, string | number>;
+  }> = [],
 ) {
   const d = sshDaemon(cleanups, {
     targets: [sshTarget({ id: "t1", name: "vps" })],
@@ -82,6 +87,26 @@ describe("conexoes-ui: import from the SSH config", () => {
     expect(d.sent("ssh.import.apply")).toEqual([{ aliases: ["web"] }]);
     expect(screen.queryByText("Criados: 1")).not.toBeNull();
     expect(screen.queryByRole("list", { name: "Destinos" })?.textContent).toContain("web");
+  });
+
+  test("an alias the daemon skipped is explained in the app's language, from the reason", async () => {
+    await open(
+      [entry("web", false)],
+      [
+        {
+          alias: "web",
+          reason: "ProxyJump bastion is not a destination: import it first",
+          why: "ssh_import_jump_unknown",
+          params: { jump: "bastion" },
+        },
+      ],
+    );
+    await click("Importar do SSH config");
+    await click("Importar selecionados");
+    const lines = Array.from(document.querySelectorAll("li, p")).map((e) => e.textContent ?? "");
+    const line = lines.find((text) => text.startsWith("web: ")) ?? "";
+    expect(line).toContain("bastion");
+    expect(line).not.toContain("is not a destination");
   });
 
   test("Importar selecionados says why it is closed when nothing is ticked", async () => {

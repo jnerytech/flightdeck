@@ -805,7 +805,15 @@ export type SshImportEntry = z.infer<typeof SshImportEntry>;
 
 export const SshImportResult = z.object({
   created: z.array(SshTarget),
-  skipped: z.array(z.object({ alias: z.string(), reason: z.string() })),
+  skipped: z.array(
+    z.object({
+      alias: z.string(),
+      reason: z.string(),
+      /** Why, as a key the app translates, with the values its sentence fills in. */
+      why: z.string().optional(),
+      params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    }),
+  ),
 });
 export type SshImportResult = z.infer<typeof SshImportResult>;
 
@@ -823,7 +831,13 @@ export const SshHostKeyCheck = z.object({
 export type SshHostKeyCheck = z.infer<typeof SshHostKeyCheck>;
 
 /** The answer to `ssh.test`: reachable and logged in, or why not (in words, not the raw ssh error). */
-export const SshTestResult = z.object({ ok: z.boolean(), error: z.string().nullable() });
+export const SshTestResult = z.object({
+  ok: z.boolean(),
+  error: z.string().nullable(),
+  /** Why the test failed, as a key the app translates, with the values its sentence fills in. */
+  reason: z.string().optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+});
 export type SshTestResult = z.infer<typeof SshTestResult>;
 
 /** A password or key passphrase that ssh is asking for; the app answers with `askpass.answer`. */
