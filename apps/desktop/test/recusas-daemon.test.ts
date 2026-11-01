@@ -27,6 +27,9 @@ const REASONS = [
   "budget_needs_project",
   "budget_not_found",
   "period_inverted",
+  "telemetry_confirm",
+  "telemetry_owned_keys",
+  "telemetry_port",
 ];
 
 const cleanups: Array<() => unknown> = [];
