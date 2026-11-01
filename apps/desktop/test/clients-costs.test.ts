@@ -271,6 +271,12 @@ describe("clients-costs: loading", () => {
     expect(loaded.summary.totals.costUsd).toBe(7);
   });
 
+  test("with a client selected, a host that does not answer is named and the others still count", async () => {
+    const loaded = await load("acme", ["a", "ghost"]);
+    expect(loaded.failed).toEqual(["ghost"]);
+    expect(loaded.summary.totals.costUsd).toBe(2);
+  });
+
   test("a client with no project on any host gives the summary of nothing", async () => {
     const loaded = await load("beta", ["b"]);
     expect(loaded.summary).toEqual(emptySummary(DAY.from, DAY.to));
