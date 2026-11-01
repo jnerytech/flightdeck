@@ -167,6 +167,34 @@ describe("pasta: o seletor nos formulários", () => {
     await waitFor(() => expect(manager.list()[0]?.cwd).toBe(join(root, "alfa")));
   });
 
+  test("Nova sessão: when two roots hold the folder, the deepest one is the folder and the rest the subfolder", async () => {
+    const { store, hostId, root } = await setup();
+    await rewrite(store, hostId, (h) => ({
+      info: {
+        ...(h.info as object),
+        allowedRoots: [root, join(root, "alfa")],
+      } as unknown as HostView["info"],
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Procurar…" }) !== null).toBe(true),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await waitFor(() => expect(dialog() !== null).toBe(true));
+    await pressInDialog(new RegExp(`^${root.split("/").at(-1)}`));
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    await pressInDialog("interna");
+    await pressInDialog("Escolher esta pasta");
+    await waitFor(() => expect(dialog() === null).toBe(true));
+    expect((screen.getByLabelText("Pasta") as HTMLSelectElement).value).toBe(join(root, "alfa"));
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("interna");
+  });
+
   test("Cancelar closes the picker of Nova sessão and of Projetos without changing the form", async () => {
     const { store, hostId } = await setup();
     for (const route of [

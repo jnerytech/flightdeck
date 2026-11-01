@@ -205,4 +205,17 @@ describe("pasta: escolher uma pasta do host", () => {
       ).toBe(true),
     );
   });
+
+  test("the up button (it has a name) goes to the folder above, and Esc closes the picker", async () => {
+    const { root, closed } = await setup();
+    await press(new RegExp(`^${root.split("/").at(-1)}`));
+    await press("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    await press("Subir um nível");
+    await waitFor(() => expect(shown("beta")).toBe(true));
+    await act(async () => {
+      fireEvent.keyDown(dialog() as HTMLElement, { key: "Escape" });
+    });
+    await waitFor(() => expect(closed()).toBe(1));
+  });
 });
