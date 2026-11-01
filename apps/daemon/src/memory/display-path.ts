@@ -6,5 +6,5 @@ import { sep } from "node:path";
  * Windows'.
  */
 export function displayPath(path: string, separator: string = sep): string {
-  return separator === "\\" ? path : path;
+  return separator === "\\" ? path.replaceAll("\\", "/") : path;
 }

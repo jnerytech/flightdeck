@@ -6,12 +6,13 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { claudeMds, frontmatter } from "../agentcfg/files.ts";
+import { displayPath } from "./display-path.ts";
 
 export type BudgetKind = "managed" | "user" | "project" | "local" | "rules" | "skills" | "memory";
 
 export interface BudgetSource {
   kind: BudgetKind;
-  /** Absolute path of the file. */
+  /** Absolute path of the file, written with "/" on every platform. */
   path: string;
   bytes: number;
   /** An estimate: a quarter of the bytes, rounded up. */
@@ -77,7 +78,14 @@ export function contextBudget(input: BudgetInput): ContextBudget {
     bytes: number,
     note?: string,
   ) =>
-    sources.push({ kind, path, bytes, tokens: tokensOf(bytes), load, ...(note ? { note } : {}) });
+    sources.push({
+      kind,
+      path: displayPath(path),
+      bytes,
+      tokens: tokensOf(bytes),
+      load,
+      ...(note ? { note } : {}),
+    });
   const file = (kind: BudgetKind, path: string, load: BudgetSource["load"]) => {
     if (existsSync(path)) add(kind, path, load, readFileSync(path).length);
   };
