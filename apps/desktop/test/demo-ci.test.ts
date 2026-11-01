@@ -87,9 +87,24 @@ describe("demo-prints: axe e CI", () => {
       scripts: Record<string, string>;
       devDependencies: Record<string, string>;
     };
-    expect(pkg.scripts.e2e).toBe("bun run scripts/demo.ts --e2e");
+    expect(pkg.scripts.e2e).toBe("playwright test -c scripts/e2e/playwright.config.ts");
     expect(pkg.scripts.demo).toBe("bun run scripts/demo.ts");
     expect(pkg.devDependencies["axe-core"]).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  test("the e2e runner is @playwright/test, pinned to the same version as playwright-core", () => {
+    const pkg = JSON.parse(read("package.json")) as { devDependencies: Record<string, string> };
+    expect(pkg.devDependencies["@playwright/test"]).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pkg.devDependencies["@playwright/test"]).toBe(pkg.devDependencies["playwright-core"]);
+  });
+
+  test("the CI e2e step keeps the HTML report, the traces and the videos as artifacts, even when it fails", () => {
+    const ci = read(".github/workflows/ci.yml");
+    const rest = ci.slice(ci.indexOf("- name: Jornadas e2e"));
+    expect(rest).toContain("name: relatorio-e2e");
+    expect(rest).toContain("playwright-report");
+    const upload = rest.slice(rest.indexOf("name: relatorio-e2e") - 200);
+    expect(upload).toContain("if: always()");
   });
 
   test("e2e: the thirteen journeys, in both languages, checked at 1280x800 and 800x600", () => {
