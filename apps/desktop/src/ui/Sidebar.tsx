@@ -10,6 +10,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
-import { type AppState, type HostView, needsYou } from "../lib/app-store.ts";
+import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
@@ -96,6 +97,7 @@ function SectionTitle(props: {
 
 /** The app's bar: logo, navigation, hosts, pinned sessions and the footer; a rail of icons when collapsed. */
 export function Sidebar(props: {
+  store: AppStore;
   state: AppState;
   collapsed: boolean;
   t: T;
@@ -115,8 +117,9 @@ export function Sidebar(props: {
     (state.selected && state.hosts.find((h) => h.id === state.selected?.hostId)) ||
     state.hosts.find((h) => h.status === "online") ||
     state.hosts[0];
+  const pendingItems = needsYou(state);
   const pending =
-    needsYou(state).length +
+    pendingItems.length +
     budgetAlerts(state).length +
     state.loopAlerts.length +
     watchAlerts(state).length;
@@ -136,6 +139,13 @@ export function Sidebar(props: {
         <Plane data-logo aria-hidden="true" className="size-5 shrink-0 text-brand" />
         {!collapsed && <span className="font-semibold text-sm">Flightdeck</span>}
       </div>
+      <ClientSwitcher
+        store={props.store}
+        state={state}
+        pending={pendingItems}
+        collapsed={collapsed}
+        go={go}
+      />
       <nav className="flex flex-col gap-0.5">
         <NavButton
           collapsed={collapsed}

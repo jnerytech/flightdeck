@@ -308,6 +308,7 @@ export function App({ store }: { store: AppStore }) {
           }
           sidebar={(collapsed) => (
             <Sidebar
+              store={store}
               state={state}
               collapsed={collapsed}
               t={t}
