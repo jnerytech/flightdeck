@@ -284,6 +284,44 @@ describe("vigiar-ado: the watcher", () => {
     expect(triggers).toEqual([]);
   });
 
+  test("a look in flight when the PR stops being open fires nothing", async () => {
+    const { ctx, card } = await watched([]);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const provider: PrProvider = {
+      create: async () => PR,
+      url: async () => null,
+      status: async () => ({ state: "open", checks: null }),
+      comments: async () => [],
+      buildLog: async () => "",
+      health: async () => {
+        await gate;
+        return {
+          checks: [{ name: "CI", state: "failing", kind: "build", buildId: "88" }],
+          conflicts: false,
+        };
+      },
+    };
+    const fired: WatchTrigger[] = [];
+    const watcher = new PrWatcher({
+      db: ctx.store.db,
+      board: ctx.board,
+      provider: () => provider,
+      onTrigger: (trigger) => {
+        fired.push(trigger);
+      },
+    });
+    watcher.setEnabled(card.id, true);
+    const inFlight = watcher.tick();
+    await Bun.sleep(20);
+    ctx.store.db.query("UPDATE cards SET pr_state = 'merged' WHERE id = ?").run(card.id);
+    release();
+    await inFlight;
+    expect(fired).toEqual([]);
+  });
+
   test("a watcher that stops reads nothing more, and a look in flight saves and fires nothing", async () => {
     const { ctx, card } = await watched([]);
     let release: () => void = () => {};
