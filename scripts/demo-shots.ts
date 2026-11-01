@@ -307,12 +307,30 @@ async function stabilize(page: Page): Promise<void> {
   });
   await page.evaluate(
     (rules) => {
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        let text = node.nodeValue ?? "";
-        for (const [source, flags, to] of rules) text = text.replace(new RegExp(source, flags), to);
-        node.nodeValue = text;
-      }
+      const normalize = (node: Node) => {
+        const text = node.nodeValue ?? "";
+        const next = rules.reduce(
+          (out, [source, flags, to]) => out.replace(new RegExp(source, flags), to),
+          text,
+        );
+        if (next !== text) node.nodeValue = next;
+      };
+      const walk = (root: Node) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) normalize(node);
+      };
+      walk(document.body);
+      // A screen that re-renders a time ("9 min ago" to "10 min ago") writes the raw text back:
+      // every change is normalized again before it is painted.
+      new MutationObserver((changes) => {
+        for (const change of changes) {
+          if (change.type === "characterData") normalize(change.target);
+          for (const added of change.addedNodes) {
+            if (added.nodeType === Node.TEXT_NODE) normalize(added);
+            else walk(added);
+          }
+        }
+      }).observe(document.body, { characterData: true, childList: true, subtree: true });
     },
     VOLATILE_RULES.map(([pattern, to]) => [pattern.source, pattern.flags, to] as const),
   );
