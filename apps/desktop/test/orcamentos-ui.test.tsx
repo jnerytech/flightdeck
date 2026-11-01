@@ -82,7 +82,12 @@ async function online() {
 
 const section = () => screen.queryByRole("region", { name: "Orçamentos de alfa" });
 const rows = () =>
-  [...(section()?.querySelectorAll("li") ?? [])].map((li) => li.firstChild?.textContent);
+  [...(section()?.querySelectorAll("li [data-row-title]") ?? [])].map((title) => title.textContent);
+const form = () => section()?.querySelector("form") as HTMLFormElement;
+const field = (label: string) =>
+  screen.getByLabelText(label) as HTMLInputElement | HTMLSelectElement;
+const saveButton = () =>
+  screen.getByRole("button", { name: "Salvar orçamento" }) as HTMLButtonElement;
 
 describe("orcamentos-ui", () => {
   test("criar, editar e remover orçamento, com o percentual atual", async () => {
@@ -96,7 +101,7 @@ describe("orcamentos-ui", () => {
     expect(rows()).toEqual(["orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)"]);
     await click("Editar orçamento do host (dia)");
     await choose("Limite (US$)", "20");
-    await choose("Ação", "queue");
+    await choose("Ao passar do limite", "queue");
     await click("Salvar orçamento");
     await settle(() => rows()[0]?.includes("(30%)") === true);
     expect(rows()).toEqual([
@@ -117,6 +122,72 @@ describe("orcamentos-ui", () => {
     await click("Remover orçamento");
     await settle(() => rows().length === 1);
     expect(rows()).toEqual(["orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)"]);
+  });
+
+  test("o formulário tem rótulos, diz o que cada ação faz e só salva com um limite", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
+    for (const label of ["Escopo", "Período", "Limite (US$)", "Ao passar do limite"]) {
+      expect(field(label).labels?.length).toBe(1);
+    }
+    const action = field("Ao passar do limite");
+    const help = () => document.getElementById(action.getAttribute("aria-describedby") ?? "");
+    expect(help()?.textContent).toBe("Avisa ao chegar a 50%, 80% e 100% do limite.");
+    await choose("Ao passar do limite", "queue");
+    expect(help()?.textContent).toBe(
+      "Avisa e segura os cards novos do escopo ao chegar a 100% do limite.",
+    );
+    expect(saveButton().disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText("Informe um limite maior que zero."),
+    ).not.toBeNull();
+    await choose("Limite (US$)", "0");
+    expect(saveButton().disabled).toBe(true);
+    await choose("Limite (US$)", "10");
+    expect(saveButton().disabled).toBe(false);
+    expect(
+      within(section() as HTMLElement).queryByText("Informe um limite maior que zero."),
+    ).toBeNull();
+    await choose("Escopo", "project");
+    expect(saveButton().disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText("Informe o projeto do orçamento."),
+    ).not.toBeNull();
+  });
+
+  test("Enter no limite salva o orçamento", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    expect(saveButton().type).toBe("submit");
+    await choose("Limite (US$)", "10");
+    await act(async () => {
+      fireEvent.submit(form());
+    });
+    await settle(() => rows().length === 1);
+    expect(rows()).toHaveLength(1);
+    expect((field("Limite (US$)") as HTMLInputElement).value).toBe("");
+  });
+
+  test("sem orçamentos diz Nenhum orçamento; editar abre o formulário com Cancelar", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).not.toBeNull();
+    await choose("Limite (US$)", "10");
+    await click("Salvar orçamento");
+    await settle(() => rows().length === 1);
+    expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancelar edição" })).toBeNull();
+    await click("Editar orçamento do host (dia)");
+    expect(form().getAttribute("aria-label")).toBe("Editar orçamento do host (dia)");
+    expect((field("Limite (US$)") as HTMLInputElement).value).toBe("10");
+    await click("Cancelar edição");
+    expect(form().getAttribute("aria-label")).toBe("Novo orçamento");
+    expect((field("Limite (US$)") as HTMLInputElement).value).toBe("");
+    expect(rows()).toHaveLength(1);
   });
 
   test("limiar cruzado notifica e aparece em Precisa de você; o alerta abre os orçamentos", async () => {
