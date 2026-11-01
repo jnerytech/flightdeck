@@ -53,6 +53,13 @@ export function BudgetsSection(props: {
   const [removing, setRemoving] = useState<Budget | null>(null);
   const saving = useBusy();
   const editing = props.budgets.find((b) => b.id === draft.id);
+  // The selected client's project budgets, and the host's own, which cap everything on the host.
+  const scope = store.clientScope();
+  const selection = store.getState().clientSelection;
+  const visible = props.budgets.filter(
+    (b) => b.scope === "host" || scope.includes(selection, b.projectKey ?? ""),
+  );
+  const hidden = props.budgets.length - visible.length;
   const [spentOn, setSpentOn] = useState<string[]>([]);
   // The keys a project budget can name are the ones the host has seen: those with usage in the
   // last 30 days and those a budget already uses.
@@ -102,7 +109,7 @@ export function BudgetsSection(props: {
             <p className="text-muted-foreground text-sm">{t("budgetsUi.none")}</p>
           ) : (
             <Stack as="ul" gap={2}>
-              {props.budgets.map((budget) => (
+              {visible.map((budget) => (
                 <li key={budget.id}>
                   <Stack gap={1}>
                     <ListRow
@@ -159,6 +166,13 @@ export function BudgetsSection(props: {
                 </li>
               ))}
             </Stack>
+          )}
+          {hidden > 0 && (
+            <p className="text-muted-foreground text-sm">
+              {hidden === 1
+                ? t("clients.budgetsHiddenOne")
+                : t("clients.budgetsHiddenMany", { count: hidden })}
+            </p>
           )}
           <Form
             variant="inline"

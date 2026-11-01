@@ -1673,6 +1673,8 @@ export const en: Dictionary = {
   },
   clients: {
     noneHere: "No project of this client on this host.",
+    budgetsHiddenOne: "1 budget of other clients hidden.",
+    budgetsHiddenMany: "{count} budgets of other clients hidden.",
   },
   conversationsUi: {
     title: "Conversations",

@@ -1676,6 +1676,8 @@ export const ptBR = {
   },
   clients: {
     noneHere: "Nenhum projeto deste cliente neste host.",
+    budgetsHiddenOne: "1 orçamento de outros clientes oculto.",
+    budgetsHiddenMany: "{count} orçamentos de outros clientes ocultos.",
   },
   conversationsUi: {
     title: "Conversas",
