@@ -401,7 +401,13 @@ export const ptBR = {
     emptyCards: "Nenhum card neste projeto.",
     newCard: "Criar o primeiro card",
   },
-  board: { cardActions: "Ações de {title}", startCard: "Iniciar card" },
+  board: {
+    cardActions: "Ações de {title}",
+    startCard: "Iniciar card",
+    moveTo: "Mover para {column}",
+    moveUp: "Mover para cima",
+    moveDown: "Mover para baixo",
+  },
   shell: {
     sidebar: "Barra lateral",
     breadcrumb: "Você está em",

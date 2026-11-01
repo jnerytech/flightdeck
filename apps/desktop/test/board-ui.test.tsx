@@ -112,6 +112,32 @@ async function openCard(title: string) {
   await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
 }
 
+/** A Radix menu opens on pointer down; its entries are then read or clicked. */
+async function openCardMenu(title: string) {
+  const trigger = screen.queryByRole("button", { name: `Ações de ${title}` });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+    fireEvent.click(trigger as HTMLElement);
+  });
+}
+
+const menuEntries = () => screen.queryAllByRole("menuitem");
+const menuEntry = (name: string) => screen.queryByRole("menuitem", { name });
+
+async function cardMenu(title: string, entry: string) {
+  await openCardMenu(title);
+  const item = menuEntry(entry);
+  expect(item).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(item as HTMLElement);
+  });
+}
+
 const dialog = () => screen.queryByRole("alertdialog");
 
 describe("board-ui", () => {
@@ -177,6 +203,66 @@ describe("board-ui", () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
     });
     expect(column("Concluído")).toEqual([]);
+  });
+
+  test("o menu do card move o card para outra coluna sem arrastar, e o foco fica no card", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    for (const title of ["A", "B"]) await createCard(title);
+    await openCardMenu("A");
+    expect(menuEntries().map((m) => m.textContent)).toEqual([
+      "Iniciar card",
+      "Mover para Em andamento",
+      "Mover para Esperando você",
+      "Mover para Em revisão",
+      "Mover para Concluído",
+      "Mover para cima",
+      "Mover para baixo",
+    ]);
+    await act(async () => {
+      fireEvent.click(menuEntry("Mover para Em revisão") as HTMLElement);
+    });
+    await settle(() => column("Em revisão").length === 1);
+    expect(column("Em revisão")).toEqual(["A"]);
+    expect(column("Backlog")).toEqual(["B"]);
+    const moved = board.listProjects()[0];
+    expect(board.getBoard(moved?.id ?? "").columns[3]?.cards.map((c) => c.title)).toEqual(["A"]);
+    await settle(() => cardItem("A")?.contains(document.activeElement) === true);
+    expect(cardItem("A")?.contains(document.activeElement)).toBe(true);
+    expect(
+      screen.queryByRole("region", { name: "Em revisão" })?.contains(document.activeElement),
+    ).toBe(true);
+  });
+
+  test("Mover para cima e para baixo reordenam a coluna, e ficam desligados nas pontas", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    for (const title of ["A", "B", "C"]) await createCard(title);
+    const disabled = (name: string) => menuEntry(name)?.getAttribute("aria-disabled") === "true";
+    await openCardMenu("A");
+    expect(disabled("Mover para cima")).toBe(true);
+    expect(disabled("Mover para baixo")).toBe(false);
+    await act(async () => {
+      fireEvent.keyDown(menuEntries()[0] as HTMLElement, { key: "Escape" });
+    });
+    await openCardMenu("C");
+    expect(disabled("Mover para cima")).toBe(false);
+    expect(disabled("Mover para baixo")).toBe(true);
+    await act(async () => {
+      fireEvent.keyDown(menuEntries()[0] as HTMLElement, { key: "Escape" });
+    });
+    await cardMenu("B", "Mover para cima");
+    await settle(() => column("Backlog")[0] === "B");
+    expect(column("Backlog")).toEqual(["B", "A", "C"]);
+    await cardMenu("B", "Mover para baixo");
+    await settle(() => column("Backlog")[0] === "A");
+    expect(column("Backlog")).toEqual(["A", "B", "C"]);
+    await cardMenu("A", "Mover para baixo");
+    await settle(() => column("Backlog")[0] === "B");
+    expect(column("Backlog")).toEqual(["B", "A", "C"]);
+    await cardMenu("A", "Mover para baixo");
+    await settle(() => column("Backlog")[2] === "A");
+    expect(column("Backlog")).toEqual(["B", "C", "A"]);
   });
 
   test("filtro por texto no título e na descrição", async () => {

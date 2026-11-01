@@ -405,7 +405,13 @@ export const en: Dictionary = {
     emptyCards: "No cards in this project.",
     newCard: "Create the first card",
   },
-  board: { cardActions: "Actions for {title}", startCard: "Start card" },
+  board: {
+    cardActions: "Actions for {title}",
+    startCard: "Start card",
+    moveTo: "Move to {column}",
+    moveUp: "Move up",
+    moveDown: "Move down",
+  },
   shell: {
     sidebar: "Sidebar",
     breadcrumb: "You are in",
