@@ -764,6 +764,21 @@ export const en: Dictionary = {
     ssh_agent_down:
       "The ssh-agent for this connection did not start. Check that ssh-agent is installed.",
     ssh_add_refused: "ssh-add refused the key. Check that the key is valid and has no passphrase.",
+    ssh_import_cycle: "The ProxyJump entries loop back on each other.",
+    ssh_import_not_in_config: "That name is not in your ~/.ssh/config.",
+    ssh_import_exists: "Already saved.",
+    ssh_import_multi_jump:
+      "ProxyJump {jump} lists several jumps, which are not supported. Import each hop on its own.",
+    ssh_import_jump_unknown: "ProxyJump {jump} is not a saved destination. Import it first.",
+    ssh_import_jump_failed: "The jump {jump} could not be created, so this one was skipped.",
+    ssh_test_auth: "The server refused the authentication. Check the user and the key.",
+    ssh_test_refused: "The server refused the connection. Check the host and the port.",
+    ssh_test_host_unknown: "The host name was not found. Check the spelling and your network.",
+    ssh_test_timeout: "The connection timed out. Check the host, the port and your network.",
+    ssh_test_hostkey:
+      "The server key differs from the saved one. Check with whoever runs the server, then forget the saved key and confirm the new one.",
+    ssh_test_exit: "ssh ended with code {code} and said nothing.",
+    ssh_test_no_password: "The test does not cover passwords. Connect to test.",
     ssh_target_not_found: "That ssh destination was not found.",
     ssh_name_invalid: "The name takes 1 to 100 characters.",
     ssh_host_invalid: "The host is not a valid name or address.",

@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
+import type { FlightdeckError } from "../errors.ts";
 import type { SshTargets } from "./targets.ts";
+
+/** Why one alias was not imported: the English text, and a key with values for the app. */
+type Skip = Omit<SshImportResult["skipped"][number], "alias">;
 
 export interface SshImporterOptions {
   targets: SshTargets;
@@ -98,34 +102,50 @@ export class SshImporter {
     const chosen = new Set(aliases);
     const created: SshImportResult["created"] = [];
     const ids = new Map<string, string>();
-    const failed = new Map<string, string>();
+    const failed = new Map<string, Skip>();
     const inProgress = new Set<string>();
-    const fail = (alias: string, reason: string) => {
-      failed.set(alias, reason);
-      return { reason };
+    const fail = (alias: string, skip: Skip) => {
+      failed.set(alias, skip);
+      return skip;
     };
-    const make = (alias: string): { id: string } | { reason: string } => {
+    const make = (alias: string): { id: string } | Skip => {
       const done = ids.get(alias);
       if (done) return { id: done };
       const bad = failed.get(alias);
-      if (bad) return { reason: bad };
-      if (inProgress.has(alias)) return { reason: "ciclo de ProxyJump" };
+      if (bad) return bad;
+      if (inProgress.has(alias)) return { reason: "ProxyJump cycle", why: "ssh_import_cycle" };
       const entry = entries.get(alias);
-      if (!entry) return fail(alias, "não está no ~/.ssh/config");
-      if (entry.exists) return fail(alias, "já existe");
+      if (!entry) {
+        return fail(alias, { reason: "not in ~/.ssh/config", why: "ssh_import_not_in_config" });
+      }
+      if (entry.exists) return fail(alias, { reason: "already exists", why: "ssh_import_exists" });
       inProgress.add(alias);
       let jump: string | null = null;
       const via = entry.proxyJump;
       if (via?.includes(",")) {
-        return fail(alias, `vários jumps (ProxyJump ${via}) não são suportados`);
+        return fail(alias, {
+          reason: `several jumps (ProxyJump ${via}) are not supported`,
+          why: "ssh_import_multi_jump",
+          params: { jump: via },
+        });
       }
       if (via) {
         const registered = this.opts.targets.list().find((t) => t.name === via);
         const made = registered ? { id: registered.id } : chosen.has(via) ? make(via) : null;
         if (!made) {
-          return fail(alias, `ProxyJump ${via} não é um destino: importe-o antes`);
+          return fail(alias, {
+            reason: `ProxyJump ${via} is not a destination: import it first`,
+            why: "ssh_import_jump_unknown",
+            params: { jump: via },
+          });
         }
-        if ("reason" in made) return fail(alias, `jump "${via}" não foi criado: ${made.reason}`);
+        if ("reason" in made) {
+          return fail(alias, {
+            reason: `jump "${via}" was not created: ${made.reason}`,
+            why: "ssh_import_jump_failed",
+            params: { jump: via },
+          });
+        }
         jump = made.id;
       }
       try {
@@ -142,7 +162,12 @@ export class SshImporter {
         created.push(target);
         return { id: target.id };
       } catch (error) {
-        return fail(alias, (error as Error).message);
+        const refusal = error as Partial<FlightdeckError> & Error;
+        return fail(alias, {
+          reason: refusal.message,
+          ...(refusal.reason ? { why: refusal.reason } : {}),
+          ...(refusal.params ? { params: refusal.params } : {}),
+        });
       } finally {
         inProgress.delete(alias);
       }
@@ -150,7 +175,7 @@ export class SshImporter {
     const skipped: SshImportResult["skipped"] = [];
     for (const alias of chosen) {
       const result = make(alias);
-      if ("reason" in result) skipped.push({ alias, reason: result.reason });
+      if ("reason" in result) skipped.push({ alias, ...result });
     }
     return { created, skipped };
   }

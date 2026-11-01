@@ -19,8 +19,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { useStoreSlice } from "@/lib/use-store";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
 import type { Route } from "../lib/router.ts";
 import { savePayload } from "../lib/ssh.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -157,7 +158,12 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
     if (!result) return;
     setImportMessage([
       t("connections.import.created", { n: result.created.length }),
-      ...result.skipped.map((skip) => t("connections.import.skipped", skip)),
+      ...result.skipped.map((skip) =>
+        t("connections.import.skipped", {
+          alias: skip.alias,
+          reason: refusalText("", skip.reason, t, { reason: skip.why, params: skip.params }),
+        }),
+      ),
     ]);
     await reload();
   };

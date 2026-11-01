@@ -254,9 +254,8 @@ describe("ssh-import", () => {
     expect(targets.list().some((t) => t.name === "far" || t.name === "two")).toBe(false);
     expect(skipped["loop-a"]).toMatch(/cycle/);
     expect(skipped["loop-b"]).toMatch(/cycle/);
-    expect(new Set([why["loop-a"]?.[0], why["loop-b"]?.[0]])).toEqual(
-      new Set(["ssh_import_cycle", "ssh_import_jump_failed"]),
-    );
+    expect(why["loop-a"]?.[0]).toBe("ssh_import_jump_failed");
+    expect(why["loop-b"]?.[0]).toBe("ssh_import_jump_failed");
     expect(skipped.tok).toMatch(/invalid/);
     expect(skipped.nada).toMatch(/not in/);
     expect(why.nada).toEqual(["ssh_import_not_in_config", undefined]);

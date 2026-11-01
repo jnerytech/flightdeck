@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { SshTarget, TerminalInfo } from "@flightdeck/protocol";
+import type { SshTarget, SshTestResult, TerminalInfo } from "@flightdeck/protocol";
 import { envInput, remoteCommand } from "../actions/ssh-command.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
@@ -135,16 +135,26 @@ interface Plan {
 }
 
 /** What ssh printed, in words for the person. */
-function translate(stderr: string, code: number): string {
-  if (/Permission denied/i.test(stderr)) return "autenticação recusada";
-  if (/Connection refused/i.test(stderr)) return "conexão recusada";
-  if (/Could not resolve hostname/i.test(stderr)) return "host não encontrado";
-  if (/timed out/i.test(stderr)) return "tempo esgotado";
+function translate(stderr: string, code: number): SshTestResult {
+  const failed = (error: string, reason?: string, params?: Record<string, string | number>) => ({
+    ok: false,
+    error,
+    ...(reason ? { reason } : {}),
+    ...(params ? { params } : {}),
+  });
+  if (/Permission denied/i.test(stderr)) return failed("authentication refused", "ssh_test_auth");
+  if (/Connection refused/i.test(stderr)) return failed("connection refused", "ssh_test_refused");
+  if (/Could not resolve hostname/i.test(stderr)) {
+    return failed("host not found", "ssh_test_host_unknown");
+  }
+  if (/timed out/i.test(stderr)) return failed("timed out", "ssh_test_timeout");
   if (/Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED/i.test(stderr)) {
-    return "chave do servidor diferente da guardada";
+    return failed("the server key differs from the saved one", "ssh_test_hostkey");
   }
   const last = stderr.trim().split(/\r?\n/).at(-1) ?? "";
-  return last === "" ? `o ssh terminou com código ${code}` : last.slice(0, 200);
+  return last === ""
+    ? failed(`ssh exited with code ${code}`, "ssh_test_exit", { code })
+    : failed(last.slice(0, 200));
 }
 
 /**
@@ -188,20 +198,19 @@ export class SshConnector {
   }
 
   /** `ssh -o BatchMode=yes … exit 0`: whether the destino can be reached and logged in. */
-  async test(req: {
-    targetId: string;
-    privateKey?: string;
-  }): Promise<{ ok: boolean; error: string | null }> {
+  async test(req: { targetId: string; privateKey?: string }): Promise<SshTestResult> {
     const target = this.target(req.targetId);
     if (target.auth === "password") {
-      return { ok: false, error: "o teste não cobre senha: conecte para testar" };
+      return {
+        ok: false,
+        error: "the test does not cover passwords: connect to test",
+        reason: "ssh_test_no_password",
+      };
     }
     const plan = await this.plan(target, req.privateKey, "test");
     try {
       const result = await this.opts.run(plan.argv, plan.env);
-      return result.code === 0
-        ? { ok: true, error: null }
-        : { ok: false, error: translate(result.stderr, result.code) };
+      return result.code === 0 ? { ok: true, error: null } : translate(result.stderr, result.code);
     } finally {
       plan.release();
     }

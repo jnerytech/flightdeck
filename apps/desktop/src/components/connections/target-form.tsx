@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
@@ -123,7 +124,12 @@ export const TargetForm = memo(function TargetForm(props: {
       targetId: target.id,
       ...(privateKey ? { privateKey } : {}),
     });
-    if (result) setTestResult(result.ok ? t("connections.form.testOk") : (result.error ?? ""));
+    if (!result) return;
+    setTestResult(
+      result.ok
+        ? t("connections.form.testOk")
+        : refusalText("", result.error ?? "", t, { reason: result.reason, params: result.params }),
+    );
   };
 
   return (

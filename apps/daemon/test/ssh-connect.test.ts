@@ -534,7 +534,9 @@ describe("ssh-connect", () => {
     expect(argv.join(" ")).toContain("StrictHostKeyChecking=yes");
     // No terminal is opened for a test.
     expect(s.ptys.spawned).toEqual([]);
-    const translated: Array<[string, string, string | undefined, object | undefined]> = [
+    const translated: Array<
+      [string, string, string | undefined, Record<string, number> | undefined]
+    > = [
       [
         "deploy@vps.example.com: Permission denied (publickey).",
         "authentication refused",

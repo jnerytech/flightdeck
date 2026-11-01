@@ -761,6 +761,21 @@ export const ptBR = {
     ssh_agent_down: "O ssh-agent desta conexão não subiu. Confira se o ssh-agent está instalado.",
     ssh_add_refused:
       "O ssh-add recusou a chave. Confira se a chave é válida e não tem frase-senha.",
+    ssh_import_cycle: "As entradas de ProxyJump levam umas às outras em círculo.",
+    ssh_import_not_in_config: "Esse nome não está no seu ~/.ssh/config.",
+    ssh_import_exists: "Já cadastrado.",
+    ssh_import_multi_jump:
+      "O ProxyJump {jump} lista vários jumps, o que não é suportado. Importe cada salto separado.",
+    ssh_import_jump_unknown: "O ProxyJump {jump} não é um destino cadastrado. Importe-o antes.",
+    ssh_import_jump_failed: "O jump {jump} não pôde ser criado, então este foi pulado.",
+    ssh_test_auth: "O servidor recusou a autenticação. Confira o usuário e a chave.",
+    ssh_test_refused: "O servidor recusou a conexão. Confira o host e a porta.",
+    ssh_test_host_unknown: "O nome do host não foi encontrado. Confira a grafia e a sua rede.",
+    ssh_test_timeout: "A conexão demorou demais. Confira o host, a porta e a sua rede.",
+    ssh_test_hostkey:
+      "A chave do servidor é diferente da guardada. Fale com quem cuida do servidor, depois esqueça a chave guardada e confirme a nova.",
+    ssh_test_exit: "O ssh terminou com código {code} sem dizer nada.",
+    ssh_test_no_password: "O teste não cobre senha. Conecte para testar.",
     ssh_target_not_found: "Esse destino ssh não foi encontrado.",
     ssh_name_invalid: "O nome tem de 1 a 100 caracteres.",
     ssh_host_invalid: "O host não é um nome ou endereço válido.",
