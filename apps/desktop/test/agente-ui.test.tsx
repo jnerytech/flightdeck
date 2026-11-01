@@ -361,7 +361,10 @@ describe("agente-ui", () => {
     expect(screen.queryByText("Salvo.")).not.toBeNull();
     await click("Prévia");
     await settle(() => screen.queryByRole("heading", { name: "Regras novas" }) !== null);
-    expect(screen.queryByRole("heading", { name: "Regras novas" })).not.toBeNull();
+    // A miss says what the screen showed instead, so a CI-only failure explains itself.
+    if (!screen.queryByRole("heading", { name: "Regras novas" })) {
+      throw new Error(`no preview heading; the screen showed: ${document.body.textContent}`);
+    }
     expect(screen.queryByLabelText("Conteúdo de CLAUDE.md")).toBeNull();
     await click("Editar");
     await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.md") !== null);
