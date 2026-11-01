@@ -31,6 +31,7 @@ import type {
   RiskLevel,
   RunConfigInfo,
   RunState,
+  RuleIssue,
   SessionEventOf,
   SessionMeta,
   SessionNameInfo,
@@ -308,6 +309,7 @@ export type HostResult<T> =
       message: string;
       reason?: string;
       params?: Record<string, string | number>;
+      items?: readonly RuleIssue[];
     };
 
 const isRun = (value: unknown): value is WorkflowRun =>
@@ -1185,8 +1187,14 @@ export class AppStore {
       return { ok: true, data: await this.dispatch(hostId, type, payload) };
     } catch (error) {
       // A connection only ever rejects with a RequestError (even a host it does not know).
-      const { code, message, reason, params } = error as RequestError;
-      return { ok: false, code, message, ...(reason ? { reason, params: params ?? {} } : {}) };
+      const { code, message, reason, params, items } = error as RequestError;
+      return {
+        ok: false,
+        code,
+        message,
+        ...(reason ? { reason, params: params ?? {} } : {}),
+        ...(items ? { items } : {}),
+      };
     }
   }
 
@@ -2518,7 +2526,7 @@ export class AppStore {
   async setVaultRules(
     secretId: string,
     rules: unknown[],
-  ): Promise<{ ok: true } | { ok: false; code: string; message: string }> {
+  ): Promise<{ ok: true } | Extract<HostResult<never>, { ok: false }>> {
     const secret = this.vault.list().find((s) => s.id === secretId);
     const accepted: string[] = [];
     for (const host of this.state.hosts) {
@@ -2539,7 +2547,7 @@ export class AppStore {
             rules: saved,
           });
         }
-        return { ok: false, code: result.code, message: result.message };
+        return result;
       }
       accepted.push(host.id);
     }

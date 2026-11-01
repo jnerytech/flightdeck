@@ -3728,6 +3728,16 @@ export const AckError = z.object({
     /** Why, when the app has a text for it (a snippet refusal): with the values it fills in. */
     reason: z.string().optional(),
     params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    /** One item per problem in a list the person typed (a vault rule): where, which kind, its values. */
+    items: z
+      .array(
+        z.object({
+          path: z.string(),
+          code: z.string(),
+          params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+        }),
+      )
+      .optional(),
   }),
 });
 export const Ack = z.union([AckOk, AckError]);

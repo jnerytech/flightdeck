@@ -666,7 +666,25 @@ export const en: Dictionary = {
     unknown:
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
-  ruleIssue: {},
+  ruleIssue: {
+    required: "The rule needs an id.",
+    duplicate: "Another rule has the same id.",
+    unknown_field: "This field does not exist: {field}.",
+    not_object: "This must be an object.",
+    not_list: "The rules must be a list.",
+    not_text: "This must be text.",
+    not_list_of_text: "This must be a list of texts.",
+    not_one_of: "Only these values are accepted: {allowed}.",
+    bad_time: "Use the format HH:MM, up to {last}.",
+    same_time: "The start and the end of the window cannot be the same.",
+    not_positive_int: "Use a positive whole number.",
+    not_timestamp: "Use an instant in milliseconds.",
+    once_needs_ask: "“Ask once per session” only works with the decision ask.",
+    outside_needs_window: "“Outside the window” only works together with a window.",
+    no_allow_run_with_secret: "No rule lets run_with_secret through without approval: use ask.",
+    prod_needs_window:
+      "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
+  },
   daemonFeature: {
     history: "the history",
     central: "the central session list",
@@ -715,6 +733,7 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    vault_rules_invalid: "Some rules are not valid: fix what is marked.",
     transport_refused:
       "The vault only delivers over loopback or Tailscale, which WireGuard encrypts.",
     secret_expired: "The time to use that secret has passed: ask for it again.",

@@ -594,7 +594,7 @@ describe("acoes-servico: pedidos ao app", () => {
     actions.stop();
     const error = await running;
     expect(error).toContain("invalid_state");
-    expect(error).toContain("cancelada");
+    expect(error).toContain("cancelled");
   });
 
   test("quem não é do daemon nem pode pedir", async () => {

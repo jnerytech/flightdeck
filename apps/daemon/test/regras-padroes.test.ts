@@ -245,14 +245,16 @@ describe("regras-padroes: o risco alto sobe para ask", () => {
 });
 
 describe("regras-padroes: o app recusa salvar o que passa do teto", () => {
-  const errorsOf = (rules: unknown[]) => validateRules(rules).errors.join(" | ");
+  const errorsOf = (rules: unknown[]) =>
+    validateRules(rules)
+      .errors.map((e) => `${e.path}:${e.code}`)
+      .join(" | ");
 
   test("allow para run_with_secret é recusado, com o motivo", () => {
     const errors = errorsOf([
       { id: "r", decision: "allow", match: { purpose: "run_with_secret" } },
     ]);
-    expect(errors).toContain("run_with_secret");
-    expect(errors).toContain("aprovação");
+    expect(errors).toBe("0.decision:no_allow_run_with_secret");
     expect(
       errorsOf([
         {
@@ -263,7 +265,7 @@ describe("regras-padroes: o app recusa salvar o que passa do teto", () => {
           outsideWindow: "allow",
         },
       ]),
-    ).toContain("run_with_secret");
+    ).toBe("0.outsideWindow:no_allow_run_with_secret");
     // ask and deny are fine for it.
     expect(errorsOf([{ id: "a", decision: "ask", match: { purpose: "run_with_secret" } }])).toBe(
       "",
@@ -276,8 +278,7 @@ describe("regras-padroes: o app recusa salvar o que passa do teto", () => {
   test("allow para prod sem janela é recusado; com janela passa; prod e produção valem", () => {
     for (const tag of ["prod", "produção", "Prod"]) {
       const errors = errorsOf([{ id: "r", decision: "allow", match: { tags: [tag] } }]);
-      expect(errors).toContain("prod");
-      expect(errors).toContain("janela");
+      expect(errors).toBe("0.window:prod_needs_window");
       expect(
         errorsOf([{ id: "w", decision: "allow", match: { tags: [tag] }, window: OFFICE }]),
       ).toBe("");

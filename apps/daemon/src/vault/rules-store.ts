@@ -22,9 +22,13 @@ export class VaultRules {
   set(secretId: string, tags: readonly string[], raw: unknown): number {
     const { rules, errors } = validateRules(raw);
     if (errors.length > 0) {
+      const where = errors.map((e) => `${e.path || "rules"}: ${e.code}`).join("; ");
       throw new FlightdeckError(
         "bad_request",
-        errors.map((e) => String(e.params?.message)).join("; "),
+        `invalid rules: ${where}`,
+        "vault_rules_invalid",
+        { count: errors.length },
+        errors,
       );
     }
     this.bySecret.set(secretId, {

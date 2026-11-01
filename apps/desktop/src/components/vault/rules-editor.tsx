@@ -1,10 +1,11 @@
+import type { RuleIssue } from "@flightdeck/protocol";
 import { useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulesPreview } from "@/components/vault/rules-preview";
 import { useT } from "@/i18n/context";
-import { refusalText } from "@/i18n/errors";
+import { refusalText, ruleIssueText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import type { SecretMeta } from "@/lib/vault";
 import {
@@ -18,6 +19,31 @@ import {
   type RuleDraft,
   ruleOf,
 } from "@/lib/vault-rules-form";
+
+/** The field of a rule's draft that each path of the daemon's issues points at. */
+const FIELD_OF: Record<string, keyof RuleDraft> = {
+  decision: "decision",
+  "match.requester": "requester",
+  "match.purpose": "purpose",
+  "match.action": "action",
+  "match.host": "host",
+  "match.tags": "tags",
+  "match.project": "project",
+  "match.session": "session",
+  "window.from": "from",
+  "window.to": "to",
+  outsideWindow: "outsideWindow",
+  maxPerHour: "maxPerHour",
+  maxPerDay: "maxPerDay",
+  expiresAt: "expiresAt",
+};
+
+/** The rule an issue is about (its index), and the draft field its path names, when it has one. */
+function aim(issue: RuleIssue): { rule: number; field: keyof RuleDraft | null } | null {
+  const [index, ...rest] = issue.path.split(".");
+  if (index === undefined || index === "" || !/^\d+$/.test(index)) return null;
+  return { rule: Number(index), field: FIELD_OF[rest.join(".")] ?? null };
+}
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -41,6 +67,7 @@ export function RulesEditor(props: {
     return props.seed ? [{ ...newDraft(saved), ...props.seed }, ...saved] : saved;
   });
   const [error, setError] = useState<string | null>(null);
+  const [issues, setIssues] = useState<readonly RuleIssue[]>([]);
   // A ref: the drop reads it in the same gesture that set it, before any render.
   const dragged = useRef<number | null>(null);
   const edit = (i: number, patch: Partial<RuleDraft>) =>
@@ -49,42 +76,78 @@ export function RulesEditor(props: {
   const save = async () => {
     const result = await store.setVaultRules(secret.id, drafts.map(ruleOf));
     if (result.ok) props.onClose();
-    else setError(refusalText(result.code, result.message, t));
+    else {
+      setError(refusalText(result.code, result.message, t, result));
+      setIssues(result.items ?? []);
+    }
   };
+  /** The issues of rule `i`: the ones on a field of its own, and the rest. */
+  const issuesOf = (i: number) => {
+    const mine = issues.filter((issue) => aim(issue)?.rule === i);
+    return {
+      field: (key: keyof RuleDraft) => mine.find((issue) => aim(issue)?.field === key),
+      rest: mine.filter((issue) => aim(issue)?.field === null),
+    };
+  };
+  const issueId = (i: number, key: keyof RuleDraft) => `${id}-${i}-${key}-issue`;
 
-  const text = (i: number, key: keyof RuleDraft, label: string, type = "text") => (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={`${id}-${i}-${key}`}>{label}</label>
-      <Input
-        id={`${id}-${i}-${key}`}
-        type={type}
-        value={drafts[i]?.[key] as string}
-        onChange={(e) => edit(i, { [key]: e.target.value })}
-      />
-    </div>
-  );
+  const issueOf = (i: number, key: keyof RuleDraft) => {
+    const issue = issuesOf(i).field(key);
+    return {
+      issue,
+      aria: issue
+        ? { "aria-invalid": true as const, "aria-describedby": issueId(i, key) }
+        : ({} as Record<string, never>),
+      note: issue && (
+        <p id={issueId(i, key)} role="alert" className="text-status-error text-xs">
+          {ruleIssueText(issue, t)}
+        </p>
+      ),
+    };
+  };
+  const text = (i: number, key: keyof RuleDraft, label: string, type = "text") => {
+    const { aria, note } = issueOf(i, key);
+    return (
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-${i}-${key}`}>{label}</label>
+        <Input
+          id={`${id}-${i}-${key}`}
+          type={type}
+          value={drafts[i]?.[key] as string}
+          onChange={(e) => edit(i, { [key]: e.target.value })}
+          {...aria}
+        />
+        {note}
+      </div>
+    );
+  };
   const choice = (
     i: number,
     key: keyof RuleDraft,
     label: string,
     options: Array<[string, string]>,
-  ) => (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={`${id}-${i}-${key}`}>{label}</label>
-      <select
-        id={`${id}-${i}-${key}`}
-        className={SELECT}
-        value={drafts[i]?.[key] as string}
-        onChange={(e) => edit(i, { [key]: e.target.value })}
-      >
-        {options.map(([value, name]) => (
-          <option key={value} value={value}>
-            {name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+  ) => {
+    const { aria, note } = issueOf(i, key);
+    return (
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-${i}-${key}`}>{label}</label>
+        <select
+          id={`${id}-${i}-${key}`}
+          className={SELECT}
+          value={drafts[i]?.[key] as string}
+          onChange={(e) => edit(i, { [key]: e.target.value })}
+          {...aria}
+        >
+          {options.map(([value, name]) => (
+            <option key={value} value={value}>
+              {name}
+            </option>
+          ))}
+        </select>
+        {note}
+      </div>
+    );
+  };
   const decisions = DECISIONS.map((d): [string, string] => [d, t(`vaultRulesUi.decision.${d}`)]);
 
   return (
@@ -113,6 +176,15 @@ export function RulesEditor(props: {
             className="flex flex-col gap-2 rounded-md border p-3"
           >
             <legend className="px-1 font-medium">{t("vaultRulesUi.rule", { n })}</legend>
+            {issuesOf(i).rest.map((issue) => (
+              <p
+                key={`${issue.path}:${issue.code}`}
+                role="alert"
+                className="text-status-error text-xs"
+              >
+                {ruleIssueText(issue, t)}
+              </p>
+            ))}
             <div className="grid gap-2 @2xl:grid-cols-3">
               {choice(i, "requester", at(t("vaultRulesUi.requester")), [
                 ["", t("vaultRulesUi.any")],

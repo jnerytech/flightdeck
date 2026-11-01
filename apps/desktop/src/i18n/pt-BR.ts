@@ -661,7 +661,25 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
-  ruleIssue: {},
+  ruleIssue: {
+    required: "A regra precisa de um id.",
+    duplicate: "Outra regra tem o mesmo id.",
+    unknown_field: "Esse campo não existe: {field}.",
+    not_object: "Isto precisa ser um objeto.",
+    not_list: "As regras precisam ser uma lista.",
+    not_text: "Isto precisa ser um texto.",
+    not_list_of_text: "Isto precisa ser uma lista de textos.",
+    not_one_of: "Só estes valores são aceitos: {allowed}.",
+    bad_time: "Use o formato HH:MM, até {last}.",
+    same_time: "O início e o fim da janela não podem ser iguais.",
+    not_positive_int: "Use um número inteiro positivo.",
+    not_timestamp: "Use um instante em milissegundos.",
+    once_needs_ask: "“Perguntar uma vez por sessão” só vale com a decisão ask.",
+    outside_needs_window: "“Fora da janela” só vale junto com uma janela.",
+    no_allow_run_with_secret: "Nenhuma regra libera run_with_secret sem aprovação: use ask.",
+    prod_needs_window:
+      "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
+  },
   daemonFeature: {
     history: "o histórico",
     central: "a central de sessões",
@@ -710,6 +728,7 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    vault_rules_invalid: "Algumas regras não valem: corrija o que está marcado.",
     transport_refused:
       "O cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",

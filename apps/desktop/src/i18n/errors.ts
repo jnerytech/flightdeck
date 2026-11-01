@@ -49,6 +49,8 @@ export function refusalText(
 }
 
 /** One thing wrong in a vault rule, in the app's language. */
-export function ruleIssueText(_issue: RuleIssue, _t: T): string {
-  return "";
+export function ruleIssueText(issue: RuleIssue, t: T): string {
+  if (!(issue.code in ptBR.ruleIssue)) return `${issue.path}: ${issue.code}`;
+  const field = issue.path.split(".").at(-1) ?? "";
+  return t(`ruleIssue.${issue.code}` as Key, { ...issue.params, field });
 }

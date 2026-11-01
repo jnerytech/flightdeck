@@ -334,14 +334,19 @@ function ackError(
   id: string,
   code: string,
   message: string,
-  why: Pick<FlightdeckError, "reason" | "params"> = {},
+  why: Pick<FlightdeckError, "reason" | "params" | "items"> = {},
 ): void {
-  const { reason, params } = why;
+  const { reason, params, items } = why;
   send(ws, {
     type: "ack",
     id,
     ok: false,
-    error: { code, message, ...(reason ? { reason, params: params ?? {} } : {}) },
+    error: {
+      code,
+      message,
+      ...(reason ? { reason, params: params ?? {} } : {}),
+      ...(items ? { items: [...items] } : {}),
+    },
   });
 }
 

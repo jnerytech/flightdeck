@@ -4,7 +4,12 @@
  * can loosen a default but never past the ceiling (no `allow` for `run_with_secret`, none for
  * `prod` without a time window), and a use the risk classifier calls high is always asked.
  */
-import { isProdTag, type RuleIssue, type VaultRequester } from "@flightdeck/protocol";
+import {
+  isProdTag,
+  type RefusalParams,
+  type RuleIssue,
+  type VaultRequester,
+} from "@flightdeck/protocol";
 
 export type Decision = "allow" | "ask" | "deny";
 export type Purpose = "ssh" | "action" | "run_with_secret";
@@ -148,61 +153,61 @@ const RULE_KEYS = new Set([
   "expiresAt",
 ]);
 
-/** The rules that are valid, or why they are not (including what the ceiling refuses). */
+/**
+ * The rules that are valid, or what is wrong with them: one issue per problem, with a path
+ * (`<rule index>.<field>`, the index from 0, empty for the list itself) and a code the app says in
+ * its own language. The ceiling's issues are here too.
+ */
 export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[] } {
-  if (!Array.isArray(raw)) {
-    return {
-      rules: [],
-      errors: [{ path: "", code: "unknown", params: { message: "as regras são uma lista" } }],
-    };
-  }
-  const errors: string[] = [];
+  if (!Array.isArray(raw)) return { rules: [], errors: [{ path: "", code: "not_list" }] };
+  const errors: RuleIssue[] = [];
   const rules: Rule[] = [];
   const ids = new Set<string>();
   for (const [index, item] of raw.entries()) {
     if (!isRecord(item)) {
-      errors.push(`regra #${index + 1}: tem de ser um objeto`);
+      errors.push({ path: `${index}`, code: "not_object" });
       continue;
     }
-    const label = isText(item.id) ? `regra ${item.id}` : `regra #${index + 1}`;
-    const bad = (message: string) => errors.push(`${label}: ${message}`);
+    const bad = (field: string, code: string, params?: RefusalParams) => {
+      errors.push({ path: `${index}.${field}`, code, ...(params ? { params } : {}) });
+    };
     const before = errors.length;
 
-    if (!isText(item.id)) bad("id é obrigatório");
-    else if (ids.has(item.id)) bad("id repetido");
+    if (!isText(item.id)) bad("id", "required");
+    else if (ids.has(item.id)) bad("id", "duplicate");
     else ids.add(item.id);
-    for (const key of Object.keys(item)) if (!RULE_KEYS.has(key)) bad(`campo desconhecido: ${key}`);
+    for (const key of Object.keys(item)) if (!RULE_KEYS.has(key)) bad(key, "unknown_field");
     if (typeof item.decision !== "string" || !DECISIONS.includes(item.decision)) {
-      bad("decision é allow, ask ou deny");
+      bad("decision", "not_one_of", { allowed: DECISIONS.join(", ") });
     }
 
     const match = item.match === undefined ? {} : item.match;
-    if (!isRecord(match)) bad("match é um objeto");
+    if (!isRecord(match)) bad("match", "not_object");
     else {
       for (const key of Object.keys(match)) {
-        if (!MATCH_KEYS.has(key)) bad(`match.${key} não existe`);
+        if (!MATCH_KEYS.has(key)) bad(`match.${key}`, "unknown_field");
       }
       if (match.requester !== undefined && !REQUESTERS.includes(match.requester as string)) {
-        bad("match.requester é you, claude, automation ou workflow");
+        bad("match.requester", "not_one_of", { allowed: REQUESTERS.join(", ") });
       }
       if (match.purpose !== undefined && !PURPOSES.includes(match.purpose as string)) {
-        bad("match.purpose é ssh, action ou run_with_secret");
+        bad("match.purpose", "not_one_of", { allowed: PURPOSES.join(", ") });
       }
       for (const key of ["action", "host", "project", "session"] as const) {
-        if (match[key] !== undefined && !isText(match[key])) bad(`match.${key} é um texto`);
+        if (match[key] !== undefined && !isText(match[key])) bad(`match.${key}`, "not_text");
       }
       if (match.tags !== undefined && !(Array.isArray(match.tags) && match.tags.every(isText))) {
-        bad("match.tags é uma lista de textos");
+        bad("match.tags", "not_list_of_text");
       }
     }
 
     if (item.once !== undefined && (item.once !== "session" || item.decision !== "ask")) {
-      bad("once só existe como session, e só com ask");
+      bad("once", "once_needs_ask");
     }
 
     const window = item.window;
     if (window !== undefined) {
-      if (!isRecord(window)) bad("window é um objeto com days, from e to");
+      if (!isRecord(window)) bad("window", "not_object");
       else {
         const days = window.days;
         if (
@@ -210,23 +215,23 @@ export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[
           days.length === 0 ||
           !days.every((d) => DAY_ORDER.includes(d as Day))
         ) {
-          bad("window.days é uma lista de mon, tue, wed, thu, fri, sat, sun");
+          bad("window.days", "not_one_of", { allowed: "mon, tue, wed, thu, fri, sat, sun" });
         }
         const from = clock(window.from, false);
         const to = clock(window.to, true);
-        if (from === null) bad("window.from é HH:MM");
-        if (to === null) bad("window.to é HH:MM (até 24:00)");
-        if (from !== null && from === to) bad("window.from não pode ser igual a window.to");
+        if (from === null) bad("window.from", "bad_time", { last: "23:59" });
+        if (to === null) bad("window.to", "bad_time", { last: "24:00" });
+        if (from !== null && from === to) bad("window.to", "same_time");
       }
     }
     if (
       item.outsideWindow !== undefined &&
       (typeof item.outsideWindow !== "string" || !DECISIONS.includes(item.outsideWindow))
     ) {
-      bad("outsideWindow é allow, ask ou deny");
+      bad("outsideWindow", "not_one_of", { allowed: DECISIONS.join(", ") });
     }
     if (item.outsideWindow !== undefined && window === undefined) {
-      bad("outsideWindow só existe junto com window");
+      bad("outsideWindow", "outside_needs_window");
     }
     for (const key of ["maxPerHour", "maxPerDay"] as const) {
       const value = item[key];
@@ -234,21 +239,21 @@ export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[
         value !== undefined &&
         !(typeof value === "number" && Number.isInteger(value) && value > 0)
       ) {
-        bad(`${key} é um inteiro positivo`);
+        bad(key, "not_positive_int");
       }
     }
     if (
       item.expiresAt !== undefined &&
       !(typeof item.expiresAt === "number" && item.expiresAt > 0)
     ) {
-      bad("expiresAt é um instante em milissegundos");
+      bad("expiresAt", "not_timestamp");
     }
 
     // The ceiling: what no rule can loosen.
     const targets = isRecord(match) ? match : {};
     const loosens = item.decision === "allow" || item.outsideWindow === "allow";
     if (targets.purpose === "run_with_secret" && loosens) {
-      bad("nenhuma regra libera o run_with_secret sem aprovação: allow não vale para ele, use ask");
+      bad(item.decision === "allow" ? "decision" : "outsideWindow", "no_allow_run_with_secret");
     }
     const prodTagged =
       Array.isArray(targets.tags) && targets.tags.some((tag) => isProdTag(String(tag)));
@@ -256,20 +261,13 @@ export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[
       prodTagged &&
       (item.outsideWindow === "allow" || (item.decision === "allow" && window === undefined))
     ) {
-      bad(
-        "allow para uma tag prod precisa de window (a janela de dias e horas) e não vale fora dela: use ask",
-      );
+      bad(item.outsideWindow === "allow" ? "outsideWindow" : "window", "prod_needs_window");
     }
 
     if (errors.length === before) rules.push(item as unknown as Rule);
   }
-  if (errors.length > 0) {
-    return {
-      rules: [],
-      errors: errors.map((message) => ({ path: "", code: "unknown", params: { message } })),
-    };
-  }
-  return { rules: rules.map((rule) => ({ ...rule, match: rule.match ?? {} })), errors: [] };
+  if (errors.length > 0) return { rules: [], errors };
+  return { rules: rules.map((rule) => ({ ...rule, match: rule.match ?? {} })), errors };
 }
 
 /** `deploy-*` against a name: `*` is the only wildcard, everything else is literal. */

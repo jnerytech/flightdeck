@@ -19,6 +19,7 @@ import {
   parseServerMessage,
   type QuotaState,
   type RunState,
+  type RuleIssue,
   type SessionSubscribeResult,
   type TeamsUpdatedFrame,
   type TerminalData,
@@ -65,6 +66,8 @@ export class RequestError extends Error {
     /** Why, when the host sent one the app translates, with the values its text fills in. */
     readonly reason?: string,
     readonly params?: Record<string, string | number>,
+    /** What is wrong in a list the person typed (a vault rule), one item per problem. */
+    readonly items?: readonly RuleIssue[],
   ) {
     super(message);
     this.name = "RequestError";
@@ -257,8 +260,8 @@ export class HostConnection {
       this.pending.delete(message.id);
       if (message.ok) pending?.resolve(message.data);
       else {
-        const { code, message: text, reason, params } = message.error;
-        pending?.reject(new RequestError(code, text, reason, params));
+        const { code, message: text, reason, params, items } = message.error;
+        pending?.reject(new RequestError(code, text, reason, params, items));
       }
     });
     ws.addEventListener("close", (event) => this.onClose(ws, event.code));

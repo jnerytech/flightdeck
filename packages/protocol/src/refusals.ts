@@ -35,6 +35,7 @@ export const DAEMON_REASONS = [
   "vault_closed",
   "secret_not_here",
   "secret_purpose_mismatch",
+  "vault_rules_invalid",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 
@@ -100,4 +101,21 @@ export interface RuleIssue {
 }
 
 /** Every kind of issue the rules validation reports: the app has a text for each, in both languages. */
-export const RULE_ISSUE_CODES: readonly string[] = [];
+export const RULE_ISSUE_CODES = [
+  "required",
+  "duplicate",
+  "unknown_field",
+  "not_object",
+  "not_list",
+  "not_text",
+  "not_list_of_text",
+  "not_one_of",
+  "bad_time",
+  "same_time",
+  "not_positive_int",
+  "not_timestamp",
+  "once_needs_ask",
+  "outside_needs_window",
+  "no_allow_run_with_secret",
+  "prod_needs_window",
+] as const;
