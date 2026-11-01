@@ -263,7 +263,15 @@ export class TerminalManager {
       pty = this.opts.pty({
         argv,
         cwd,
-        env: { ...buildChildEnv(env, this.opts.allowApiKey ?? false), ...extraEnv, ...req.env },
+        env: {
+          ...buildChildEnv(env, this.opts.allowApiKey ?? false),
+          // What is attached is xterm.js. A service has no TERM (or "dumb"), and readline then
+          // scrolls a long line sideways instead of wrapping it.
+          TERM: "xterm-256color",
+          COLORTERM: "truecolor",
+          ...extraEnv,
+          ...req.env,
+        },
         cols: req.cols,
         rows: req.rows,
         onData: (chunk) => this.onData(id, chunk),
