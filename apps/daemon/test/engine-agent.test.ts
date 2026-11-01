@@ -114,9 +114,9 @@ describe("engine-agent", () => {
 
   test("inputs obrigatórios e desconhecidos são recusados no início", async () => {
     const { board, card, start } = await setup(PLAN);
-    expect(await failure(start())).toBe("invalid_state: input obrigatório: task");
+    expect(await failure(start())).toBe("invalid_state: required input: task");
     expect(await failure(start({ task: "x", extra: "y" }))).toBe(
-      "invalid_state: input desconhecido: extra",
+      "invalid_state: unknown input: extra",
     );
     expect(board.getCard(card.id).runs).toEqual([]);
   });
@@ -163,7 +163,7 @@ describe("engine-agent", () => {
     const runId = board.getCard(other.id).workflowRunId ?? "";
     await cardWhen(board, other.id, (c) => c.column === "review");
     expect((await board.discardCard(other.id, true)).discarded).toBe(true);
-    expect(() => board.workflows.getRun(runId)).toThrow(`execução ${runId} não existe`);
+    expect(() => board.workflows.getRun(runId)).toThrow(`run ${runId} does not exist`);
   });
 
   test("Parar um card de workflow na fila encerra a execução; o card inicia de novo", async () => {
@@ -219,6 +219,6 @@ describe("engine-agent", () => {
     await poll(() => board.workflows.getRun(runId).status === "waiting", 5000);
     await board.completeCard(gated.id, true);
     expect(board.workflows.getRun(runId).steps.at(-1)?.status).toBe("failed");
-    expect(() => board.workflows.respond(runId, "ok", 1, "approve")).toThrow("não está aberto");
+    expect(() => board.workflows.respond(runId, "ok", 1, "approve")).toThrow("is not open");
   });
 });

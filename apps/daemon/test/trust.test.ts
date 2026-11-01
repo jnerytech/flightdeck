@@ -39,6 +39,7 @@ describe("trust", () => {
         trusted: false,
         checks: ["bun test"],
         errors: [],
+        issues: [],
         inputs: ["task"],
       },
       {
@@ -46,7 +47,8 @@ describe("trust", () => {
         hash: sha256("steps:\n  - check: lint\n"),
         trusted: false,
         checks: [],
-        errors: ["steps.0.id: obrigatório"],
+        errors: ["steps.0.id: required"],
+        issues: [{ path: "steps.0.id", code: "required" }],
         inputs: [],
       },
     ]);
@@ -63,7 +65,7 @@ describe("trust", () => {
   test("workflow não confiado não roda", async () => {
     const { board, card, manager, start } = await setup();
     expect(await failure(start("feature"))).toBe(
-      "invalid_state: workflow feature não confiado; confie nele na tela de workflows",
+      "invalid_state: workflow feature is not trusted; trust it on the workflows screen",
     );
     expect(board.getCard(card.id)).toMatchObject({ runs: [], workflowRunId: null });
     expect(manager.list()).toEqual([]);
@@ -83,15 +85,15 @@ describe("trust", () => {
   test("confiar exige o hash atual e um workflow sem erros", async () => {
     const { board, project, repo } = await setup();
     expect(await failure(board.trustWorkflow(project.id, "feature", "abc"))).toBe(
-      "invalid_state: o workflow feature mudou; revise os comandos de novo antes de confiar",
+      "invalid_state: workflow feature changed; review the commands again before trusting it",
     );
     commitWorkflow(repo, "quebrado", "steps:\n  - check: lint\n");
     const hash = sha256("steps:\n  - check: lint\n");
     expect(await failure(board.trustWorkflow(project.id, "quebrado", hash))).toBe(
-      "invalid_state: workflow quebrado tem erros de validação",
+      "invalid_state: workflow quebrado has validation errors",
     );
     expect(await failure(board.trustWorkflow(project.id, "nada", hash))).toBe(
-      "not_found: workflow nada não existe na branch main",
+      "not_found: workflow nada does not exist on the branch main",
     );
   });
 
@@ -103,7 +105,7 @@ describe("trust", () => {
     const [info] = await board.listWorkflows(project.id);
     expect(info).toMatchObject({ hash: sha256(changed), trusted: false, checks: ["bun run lint"] });
     expect(await failure(start("feature"))).toBe(
-      "invalid_state: workflow feature não confiado; confie nele na tela de workflows",
+      "invalid_state: workflow feature is not trusted; trust it on the workflows screen",
     );
   });
 
@@ -112,7 +114,7 @@ describe("trust", () => {
     commitWorkflow(repo, "quebrado", "steps:\n  - check: lint\n");
     const run = board.startCard(card.id, { workflow: "quebrado" });
     expect(await failure(run)).toBe(
-      "invalid_state: workflow quebrado tem erros de validação: steps.0.id: obrigatório",
+      "invalid_state: workflow quebrado has validation errors: steps.0.id: required",
     );
     expect(await board.listWorkflows(project.id)).toHaveLength(2);
   });
@@ -133,7 +135,7 @@ describe("trust", () => {
     ]);
     const other = board.createCard(project.id, { title: "Outro", description: "x" });
     expect(await failure(board.startCard(other.id, { workflow: "sneaky" }))).toBe(
-      "not_found: workflow sneaky não existe na branch main",
+      "not_found: workflow sneaky does not exist on the branch main",
     );
     expect(board.getCard(other.id).runs).toEqual([]);
     expect(await failure(start("feature"))).toBeNull();

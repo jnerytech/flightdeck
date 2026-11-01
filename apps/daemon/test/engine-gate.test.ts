@@ -99,17 +99,17 @@ describe("engine-gate", () => {
   test("só responde gate aberto, na tentativa certa e uma vez", async () => {
     const { board, respond, runWhen, gate } = await atGate();
     expect(failure(() => respond("approve", undefined, "plan"))).toBe(
-      "invalid_state: gate plan (tentativa 1) não está aberto",
+      "invalid_state: gate plan (attempt 1) is not open",
     );
     expect(failure(() => respond("approve", undefined, "approve", 2))).toBe(
-      "invalid_state: gate approve (tentativa 2) não está aberto",
+      "invalid_state: gate approve (attempt 2) is not open",
     );
     expect(failure(() => board.workflows.respond("nada", "approve", 1, "approve"))).toBe(
-      "not_found: execução nada não existe",
+      "not_found: run nada does not exist",
     );
     respond("approve");
     expect(failure(() => respond("reject"))).toBe(
-      "invalid_state: gate approve (tentativa 1) não está aberto",
+      "invalid_state: gate approve (attempt 1) is not open",
     );
     expect((await runWhen((r) => r.status === "completed"))?.steps[1]?.note).toBeNull();
     expect(gate?.id).toBeDefined();

@@ -146,7 +146,7 @@ describe("mcp", () => {
   test("erro do daemon volta como erro da ferramenta", async () => {
     const { call } = await connected();
     expect(await call("get_run", { runId: "nada" })).toEqual({
-      error: "not_found: execução nada não existe",
+      error: "not_found: run nada does not exist",
     });
   });
 
