@@ -17,7 +17,7 @@ Prerequisites: phases 1 to 27 (the app, the daemon, the terminal, the board and 
 **Out:**
 - a global memoization pass or a state library before the numbers say where the time goes;
 - trusting Bun's "3-6x faster than better-sqlite3" claim (one dataset, read queries only);
-- changing `synchronous` without the user's decision (see the SQLite row below);
+- changing `synchronous` to anything but the `NORMAL` the user accepted (see the SQLite row below);
 - anything that needs the CLI or the network in a test.
 
 ## Already done (do not redo)
@@ -88,7 +88,7 @@ baseline shows nothing to gain is closed with the numbers in DECISIONS and no co
   `board.budgetBlocked` and the vault's project key find them cached.
 - **Idle daemon.** A list of the timers the daemon starts (peers sync every 5 s, the PR watch every `prPollIntervalMs`,
   quota polling, the history scan), each with its reason; none runs when its feature is off.
-- **SQLite.** `synchronous = NORMAL` is **pending the user's decision** (see the table). Independent of it: batching a
+- **SQLite.** `synchronous = NORMAL` is **done in `fix-sqlite-normal`** (the user accepted it; see the table). Independent of it: batching a
   burst of persisted events in one transaction only if the baseline for question 9 shows the commits dominate a turn.
 
 ## Tests and criteria
@@ -109,7 +109,7 @@ of the earlier research, turned into a test helper in the first area that needs 
 | `app-measures` | `performance.mark` and `measure` exist for the five actions with fixed names, are no-ops when the flag is off, and a test asserts the names and that nothing is written to the console |
 | `sync-git` | a test with a fake `git` that sleeps shows the protocol still answering (host info under 100 ms) during start-up, a project add and a card start; the indexer's pass calls no `Bun.spawnSync`; a guard test lists the remaining `spawnSync` uses in `apps/daemon/src` and fails on a new one that is not on the list; `board.budgetBlocked` and the vault's project key never spawn `git` on a warmed project |
 | `daemon-idle` | a test lists the timers a started daemon owns (name and period) and fails on a new one; with every optional feature off, the idle daemon starts none of the optional ones; idle CPU under 1% over 60 s and the resident memory after a long run are recorded against question 7 (maintainer, Windows service) |
-| `sqlite-durability` | **Pending user decision; not started, and not part of this phase's acceptance until the user decides.** If the user accepts `synchronous = NORMAL`: the pragma is set in one place, it is a config option, DECISIONS records the trade (the last events can be lost on a power cut, never a corrupted file; Claude's own transcript stays on disk), and a test shows the option reaches `PRAGMA synchronous`. If not, the row closes with the numbers of question 9 |
+| `sqlite-durability` | **Done in `fix-sqlite-normal`: measure the gain in the Windows baseline.** The user accepted `synchronous = NORMAL` under WAL; the pragma is set in `EventStore`, a test reads `PRAGMA synchronous` on a fresh store, and DECISIONS records the trade (the last events can be lost on a power cut, never a corrupted file; Claude's own transcript stays on disk). What is left here is question 9's before and after on NTFS, and the batching of persisted events only if the baseline shows the commits dominate a turn |
 | `editor-large` | only if a user opens files of tens of thousands of lines: a 50,000-line file opens and types in the file editor without a long task above 50 ms. No area is started without that report |
 | `typescript-ci` | low priority and no user-facing impact: `tsc --extendedDiagnostics` per package is recorded once as a baseline; nothing else is done unless a package takes more than a minute |
 
