@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Field, Form, FormActions } from "@/components/layout/form";
+import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -17,6 +18,18 @@ export function BackupPanel(props: { store: AppStore }) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [choice, setChoice] = useState<ConflictChoice>("skip");
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  /** Shows a form as busy while its work runs, so a click is never left without an answer. */
+  const run = async (busy: (on: boolean) => void, work: () => Promise<void>) => {
+    busy(true);
+    try {
+      await work();
+    } finally {
+      busy(false);
+    }
+  };
 
   const doExport = async () => {
     const outcome = await store.exportVault(passphrase, confirmation);
@@ -58,84 +71,107 @@ export function BackupPanel(props: { store: AppStore }) {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex max-w-md flex-col gap-3">
-        <h2 className="font-medium">{t("vault.backup.exportTitle")}</h2>
-        <div className="flex flex-col gap-1 text-sm">
-          <label htmlFor={`${id}-pass`}>{t("vault.backup.passphrase")}</label>
-          <Input
-            id={`${id}-pass`}
-            type="password"
-            autoComplete="off"
-            value={passphrase}
-            onChange={(event) => setPassphrase(event.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1 text-sm">
-          <label htmlFor={`${id}-confirm`}>{t("vault.backup.confirm")}</label>
-          <Input
-            id={`${id}-confirm`}
-            type="password"
-            autoComplete="off"
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-          />
-        </div>
-        <Button className="self-start" onClick={() => void doExport()}>
-          {t("vault.backup.export")}
-        </Button>
-        {exportMessage && <p role="status">{exportMessage}</p>}
+    <Stack gap={6}>
+      <section aria-labelledby={`${id}-export`}>
+        <Stack gap={4}>
+          <h2 id={`${id}-export`} className="font-medium">
+            {t("vault.backup.exportTitle")}
+          </h2>
+          <Form variant="page" onSubmit={() => void run(setExporting, doExport)}>
+            <Field label={t("vault.backup.passphrase")} help={t("vault.backup.passphraseHelp")}>
+              {(control) => (
+                <Input
+                  {...control}
+                  type="password"
+                  autoComplete="off"
+                  value={passphrase}
+                  onChange={(event) => setPassphrase(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field label={t("vault.backup.confirm")}>
+              {(control) => (
+                <Input
+                  {...control}
+                  type="password"
+                  autoComplete="off"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                />
+              )}
+            </Field>
+            <FormActions
+              submit={t("vault.backup.export")}
+              busy={exporting}
+              disabled={passphrase === "" || confirmation === ""}
+              disabledReason={t("vault.backup.exportNeeds")}
+            />
+            {exportMessage && <p role="status">{exportMessage}</p>}
+          </Form>
+        </Stack>
       </section>
 
-      <section className="flex max-w-md flex-col gap-3">
-        <h2 className="font-medium">{t("vault.backup.importTitle")}</h2>
-        <div className="flex flex-col gap-1 text-sm">
-          <label htmlFor={`${id}-file-pass`}>{t("vault.backup.filePassphrase")}</label>
-          <Input
-            id={`${id}-file-pass`}
-            type="password"
-            autoComplete="off"
-            value={filePassphrase}
-            onChange={(event) => setFilePassphrase(event.target.value)}
-          />
-        </div>
-        <Button className="self-start" variant="outline" onClick={() => void doPreview()}>
-          {t("vault.backup.import")}
-        </Button>
-        {preview && (
-          <div className="flex flex-col gap-2 text-sm">
-            <p>{t("vault.backup.added", { n: preview.added.length })}</p>
-            <p>{t("vault.backup.same", { n: preview.same.length })}</p>
-            <p>{t("vault.backup.conflicting", { n: preview.conflicting.length })}</p>
-            {preview.conflicting.length > 0 && (
-              <fieldset className="flex flex-col gap-1">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name={`${id}-choice`}
-                    checked={choice === "skip"}
-                    onChange={() => setChoice("skip")}
-                  />
-                  {t("vault.backup.keep")}
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name={`${id}-choice`}
-                    checked={choice === "overwrite"}
-                    onChange={() => setChoice("overwrite")}
-                  />
-                  {t("vault.backup.replace")}
-                </label>
-              </fieldset>
-            )}
-            <Button className="self-start" onClick={() => void doApply()}>
-              {t("vault.backup.apply")}
-            </Button>
-          </div>
-        )}
-        {importMessage && <p role="status">{importMessage}</p>}
+      <section aria-labelledby={`${id}-import`}>
+        <Stack gap={4}>
+          <h2 id={`${id}-import`} className="font-medium">
+            {t("vault.backup.importTitle")}
+          </h2>
+          <Form variant="page" onSubmit={() => void run(setImporting, doPreview)}>
+            <Field label={t("vault.backup.filePassphrase")}>
+              {(control) => (
+                <Input
+                  {...control}
+                  type="password"
+                  autoComplete="off"
+                  value={filePassphrase}
+                  onChange={(event) => setFilePassphrase(event.target.value)}
+                />
+              )}
+            </Field>
+            <FormActions
+              submit={t("vault.backup.import")}
+              busy={importing}
+              disabled={filePassphrase === ""}
+              disabledReason={t("vault.backup.importNeeds")}
+            />
+          </Form>
+          {preview && (
+            <Form variant="page" onSubmit={() => void doApply()}>
+              <Stack gap={1}>
+                <p>{t("vault.backup.added", { n: preview.added.length })}</p>
+                <p>{t("vault.backup.same", { n: preview.same.length })}</p>
+                <p>{t("vault.backup.conflicting", { n: preview.conflicting.length })}</p>
+              </Stack>
+              {preview.conflicting.length > 0 && (
+                <fieldset>
+                  <Stack gap={1}>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`${id}-choice`}
+                        checked={choice === "skip"}
+                        onChange={() => setChoice("skip")}
+                      />
+                      {t("vault.backup.keep")}
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`${id}-choice`}
+                        checked={choice === "overwrite"}
+                        onChange={() => setChoice("overwrite")}
+                      />
+                      {t("vault.backup.replace")}
+                    </label>
+                  </Stack>
+                </fieldset>
+              )}
+              <FormActions submit={t("vault.backup.apply")} />
+            </Form>
+          )}
+          {importMessage && <p role="status">{importMessage}</p>}
+        </Stack>
       </section>
-    </div>
+    </Stack>
   );
 }
