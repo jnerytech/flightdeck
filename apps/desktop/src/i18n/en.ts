@@ -1468,6 +1468,8 @@ export const en: Dictionary = {
     save: "Save",
     saved: "PR settings saved",
     badRounds: "Rounds per PR: from 1 to 10",
+    badCheck:
+      "Local checks: a command and its arguments, with no quotes, pipes, ; & $ or redirections",
     badLimit: "{label}: empty or above zero",
   },
   watchUi: {

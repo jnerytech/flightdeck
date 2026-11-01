@@ -1468,6 +1468,8 @@ export const ptBR = {
     save: "Salvar",
     saved: "Configuração do PR salva",
     badRounds: "Rodadas por PR: de 1 a 10",
+    badCheck:
+      "Checks locais: um comando e seus argumentos, sem aspas, pipes, ; & $ nem redirecionamentos",
     badLimit: "{label}: vazio ou maior que zero",
   },
   watchUi: {
