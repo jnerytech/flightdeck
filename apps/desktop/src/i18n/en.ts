@@ -646,6 +646,7 @@ export const en: Dictionary = {
     unknown:
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
+  snippetRefusal: {},
   common: {
     cancel: "Cancel",
     close: "Close",

@@ -641,6 +641,7 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
+  snippetRefusal: {},
   common: {
     cancel: "Cancelar",
     close: "Fechar",

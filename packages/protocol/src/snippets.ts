@@ -45,6 +45,9 @@ export class SnippetModelError extends Error {
   }
 }
 
+/** Every `reason` a refusal of the model can carry: the app has a text for each, in both languages. */
+export const SNIPPET_REASONS: readonly string[] = [];
+
 const badRequest = (message: string) => new SnippetModelError("bad_request", message);
 
 /** Control characters other than the ones `allow` lets through (tab for a command, tab and lines for a prompt). */

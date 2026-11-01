@@ -17,7 +17,12 @@ export function translateError(
 }
 
 /** One line for a form or a panel: the translated text, then the daemon's message when it has one. */
-export function refusalText(code: string, message: string, t: T): string {
+export function refusalText(
+  code: string,
+  message: string,
+  t: T,
+  _detail?: { reason?: string; params?: Record<string, string | number> },
+): string {
   const { title, detail } = translateError(code, message, t);
   return detail ? `${title} ${detail}` : title;
 }

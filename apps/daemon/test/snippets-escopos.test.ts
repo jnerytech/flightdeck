@@ -483,6 +483,23 @@ describe("snippets-escopos: pelo protocolo", () => {
     return { client, codeOfCall };
   }
 
+  test("a refusal of the model reaches the app with its reason and params, next to the code and the message", async () => {
+    const { snippets, root } = setup();
+    const { client } = await connect(snippets, root);
+    const answer = await client.request("snippets.save", {
+      scope: "host",
+      name: "x",
+      type: "command",
+      run: "ls",
+      vars: { a: {} },
+    });
+    expect(answer.error).toMatchObject({
+      code: "bad_request",
+      reason: "var_unused",
+      params: { name: "a" },
+    });
+  });
+
   test("snippets.list, save, get, remove, favorite e trust", async () => {
     const { snippets, root, project, writeFile } = setup();
     const { client, codeOfCall } = await connect(snippets, root);

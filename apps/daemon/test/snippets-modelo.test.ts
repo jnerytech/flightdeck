@@ -312,3 +312,131 @@ describe("snippets-modelo: a failure that is not the snippet's", () => {
     expect((thrown as { code?: string }).code).toBeUndefined();
   });
 });
+
+/** What a refusal carries: the code, the stable reason the app translates, its params, the log text. */
+function refusal(fn: () => unknown) {
+  try {
+    fn();
+    return null;
+  } catch (error) {
+    const { code, reason, params, message } = error as {
+      code: string;
+      reason?: string;
+      params?: Record<string, string | number>;
+      message: string;
+    };
+    return { code, reason, params, message };
+  }
+}
+
+describe("snippets-modelo: a refusal carries a reason the app translates", () => {
+  const ok = { name: "a" };
+  const cases: Array<[string, () => unknown, Record<string, string | number> | undefined]> = [
+    [
+      "name_invalid",
+      () => normalizeSnippet(command("ls", { name: "x".repeat(65) }), scanner),
+      undefined,
+    ],
+    ["needs_run", () => normalizeSnippet(command(""), scanner), undefined],
+    ["needs_text", () => normalizeSnippet(prompt(""), scanner), undefined],
+    ["no_text", () => normalizeSnippet(command("ls", { text: "a" }), scanner), undefined],
+    ["no_run", () => normalizeSnippet(prompt("a", { run: "ls" }), scanner), undefined],
+    ["too_big", () => normalizeSnippet(command("x".repeat(4001)), scanner), undefined],
+    ["control_command", () => normalizeSnippet(command("ls\nrm"), scanner), undefined],
+    ["control_prompt", () => normalizeSnippet(prompt("a\u0001b"), scanner), undefined],
+    [
+      "var_name",
+      () => normalizeSnippet(command("echo {{a}}", { vars: { "1x": {} } }), scanner),
+      { name: "1x" },
+    ],
+    [
+      "var_special",
+      () => normalizeSnippet(command("echo {{cwd}}", { vars: { cwd: {} } }), scanner),
+      { name: "cwd" },
+    ],
+    [
+      "var_unused",
+      () => normalizeSnippet(command("ls", { vars: { a: {} } }), scanner),
+      { name: "a" },
+    ],
+    [
+      "too_many_tags",
+      () =>
+        normalizeSnippet(
+          command("ls", { tags: Array.from({ length: 11 }, (_, i) => `t${i}`) }),
+          scanner,
+        ),
+      { max: 10 },
+    ],
+    ["tag_invalid", () => normalizeSnippet(command("ls", { tags: ["a,b"] }), scanner), undefined],
+    [
+      "too_many_options",
+      () =>
+        normalizeSnippet(
+          command("echo {{a}}", {
+            vars: { a: { options: Array.from({ length: 51 }, (_, i) => `o${i}`) } },
+          }),
+          scanner,
+        ),
+      { name: "a" },
+    ],
+    [
+      "options_plain",
+      () =>
+        normalizeSnippet(command("echo {{a}}", { vars: { a: { options: ["x", "x"] } } }), scanner),
+      { name: "a" },
+    ],
+    [
+      "default_control",
+      () =>
+        normalizeSnippet(command("echo {{a}}", { vars: { a: { default: "a\u0001" } } }), scanner),
+      { name: "a" },
+    ],
+    [
+      "default_not_option",
+      () =>
+        normalizeSnippet(
+          command("echo {{a}}", { vars: { a: { options: ["x"], default: "y" } } }),
+          scanner,
+        ),
+      { name: "a" },
+    ],
+  ];
+
+  for (const [reason, run, params] of cases) {
+    test(`${reason}: the code stays bad_request, the reason and params are set, the message is English`, () => {
+      const got = refusal(run);
+      expect(got?.code).toBe("bad_request");
+      expect(got?.reason).toBe(reason);
+      expect(got?.params).toEqual(params);
+      expect(got?.message).not.toMatch(/[À-ú]/);
+    });
+  }
+
+  test("using a snippet: a value with a control character, outside the options, or missing, each has its reason", () => {
+    const def = normalizeSnippet(
+      command("echo {{a}} {{b}}", { vars: { b: { options: ["x", "y"] } } }),
+      scanner,
+    );
+    expect(refusal(() => renderSnippet(def, { a: "1\n2", b: "x" }, {}))).toMatchObject({
+      reason: "value_control",
+      params: { name: "a" },
+    });
+    expect(refusal(() => renderSnippet(def, { a: "1", b: "z" }, {}))).toMatchObject({
+      reason: "value_not_option",
+      params: { name: "b", options: "x, y" },
+    });
+    expect(refusal(() => renderSnippet(def, {}, {}))).toMatchObject({
+      reason: "missing_values",
+      params: { names: "a, b" },
+    });
+  });
+
+  test("a secret keeps snippet_secret and gets the reason secret", () => {
+    const got = refusal(() =>
+      normalizeSnippet(command("echo ghp_0123456789abcdef0123456789abcdef0123", ok), scanner),
+    );
+    expect(got?.code).toBe("snippet_secret");
+    expect(got?.reason).toBe("secret");
+  });
+});
