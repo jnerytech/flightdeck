@@ -34,7 +34,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `$(git merge-base HEAD main)` on a phase branch.
 - Screens: `bun run demo` (two fake hosts and the web entry at http://localhost:1420),
   `bun run demo:shots` (prints in both themes and languages, plus axe), `bun run e2e` (the
-  journeys, in both languages).
+  journeys, in both languages, with `@playwright/test`: `E2E_ONLY=a,b` picks journeys, and
+  `bun run e2e -- --repeat-each 5` hunts flakes; the HTML report is in `playwright-report/`).
 - Builds: `bun run build:daemon`, `bun run build:desktop`. `cargo check` (in
   `apps/desktop/src-tauri`) requires `bun run build:desktop` first.
 

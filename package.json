@@ -45,7 +45,7 @@
     "slot": "bun run scripts/slot.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
-    "e2e": "bun run scripts/demo.ts --e2e",
+    "e2e": "playwright test -c scripts/e2e/playwright.config.ts",
     "ui:lock": "bun run scripts/ui-lock.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build",
@@ -60,6 +60,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
+    "@playwright/test": "1.64.1",
     "@types/bun": "1.4.4",
     "@types/pngjs": "6.0.5",
     "axe-core": "4.10.2",

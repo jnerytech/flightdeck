@@ -81,8 +81,10 @@ describe("browser: where the demo scripts get a Chromium", () => {
 });
 
 describe("browserLaunch: the browser of the e2e runner", () => {
-  const found = (...names: string[]) => (name: string) =>
-    names.includes(name) ? `/usr/bin/${name}` : null;
+  const found =
+    (...names: string[]) =>
+    (name: string) =>
+      names.includes(name) ? `/usr/bin/${name}` : null;
 
   test("a system Chrome comes before a Chromium, and the path is used", () => {
     expect(browserLaunch(found("chromium", "google-chrome"))).toEqual({

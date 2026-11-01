@@ -17,14 +17,16 @@ import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
-import { ACOES_ACTION } from "./lib/e2e-journeys.ts";
+import { ACOES_ACTION, DANGER_SESSION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const FIXTURES = join(ROOT, "apps/daemon/test/fixtures/history");
+
 /** The terminal session that waits for a high-risk Bash (the e2e journey opens it by name). */
-export const DANGER_SESSION = "Limpar a pasta build";
+export { DANGER_SESSION };
+
 const LONG_TITLE =
   "Migrar a autenticação do painel administrativo para o provedor novo sem derrubar as sessões abertas nem perder os tokens de serviço";
 

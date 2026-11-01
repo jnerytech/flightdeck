@@ -4,11 +4,12 @@
  * app's web entry with Vite, already paired with them, at http://localhost:1420. Ctrl+C stops it.
  * `--shots` takes the prints (scripts/demo-shots.ts) into apps/desktop/screenshots/ and exits.
  */
+import { renameSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { runE2e } from "./demo-e2e.ts";
 import { seedDemo } from "./demo-seed.ts";
 import { SHOTS_DIR, takeShots } from "./demo-shots.ts";
 import { runVisual } from "./demo-visual.ts";
+import { stateFile } from "./lib/e2e-demo.ts";
 import { visualMode } from "./lib/visual.ts";
 
 const DESKTOP = resolve(import.meta.dir, "../apps/desktop");
@@ -62,18 +63,19 @@ if (process.argv.includes("--shots")) {
   process.exit(0);
 }
 
-if (process.argv.includes("--e2e")) {
-  let failed = false;
-  try {
-    await runE2e(url, seed.ids, browserEnv, log);
-    console.log("E2E OK");
-  } catch (error) {
-    failed = true;
-    console.error((error as Error).message);
-  } finally {
-    await stop();
-  }
-  process.exit(failed ? 1 : 0);
+// `--serve` (the e2e runner): writes the address and ids where the runner waits for them and stays
+// up until it is stopped. The runner stops the whole process group.
+if (process.argv.includes("--serve")) {
+  const dir = process.env.E2E_STATE_DIR;
+  if (!dir) throw new Error("--serve precisa de E2E_STATE_DIR");
+  const file = stateFile(dir);
+  // Written whole and then renamed, so the runner never reads half of it.
+  writeFileSync(`${file}.tmp`, JSON.stringify({ url, ids: seed.ids }));
+  renameSync(`${file}.tmp`, file);
+  const done = () => void stop().then(() => process.exit(0));
+  process.on("SIGTERM", done);
+  process.on("SIGINT", done);
+  await new Promise(() => {});
 }
 
 console.log(`\nFlightdeck demo em ${url} (Ctrl+C para sair)`);

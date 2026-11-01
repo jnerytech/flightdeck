@@ -82,7 +82,12 @@ describe("stopDemo: the teardown, which also runs when the setup failed halfway"
 describe("waitForState: the demo says it is ready by writing its state file", () => {
   const clock = () => {
     let t = 0;
-    return { now: () => t, sleep: async (ms: number) => void (t += ms) };
+    return {
+      now: () => t,
+      sleep: async (ms: number) => {
+        t += ms;
+      },
+    };
   };
 
   test("it returns the state once the file holds it", async () => {

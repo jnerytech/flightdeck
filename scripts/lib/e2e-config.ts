@@ -12,7 +12,11 @@ export interface RunnerSettings {
   fullyParallel: boolean;
   forbidOnly: boolean;
   reporter: Array<[string] | [string, Record<string, unknown>]>;
-  use: { trace: string; screenshot: string; video: string };
+  use: {
+    trace: "retain-on-failure";
+    screenshot: "only-on-failure";
+    video: "retain-on-failure";
+  };
   outputDir: string;
 }
 

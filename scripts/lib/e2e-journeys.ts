@@ -27,3 +27,6 @@ export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 800 },
   { width: 800, height: 600 },
 ];
+
+/** The name of the demo session that holds the high-risk request (the issue-e-risco journey). */
+export const DANGER_SESSION = "Limpar a pasta build";

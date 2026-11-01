@@ -69,7 +69,9 @@ export function whichOnNodePath(
 ): string | null {
   const windows = platform === "win32";
   const sep = windows ? ";" : ":";
-  const extensions = windows ? ["", ...(env.PATHEXT ?? ".EXE;.CMD").toLowerCase().split(";")] : [""];
+  const extensions = windows
+    ? ["", ...(env.PATHEXT ?? ".EXE;.CMD").toLowerCase().split(";")]
+    : [""];
   for (const dir of (env.PATH ?? "").split(sep).filter(Boolean)) {
     for (const ext of extensions) {
       const candidate = `${dir}${windows ? "\\" : "/"}${name}${ext}`;

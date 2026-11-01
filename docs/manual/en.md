@@ -2107,7 +2107,8 @@ bun run demo         # starts two fake hosts (fake runtime, seeded data) and the
 bun run demo:shots   # the screenshots, in 2 themes and 2 languages, in
                      # apps/desktop/screenshots/ (and axe-core, which fails serious and critical)
 bun run e2e          # the five journeys in a real browser, in 2 languages, and the layout check
-                     # at 1280x800 and 800x600
+                     # at 1280x800 and 800x600 (runner: @playwright/test; E2E_ONLY=a,b picks
+                     # journeys; -- --repeat-each 5 repeats them; report in playwright-report/)
 ```
 
 Nothing leaves the machine and no real data is used. The scripts use the installed Chrome (or

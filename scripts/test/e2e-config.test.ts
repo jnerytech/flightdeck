@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  E2E_TEST_DIR,
-  E2E_TEST_MATCH,
-  grepFor,
-  runnerSettings,
-} from "../lib/e2e-config.ts";
+import { E2E_TEST_DIR, E2E_TEST_MATCH, grepFor, runnerSettings } from "../lib/e2e-config.ts";
 
 describe("e2e runner settings", () => {
   test("on CI a failed journey is retried once, and a retried pass is kept as flaky", () => {

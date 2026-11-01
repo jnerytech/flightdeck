@@ -2076,7 +2076,8 @@ bun run demo         # sobe dois hosts de mentira (runtime fake, dados semeados)
 bun run demo:shots   # os prints das telas, nos 2 temas e nos 2 idiomas, em
                      # apps/desktop/screenshots/ (e o axe-core, que reprova serious e critical)
 bun run e2e          # as cinco jornadas num navegador de verdade, nos 2 idiomas, e a conferência
-                     # do layout a 1280x800 e a 800x600
+                     # do layout a 1280x800 e a 800x600 (runner: @playwright/test; E2E_ONLY=a,b
+                     # escolhe jornadas; -- --repeat-each 5 repete; relatório em playwright-report/)
 ```
 
 Nada sai da máquina e nenhum dado real é usado. Os scripts usam o Chrome instalado (ou o Edge)

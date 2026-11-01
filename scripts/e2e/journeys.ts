@@ -1,26 +1,20 @@
 /**
- * `bun run e2e` (phase 10): six journeys in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): thirteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
- * sideways, and the end of the long list shows after scrolling). Chrome through playwright-core,
- * like the prints.
+ * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
+ * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { chromium, type Page } from "playwright-core";
-import { type Lang, translator } from "../apps/desktop/src/i18n/index.ts";
-import type { Route } from "../apps/desktop/src/lib/router.ts";
-import { DANGER_SESSION, type DemoIds } from "./demo-seed.ts";
-import { launchFirst } from "./lib/browser.ts";
-import { ACOES_ACTION, JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
-import { ensureOnline } from "./lib/e2e-online.ts";
+import type { Page } from "@playwright/test";
+import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
+import type { Route } from "../../apps/desktop/src/lib/router.ts";
+import type { DemoIds } from "../demo-seed.ts";
+import { ACOES_ACTION, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { ensureOnline } from "../lib/e2e-online.ts";
 
-/** A failed journey leaves its print here; `E2E_ONLY=a,b` runs just those journeys. */
-const FAILURES_DIR = process.env.E2E_FAILURES ?? join(tmpdir(), "flightdeck-e2e");
 const ALFA = "demo-alfa";
 const WAIT = 15_000;
 
-type Context = {
+export type Context = {
   page: Page;
   url: string;
   lang: Lang;
@@ -70,7 +64,7 @@ async function waitFor(check: () => Promise<boolean>, what: string, timeout = WA
   throw new Error(`esperava: ${what}`);
 }
 
-const journeys: Record<string, (c: Context) => Promise<void>> = {
+export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // 1. Approve a Bash request from the queue with the A key and see the queue shrink.
   "aprovar-bash-com-a": async (c) => {
     // Any request will do: the demo keeps its state from one journey to the next.
@@ -411,7 +405,7 @@ async function lastRowProblem(page: Page): Promise<string | null> {
   });
 }
 
-async function layout(c: Context, problems: string[]) {
+export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
     ["precisa-de-voce", { name: "needs-you" }],
@@ -442,63 +436,4 @@ async function layout(c: Context, problems: string[]) {
       );
     }
   }
-}
-
-export async function runE2e(
-  url: string,
-  ids: DemoIds,
-  env: Record<string, string>,
-  log: (msg: string) => void,
-): Promise<void> {
-  const browser = await launchFirst((attempt) =>
-    chromium.launch({ ...attempt, headless: true, env }),
-  );
-  const problems: string[] = [];
-  const only = process.env.E2E_ONLY?.split(",");
-  try {
-    for (const language of LANGUAGES) {
-      const lang = language as Lang;
-      for (const name of JOURNEYS) {
-        if (only && !only.includes(name)) continue;
-        // A page of its own per journey: the app keeps its choices in the page's storage.
-        const context = await browser.newContext({
-          viewport: VIEWPORTS[0] ?? { width: 1280, height: 800 },
-          locale: lang,
-        });
-        const page = await context.newPage();
-        const c: Context = { page, url, lang, ids, t: translator(lang) };
-        try {
-          await (journeys[name] as (c: Context) => Promise<void>)(c);
-          log(`${lang} ${name}: ok`);
-        } catch (error) {
-          const shot = join(FAILURES_DIR, `${lang}-${name}.png`);
-          await page.screenshot({ path: shot }).catch(() => {});
-          // What the terminal's rows hold says whether the shell answered but nothing was drawn.
-          const rows = await page
-            .locator(".xterm-rows")
-            .first()
-            .textContent({ timeout: 2000 })
-            .catch(() => null);
-          if (rows !== null) {
-            mkdirSync(FAILURES_DIR, { recursive: true });
-            writeFileSync(shot.replace(/\.png$/, ".txt"), rows);
-          }
-          problems.push(`${lang} ${name}: ${(error as Error).message.split("\n")[0]} (${shot})`);
-        }
-        await context.close();
-      }
-      const context = await browser.newContext({
-        viewport: VIEWPORTS[0] ?? { width: 1280, height: 800 },
-        locale: lang,
-      });
-      const page = await context.newPage();
-      await layout({ page, url, lang, ids, t: translator(lang) }, problems);
-      await context.close();
-      log(`${lang} layout: conferido`);
-    }
-  } finally {
-    await browser.close();
-  }
-  if (problems.length > 0)
-    throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
 }
