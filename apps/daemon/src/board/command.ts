@@ -15,6 +15,9 @@ export function killTree(
   kill: (pid: number, signal: string) => void = process.kill,
   spawn: (cmd: string[]) => void = (cmd) => void Bun.spawnSync(cmd),
 ): void {
+  // Only a child's pid: a group kill with the daemon's own, 1 or a negative one would reach the
+  // daemon or other processes.
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return;
   if (platform === "win32") spawn(["taskkill", "/PID", String(pid), "/T", "/F"]);
   else kill(-pid, "SIGKILL");
 }
