@@ -11,7 +11,7 @@ import { basename } from "./paths.ts";
 
 const PT = translator("pt-BR");
 
-export type HubOrigin = "flightdeck" | "terminal" | "history";
+export type HubOrigin = "flightdeck" | "terminal" | "history" | "background";
 export type HubState = "running" | "needs_you" | "idle" | "ended";
 
 /** One line of the Sessões screen, whatever the session's origin. */
@@ -64,7 +64,7 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
   showArchived: false,
 };
 
-const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history"];
+const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history", "background"];
 const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended"];
 
 /** The stored filters, field by field: anything unreadable falls back to its default. */

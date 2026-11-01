@@ -32,6 +32,13 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     session: { prompts: [] as unknown[] },
     summary: { projects: [] as unknown[] },
   };
+  /** Phase 27: what the `bg.*` commands answer; `refused` makes one fail with a reason. */
+  const bg = {
+    list: { supported: true, sessions: [] as unknown[] },
+    started: { id: "bg0001" },
+    refused: new Map<string, { reason: string; params?: Record<string, string | number> }>(),
+    terminal: { terminalId: "t-bg" },
+  };
   /** Phase 25: what `trace.get`, `trace.export` and `snapshots.files` answer. */
   const trace = {
     session: {
@@ -164,6 +171,31 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
         if (type === "vault.rules.preview") return ack(preview.verdict);
+        if (type.startsWith("bg.")) {
+          const why = bg.refused.get(type);
+          if (why) {
+            ws.send(
+              JSON.stringify({
+                type: "ack",
+                id,
+                ok: false,
+                error: { code: "invalid_state", message: why.reason, ...why },
+              }),
+            );
+            return;
+          }
+          return ack(type === "bg.start" ? bg.started : bg.list);
+        }
+        if (type === "terminal.open")
+          return ack({
+            terminalId: bg.terminal.terminalId,
+            shell: "sh",
+            cwd: "/work/app",
+            cols: 80,
+            rows: 24,
+            status: "running",
+            createdAt: "2026-11-01T12:00:00.000Z",
+          });
         if (type === "trace.get") return ack(trace.session);
         if (type === "trace.export") return ack(trace.export);
         if (type === "snapshots.files") return ack(trace.files);
@@ -246,6 +278,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     messaging,
     telemetry,
     trace,
+    bg,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));

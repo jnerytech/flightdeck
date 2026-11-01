@@ -1,5 +1,7 @@
 import type {
   AskpassRequest,
+  BgList,
+  BgSession,
   Budget,
   BudgetInput,
   BudgetUpdated,
@@ -172,6 +174,8 @@ export interface AppState {
   /** The snippet to fill and use now, from the palette or a terminal's list (phase 18). */
   /** The personas of each host that keeps them (the pack's, the host's), by host id (phase 20). */
   personas: Record<string, AppPersona[]>;
+  /** Phase 27: each host's Claude Code background sessions, as `bg.list` gave them. */
+  background: Record<string, BgList>;
   snippetChoice: { hostId: string | null; snippetId: string; snippet?: AppSnippet } | null;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
@@ -256,6 +260,7 @@ export type HostCommandType = Extract<
   | `costs.${string}`
   | `telemetry.${string}`
   | `trace.${string}`
+  | `bg.${string}`
   | `budget.${string}`
   | `changes.${string}`
   | `review.${string}`
@@ -637,6 +642,7 @@ export class AppStore {
       snippets: {},
       snippetChoice: null,
       personas: {},
+      background: {},
       loopAlerts: [],
       watches: {},
       names: {},
@@ -2083,6 +2089,32 @@ export class AppStore {
       language: this.i18n.lang,
     });
     if (listed) this.update({ personas: { ...this.state.personas, [hostId]: listed.personas } });
+  }
+
+  /** Reads a host's background sessions (`claude agents`), for the hub and their screen. */
+  async loadBackground(_hostId: string): Promise<void> {}
+
+  /** Stops or restarts a background session; the list comes back with the answer. */
+  async bgAction(_hostId: string, _kind: "stop" | "respawn", _id: string): Promise<boolean> {
+    return false;
+  }
+
+  /** Sends a message to a background session; false when the host refuses. */
+  async bgMessage(_hostId: string, _id: string, _text: string): Promise<boolean> {
+    return false;
+  }
+
+  /** "Trazer para o terminal": `claude attach <id>` in a terminal tab of the host. */
+  async bgAttach(_hostId: string, _session: BgSession): Promise<string | null> {
+    return null;
+  }
+
+  /** Starts a session in the background (`flightdeckd claude --bg`) and reads the list again. */
+  async startBackground(
+    _hostId: string,
+    _payload: CommandPayload<"bg.start">,
+  ): Promise<string | null> {
+    return null;
   }
 
   /** What a picker's value asks a session for: a persona by id, or an app persona whole. */
