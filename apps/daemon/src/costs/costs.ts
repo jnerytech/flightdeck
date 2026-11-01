@@ -318,7 +318,12 @@ export class Costs {
   /** The SQL condition (over `usage_entries u`) of a filter. */
   private where(filter: CostsFilter): { sql: string; params: Record<string, string> } {
     if (filter.from > filter.to) {
-      throw new FlightdeckError("bad_request", `período invertido: ${filter.from} > ${filter.to}`);
+      throw new FlightdeckError(
+        "bad_request",
+        `inverted period: ${filter.from} > ${filter.to}`,
+        "period_inverted",
+        { from: filter.from, to: filter.to },
+      );
     }
     const parts = ["u.day BETWEEN $from AND $to"];
     const params: Record<string, string> = { from: filter.from, to: filter.to };

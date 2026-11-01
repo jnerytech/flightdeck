@@ -691,6 +691,9 @@ export const en: Dictionary = {
     shutdown: "shutting the daemon down",
   },
   daemonRefusal: {
+    budget_needs_project: "A project budget needs a project: choose one.",
+    budget_not_found: "That budget no longer exists.",
+    period_inverted: "The period is backwards: {from} is after {to}.",
     feature_off: "This host does not offer {feature}: update the daemon, or check its settings.",
     cwd_missing: "The folder {cwd} does not exist on this host.",
     cwd_outside_roots:

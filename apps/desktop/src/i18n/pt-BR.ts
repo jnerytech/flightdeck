@@ -686,6 +686,9 @@ export const ptBR = {
     shutdown: "desligar o daemon",
   },
   daemonRefusal: {
+    budget_needs_project: "Um orçamento de projeto precisa de um projeto: escolha um.",
+    budget_not_found: "Esse orçamento não existe mais.",
+    period_inverted: "O período está invertido: {from} é depois de {to}.",
     feature_off: "Este host não oferece {feature}: atualize o daemon ou confira as configurações.",
     cwd_missing: "A pasta {cwd} não existe neste host.",
     cwd_outside_roots:

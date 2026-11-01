@@ -16,6 +16,9 @@ export const DAEMON_REASONS = [
   "transcript_not_indexed",
   "session_maybe_active",
   "feature_off",
+  "budget_needs_project",
+  "budget_not_found",
+  "period_inverted",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 

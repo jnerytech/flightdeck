@@ -77,7 +77,11 @@ export class Budgets {
   /** Creates a budget, or changes the one with `input.id` (its creation date stays). */
   set(input: BudgetInput): Budget {
     if (input.scope === "project" && !input.projectKey) {
-      throw new FlightdeckError("bad_request", "orçamento de projeto precisa do projectKey");
+      throw new FlightdeckError(
+        "bad_request",
+        "a project budget needs a projectKey",
+        "budget_needs_project",
+      );
     }
     const projectKey = input.scope === "project" ? (input.projectKey as string) : null;
     const fields = {
@@ -164,7 +168,11 @@ export class Budgets {
 
   private row(id: string): Row {
     const row = this.db.query<Row, [string]>("SELECT * FROM budgets WHERE id = ?").get(id);
-    if (!row) throw new FlightdeckError("not_found", `orçamento ${id} não existe`);
+    if (!row) {
+      throw new FlightdeckError("not_found", `budget ${id} does not exist`, "budget_not_found", {
+        id,
+      });
+    }
     return row;
   }
 
