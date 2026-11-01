@@ -109,8 +109,8 @@ function memory(files: Record<string, Buffer>): VisualIO & { files: Map<string, 
   };
 }
 
-const GRAY = image(8, 8, [128, 128, 128]);
-const OTHER = image(8, 8, [128, 128, 128], [[0, 0]]);
+const GRAY = image(8, 8, [30, 30, 30]);
+const OTHER = image(8, 8, [30, 30, 30], [[0, 0]]);
 
 function check(io: VisualIO, patch: Partial<VisualCheck>): VisualCheck {
   return {
@@ -163,7 +163,7 @@ describe("visual: the prints of a run", () => {
   test("compare refuses a print with no baseline and a different size, and a baseline with no print on a full run", () => {
     const io = memory({
       "shots/light-en/new.png": GRAY,
-      "shots/light-en/size.png": image(8, 9, [128, 128, 128]),
+      "shots/light-en/size.png": image(8, 9, [30, 30, 30]),
       "base/light-en/size.png": GRAY,
       "base/light-en/gone.png": GRAY,
     });
