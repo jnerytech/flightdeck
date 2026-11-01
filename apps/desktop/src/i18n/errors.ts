@@ -10,6 +10,7 @@ export function translateError(
   code: string,
   message: string,
   t: T,
+  _why?: { reason?: string; params?: Record<string, string | number> },
 ): { title: string; detail: string } {
   if (code === "") return { title: message, detail: "" };
   const known = code in ptBR.errors && code !== "unknown";

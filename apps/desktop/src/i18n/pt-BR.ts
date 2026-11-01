@@ -641,6 +641,7 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
+  daemonRefusal: {},
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
     needs_run: "Um comando precisa de algo para rodar.",

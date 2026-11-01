@@ -382,6 +382,9 @@ export interface Notice {
   /** The daemon's error code; "" for an app-side error or a success. */
   code: string;
   text: string;
+  /** Why, when the host sent a reason the app translates (see `refusalText`). */
+  reason?: string;
+  params?: Record<string, string | number>;
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */

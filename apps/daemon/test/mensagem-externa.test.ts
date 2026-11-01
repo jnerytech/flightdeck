@@ -83,7 +83,9 @@ describe("mensagem-externa", () => {
     const refused = await client.request("external.message", { claudeSessionId: "s3", text: "oi" });
     expect(refused).toMatchObject({ ok: false, error: { code: "invalid_state" } });
     expect(JSON.stringify(refused)).toContain("flightdeckd claude");
+    expect(refused.error).toMatchObject({ reason: "external_no_channel" });
     const missing = await client.request("external.message", { claudeSessionId: "s9", text: "oi" });
     expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
+    expect(missing.error).toMatchObject({ reason: "session_not_found", params: { id: "s9" } });
   });
 });

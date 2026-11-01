@@ -73,8 +73,19 @@ describe("retomada", () => {
     const ack = await client.request("history.resume", { claudeSessionId: ID });
     expect(ack).toMatchObject({ ok: false, error: { code: "invalid_state" } });
     expect(String((ack.error as { message?: string } | undefined)?.message)).toContain("force");
+    expect(ack.error).toMatchObject({ reason: "session_maybe_active" });
     expect(manager.list()).toEqual([]);
     expect(runtime.starts).toEqual([]);
+  });
+
+  test("um transcript que o histórico não conhece é recusado com o motivo e o id", async () => {
+    const { client } = await setup(0);
+    const ack = await client.request("history.resume", { claudeSessionId: "desconhecido" });
+    expect(ack.error).toMatchObject({
+      code: "not_found",
+      reason: "transcript_not_indexed",
+      params: { id: "desconhecido" },
+    });
   });
 
   test("com force cria a sessão gerenciada com resume apontando para o claudeSessionId", async () => {
