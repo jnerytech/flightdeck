@@ -978,4 +978,107 @@ describe("ssh-connect: entrega da chave do cofre", () => {
     expect(result).toEqual({ code: 0 });
     expect(spawned[1]).toMatchObject({ cmd: ["ssh-add", "-"], stdin: "pipe", wrote: ["KEY\n"] });
   });
+
+  test("a refusal of a connection carries a reason and params the app translates", async () => {
+    const s = setup();
+    s.targets.save({
+      id: s.bastion.id,
+      name: "bastion",
+      host: "bastion.example.com",
+      user: "jump",
+      auth: "password",
+    });
+    s.pin(s.bastion.id);
+    expect(await why(() => s.open(s.inner.id))).toMatchObject({
+      code: "invalid_state",
+      reason: "ssh_jump_auth",
+      params: { name: "bastion", auth: "password" },
+    });
+    s.targets.save({
+      id: s.bastion.id,
+      name: "bastion",
+      host: "bastion.example.com",
+      user: "jump",
+    });
+    const fresh = s.targets.save({ name: "novo", host: "novo.example.com", user: "me" });
+    s.servers.set("novo.example.com", scan("novo.example.com", KEY));
+    const unknown = await why(() => s.open(fresh.id));
+    expect(unknown).toMatchObject({
+      code: "hostkey_unconfirmed",
+      reason: "ssh_hostkey_unconfirmed",
+      params: { name: "novo" },
+    });
+    expect(String(unknown?.params?.fingerprint)).toStartWith("SHA256:");
+    s.servers.set("vps.example.com", scan("vps.example.com", NEW_KEY));
+    const changed = await why(() => s.open(s.vps.id));
+    expect(changed).toMatchObject({
+      code: "hostkey_changed",
+      reason: "ssh_hostkey_changed",
+      params: { name: "vps", pinned: s.targets.get(s.vps.id)?.hostKey },
+    });
+    expect(String(changed?.params?.fingerprint)).toStartWith("SHA256:");
+    s.servers.delete("10.0.0.9");
+    const lone = s.targets.save({ name: "sozinho", host: "lone.example.com", user: "me" });
+    expect(await why(() => s.open(lone.id))).toMatchObject({
+      reason: "ssh_key_unreachable",
+      params: { name: "sozinho" },
+    });
+    expect(await why(() => s.open("nada"))).toMatchObject({
+      code: "not_found",
+      reason: "ssh_target_not_found",
+    });
+    for (const refused of [unknown, changed]) {
+      expect(refused?.message).not.toMatch(/[À-ú]|\b(confirme|antes de conectar)\b/);
+    }
+  });
+
+  test("a vault key that is missing or not wanted, and a password without askpass, each have a reason", async () => {
+    const s = setup();
+    const target = s.targets.save({
+      name: "cofre",
+      host: "vault.example.com",
+      user: "me",
+      auth: "vault-key",
+      secretRef: "chave-da-vps",
+    });
+    s.pin(target.id);
+    s.servers.set("vault.example.com", scan("vault.example.com", KEY));
+    expect(await why(() => s.open(target.id))).toMatchObject({
+      code: "bad_request",
+      reason: "ssh_key_missing",
+    });
+    expect(await why(() => s.open(s.vps.id, { privateKey: PRIVATE }))).toMatchObject({
+      code: "bad_request",
+      reason: "ssh_key_not_for_auth",
+    });
+    const bare = setup({ askpass: false });
+    const password = bare.targets.save({
+      name: "senha",
+      host: "pw.example.com",
+      user: "me",
+      auth: "password",
+    });
+    bare.pin(password.id);
+    bare.servers.set("pw.example.com", scan("pw.example.com", KEY));
+    expect(await why(() => bare.open(password.id))).toMatchObject({
+      code: "invalid_state",
+      reason: "ssh_askpass_off",
+    });
+  });
 });
+
+/** What a refusal carries: the code, the reason the app translates, its params and the log text. */
+async function why(fn: () => unknown) {
+  try {
+    await fn();
+    return null;
+  } catch (error) {
+    const { code, reason, params, message } = error as {
+      code: string;
+      reason?: string;
+      params?: Record<string, string | number>;
+      message: string;
+    };
+    return { code, reason, params, message };
+  }
+}

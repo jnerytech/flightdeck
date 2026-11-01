@@ -230,4 +230,37 @@ describe("ssh-hostkey", () => {
     const ack = await client.request("ssh.hostkey.forget", { targetId: "x" });
     expect((ack.error as { code?: string } | undefined)?.code).toBe("invalid_state");
   });
+
+  test("a refusal of the host keys carries a reason the app translates, in English for logs", async () => {
+    const { keys, target } = setup();
+    expect(await why(() => keys.confirm("nada", ED25519_FINGERPRINT))).toMatchObject({
+      code: "not_found",
+      reason: "ssh_target_not_found",
+    });
+    await keys.check(target.id);
+    const wrong = await why(() => keys.confirm(target.id, "SHA256:outra"));
+    expect(wrong).toMatchObject({ code: "invalid_state", reason: "ssh_hostkey_mismatch" });
+    expect(wrong?.message).not.toMatch(/[À-ú]|\bchave\b/);
+    keys.confirm(target.id, ED25519_FINGERPRINT);
+    expect(await why(() => keys.confirm(target.id, ED25519_FINGERPRINT))).toMatchObject({
+      code: "invalid_state",
+      reason: "ssh_hostkey_exists",
+    });
+  });
 });
+
+/** What a refusal carries: the code, the reason the app translates, its params and the log text. */
+async function why(fn: () => unknown) {
+  try {
+    await fn();
+    return null;
+  } catch (error) {
+    const { code, reason, params, message } = error as {
+      code: string;
+      reason?: string;
+      params?: Record<string, string | number>;
+      message: string;
+    };
+    return { code, reason, params, message };
+  }
+}

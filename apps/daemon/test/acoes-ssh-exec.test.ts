@@ -179,4 +179,66 @@ describe("acoes-execucao: the process that runs ssh for an action", () => {
     const result = await run([process.execPath, "-e", "await Bun.sleep(20000)"], {}, "", 200);
     expect(result.timedOut).toBe(true);
   });
+
+  test("exec refusals carry a reason and params: unknown name, a name two share, a password, no executor", async () => {
+    const { connector, pinned } = setup();
+    const refuse = (target: string) =>
+      why(() => connector.exec({ target, argv: ["x"], env: {}, timeoutS: 5 }));
+    expect(await refuse("nada")).toMatchObject({
+      code: "not_found",
+      reason: "ssh_target_unknown",
+      params: { name: "nada" },
+    });
+    pinned({ name: "prod", host: "other.example.com", user: "deploy" });
+    expect(await refuse("prod")).toMatchObject({
+      reason: "ssh_target_ambiguous",
+      params: { name: "prod" },
+    });
+    pinned({ name: "senha", host: "pw.example.com", user: "u", auth: "password" });
+    const password = await refuse("senha");
+    expect(password).toMatchObject({
+      reason: "ssh_password_in_action",
+      params: { name: "senha" },
+    });
+    expect(password?.message).not.toMatch(/[À-ú]|\b(usa senha|ninguém)\b/);
+    const store = new EventStore(":memory:");
+    const targets = new SshTargets({ db: store.db });
+    targets.save({ name: "solo", host: "solo.example.com", user: "u" });
+    const noExec = new SshConnector({
+      targets,
+      hostKeys: new HostKeys({ targets, exec: async () => ({ code: 1, stdout: "" }) }),
+      terminals: { open: () => ({}) as never },
+      dir: tempDir(),
+      platform: "linux",
+      sshPath: "/usr/bin/ssh",
+      run: async () => ({ code: 0, stderr: "" }),
+      delivery: {
+        kind: "agent",
+        deliver: async (): Promise<DeliveredKey> => ({
+          identityFile: null,
+          env: {},
+          cleanup: () => {},
+        }),
+      },
+    });
+    expect(
+      await why(() => noExec.exec({ target: "solo", argv: ["x"], env: {}, timeoutS: 5 })),
+    ).toMatchObject({ code: "invalid_state", reason: "ssh_exec_off" });
+  });
 });
+
+/** What a refusal carries: the code, the reason the app translates, its params and the log text. */
+async function why(fn: () => unknown) {
+  try {
+    await fn();
+    return null;
+  } catch (error) {
+    const { code, reason, params, message } = error as {
+      code: string;
+      reason?: string;
+      params?: Record<string, string | number>;
+      message: string;
+    };
+    return { code, reason, params, message };
+  }
+}
