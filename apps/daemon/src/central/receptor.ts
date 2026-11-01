@@ -12,6 +12,8 @@ export interface ReceptorOptions {
   permissions?: ExternalPermissions;
   /** Sessions the daemon itself runs: their hooks (from the user's settings) are ignored. */
   isManaged: (claudeSessionId: string) => boolean;
+  /** Looks the project of a hook's folder up without blocking, before the hook is applied. */
+  warm?: (cwd: string) => Promise<unknown>;
   /** Every hook of a terminal session, after it is applied (phase 12's snapshots). */
   onHook?: (event: string, payload: HookPayload) => void;
 }

@@ -27,6 +27,8 @@ export interface CentralOptions {
   /** Phase 12: terminal sessions' turns become git snapshots. */
   snapshots?: { enqueue(input: SnapshotInput): void };
   db: Database;
+  /** The host's project keys, shared with whoever else reads them (a cache of its own when absent). */
+  keys?: ProjectKeys;
   manager: SessionManager;
   hooks: Config["hooks"];
   dataDir: string;

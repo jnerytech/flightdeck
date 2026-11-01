@@ -23,6 +23,8 @@ export interface TrackOptions {
   projectOf: (cwd: string) => string;
   /** The card a managed session works for, if any. */
   cardOf: (sessionId: string) => string | null;
+  /** Looks the project of a folder up without blocking; a managed session is named once it is done. */
+  warm?: ((cwd: string) => Promise<unknown>) | undefined;
   /** The persona a session already has (phase 20's extension point); null when none. */
   personaOf?: ((sessionId: string) => string | null) | undefined;
 }
@@ -34,6 +36,13 @@ function safely(name: () => void): void {
   } catch {
     // Left unnamed for now.
   }
+}
+
+/** Looks the project of every session already here up, so naming them at start finds it cached. */
+export async function warmKnown(
+  opts: Pick<TrackOptions, "manager" | "external" | "warm">,
+): Promise<void> {
+  // Stub: waits for nothing.
 }
 
 /** Starts naming; returns the function that stops it. */
