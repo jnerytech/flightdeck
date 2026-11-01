@@ -267,4 +267,25 @@ describe("snippets-uso: the palette", () => {
     await click("Copiar");
     expect(copied).toEqual(["ls /srv/app"]);
   });
+
+  for (const [code, shown] of [
+    ["snippet_untrusted", "Este comando vem do arquivo de snippets do projeto"],
+    ["quota_exceeded", "O host informou um erro que o app não conhece."],
+  ] as const) {
+    test(`a paste the host refuses with ${code} shows the dictionary text and the daemon's message`, async () => {
+      const { store } = await open();
+      store.hostRequest = (async () => ({
+        ok: false,
+        code,
+        message: "motivo do daemon",
+      })) as unknown as typeof store.hostRequest;
+      await palette("testes");
+      await choose("Snippet: testes");
+      await click("Colar no terminal");
+      await settle(() => screen.queryByRole("alert") !== null);
+      const text = screen.queryByRole("alert")?.textContent ?? "";
+      expect(text).toContain(shown);
+      expect(text).toContain("motivo do daemon");
+    });
+  }
 });
