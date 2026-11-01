@@ -53,9 +53,13 @@ export function TraceReplay(props: {
 
   useEffect(() => {
     if (!withFiles || turn === null || turn in files) return;
+    // A turn without a snapshot is normal (a session that ran without checkpoints): no files, and
+    // no error toast over the replay.
     void store
-      .hostCommand(hostId, "snapshots.files", { claudeSessionId, n: turn })
-      .then((result) => setFiles((known) => ({ ...known, [turn]: result })));
+      .hostRequest(hostId, "snapshots.files", { claudeSessionId, n: turn })
+      .then((result) =>
+        setFiles((known) => ({ ...known, [turn]: result.ok ? result.data : null })),
+      );
   }, [store, hostId, claudeSessionId, withFiles, turn, files]);
 
   const changed = turn === null ? null : files[turn];

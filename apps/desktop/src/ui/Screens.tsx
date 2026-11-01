@@ -63,6 +63,7 @@ function hostToWait(route: Route): string | null {
   switch (route.name) {
     case "reader":
       return route.target.hostId;
+    case "external":
     case "history":
     case "projects":
     case "board":
