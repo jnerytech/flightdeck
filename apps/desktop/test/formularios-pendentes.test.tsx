@@ -10,6 +10,8 @@ const { TContext } = await import("../src/i18n/context.tsx");
 const { BudgetsSection } = await import("../src/ui/BudgetsSection.tsx");
 const { MessagingRulesSection } = await import("../src/ui/MessagingRulesSection.tsx");
 const { NewSecretForm } = await import("../src/components/vault/new-secret-form.tsx");
+const { PersonaEditor } = await import("../src/components/personas/persona-editor.tsx");
+const { SnippetEditor } = await import("../src/components/snippets/snippet-editor.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 
@@ -139,5 +141,54 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
       await work.settle(null);
       expect(button(name)?.getAttribute("aria-busy")).toBeNull();
     }
+  });
+
+  test("Salvar persona goes busy and saves once, and a refusal brings the form back", async () => {
+    const save = slow();
+    const store = { hostRequest: save.call, personaRef: () => null } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <PersonaEditor
+          store={store}
+          hostId="h"
+          project=""
+          persona={null}
+          onSaved={() => {}}
+          onClose={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    await type("Id", "revisor");
+    await type("Nome", "Revisor");
+    await type("Descrição", "revisa");
+    await type("Instruções", "Revise com cuidado.");
+    await expectBusyOnce("Salvar persona", save.calls, () =>
+      save.settle({ ok: false, code: "invalid", message: "persona inválida" }),
+    );
+    expect(screen.queryByText("persona inválida")).not.toBeNull();
+    expect(button("Salvar persona")?.disabled).toBe(false);
+  });
+
+  test("Salvar snippet goes busy and saves once", async () => {
+    const save = slow();
+    const store = { hostRequest: save.call } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <SnippetEditor
+          store={store}
+          hostId="h"
+          project=""
+          snippet={null}
+          onSaved={() => {}}
+          onClose={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    await type("Nome", "status");
+    await type("Comando", "git status");
+    await expectBusyOnce("Salvar snippet", save.calls, () =>
+      save.settle({ ok: false, code: "invalid", message: "snippet inválido" }),
+    );
+    expect(button("Salvar snippet")?.disabled).toBe(false);
   });
 });
