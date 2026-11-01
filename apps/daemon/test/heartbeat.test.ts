@@ -76,7 +76,7 @@ describe("heartbeat", () => {
     expect(c.acks).toHaveLength(1);
   });
 
-  test("cliente que para de responder é desconectado com 4408 após dois pings", async () => {
+  test("cliente que para de responder é desconectado com 4408 após quatro pings", async () => {
     const c = client(serve(25).url);
     await poll(() => c.pings.length >= 2, 2000);
     expect(c.state.closed).toBeNull();
@@ -84,7 +84,25 @@ describe("heartbeat", () => {
     const answered = c.pings.length;
     await poll(() => c.state.closed !== null, 2000);
     expect(c.state.closed).toBe(4408);
-    expect(c.pings.length - answered).toBe(2);
+    expect(c.pings.length - answered).toBe(4);
+  });
+
+  test("qualquer quadro do cliente conta como vivo: quem fala sem dar pong não é desconectado, e quem se cala é", async () => {
+    const c = client(serve(25).url);
+    await poll(() => c.pings.length >= 2, 2000);
+    c.state.answer = false;
+    // Commands keep arriving, as a busy page's do, but its pongs are late.
+    const talk = setInterval(
+      () => c.ws.send(JSON.stringify({ id: "q", type: "session.list", payload: {} })),
+      10,
+    );
+    cleanups.push(() => clearInterval(talk));
+    const before = c.pings.length;
+    await poll(() => c.pings.length - before >= 10, 3000);
+    expect(c.state.closed).toBeNull();
+    clearInterval(talk);
+    await poll(() => c.state.closed !== null, 2000);
+    expect(c.state.closed).toBe(4408);
   });
 
   test("sem hello não há ping; pong antes do hello fecha com 4401", async () => {
