@@ -5,6 +5,7 @@ import { Actions } from "../../daemon/src/actions/actions.ts";
 import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";
 import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
+import type { BgService } from "../../daemon/src/bg/service.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
 import { Forker } from "../../daemon/src/checkpoints/fork.ts";
@@ -86,6 +87,8 @@ export function daemon(
     costs?: boolean;
     /** The OTLP telemetry of terminal sessions (phase 23), kept in this daemon's database. */
     telemetry?: boolean;
+    /** Claude Code's background sessions (phase 27): a service for the host to announce and call. */
+    bg?: BgService;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
@@ -325,6 +328,7 @@ export function daemon(
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
       ...(telemetry ? { telemetry, telemetryOptIn } : {}),
+      ...(options.bg ? { bg: options.bg } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
