@@ -127,6 +127,49 @@ describe("daemon-idle: what a started daemon keeps running", () => {
     expect(timers.list().filter((t) => t.startsWith("automations/"))).toEqual([]);
   });
 
+  test("a cron automation turned on after a long pause is not blamed for the slots before it was on, and one that was on at boot still is", async () => {
+    probe();
+    const { board, store, repo } = newBoard();
+    cleanups.push(() => board.stop());
+    const project = await board.addProject({ path: repo, promptTemplate: "" });
+    const clock = { now: Date.parse("2026-10-05T09:00:00Z") };
+    const make = () =>
+      new Automations({
+        db: store.db,
+        board,
+        issues: { list: async () => [] } as unknown as ConstructorParameters<
+          typeof Automations
+        >[0]["issues"],
+        autoApprove: { suspend: () => {} },
+        clock: () => clock.now,
+      });
+    const automations = make();
+    cleanups.push(() => automations.stop());
+    automations.start();
+    const cron = automations.save({
+      projectId: project.id,
+      name: "cron",
+      trigger: { type: "cron", expr: "* * * * *", tz: "UTC" },
+      action: { type: "start_workflow", workflow: "w" },
+    });
+    automations.toggle(cron.id, true, true);
+    await automations.tick(clock.now);
+    automations.toggle(cron.id, false, true);
+    // Three hours with no cron automation on, so no tick was running.
+    clock.now = Date.parse("2026-10-05T12:00:00Z");
+    automations.toggle(cron.id, true, true);
+    await automations.tick(clock.now + 60_000);
+    const statuses = () => automations.runs(cron.id).map((run) => run.status);
+    expect(statuses()).not.toContain("missed");
+    // A daemon that boots with it already on records what it missed while it was down.
+    automations.stop();
+    clock.now = Date.parse("2026-10-05T14:00:00Z");
+    const boot = make();
+    cleanups.push(() => boot.stop());
+    boot.start();
+    expect(boot.runs(cron.id).map((run) => run.status)).toContain("missed");
+  });
+
   test("the PR poll, and the watch that rides on it, run only while a PR is open", async () => {
     const timers = probe();
     const pr: { state: "open" | "closed" } = { state: "open" };
