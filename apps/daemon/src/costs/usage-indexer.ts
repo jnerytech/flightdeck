@@ -77,6 +77,9 @@ interface Owner {
 
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const str = (value: unknown) => (typeof value === "string" ? value : null);
+/** How much of a file a pass reads before it pauses (about 25 ms of parsing). */
+const SLICE_BYTES = 1 << 20;
+
 const zeroTimer = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -278,9 +281,14 @@ export class UsageIndexer {
         owner = this.owner(file.claudeSessionId);
         owners.set(file.claudeSessionId, owner);
       }
-      added += this.indexFile(file, owner);
-      if (first) this.load.filesDone++;
-      await (this.opts.pause ?? zeroTimer)();
+      for (;;) {
+        const slice = this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
+        added += slice.added;
+        // The file counts as done when its last slice is in, before the pause that follows it.
+        if (first && !slice.more) this.load.filesDone++;
+        await (this.opts.pause ?? zeroTimer)();
+        if (!slice.more || this.stopped) break;
+      }
     }
     if (first) {
       this.load.state = "done";
@@ -377,11 +385,20 @@ export class UsageIndexer {
       .run({ id: claudeSessionId, path: edit.path, at });
   }
 
-  /** Reads what the file gained since the last pass (all of it when it shrank). */
-  private indexFile(file: TranscriptFile, owner: Owner): number {
+  /**
+   * Reads what the file gained since the last pass (all of it when it shrank), at most `maxBytes`
+   * of it up to a line's end (a line bigger than that is read whole); `more` says there is text
+   * after what was read.
+   */
+  private indexFile(
+    file: TranscriptFile,
+    owner: Owner,
+    maxBytes: number,
+  ): { added: number; more: boolean } {
+    const done = { added: 0, more: false };
     // Gone since the listing (a session deleted meanwhile): nothing to read.
     const size = sizeOf(file.path);
-    if (size === null) return 0;
+    if (size === null) return done;
     const row = this.db
       .query<{ offset: number; cwd: string | null }, [string]>(
         "SELECT offset, cwd FROM usage_files WHERE path = ?",
@@ -389,16 +406,22 @@ export class UsageIndexer {
       .get(file.path);
     const reset = size < (row?.offset ?? 0);
     const offset = reset ? 0 : (row?.offset ?? 0);
-    if (!reset && size === offset) return 0;
-    const chunk = Buffer.alloc(size - offset);
-    const fd = openSync(file.path, "r");
-    try {
-      readSync(fd, chunk, 0, chunk.length, offset);
-    } finally {
-      closeSync(fd);
+    if (!reset && size === offset) return done;
+    let chunk = Buffer.alloc(Math.min(size - offset, maxBytes));
+    let end = 0;
+    for (;;) {
+      const fd = openSync(file.path, "r");
+      try {
+        readSync(fd, chunk, 0, chunk.length, offset);
+      } finally {
+        closeSync(fd);
+      }
+      // Only complete lines: a last line without its newline is left for the next pass.
+      end = chunk.lastIndexOf(0x0a) + 1;
+      if (end > 0 || chunk.length >= size - offset) break;
+      // No end of line in the slice: the line is bigger than it, so read on until it ends.
+      chunk = Buffer.alloc(Math.min(size - offset, chunk.length * 2));
     }
-    // Only complete lines: a last line without its newline is left for the next pass.
-    const end = chunk.lastIndexOf(0x0a) + 1;
     let cwd = row?.cwd ?? null;
     let added = 0;
     const insert = this.db.query(
@@ -442,6 +465,6 @@ export class UsageIndexer {
         )
         .run({ path: file.path, size, offset: offset + end, cwd });
     })();
-    return added;
+    return { added, more: end > 0 && offset + end < size };
   }
 }
