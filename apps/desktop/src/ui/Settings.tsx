@@ -126,6 +126,14 @@ export const Settings = memo(function Settings(props: {
             )}
           </SettingRow>
         </Panel>
+        <Panel title={t("clients.title")}>
+          <p className="text-muted-foreground text-sm">{t("clients.settingsHint")}</p>
+          <div>
+            <Button variant="outline" onClick={() => props.store.router.push({ name: "clients" })}>
+              {t("clients.manageShort")}
+            </Button>
+          </div>
+        </Panel>
         <Panel title={t("prefs.window")}>
           <label className={check}>
             <input

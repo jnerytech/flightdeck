@@ -30,7 +30,8 @@ type InPlace =
   | "switch-language"
   | "start-card"
   | "snippet"
-  | "pull-link";
+  | "pull-link"
+  | "switch-client";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -71,6 +72,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "costs" };
     case "connect-ssh":
       return { name: "connections", connect: target.targetId };
+    case "clients":
+      return { name: "clients" };
   }
 }
 
@@ -259,6 +262,8 @@ export function App({ store }: { store: AppStore }) {
     else if (target.kind === "toggle-theme") store.theme.toggle();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
+    } else if (target.kind === "switch-client") {
+      store.setClientSelection(target.clientId);
     } else if (target.kind === "snippet") {
       store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
     } else if (target.kind === "pull-link") {

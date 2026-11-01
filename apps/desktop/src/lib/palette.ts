@@ -1,5 +1,7 @@
 import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
+import { ALL_CLIENTS } from "./client-scope.ts";
+import { UNASSIGNED } from "./clients.ts";
 import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
 import { basename } from "./paths.ts";
@@ -25,6 +27,9 @@ export type PaletteTarget =
   | { kind: "switch-language" }
   | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" }
+  /** Phase 29: the Clients screen, and a switch of the client the screens show. */
+  | { kind: "clients" }
+  | { kind: "switch-client"; clientId: string }
   | { kind: "connect-ssh"; hostId: string; targetId: string }
   /** A snippet to fill and use: a host's, or a global one of the app (`hostId` null). */
   | { kind: "snippet"; hostId: string | null; snippetId: string }
@@ -229,6 +234,25 @@ export function paletteSections(
     action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
     ...(options.costs ? [action("costs", t("palette.goCosts"), { kind: "costs" })] : []),
     action("settings", t("palette.goSettings"), { kind: "settings" }),
+    action("clients", t("clients.manageShort"), { kind: "clients" }),
+    ...((state.clientList ?? []).length === 0
+      ? []
+      : [
+          action("client:all", t("clients.switchTo", { name: t("clients.allClients") }), {
+            kind: "switch-client",
+            clientId: ALL_CLIENTS,
+          }),
+          ...(state.clientList ?? []).map((client) =>
+            action(`client:${client.id}`, t("clients.switchTo", { name: client.name }), {
+              kind: "switch-client",
+              clientId: client.id,
+            }),
+          ),
+          action("client:unassigned", t("clients.switchTo", { name: t("clients.unassigned") }), {
+            kind: "switch-client",
+            clientId: UNASSIGNED,
+          }),
+        ]),
   ];
 
   const connections = online.flatMap((host) =>
