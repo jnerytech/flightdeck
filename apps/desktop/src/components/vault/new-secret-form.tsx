@@ -1,8 +1,10 @@
 import { useId, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import type { SecretType } from "@/lib/vault";
@@ -48,13 +50,14 @@ export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
     if (meta) props.onClose();
   };
 
+  const saving = useBusy();
   const named = name.trim() !== "";
   return (
     <Form
       variant="panel"
       className="mb-4"
       onSubmit={() => {
-        if (named && value !== "") void save();
+        if (named && value !== "") saving.run(save);
       }}
     >
       <div className="flex flex-col gap-1 text-sm">
@@ -124,27 +127,28 @@ export function NewSecretForm(props: { store: AppStore; onClose(): void }) {
       )}
       <FormActions
         submit={t("vault.save")}
+        busy={saving.busy}
         disabled={!named || value === ""}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
           <>
-            <Button
+            <ActionButton
               type="button"
               variant="outline"
               disabled={!named}
-              onClick={() => void generate()}
+              onClick={() => generate()}
             >
               {t("vault.generate")}
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               type="button"
               variant="outline"
               disabled={!named}
-              onClick={() => void importFile()}
+              onClick={() => importFile()}
             >
               {t("vault.importFile")}
-            </Button>
+            </ActionButton>
           </>
         }
       />

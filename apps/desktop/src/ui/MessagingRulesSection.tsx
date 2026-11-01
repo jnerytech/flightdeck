@@ -5,6 +5,7 @@ import { Panel } from "@/components/layout/panel";
 import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { T } from "../i18n/index.ts";
@@ -57,6 +58,8 @@ export function MessagingRulesSection(props: {
   const [toValue, setToValue] = useState("");
   const [both, setBoth] = useState(false);
   const [retention, setRetention] = useState("");
+  const adding = useBusy();
+  const saving = useBusy();
 
   const show = useCallback((next: Rules) => {
     setRules(next);
@@ -131,7 +134,7 @@ export function MessagingRulesSection(props: {
             ))}
           </ul>
         )}
-        <Form variant="inline" onSubmit={() => void add()}>
+        <Form variant="inline" onSubmit={() => adding.run(add)}>
           <Inline gap={4}>
             <Field label={t("messagingRulesUi.from")}>
               {(control) => (
@@ -175,9 +178,13 @@ export function MessagingRulesSection(props: {
             submit={t("messagingRulesUi.add")}
             disabled={fromValue.trim() === "" || toValue.trim() === ""}
             disabledReason={t("messagingRulesUi.addNeeds")}
+            busy={adding.busy}
           />
         </Form>
-        <Form variant="inline" onSubmit={() => void save({ retentionDays: Number(retention) })}>
+        <Form
+          variant="inline"
+          onSubmit={() => saving.run(() => save({ retentionDays: Number(retention) }))}
+        >
           <Field label={t("messagingRulesUi.retention")}>
             {(control) => (
               <Input
@@ -190,7 +197,7 @@ export function MessagingRulesSection(props: {
               />
             )}
           </Field>
-          <FormActions submit={t("messagingRulesUi.saveRetention")} />
+          <FormActions submit={t("messagingRulesUi.saveRetention")} busy={saving.busy} />
         </Form>
         <h3 className="font-medium text-sm">{t("messagingRulesUi.paused")}</h3>
         {rules.paused.length === 0 ? (

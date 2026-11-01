@@ -7,6 +7,7 @@ import { Grid, Inline, Stack } from "@/components/layout/stack";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { budgetLabel, budgetLine, projectName } from "../lib/budgets.ts";
@@ -50,6 +51,7 @@ export function BudgetsSection(props: {
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [removing, setRemoving] = useState<Budget | null>(null);
+  const saving = useBusy();
   const editing = props.budgets.find((b) => b.id === draft.id);
   const [spentOn, setSpentOn] = useState<string[]>([]);
   // The keys a project budget can name are the ones the host has seen: those with usage in the
@@ -163,7 +165,7 @@ export function BudgetsSection(props: {
             aria-label={
               editing ? t("budgetsUi.edit", { label: budgetLabel(editing, t) }) : t("budgetsUi.new")
             }
-            onSubmit={() => void save()}
+            onSubmit={() => saving.run(save)}
           >
             <Grid cols={{ base: 1, sm: 2 }} gap={4}>
               <Field label={t("budgetsUi.scope")}>
@@ -264,6 +266,7 @@ export function BudgetsSection(props: {
             </Grid>
             <FormActions
               submit={t(editing ? "budgetsUi.save" : "budgetsUi.create")}
+              busy={saving.busy}
               disabled={needs !== null}
               disabledReason={needs}
               {...(editing
