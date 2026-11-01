@@ -96,19 +96,36 @@ const INDEX = "MEMORY.md";
 const lineCount = (text: string) =>
   text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 
-/** The repository's own folder when `project` is inside one (a worktree answers for its main one). */
-function repoRoot(project: string): string {
-  const real = realpathSync.native(resolve(project));
-  const proc = Bun.spawnSync([whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"], {
-    cwd: real,
-    env: process.env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  if (proc.exitCode !== 0) return real;
-  const out = proc.stdout.toString().trim();
+/** The repository's own folder, from what `git rev-parse --git-common-dir` printed in `real`. */
+function rootFrom(real: string, code: number, out: string): string {
+  if (code !== 0) return real;
   const common = realpathSync.native(isAbsolute(out) ? out : resolve(real, out));
   return common.endsWith(".git") ? dirname(common) : real;
+}
+
+const gitCommonDir = (real: string) => ({
+  cmd: [whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"],
+  options: { cwd: real, env: process.env, stdout: "pipe", stderr: "pipe" } as const,
+});
+
+/**
+ * The repository's own folder when `project` is inside one (a worktree answers for its main one).
+ * Waits for git: for a project nobody looked up yet (`ProjectMemory.warm` does it without waiting).
+ */
+function repoRoot(project: string): string {
+  const real = realpathSync.native(resolve(project));
+  const { cmd, options } = gitCommonDir(real);
+  const proc = Bun.spawnSync(cmd, options);
+  return rootFrom(real, proc.exitCode, proc.stdout.toString().trim());
+}
+
+/** The same without waiting for the process: the event loop keeps serving while git runs. */
+async function repoRootAsync(project: string): Promise<string> {
+  const real = realpathSync.native(resolve(project));
+  const { cmd, options } = gitCommonDir(real);
+  const proc = Bun.spawn(cmd, { ...options, stdin: "ignore" });
+  const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  return rootFrom(real, code, out.trim());
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */
@@ -127,11 +144,23 @@ export function managedClaudeMdPath(platform: NodeJS.Platform = process.platform
 }
 
 export class ProjectMemory {
+  /** The repository root of each project, as the last `warm` found it. */
+  private readonly roots = new Map<string, string>();
+
   constructor(private readonly opts: ProjectMemoryOptions = {}) {}
+
+  /**
+   * Looks up the repository root of `project` without waiting for git, so what follows (`dir`
+   * and everything built on it) finds it at hand. Done again on every request: a folder can
+   * become a repository.
+   */
+  async warm(project: string): Promise<void> {
+    this.roots.set(project, await repoRootAsync(project));
+  }
 
   /** The memory folder of the project the way Claude Code names it (all worktrees share one). */
   dir(project: string): string {
-    const slug = repoRoot(project).replace(/[^A-Za-z0-9]/g, "-");
+    const slug = (this.roots.get(project) ?? repoRoot(project)).replace(/[^A-Za-z0-9]/g, "-");
     return join(this.claudeDir(), "projects", slug, "memory");
   }
 

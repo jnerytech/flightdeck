@@ -13,9 +13,12 @@ export function killTree(
   pid: number,
   platform: string = process.platform,
   kill: (pid: number, signal: string) => void = process.kill,
-  // The program is looked up on the current PATH: `Bun.spawnSync` alone keeps the one the process started with.
+  // The program is looked up on the current PATH: `Bun.spawn` alone keeps the one the process started with.
   spawn: (cmd: string[]) => void = ([program, ...args]) =>
-    void Bun.spawnSync([whichOnPath(program as string) ?? (program as string), ...args]),
+    void Bun.spawn([whichOnPath(program as string) ?? (program as string), ...args], {
+      stdout: "ignore",
+      stderr: "ignore",
+    }),
 ): void {
   // Only a child's pid: a group kill with the daemon's own, 1 or a negative one would reach the
   // daemon or other processes.

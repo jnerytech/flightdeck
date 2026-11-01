@@ -20,7 +20,14 @@ export function killTree(pid: number, deps: TreeKillDeps = {}): void {
   const platform = deps.platform ?? process.platform;
   try {
     if (platform === "win32")
-      (deps.run ?? Bun.spawnSync)(["taskkill", "/PID", String(pid), "/T", "/F"]);
+      // Not waited for: the tree is gone when taskkill ends, and the daemon has other things to do.
+      (deps.run ?? ((cmd) => void Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" })))([
+        "taskkill",
+        "/PID",
+        String(pid),
+        "/T",
+        "/F",
+      ]);
     else (deps.signal ?? process.kill)(-pid, "SIGKILL");
   } catch {
     // Already gone, or taskkill is not there: nothing left to end.
