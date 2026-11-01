@@ -80,10 +80,14 @@ export function Stack(props: {
   className?: string;
   children: ReactNode;
 }) {
+  const Tag = props.as ?? "div";
   return (
-    <div className={cn("flex flex-col", GAPS[props.gap ?? 4], props.className)}>
+    <Tag
+      aria-label={props.label}
+      className={cn("flex flex-col", GAPS[props.gap ?? 4], props.className)}
+    >
       {props.children}
-    </div>
+    </Tag>
   );
 }
 
@@ -95,12 +99,14 @@ export function Inline(props: {
   className?: string;
   children: ReactNode;
 }) {
+  const Tag = props.as ?? "div";
   return (
-    <div
+    <Tag
+      aria-label={props.label}
       className={cn("flex flex-row flex-wrap items-center", GAPS[props.gap ?? 2], props.className)}
     >
       {props.children}
-    </div>
+    </Tag>
   );
 }
 

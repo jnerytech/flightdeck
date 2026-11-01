@@ -17,7 +17,14 @@ export function ListRow(props: {
   className?: string;
 }) {
   return (
-    <div className={cn("flex min-w-0 items-center gap-2", props.className)}>
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-2",
+        props.boxed && "rounded-md border px-3 py-2 text-sm",
+        props.selected && "bg-accent",
+        props.className,
+      )}
+    >
       {props.leading && (
         <span data-row-leading className="shrink-0">
           {props.leading}

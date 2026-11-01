@@ -11,10 +11,18 @@ export function Panel(props: {
   children: ReactNode;
   className?: string;
 }) {
+  const Tag = props.as ?? "section";
+  const small = props.size === "sm";
   return (
-    <section className={cn("flex flex-col gap-3 rounded-lg border bg-card p-4", props.className)}>
+    <Tag
+      className={cn(
+        "flex flex-col rounded-lg border bg-card",
+        small ? "gap-2 p-3" : "gap-3 p-4",
+        props.className,
+      )}
+    >
       {props.title && <h3 className="font-semibold text-sm">{props.title}</h3>}
       {props.children}
-    </section>
+    </Tag>
   );
 }
