@@ -61,6 +61,7 @@ import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
+import type { Route } from "./router.ts";
 import {
   applyEnvelope,
   emptySession,
@@ -2267,6 +2268,34 @@ export class AppStore {
   async setWatch(hostId: string, cardId: string, enabled: boolean | null): Promise<void> {
     const watch = await this.hostCommand(hostId, "watch.set", { cardId, enabled });
     if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /**
+   * Phase 22: the screen of a PR link pasted in the palette: the card it belongs to, or else the
+   * first session the history knows for it. The hosts that watch PRs are asked in order; when
+   * none knows it, a toast says so and the answer is null.
+   */
+  async openPrLink(url: string): Promise<Route | null> {
+    for (const host of this.state.hosts) {
+      if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "watch", false))
+        continue;
+      const found = await this.hostCommand(host.id, "watch.byUrl", { url });
+      if (found?.via === "card" && found.trace) {
+        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId });
+        if (card) {
+          return { name: "card", host: host.id, projectId: card.projectId, cardId: card.id };
+        }
+      }
+      const session = found?.sessions[0];
+      if (session) {
+        return {
+          name: "reader",
+          target: { hostId: host.id, claudeSessionId: session.claudeSessionId },
+        };
+      }
+    }
+    this.fail(new Error(this.i18n.t("palette.noPrMatch")), this.i18n.t("palette.noPrMatch"));
+    return null;
   }
 
   /** Phase 22: the PR description made from the card's sessions, for the person to edit. */

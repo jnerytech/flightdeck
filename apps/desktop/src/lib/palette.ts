@@ -27,7 +27,9 @@ export type PaletteTarget =
   | { kind: "costs" }
   | { kind: "connect-ssh"; hostId: string; targetId: string }
   /** A snippet to fill and use: a host's, or a global one of the app (`hostId` null). */
-  | { kind: "snippet"; hostId: string | null; snippetId: string };
+  | { kind: "snippet"; hostId: string | null; snippetId: string }
+  /** A pasted PR link (phase 22): the hosts that watch PRs are asked which card or session it is. */
+  | { kind: "pr-link"; url: string };
 
 export interface PaletteAction {
   label: string;
@@ -51,6 +53,9 @@ export interface PaletteSection {
   title: string;
   items: PaletteItem[];
 }
+
+/** A PR link of Azure DevOps (`/pullrequest/<n>`) or GitHub (`/pull/<n>`). */
+const PR_LINK = /^https?:\/\/\S+\/(?:pullrequest|pull)\/\d+(?:[/?#]\S*)?$/;
 
 const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission", "idle"]);
 
@@ -184,10 +189,15 @@ export function paletteSections(
       };
     });
 
-  const action = (id: string, label: string, target: PaletteTarget): PaletteItem => ({
+  const action = (
+    id: string,
+    label: string,
+    target: PaletteTarget,
+    detail = t("palette.actionDetail"),
+  ): PaletteItem => ({
     id,
     label,
-    detail: t("palette.actionDetail"),
+    detail,
     target,
     actions: [],
   });
@@ -256,7 +266,12 @@ export function paletteSections(
   const matches = (item: PaletteItem) =>
     item.label.toLowerCase().includes(needle) ||
     (item.keywords?.toLowerCase().includes(needle) ?? false);
-  return [
+  const link = query.trim();
+  const prLink: PaletteItem[] =
+    PR_LINK.test(link) && online.some((h) => hasFeature(h.hostInfo?.features, "watch", false))
+      ? [action(`pr-link:${link}`, t("palette.openPrLink"), { kind: "pr-link", url: link }, link)]
+      : [];
+  const filtered = [
     { title: t("palette.sectionSessions"), items: sessions },
     { title: t("palette.sectionCards"), items: cards },
     { title: t("palette.sectionProjects"), items: projects },
@@ -264,7 +279,9 @@ export function paletteSections(
     { title: t("palette.sectionConnections"), items: connections },
     { title: t("palette.sectionSnippets"), items: snippets },
     { title: t("palette.sectionActions"), items: actions },
-  ]
-    .map((section) => ({ ...section, items: section.items.filter(matches) }))
-    .filter((section) => section.items.length > 0);
+  ].map((section) => ({ ...section, items: section.items.filter(matches) }));
+  // The link is the query itself, so it is not filtered by it.
+  return [{ title: t("palette.sectionLink"), items: prLink }, ...filtered].filter(
+    (section) => section.items.length > 0,
+  );
 }

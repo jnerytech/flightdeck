@@ -28,7 +28,8 @@ type InPlace =
   | "toggle-theme"
   | "switch-language"
   | "start-card"
-  | "snippet";
+  | "snippet"
+  | "pr-link";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -253,6 +254,10 @@ export function App({ store }: { store: AppStore }) {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
     } else if (target.kind === "snippet") {
       store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
+    } else if (target.kind === "pr-link") {
+      void store.openPrLink(target.url).then((route) => {
+        if (route) go(route);
+      });
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else go(paletteRoute(target));
