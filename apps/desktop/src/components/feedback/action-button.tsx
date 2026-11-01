@@ -1,5 +1,5 @@
-import { LoaderCircle } from "lucide-react";
 import * as React from "react";
+import { Spinner } from "@/components/feedback/busy";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -17,13 +17,20 @@ export function ActionButton(
   const { pending = false, disabledReason, onClick, disabled, children, ...rest } = props;
   const reasonId = React.useId();
   const [running, setRunning] = React.useState(false);
+  // A ref too: two clicks in the same event see the first one before React renders it.
+  const started = React.useRef(false);
   const busy = pending || running;
   const showReason = Boolean(disabled && !busy && disabledReason);
   const handle = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (started.current) return;
     const result = onClick?.(event) as unknown;
     if (typeof (result as PromiseLike<unknown> | undefined)?.then !== "function") return;
+    started.current = true;
     setRunning(true);
-    const done = () => setRunning(false);
+    const done = () => {
+      started.current = false;
+      setRunning(false);
+    };
     (result as PromiseLike<unknown>).then(done, done);
   };
   return (
@@ -35,7 +42,7 @@ export function ActionButton(
         aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
         onClick={handle}
       >
-        {busy && <LoaderCircle data-slot="spinner" className="animate-spin" aria-hidden="true" />}
+        {busy && <Spinner />}
         {children}
       </Button>
       {showReason && (

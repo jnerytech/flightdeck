@@ -1,6 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { type ComponentProps, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useRef, useState } from "react";
 
 /** The spinner of a button at work. */
 export function Spinner() {
@@ -22,23 +21,4 @@ export function useBusy(): [boolean, (task: () => unknown) => void] {
     });
   };
   return [busy, run];
-}
-
-/** A button whose click may take a while: disabled with a spinner meanwhile, no double click. */
-export function AsyncButton(
-  props: Omit<ComponentProps<typeof Button>, "onClick"> & { onClick(): unknown },
-) {
-  const { onClick, children, disabled, ...rest } = props;
-  const [busy, run] = useBusy();
-  return (
-    <Button
-      {...rest}
-      disabled={busy || disabled}
-      aria-busy={busy || undefined}
-      onClick={() => run(onClick)}
-    >
-      {busy && <Spinner />}
-      {children}
-    </Button>
-  );
 }
