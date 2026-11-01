@@ -147,4 +147,54 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     expect(screen.queryByText("exceção #2: from.host é um texto")).not.toBeNull();
     expect(screen.queryByText("de host x para host y")).toBeNull();
   });
+
+  test("the exception controls are one form: Enter adds it, Adicionar exceção is its submit and Nos dois sentidos sits in it", async () => {
+    const { lastSet } = await open();
+    const source = screen.queryByLabelText("Origem") as HTMLElement | null;
+    const form = source?.closest("form") ?? null;
+    expect(form).not.toBeNull();
+    expect(form?.contains(screen.queryByLabelText("Nos dois sentidos"))).toBe(true);
+    const add = screen.queryByRole("button", { name: "Adicionar exceção" }) as HTMLButtonElement;
+    expect(add.type).toBe("submit");
+    expect(form?.contains(add)).toBe(true);
+    await change("Origem", "p1");
+    await change("Destino", "t1");
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
+    await settle(() => lastSet() !== undefined);
+    expect((lastSet()?.policy as typeof POLICY).exceptions).toHaveLength(2);
+  });
+
+  test("De, Para and Retenção (dias) each sit above their control, alone in their field", async () => {
+    await open();
+    for (const name of ["De", "Para", "Retenção (dias)"]) {
+      const control = screen.queryByLabelText(name) as HTMLElement | null;
+      expect(control).not.toBeNull();
+      const label = document.querySelector(`label[for="${control?.id}"]`);
+      const field = label?.parentElement;
+      expect(field?.className ?? "").toContain("flex-col");
+      expect(field?.querySelectorAll("label")).toHaveLength(1);
+      expect(
+        label?.nextElementSibling?.contains(control) || label?.nextElementSibling === control,
+      ).toBe(true);
+    }
+  });
+
+  test("the retention is its own form: Enter saves it, apart from the exception form", async () => {
+    const { lastSet } = await open();
+    const retention = screen.queryByLabelText("Retenção (dias)") as HTMLElement | null;
+    const form = retention?.closest("form") ?? null;
+    expect(form).not.toBeNull();
+    expect(form).not.toBe(screen.queryByLabelText("Origem")?.closest("form"));
+    expect(
+      (screen.queryByRole("button", { name: "Salvar retenção" }) as HTMLButtonElement).type,
+    ).toBe("submit");
+    await change("Retenção (dias)", "9");
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
+    await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 9);
+    expect((lastSet()?.policy as typeof POLICY).retentionDays).toBe(9);
+  });
 });
