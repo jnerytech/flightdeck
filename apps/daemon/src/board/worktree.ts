@@ -47,25 +47,55 @@ async function freeSlug(repo: string, base: string): Promise<string> {
   }
 }
 
+/** Where each repository keeps its exclude file: it does not move, so git is asked once. */
+const excludeFiles = new Map<string, string>();
+
+const excludePathCommand = () => [
+  whichOnPath("git") ?? "git",
+  "rev-parse",
+  "--git-path",
+  "info/exclude",
+];
+const spawnOptions = (repo: string) =>
+  ({ cwd: repo, env: process.env, stdout: "pipe", stderr: "pipe" }) as const;
+
+function excludeFileFrom(repo: string, code: number, out: string, err: string): string {
+  if (code !== 0) throw new FlightdeckError("invalid_state", `git rev-parse: ${err.trim()}`);
+  const file = resolve(repo, out.trim());
+  excludeFiles.set(repo, file);
+  return file;
+}
+
+/** The exclude file of `repo`, asking git without waiting for it the first time. */
+async function excludeFileAsync(repo: string): Promise<string> {
+  const known = excludeFiles.get(repo);
+  if (known) return known;
+  const proc = Bun.spawn(excludePathCommand(), { ...spawnOptions(repo), stdin: "ignore" });
+  const [out, err, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  return excludeFileFrom(repo, code, out, err);
+}
+
+/**
+ * The exclude file of `repo`, waiting for git if nobody looked it up yet. Every launch looks it
+ * up first (`excludeLocalSettingsAsync`), so this waits only for a repository the daemon has not
+ * launched a card in since it started: a rule accepted in a card resumed after a restart.
+ */
+function excludeFileSync(repo: string): string {
+  const known = excludeFiles.get(repo);
+  if (known) return known;
+  const proc = Bun.spawnSync(excludePathCommand(), spawnOptions(repo));
+  return excludeFileFrom(repo, proc.exitCode, proc.stdout.toString(), proc.stderr.toString());
+}
+
 /**
  * Adds a line to the repo's local exclude file, once; `.gitignore` is never touched. It is the
  * common git dir, so it holds for every worktree of the repository too.
  */
-function exclude(repo: string, line: string): void {
-  // Synchronous: also called right before a rule is written, in the middle of an answer.
-  const where = Bun.spawnSync(
-    [whichOnPath("git") ?? "git", "rev-parse", "--git-path", "info/exclude"],
-    {
-      cwd: repo,
-      env: process.env,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
-  if (where.exitCode !== 0) {
-    throw new FlightdeckError("invalid_state", `git rev-parse: ${where.stderr.toString().trim()}`);
-  }
-  const file = resolve(repo, where.stdout.toString().trim());
+function addExcludeLine(file: string, line: string): void {
   const current = existsSync(file) ? readFileSync(file, "utf8") : "";
   if (current.split(/\r?\n/).includes(line)) return;
   mkdirSync(dirname(file), { recursive: true });
@@ -75,15 +105,17 @@ function exclude(repo: string, line: string): void {
 
 /**
  * The rules file never shows up in a card's diff nor in a commit of the agent. Ensured on every
- * launch and before every write, so worktrees made before phase 7 get it too.
+ * launch and before every write, so worktrees made before phase 7 get it too. Synchronous
+ * because it is also called right before a rule is written, in the middle of an answer; the
+ * launch uses `excludeLocalSettingsAsync` first, so git has been asked by then.
  */
 export function excludeLocalSettings(repo: string): void {
-  exclude(repo, LOCAL_SETTINGS);
+  addExcludeLine(excludeFileSync(repo), LOCAL_SETTINGS);
 }
 
 /** The same without waiting for git: the event loop keeps serving while it looks. */
 export async function excludeLocalSettingsAsync(repo: string): Promise<void> {
-  excludeLocalSettings(repo);
+  addExcludeLine(await excludeFileAsync(repo), LOCAL_SETTINGS);
 }
 
 /** Patterns (in the `.gitignore` format) of ignored files a new worktree gets from the repo. */
@@ -193,8 +225,8 @@ async function create(
   const slug = await freeSlug(repo, slugify(title));
   const branch = `fd/${slug}`;
   const path = worktreeDir(repo, slug);
-  exclude(repo, EXCLUDE_LINE);
-  excludeLocalSettings(repo);
+  addExcludeLine(await excludeFileAsync(repo), EXCLUDE_LINE);
+  await excludeLocalSettingsAsync(repo);
   must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
   const { skipped } = await copyIncluded(repo, path, includeLimit);
   return { slug, branch, path, skipped };

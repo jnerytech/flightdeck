@@ -55,6 +55,7 @@ import type {
 import {
   addWorktree,
   excludeLocalSettings,
+  excludeLocalSettingsAsync,
   must,
   WORKTREE_INCLUDE,
   WORKTREE_INCLUDE_LIMIT,
@@ -940,7 +941,7 @@ export class Board {
         .run(added.slug, added.branch, added.path, notice, now(), id);
       this.changed(id);
     }
-    excludeLocalSettings(project.path);
+    await excludeLocalSettingsAsync(project.path);
     if (project.setupScript) await runSetup(project.setupScript, worktree);
     // The newest run is the active one: older sessions of the card are closed.
     await this.closeRuns(id, runId);
