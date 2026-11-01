@@ -135,3 +135,20 @@ export function checkShots(check: VisualCheck): {
   }
   return { problems, compared, updated };
 }
+
+/** What the demo shows that changes from run to run, as [pattern, what it becomes]. */
+export const VOLATILE_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+  // The demo's temporary folder, and the ports its daemons listen on.
+  [/fd-demo-[A-Za-z0-9]+/g, "fd-demo-X"],
+  [/:\d{4,5}(?=[/\s"']|$)/g, ":PORT"],
+  // Clock times, dates and how long ago something was.
+  [/\b\d{1,2}:\d{2}\b/g, "00:00"],
+  [/\b\d{4}-\d{2}-\d{2}\b/g, "0000-00-00"],
+  [/\b\d+ (s|min|h|d)( ago)\b/g, "N $1$2"],
+  [/(há) \d+ (s|min|h|d)\b/g, "$1 N $2"],
+];
+
+/** Text with the volatile parts written the same, so two runs print the same pixels. */
+export function normalizeVolatile(text: string): string {
+  return VOLATILE_RULES.reduce((out, [pattern, to]) => out.replace(pattern, to), text);
+}
