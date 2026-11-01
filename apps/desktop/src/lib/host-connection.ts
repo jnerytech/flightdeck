@@ -43,6 +43,9 @@ export type ConnectionStatus =
   /** The daemon does not speak this app's protocol: no retries until it is updated. */
   | "incompatible";
 
+/** Silence after which a link counts as dead: three of the daemon's 15 s heartbeats. */
+export const STALE_MS = 45_000;
+
 export class RequestError extends Error {
   constructor(
     readonly code: string,
@@ -128,6 +131,9 @@ export class HostConnection {
   private nextId = 0;
   private disposed = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Checks that the host still speaks; runs while a socket is open. */
+  private watchdog: ReturnType<typeof setInterval> | null = null;
+  private lastHeard = 0;
   private readonly pending = new Map<string, Pending>();
   private readonly subscriptions = new Set<string>();
   /** The review targets whose diff is watched (phase 11), asked for again after a reconnect. */
@@ -148,6 +154,7 @@ export class HostConnection {
     this.setStatus("connecting");
     const ws = new WebSocket(this.opts.url);
     this.ws = ws;
+    this.startWatchdog(ws);
     ws.addEventListener("open", () => {
       const hello = {
         token: this.opts.token,
@@ -188,6 +195,7 @@ export class HostConnection {
       );
     });
     ws.addEventListener("message", (msg) => {
+      this.lastHeard = Date.now();
       const message = parseServerMessage(String(msg.data));
       if (message.type === "event") return this.opts.onEvent(message);
       if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
@@ -325,6 +333,7 @@ export class HostConnection {
     if (this.disposed) return;
     this.disposed = true;
     if (this.timer) clearTimeout(this.timer);
+    this.stopWatchdog();
     this.ws?.close();
     this.setStatus("offline");
   }
@@ -347,9 +356,35 @@ export class HostConnection {
     });
   }
 
+  /**
+   * A link that dies without a close (a sleeping laptop, a cut cable) never fails a request by
+   * itself: after `staleMs` of silence the socket is given up as if it had closed, so what is
+   * waiting on it fails and the app reconnects instead of staying busy.
+   */
+  private startWatchdog(ws: WebSocket): void {
+    const staleMs = this.opts.staleMs ?? STALE_MS;
+    this.lastHeard = Date.now();
+    this.stopWatchdog();
+    this.watchdog = setInterval(
+      () => {
+        if (ws !== this.ws) return this.stopWatchdog();
+        if (Date.now() - this.lastHeard < staleMs) return;
+        this.onClose(ws, 1006);
+        ws.close();
+      },
+      Math.max(10, Math.floor(staleMs / 4)),
+    );
+  }
+
+  private stopWatchdog(): void {
+    if (this.watchdog) clearInterval(this.watchdog);
+    this.watchdog = null;
+  }
+
   private onClose(ws: WebSocket, code: number): void {
     if (ws !== this.ws) return;
     this.ws = null;
+    this.stopWatchdog();
     for (const pending of this.pending.values())
       pending.reject(new RequestError("offline", "connection lost"));
     this.pending.clear();
