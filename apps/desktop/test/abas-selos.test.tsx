@@ -102,6 +102,7 @@ describe("abas: selos e botão de aba nova", () => {
     expect(tabKind({ name: "connections" })).toBe("connections");
     expect(tabKind({ name: "vault" })).toBe("vault");
     expect(tabKind({ name: "settings" })).toBe("settings");
+    expect(tabKind({ name: "plugins" })).toBe("plugins");
     expect(tabKind({ name: "host", host: "h" })).toBe("host");
     expect(tabKind({ name: "add-host" })).toBe("screen");
   });
@@ -147,5 +148,16 @@ describe("abas: selos e botão de aba nova", () => {
     const icon = screen.queryAllByRole("tab").at(-1)?.querySelector("[data-icon]");
     expect(icon?.getAttribute("data-icon")).toBe("host");
     expect(icon?.getAttribute("class")).toContain("lucide-server");
+  });
+
+  test("the Plugins tab wears the puzzle of its sidebar entry", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "plugins" });
+    });
+    const icon = screen.queryAllByRole("tab").at(-1)?.querySelector("[data-icon]");
+    expect(icon?.getAttribute("data-icon")).toBe("plugins");
+    expect(icon?.getAttribute("class")).toContain("lucide-puzzle");
   });
 });
