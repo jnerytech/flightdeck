@@ -180,6 +180,11 @@ describe("linha-do-tempo-ui", () => {
     expect(text(join(repo, "novo.txt"))).toBe("x\n");
     await settle(() => screen.queryByText("Volta desfeita.") !== null);
     expect(screen.queryByText("Volta desfeita.")).not.toBeNull();
+    // One live region says it, not a status inside the notice's own status.
+    const said = screen
+      .queryAllByRole("status")
+      .filter((el) => el.textContent?.includes("Volta desfeita."));
+    expect(said.length).toBe(1);
     expect(screen.queryByRole("button", { name: "Desfazer volta" })).toBeNull();
   });
 
