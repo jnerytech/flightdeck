@@ -18,6 +18,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const features: string[] = [];
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
   const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
+  /** The rules of each secret the host holds (phase 19): what `vault.rules.set` replaced them with. */
+  const vaultRules: Record<string, unknown[]> = {};
   /** What `messages.list` answers (phase 21); the payloads asked are in `commands`. */
   /** Phase 21: the hub's lists and the host's standard names, when a test fills them. */
   const hub = { managed: [] as unknown[], names: [] as unknown[] };
@@ -258,8 +260,15 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           return ack({ rows: audit.rows, ...(csv ? { csv: audit.csv } : {}) });
         }
         if (type === "vault.decisions") return ack({ decisions: audit.decisions });
-        if (type === "vault.rules.set")
-          return ack({ rules: (payload as { rules: unknown[] }).rules.length });
+        if (type === "vault.rules.set") {
+          const set = payload as { secretId: string; rules: unknown[] };
+          vaultRules[set.secretId] = set.rules;
+          return ack({ rules: set.rules.length });
+        }
+        if (type === "vault.rules.get") {
+          const secretId = (payload as { secretId: string }).secretId;
+          return ack({ secretId, tags: [], rules: vaultRules[secretId] ?? [] });
+        }
         if (type.endsWith(".watch")) return ack();
         ws.send(
           JSON.stringify({
@@ -283,6 +292,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     features,
     preview,
     audit,
+    vaultRules,
     streams,
     watch,
     messaging,

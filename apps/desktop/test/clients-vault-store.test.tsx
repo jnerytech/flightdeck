@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { SCOPE_RULE_PREFIX } from "../src/lib/client-vault.ts";
+import { SCOPE_RULE_PREFIX, stripGenerated } from "../src/lib/client-vault.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -185,5 +185,98 @@ describe("clients-vault: when the client's projects change", () => {
     await store.setVaultRules(secret.id, [OWN]);
     await act(() => Bun.sleep(400));
     expect(said).toEqual([]);
+  });
+});
+
+describe("clients-vault: reading the rules back from a host", () => {
+  const OWN2 = { id: "mine2", match: { purpose: "action" }, decision: "ask" };
+
+  test("the generated rules are taken out, so what is read back is only the person's own", async () => {
+    const { store, hostId, secret } = await open(true);
+    await store.setVaultRules(secret.id, [OWN]);
+    expect(await store.readHostVaultRules(hostId, secret.id)).toEqual([OWN]);
+  });
+
+  test("scope on, read back, edit an own rule and save, scope off: the host ends with exactly the own rules", async () => {
+    const { store, hostId, acme, secret, daemon } = await open(true);
+    await store.setVaultRules(secret.id, [OWN]);
+    const readBack = await store.readHostVaultRules(hostId, secret.id);
+    expect(readBack).toEqual([OWN]);
+    await store.setVaultRules(secret.id, [...(readBack ?? []), OWN2]);
+    const held = daemon.vaultRules[secret.id] as Array<{ id: string }>;
+    expect(held.filter((r) => r.id.startsWith(SCOPE_RULE_PREFIX)).length).toBe(4);
+    expect(held.filter((r) => !r.id.startsWith(SCOPE_RULE_PREFIX))).toEqual([OWN, OWN2]);
+    await act(async () => {
+      store.clients.setDefaults(acme, { vaultScope: false });
+    });
+    await settle(() => (daemon.vaultRules[secret.id]?.length ?? 9) === 2);
+    expect(daemon.vaultRules[secret.id]).toEqual([OWN, OWN2]);
+  });
+
+  test("a read-back that is not a list is nothing, and a host that does not answer gives none", async () => {
+    const { store, hostId, secret } = await open(true);
+    expect(stripGenerated([{ id: `${SCOPE_RULE_PREFIX}x:0` }, "odd", OWN])).toEqual(["odd", OWN]);
+    expect(await store.readHostVaultRules("nowhere", secret.id)).toBeNull();
+    expect(hostId).toBeTruthy();
+  });
+});
+
+describe("clients-vault: another writer", () => {
+  const OTHER = { id: "theirs", match: {}, decision: "allow" };
+
+  async function reconnect(opened: Awaited<ReturnType<typeof open>>) {
+    const again = new AppStore(opened.platform.platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => again.dispose());
+    const said: string[] = [];
+    const success = again.success.bind(again);
+    again.success = (text: string) => {
+      said.push(text);
+      success(text);
+    };
+    const errors: string[] = [];
+    const fail = (again as unknown as { fail(e: unknown, text?: string): void }).fail.bind(again);
+    (again as unknown as { fail(e: unknown, text?: string): void }).fail = (e, text) => {
+      errors.push(text ?? String(e));
+      fail(e, text);
+    };
+    render(<App store={again} />);
+    return { again, said, errors };
+  }
+
+  test("rules the host holds without the client's generated ones are noticed on connect, and the scope is sent again", async () => {
+    const opened = await open(true);
+    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    // Another app saved this secret's rules on the host: the generated ones are gone.
+    opened.daemon.vaultRules[opened.secret.id] = [OTHER];
+    const { errors } = await reconnect(opened);
+    await settle(() => errors.length > 0);
+    expect(errors).toEqual([
+      "As regras do cliente Acme para o segredo token sumiram do host alfa: outro app salvou as regras dele. Foram enviadas de novo.",
+    ]);
+    await settle(() => (opened.daemon.vaultRules[opened.secret.id]?.length ?? 0) === 5);
+    const held = opened.daemon.vaultRules[opened.secret.id] as Array<{ id: string }>;
+    expect(held.at(-1)?.id).toBe("mine");
+    expect(held.some((r) => r.id === "theirs")).toBe(false);
+  });
+
+  test("a host that holds nothing yet gets the rules without a warning", async () => {
+    const opened = await open(true);
+    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    opened.daemon.vaultRules[opened.secret.id] = [];
+    const { errors } = await reconnect(opened);
+    await settle(() => (opened.daemon.vaultRules[opened.secret.id]?.length ?? 0) === 5);
+    expect(errors).toEqual([]);
+  });
+
+  test("generated rules that are there but out of date are regenerated with the usual notice", async () => {
+    const opened = await open(true);
+    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    const held = opened.daemon.vaultRules[opened.secret.id] as Array<{ id: string }>;
+    // The host still has the rules of a time when the client had one project fewer.
+    opened.daemon.vaultRules[opened.secret.id] = held.slice(1);
+    const { said, errors } = await reconnect(opened);
+    await settle(() => said.length > 0);
+    expect(said).toEqual(["As regras de segredos do cliente Acme mudaram com os projetos dele."]);
+    expect(errors).toEqual([]);
   });
 });
