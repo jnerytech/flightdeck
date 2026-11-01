@@ -2324,6 +2324,15 @@ export class AppStore {
     this.update({ clientSelection: selection });
   }
 
+  /** The shortcut: the next client in the switcher's order (all, each client, Unassigned), then all again. */
+  nextClient(): void {
+    const { clientList, clientSelection } = this.state;
+    if (clientList.length === 0) return;
+    const order = [ALL_CLIENTS, ...clientList.map((c) => c.id), UNASSIGNED];
+    const at = order.indexOf(clientSelection);
+    this.setClientSelection(order[(at + 1) % order.length] ?? ALL_CLIENTS);
+  }
+
   private clientBudgetCheck: Promise<void> | null = null;
   private clientBudgetAgain = false;
   private clientBudgetsSeen: string = "{}";

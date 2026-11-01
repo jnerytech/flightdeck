@@ -180,6 +180,9 @@ export function App({ store }: { store: AppStore }) {
         store.openSearch();
       } else if ((e.ctrlKey || e.metaKey) && tabShortcut(store, e)) {
         e.preventDefault();
+      } else if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        store.nextClient();
       } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         e.preventDefault();
         if (e.key === "ArrowLeft") router.back();
