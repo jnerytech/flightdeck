@@ -2385,6 +2385,14 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 - **Typing stays.** The picker is a button next to the typed fields (Nova sessão's folder and subfolder, Projetos' path), never a replacement. Where the host's resolved folder is not under any configured root string (a root reached through a link), Nova sessão keeps it as an extra root.
 - **Not covered:** the history screen's folder filter is a substring filter, not a folder to choose, and Snippets and Personas pick a project from the project list.
 
+## Visual baselines
+
+- **`demo:shots` can compare each print with a committed baseline.** `VISUAL=record|compare` (CI) or `--update` (a person, for a change meant to show) pick the mode; without them nothing is compared and the prints are as before. `compare` fails the job with one line per print (pixels that differ, a new size, no baseline, a baseline with no print), and writes the diff, the print and the baseline to `apps/desktop/screenshots/visual-diff/`, which the existing `prints` artifact uploads. The logic is in `scripts/lib/visual.ts` and is unit-tested; the file system is in `scripts/demo-visual.ts`.
+- **Baselines come from the CI runner (Linux x64), never from another machine.** Fonts differ between machines (the Pi renders another way), so a baseline from a developer's machine would fail CI on every pixel of text.
+- **The reviewed-baseline flow is not a first-run snapshot.** CLAUDE.md forbids `toMatchSnapshot` accepted on its first run inside tests. Here a person looks at every candidate image from the CI artifact before the baselines are committed; CI first runs in `record`, then, with the baselines committed, in `compare`.
+- **Two runs print the same pixels** because the page stops animations and the caret, and the text that changes from run to run (the demo's temporary folder, ports, clock times, dates, how long ago) is written the same before the print (`normalizeVolatile`). The context uses the same locale, UTC and a scale of 1.
+- **Small differences pass.** A color distance of 0.1 (pixelmatch) and at most 0.02% of the pixels, so anti-aliasing noise does not fail the job while a moved button does.
+
 # Phase 26 decisions: memory, context and plugins
 
 - **Proof of concept on the installed CLI (2.1.316), in a temporary HOME, with no real `~/.claude` read or written and no install run.** `claude plugin list --json [--available]`, `marketplace list --json`, `validate --json`, and `install`, `update` and `uninstall` with `--json`, `--scope` and `--accept-command <sha256>` exist. There is no command to pin a version, and `plugin details` has no JSON and works only for an installed plugin. The memory folder is `~/.claude/projects/<repo root with every non-alphanumeric as ->/memory`, shared by all worktrees of the repository; the docs say only the first 200 lines or 25 KB of `MEMORY.md` load at the start.
