@@ -46,6 +46,18 @@ export type ConnectionStatus =
 /** Silence after which a link counts as dead: three of the daemon's 15 s heartbeats. */
 export const STALE_MS = 45_000;
 
+/** How long a connection may take to get its `hello` answered before it is given up. */
+export const CONNECT_TIMEOUT_MS = 15_000;
+
+/** The clock and the interval of the watchdog: the real ones unless a test drives them. */
+const REAL_WATCHDOG = {
+  now: () => Date.now(),
+  repeat: (check: () => void, ms: number) => {
+    const handle = setInterval(check, ms);
+    return () => clearInterval(handle);
+  },
+};
+
 export class RequestError extends Error {
   constructor(
     readonly code: string,
@@ -135,9 +147,11 @@ export class HostConnection {
   private nextId = 0;
   private disposed = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  /** Checks that the host still speaks; runs while a socket is open. */
-  private watchdog: ReturnType<typeof setInterval> | null = null;
+  /** Stops the check that the host still speaks; set while a socket is open. */
+  private stopCheck: (() => void) | null = null;
   private lastHeard = 0;
+  /** The last check found the link silent for too long; the next one that does gives it up. */
+  private suspect = false;
   private readonly pending = new Map<string, Pending>();
   private readonly subscriptions = new Set<string>();
   /** The review targets whose diff is watched (phase 11), asked for again after a reconnect. */
@@ -199,7 +213,8 @@ export class HostConnection {
       );
     });
     ws.addEventListener("message", (msg) => {
-      this.lastHeard = Date.now();
+      this.lastHeard = (this.opts.watchdog ?? REAL_WATCHDOG).now();
+      this.suspect = false;
       const message = parseServerMessage(String(msg.data));
       if (message.type === "event") return this.opts.onEvent(message);
       if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
@@ -362,27 +377,41 @@ export class HostConnection {
 
   /**
    * A link that dies without a close (a sleeping laptop, a cut cable) never fails a request by
-   * itself: after `staleMs` of silence the socket is given up as if it had closed, so what is
-   * waiting on it fails and the app reconnects instead of staying busy.
+   * itself, and a connection whose `hello` is never answered stays "connecting" for ever. After
+   * `staleMs` of silence (`connectTimeoutMs` while connecting) the socket is given up as if it had
+   * closed, so what waits on it fails and the app reconnects. One silent check is only a
+   * suspicion: frames queued behind a starved page are read before the next check, and a link
+   * that spoke in the meantime is kept.
    */
   private startWatchdog(ws: WebSocket): void {
+    const clock = this.opts.watchdog ?? REAL_WATCHDOG;
     const staleMs = this.opts.staleMs ?? STALE_MS;
-    this.lastHeard = Date.now();
+    const connectMs = this.opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS;
+    this.lastHeard = clock.now();
+    this.suspect = false;
     this.stopWatchdog();
-    this.watchdog = setInterval(
+    this.stopCheck = clock.repeat(
       () => {
         if (ws !== this.ws) return this.stopWatchdog();
-        if (Date.now() - this.lastHeard < staleMs) return;
+        const limit = this.status === "online" ? staleMs : connectMs;
+        if (clock.now() - this.lastHeard < limit) {
+          this.suspect = false;
+          return;
+        }
+        if (!this.suspect) {
+          this.suspect = true;
+          return;
+        }
         this.onClose(ws, 1006);
         ws.close();
       },
-      Math.max(10, Math.floor(staleMs / 4)),
+      Math.max(10, Math.floor(Math.min(staleMs, connectMs) / 4)),
     );
   }
 
   private stopWatchdog(): void {
-    if (this.watchdog) clearInterval(this.watchdog);
-    this.watchdog = null;
+    this.stopCheck?.();
+    this.stopCheck = null;
   }
 
   private onClose(ws: WebSocket, code: number): void {
