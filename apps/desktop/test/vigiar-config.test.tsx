@@ -70,6 +70,7 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     expect((field("Rodadas por PR") as HTMLInputElement).value).toBe("3");
     expect((field("Limite de custo por PR (US$)") as HTMLInputElement).value).toBe("5");
     expect((field("Limite de custo por dia (US$)") as HTMLInputElement).value).toBe("20");
+    expect((field("Tempo limite por check (min)") as HTMLInputElement).value).toBe("10");
     expect((field("Checks locais (um comando por linha)") as HTMLTextAreaElement).value).toBe("");
   });
 
@@ -80,6 +81,7 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     await act(async () => {
       fireEvent.click(field("Vigiar PRs por padrão"));
       fireEvent.change(field("Rodadas por PR"), { target: { value: "2" } });
+      fireEvent.change(field("Tempo limite por check (min)"), { target: { value: "5" } });
       fireEvent.change(field("Limite de custo por PR (US$)"), { target: { value: "" } });
       fireEvent.change(field("Checks locais (um comando por linha)"), {
         target: { value: "bun test\n  bun run lint \n\n" },
@@ -97,6 +99,7 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
         budgetUsd: null,
         dailyUsd: 20,
         checks: ["bun test", "bun run lint"],
+        checkTimeoutMin: 5,
       },
     });
     await settle(() => screen.queryByText("Configuração do PR salva") !== null);

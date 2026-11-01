@@ -46,6 +46,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
       enabled: false,
       maxRounds: 3,
       checks: [] as string[],
+      checkTimeoutMin: 10,
       budgetUsd: 5 as number | null,
       maxTurns: 30 as number | null,
       persona: "revisor",
