@@ -186,9 +186,9 @@ describe("snippets-modelo: variáveis", () => {
         return `${(error as { code: string }).code}: ${(error as Error).message}`;
       }
     };
-    expect(failure({}, {})).toMatch(/bad_request: faltam valores: msg, file/);
-    expect(failure({ msg: "a" }, {})).toMatch(/faltam valores: file/);
-    expect(failure({ msg: "c" }, { file: "x" })).toMatch(/bad_request: .*msg.*opções/);
+    expect(failure({}, {})).toMatch(/bad_request: missing values: msg, file/);
+    expect(failure({ msg: "a" }, {})).toMatch(/missing values: file/);
+    expect(failure({ msg: "c" }, { file: "x" })).toMatch(/bad_request: .*msg.*outside the options/);
     expect(failure({ msg: "a" }, { file: "x.ts" })).toBe("ok");
   });
 
@@ -331,19 +331,15 @@ function refusal(fn: () => unknown) {
 
 describe("snippets-modelo: a refusal carries a reason the app translates", () => {
   const ok = { name: "a" };
-  const cases: Array<[string, () => unknown, Record<string, string | number> | undefined]> = [
-    [
-      "name_invalid",
-      () => normalizeSnippet(command("ls", { name: "x".repeat(65) }), scanner),
-      undefined,
-    ],
-    ["needs_run", () => normalizeSnippet(command(""), scanner), undefined],
-    ["needs_text", () => normalizeSnippet(prompt(""), scanner), undefined],
-    ["no_text", () => normalizeSnippet(command("ls", { text: "a" }), scanner), undefined],
-    ["no_run", () => normalizeSnippet(prompt("a", { run: "ls" }), scanner), undefined],
-    ["too_big", () => normalizeSnippet(command("x".repeat(4001)), scanner), undefined],
-    ["control_command", () => normalizeSnippet(command("ls\nrm"), scanner), undefined],
-    ["control_prompt", () => normalizeSnippet(prompt("a\u0001b"), scanner), undefined],
+  const cases: Array<[string, () => unknown, Record<string, string | number>]> = [
+    ["name_invalid", () => normalizeSnippet(command("ls", { name: "x".repeat(65) }), scanner), {}],
+    ["needs_run", () => normalizeSnippet(command(""), scanner), {}],
+    ["needs_text", () => normalizeSnippet(prompt(""), scanner), {}],
+    ["no_text", () => normalizeSnippet(command("ls", { text: "a" }), scanner), {}],
+    ["no_run", () => normalizeSnippet(prompt("a", { run: "ls" }), scanner), {}],
+    ["too_big", () => normalizeSnippet(command("x".repeat(4001)), scanner), {}],
+    ["control_command", () => normalizeSnippet(command("ls\nrm"), scanner), {}],
+    ["control_prompt", () => normalizeSnippet(prompt("a\u0001b"), scanner), {}],
     [
       "var_name",
       () => normalizeSnippet(command("echo {{a}}", { vars: { "1x": {} } }), scanner),
@@ -368,7 +364,7 @@ describe("snippets-modelo: a refusal carries a reason the app translates", () =>
         ),
       { max: 10 },
     ],
-    ["tag_invalid", () => normalizeSnippet(command("ls", { tags: ["a,b"] }), scanner), undefined],
+    ["tag_invalid", () => normalizeSnippet(command("ls", { tags: ["a,b"] }), scanner), {}],
     [
       "too_many_options",
       () =>

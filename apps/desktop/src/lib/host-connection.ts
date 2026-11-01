@@ -45,6 +45,9 @@ export class RequestError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    /** Why, when the host sent one the app translates, with the values its text fills in. */
+    readonly reason?: string,
+    readonly params?: Record<string, string | number>,
   ) {
     super(message);
     this.name = "RequestError";
@@ -214,7 +217,10 @@ export class HostConnection {
       const pending = this.pending.get(message.id);
       this.pending.delete(message.id);
       if (message.ok) pending?.resolve(message.data);
-      else pending?.reject(new RequestError(message.error.code, message.error.message));
+      else {
+        const { code, message: text, reason, params } = message.error;
+        pending?.reject(new RequestError(code, text, reason, params));
+      }
     });
     ws.addEventListener("close", (event) => this.onClose(ws, event.code));
   }

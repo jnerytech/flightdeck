@@ -3352,7 +3352,13 @@ export const AckError = z.object({
   type: z.literal("ack"),
   id: z.string(),
   ok: z.literal(false),
-  error: z.object({ code: z.string(), message: z.string() }),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    /** Why, when the app has a text for it (a snippet refusal): with the values it fills in. */
+    reason: z.string().optional(),
+    params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  }),
 });
 export const Ack = z.union([AckOk, AckError]);
 export type Ack = z.infer<typeof Ack>;

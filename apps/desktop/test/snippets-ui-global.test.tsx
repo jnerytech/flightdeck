@@ -119,7 +119,7 @@ describe("snippets-ui: the global snippets", () => {
     await fill("Comando", "echo oi");
     await fill("Onde guardar", "global");
     await click("Salvar snippet");
-    expect(screen.queryByRole("alert")?.textContent).toContain("nome de 1 a 64 caracteres");
+    expect(screen.queryByRole("alert")?.textContent).toContain("Nome de 1 a 64 caracteres");
     expect(store.globalSnippets.list().map((s) => s.name)).toEqual(["global-um"]);
   });
 });

@@ -24,7 +24,8 @@ function asProtocolError<T>(run: () => T): T {
   try {
     return run();
   } catch (error) {
-    if (error instanceof SnippetModelError) throw new FlightdeckError(error.code, error.message);
+    if (error instanceof SnippetModelError)
+      throw new FlightdeckError(error.code, error.message, error.reason, error.params);
     throw error;
   }
 }

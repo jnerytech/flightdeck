@@ -21,8 +21,12 @@ export function refusalText(
   code: string,
   message: string,
   t: T,
-  _detail?: { reason?: string; params?: Record<string, string | number> },
+  why?: { reason?: string; params?: Record<string, string | number> },
 ): string {
+  // A reason the app has a text for is the whole sentence; the message is for logs.
+  if (why?.reason && why.reason in ptBR.snippetRefusal) {
+    return t(`snippetRefusal.${why.reason}` as Key, why.params);
+  }
   const { title, detail } = translateError(code, message, t);
   return detail ? `${title} ${detail}` : title;
 }

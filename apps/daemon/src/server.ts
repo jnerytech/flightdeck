@@ -299,8 +299,20 @@ function send(ws: Socket, message: Outgoing): void {
   sendFrame(ws, message);
 }
 
-function ackError(ws: Socket, id: string, code: string, message: string): void {
-  send(ws, { type: "ack", id, ok: false, error: { code, message } });
+function ackError(
+  ws: Socket,
+  id: string,
+  code: string,
+  message: string,
+  why: Pick<FlightdeckError, "reason" | "params"> = {},
+): void {
+  const { reason, params } = why;
+  send(ws, {
+    type: "ack",
+    id,
+    ok: false,
+    error: { code, message, ...(reason ? { reason, params: params ?? {} } : {}) },
+  });
 }
 
 function decode(raw: string | Buffer): unknown {
@@ -1639,7 +1651,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     try {
       await dispatch(ws, parsed.data);
     } catch (error) {
-      if (error instanceof FlightdeckError) return ackError(ws, id, error.code, error.message);
+      if (error instanceof FlightdeckError)
+        return ackError(ws, id, error.code, error.message, error);
       console.error(`[flightdeckd] erro em ${parsed.data.type}:`, error);
       ackError(ws, id, "internal", "erro interno do daemon");
     }

@@ -2,6 +2,7 @@ import { type SnippetInput, SnippetModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
@@ -37,14 +38,14 @@ export function FileImport(props: { store: AppStore; hostId: string; onImported(
           scope: "host",
         });
         if (saved.ok) done++;
-        else failed.push(`${snippet.name}: ${saved.message}`);
+        else failed.push(`${snippet.name}: ${refusalText(saved.code, saved.message, t, saved)}`);
       } else {
         try {
           store.globalSnippets.save(snippet);
           done++;
         } catch (thrown) {
           if (!(thrown instanceof SnippetModelError)) throw thrown;
-          failed.push(`${snippet.name}: ${thrown.message}`);
+          failed.push(`${snippet.name}: ${refusalText(thrown.code, thrown.message, t, thrown)}`);
         }
       }
     }

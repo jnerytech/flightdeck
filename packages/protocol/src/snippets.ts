@@ -32,23 +32,56 @@ const MAX_PROMPT = 20_000;
 const MAX_TAGS = 10;
 const MAX_OPTIONS = 50;
 
+/** Every `reason` a refusal of the model can carry: the app has a text for each, in both languages. */
+export const SNIPPET_REASONS = [
+  "name_invalid",
+  "needs_run",
+  "needs_text",
+  "no_text",
+  "no_run",
+  "too_big",
+  "control_command",
+  "control_prompt",
+  "var_name",
+  "var_special",
+  "var_unused",
+  "too_many_tags",
+  "tag_invalid",
+  "too_many_options",
+  "options_plain",
+  "default_control",
+  "default_not_option",
+  "value_control",
+  "value_not_option",
+  "missing_values",
+  "name_taken",
+  "not_found",
+  "secret",
+] as const;
+export type SnippetReason = (typeof SNIPPET_REASONS)[number];
+
+/** What a reason's text fills in: a variable's name, a limit, the options. */
+export type SnippetParams = Record<string, string | number>;
+
 /**
  * Why the model refused a snippet: `bad_request`, or `snippet_secret` (the app then offers to
- * turn it into an action). The daemon answers it as a protocol error with the same code.
+ * turn it into an action). The daemon answers it as a protocol error with the same code. The
+ * `reason` (with its `params`) is what the app translates; the message is English, for logs and
+ * the CLI.
  */
 export class SnippetModelError extends Error {
   constructor(
     readonly code: "bad_request" | "snippet_secret",
     message: string,
+    readonly reason: SnippetReason,
+    readonly params: SnippetParams = {},
   ) {
     super(message);
   }
 }
 
-/** Every `reason` a refusal of the model can carry: the app has a text for each, in both languages. */
-export const SNIPPET_REASONS: readonly string[] = [];
-
-const badRequest = (message: string) => new SnippetModelError("bad_request", message);
+const badRequest = (reason: SnippetReason, message: string, params: SnippetParams = {}) =>
+  new SnippetModelError("bad_request", message, reason, params);
 
 /** Control characters other than the ones `allow` lets through (tab for a command, tab and lines for a prompt). */
 export function hasControl(text: string, allow: string): boolean {
@@ -118,43 +151,59 @@ function template(def: SnippetDef): string {
  */
 export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): SnippetDef {
   const name = input.name.trim();
-  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "o nome ou as tags têm segredo");
-  if (!NAME.test(name))
-    throw badRequest("nome de 1 a 64 caracteres: letras, números, espaço, . _ -");
+  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "the name or the tags have a secret");
+  if (!NAME.test(name)) {
+    throw badRequest(
+      "name_invalid",
+      "name must be 1 to 64 characters: letters, numbers, space, . _ -",
+    );
+  }
   const isCommand = input.type === "command";
   const body = isCommand ? input.run : input.text;
   if (body === undefined || body === "") {
-    throw badRequest(isCommand ? "um comando precisa de run" : "um prompt precisa de text");
+    throw isCommand
+      ? badRequest("needs_run", "a command needs run")
+      : badRequest("needs_text", "a prompt needs text");
   }
   if ((isCommand ? input.text : input.run) !== undefined) {
-    throw badRequest(isCommand ? "um comando não leva text" : "um prompt não leva run");
+    throw isCommand
+      ? badRequest("no_text", "a command takes no text")
+      : badRequest("no_run", "a prompt takes no run");
   }
-  if (body.length > (isCommand ? MAX_COMMAND : MAX_PROMPT))
-    throw badRequest("snippet grande demais");
+  if (body.length > (isCommand ? MAX_COMMAND : MAX_PROMPT)) {
+    throw badRequest("too_big", "snippet too big");
+  }
   if (hasControl(body, isCommand ? "\t" : "\t\n\r")) {
-    throw badRequest(
-      isCommand
-        ? "um comando é uma linha, sem caracteres de controle"
-        : "caracteres de controle no texto",
-    );
+    throw isCommand
+      ? badRequest("control_command", "a command is one line, without control characters")
+      : badRequest("control_prompt", "control characters in the text");
   }
   const vars = input.vars ?? {};
   const used = placeholders(body);
   for (const [key, spec] of Object.entries(vars)) {
-    if (!VAR_NAME.test(key)) throw badRequest(`nome de variável inválido: ${key}`);
-    if ((SPECIAL_VARS as readonly string[]).includes(key)) {
-      throw badRequest(`${key} é uma variável especial: vem do contexto`);
+    if (!VAR_NAME.test(key)) {
+      throw badRequest("var_name", `invalid variable name: ${key}`, { name: key });
     }
-    if (!used.includes(key)) throw badRequest(`a variável ${key} não é usada no texto`);
+    if ((SPECIAL_VARS as readonly string[]).includes(key)) {
+      throw badRequest("var_special", `${key} is a special variable: it comes from the context`, {
+        name: key,
+      });
+    }
+    if (!used.includes(key)) {
+      throw badRequest("var_unused", `variable ${key} is not used in the text`, { name: key });
+    }
     checkVar(key, spec);
   }
   const tags = [
     ...new Set((input.tags ?? []).map((tag) => tag.trim()).filter((tag) => tag !== "")),
   ];
-  if (tags.length > MAX_TAGS) throw badRequest(`no máximo ${MAX_TAGS} tags`);
+  if (tags.length > MAX_TAGS) {
+    throw badRequest("too_many_tags", `at most ${MAX_TAGS} tags`, { max: MAX_TAGS });
+  }
   for (const tag of tags) {
-    if (tag.length > 30 || tag.includes(",") || hasControl(tag, ""))
-      throw badRequest("tag inválida");
+    if (tag.length > 30 || tag.includes(",") || hasControl(tag, "")) {
+      throw badRequest("tag_invalid", "invalid tag");
+    }
   }
   const def: SnippetDef = {
     name,
@@ -169,7 +218,7 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
     body,
     ...Object.values(vars).flatMap((v) => [v.default ?? "", ...(v.options ?? [])]),
   ];
-  refuseSecrets(scanner, content, "o snippet tem segredo");
+  refuseSecrets(scanner, content, "the snippet has a secret");
   return def;
 }
 
@@ -179,25 +228,35 @@ function refuseSecrets(scanner: SecretScanner, texts: string[], what: string): v
   if (secrets.length > 0) {
     throw new SnippetModelError(
       "snippet_secret",
-      `${what} (${secrets.join(", ")}): um snippet não leva segredo, transforme-o em ação`,
+      `${what} (${secrets.join(", ")}): a snippet takes no secret, turn it into an action`,
+      "secret",
+      { kinds: secrets.join(", ") },
     );
   }
 }
 
 function checkVar(key: string, spec: SnippetVar): void {
   const options = spec.options ?? [];
-  if (options.length > MAX_OPTIONS) throw badRequest(`opções demais em ${key}`);
+  if (options.length > MAX_OPTIONS) {
+    throw badRequest("too_many_options", `too many options in ${key}`, { name: key });
+  }
   if (
     options.some((option) => option === "" || hasControl(option, "")) ||
     new Set(options).size !== options.length
   ) {
-    throw badRequest(`as opções de ${key} são texto simples, sem repetir`);
+    throw badRequest("options_plain", `the options of ${key} are plain text, without repeats`, {
+      name: key,
+    });
   }
   if (spec.default !== undefined && hasControl(spec.default, "")) {
-    throw badRequest(`o padrão de ${key} tem caracteres de controle`);
+    throw badRequest("default_control", `the default of ${key} has control characters`, {
+      name: key,
+    });
   }
   if (spec.default !== undefined && options.length > 0 && !options.includes(spec.default)) {
-    throw badRequest(`o padrão de ${key} precisa estar entre as opções`);
+    throw badRequest("default_not_option", `the default of ${key} must be one of the options`, {
+      name: key,
+    });
   }
 }
 
@@ -232,14 +291,26 @@ export function renderSnippet(
       continue;
     }
     if (hasControl(value, allow)) {
-      throw badRequest(`o valor de ${field.name} tem quebra de linha ou caracteres de controle`);
+      throw badRequest(
+        "value_control",
+        `the value of ${field.name} has a line break or control characters`,
+        { name: field.name },
+      );
     }
     if (field.options.length > 0 && !field.options.includes(value)) {
-      throw badRequest(`${field.name}: o valor está fora das opções (${field.options.join(", ")})`);
+      const options = field.options.join(", ");
+      throw badRequest(
+        "value_not_option",
+        `${field.name}: the value is outside the options (${options})`,
+        { name: field.name, options },
+      );
     }
     resolved.set(field.name, value);
   }
-  if (missing.length > 0) throw badRequest(`faltam valores: ${missing.join(", ")}`);
+  if (missing.length > 0) {
+    const names = missing.join(", ");
+    throw badRequest("missing_values", `missing values: ${names}`, { names });
+  }
   // One pass, so a value that looks like a placeholder is not expanded.
   return template(def).replace(PLACEHOLDER, (_all, name: string) => resolved.get(name) as string);
 }

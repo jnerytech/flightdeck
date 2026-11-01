@@ -1,4 +1,4 @@
-import type { SnippetContext } from "@flightdeck/protocol";
+import { type SnippetContext, SnippetModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ export function SnippetUse(props: {
       context,
       enter,
     });
-    return result.ok ? done() : fail(refusalText(result.code, result.message, t));
+    return result.ok ? done() : fail(refusalText(result.code, result.message, t, result));
   };
 
   /** A global command opens a terminal on the host on screen, else the first online one. */
@@ -132,7 +132,7 @@ export function SnippetUse(props: {
       values: own,
       context: { ...context, cwd: folder },
     });
-    if (!result.ok) return fail(refusalText(result.code, result.message, t));
+    if (!result.ok) return fail(refusalText(result.code, result.message, t, result));
     if (result.data.terminal) {
       store.tabs.open({
         name: "terminal",
@@ -148,7 +148,8 @@ export function SnippetUse(props: {
     try {
       return store.globalSnippets.use(snippet.id, own, context);
     } catch (thrown) {
-      fail((thrown as Error).message);
+      if (!(thrown instanceof SnippetModelError)) throw thrown;
+      fail(refusalText(thrown.code, thrown.message, t, thrown));
       return null;
     }
   };
@@ -173,7 +174,7 @@ export function SnippetUse(props: {
       values: own,
       context,
     });
-    return result.ok ? done() : fail(refusalText(result.code, result.message, t));
+    return result.ok ? done() : fail(refusalText(result.code, result.message, t, result));
   };
 
   /** A new session on the snippet's host (a global one: the host on screen, else the first online). */
@@ -208,7 +209,7 @@ export function SnippetUse(props: {
         values: own,
         context,
       });
-      if (!result.ok) return fail(refusalText(result.code, result.message, t));
+      if (!result.ok) return fail(refusalText(result.code, result.message, t, result));
       text = result.data.text;
     }
     if (text === null) return;

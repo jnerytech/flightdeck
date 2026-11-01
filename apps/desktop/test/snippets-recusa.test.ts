@@ -29,12 +29,14 @@ const REASONS = [
   "value_control",
   "value_not_option",
   "missing_values",
+  "name_taken",
+  "not_found",
   "secret",
 ];
 
 describe("snippets-recusa: the refusals of the snippet model", () => {
   test("the protocol lists every reason, and each has a text in both languages", () => {
-    expect([...SNIPPET_REASONS].sort()).toEqual([...REASONS].sort());
+    expect([...(SNIPPET_REASONS as readonly string[])].sort()).toEqual([...REASONS].sort());
     for (const reason of REASONS) {
       expect(typeof (en.snippetRefusal as Record<string, string>)[reason]).toBe("string");
       expect(typeof (ptBR.snippetRefusal as Record<string, string>)[reason]).toBe("string");

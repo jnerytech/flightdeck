@@ -291,7 +291,15 @@ export type HostCommandType = Extract<
 >;
 
 /** A command's answer kept apart from the error banner: the caller decides what to show. */
-export type HostResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
+export type HostResult<T> =
+  | { ok: true; data: T }
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      reason?: string;
+      params?: Record<string, string | number>;
+    };
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
@@ -1131,8 +1139,8 @@ export class AppStore {
       return { ok: true, data: await this.dispatch(hostId, type, payload) };
     } catch (error) {
       // A connection only ever rejects with a RequestError (even a host it does not know).
-      const { code, message } = error as RequestError;
-      return { ok: false, code, message };
+      const { code, message, reason, params } = error as RequestError;
+      return { ok: false, code, message, ...(reason ? { reason, params: params ?? {} } : {}) };
     }
   }
 

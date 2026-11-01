@@ -167,7 +167,7 @@ describe("snippets-ui: the editor", () => {
     await fill("Nome", "x".repeat(65));
     await fill("Comando", "echo oi");
     await click("Salvar snippet");
-    expect(screen.queryByRole("alert")?.textContent).toContain("nome de 1 a 64 caracteres");
+    expect(screen.queryByRole("alert")?.textContent).toContain("Nome de 1 a 64 caracteres");
     expect(screen.queryByRole("button", { name: "Transformar em ação" })).toBeNull();
     expect(rowNames()).toEqual([]);
   });

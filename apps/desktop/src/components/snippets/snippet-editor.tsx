@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import type { AppSnippet } from "@/lib/global-snippets";
 import { placeholders, SPECIAL_VARS } from "@/lib/snippets";
@@ -78,7 +79,7 @@ export function SnippetEditor(props: {
         return setError(
           thrown.code === "snippet_secret"
             ? { secret: true, message: t("snippets.editor.secret") }
-            : { secret: false, message: thrown.message },
+            : { secret: false, message: refusalText(thrown.code, thrown.message, t, thrown) },
         );
       }
     }
@@ -103,7 +104,7 @@ export function SnippetEditor(props: {
     setError(
       result.code === "snippet_secret"
         ? { secret: true, message: t("snippets.editor.secret") }
-        : { secret: false, message: result.message },
+        : { secret: false, message: refusalText(result.code, result.message, t, result) },
     );
   };
 
