@@ -198,6 +198,14 @@ describe("otlp-ligar: the wrapper", () => {
     expect(telemetryKeys(await launch(["-c"], config({ url: TARGET.url })))).toEqual({});
   });
 
+  test("a published file that is broken or has no URL is no receiver", async () => {
+    for (const content of ["not json", '{"url":5}']) {
+      const file = config({ token: TARGET.token });
+      writeFileSync(join(loadConfig(file).dataDir, "telemetry.json"), content);
+      expect(telemetryKeys(await launch(["-c"], file))).toEqual({});
+    }
+  });
+
   test("an exporter the user already set is theirs: nothing is added over it", async () => {
     const file = config({ token: TARGET.token, url: TARGET.url });
     const env = await launch(["-c"], file, {
@@ -260,6 +268,14 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     expect(rotated).not.toBe(token);
     await runCli(["telemetry", "status", "--config", file], deps);
     expect(out.join("\n")).toContain("telemetry: absent");
+  });
+
+  test("uninstall with nothing installed still rotates the token and says so", async () => {
+    rmSync(settings(), { force: true });
+    const file = config({ telemetry: { token: "old-token-0123456789abc" } });
+    await runCli(["telemetry", "uninstall", "--config", file], deps);
+    expect(out.join("\n")).toContain("no Flightdeck telemetry installed");
+    expect(loadConfig(file).telemetry.token).not.toBe("old-token-0123456789abc");
   });
 
   test("telemetry.port wins over hooks.port + 1", async () => {
@@ -345,6 +361,14 @@ describe("otlp-ligar: the daemon's receiver", () => {
     }));
     expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
     expect((await send(service.url, "second-token-0123456789")).status).toBe(200);
+  });
+
+  test("a config file that cannot be read leaves no valid token: every request is refused", async () => {
+    const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
+    writeFileSync(configFile, "not json");
+    expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
+    writeFileSync(configFile, JSON.stringify({ telemetry: { token: 5 } }));
+    expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
   });
 
   test("telemetry off: no receiver, no file, no token", () => {

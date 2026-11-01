@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
+import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
 
@@ -11,6 +12,9 @@ export const TERMINAL_LAUNCH_VAR = "FLIGHTDECK_TERMINAL_LAUNCH_ID";
 
 /** Where the daemon publishes its receptor's URL, inside `dataDir`. */
 export const RECEPTOR_FILE = "receptor.json";
+
+/** Where the daemon publishes its OTLP receiver's URL, inside `dataDir` (phase 23). */
+export const TELEMETRY_FILE = "telemetry.json";
 
 /**
  * The `claude` command line: our `--mcp-config` and development channel first (an option right
@@ -31,6 +35,22 @@ export function buildClaudeLaunch(opts: {
       ]
     : [];
   return [opts.claude, ...channel, ...opts.args];
+}
+
+/**
+ * Where the daemon's OTLP receiver is, with the token of its own; `null` when the daemon has
+ * not published one (it is down, or telemetry is off) or no token exists.
+ */
+function telemetryTarget(config: Config): TelemetryTarget | null {
+  const file = join(config.dataDir, TELEMETRY_FILE);
+  const token = config.telemetry.token;
+  if (!token || !existsSync(file)) return null;
+  try {
+    const { url } = JSON.parse(readFileSync(file, "utf8")) as { url?: unknown };
+    return typeof url === "string" ? { url, token } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The local daemon's receptor URL, if it answers within `timeoutMs`. */
@@ -191,6 +211,8 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       {
         env: {
           ...env,
+          // Print mode is not a session of a terminal: no exporter.
+          ...wrapperTelemetryEnv(env, print ? null : telemetryTarget(opts.config)),
           FLIGHTDECK_LAUNCH_ID: launchId,
           // The badge only (never the body): the SessionStart hook forwards it to the central.
           ...(persona

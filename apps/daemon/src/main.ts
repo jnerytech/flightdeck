@@ -105,6 +105,13 @@ import { chooseDelivery, processOps } from "./ssh/key-delivery.ts";
 import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
 import { Teams } from "./teams/teams.ts";
+import {
+  installTelemetry,
+  type TelemetryStatus,
+  telemetryConflicts,
+  telemetryStatus,
+  uninstallTelemetry,
+} from "./telemetry/otlp-env.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -1400,8 +1407,62 @@ function runHooks(args: CliArgs, deps: CliDeps): void {
   );
 }
 
+const TELEMETRY_LABELS: Record<TelemetryStatus, string> = {
+  installed: "installed",
+  absent: "absent",
+  outdated: "outdated (run telemetry install again)",
+  conflict: "not installed: settings.json has an exporter of your own",
+};
+
 /** `flightdeckd telemetry install|uninstall|status`: Claude Code's exporters into this daemon (phase 23). */
-function runTelemetry(_args: CliArgs, _deps: CliDeps): void {}
+function runTelemetry(args: CliArgs, deps: CliDeps): void {
+  const file = configPath(args);
+  let config = loadConfig(file);
+  const settings = claudeSettingsPath();
+  const port = config.telemetry.port ?? (config.hooks.port === 0 ? 0 : config.hooks.port + 1);
+  const target = (token: string) => ({ url: `http://127.0.0.1:${port}`, token });
+  const setToken = (token: string) =>
+    updateConfigFile(file, (raw) => ({
+      ...raw,
+      telemetry: { ...(raw.telemetry as object), token },
+    }));
+  if (args.action === "status") {
+    deps.log.log(
+      `telemetry: ${TELEMETRY_LABELS[telemetryStatus(settings, target(config.telemetry.token ?? ""))]}`,
+    );
+    return;
+  }
+  if (args.action === "uninstall") {
+    const removed = uninstallTelemetry(settings);
+    // The token that was written into settings.json stops working, wherever a copy is left.
+    setToken(generateToken());
+    deps.log.log(
+      removed
+        ? `telemetry removed from ${settings}; the receiver has a new token`
+        : "no Flightdeck telemetry installed; the receiver has a new token",
+    );
+    return;
+  }
+  if (port === 0) {
+    throw new Error(
+      "telemetry.port 0 does not work for an installed exporter: set a fixed telemetry.port (or hooks.port) in the config",
+    );
+  }
+  const conflicts = telemetryConflicts(settings);
+  if (conflicts.length > 0) {
+    throw new Error(
+      `settings.json already sets ${conflicts.join(", ")}: those are yours, so nothing was changed. Remove them and run telemetry install again`,
+    );
+  }
+  if (!config.telemetry.token) {
+    setToken(generateToken());
+    config = loadConfig(file);
+  }
+  installTelemetry(settings, target(config.telemetry.token ?? ""));
+  deps.log.log(
+    `telemetry installed in ${settings} (previous copy in settings.json.flightdeck-telemetry-backup)`,
+  );
+}
 
 /** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
 function runBackup(args: CliArgs, deps: CliDeps): void {
