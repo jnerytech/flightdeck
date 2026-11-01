@@ -94,17 +94,8 @@ export class BgService {
 
   /** Runs a `claude` command; a refusal of Claude Code reaches the app with what it said. */
   private async claudeDo(args: string[]): Promise<void> {
-    const claude = this.opts.claude();
-    if (!claude) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "claude is not installed on this host",
-        "bg_cli_failed",
-        {
-          message: "claude is not installed",
-        },
-      );
-    }
+    // The listing was just read, so a `claude` exists.
+    const claude = this.opts.claude() ?? "claude";
     const result = await runCommand([claude, ...args], process.cwd(), undefined, CLI_TIMEOUT_MS);
     if (result.code !== 0) {
       const message = (result.stderr || result.stdout).trim().slice(0, 300);
