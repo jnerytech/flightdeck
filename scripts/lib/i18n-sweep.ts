@@ -58,21 +58,27 @@ const FAIL = new RegExp(String.raw`\bfail\(\s*(?:[^,()]+,\s*)?(${STRING})`, "g")
 const ANY_STRING = new RegExp(STRING, "g");
 /** Letters only Portuguese uses: a string with one is text for a person. */
 const ACCENT = /[áâãàéêíóôõúç]/i;
-/** Lines whose strings are technical (a thrown error is for the log) or not code at all. */
-const TECHNICAL = /\bnew (?:Request)?Error\(|\bthrow\b|^\s*(?:\/\/|\*|\/\*)|^\s*import\b/;
+/** Words only Portuguese uses and no English text does (accented ones are ACCENT's). */
+const PORTUGUESE =
+  /\b(?:sem|para|este|esta|isso|fora|dados|antes|depois|erro|arquivo|resposta|desconhecido|existe|encontrad[oa]|nenhum|nenhuma|veio|confira|salvar|pasta|chamado|perdida|suportada)\b/i;
+/** A thrown error is for the log, but a refusal shows its message as the detail: only Portuguese counts. */
+const THROWN = /\bnew (?:Request)?Error\(|\bthrow\b/;
+/** Lines that are not code that runs: comments and imports. */
+const NOT_CODE = /^\s*(?:\/\/|\*|\/\*)|^\s*import\b/;
 const TEMPLATE_HOLE = /\$\{[^}]*\}/g;
 
 /**
  * Visible text written outside the JSX, which the `visibleLiterals` sweep cannot see: values of
  * `label`, `title`, `detail`, `body`, `error`, `message`… in objects, the text of a `fail(…)`, and
  * any other string with a Portuguese accent (a table of names). A template literal counts by its
- * static parts. Thrown errors and comments are left out; `allowed` holds untranslated names.
+ * static parts. Comments are left out, and so are thrown errors unless they are in Portuguese (an
+ * accent or one of its words); `allowed` holds untranslated names.
  */
 export function visibleTsLiterals(source: string, allowed: readonly string[] = []): Literal[] {
   const found: Array<Literal & { at: number }> = [];
   let offset = 0;
   source.split("\n").forEach((line, i) => {
-    if (!TECHNICAL.test(line)) {
+    if (!NOT_CODE.test(line)) {
       const seen = new Set<number>();
       const keep = (index: number, quoted: string) => {
         if (seen.has(index)) return;
@@ -86,13 +92,19 @@ export function visibleTsLiterals(source: string, allowed: readonly string[] = [
           found.push({ line: i + 1, text, at: offset + index });
         }
       };
-      for (const pattern of [KEYED, FAIL]) {
-        for (const m of line.matchAll(pattern)) {
-          const quoted = m[1] as string;
-          keep(m.index + m[0].length - quoted.length, quoted);
+      if (!THROWN.test(line)) {
+        for (const pattern of [KEYED, FAIL]) {
+          for (const m of line.matchAll(pattern)) {
+            const quoted = m[1] as string;
+            keep(m.index + m[0].length - quoted.length, quoted);
+          }
         }
       }
-      for (const m of line.matchAll(ANY_STRING)) if (ACCENT.test(m[0])) keep(m.index, m[0]);
+      for (const m of line.matchAll(ANY_STRING)) {
+        if (ACCENT.test(m[0]) || PORTUGUESE.test(m[0].replaceAll(TEMPLATE_HOLE, ""))) {
+          keep(m.index, m[0]);
+        }
+      }
     }
     offset += line.length + 1;
   });

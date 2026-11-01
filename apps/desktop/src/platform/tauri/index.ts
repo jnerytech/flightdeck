@@ -112,7 +112,7 @@ export function tauriPlatform(
       },
       // The plugin checks the signature against plugins.updater.pubkey before installing.
       install: async () => {
-        if (!pending) throw new Error("nenhuma atualização encontrada para instalar");
+        if (!pending) throw new Error("no update found to install");
         await pending.downloadAndInstall();
         await relaunch();
       },

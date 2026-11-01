@@ -25,6 +25,7 @@ describe("textos-ts", () => {
     expect(visibleTsLiterals(SOURCE, ["Flightdeck"])).toEqual([
       { line: 1, text: "Abrir" },
       { line: 1, text: "· ação" },
+      { line: 2, text: "sem resposta" },
       { line: 4, text: "Terminal não abriu:" },
       { line: 5, text: "histórico" },
       { line: 6, text: "OK" },

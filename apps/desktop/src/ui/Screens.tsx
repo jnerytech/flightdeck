@@ -210,7 +210,7 @@ function AddHost(props: {
         {...(props.draft
           ? {
               initial: props.draft,
-              notice: "Este link veio de fora do app. Confira os dados antes de salvar.",
+              notice: props.store.i18n.t("hostForm.fromLink"),
             }
           : {})}
         error={error}

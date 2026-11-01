@@ -11,7 +11,7 @@ export async function saveWithPicker(
   name: string,
   text: string,
 ): Promise<boolean> {
-  if (!win.showSaveFilePicker) throw new Error("salvar arquivo indisponível nesta plataforma");
+  if (!win.showSaveFilePicker) throw new Error("saving a file is not available on this platform");
   const handle = await win
     .showSaveFilePicker({ suggestedName: name })
     .catch((error: Error) => (error.name === "AbortError" ? null : Promise.reject(error)));

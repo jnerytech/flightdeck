@@ -1,7 +1,7 @@
 /** `oklch(L C H)` or `oklch(L C H / alpha)`, L as a number or a percentage; alpha is ignored. */
 function parseOklch(color: string): [number, number, number] {
   const match = /oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)/.exec(color);
-  if (!match) throw new Error(`cor não suportada: ${color}`);
+  if (!match) throw new Error(`unsupported color: ${color}`);
   const lightness = Number(match[1]) / (match[2] ? 100 : 1);
   return [lightness, Number(match[3]), Number(match[4])];
 }

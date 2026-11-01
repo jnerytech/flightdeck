@@ -100,7 +100,7 @@ export function createWebPlatform(
     setWindowTheme: noop,
     async copyText(text) {
       const clipboard = win.navigator?.clipboard;
-      if (!clipboard) throw new Error("área de transferência indisponível");
+      if (!clipboard) throw new Error("the clipboard is not available");
       await clipboard.writeText(text);
     },
     saveFile: (name, text) => saveWithPicker(win, name, text),

@@ -1664,6 +1664,7 @@ export const en: Dictionary = {
     outside: "That folder is outside the folders the host allows. Choose one inside: {roots}",
   },
   hostForm: {
+    fromLink: "This link came from outside the app. Check the details before saving.",
     link: "Pairing link",
     name: "Name",
     namePlaceholder: "my pc",

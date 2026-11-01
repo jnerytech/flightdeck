@@ -536,10 +536,10 @@ const newHostView = (config: HostConfig): HostView => ({
 function withTimeout<T>(promise: Promise<T> | undefined, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("sem resposta")), ms);
+    timer = setTimeout(() => reject(new Error("no answer")), ms);
   });
-  return Promise.race([promise ?? Promise.reject(new Error("sem conexão")), timeout]).finally(() =>
-    clearTimeout(timer),
+  return Promise.race([promise ?? Promise.reject(new Error("no connection")), timeout]).finally(
+    () => clearTimeout(timer),
   );
 }
 
@@ -1049,7 +1049,7 @@ export class AppStore {
   async historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
     try {
       const conn = this.connections.get(hostId);
-      if (!conn) throw new RequestError("offline", "host desconhecido");
+      if (!conn) throw new RequestError("offline", "unknown host");
       return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
     } catch (error) {
       this.fail(error);
@@ -1065,7 +1065,7 @@ export class AppStore {
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.connections.get(hostId);
-      if (!conn) throw new RequestError("offline", "host desconhecido");
+      if (!conn) throw new RequestError("offline", "unknown host");
       return await conn.request("history.get", {
         claudeSessionId,
         limit: HISTORY_PAGE,
@@ -1088,7 +1088,7 @@ export class AppStore {
   ): Promise<string | null> {
     try {
       const conn = this.connections.get(hostId);
-      if (!conn) throw new RequestError("offline", "host desconhecido");
+      if (!conn) throw new RequestError("offline", "unknown host");
       const { sessionId } = await conn.request("history.resume", {
         claudeSessionId,
         ...(force ? { force: true } : {}),
@@ -1142,7 +1142,7 @@ export class AppStore {
     payload: CommandPayload<T>,
   ): Promise<CommandResults[T]> {
     const conn = this.connections.get(hostId);
-    if (!conn) throw new RequestError("offline", "host desconhecido");
+    if (!conn) throw new RequestError("offline", "unknown host");
     const result = await conn.request(type, payload);
     for (const card of cardsIn(result)) this.onCard(hostId, card);
     if (isRun(result)) this.onRun(hostId, result);
@@ -1411,7 +1411,7 @@ export class AppStore {
   ): Promise<string | null> {
     const conn = this.connections.get(hostId);
     if (!conn) {
-      this.fail(new RequestError("offline", "host desconhecido ou sem token"));
+      this.fail(new RequestError("offline", "unknown host, or no token"));
       return null;
     }
     try {

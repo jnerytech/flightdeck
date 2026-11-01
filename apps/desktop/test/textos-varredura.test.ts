@@ -14,6 +14,7 @@ const FILES = [
 const ALLOWED = [
   "Flightdeck",
   "Backlog",
+  "main",
   "ended",
   "bg-status-error",
   "border border-status-error bg-transparent",

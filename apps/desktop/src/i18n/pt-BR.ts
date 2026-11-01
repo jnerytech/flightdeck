@@ -1664,6 +1664,7 @@ export const ptBR = {
     outside: "Essa pasta está fora das pastas que o host permite. Escolha uma dentro de: {roots}",
   },
   hostForm: {
+    fromLink: "Este link veio de fora do app. Confira os dados antes de salvar.",
     link: "Link de pareamento",
     name: "Nome",
     namePlaceholder: "meu pc",

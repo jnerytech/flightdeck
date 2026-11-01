@@ -103,7 +103,10 @@ export class GlobalSnippets {
     const def = normalizeSnippet(fields, this.scanner);
     const all = this.read();
     if (all.some((k) => k.def.name === def.name && k.id !== id)) {
-      throw new SnippetModelError("bad_request", `já existe um snippet global chamado ${def.name}`);
+      throw new SnippetModelError(
+        "bad_request",
+        `a global snippet named ${def.name} already exists`,
+      );
     }
     const current = all.find((k) => k.id === id);
     const kept: Kept = current
@@ -131,7 +134,7 @@ export class GlobalSnippets {
   use(id: string, values: Record<string, string>, context: SnippetContext): string {
     const all = this.read();
     const kept = all.find((k) => k.id === id);
-    if (!kept) throw new SnippetModelError("bad_request", "snippet global não encontrado");
+    if (!kept) throw new SnippetModelError("bad_request", "global snippet not found");
     const text = renderSnippet(kept.def, values, context);
     const at = new Date((this.options.clock ?? Date.now)()).toISOString();
     this.write(all.map((k) => (k.id === id ? { ...k, uses: k.uses + 1, lastUsedAt: at } : k)));

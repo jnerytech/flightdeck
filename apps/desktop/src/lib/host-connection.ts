@@ -328,7 +328,7 @@ export class HostConnection {
     if (ws !== this.ws) return;
     this.ws = null;
     for (const pending of this.pending.values())
-      pending.reject(new RequestError("offline", "conexão perdida"));
+      pending.reject(new RequestError("offline", "connection lost"));
     this.pending.clear();
     if (this.disposed) return;
     if (code === CLOSE_UNAUTHORIZED) {
