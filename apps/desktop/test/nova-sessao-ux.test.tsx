@@ -181,4 +181,29 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     const button = container.querySelector("button[type='submit']");
     expect(button?.className ?? "").toContain("self-start");
   });
+
+  test("a host whose folders arrive after the form opened is not left with no folder", async () => {
+    const created: unknown[] = [];
+    const { TContext } = await import("../src/i18n/context.tsx");
+    const { translator } = await import("../src/i18n/index.ts");
+    const loading = { id: "h3", name: "novo" } as unknown as typeof host;
+    const form = (h: typeof host) => (
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={h} onCreate={(payload) => void created.push(payload)} />
+      </TContext.Provider>
+    );
+    const view = render(form(loading));
+    await fill("First prompt", "faça isto");
+    view.rerender(form(host));
+    await act(() => Bun.sleep(10));
+    const button = screen.queryByRole("button", {
+      name: "Create session",
+    }) as HTMLButtonElement | null;
+    expect(button?.disabled).toBe(false);
+    expect(
+      screen.queryByText("This host has no allowed folder: add one in its settings"),
+    ).toBeNull();
+    await press("Create session");
+    expect(created).toEqual([{ cwd: "/work", prompt: "faça isto", permissionMode: "default" }]);
+  });
 });
