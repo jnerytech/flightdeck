@@ -53,4 +53,43 @@ describe("bg-iniciar: the daemon resolves a card", () => {
     };
     expect(missing.error?.code).toBe("not_found");
   });
+
+  test("bg.message on a running session asks the daemon's channel first, and without one it has no way in", async () => {
+    const fake = installFakeClaude([]);
+    cleanups.push(fake.restore);
+    fake.setAgents([
+      {
+        cwd: "/work/app",
+        kind: "background",
+        startedAt: 1,
+        id: "7c5dcf5d",
+        state: "blocked",
+        pid: 4242,
+        status: "waiting",
+        sessionId: "11111111-2222-4333-8444-555555555555",
+      },
+    ]);
+    const { root } = gitRepo();
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ port: 0, token: TOKEN, dataDir: join(dir, "data"), allowedRoots: [root] }),
+    );
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => daemon.stop());
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const sent = (await client.request("bg.message", { id: "7c5dcf5d", text: "oi" })) as {
+      ok: boolean;
+      error?: { reason?: string };
+    };
+    expect(sent.ok).toBe(false);
+    expect(sent.error?.reason).toBe("bg_no_message_path");
+  });
 });
