@@ -79,6 +79,20 @@ export const Config = z.object({
       staleAfterS: z.number().int().min(1).default(900),
     })
     .default(() => ({ port: 7421, permissionTimeoutS: 600, staleAfterS: 900 })),
+  /**
+   * Phase 23: the OTLP receiver for the telemetry of terminal sessions, on 127.0.0.1 only. It has
+   * its own token (never the hooks or the protocol's) and listens on `port`, `hooks.port + 1`
+   * when absent.
+   */
+  telemetry: z
+    .object({
+      enabled: z.boolean().default(true),
+      port: z.number().int().min(0).max(65535).optional(),
+      token: z.string().min(16).optional(),
+      /** Days the events of a session are kept. */
+      retentionDays: z.number().int().min(1).default(30),
+    })
+    .default(() => ({ enabled: true, retentionDays: 30 })),
   /** Retention (phase 7): data of sessions ended this many days ago is pruned; 0 = on end. */
   retention: z
     .object({

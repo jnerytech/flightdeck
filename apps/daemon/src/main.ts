@@ -139,6 +139,7 @@ export interface CliArgs {
     | "service"
     | "history"
     | "hooks"
+    | "telemetry"
     | "hook"
     | "channel"
     | "claude"
@@ -215,6 +216,7 @@ const USAGE = [
   "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <arquivo>]",
   "     flightdeckd history reindex [--config <arquivo>]",
   "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
+  "     flightdeckd telemetry install|uninstall|status [--config <arquivo>]",
   "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
   "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
   "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
@@ -341,6 +343,15 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         const action = argv[++i];
         if (action !== "install" && action !== "uninstall" && action !== "status") {
           throw new Error(`ação de hooks inválida: ${action ?? "(nenhuma)"}\n${USAGE}`);
+        }
+        args.action = action;
+        break;
+      }
+      case "telemetry": {
+        args.command = "telemetry";
+        const action = argv[++i];
+        if (action !== "install" && action !== "uninstall" && action !== "status") {
+          throw new Error(`invalid telemetry action: ${action ?? "(nenhuma)"}\n${USAGE}`);
         }
         args.action = action;
         break;
@@ -1389,6 +1400,9 @@ function runHooks(args: CliArgs, deps: CliDeps): void {
   );
 }
 
+/** `flightdeckd telemetry install|uninstall|status`: Claude Code's exporters into this daemon (phase 23). */
+function runTelemetry(_args: CliArgs, _deps: CliDeps): void {}
+
 /** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
 function runBackup(args: CliArgs, deps: CliDeps): void {
   const config = loadConfig(configPath(args));
@@ -1666,6 +1680,11 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     }
     if (args.command === "hooks") {
       runHooks(args, deps);
+      deps.exit(0);
+      return null;
+    }
+    if (args.command === "telemetry") {
+      runTelemetry(args, deps);
       deps.exit(0);
       return null;
     }

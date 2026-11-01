@@ -15,7 +15,12 @@ const [stateDir = "", ...args] = process.argv.slice(2);
 const log = (entry: Record<string, unknown>) =>
   appendFileSync(join(stateDir, "events.jsonl"), `${JSON.stringify(entry)}\n`);
 const env = Object.fromEntries(
-  Object.entries(process.env).filter(([key]) => key.startsWith("FLIGHTDECK_")),
+  Object.entries(process.env).filter(
+    ([key]) =>
+      key.startsWith("FLIGHTDECK_") ||
+      key.startsWith("OTEL_") ||
+      key === "CLAUDE_CODE_ENABLE_TELEMETRY",
+  ),
 );
 const mcpConfigFile = args[args.indexOf("--mcp-config") + 1];
 const mcpConfig =
