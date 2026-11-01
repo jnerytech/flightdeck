@@ -225,7 +225,9 @@ describe("pasta: o seletor nos formulários", () => {
     expect(current !== null).toBe(true);
     await pressInDialog("Escolher esta pasta");
     await waitFor(() => expect(dialog() === null).toBe(true));
-    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("alfa/interna");
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe(
+      join("alfa", "interna"),
+    );
     for (const release of held) release();
   });
 
