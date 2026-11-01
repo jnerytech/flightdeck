@@ -201,7 +201,7 @@ A smoke is not needed: nothing new crosses the wire except one optional field, c
 and the By client table, and the e2e journey creates a client with a remote rule, switches to it and back.
 
 **Acceptance criteria:** the usual ones, and these: with no client defined every screen and print is pixel-identical to
-before; a client's totals plus Unassigned equal the totals of the hosts; "Needs you" shows the same items whichever
+before, except Settings, which gains one line that leads to the Clients screen; a client's totals plus Unassigned equal the totals of the hosts; "Needs you" shows the same items whichever
 client is selected.
 
 ## Open choices (recommendation first)
