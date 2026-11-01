@@ -2568,7 +2568,7 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 
 ## Measures in the app (`app-measures`)
 
-- **Flag.** `localStorage["flightdeck.debug.measures"] = "1"` turns them on (set it from the devtools console of a debug build); with it off, no mark, no measure and no animation frame is scheduled. It is not a setting and not in the manuals, because a person never needs it.
+- **Flag.** `localStorage["flightdeck.debug.measures"] = "1"` turns them on (set it from the devtools console of a debug build); with it off, no mark, no measure and no animation frame is scheduled. It is not a setting; the manuals describe it under Performance.
 - **What is measured.** Five `performance.measure` entries with fixed names: `fd:open-session`, `fd:open-board`, `fd:open-card` (from `Router.push` to two animation frames after the screen's effect), `fd:send` (from the call to two frames after the daemon answered) and `fd:approve` (same, for an `allow`). Nothing is written to the console.
 - **Limit.** Send and approve end after the answer, not at the paint of the item the daemon's event adds; the event may come later. The numbers are an upper bound on the click-to-answer path and a lower bound on click-to-event.
 
