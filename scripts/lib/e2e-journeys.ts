@@ -12,6 +12,7 @@ export const JOURNEYS: readonly string[] = [
   "acoes",
   "regras",
   "mensagens",
+  "clientes",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

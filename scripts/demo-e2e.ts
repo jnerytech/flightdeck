@@ -335,6 +335,34 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
     });
     await section.getByText(label, { exact: true }).waitFor({ timeout: WAIT });
   },
+
+  // 13. Clientes: a client with a remote rule is created, picked in the switcher, and narrows Sessões.
+  clientes: async (c) => {
+    const name = `e2e-${c.lang}`;
+    await open(c, { name: "clients" });
+    await c.page.getByLabel(c.t("clients.nameLabel"), { exact: true }).fill(name);
+    await c.page.getByRole("button", { name: c.t("clients.create"), exact: true }).click();
+    const row = c.page.locator("li", {
+      has: c.page.locator("[data-client-name]", { hasText: name }),
+    });
+    await row.waitFor({ timeout: WAIT });
+    await row.getByLabel(c.t("clients.valueLabel"), { exact: true }).fill("github.com/acme/*");
+    await row.getByRole("button", { name: c.t("clients.addRule"), exact: true }).click();
+    await row
+      .getByRole("list", { name: c.t("clients.rulesOf", { name }) })
+      .waitFor({ timeout: WAIT });
+    // Every session of the demo, then only the client's (the demo's sessions are in other projects).
+    await open(c, { name: "hub" });
+    const sessions = c.page.getByRole("list").locator("li[aria-label]");
+    await sessions.first().waitFor({ timeout: WAIT });
+    const before = await sessions.count();
+    const switcher = (current: string) =>
+      c.page.getByRole("button", { name: c.t("clients.switcher", { name: current }), exact: true });
+    await switcher(c.t("clients.allClients")).click();
+    await c.page.getByRole("menuitemradio", { name: new RegExp(`^${name}`) }).click();
+    await switcher(name).waitFor({ timeout: WAIT });
+    await waitFor(async () => (await sessions.count()) < before, "só as sessões do cliente");
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
@@ -392,6 +420,7 @@ async function layout(c: Context, problems: string[]) {
     ["host", { name: "host", host: ALFA }],
     ["custos", { name: "costs" }],
     ["configuracoes", { name: "settings" }],
+    ["clientes", { name: "clients" }],
     [
       "agente",
       { name: "agent", host: ALFA, projectId: c.ids.project, projectName: c.ids.projectName },
