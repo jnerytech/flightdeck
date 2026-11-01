@@ -619,6 +619,20 @@ export const ptBR = {
       "O host está offline: confira se o daemon roda lá (flightdeckd start) e se a rede alcança o endereço.",
     timeout: "O host não respondeu a tempo: tente de novo; se repetir, confira a rede e o daemon.",
     file_conflict: "O arquivo mudou no disco depois de aberto.",
+    terminal_disabled:
+      "O terminal está desligado neste host: ligue nas configurações do host e tente de novo.",
+    hostkey_unconfirmed:
+      "A chave deste servidor nunca foi confirmada: confira a impressão digital e confirme para conectar.",
+    hostkey_changed:
+      "A chave do servidor mudou desde que você a confirmou: confira com quem cuida dele; se a troca é esperada, esqueça a chave guardada e confirme a nova.",
+    snippet_untrusted:
+      "Este comando vem do arquivo de snippets do projeto, que ainda não é confiável: confie no arquivo para rodá-lo, ou cole sem Enter.",
+    persona_secret: "Uma persona não pode conter segredo: guarde-o no cofre.",
+    persona_untrusted:
+      "Esta persona vem do projeto e muda o comportamento do agente: confie nela antes de usar.",
+    snippet_secret: "Um snippet não pode conter segredo: guarde-o no cofre, ou transforme em ação.",
+    unknown:
+      "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
   common: {
     cancel: "Cancelar",

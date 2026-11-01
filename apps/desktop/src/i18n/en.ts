@@ -622,6 +622,21 @@ export const en: Dictionary = {
     timeout:
       "The host didn't answer in time: try again; if it repeats, check the network and the daemon.",
     file_conflict: "The file changed on disk after it was opened.",
+    terminal_disabled:
+      "The terminal is off on this host: turn it on in the host's settings, then try again.",
+    hostkey_unconfirmed:
+      "This server's key was never confirmed: check its fingerprint, then confirm it to connect.",
+    hostkey_changed:
+      "The server's key changed since you confirmed it: check with whoever runs it; if the change is expected, forget the saved key and confirm the new one.",
+    snippet_untrusted:
+      "This command comes from the project's snippets file, which is not trusted yet: trust the file to run it, or paste without Enter.",
+    persona_secret: "A persona can't contain a secret: keep it in the vault instead.",
+    persona_untrusted:
+      "This persona comes from the project and changes the agent's behavior: trust it before using it.",
+    snippet_secret:
+      "A snippet can't contain a secret: keep it in the vault instead, or turn it into an action.",
+    unknown:
+      "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
   common: {
     cancel: "Cancel",
