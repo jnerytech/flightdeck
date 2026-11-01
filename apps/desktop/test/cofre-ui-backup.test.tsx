@@ -106,6 +106,11 @@ describe("cofre-ui: backup", () => {
     await click("Exportar cofre");
     expect(saved).toHaveLength(1);
     expect(saved[0]?.name).toBe("cofre.fdvault");
+    expect(
+      screen.queryByText(
+        "Cofre salvo como cofre.fdvault, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
+      ),
+    ).not.toBeNull();
     expect(saved[0]?.text).not.toContain(VALUE);
     const preview = await previewImport(
       await sourceVault(false),
@@ -246,8 +251,11 @@ describe("cofre-ui: backup", () => {
     await fill("Frase-senha do arquivo", PASS);
     await click("Importar cofre");
     expect(screen.queryByText("Conflitantes: 1")).not.toBeNull();
+    const conflicts = screen.getByRole("list", { name: "Segredos em conflito" });
+    expect([...conflicts.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["github"]);
     await click("Aplicar");
     expect(await store.vault.value("shared-id")).toBe("local-value");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     // The panel forgets the passphrase once the import is applied.
     await fill("Frase-senha do arquivo", PASS);
     await click("Importar cofre");
@@ -257,7 +265,40 @@ describe("cofre-ui: backup", () => {
       fireEvent.click(replace as HTMLElement);
     });
     await click("Aplicar");
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain(
+      "Substituir github no cofre pelos do backup? Os valores atuais se perdem.",
+    );
+    expect(await store.vault.value("shared-id")).toBe("local-value");
+    await click("Substituir segredos");
     expect(await store.vault.value("shared-id")).toBe(VALUE);
+  });
+
+  test("Cancelar no aviso de substituição não muda o cofre e deixa a prévia aberta", async () => {
+    const { store } = await open(await backupText());
+    await store.vault.restore(
+      {
+        id: "shared-id",
+        name: "github",
+        type: "token",
+        description: "",
+        tags: [],
+        createdAt: 1,
+        lastUsedAt: null,
+        allowedHosts: ["local"],
+      },
+      "local-value",
+    );
+    await fill("Frase-senha do arquivo", PASS);
+    await click("Importar cofre");
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Substituir pelo backup"));
+    });
+    await click("Aplicar");
+    await click("Cancelar");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(await store.vault.value("shared-id")).toBe("local-value");
+    expect(screen.queryByText("Conflitantes: 1")).not.toBeNull();
   });
 
   test("a wrong passphrase is refused with the reason and nothing is imported", async () => {
