@@ -73,9 +73,7 @@ const issue = (path: string, code: string, params?: Record<string, string>): Rul
 });
 
 const describeIssue = (item: RuleIssue) => {
-  const text = (ENGLISH[item.code] ?? (() => item.code))(
-    (item.params ?? {}) as Record<string, string>,
-  );
+  const text = ENGLISH[item.code]?.((item.params ?? {}) as Record<string, string>) ?? item.code;
   return item.path ? `${item.path}: ${text}` : text;
 };
 
