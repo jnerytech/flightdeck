@@ -111,3 +111,31 @@ export function vaultFindings(args: {
   }
   return found;
 }
+
+export interface SecretGroup {
+  kind: "client" | "none" | "others";
+  secrets: SecretMeta[];
+}
+
+/**
+ * The vault's list when a client with a vault tag is selected: its secrets first, then those no
+ * client's tag is on, then the ones of other clients. Nothing is left out; empty groups are.
+ */
+export function groupSecrets(
+  secrets: SecretMeta[],
+  clients: Client[],
+  selected: Client | null,
+): SecretGroup[] {
+  const tag = selected?.defaults.vaultTag;
+  if (tag === undefined) return [{ kind: "none", secrets }];
+  const tags = new Set(clients.flatMap((c) => (c.defaults.vaultTag ? [c.defaults.vaultTag] : [])));
+  const mine = secrets.filter((s) => s.tags.includes(tag));
+  const others = secrets.filter((s) => !s.tags.includes(tag) && s.tags.some((t) => tags.has(t)));
+  const none = secrets.filter((s) => !mine.includes(s) && !others.includes(s));
+  const groups: SecretGroup[] = [
+    { kind: "client", secrets: mine },
+    { kind: "none", secrets: none },
+    { kind: "others", secrets: others },
+  ];
+  return groups.filter((g) => g.secrets.length > 0);
+}
