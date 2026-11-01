@@ -163,7 +163,7 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
       fireEvent.submit(form as HTMLFormElement);
     });
     await settle(() => lastSet() !== undefined);
-    expect((lastSet()?.policy as typeof POLICY).exceptions).toHaveLength(2);
+    expect((lastSet()?.policy as typeof POLICY | undefined)?.exceptions).toHaveLength(2);
   });
 
   test("De, Para and Retenção (dias) each sit above their control, alone in their field", async () => {
@@ -195,6 +195,6 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
       fireEvent.submit(form as HTMLFormElement);
     });
     await settle(() => (lastSet()?.policy as typeof POLICY | undefined)?.retentionDays === 9);
-    expect((lastSet()?.policy as typeof POLICY).retentionDays).toBe(9);
+    expect((lastSet()?.policy as typeof POLICY | undefined)?.retentionDays).toBe(9);
   });
 });
