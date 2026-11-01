@@ -180,6 +180,30 @@ describe("vigiar-ui: watching and fixing a card's PR", () => {
   });
 });
 
+describe("vigiar-ui: a PR that asks for you leads to its card", () => {
+  test("in Precisa de você, Abrir o card opens the card the PR belongs to", async () => {
+    const { store, daemon } = await open();
+    daemon.watch.info = {
+      cardId: "c1",
+      enabled: true,
+      status: "needs_you",
+      reason: "limit of 2 rounds reached",
+      rounds: [round(1, "pushed", "pushed")],
+    };
+    await act(async () => {
+      daemon.push({ type: "watch.updated", watch: daemon.watch.info });
+    });
+    await act(async () => {
+      store.router.push({ name: "needs-you" });
+    });
+    const entry = /PR de Login: limit of 2 rounds reached/;
+    await settle(() => screen.queryByRole("button", { name: entry }) !== null);
+    await click(entry);
+    await click("Abrir o card");
+    expect(store.router.current).toMatchObject({ name: "card", cardId: "c1", projectId: "p1" });
+  });
+});
+
 describe("vigiar-ui: the PR description is the person's to confirm", () => {
   test("Abrir PR only offers the generated text; nothing is opened until the person confirms the edited text", async () => {
     const { daemon } = await open({ prUrl: null, prState: null });
