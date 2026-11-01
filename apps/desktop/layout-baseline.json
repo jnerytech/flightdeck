@@ -18,7 +18,7 @@
   "src/ui/Checkpoints.tsx": 39,
   "src/ui/ConnectionsPage.tsx": 15,
   "src/ui/ConversationsPage.tsx": 10,
-  "src/ui/CostsPage.tsx": 23,
+  "src/ui/CostsPage.tsx": 18,
   "src/ui/DaemonUpdate.tsx": 1,
   "src/ui/DiffView.tsx": 17,
   "src/ui/ExternalView.tsx": 7,

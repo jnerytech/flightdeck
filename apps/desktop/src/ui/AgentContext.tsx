@@ -5,6 +5,7 @@ import { ListRow } from "@/components/layout/list-row";
 import { Stack } from "@/components/layout/stack";
 import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
+import { formatNumber } from "../i18n/format.ts";
 import type { AppStore } from "../lib/app-store.ts";
 
 /**
@@ -14,6 +15,7 @@ import type { AppStore } from "../lib/app-store.ts";
 export function AgentContext(props: { store: AppStore; hostId: string; projectId: string }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
+  const number = (value: number) => formatNumber(value, store.i18n.lang);
   const [budget, setBudget] = useState<ContextBudget | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function AgentContext(props: { store: AppStore; hostId: string; projectId
   return (
     <section aria-label={t("contextUi.title")}>
       <Stack>
-        <p className="text-sm">{t("contextUi.start", { tokens: budget.startTokens })}</p>
+        <p className="text-sm">{t("contextUi.start", { tokens: number(budget.startTokens) })}</p>
         <Stack as="ul" gap={1}>
           {budget.sources.map((source) => (
             <li key={`${source.kind}/${source.path}`}>
@@ -38,7 +40,7 @@ export function AgentContext(props: { store: AppStore; hostId: string; projectId
                 trailing={
                   <span className="text-sm tabular-nums">
                     {source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")} ·{" "}
-                    {t("contextUi.tokens", { tokens: source.tokens })}
+                    {t("contextUi.tokens", { tokens: number(source.tokens) })}
                   </span>
                 }
               />

@@ -32,7 +32,8 @@ type Paths<T, P extends string = ""> = {
 export type Key = Paths<Dictionary>;
 
 export type Vars = Record<string, string | number>;
-export type T = (key: Key, vars?: Vars) => string;
+/** `lang` is the language the translator speaks, for the formats that are not in a dictionary. */
+export type T = ((key: Key, vars?: Vars) => string) & { readonly lang: Lang };
 
 /** The app's language for the system's: pt-BR for any pt-*, English for the rest. */
 export function languageFor(system: string): Lang {
@@ -54,7 +55,7 @@ function entry(dictionary: Dictionary, key: Key): string | Plural {
  */
 export function translator(lang: Lang): T {
   const rules = new Intl.PluralRules(lang);
-  return (key, vars = {}) => {
+  const translate = (key: Key, vars: Vars = {}) => {
     const found = entry(DICTIONARIES[lang], key);
     let text: string;
     if (typeof found === "string") text = found;
@@ -63,6 +64,7 @@ export function translator(lang: Lang): T {
       name in vars ? String(vars[name]) : all,
     );
   };
+  return Object.assign(translate, { lang });
 }
 
 /** The language in use, its translator and the stored choice; `lang` on <html>. */

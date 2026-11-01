@@ -1,6 +1,7 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DayChart } from "@/components/costs/day-chart";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -10,17 +11,13 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
-import { useT } from "@/i18n/context";
-import { cn } from "@/lib/utils";
+import { useFormatNumber, useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
-
-/** A tint of the accent per project in a day's bar, so the stack reads. */
-const SEGMENTS = ["bg-brand", "bg-brand/70", "bg-brand/50", "bg-brand/35"];
 
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
@@ -60,6 +57,7 @@ export function CostsPage(props: {
   onOpenSession(hostId: string, session: TopSession): void;
 }) {
   const t = useT();
+  const number = useFormatNumber();
   const { store, state } = props;
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
@@ -112,9 +110,6 @@ export function CostsPage(props: {
     if (file) await store.saveFile(file.filename, file.csv);
   };
   const byDay = summary?.byDay ?? [];
-  const dayTotals = new Map<string, number>();
-  for (const row of byDay) dayTotals.set(row.day, (dayTotals.get(row.day) ?? 0) + row.costUsd);
-  const highest = Math.max(0, ...dayTotals.values());
 
   const loading = useMinLoading(hostId !== "" && summary === null);
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
@@ -261,7 +256,7 @@ export function CostsPage(props: {
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
               {[
                 [t("costsUi.estimated"), usd(summary.totals.costUsd)],
-                [t("costsUi.tokens"), String(tokensOf(summary.totals.tokens))],
+                [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
                 [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
@@ -279,33 +274,11 @@ export function CostsPage(props: {
             ))}
             <section aria-label={t("costsUi.perDay")}>
               <Panel title={t("costsUi.perDay")}>
-                <div className="flex h-40 items-end gap-1">
-                  {daysBetween(days.from, days.to).map((day) => (
-                    <div
-                      key={day}
-                      data-day={day}
-                      className="flex h-full min-w-2 flex-1 flex-col justify-end"
-                      title={day}
-                    >
-                      {byDay
-                        .filter((row) => row.day === day)
-                        .map((row, i) => (
-                          <div
-                            key={row.projectKey}
-                            role="img"
-                            aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
-                            className={cn(
-                              "border-card border-t first:rounded-t-sm",
-                              SEGMENTS[i % SEGMENTS.length],
-                            )}
-                            style={{
-                              height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%`,
-                            }}
-                          />
-                        ))}
-                    </div>
-                  ))}
-                </div>
+                <DayChart
+                  days={daysBetween(days.from, days.to)}
+                  byDay={byDay}
+                  projects={summary.byProject.map((p) => p.projectKey)}
+                />
               </Panel>
             </section>
             <div className="grid gap-4 @3xl:grid-cols-3">

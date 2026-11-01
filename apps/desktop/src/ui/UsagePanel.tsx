@@ -1,7 +1,7 @@
 import type { UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
-import { useT } from "@/i18n/context";
+import { useFormatNumber, useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { periodRange, usd } from "../lib/costs.ts";
 
@@ -9,7 +9,8 @@ interface Row {
   day: string;
   projectKey: string;
   costUsd: number;
-  tokens: string;
+  /** The day's tokens, or the SDK-era input and output pair. */
+  tokens: number | [input: number, output: number];
   turns: string | null;
 }
 
@@ -25,6 +26,7 @@ export function UsagePanel(props: {
   costs: boolean;
 }) {
   const t = useT();
+  const number = useFormatNumber();
   const { store, hostId, online, costs } = props;
   const [rows, setRows] = useState<Row[] | null>(null);
   useEffect(() => {
@@ -35,7 +37,7 @@ export function UsagePanel(props: {
         .then((summary) =>
           setRows(
             (summary?.byDay ?? [])
-              .map((r) => ({ ...r, tokens: String(r.tokens), turns: null }))
+              .map((r) => ({ ...r, turns: null }))
               .sort((a, b) => b.day.localeCompare(a.day)),
           ),
         );
@@ -47,7 +49,7 @@ export function UsagePanel(props: {
         setRows(
           (usage?.rows ?? []).map((r) => ({
             ...r,
-            tokens: `${r.inputTokens} / ${r.outputTokens}`,
+            tokens: [r.inputTokens, r.outputTokens] as [number, number],
             turns: t("usageUi.turnCount", { n: r.turns }),
           })),
         ),
@@ -82,7 +84,11 @@ export function UsagePanel(props: {
                   <td className="py-1">{row.day}</td>
                   <td className="py-1">{row.projectKey}</td>
                   <td className="py-1 pl-4 text-right">{usd(row.costUsd)}</td>
-                  <td className="py-1 pl-4 text-right">{row.tokens}</td>
+                  <td className="py-1 pl-4 text-right">
+                    {Array.isArray(row.tokens)
+                      ? row.tokens.map(number).join(" / ")
+                      : number(row.tokens)}
+                  </td>
                   {row.turns !== null && <td className="py-1 pl-4 text-right">{row.turns}</td>}
                 </tr>
               ))}

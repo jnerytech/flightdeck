@@ -68,6 +68,13 @@ export function formatAgo(ms: number, t: T): string {
   return ms < 60_000 ? t("time.now") : t("time.ago", { d: formatDuration(ms, t) });
 }
 
+/** A calendar day ("2026-10-09") as day and month: 09/10 in pt-BR, 10/09 in English. */
+export function formatDay(day: string, lang: Lang): string {
+  const [year, month, date] = day.split("-").map(Number) as [number, number, number];
+  const format = dateFormat(lang, { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+  return format.format(new Date(Date.UTC(year, month - 1, date)));
+}
+
 /** A number with the language's separators. */
 export function formatNumber(value: number, lang: Lang): string {
   return new Intl.NumberFormat(lang).format(value);
