@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
@@ -449,5 +449,19 @@ describe("stable binary", () => {
     expect(readFileSync(stable, "utf8")).toBe("downloaded");
     // Windows has no executable bit: the file runs because of its .exe name.
     if (process.platform !== "win32") expect(statSync(stable).mode & 0o111).not.toBe(0);
+  });
+});
+
+describe("setup: nothing outside its temporary folders", () => {
+  // Runs after the tests above: a Windows home like `C:\\Users\\dev` is a plain relative name on
+  // Linux, so a `mkdir` of it would leave a folder with that name in the working directory.
+  test("no test of this file left a folder named like a Windows path in the working directory", () => {
+    const stray = readdirSync(process.cwd()).filter((name) => /^[A-Za-z]:/.test(name));
+    expect(stray).toEqual([]);
+  });
+
+  test("a harness on another platform's home creates nothing on the real disk", () => {
+    harness({ platform: "win32", home: "C:\\Users\\dev" });
+    expect(existsSync(join(process.cwd(), "C:\\Users\\dev"))).toBe(false);
   });
 });
