@@ -1,5 +1,11 @@
-import { type KnownProject, resolveClient } from "./client-rules.ts";
-import { type Client, type ClientColor, type ClientsData, UNASSIGNED } from "./clients.ts";
+import { type KnownProject, resolveClient, ruleMatches } from "./client-rules.ts";
+import {
+  type Client,
+  type ClientColor,
+  type ClientsData,
+  type RuleInput,
+  UNASSIGNED,
+} from "./clients.ts";
 
 /** Where the selected client is kept between starts. */
 export const CLIENT_SELECTION_KEY = "flightdeck.clientFilter";
@@ -57,6 +63,11 @@ export class ClientScope {
   /** The host names that more than one host answers to; a folder key with one is not placed by host. */
   get ambiguousNames(): string[] {
     return [...this.hostsByName].filter(([, ids]) => ids.size > 1).map(([name]) => name);
+  }
+
+  /** The keys of the projects a rule would claim right now, for its preview. */
+  matching(rule: RuleInput): string[] {
+    return [...this.projects.keys()].filter((key) => ruleMatches(rule, this.known(key)));
   }
 
   /** Whether any client exists; with none the screens show everything and no chips. */
