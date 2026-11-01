@@ -298,6 +298,24 @@ describe("setup command", () => {
     expect(unit).toContain(`ExecStart=${stable} `);
   });
 
+  test("a stable binary that is already installed is kept, and the wizard says so", async () => {
+    const h = cliHarness(undefined, {
+      selfCommand: (dir) => [join(dir, "download", "flightdeckd")],
+    });
+    mkdirSync(join(h.dir, "download"));
+    writeFileSync(join(h.dir, "download", "flightdeckd"), "new");
+    mkdirSync(join(h.dir, ".flightdeck", "bin"), { recursive: true });
+    writeFileSync(join(h.dir, ".flightdeck", "bin", "flightdeckd"), "installed");
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.out.join("\n")).toContain("already exists and stays");
+    expect(readFileSync(join(h.dir, ".flightdeck", "bin", "flightdeckd"), "utf8")).toBe(
+      "installed",
+    );
+  });
+
   test("a service that is already installed is stopped before it is installed again", async () => {
     const h = cliHarness(undefined, { installed: true });
     const project = join(h.dir, "project");

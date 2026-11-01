@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { type DoctorDeps, runDoctor } from "../src/doctor.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
+import { tempDir } from "./helpers.ts";
 
 const config = { bind: "127.0.0.1", port: 7777, allowedRoots: ["/code"] };
 
@@ -125,5 +128,58 @@ describe("doctor command", () => {
     await runCli(["doctor", "--config", "/nonexistent-dir/none.json"], cliDeps);
     expect(exits).toEqual([1]);
     expect(out.join("\n")).toMatch(/FAIL\s+config/);
+  });
+
+  test("with a readable config it checks the folders, the service, /health, claude, hooks and Tailscale", async () => {
+    const daemon = Bun.serve({ port: 0, fetch: () => Response.json({ ok: true }) });
+    const dir = tempDir("fd-doctor-");
+    const project = join(dir, "project");
+    mkdirSync(project);
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        token: "t".repeat(32),
+        dataDir: dir,
+        port: daemon.port,
+        allowedRoots: [project],
+      }),
+    );
+    const out: string[] = [];
+    const exits: number[] = [];
+    const cliDeps: CliDeps = {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+      exec: async () => ({ code: 0, stdout: "100.64.0.9\n" }),
+      serviceContext: (dryRun) => ({
+        platform: "linux",
+        home: dir,
+        user: "u",
+        command: ["/h/flightdeckd"],
+        systemRoot: "",
+        tempDir: "/tmp",
+        dryRun,
+        exec: async (cmd) => ({
+          code: 0,
+          stdout: cmd.includes("cat") ? "ExecStart=/h/flightdeckd start\n" : "",
+        }),
+        writeFile: () => {},
+        removeFile: () => {},
+        which: () => null,
+      }),
+    };
+    await runCli(["doctor", "--config", file], cliDeps);
+    await daemon.stop(true);
+    const text = out.join("\n");
+    expect(text).toMatch(/OK\s+project folders\s+.*project/);
+    expect(text).toMatch(/OK\s+service\s+installed/);
+    expect(text).toMatch(/OK\s+daemon\s+answering on 127\.0\.0\.1:/);
+    expect(text).toMatch(/WARN\s+hooks/);
+    expect(text).toMatch(/WARN\s+tailscale/);
+    expect(text).toMatch(/(OK|WARN)\s+claude/);
+    // Warnings do not fail the run.
+    expect(exits).toEqual([0]);
   });
 });
