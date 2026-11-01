@@ -173,6 +173,13 @@ describe("linha-do-tempo-ui", () => {
     expect(existsSync(join(repo, "novo.txt"))).toBe(false);
     await settle(() => screen.queryByText("Arquivos voltados ao turno 2.") !== null);
     expect(screen.queryByText("Arquivos voltados ao turno 2.")).not.toBeNull();
+    // A browser's exact text match wants one element whose whole text is the notice: the notice
+    // text is in an element of its own, not a text node beside the Undo button.
+    expect(
+      Array.from(document.querySelectorAll("*")).some(
+        (el) => el.textContent?.trim() === "Arquivos voltados ao turno 2.",
+      ),
+    ).toBe(true);
 
     await click("Desfazer volta");
     await settle(() => existsSync(join(repo, "novo.txt")));
