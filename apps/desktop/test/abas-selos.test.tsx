@@ -110,21 +110,20 @@ describe("abas: selos e botão de aba nova", () => {
     render(<App store={store} />);
     const sidebarIcon = (name: string) =>
       screen.queryByRole("button", { name })?.querySelector("svg")?.getAttribute("class");
-    for (const [route, entry] of [
-      [{ name: "vault" }, "Cofre"],
-      [{ name: "personas" }, "Personas"],
-      [{ name: "conversations" }, "Conversas"],
-      [{ name: "costs" }, "Custos"],
+    for (const [route, kind, entry] of [
+      [{ name: "vault" }, "vault", "Cofre"],
+      [{ name: "history", host: "h" }, "history", "Histórico"],
+      [{ name: "needs-you" }, "needs-you", "Precisa de você"],
+      [{ name: "hub" }, "sessions", "Abrir Sessões"],
     ] as const) {
       await act(async () => {
         store.tabs.open(route);
       });
-      const tab = screen.queryAllByRole("tab").at(-1);
-      const icon = tab?.querySelector("[data-icon]");
-      expect(icon?.getAttribute("data-icon")).toBe(route.name);
-      expect(icon?.getAttribute("class")).toContain(
-        (sidebarIcon(entry) ?? "").split(" ").find((c) => c.startsWith("lucide-")) ?? "never",
-      );
+      const icon = screen.queryAllByRole("tab").at(-1)?.querySelector("[data-icon]");
+      expect(icon?.getAttribute("data-icon")).toBe(kind);
+      const drawn = (sidebarIcon(entry) ?? "").split(" ").find((c) => c.startsWith("lucide-"));
+      expect(drawn).toBeDefined();
+      expect(icon?.getAttribute("class")).toContain(drawn as string);
     }
   });
 
