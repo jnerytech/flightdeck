@@ -9,6 +9,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBusy } from "@/hooks/use-busy";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
@@ -166,21 +167,9 @@ export function ApprovalCard(props: {
   const [denying, setDenying] = useState(false);
   const [reason, setReason] = useState("");
   /** An answer is on its way: the card is busy and takes no other. */
-  const [pending, setPending] = useState(false);
-  // A ref too: two presses in the same event see the first before React renders it.
-  const sent = useRef(false);
-  const respond = (...args: Parameters<typeof props.onRespond>) => {
-    if (sent.current) return;
-    const result = props.onRespond(...args) as PromiseLike<void> | undefined;
-    if (typeof result?.then !== "function") return;
-    sent.current = true;
-    setPending(true);
-    const done = () => {
-      sent.current = false;
-      setPending(false);
-    };
-    result.then(done, done);
-  };
+  const { busy: pending, run } = useBusy();
+  const respond = (...args: Parameters<typeof props.onRespond>) =>
+    run(() => props.onRespond(...args));
   const reasonRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (denying) reasonRef.current?.focus();
