@@ -1052,6 +1052,8 @@ export const en: Dictionary = {
   tabs: {
     openInNew: "Open in new tab",
     moveToOther: "Move tab {title} to the other area",
+    moveLeft: "Move tab {title} left",
+    moveRight: "Move tab {title} right",
     split: "Split the screen",
     join: "Join the areas",
     splitHorizontal: "Split horizontally",

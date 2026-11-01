@@ -178,6 +178,14 @@ export class Tabs {
     this.emit();
   }
 
+  /** Whether the tab can move `delta` places (-1 left, 1 right) inside its own group. */
+  canShift(_id: string, _delta: -1 | 1): boolean {
+    return true;
+  }
+
+  /** Moves the tab one place left (-1) or right (1) inside its own group, as dragging does. */
+  shift(_id: string, _delta: -1 | 1): void {}
+
   /** Removes a tab without remembering it as closed, to put it in another area; may leave none. */
   take(id: string): Tab | null {
     const index = this.tabs.findIndex((tab) => tab.id === id);

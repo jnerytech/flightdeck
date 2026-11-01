@@ -44,4 +44,51 @@ describe("abas: arrastar para reordenar", () => {
     });
     expect(names()).toEqual(["Sessões", "Precisa de você"]);
   });
+
+  test("the buttons Mover para a esquerda e para a direita reordenam a aba ativa, desligados nas pontas do grupo", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      store.tabs.open({ name: "settings" });
+    });
+    const button = (name: string) => screen.queryByRole("button", { name }) as HTMLButtonElement;
+    const left = () => button("Mover a aba Configurações para a esquerda");
+    const right = () => button("Mover a aba Configurações para a direita");
+    expect(left().disabled).toBe(false);
+    expect(right().disabled).toBe(true);
+    await act(async () => {
+      fireEvent.click(left());
+    });
+    expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
+    expect(right().disabled).toBe(false);
+    await act(async () => {
+      fireEvent.click(left());
+    });
+    expect(names()).toEqual(["Configurações", "Sessões", "Precisa de você"]);
+    expect(left().disabled).toBe(true);
+    // The button that just went off was the focus: it moves to the tab, not to the page.
+    const selected = screen
+      .queryAllByRole("tab")
+      .find((tab) => tab.getAttribute("aria-selected") === "true");
+    expect(document.activeElement).toBe(selected as HTMLElement);
+    await act(async () => {
+      fireEvent.click(right());
+    });
+    expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
+  });
+
+  test("a pinned tab keeps its group: the unpinned tab next to it cannot go left past it", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      store.tabs.pin(store.tabs.tabs[0]?.id ?? "", true);
+    });
+    expect(names()).toEqual(["Sessões", "Precisa de você"]);
+    const left = screen.queryByRole("button", {
+      name: "Mover a aba Precisa de você para a esquerda",
+    }) as HTMLButtonElement;
+    expect(left.disabled).toBe(true);
+  });
 });

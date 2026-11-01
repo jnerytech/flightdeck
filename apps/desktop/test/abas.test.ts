@@ -149,6 +149,32 @@ describe("abas", () => {
     expect(ids()).toEqual(["t1", "t2", "t3"]);
   });
 
+  test("shift moves a tab one place inside its group, and canShift is off at the group's ends", () => {
+    const { tabs, ids } = setup();
+    tabs.open(hub);
+    tabs.open(costs);
+    tabs.open(settings);
+    tabs.pin("t1", true);
+    expect(ids()).toEqual(["t1", "t2", "t3", "t4"]);
+    expect(tabs.canShift("t1", -1)).toBe(false);
+    expect(tabs.canShift("t1", 1)).toBe(false);
+    expect(tabs.canShift("t2", -1)).toBe(false);
+    expect(tabs.canShift("t2", 1)).toBe(true);
+    expect(tabs.canShift("t4", 1)).toBe(false);
+    expect(tabs.canShift("t4", -1)).toBe(true);
+    expect(tabs.canShift("nope", 1)).toBe(false);
+    tabs.shift("t2", 1);
+    expect(ids()).toEqual(["t1", "t3", "t2", "t4"]);
+    tabs.shift("t4", -1);
+    expect(ids()).toEqual(["t1", "t3", "t4", "t2"]);
+    tabs.shift("t3", -1);
+    expect(ids()).toEqual(["t1", "t3", "t4", "t2"]);
+    tabs.shift("t2", 1);
+    expect(ids()).toEqual(["t1", "t3", "t4", "t2"]);
+    tabs.shift("nope", 1);
+    expect(ids()).toEqual(["t1", "t3", "t4", "t2"]);
+  });
+
   test("activating a tab that does not exist changes nothing", () => {
     const { tabs, seen } = setup();
     tabs.activate("nope");
