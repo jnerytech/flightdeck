@@ -5,6 +5,7 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
 import { useT } from "@/i18n/context";
+import type { Lang } from "@/i18n/index";
 import {
   type AppState,
   type AppStore,
@@ -29,7 +30,7 @@ import { CardDetail } from "./CardDetail.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
 import { ConnectionsPage } from "./ConnectionsPage.tsx";
 import { ConversationsPage } from "./ConversationsPage.tsx";
-import { CostsPage } from "./CostsPage.tsx";
+import { CostsPage, type TopSession } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { HistoryList } from "./HistoryList.tsx";
@@ -346,6 +347,47 @@ export function Screen(props: ScreenProps) {
   );
 }
 
+/**
+ * Props that are functions keep their identity between renders, so the `memo` of the page they go
+ * to holds: one set per store, one opener per `go`.
+ */
+const SETTINGS_ACTIONS = new WeakMap<AppStore, ReturnType<typeof makeSettingsActions>>();
+function makeSettingsActions(store: AppStore) {
+  return {
+    onCloseToTray: (enabled: boolean) => void store.setCloseToTray(enabled),
+    onAutostart: (enabled: boolean) => void store.setAutostart(enabled),
+    onGlobalShortcut: (text: string) => void store.setGlobalShortcut(text),
+    onCheckUpdate: () => void store.checkAppUpdate(),
+    onNotifyUpdates: (enabled: boolean) => store.setNotifyUpdates(enabled),
+    onTheme: (mode: ThemeMode) => store.theme.setMode(mode),
+    onDensity: (density: Density) => store.density.set(density),
+    onLang: (next: Lang) => store.i18n.setLang(next),
+  };
+}
+function settingsActions(store: AppStore) {
+  const known = SETTINGS_ACTIONS.get(store);
+  if (known) return known;
+  const actions = makeSettingsActions(store);
+  SETTINGS_ACTIONS.set(store, actions);
+  return actions;
+}
+
+type OpenCostSession = (hostId: string, session: TopSession) => void;
+const COSTS_OPENERS = new WeakMap<(route: Route) => void, OpenCostSession>();
+function costsOpener(go: (route: Route) => void): OpenCostSession {
+  let opener = COSTS_OPENERS.get(go);
+  if (!opener) {
+    opener = (hostId, session) =>
+      go(
+        session.sessionId
+          ? { name: "session", host: hostId, id: session.sessionId }
+          : { name: "reader", target: { hostId, claudeSessionId: session.claudeSessionId } },
+      );
+    COSTS_OPENERS.set(go, opener);
+  }
+  return opener;
+}
+
 /** What a route shows on its own; `null` is the Sessões screen with nothing open. */
 function routeScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
@@ -369,18 +411,11 @@ function routeScreen(props: ScreenProps): ReactNode {
       <Settings
         store={store}
         settings={state.settings}
-        onCloseToTray={(enabled) => void store.setCloseToTray(enabled)}
-        onAutostart={(enabled) => void store.setAutostart(enabled)}
-        onGlobalShortcut={(text) => void store.setGlobalShortcut(text)}
+        {...settingsActions(store)}
         appUpdate={state.appUpdate}
-        onCheckUpdate={() => void store.checkAppUpdate()}
-        onNotifyUpdates={(enabled) => store.setNotifyUpdates(enabled)}
         theme={props.theme}
-        onTheme={(mode) => store.theme.setMode(mode)}
         density={props.density}
-        onDensity={(density) => store.density.set(density)}
         lang={store.i18n.lang}
-        onLang={(next) => store.i18n.setLang(next)}
         t={store.i18n.t}
       />
     );
@@ -415,18 +450,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "connections":
       return <ConnectionsPage store={store} go={go} connect={route.connect} />;
     case "costs":
-      return (
-        <CostsPage
-          store={store}
-          onOpenSession={(hostId, session) =>
-            go(
-              session.sessionId
-                ? { name: "session", host: hostId, id: session.sessionId }
-                : { name: "reader", target: { hostId, claudeSessionId: session.claudeSessionId } },
-            )
-          }
-        />
-      );
+      return <CostsPage store={store} onOpenSession={costsOpener(go)} />;
     case "vault":
       return (
         <VaultPage
