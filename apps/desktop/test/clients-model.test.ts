@@ -225,13 +225,13 @@ describe("clients-model: overrides and defaults", () => {
 });
 
 describe("clients-model: export and import", () => {
-  test("an export carries the clients and the overrides, and nothing else", () => {
+  test("an export carries the clients, the overrides and the limits, and nothing else", () => {
     const { clients } = setup();
     clients.add("Acme");
     clients.addRule("id1", { kind: "remote", pattern: "github.com/acme/*" });
     clients.setOverride("github.com/x/a", "id1");
     const out = JSON.parse(clients.exportJson());
-    expect(Object.keys(out).sort()).toEqual(["clients", "overrides", "v"]);
+    expect(Object.keys(out).sort()).toEqual(["budgets", "clients", "overrides", "v"]);
     expect(out.clients[0]?.name).toBe("Acme");
     expect(out.overrides).toEqual({ "github.com/x/a": "id1" });
   });
@@ -295,5 +295,59 @@ describe("clients-model: telling the app", () => {
     expect(told).toBe(4);
     clients.remove("id1");
     expect(told).toBe(5);
+  });
+});
+
+describe("clients-model: the month budget of a client", () => {
+  test("a limit is kept for a client that exists, and read back", () => {
+    const { clients, again } = setup();
+    clients.add("Acme");
+    expect(clients.setBudget("id1", 120)).toBe(true);
+    expect(clients.budgets()).toEqual({ id1: 120 });
+    expect(again().budgets()).toEqual({ id1: 120 });
+    expect(clients.setBudget("id1", 80)).toBe(true);
+    expect(clients.budgets()).toEqual({ id1: 80 });
+  });
+
+  test("a limit that is not positive, or for a client that is gone, is refused", () => {
+    const { clients } = setup();
+    clients.add("Acme");
+    for (const limit of [0, -5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(clients.setBudget("id1", limit)).toBe(false);
+    }
+    expect(clients.setBudget("nope", 10)).toBe(false);
+    expect(clients.budgets()).toEqual({});
+  });
+
+  test("a limit is cleared, and goes with its client", () => {
+    const { clients } = setup();
+    clients.add("Acme");
+    clients.add("Beta");
+    clients.setBudget("id1", 10);
+    clients.setBudget("id2", 20);
+    clients.clearBudget("id1");
+    clients.clearBudget("never");
+    expect(clients.budgets()).toEqual({ id2: 20 });
+    clients.remove("id2");
+    expect(clients.budgets()).toEqual({});
+  });
+
+  test("a value stored before budgets existed reads with none", () => {
+    const stored = JSON.stringify({ v: 1, clients: [], overrides: {} });
+    expect(setup(stored).clients.budgets()).toEqual({});
+  });
+
+  test("export carries the limits, and import merges those of clients that exist", () => {
+    const mine = setup();
+    mine.clients.add("Acme");
+    mine.clients.setBudget("id1", 10);
+    const theirs = setup();
+    theirs.clients.add("Acme renamed");
+    theirs.clients.setBudget("id1", 99);
+    const dump = JSON.parse(theirs.clients.exportJson());
+    expect(dump.budgets).toEqual({ id1: 99 });
+    dump.budgets.ghost = 5;
+    mine.clients.importJson(JSON.stringify(dump));
+    expect(mine.clients.budgets()).toEqual({ id1: 99 });
   });
 });
