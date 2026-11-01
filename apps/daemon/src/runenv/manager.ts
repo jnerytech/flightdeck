@@ -132,16 +132,14 @@ export class RunManager {
     const entry = this.entries.get(cardId);
     if (!entry || !LIVE.has(entry.status)) return this.state(cardId);
     entry.stopped = true;
-    const exits: Promise<number>[] = [];
+    const exits: Array<Promise<unknown>> = [];
     if (entry.setup === "running" && entry.setupTerminalId && entry.setupExited) {
-      this.opts.host.kill(entry.setupTerminalId);
-      exits.push(entry.setupExited);
+      exits.push(Promise.resolve(this.opts.host.kill(entry.setupTerminalId)), entry.setupExited);
       entry.setup = "pending";
     }
     for (const process of entry.processes) {
       if (process.status !== "running") continue;
-      this.opts.host.kill(process.terminalId);
-      exits.push(process.exited);
+      exits.push(Promise.resolve(this.opts.host.kill(process.terminalId)), process.exited);
     }
     await Promise.all(exits);
     entry.status = "ended";
@@ -281,8 +279,9 @@ export class RunManager {
   private async fail(entry: Entry, error: StartError): Promise<void> {
     entry.stopped = true;
     const running = entry.processes.filter((p) => p.status === "running");
-    for (const process of running) this.opts.host.kill(process.terminalId);
-    await Promise.all(running.map((p) => p.exited));
+    await Promise.all(
+      running.flatMap((p) => [Promise.resolve(this.opts.host.kill(p.terminalId)), p.exited]),
+    );
     if (entry.setup === "running" || entry.status === "setup") entry.setup = "failed";
     entry.status = "failed";
     entry.error = `não consegui iniciar ${error.what}: ${error.message}`;

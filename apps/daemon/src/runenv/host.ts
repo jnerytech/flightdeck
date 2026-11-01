@@ -14,27 +14,26 @@ export interface TreeKillDeps {
  * process group on Linux (the PTY's child leads its own), `taskkill /T /F` on Windows. A tree that
  * is already gone is not an error.
  */
-export function killTree(pid: number, deps: TreeKillDeps = {}): Promise<void> {
+export async function killTree(pid: number, deps: TreeKillDeps = {}): Promise<void> {
   // Never this daemon's own group (-pid would be it), init's, or a pid that is not one.
-  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return Promise.resolve();
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return;
   const platform = deps.platform ?? process.platform;
   try {
-    if (platform === "win32")
-      // Not waited for: the tree is gone when taskkill ends, and the daemon has other things to do.
-      (deps.run ?? ((cmd) => void Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" })))([
-        "taskkill",
-        "/PID",
-        String(pid),
-        "/T",
-        "/F",
-      ]);
-    else (deps.signal ?? process.kill)(-pid, "SIGKILL");
+    if (platform === "win32") {
+      // Settles when taskkill ends: whoever waits for it can then use the tree's files and ports.
+      await (deps.run ?? runTaskkill)(["taskkill", "/PID", String(pid), "/T", "/F"]);
+    } else (deps.signal ?? process.kill)(-pid, "SIGKILL");
   } catch {
     // Already gone, or taskkill is not there: nothing left to end.
   }
-  return Promise.resolve();
 }
 
+/** Runs `taskkill` and settles when it has exited, without holding the event loop meanwhile. */
+async function runTaskkill(argv: string[]): Promise<void> {
+  await Bun.spawn(argv, { stdout: "ignore", stderr: "ignore" }).exited;
+}
+
+/** Ends a process tree; may return a promise that settles when the tree is gone. */
 export type TreeKiller = (pid: number) => unknown;
 
 /** The run environment's processes as tabs: each one a terminal of the host's terminal manager. */
@@ -62,9 +61,11 @@ export function terminalRunHost(
     kill: async (terminalId) => {
       const pid = manager.pidOf(terminalId);
       if (pid === null) return;
-      // The tree first, while its leader lives: after it, the children could not be found.
-      treeKill(pid);
+      // The tree first, while its leader lives: after it, the children could not be found. The
+      // terminal closes at once; this settles when the tree is gone.
+      const tree = treeKill(pid);
       manager.close(terminalId, true);
+      await tree;
     },
   };
 }

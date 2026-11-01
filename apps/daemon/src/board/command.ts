@@ -9,7 +9,7 @@ export interface CommandResult {
 }
 
 /** Kills a process and everything it started: `taskkill /T` on Windows, the process group elsewhere. */
-export function killTree(
+export async function killTree(
   pid: number,
   platform: string = process.platform,
   kill: (pid: number, signal: string) => void = process.kill,
@@ -22,10 +22,10 @@ export function killTree(
 ): Promise<void> {
   // Only a child's pid: a group kill with the daemon's own, 1 or a negative one would reach the
   // daemon or other processes.
-  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return Promise.resolve();
-  if (platform === "win32") spawn(["taskkill", "/PID", String(pid), "/T", "/F"]);
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return;
+  // Settles when taskkill ends: the caller can then use the tree's files and ports.
+  if (platform === "win32") await spawn(["taskkill", "/PID", String(pid), "/T", "/F"]);
   else kill(-pid, "SIGKILL");
-  return Promise.resolve();
 }
 
 /**
@@ -51,12 +51,13 @@ export async function runCommand(
     detached: timeoutMs !== undefined && process.platform !== "win32",
   });
   let timedOut = false;
+  let killing: Promise<void> = Promise.resolve();
   const timer =
     timeoutMs === undefined
       ? null
       : setTimeout(() => {
           timedOut = true;
-          killTree(proc.pid);
+          killing = kill(proc.pid).catch(() => {});
         }, timeoutMs);
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -64,6 +65,9 @@ export async function runCommand(
     proc.exited,
   ]);
   if (timer) clearTimeout(timer);
+  // A command that ran out of time is not given back before its tree is gone: its caller may
+  // remove the folder it ran in.
+  await killing;
   return { code, stdout, stderr, ...(timedOut ? { timedOut } : {}) };
 }
 
