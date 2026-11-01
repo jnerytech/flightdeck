@@ -1,6 +1,6 @@
 import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
-import { ALL_CLIENTS } from "./client-scope.ts";
+import { ALL_CLIENTS, selectedClient, tagsFirst } from "./client-scope.ts";
 import { UNASSIGNED } from "./clients.ts";
 import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
@@ -279,12 +279,24 @@ export function paletteSections(
       keywords: [...snippet.tags, snippet.run ?? snippet.text ?? ""].join("\n"),
     };
   };
-  const snippets = [
-    ...online.flatMap((host) =>
-      (state.snippets?.[host.id] ?? []).map((s) => snippetItem(s, host.id, host.name)),
-    ),
-    ...(options.globalSnippets ?? []).map((s) => snippetItem(s, null, t("snippets.origin.global"))),
-  ];
+  // The selected client's snippets (those with its tag) come first (phase 29).
+  const clientTag = selectedClient(state.clientList ?? [], state.clientSelection)?.defaults
+    .snippetTag;
+  const snippets = tagsFirst(
+    [
+      ...online.flatMap((host) =>
+        (state.snippets?.[host.id] ?? []).map((s) => ({
+          tags: s.tags,
+          item: snippetItem(s, host.id, host.name),
+        })),
+      ),
+      ...(options.globalSnippets ?? []).map((s) => ({
+        tags: s.tags,
+        item: snippetItem(s, null, t("snippets.origin.global")),
+      })),
+    ],
+    clientTag,
+  ).map(({ item }) => item);
 
   const needle = query.trim().toLowerCase();
   const matches = (item: PaletteItem) =>

@@ -6,6 +6,7 @@ import {
   type RuleInput,
   UNASSIGNED,
 } from "./clients.ts";
+import { isInside } from "./paths.ts";
 
 /** Where the selected client is kept between starts. */
 export const CLIENT_SELECTION_KEY = "flightdeck.clientFilter";
@@ -68,6 +69,21 @@ export class ClientScope {
   /** The projects the app knows, with the folders their sessions ran in. */
   get knownProjects(): KnownProject[] {
     return [...this.projects.values()];
+  }
+
+  /** The client by its id; null for Unassigned or an id that is gone. */
+  client(id: string): Client | null {
+    return this.data.clients.find((c) => c.id === id) ?? null;
+  }
+
+  /** The client a folder of a host belongs to: the project it is in, else the rules for a folder. */
+  clientOfFolder(hostId: string, path: string): string {
+    const holder = [...this.projects.values()].find((p) =>
+      p.cwds.some((c) => c.hostId === hostId && isInside(path, c.path)),
+    );
+    if (holder) return this.clientOf(holder.key);
+    // A folder no project is known in: only a folder rule can claim it.
+    return resolveClient({ key: `host:?:${path}`, cwds: [{ hostId, path }] }, this.data).clientId;
   }
 
   /** The keys of the projects a rule would claim right now, for its preview. */
@@ -139,4 +155,19 @@ export function sessionProjectKeys(
     for (const id of [row.sessionId, row.claudeSessionId]) if (id) keys.set(id, row.projectKey);
   }
   return keys;
+}
+
+/** The client the selection names; null for all clients, Unassigned or a client that is gone. */
+export function selectedClient(clients: Client[], selection: string): Client | null {
+  return clients.find((c) => c.id === selection) ?? null;
+}
+
+/** `items` with those carrying `tag` first, each group in its own order; unchanged without a tag. */
+export function tagsFirst<T extends { tags: readonly string[] }>(
+  items: readonly T[],
+  tag: string | undefined,
+): T[] {
+  if (tag === undefined) return [...items];
+  const tagged = (item: T) => item.tags.includes(tag);
+  return [...items.filter(tagged), ...items.filter((item) => !tagged(item))];
 }
