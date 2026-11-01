@@ -1,11 +1,13 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { ActionButton } from "@/components/feedback/action-button";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState } from "@/components/layout/states";
 import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import { formatAgo } from "../i18n/format.ts";
+import type { Key } from "../i18n/index.ts";
 import {
   type AppState,
   type AppStore,
@@ -18,11 +20,13 @@ import { budgetAlerts } from "../lib/budgets.ts";
 import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
 import { inputSummary } from "../lib/tool-input.ts";
+import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
 /** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
 type Entry =
   | { kind: "alert"; key: string; label: string }
   | { kind: "loop"; key: string; alert: LoopAlert }
+  | { kind: "watch"; key: string; alert: WatchAlert }
   | { kind: "request"; key: string; item: PendingItem };
 
 const ROW =
@@ -46,6 +50,11 @@ export function NeedsYou(props: {
     ...state.loopAlerts.map((alert) => ({
       kind: "loop" as const,
       key: `loop/${alert.hostId}/${loopPairKey(alert)}`,
+      alert,
+    })),
+    ...watchAlerts(state).map((alert) => ({
+      kind: "watch" as const,
+      key: `watch/${alert.hostId}/${alert.cardId}`,
       alert,
     })),
     ...needsYou(state).map((item) => ({
@@ -117,6 +126,32 @@ export function NeedsYou(props: {
               </li>
             );
           }
+          if (entry.kind === "watch") {
+            const label = t("watchUi.entry", {
+              card: entry.alert.title,
+              reason: entry.alert.watch.reason ?? "",
+            });
+            return (
+              <li key={entry.key}>
+                <button
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={selected === entry.key}
+                  data-active={cursor === i}
+                  className={ROW}
+                  onClick={() => {
+                    setCursor(i);
+                    open(entry);
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
+                    <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          }
           if (entry.kind === "loop") {
             return (
               <li key={entry.key}>
@@ -178,7 +213,42 @@ export function NeedsYou(props: {
 
   const item = chosen?.kind === "request" ? chosen.item : null;
   const loop = chosen?.kind === "loop" ? chosen.alert : null;
-  const detail = loop ? (
+  const watching = chosen?.kind === "watch" ? chosen.alert : null;
+  const detail = watching ? (
+    <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+      <h2 className="font-semibold text-base">{t("watchUi.notifyTitle")}</h2>
+      <p className="text-sm">{watching.title}</p>
+      <p className="text-sm">{t("watchUi.needsYou", { reason: watching.watch.reason ?? "" })}</p>
+      <ul className="flex flex-col gap-1 text-sm">
+        {watching.watch.rounds.map((round) => (
+          <li key={round.id}>
+            {t("watchUi.round", { n: round.n, status: t(`watchUi.status.${round.status}` as Key) })}
+            {round.summary ? ` — ${round.summary}` : ""}
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        <ActionButton onClick={() => store.setWatch(watching.hostId, watching.cardId, true)}>
+          {t("watchUi.resume")}
+        </ActionButton>
+        {watching.projectId && (
+          <Button
+            variant="outline"
+            onClick={() =>
+              go({
+                name: "card",
+                host: watching.hostId,
+                projectId: watching.projectId as string,
+                cardId: watching.cardId,
+              })
+            }
+          >
+            {t("watchUi.openCard")}
+          </Button>
+        )}
+      </div>
+    </div>
+  ) : loop ? (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
       <h2 className="font-semibold text-base">{t("needsYou.loopTitle")}</h2>
       <p className="text-sm">{loop.message}</p>

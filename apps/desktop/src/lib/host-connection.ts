@@ -26,6 +26,7 @@ import {
   type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
+  type WatchUpdatedFrame,
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { backoffDelay } from "./backoff.ts";
@@ -83,6 +84,8 @@ export interface HostConnectionOptions {
   onTeams?(frame: TeamsUpdatedFrame): void;
   /** Phase 21: the daemon paused a pair of sessions caught in a loop. */
   onMessagingAlert?(alert: MessagingAlertFrame): void;
+  /** Phase 22: a card's PR watch changed (a round started or ended, or it needs you). */
+  onWatch?(frame: WatchUpdatedFrame): void;
   /** A workflow run of the host changed (after `watchRuns`). */
   onRunUpdated?(run: WorkflowRun): void;
   /** The host's plan quota changed (after `watchQuota`). */
@@ -188,6 +191,7 @@ export class HostConnection {
       if (message.type === "vault.alert") return this.opts.onVaultAlert?.(message);
       if (message.type === "teams.updated") return this.opts.onTeams?.(message);
       if (message.type === "messaging.alert") return this.opts.onMessagingAlert?.(message);
+      if (message.type === "watch.updated") return this.opts.onWatch?.(message);
       if (message.type === "messages.relay" || message.type === "messages.updated") {
         return this.opts.onMessages?.(message);
       }

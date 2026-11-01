@@ -28,6 +28,7 @@ import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
 import type { Route } from "../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
+import { watchAlerts } from "../lib/watch-alerts.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
 
@@ -114,7 +115,11 @@ export function Sidebar(props: {
     (state.selected && state.hosts.find((h) => h.id === state.selected?.hostId)) ||
     state.hosts.find((h) => h.status === "online") ||
     state.hosts[0];
-  const pending = needsYou(state).length + budgetAlerts(state).length + state.loopAlerts.length;
+  const pending =
+    needsYou(state).length +
+    budgetAlerts(state).length +
+    state.loopAlerts.length +
+    watchAlerts(state).length;
   const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
   const [hostsOpen, setHostsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(true);

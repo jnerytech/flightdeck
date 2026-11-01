@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
+import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -51,6 +53,8 @@ export function CardDetail(props: {
   /** Phase 13: the arena's comparison, the start form and the variant being chosen. */
   const [arena, setArena] = useState<Arena | null>(null);
   const [arenaForm, setArenaForm] = useState(false);
+  /** Phase 22: the PR description offered for the person to edit, before the PR opens. */
+  const [draft, setDraft] = useState<{ text: string; redacted: number } | null>(null);
   const [choosing, setChoosing] = useState<ArenaVariant | null>(null);
   const sessionId = card?.sessionId ?? null;
   const host = props.state.hosts.find((h) => h.id === hostId);
@@ -173,6 +177,15 @@ export function CardDetail(props: {
       confirm: true,
     });
     if (chosen) setArena(null);
+  };
+
+  const withWatch = hasFeature(host?.hostInfo?.features, "watch", false);
+  /** Opens the PR: where the host watches PRs, the description is offered first and nothing opens until it is confirmed. */
+  const openPr = async () => {
+    if (!withWatch) return store.hostCommand(hostId, "card.pr.create", { cardId });
+    const offered = await store.describePr(hostId, cardId);
+    if (offered) setDraft(offered);
+    return undefined;
   };
 
   const sendAdjustment = () => {
@@ -308,7 +321,7 @@ export function CardDetail(props: {
             variant="outline"
             disabled={!card.worktreePath || Boolean(card.prUrl)}
             disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
-            onClick={() => store.hostCommand(hostId, "card.pr.create", { cardId })}
+            onClick={() => openPr()}
           >
             {t("cardUi.openPr")}
           </ActionButton>
@@ -332,6 +345,18 @@ export function CardDetail(props: {
             {t("cardUi.discard")}
           </Button>
         </div>
+        {withWatch && card.prUrl && <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />}
+        {draft && (
+          <PrDescriptionDialog
+            text={draft.text}
+            redacted={draft.redacted}
+            onCancel={() => setDraft(null)}
+            onConfirm={async (description) => {
+              setDraft(null);
+              await store.hostCommand(hostId, "card.pr.create", { cardId, description });
+            }}
+          />
+        )}
         {confirming && (
           <ConfirmDialog
             message={

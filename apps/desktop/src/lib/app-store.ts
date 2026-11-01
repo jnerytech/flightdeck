@@ -39,6 +39,7 @@ import type {
   TerminalInfo,
   VaultRequestFrame,
   VaultVerdict,
+  WatchInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
@@ -185,6 +186,8 @@ export interface AppState {
   names: Record<string, SessionNameInfo[]>;
   /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */
   loopAlerts: LoopAlert[];
+  /** Phase 22: the PR watch of each card that has been looked at or changed, by `sessionKey(hostId, cardId)`. */
+  watches: Record<string, WatchInfo>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
   runs: Record<string, WorkflowRun>;
   /** Managed and history lists of each host for the Sessões screen. */
@@ -267,6 +270,7 @@ export type HostCommandType = Extract<
   | "messaging.rules.set"
   | "messages.list"
   | `teams.${string}`
+  | `watch.${string}`
   | "messages.sessions"
   | "messages.send"
   | "messages.relay"
@@ -628,6 +632,7 @@ export class AppStore {
       snippetChoice: null,
       personas: {},
       loopAlerts: [],
+      watches: {},
       names: {},
       askpass: [],
       secrets: new Vault(platform).list(),
@@ -1614,6 +1619,7 @@ export class AppStore {
         }
       },
       onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
+      onWatch: (frame) => this.keepWatch(config.id, frame.watch),
       onMessages: (frame) => {
         if (frame.type === "messages.updated") {
           for (const listener of this.messageListeners) listener(config.id, frame.message);
@@ -1735,6 +1741,9 @@ export class AppStore {
       void conn.request("askpass.watch", {}).catch(() => null);
     }
     // Phase 21: this app carries the host's messages for the other hosts.
+    if (hasFeature(hostInfo?.features, "watch", false)) {
+      void conn.request("watch.watch", {}).catch(() => null);
+    }
     if (hasFeature(hostInfo?.features, "teams", false)) {
       void conn.request("teams.watch", {}).catch(() => null);
     }
@@ -2233,6 +2242,37 @@ export class AppStore {
   private readonly resyncing = new Map<string, "asked" | "answered">();
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
+
+  /** Phase 22: keeps a card's watch; a card that starts to need you is told to the OS. */
+  private keepWatch(hostId: string, watch: WatchInfo): void {
+    const key = sessionKey(hostId, watch.cardId);
+    const before = this.state.watches[key];
+    this.update({ watches: { ...this.state.watches, [key]: watch } });
+    if (watch.status === "needs_you" && before?.status !== "needs_you") {
+      const title = this.state.cards[key]?.title ?? watch.cardId;
+      void this.platform.notify({
+        title: this.i18n.t("watchUi.notifyTitle"),
+        body: `${title}: ${watch.reason ?? ""}`,
+      });
+    }
+  }
+
+  /** Phase 22: reads a card's watch from its host. */
+  async loadWatch(hostId: string, cardId: string): Promise<void> {
+    const watch = await this.hostCommand(hostId, "watch.get", { cardId });
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Phase 22: turns the watch of a card's PR on or off (`null`: the project's default). */
+  async setWatch(hostId: string, cardId: string, enabled: boolean | null): Promise<void> {
+    const watch = await this.hostCommand(hostId, "watch.set", { cardId, enabled });
+    if (watch) this.keepWatch(hostId, watch);
+  }
+
+  /** Phase 22: the PR description made from the card's sessions, for the person to edit. */
+  describePr(hostId: string, cardId: string) {
+    return this.hostCommand(hostId, "watch.describe", { cardId });
+  }
 
   /** Phase 21: a paused loop waits in "Precisa de você" (once per pair) and the OS shows it. */
   private onLoopAlert(hostId: string, frame: MessagingAlertFrame): void {
