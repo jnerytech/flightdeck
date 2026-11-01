@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
-import { trimTrailingSeparators } from "../lib/paths.ts";
+import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { FolderPicker } from "./FolderPicker.tsx";
 
@@ -54,14 +54,7 @@ export function NewSessionForm(props: {
   const pick = (path: string) => {
     setBrowsing(false);
     // The configured root that holds it, the longest one; its rest is the subfolder.
-    const holder = roots
-      .filter(
-        (r) =>
-          path === r ||
-          path.startsWith(`${trimTrailingSeparators(r)}/`) ||
-          path.startsWith(`${trimTrailingSeparators(r)}\\`),
-      )
-      .sort((a, b) => b.length - a.length)[0];
+    const holder = roots.filter((r) => isInside(path, r)).sort((a, b) => b.length - a.length)[0];
     if (holder) {
       setRoot(holder);
       setSub(path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""));

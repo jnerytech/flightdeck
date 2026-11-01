@@ -13,19 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import { breadcrumbSteps, isInside } from "../lib/paths.ts";
 import { isLocalUrl } from "../lib/terminal.ts";
-
-/** The steps from a root down to `path`: each with the path it opens. */
-function steps(path: string, root: string): Array<{ name: string; path: string }> {
-  const sep = root.includes("\\") ? "\\" : "/";
-  const rest = path.slice(root.length).split(/[\\/]/).filter(Boolean);
-  const out = [{ name: root.split(/[\\/]/).filter(Boolean).at(-1) ?? root, path: root }];
-  for (const part of rest) {
-    const last = out.at(-1)?.path ?? root;
-    out.push({ name: part, path: `${last.replace(/[\\/]+$/, "")}${sep}${part}` });
-  }
-  return out;
-}
 
 /**
  * A folder of a host, chosen by browsing the folders it allows (`fs.dirs`): the roots, then
@@ -75,8 +64,8 @@ export function FolderPicker(props: {
     void openRef.current(shown.current);
   }, [hidden]);
 
-  const root = listing?.path ? roots.find((r) => listing.path?.startsWith(r)) : undefined;
-  const crumbs = listing?.path && root ? steps(listing.path, root) : [];
+  const root = listing?.path ? roots.find((r) => isInside(listing.path as string, r)) : undefined;
+  const crumbs = listing?.path && root ? breadcrumbSteps(listing.path, root) : [];
   const nativeDialog = store.canPickFolder() && isLocalUrl(host.url);
 
   const chooseWithSystem = async () => {
