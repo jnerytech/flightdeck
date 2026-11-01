@@ -68,8 +68,18 @@ const COLS: Record<keyof GridCols, Record<Columns, string>> = {
   },
 };
 
+/** The element a stack or an inline row renders as: a list takes `li` children. */
+export type ListTag = "div" | "ul" | "ol";
+
 /** Vertical stack with a gap of the scale. */
-export function Stack(props: { gap?: Gap; className?: string; children: ReactNode }) {
+export function Stack(props: {
+  gap?: Gap;
+  as?: ListTag;
+  /** Names the stack for assistive technology (a list says what it lists). */
+  label?: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div className={cn("flex flex-col", GAPS[props.gap ?? 4], props.className)}>
       {props.children}
@@ -78,7 +88,13 @@ export function Stack(props: { gap?: Gap; className?: string; children: ReactNod
 }
 
 /** Horizontal row that wraps, with a gap of the scale. */
-export function Inline(props: { gap?: Gap; className?: string; children: ReactNode }) {
+export function Inline(props: {
+  gap?: Gap;
+  as?: ListTag;
+  label?: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div
       className={cn("flex flex-row flex-wrap items-center", GAPS[props.gap ?? 2], props.className)}

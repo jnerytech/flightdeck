@@ -10,6 +10,10 @@ export function ListRow(props: {
   title: ReactNode;
   meta?: ReactNode;
   trailing?: ReactNode;
+  /** A bordered row with padding, for a list of items one picks from. */
+  boxed?: boolean;
+  /** The row of the item that is open. */
+  selected?: boolean;
   className?: string;
 }) {
   return (
