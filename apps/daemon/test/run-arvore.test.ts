@@ -150,4 +150,28 @@ describe("run-arvore: whoever kills a tree and then uses its files or ports wait
     await idling;
     expect(idle).toBe(true);
   });
+
+  test("a kill that fails rejects that stop, and idle still settles", async () => {
+    const fake = fakeRunHost();
+    const host = {
+      ...fake.host,
+      kill: async () => {
+        throw new Error("taskkill failed");
+      },
+    };
+    const store = new EventStore(":memory:");
+    const manager = new RunManager({
+      db: store.db,
+      configs: { resolve: async () => runConfig({ setup: null }) },
+      ports: new CardPorts({ db: store.db, isFree: async () => true }),
+      host,
+      card: (cardId) => ({ id: cardId, projectId: "proj", worktreePath: `/work/${cardId}` }),
+      project: (id) => ({ id, path: "/repo", baseBranch: "main" }),
+    });
+    await manager.start("card-a");
+    const deadline = Date.now() + 1000;
+    while (fake.spawned.length < 2 && Date.now() < deadline) await Bun.sleep(5);
+    await expect(manager.stop("card-a")).rejects.toThrow("taskkill failed");
+    await manager.idle();
+  });
 });
