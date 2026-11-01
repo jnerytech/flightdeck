@@ -1,19 +1,17 @@
 import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
+import { AppDialogContent } from "@/components/feedback/dialog-content";
+import { Field, Form } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
+import { Panel } from "@/components/layout/panel";
+import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { InstallDialog, type InstallSource } from "@/components/plugins/install-dialog";
 import { InventoryView } from "@/components/plugins/inventory-view";
 import { UpdateDialog } from "@/components/plugins/update-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
@@ -116,178 +114,194 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             <TabsTrigger value="marketplaces">{t("pluginsUi.tabMarketplaces")}</TabsTrigger>
           </TabsList>
           <TabsContent value="installed">
-            <div className="mb-3 flex flex-col gap-1 text-sm">
-              <label htmlFor="plugins-folder">{t("pluginsUi.folder")}</label>
-              <div className="flex gap-2">
-                <Input
-                  id="plugins-folder"
-                  value={folder}
-                  onChange={(e) => setFolder(e.target.value)}
-                />
-                <Button
-                  variant="outline"
-                  disabled={folder.trim() === ""}
-                  onClick={() => setInstalling({ dir: folder.trim() })}
-                >
-                  {t("pluginsUi.folderPreview")}
-                </Button>
-              </div>
-            </div>
-            {list.installed.length === 0 && <EmptyState title={t("pluginsUi.noneInstalled")} />}
-            <ul aria-label={t("pluginsUi.installedList")} className="flex flex-col gap-2">
-              {list.installed.map((plugin) => (
-                <li
-                  key={`${plugin.id}/${plugin.scope}`}
-                  className="flex flex-col gap-2 rounded-lg border p-3"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span data-name className="font-medium">
-                      {plugin.name}
-                    </span>
-                    <Badge variant="secondary">{plugin.version}</Badge>
-                    <Badge variant="outline">{plugin.scope}</Badge>
-                    <Badge variant="outline">
-                      {plugin.enabled ? t("pluginsUi.enabled") : t("pluginsUi.disabled")}
-                    </Badge>
-                    {plugin.inventory?.attention && (
-                      <Badge variant="destructive">{t("pluginsUi.attention")}</Badge>
-                    )}
-                    {plugin.pinned && (
-                      <Badge variant="outline">
-                        {t("pluginsUi.pinned", { version: plugin.pinned.version })}
-                      </Badge>
-                    )}
-                    <span className="flex-1" />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={plugin.pinned !== null}
-                      aria-label={t("pluginsUi.update", { name: plugin.name })}
-                      onClick={() => setUpdating(plugin)}
-                    >
-                      {t("pluginsUi.updateShort")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={
-                        plugin.pinned
-                          ? t("pluginsUi.unpin", { name: plugin.name })
-                          : t("pluginsUi.pin", { name: plugin.name })
-                      }
-                      onClick={() => void pin(plugin)}
-                    >
-                      {plugin.pinned ? t("pluginsUi.unpinShort") : t("pluginsUi.pinShort")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={t("pluginsUi.remove", { name: plugin.name })}
-                      onClick={() => setAsking({ kind: "remove", plugin })}
-                    >
-                      {t("pluginsUi.removeShort")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={t("pluginsUi.see", { name: plugin.name })}
-                      onClick={() => setLooking(plugin)}
-                    >
-                      {t("pluginsUi.seeShort")}
-                    </Button>
-                  </div>
-                  {plugin.errors.map((error) => (
-                    <p key={error} className="text-status-needs-you text-sm">
-                      {error}
-                    </p>
-                  ))}
-                </li>
-              ))}
-            </ul>
+            <Stack gap={3}>
+              <Form
+                variant="inline"
+                onSubmit={() => folder.trim() !== "" && setInstalling({ dir: folder.trim() })}
+              >
+                <Field label={t("pluginsUi.folder")}>
+                  {(control) => (
+                    <Inline gap={2}>
+                      <Input
+                        {...control}
+                        className="flex-1"
+                        value={folder}
+                        onChange={(e) => setFolder(e.target.value)}
+                      />
+                      <Button type="submit" variant="outline" disabled={folder.trim() === ""}>
+                        {t("pluginsUi.folderPreview")}
+                      </Button>
+                    </Inline>
+                  )}
+                </Field>
+              </Form>
+              {list.installed.length === 0 && <EmptyState title={t("pluginsUi.noneInstalled")} />}
+              <Stack as="ul" gap={2} label={t("pluginsUi.installedList")}>
+                {list.installed.map((plugin) => (
+                  <Panel as="li" size="sm" key={`${plugin.id}/${plugin.scope}`}>
+                    <Inline gap={2} className="justify-between">
+                      <Inline gap={2}>
+                        <span data-name className="font-medium">
+                          {plugin.name}
+                        </span>
+                        <Badge variant="secondary">{plugin.version}</Badge>
+                        <Badge variant="outline">{plugin.scope}</Badge>
+                        <Badge variant="outline">
+                          {plugin.enabled ? t("pluginsUi.enabled") : t("pluginsUi.disabled")}
+                        </Badge>
+                        {plugin.inventory?.attention && (
+                          <Badge variant="destructive">{t("pluginsUi.attention")}</Badge>
+                        )}
+                        {plugin.pinned && (
+                          <Badge variant="outline">
+                            {t("pluginsUi.pinned", { version: plugin.pinned.version })}
+                          </Badge>
+                        )}
+                      </Inline>
+                      <Inline gap={2}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={plugin.pinned !== null}
+                          aria-label={t("pluginsUi.update", { name: plugin.name })}
+                          onClick={() => setUpdating(plugin)}
+                        >
+                          {t("pluginsUi.updateShort")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={
+                            plugin.pinned
+                              ? t("pluginsUi.unpin", { name: plugin.name })
+                              : t("pluginsUi.pin", { name: plugin.name })
+                          }
+                          onClick={() => void pin(plugin)}
+                        >
+                          {plugin.pinned ? t("pluginsUi.unpinShort") : t("pluginsUi.pinShort")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("pluginsUi.remove", { name: plugin.name })}
+                          onClick={() => setAsking({ kind: "remove", plugin })}
+                        >
+                          {t("pluginsUi.removeShort")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("pluginsUi.see", { name: plugin.name })}
+                          onClick={() => setLooking(plugin)}
+                        >
+                          {t("pluginsUi.seeShort")}
+                        </Button>
+                      </Inline>
+                    </Inline>
+                    {plugin.errors.map((error) => (
+                      <p key={error} className="text-status-needs-you text-sm">
+                        {error}
+                      </p>
+                    ))}
+                  </Panel>
+                ))}
+              </Stack>
+            </Stack>
           </TabsContent>
           <TabsContent value="available">
-            {list.available.length === 0 && <EmptyState title={t("pluginsUi.noneAvailable")} />}
-            <ul aria-label={t("pluginsUi.availableList")} className="flex flex-col gap-2">
-              {list.available.map((plugin) => (
-                <li key={plugin.id} className="flex flex-col gap-1 rounded-lg border p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span data-name className="font-medium">
-                      {plugin.name}
-                    </span>
-                    {plugin.version && <Badge variant="secondary">{plugin.version}</Badge>}
-                    <Badge variant="outline">{plugin.marketplace}</Badge>
-                  </div>
-                  {plugin.description && (
-                    <p className="text-muted-foreground text-sm">{plugin.description}</p>
-                  )}
-                  <div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={t("pluginsUi.install", { name: plugin.name })}
-                      onClick={() => setInstalling({ plugin: plugin.id })}
-                    >
-                      {t("pluginsUi.installShort")}
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <Stack gap={3}>
+              {list.available.length === 0 && <EmptyState title={t("pluginsUi.noneAvailable")} />}
+              <Stack as="ul" gap={2} label={t("pluginsUi.availableList")}>
+                {list.available.map((plugin) => (
+                  <Panel as="li" size="sm" key={plugin.id}>
+                    <Inline gap={2}>
+                      <span data-name className="font-medium">
+                        {plugin.name}
+                      </span>
+                      {plugin.version && <Badge variant="secondary">{plugin.version}</Badge>}
+                      <Badge variant="outline">{plugin.marketplace}</Badge>
+                    </Inline>
+                    {plugin.description && (
+                      <p className="text-muted-foreground text-sm">{plugin.description}</p>
+                    )}
+                    <Inline>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={t("pluginsUi.install", { name: plugin.name })}
+                        onClick={() => setInstalling({ plugin: plugin.id })}
+                      >
+                        {t("pluginsUi.installShort")}
+                      </Button>
+                    </Inline>
+                  </Panel>
+                ))}
+              </Stack>
+            </Stack>
           </TabsContent>
           <TabsContent value="marketplaces">
-            <div className="mb-3 flex flex-col gap-1 text-sm">
-              <label htmlFor="plugins-source">{t("pluginsUi.source")}</label>
-              <div className="flex gap-2">
-                <Input
-                  id="plugins-source"
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                />
-                <Button
-                  variant="outline"
-                  disabled={source.trim() === ""}
-                  onClick={() => setAsking({ kind: "add" })}
-                >
-                  {t("pluginsUi.addMarketplace")}
-                </Button>
-              </div>
-            </div>
-            {list.marketplaces.length === 0 && (
-              <EmptyState title={t("pluginsUi.noneMarketplaces")} />
-            )}
-            <ul aria-label={t("pluginsUi.marketplacesList")} className="flex flex-col gap-2">
-              {list.marketplaces.map((market) => (
-                <li
-                  key={market.name}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border p-3"
-                >
-                  <span data-name className="font-medium">
-                    {market.name}
-                  </span>
-                  <Badge variant="outline">{market.source}</Badge>
-                  {market.origin && (
-                    <span className="break-all text-muted-foreground text-sm">{market.origin}</span>
+            <Stack gap={3}>
+              <Form
+                variant="inline"
+                onSubmit={() => source.trim() !== "" && setAsking({ kind: "add" })}
+              >
+                <Field label={t("pluginsUi.source")}>
+                  {(control) => (
+                    <Inline gap={2}>
+                      <Input
+                        {...control}
+                        className="flex-1"
+                        value={source}
+                        onChange={(e) => setSource(e.target.value)}
+                      />
+                      <Button type="submit" variant="outline" disabled={source.trim() === ""}>
+                        {t("pluginsUi.addMarketplace")}
+                      </Button>
+                    </Inline>
                   )}
-                  <span className="flex-1" />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("pluginsUi.refreshMarketplace", { name: market.name })}
-                    onClick={() => void refreshMarketplace(market.name)}
-                  >
-                    {t("pluginsUi.refreshShort")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("pluginsUi.dropMarketplace", { name: market.name })}
-                    onClick={() => setAsking({ kind: "drop", name: market.name })}
-                  >
-                    {t("pluginsUi.removeShort")}
-                  </Button>
-                </li>
-              ))}
-            </ul>
+                </Field>
+              </Form>
+              {list.marketplaces.length === 0 && (
+                <EmptyState title={t("pluginsUi.noneMarketplaces")} />
+              )}
+              <Stack as="ul" gap={2} label={t("pluginsUi.marketplacesList")}>
+                {list.marketplaces.map((market) => (
+                  <Panel as="li" size="sm" key={market.name}>
+                    <Inline gap={2} className="justify-between">
+                      <Inline gap={2}>
+                        <span data-name className="font-medium">
+                          {market.name}
+                        </span>
+                        <Badge variant="outline">{market.source}</Badge>
+                        {market.origin && (
+                          <span className="break-all text-muted-foreground text-sm">
+                            {market.origin}
+                          </span>
+                        )}
+                      </Inline>
+                      <Inline gap={2}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("pluginsUi.refreshMarketplace", { name: market.name })}
+                          onClick={() => void refreshMarketplace(market.name)}
+                        >
+                          {t("pluginsUi.refreshShort")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("pluginsUi.dropMarketplace", { name: market.name })}
+                          onClick={() => setAsking({ kind: "drop", name: market.name })}
+                        >
+                          {t("pluginsUi.removeShort")}
+                        </Button>
+                      </Inline>
+                    </Inline>
+                  </Panel>
+                ))}
+              </Stack>
+            </Stack>
           </TabsContent>
         </Tabs>
       )}
@@ -338,7 +352,7 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
       )}
       {looking && (
         <Dialog open onOpenChange={(open) => !open && setLooking(null)}>
-          <DialogContent>
+          <AppDialogContent>
             <DialogHeader>
               <DialogTitle>{t("pluginsUi.whatInstalls", { name: looking.name })}</DialogTitle>
               <DialogDescription>{t("pluginsUi.whatInstallsHint")}</DialogDescription>
@@ -348,7 +362,7 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             ) : (
               <p className="text-sm">{t("pluginsUi.noInventory")}</p>
             )}
-          </DialogContent>
+          </AppDialogContent>
         </Dialog>
       )}
     </Page>

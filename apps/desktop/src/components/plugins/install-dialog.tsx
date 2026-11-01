@@ -1,11 +1,11 @@
 import type { PluginChange, PluginPreview } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -64,7 +64,7 @@ export function InstallDialog(props: {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent>
+      <AppDialogContent>
         <DialogHeader>
           <DialogTitle>{t("pluginsUi.install", { name: shortName })}</DialogTitle>
           <DialogDescription>{t("pluginsUi.installHint")}</DialogDescription>
@@ -108,7 +108,7 @@ export function InstallDialog(props: {
             </Button>
           )}
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
