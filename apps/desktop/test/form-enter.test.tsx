@@ -140,5 +140,10 @@ describe("form-enter: dialogs are forms", () => {
     expect(type("Salvar no .mcp.json")).toBe("submit");
     await submit(form);
     expect(asked).toContain("mcp.save");
+    expect(type("Cancelar")).toBe("button");
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Cancelar" }) as HTMLElement);
+    });
+    expect(screen.queryByLabelText("Nome do servidor")).toBeNull();
   });
 });
