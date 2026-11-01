@@ -129,6 +129,11 @@ describe("personas-ui: the library", () => {
     });
     expect(within(row("QA editado") as HTMLElement).queryByText("Pacote, editada")).not.toBeNull();
     await click("Restaurar original de QA editado");
+    // The confirmation comes first: Cancelar keeps the edits.
+    await click("Cancelar");
+    expect(names()).toContain("QA editado");
+    await click("Restaurar original de QA editado");
+    await click("Restaurar original");
     expect(names()).not.toContain("QA editado");
     expect(names()).toHaveLength(10);
   });

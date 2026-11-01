@@ -198,6 +198,13 @@ describe("conexoes-ui: the form", () => {
     await click("Editar vps");
     expect(screen.queryByText("SHA256:kept")).not.toBeNull();
     await click("Esquecer chave do servidor");
+    // The confirmation comes first: the key stays until it is accepted.
+    expect(d.sent("ssh.hostkey.forget")).toEqual([]);
+    await click("Cancelar");
+    expect(d.sent("ssh.hostkey.forget")).toEqual([]);
+    expect(screen.queryByText("SHA256:kept")).not.toBeNull();
+    await click("Esquecer chave do servidor");
+    await click("Esquecer chave");
     expect(d.sent("ssh.hostkey.forget")).toEqual([{ targetId: "t1" }]);
     expect(screen.queryByText("SHA256:kept")).toBeNull();
   });

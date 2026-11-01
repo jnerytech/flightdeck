@@ -110,6 +110,11 @@ describe("orcamentos-ui", () => {
     await settle(() => rows().length === 2);
     expect(rows()[1]).toBe("orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)");
     await click("Remover orçamento do host (dia)");
+    // The confirmation comes first: Cancelar removes nothing.
+    await click("Cancelar");
+    expect(rows()).toHaveLength(2);
+    await click("Remover orçamento do host (dia)");
+    await click("Remover orçamento");
     await settle(() => rows().length === 1);
     expect(rows()).toEqual(["orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)"]);
   });
