@@ -61,6 +61,9 @@ interface RunRow {
   started_at: string | null;
 }
 
+/** What takes the place of a line that looked like a secret. */
+export const REMOVED_LINE = "[line removed: it looked like a secret]";
+
 /** A PR link without what the page adds to it: the query, the fragment, the slash at the end. */
 const plain = (url: string) => (url.split(/[?#]/)[0] ?? "").replace(/\/+$/, "");
 
@@ -151,7 +154,7 @@ export class Traces {
       .map((line) => {
         if (this.opts.scanner.scan(line).length === 0) return line;
         redacted++;
-        return "[line removed: it looked like a secret]";
+        return REMOVED_LINE;
       })
       .join("\n");
     return { text, redacted };

@@ -1860,13 +1860,29 @@ export const TeamsUpdatedFrame = z.object({
 });
 export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 
+/**
+ * Phase 22: a local check of the PR watch runs unattended after a fixing round, so it is a command
+ * and its arguments separated by spaces, with nothing a shell would read: no quotes, pipes,
+ * redirections, substitutions, variables, globs or line breaks.
+ */
+export const isWatchCheck = (line: string): boolean =>
+  /^[\w@+=:,./-]+(?: [\w@+=:,./-]+)*$/.test(line);
+
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({
   enabled: z.boolean(),
   /** Rounds of fixing per PR. */
   maxRounds: z.number().int().min(1).max(10),
   /** Commands that must pass in the card's worktree before anything is pushed. */
-  checks: z.array(z.string().min(1).max(400)).max(10),
+  checks: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(400)
+        .refine(isWatchCheck, "a check is a command and its arguments, with nothing a shell reads"),
+    )
+    .max(10),
   /** Estimated cost of the rounds of a PR, in US$; `null` for no limit. */
   budgetUsd: z.number().positive().nullable(),
   maxTurns: z.number().int().positive().nullable(),

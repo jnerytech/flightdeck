@@ -1,10 +1,13 @@
 import type { Database } from "bun:sqlite";
+import { isWatchCheck } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
+import { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import type { CheckRunner } from "../workflows/check-runner.ts";
+import { REMOVED_LINE } from "./trace.ts";
 import type { PrWatcher, WatchSettings, WatchTrigger } from "./watch.ts";
 
 /** One round of fixing a PR, as it is kept and shown (phase 22). */
@@ -66,6 +69,15 @@ const toRound = (row: RoundRow): FixRound => ({
 });
 
 /** What a comment of a person keeps in the prompt, and how many comments go in. */
+const scanner = new SecretScanner();
+
+/** What a check printed is kept in the round: a line that looks like a secret is taken out. */
+const masked = (text: string) =>
+  text
+    .split("\n")
+    .map((line) => (scanner.scan(line).length === 0 ? line : REMOVED_LINE))
+    .join("\n");
+
 const COMMENT_CHARS = 2000;
 const COMMENTS_MAX = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -342,12 +354,16 @@ export class PrFixer {
       );
     }
     for (const command of settings.checks) {
+      // Stored settings are checked again: only a plain command and its arguments runs unattended.
+      if (!isWatchCheck(command)) {
+        return this.failed(cardId, end, `local check refused: ${masked(command)}`, spent);
+      }
       const result = await this.opts.checks.run(command, worktree);
       if (result.exitCode !== 0) {
         return this.failed(
           cardId,
           end,
-          `local check failed: ${command} (exit ${result.exitCode})\n${result.output}`,
+          `local check failed: ${masked(command)} (exit ${result.exitCode})\n${masked(result.output)}`,
           spent,
         );
       }
