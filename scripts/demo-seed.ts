@@ -91,6 +91,8 @@ export interface DemoIds {
   projectName: string;
   /** A session with two turns that changed files: the timeline's rewind and fork. */
   rewindSession: string;
+  /** The Claude session id of `idleSession`, whose Tempo tab has a timeline (phase 23). */
+  telemetrySession: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -716,6 +718,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       gateCard: gated.id,
       projectName: "flightdeck-web",
       rewindSession: rewind.sessionId,
+      telemetrySession: "",
     },
     stop: async () => {
       gh.restore();
