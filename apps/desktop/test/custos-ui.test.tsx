@@ -106,7 +106,7 @@ describe("custos-ui", () => {
     await settle(() => text("Custo estimado") === "US$ 4.00");
     expect(text("Custo estimado")).toBe("US$ 4.00");
     expect(text("Economia do cache")).toBe("US$ 3.80");
-    expect(text("Tokens")).toBe("1000045");
+    expect(text("Tokens")).toBe("1.000.045");
     expect(
       screen.queryByText("equivalente em API, estimado; em assinatura, não é cobrado"),
     ).not.toBeNull();
@@ -137,6 +137,62 @@ describe("custos-ui", () => {
     await choose("Até", "2026-10-01");
     await settle(() => text("Custo estimado") === "US$ 4.00");
     expect(text("Custo estimado")).toBe("US$ 4.00");
+  });
+
+  test("o gráfico por dia tem o dia sob cada barra, o total de cada dia, o maior dia e a legenda dos projetos", async () => {
+    await online();
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
+    const chart = region("Custo por dia") as HTMLElement;
+    const days = [...chart.querySelectorAll("[data-day]")];
+    expect([...chart.querySelectorAll("[data-day-label]")].map((l) => l.textContent)).toEqual([
+      "09/10",
+      "10/10",
+      "11/10",
+      "12/10",
+      "13/10",
+      "14/10",
+      "15/10",
+    ]);
+    expect(days.map((d) => d.getAttribute("aria-label"))).toEqual([
+      "2026-10-09: US$ 0.00",
+      "2026-10-10: US$ 0.00",
+      "2026-10-11: US$ 0.00",
+      "2026-10-12: US$ 0.00",
+      "2026-10-13: US$ 0.00",
+      "2026-10-14: US$ 2.00",
+      "2026-10-15: US$ 2.00",
+    ]);
+    expect(days.every((d) => d.getAttribute("role") === "group")).toBe(true);
+    expect(chart.textContent).toContain("Maior dia: US$ 2.00");
+    const legend = chart.querySelector("[aria-label='Projetos no gráfico']") as HTMLElement;
+    const items = [...legend.querySelectorAll("li")];
+    expect(items.map((li) => li.textContent)).toEqual(["kA", "kB"]);
+  });
+
+  test("a cor de um projeto é a mesma em todos os dias e na legenda; com mais de quatro projetos, do quarto em diante vão para Outros projetos", async () => {
+    const { d } = await online();
+    for (const key of ["kC", "kD", "kE", "kF"]) {
+      spend(d, { day: "2026-10-14", key, cost: 0.1 });
+    }
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4.40");
+    const chart = region("Custo por dia") as HTMLElement;
+    const tint = (el: Element | null) =>
+      (el?.className ?? "").split(" ").find((c) => c.startsWith("bg-brand")) ?? "";
+    const legend = [...chart.querySelectorAll("[aria-label='Projetos no gráfico'] li")];
+    expect(legend.map((li) => li.textContent)).toEqual(["kA", "kB", "kC", "Outros projetos"]);
+    const swatches = legend.map((li) => tint(li.querySelector("[data-swatch]")));
+    expect(new Set(swatches).size).toBe(4);
+    const segment = (project: string, day: string) =>
+      chart.querySelector(`[data-day='${day}'] [data-project='${project}']`);
+    expect(tint(segment("kA", "2026-10-14"))).toBe(swatches[0] as string);
+    expect(tint(segment("kA", "2026-10-15"))).toBe(swatches[0] as string);
+    expect(tint(segment("kB", "2026-10-15"))).toBe(swatches[1] as string);
+    expect(tint(segment("kC", "2026-10-14"))).toBe(swatches[2] as string);
+    expect(tint(segment("kD", "2026-10-14"))).toBe(swatches[3] as string);
+    expect(tint(segment("kE", "2026-10-14"))).toBe(swatches[3] as string);
+    expect(tint(segment("kF", "2026-10-14"))).toBe(swatches[3] as string);
   });
 
   test("filtros por projeto, modelo e origem", async () => {
@@ -240,7 +296,11 @@ describe("custos-ui", () => {
       [...(region("Uso dos últimos 7 dias")?.querySelectorAll("tbody tr") ?? [])].map(
         (r) => r.textContent,
       ),
-    ).toEqual(["2026-10-15kAUS$ 1.501000015", "2026-10-15kBUS$ 0.5015", "2026-10-14kAUS$ 2.0015"]);
+    ).toEqual([
+      "2026-10-15kAUS$ 1.501.000.015",
+      "2026-10-15kBUS$ 0.5015",
+      "2026-10-14kAUS$ 2.0015",
+    ]);
   });
 
   test("host sem costs: sem tela de custos e sem banner de erro", async () => {

@@ -42,3 +42,27 @@ describe("uso-turnos: the legacy usage table counts turns from the dictionary", 
     });
   }
 });
+
+describe("uso-turnos: the usage table groups the token count with the language's separators", () => {
+  for (const [language, shown] of [
+    ["en", "1,234,567"],
+    ["pt-BR", "1.234.567"],
+  ] as const) {
+    test(`tokens in ${language}`, async () => {
+      const store = {
+        today: () => "2026-11-01",
+        hostCommand: async () => ({
+          byDay: [{ day: "2026-10-31", projectKey: "kA", costUsd: 1, tokens: 1_234_567 }],
+        }),
+      } as unknown as AppStore;
+      const view = render(
+        <TContext.Provider value={translator(language)}>
+          <UsagePanel store={store} hostId="h" online costs />
+        </TContext.Provider>,
+      );
+      await act(() => Bun.sleep(10));
+      const cells = [...view.container.querySelectorAll("td")].map((td) => td.textContent);
+      expect(cells).toContain(shown);
+    });
+  }
+});

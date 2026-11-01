@@ -71,6 +71,14 @@ describe("memoria-ui: o orçamento de contexto", () => {
     expect(budget()?.textContent ?? "").toContain("Na partida: ≈ ");
   });
 
+  test("os tokens estimados têm o separador de milhar do idioma", async () => {
+    await open(({ repo }) => {
+      writeFileSync(join(repo, "CLAUDE.md"), "p".repeat(4000));
+    });
+    await settle(() => (budget()?.textContent ?? "").includes("CLAUDE.md"));
+    expect(budget()?.textContent ?? "").toContain("≈ 1.000 tokens");
+  });
+
   test("a memória que cabe diz quantas linhas e bytes entram", async () => {
     await open(({ put }) => {
       put("MEMORY.md", "- [A](a.md) — a\n- [B](b.md) — b\n");
