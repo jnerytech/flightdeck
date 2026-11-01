@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { type FakeCli, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { killTree as killTreeOfCommand } from "../src/board/command.ts";
+import { killTree as killTreeOfCommand, runCommand } from "../src/board/command.ts";
 import { killTree } from "../src/runenv/host.ts";
 
 let fake: FakeCli | null = null;
@@ -21,4 +21,12 @@ test("on Windows, the run host killer waits for its default taskkill and a missi
   // No taskkill exists on this platform: starting it fails, and a tree that cannot be ended by it
   // is not an error for the caller.
   await expect(killTree(4321, { platform: "win32" })).resolves.toBeUndefined();
+});
+
+test("a command that ran out of time is still given back when ending its tree fails", async () => {
+  const result = await runCommand(["sleep", "5"], process.cwd(), undefined, 50, async (pid) => {
+    process.kill(pid, "SIGKILL");
+    throw new Error("taskkill is not there");
+  });
+  expect(result.timedOut).toBe(true);
 });
