@@ -1,0 +1,10 @@
+{
+  "apps/desktop/test/ao-vivo.test.tsx": 1,
+  "apps/desktop/test/run-ambiente-ui.test.tsx": 1,
+  "apps/desktop/test/terminal-ui-abrir.test.tsx": 1,
+  "apps/desktop/test/terminal-ui-page.test.tsx": 1,
+  "apps/daemon/test/desligar.test.ts": 1,
+  "apps/daemon/test/arena.test.ts": 1,
+  "apps/daemon/test/plugins-parar.test.ts": 1,
+  "apps/daemon/test/fake-claude-main.ts": 1
+}
