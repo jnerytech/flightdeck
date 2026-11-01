@@ -41,6 +41,10 @@
   },
   "overrides": [
     {
+      "includes": ["**", "!scripts/e2e/**"],
+      "linter": { "domains": { "playwright": "none" } }
+    },
+    {
       "includes": ["apps/desktop/src/**", "!apps/desktop/src/platform/tauri/**"],
       "linter": {
         "rules": {
