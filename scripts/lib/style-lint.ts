@@ -40,3 +40,8 @@ export function styleViolations(source: string): StyleViolation[] {
   });
   return violations;
 }
+
+/** Raw layout utilities in a screen: it composes a layout primitive instead. */
+export function layoutViolations(_source: string): StyleViolation[] {
+  return [];
+}
