@@ -336,7 +336,9 @@ async function run(work: string): Promise<void> {
 
     step = "list_sessions vê as sessões dos dois hosts";
     const seen = await claudeA1.tool<{ sessions: Array<{ address: string }> }>("list_sessions");
-    const addresses = seen.data.sessions.map((s) => s.address).sort();
+    const addresses = seen.data.sessions
+      .map((s) => s.address)
+      .sort((a, b) => (a < b ? -1 : Number(a > b)));
     if (!addresses.includes(`host-b/${b1}`) || !addresses.includes(`host-a/${a2}`)) {
       throw new Error(`list_sessions: ${JSON.stringify(addresses)}`);
     }

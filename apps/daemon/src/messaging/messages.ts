@@ -132,7 +132,8 @@ const toInfo = (row: Row): MessageInfo => ({
 });
 
 /** The key of a pair, the same from both sides. */
-const pairKey = (a: string, b: string): string => [a, b].sort().join("|");
+const pairKey = (a: string, b: string): string =>
+  [a, b].sort((a, b) => (a < b ? -1 : Number(a > b))).join("|");
 
 /** `host/id` into its parts; an address without a host has none. */
 function split(address: string): { host: string | null; id: string } {

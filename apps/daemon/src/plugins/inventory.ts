@@ -93,7 +93,10 @@ function filesUnder(root: string): { files: string[]; links: string[] } {
     }
   };
   walk(root, "");
-  return { files: files.sort(), links: links.sort() };
+  return {
+    files: [...files].sort((a, b) => (a < b ? -1 : Number(a > b))),
+    links: [...links].sort((a, b) => (a < b ? -1 : Number(a > b))),
+  };
 }
 
 export function inspectPlugin(dir: string): PluginInventory {
@@ -288,8 +291,8 @@ export function inspectPlugin(dir: string): PluginInventory {
     manifest,
     hooks,
     monitors,
-    skills: [...skills].sort(),
-    agents: agents.sort(),
+    skills: [...skills].sort((a, b) => (a < b ? -1 : Number(a > b))),
+    agents: [...agents].sort((a, b) => (a < b ? -1 : Number(a > b))),
     commands,
     mcpServers: [...servers.values()],
     attention: hooks.some((h) => h.sensitive),

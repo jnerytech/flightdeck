@@ -91,7 +91,7 @@ export function contextBudget(input: BudgetInput): ContextBudget {
   };
   /** Rules with `paths` load only when Claude works on those files. */
   const rules = (dir: string) => {
-    for (const rel of markdownUnder(dir).sort()) {
+    for (const rel of markdownUnder(dir).sort((a, b) => (a < b ? -1 : Number(a > b)))) {
       const path = join(dir, rel);
       const scoped = frontmatter(readFileSync(path, "utf8"))?.paths !== undefined;
       add("rules", path, scoped ? "on-demand" : "start", readFileSync(path).length);
@@ -184,7 +184,7 @@ function memoryIndex(
   const topics = readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "MEMORY.md")
     .map((e) => e.name)
-    .sort();
+    .sort((a, b) => (a < b ? -1 : Number(a > b)));
   add("memory", indexPath, "start", loadedBytes, cutBy ? `cortado por ${cutBy}` : undefined);
   for (const name of topics)
     add("memory", join(dir, name), "on-demand", readFileSync(join(dir, name)).length);
