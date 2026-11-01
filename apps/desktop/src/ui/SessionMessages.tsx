@@ -1,5 +1,6 @@
 import type { MessageInfo, MessagingSession, SendResult } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,9 +71,9 @@ export function SessionMessages(props: { store: AppStore; hostId: string; sessio
             )}
           </Field>
           <div className="flex gap-2">
-            <Button disabled={!to || !text.trim()} onClick={() => void send()}>
+            <ActionButton disabled={!to || !text.trim()} onClick={() => send()}>
               {t("sessionMessages.send")}
-            </Button>
+            </ActionButton>
             <Button variant="ghost" onClick={() => setWriting(false)}>
               {t("sessionMessages.cancel")}
             </Button>

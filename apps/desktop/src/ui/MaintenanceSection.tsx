@@ -1,5 +1,6 @@
 import type { MaintenanceStatus, PruneCounts } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Facts } from "@/components/layout/facts";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -101,12 +102,12 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
         )}
         {result && <p className="text-sm">{result}</p>}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void backup()}>
+          <ActionButton variant="outline" size="sm" onClick={() => backup()}>
             {t("maintenance.backup")}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => void prune(true)}>
+          </ActionButton>
+          <ActionButton variant="outline" size="sm" onClick={() => prune(true)}>
             {t("maintenance.dry")}
-          </Button>
+          </ActionButton>
           <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
             {t("maintenance.clean")}
           </Button>

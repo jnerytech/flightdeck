@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
@@ -27,9 +28,9 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
           {offer.notes && <p>{offer.notes}</p>}
           {daemonsBehind && <p className="text-muted-foreground text-xs">{t("update.first")}</p>}
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => void store.installAppUpdate()}>
+            <ActionButton size="sm" onClick={() => store.installAppUpdate()}>
               {t("update.install")}
-            </Button>
+            </ActionButton>
             <Button variant="outline" size="sm" onClick={() => store.dismissAppUpdate()}>
               {t("update.later")}
             </Button>

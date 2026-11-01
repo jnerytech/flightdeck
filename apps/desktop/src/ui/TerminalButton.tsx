@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { PersonaPicker } from "@/components/personas/persona-picker";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import type { TerminalTarget } from "../lib/terminal.ts";
@@ -50,22 +50,22 @@ export function TerminalButton(props: {
         />
       )}
       {embedded && (
-        <Button
+        <ActionButton
           variant="outline"
           size="sm"
-          onClick={() => void store.openClaudeHere(hostId, target, persona || undefined)}
+          onClick={() => store.openClaudeHere(hostId, target, persona || undefined)}
         >
           {here}
-        </Button>
+        </ActionButton>
       )}
       {launch && (
-        <Button
+        <ActionButton
           variant="outline"
           size="sm"
-          onClick={() => void store.openInTerminal(hostId, target)}
+          onClick={() => store.openInTerminal(hostId, target)}
         >
           {label}
-        </Button>
+        </ActionButton>
       )}
     </>
   );
