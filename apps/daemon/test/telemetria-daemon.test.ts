@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
 import { tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 import { jsonLogs } from "./otlp-helpers.ts";
 
 const TOKEN = "daemon-token-0123456789abcdef0123456789";
@@ -75,6 +76,18 @@ describe("telemetria-dados: the daemon", () => {
         .query("SELECT claude_session_id, prompt_id, tool_name, duration_ms FROM telemetry_events")
         .all(),
     ).toEqual([{ claude_session_id: "s-1", prompt_id: "p-1", tool_name: "Bash", duration_ms: 12 }]);
+    // The app reads it back over the protocol, and the host announces it.
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
+      "telemetry",
+    );
+    const timeline = await client.data<{ prompts: Array<{ promptId: string }> }>(
+      "telemetry.session",
+      { claudeSessionId: "s-1" },
+    );
+    expect(timeline?.prompts.map((p) => p.promptId)).toEqual(["p-1"]);
     await daemon.stop();
     expect(published(dataDir)).toBeNull();
   });

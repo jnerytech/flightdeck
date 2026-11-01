@@ -977,6 +977,7 @@ export async function startDaemon(
     quota,
     usage,
     costs,
+    telemetry: telemetryStore,
     budgets,
     quotaHistory,
     changes,

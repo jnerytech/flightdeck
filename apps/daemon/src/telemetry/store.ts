@@ -1,5 +1,11 @@
 import type { Database } from "bun:sqlite";
-import type { TelemetrySession, TelemetrySummary } from "@flightdeck/protocol";
+import type {
+  SlowTool,
+  TelemetryItem,
+  TelemetryPrompt,
+  TelemetrySession,
+  TelemetrySummary,
+} from "@flightdeck/protocol";
 import type { OtlpEvent } from "./otlp.ts";
 
 /** One stored event of a terminal session's telemetry. */
@@ -44,6 +50,21 @@ interface Row {
 }
 
 const DAY_MS = 86_400_000;
+
+/** Slowest tools kept per project. */
+const SLOWEST = 5;
+
+/** Which events are steps of a prompt; the others (the prompt itself) only mark its time. */
+const KINDS: Record<string, TelemetryItem["kind"] | undefined> = {
+  tool_result: "tool",
+  tool_decision: "permission",
+  api_request: "api",
+  api_error: "error",
+};
+
+/** A permission a person answered (not settings, a hook or the classifier). */
+const person = (row: TelemetryRow) =>
+  row.name === "tool_decision" && /^user_/.test(row.source ?? "");
 
 type Attrs = OtlpEvent["attrs"];
 const text = (attrs: Attrs, key: string) => (typeof attrs[key] === "string" ? attrs[key] : null);
@@ -124,12 +145,80 @@ export class TelemetryStore {
   }
 
   /** A session's prompts, each with its tools, permissions and API calls in order. */
-  timeline(_claudeSessionId: string): TelemetrySession {
-    return { prompts: [] };
+  timeline(claudeSessionId: string): TelemetrySession {
+    const rows = this.forSession(claudeSessionId);
+    const prompts = new Map<string | null, TelemetryPrompt>();
+    let before: TelemetryRow | undefined;
+    for (const row of rows) {
+      const waited = person(row) && before ? Math.max(0, row.at - before.at) : null;
+      before = row;
+      let prompt = prompts.get(row.promptId);
+      if (!prompt) {
+        prompt = {
+          promptId: row.promptId,
+          startedAt: row.at,
+          endedAt: row.at,
+          costUsd: 0,
+          waitMs: 0,
+          items: [],
+        };
+        prompts.set(row.promptId, prompt);
+      }
+      prompt.endedAt = Math.max(prompt.endedAt, row.at);
+      const kind = KINDS[row.name];
+      if (!kind) continue;
+      prompt.costUsd += row.costUsd ?? 0;
+      prompt.waitMs += waited ?? 0;
+      prompt.items.push({
+        kind,
+        at: row.at,
+        toolName: row.toolName,
+        durationMs: row.durationMs,
+        costUsd: row.costUsd,
+        success: row.success,
+        error: row.error,
+        decision: row.decision,
+        source: row.source,
+        waitMs: waited,
+      });
+    }
+    return { prompts: [...prompts.values()] };
   }
 
   /** Per project: permission wait and the slowest tools, over every session. */
   summary(): TelemetrySummary {
-    return { projects: [] };
+    const project = `(SELECT project_key FROM usage_entries u WHERE u.claude_session_id = e.claude_session_id
+       ORDER BY u.at DESC LIMIT 1)`;
+    const waits = this.db
+      .query<{ projectKey: string; waitMs: number }, []>(
+        `SELECT projectKey, TOTAL(gap) AS waitMs FROM (
+           SELECT ${project} AS projectKey, e.name, e.source,
+             e.at - LAG(e.at) OVER (PARTITION BY e.claude_session_id ORDER BY e.at, e.id) AS gap
+           FROM telemetry_events e)
+         WHERE projectKey IS NOT NULL AND name = 'tool_decision' AND source LIKE 'user\\_%' ESCAPE '\\'
+         GROUP BY projectKey`,
+      )
+      .all();
+    const tools = this.db
+      .query<{ projectKey: string } & SlowTool, []>(
+        `SELECT ${project} AS projectKey, e.tool_name AS toolName, COUNT(*) AS calls,
+           AVG(e.duration_ms) AS avgMs, MAX(e.duration_ms) AS maxMs
+         FROM telemetry_events e
+         WHERE e.name = 'tool_result' AND e.tool_name IS NOT NULL AND e.duration_ms IS NOT NULL
+         GROUP BY projectKey, e.tool_name HAVING projectKey IS NOT NULL
+         ORDER BY avgMs DESC, toolName`,
+      )
+      .all();
+    const keys = [...new Set([...waits, ...tools].map((r) => r.projectKey))].sort();
+    return {
+      projects: keys.map((projectKey) => ({
+        projectKey,
+        waitMs: waits.find((w) => w.projectKey === projectKey)?.waitMs ?? 0,
+        slowest: tools
+          .filter((t) => t.projectKey === projectKey)
+          .slice(0, SLOWEST)
+          .map(({ toolName, calls, avgMs, maxMs }) => ({ toolName, calls, avgMs, maxMs })),
+      })),
+    };
   }
 }
