@@ -33,6 +33,16 @@ const REASONS = [
   "bg_cli_failed",
   "bg_not_found",
   "bg_no_message_path",
+  "transport_refused",
+  "secret_expired",
+  "vault_full",
+  "vault_action_unknown",
+  "vault_action_failed",
+  "secret_wait_cancelled",
+  "secret_wait_timeout",
+  "vault_closed",
+  "secret_not_here",
+  "secret_purpose_mismatch",
 ];
 
 const cleanups: Array<() => unknown> = [];
