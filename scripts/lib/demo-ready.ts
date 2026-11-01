@@ -14,6 +14,15 @@ export async function waitUsageLoaded(
   status: () => Promise<UsageLoad | null>,
   options: { timeoutMs?: number; pollMs?: number } = {},
 ): Promise<void> {
-  void status;
-  void options;
+  const { timeoutMs = 60_000, pollMs = 50 } = options;
+  const deadline = Date.now() + timeoutMs;
+  let last: UsageLoad | null = null;
+  while (Date.now() < deadline) {
+    last = await status();
+    if (last?.state === "done") return;
+    await Bun.sleep(pollMs);
+  }
+  throw new Error(
+    `the usage's first pass did not end in ${timeoutMs} ms (${JSON.stringify(last)})`,
+  );
 }

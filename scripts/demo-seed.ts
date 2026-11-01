@@ -17,6 +17,7 @@ import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
+import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { ACOES_ACTION, DANGER_SESSION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
@@ -718,6 +719,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     await sendTelemetry(alfa, id, "demo-prompt-1", when, PROMPT_ONE);
     await sendTelemetry(alfa, id, "demo-prompt-2", when + 60_000, PROMPT_TWO);
   }
+  // Custos groups the timing by the project of the usage: a reader that comes right after the seed
+  // (the tests, the first print) must find the transcripts already read.
+  await waitUsageLoaded(async () => {
+    const status = await client.call<{ initialLoad: UsageLoad }>("costs.status", {});
+    return status.initialLoad;
+  });
   const rewindClaude = (await until(() => claudeOf(rewind.sessionId), "id do carrinho")) as string;
   const snapshotsOf = async () =>
     (
