@@ -1693,6 +1693,9 @@ export const ptBR = {
     hooksInstalled: "instalados",
     hooksAbsent: "ausentes",
     hooksOutdated: "desatualizados (instale de novo)",
+    incompatibleFix: "No host, com o binário desta versão do app ({version}):",
+    apiKeyForwarded:
+      "O consumo deste host pode estar indo para crédito de API: o daemon repassa a chave ao Claude (allowApiKey).",
     hooksAsking: "consultando…",
     install: "Instalar hooks",
     uninstall: "Remover hooks",

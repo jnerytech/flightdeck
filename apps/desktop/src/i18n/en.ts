@@ -1693,6 +1693,9 @@ export const en: Dictionary = {
     hooksInstalled: "installed",
     hooksAbsent: "absent",
     hooksOutdated: "out of date (install again)",
+    incompatibleFix: "On the host, with this app version's binary ({version}):",
+    apiKeyForwarded:
+      "This host's usage may be going to API credit: the daemon passes the key on to Claude (allowApiKey).",
     hooksAsking: "checking…",
     install: "Install hooks",
     uninstall: "Remove hooks",

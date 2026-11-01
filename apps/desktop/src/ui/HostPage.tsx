@@ -7,6 +7,7 @@ import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -15,11 +16,11 @@ import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
 
-const HOOK_LABELS: Record<HooksStatusResult["status"], string> = {
-  installed: "instalados",
-  absent: "ausentes",
-  outdated: "desatualizados (instale de novo)",
-};
+const HOOK_LABELS = {
+  installed: "hostPage.hooksInstalled",
+  absent: "hostPage.hooksAbsent",
+  outdated: "hostPage.hooksOutdated",
+} as const satisfies Record<HooksStatusResult["status"], Key>;
 
 /**
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
@@ -66,9 +67,9 @@ export function HostPage(props: {
               <span>{t("hostPage.incompatible")}</span>
               <span>{host.incompatibility}</span>
               <span>
-                No host, com o binário desta versão do app ({APP_VERSION}):{" "}
+                {t("hostPage.incompatibleFix", { version: APP_VERSION })}{" "}
                 <code className="rounded bg-muted px-1 font-mono text-xs">
-                  flightdeckd update --from &lt;binário novo&gt;
+                  flightdeckd update --from {t("daemonUpdate.binary")}
                 </code>
               </span>
             </span>
@@ -109,16 +110,13 @@ export function HostPage(props: {
         </Panel>
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
-          <InlineNotice>
-            O consumo deste host pode estar indo para crédito de API: o daemon repassa a chave ao
-            Claude (allowApiKey).
-          </InlineNotice>
+          <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
         {showHooks && (
           <section aria-label={t("hostPage.hooks")}>
             <Panel title={t("hostPage.hooks")}>
               <p className="text-sm">
-                {hooks ? HOOK_LABELS[hooks.status] : t("hostPage.hooksAsking")}
+                {t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setConfirming("install")}>
