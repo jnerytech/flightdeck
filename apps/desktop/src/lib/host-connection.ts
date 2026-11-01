@@ -103,6 +103,8 @@ export interface HostConnectionOptions {
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** Silence from the host after which the link counts as dead (the daemon pings every 15 s). */
+  staleMs?: number;
 }
 
 interface Pending {

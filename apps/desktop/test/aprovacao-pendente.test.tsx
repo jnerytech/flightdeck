@@ -151,4 +151,36 @@ describe("aprovacao-pendente: the card answers a click before the host does", ()
     expect(calls).toHaveLength(2);
     expect(approve.disabled).toBe(false);
   });
+
+  test("an answer that fails (the connection dropped) leaves the card as it was, its buttons working again", async () => {
+    const calls: unknown[][] = [];
+    let fail: (error: Error) => void = () => {};
+    render(
+      <ApprovalCard
+        request={{
+          requestId: "r3",
+          toolName: "Bash",
+          input: { command: "ls" },
+          cwd: "/repos",
+          createdAt: AT,
+        }}
+        t={pt}
+        nowMs={NOW}
+        onRespond={(...args) => {
+          calls.push(args);
+          return new Promise<void>((_, reject) => {
+            fail = reject;
+          });
+        }}
+      />,
+    );
+    const approve = screen.getByRole("button", { name: "Aprovar" }) as HTMLButtonElement;
+    await click(approve);
+    expect(approve.disabled).toBe(true);
+    await act(async () => fail(new Error("connection lost")));
+    expect(approve.disabled).toBe(false);
+    expect(approve.getAttribute("aria-busy")).toBeNull();
+    await click(approve);
+    expect(calls).toHaveLength(2);
+  });
 });

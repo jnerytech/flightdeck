@@ -9,7 +9,7 @@ afterEach(async () => {
 });
 const daemon = () => makeDaemon(cleanups);
 
-function connect(url: string, token = TOKEN) {
+function connect(url: string, token = TOKEN, extra: { staleMs?: number } = {}) {
   const events: EventEnvelope[] = [];
   const statuses: ConnectionStatus[] = [];
   const subscribed: Array<[string, SessionSubscribeResult]> = [];
@@ -21,6 +21,7 @@ function connect(url: string, token = TOKEN) {
     baseDelayMs: 10,
     maxDelayMs: 40,
     lastSeqFor: (id) => lastSeq.get(id) ?? 0,
+    ...extra,
     onEvent: (e) => {
       events.push(e);
       if (e.event.type !== "message.delta") lastSeq.set(e.sessionId, e.seq);
@@ -112,5 +113,63 @@ describe("desktop: conexão com o host", () => {
     expect(conn.status).toBe("offline");
     expect(await conn.request("session.list", {}).catch((e) => e.code)).toBe("offline");
     conn.unsubscribe("qualquer");
+  });
+
+  /** A host that acks `hello` and then says nothing but what `speak` sends: a half-open link. */
+  function quietHost(speak?: (send: (frame: unknown) => void) => void) {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request, srv) {
+        return srv.upgrade(request) ? undefined : new Response("no", { status: 400 });
+      },
+      websocket: {
+        open(ws) {
+          speak?.((frame) => ws.send(JSON.stringify(frame)));
+        },
+        message(ws, raw) {
+          const frame = JSON.parse(String(raw)) as { id: string; type: string };
+          if (frame.type !== "hello") return;
+          const data = {
+            hostName: "quieto",
+            daemonVersion: "0.0.0",
+            protocolVersion: 1,
+            allowedRoots: [],
+          };
+          ws.send(JSON.stringify({ type: "ack", id: frame.id, ok: true, data }));
+        },
+      },
+    });
+    cleanups.push(() => server.stop(true));
+    return `ws://127.0.0.1:${server.port}/v1/ws`;
+  }
+
+  test("a host that goes silent is dropped: the pending request fails and the app reconnects", async () => {
+    const { conn, statuses } = connect(quietHost(), TOKEN, { staleMs: 80 });
+    await waitFor(() => conn.status === "online", "online");
+    const answer = await Promise.race([
+      conn.request("session.list", {}).catch((e) => e),
+      Bun.sleep(1000).then(() => "still waiting"),
+    ]);
+    expect(answer).toBeInstanceOf(RequestError);
+    const error = answer as RequestError;
+    expect(error.code).toBe("offline");
+    expect(error.message).toBe("connection lost");
+    expect(statuses).toContain("offline");
+    await waitFor(() => statuses.filter((s) => s === "connecting").length >= 2, "reconnect");
+  });
+
+  test("a host that keeps pinging is not dropped, however slow its answer", async () => {
+    const url = quietHost((send) => {
+      const timer = setInterval(() => send({ type: "ping", id: "p" }), 20);
+      cleanups.push(() => clearInterval(timer));
+    });
+    const { conn, statuses } = connect(url, TOKEN, { staleMs: 80 });
+    await waitFor(() => conn.status === "online", "online");
+    const slow = conn.request("session.list", {});
+    await Bun.sleep(300);
+    expect(conn.status).toBe("online");
+    expect(statuses).toEqual(["connecting", "online"]);
+    conn.dispose();
+    expect(await slow.catch((e) => e.code)).toBe("offline");
   });
 });
