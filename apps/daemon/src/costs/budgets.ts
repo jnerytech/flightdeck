@@ -199,10 +199,12 @@ export class Budgets {
   private state(row: Row): Budget {
     const today = this.day(this.now());
     const periodKey = row.period === "day" ? today : today.slice(0, 7);
+    // `day >= p AND day < p || '~'` is every day that starts with the period ('~' sorts after the
+    // digits and the dash), a range of the index on the day instead of a scan of the entries.
     const { spent } = this.db
       .query(
         `SELECT TOTAL(cost_usd) AS spent FROM usage_entries
-         WHERE substr(day, 1, length($period)) = $period AND ($key IS NULL OR project_key = $key)`,
+         WHERE day >= $period AND day < $period || '~' AND ($key IS NULL OR project_key = $key)`,
       )
       .get({ period: periodKey, key: row.project_key }) as { spent: number };
     const crossed = this.db
