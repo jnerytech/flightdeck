@@ -24,12 +24,19 @@ export function remoteCommand(argv: string[]): string {
 export function envInput(env: Record<string, string>): string {
   const lines = Object.entries(env).map(([name, value]) => {
     if (!NAME.test(name)) {
-      throw new FlightdeckError("bad_request", `nome de variável inválido para ssh: ${name}`);
+      throw new FlightdeckError(
+        "bad_request",
+        `invalid variable name for ssh: ${name}`,
+        "action_ssh_env_name",
+        { name },
+      );
     }
     if (/[\n\r\0]/.test(value)) {
       throw new FlightdeckError(
         "bad_request",
-        `a variável ${name} tem quebra de linha ou NUL, que uma ação ssh não envia`,
+        `variable ${name} has a line break or NUL, which an ssh action does not send`,
+        "action_ssh_env_value",
+        { name },
       );
     }
     return `${name}=${value}\n`;

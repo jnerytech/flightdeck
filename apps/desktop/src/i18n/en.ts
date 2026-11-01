@@ -779,6 +779,42 @@ export const en: Dictionary = {
       "The server key differs from the saved one. Check with whoever runs the server, then forget the saved key and confirm the new one.",
     ssh_test_exit: "ssh ended with code {code} and said nothing.",
     ssh_test_no_password: "The test does not cover passwords. Connect to test.",
+    action_param_unknown: "Unknown parameter: {param}.",
+    action_param_missing: "The action needs the parameter {param}.",
+    action_param_pattern: "The value of {param} does not match the pattern {pattern}.",
+    action_secret_missing:
+      "The secret {secret} did not come with the request. Unlock the vault and try again.",
+    action_ssh_unavailable:
+      "The action {action} runs over ssh, and this host has no ssh destinations.",
+    action_spawn_failed: "Could not start {command}. Check that it is installed and on the PATH.",
+    action_request_gone: "That request is gone: it expired, was refused or already finished.",
+    action_no_approval_needed: "That request needs no approval.",
+    action_tray_refused:
+      "The tray does not approve prod or high-risk requests. Approve it in the app.",
+    action_hold_needed: "Hold the Approve button for 2 seconds.",
+    action_session_refused_risky:
+      "A prod or high-risk request is approved one use at a time, never for the session.",
+    action_session_refused_rule:
+      "The rule does not allow approving for the session: this request asks on every use.",
+    action_needs_approval: "The request needs your approval before the secret is delivered.",
+    usage_rules_unavailable: "Usage rules are not available on this host.",
+    action_not_found: "The action {action} does not exist.",
+    action_changed_review: "The action {action} changed. Review it again before trusting it.",
+    action_ssh_host_unsupported:
+      "The host {host} is an ssh destination, and this daemon runs no commands on destinations.",
+    action_secret_name_invalid: "The secret name {secret} is not valid.",
+    action_not_trusted: "The action {action} is not trusted. Review it and trust it first.",
+    action_changed_since_trust:
+      "The action {action} changed since it was trusted ({changes}). Review it and trust it again.",
+    action_requester_refused:
+      "Only Claude, an automation or a workflow can ask the app for secrets this way.",
+    action_use_denied: "Use denied: {detail}",
+    action_app_offline: "The app is not connected. It has to be open to release the secret.",
+    action_secret_refused: "The app refused the secret {secret}.",
+    action_secret_expired: "The request for the secret {secret} expired unanswered and was denied.",
+    action_ssh_env_name: "{name} is not a valid variable name for an ssh action.",
+    action_ssh_env_value:
+      "The variable {name} has a line break or NUL, which an ssh action does not send.",
     ssh_target_not_found: "That ssh destination was not found.",
     ssh_name_invalid: "The name takes 1 to 100 characters.",
     ssh_host_invalid: "The host is not a valid name or address.",

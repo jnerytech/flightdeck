@@ -96,8 +96,10 @@ export const ACTIONS_FILE = ".flightdeck/actions.yaml";
 const FREE = "run_with_secret";
 const SECRET_ID = /^[A-Za-z0-9._-]+$/;
 
-const bad = (message: string) => new FlightdeckError("bad_request", message);
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("invalid_state", message, reason, params);
 const now = () => new Date().toISOString();
 
 /** An action and where it came from. */
@@ -215,24 +217,34 @@ export class Actions {
     if (!waiting) {
       throw new FlightdeckError(
         "not_found",
-        `o pedido ${requestId} não existe: venceu, foi recusado ou já terminou`,
+        `request ${requestId} does not exist: it expired, was refused or finished`,
+        "action_request_gone",
       );
     }
-    if (waiting.decision !== "ask") throw invalid("o pedido não precisa de aprovação");
+    if (waiting.decision !== "ask")
+      throw invalid("the request needs no approval", "action_no_approval_needed");
     if (waiting.needsHold) {
       if (approval.via === "tray") {
-        throw invalid("a bandeja não aprova pedidos de prod ou de risco alto: aprove no app");
+        throw invalid(
+          "the tray does not approve prod or high-risk requests: approve in the app",
+          "action_tray_refused",
+        );
       }
-      if ((approval.heldMs ?? 0) < HOLD_MS) throw invalid("segure o botão Aprovar por 2 s");
+      if ((approval.heldMs ?? 0) < HOLD_MS)
+        throw invalid("hold the Approve button for 2 s", "action_hold_needed");
       // An approval for the session would let the next uses through without the button held.
       if (approval.scope === "session") {
         throw invalid(
-          "um pedido de prod ou de risco alto não é aprovado para a sessão: só um uso por vez",
+          "a prod or high-risk request is not approved for the session: one use at a time",
+          "action_session_refused_risky",
         );
       }
     }
     if (approval.scope === "session" && !waiting.once) {
-      throw invalid("a regra não permite aprovar para a sessão: este pedido pergunta a cada uso");
+      throw invalid(
+        "the rule does not allow approving for the session: this request asks on every use",
+        "action_session_refused_rule",
+      );
     }
     waiting.approved = { by: approval.via, scope: approval.scope ?? "once" };
   }
@@ -241,18 +253,21 @@ export class Actions {
   gate(purpose: string): void {
     const waiting = this.pending.get(purpose.slice(purpose.lastIndexOf(":") + 1));
     if (waiting?.purpose === purpose && waiting.decision === "ask" && !waiting.approved) {
-      throw invalid("o pedido precisa da sua aprovação antes da entrega do segredo");
+      throw invalid(
+        "the request needs your approval before the secret is delivered",
+        "action_needs_approval",
+      );
     }
   }
 
   /** The rules of a secret, replaced whole (the ones that break the ceiling are refused). */
   setRules(secretId: string, tags: readonly string[], rules: unknown): number {
-    if (!this.opts.rules) throw invalid("regras de uso indisponíveis");
+    if (!this.opts.rules) throw invalid("usage rules are unavailable", "usage_rules_unavailable");
     return this.opts.rules.set(secretId, tags, rules);
   }
 
   getRules(secretId: string) {
-    if (!this.opts.rules) throw invalid("regras de uso indisponíveis");
+    if (!this.opts.rules) throw invalid("usage rules are unavailable", "usage_rules_unavailable");
     return this.opts.rules.get(secretId);
   }
 
@@ -343,7 +358,10 @@ export class Actions {
     const removed = this.opts.db
       .query("DELETE FROM actions WHERE scope = ? AND name = ?")
       .run(scope, name);
-    if (removed.changes === 0) throw new FlightdeckError("not_found", `a ação ${name} não existe`);
+    if (removed.changes === 0)
+      throw new FlightdeckError("not_found", `action ${name} does not exist`, "action_not_found", {
+        action: name,
+      });
     this.opts.db.query("DELETE FROM action_trust WHERE scope = ? AND name = ?").run(scope, name);
     return this.list(projectId);
   }
@@ -352,7 +370,13 @@ export class Actions {
   async trust(projectId: string | undefined, name: string, hash: string): Promise<ActionInfo> {
     const found = await this.find(projectId, name);
     if (fingerprint(found.action, found.base).declaration !== hash) {
-      throw invalid(`a ação ${name} mudou; revise de novo antes de confiar`);
+      throw invalid(
+        `action ${name} changed; review it again before trusting it`,
+        "action_changed_review",
+        {
+          action: name,
+        },
+      );
     }
     this.pin(found);
     return this.info(found);
@@ -414,11 +438,15 @@ export class Actions {
     const remote = input.host !== undefined && input.host !== "local" ? input.host : null;
     if (remote && !this.opts.ssh) {
       throw invalid(
-        `o host ${remote} é um destino SSH, e este daemon não roda comandos nos destinos da Fase 15`,
+        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
+        "action_ssh_host_unsupported",
+        { host: remote },
       );
     }
     const ids = [...new Set(input.secrets)];
-    for (const id of ids) if (!SECRET_ID.test(id)) throw bad(`nome de segredo inválido: ${id}`);
+    for (const id of ids)
+      if (!SECRET_ID.test(id))
+        throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
     const line = remote ? null : shellLine(input.command, process.platform);
     const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
@@ -542,7 +570,10 @@ export class Actions {
   private async find(projectId: string | undefined, name: string): Promise<Found> {
     const { found } = await this.visible(projectId);
     const one = found.find((f) => f.action.name === name);
-    if (!one) throw new FlightdeckError("not_found", `a ação ${name} não existe`);
+    if (!one)
+      throw new FlightdeckError("not_found", `action ${name} does not exist`, "action_not_found", {
+        action: name,
+      });
     return one;
   }
 
@@ -570,11 +601,20 @@ export class Actions {
   private assertTrusted(found: Found): void {
     const name = found.action.name;
     const trusted = this.trustRow(found);
-    if (!trusted) throw invalid(`a ação ${name} não está confiada: revise e confie nela antes`);
+    if (!trusted)
+      throw invalid(
+        `action ${name} is not trusted: review and trust it first`,
+        "action_not_trusted",
+        {
+          action: name,
+        },
+      );
     const changed = changes(trusted, fingerprint(found.action, found.base));
     if (changed.length > 0) {
       throw invalid(
-        `a ação ${name} mudou desde que foi confiada (${changed.join(", ")}): confie de novo depois de revisar`,
+        `action ${name} changed since it was trusted (${changed.join(", ")}): trust it again after reviewing`,
+        "action_changed_since_trust",
+        { action: name, changes: changed.join(", ") },
       );
     }
   }
@@ -617,7 +657,8 @@ export class Actions {
     const known = requesterOf(requester);
     if (known === "unknown") {
       throw invalid(
-        "pedido recusado: só o Claude, uma automação ou um workflow pedem segredos ao app por este caminho",
+        "request refused: only Claude, an automation or a workflow ask the app for secrets this way",
+        "action_requester_refused",
       );
     }
     return known;
@@ -728,12 +769,17 @@ export class Actions {
         if (verdict.limited) {
           this.alert("limit", secretId, ask.requester, `${verdict.reason}`);
         }
-        throw invalid(`uso negado: ${verdict.reason}`);
+        throw invalid(`use denied: ${verdict.reason}`, "action_use_denied", {
+          detail: verdict.reason,
+        });
       }
     }
     if (this.listeners.size === 0) {
       this.audit.finish(requestId, "failed", null);
-      throw invalid("o app não está conectado: ele precisa estar aberto para liberar o segredo");
+      throw invalid(
+        "the app is not connected: it has to be open to release the secret",
+        "action_app_offline",
+      );
     }
     const purpose = `${ask.purposeBase}:${requestId}`;
     const timeoutMs = this.opts.requestTimeoutMs ?? REQUEST_TTL_MS;
@@ -798,11 +844,19 @@ export class Actions {
     } catch (error) {
       if (waiting.denied) {
         this.audit.finish(requestId, "denied", null);
-        throw invalid(`o app recusou o segredo ${secretId}`);
+        throw invalid(`the app refused secret ${secretId}`, "action_secret_refused", {
+          secret: secretId,
+        });
       }
       if (waiting.expired) {
         this.audit.finish(requestId, "expired", null);
-        throw invalid(`o pedido do segredo ${secretId} venceu sem resposta e foi negado`);
+        throw invalid(
+          `the request for secret ${secretId} expired unanswered and was denied`,
+          "action_secret_expired",
+          {
+            secret: secretId,
+          },
+        );
       }
       this.audit.finish(requestId, "failed", null);
       throw error;

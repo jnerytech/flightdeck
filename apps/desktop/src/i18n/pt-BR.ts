@@ -776,6 +776,41 @@ export const ptBR = {
       "A chave do servidor é diferente da guardada. Fale com quem cuida do servidor, depois esqueça a chave guardada e confirme a nova.",
     ssh_test_exit: "O ssh terminou com código {code} sem dizer nada.",
     ssh_test_no_password: "O teste não cobre senha. Conecte para testar.",
+    action_param_unknown: "Parâmetro desconhecido: {param}.",
+    action_param_missing: "A ação precisa do parâmetro {param}.",
+    action_param_pattern: "O valor de {param} não casa com o padrão {pattern}.",
+    action_secret_missing:
+      "O segredo {secret} não veio com o pedido. Destrave o cofre e tente de novo.",
+    action_ssh_unavailable: "A ação {action} roda por ssh, e este host não tem destinos ssh.",
+    action_spawn_failed: "Não foi possível iniciar {command}. Confira se está instalado e no PATH.",
+    action_request_gone: "Esse pedido não existe mais: venceu, foi recusado ou já terminou.",
+    action_no_approval_needed: "Esse pedido não precisa de aprovação.",
+    action_tray_refused: "A bandeja não aprova pedidos de prod ou de risco alto. Aprove no app.",
+    action_hold_needed: "Segure o botão Aprovar por 2 segundos.",
+    action_session_refused_risky:
+      "Um pedido de prod ou de risco alto é aprovado um uso por vez, nunca para a sessão.",
+    action_session_refused_rule:
+      "A regra não permite aprovar para a sessão: este pedido pergunta a cada uso.",
+    action_needs_approval: "O pedido precisa da sua aprovação antes de entregar o segredo.",
+    usage_rules_unavailable: "As regras de uso não estão disponíveis neste host.",
+    action_not_found: "A ação {action} não existe.",
+    action_changed_review: "A ação {action} mudou. Revise de novo antes de confiar.",
+    action_ssh_host_unsupported:
+      "O host {host} é um destino ssh, e este daemon não roda comandos em destinos.",
+    action_secret_name_invalid: "O nome de segredo {secret} não é válido.",
+    action_not_trusted: "A ação {action} não está confiada. Revise e confie nela antes.",
+    action_changed_since_trust:
+      "A ação {action} mudou desde que foi confiada ({changes}). Revise e confie de novo.",
+    action_requester_refused:
+      "Só o Claude, uma automação ou um workflow podem pedir segredos ao app por este caminho.",
+    action_use_denied: "Uso negado: {detail}",
+    action_app_offline:
+      "O app não está conectado. Ele precisa estar aberto para liberar o segredo.",
+    action_secret_refused: "O app recusou o segredo {secret}.",
+    action_secret_expired: "O pedido do segredo {secret} venceu sem resposta e foi negado.",
+    action_ssh_env_name: "{name} não é um nome de variável válido para uma ação ssh.",
+    action_ssh_env_value:
+      "A variável {name} tem quebra de linha ou NUL, que uma ação ssh não envia.",
     ssh_target_not_found: "Esse destino ssh não foi encontrado.",
     ssh_name_invalid: "O nome tem de 1 a 100 caracteres.",
     ssh_host_invalid: "O host não é um nome ou endereço válido.",

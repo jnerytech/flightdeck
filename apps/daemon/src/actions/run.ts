@@ -54,8 +54,10 @@ const MAX_STDERR = MAX_OUTPUT - MAX_STDOUT;
 /** What is read from the program before masking; the rest is drained and dropped. */
 const MAX_CAPTURE = 250_000;
 
-const bad = (message: string) => new FlightdeckError("bad_request", message);
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("invalid_state", message, reason, params);
 
 /** The values of every parameter: those given, else the default; each matching its whole pattern. */
 export function resolveParams(
@@ -63,14 +65,23 @@ export function resolveParams(
   given: Record<string, string>,
 ): Record<string, string> {
   for (const key of Object.keys(given)) {
-    if (!Object.hasOwn(action.params, key)) throw bad(`parâmetro desconhecido: ${key}`);
+    if (!Object.hasOwn(action.params, key))
+      throw bad(`unknown parameter: ${key}`, "action_param_unknown", { param: key });
   }
   const values: Record<string, string> = {};
   for (const [key, spec] of Object.entries(action.params)) {
     const value = given[key] ?? spec.default;
-    if (value === undefined) throw bad(`falta o parâmetro ${key}`);
+    if (value === undefined)
+      throw bad(`missing parameter ${key}`, "action_param_missing", { param: key });
     if (!paramRegex(spec.pattern).test(value)) {
-      throw bad(`o parâmetro ${key} não casa com o padrão ${spec.pattern}`);
+      throw bad(
+        `parameter ${key} does not match the pattern ${spec.pattern}`,
+        "action_param_pattern",
+        {
+          param: key,
+          pattern: spec.pattern,
+        },
+      );
     }
     values[key] = value;
   }
@@ -137,10 +148,17 @@ export async function runAction(
 ): Promise<RunResult> {
   const { values, files } = secretsOf(action);
   for (const id of [...values, ...files]) {
-    if (!Object.hasOwn(secrets, id)) throw invalid(`o segredo ${id} não foi entregue`);
+    if (!Object.hasOwn(secrets, id))
+      throw invalid(`secret ${id} was not delivered`, "action_secret_missing", { secret: id });
   }
   if (action.ssh && !opts.ssh) {
-    throw invalid(`a ação ${action.name} roda por ssh: os destinos SSH chegam com a Fase 15`);
+    throw invalid(
+      `action ${action.name} runs over ssh: no ssh destinations here`,
+      "action_ssh_unavailable",
+      {
+        action: action.name,
+      },
+    );
   }
   const masked: MaskedSecret[] = [...values, ...files].map((id) => ({
     name: id,
@@ -194,7 +212,9 @@ export async function runAction(
       });
     } catch {
       // The reason of a spawn failure may quote the environment; only the program is named.
-      throw invalid(`não consegui executar ${action.run[0]}`);
+      throw invalid(`could not run ${action.run[0]}`, "action_spawn_failed", {
+        command: action.run[0] ?? "",
+      });
     }
     let timedOut = false;
     const timer = setTimeout(() => {
