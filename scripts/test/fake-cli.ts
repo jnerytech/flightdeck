@@ -61,7 +61,6 @@ export function installFakeCli(
   );
 
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");
-  const saved = new Map(keys.map((k) => [k, env[k]]));
   for (const key of keys.length > 0 ? keys : ["PATH"]) {
     env[key] = [dir, env[key] ?? ""].filter(Boolean).join(delimiter);
   }
@@ -84,8 +83,12 @@ export function installFakeCli(
         .map((line) => JSON.parse(line) as string);
     },
     respond,
+    // Takes out only this fake's folder, so the order of several restores does not matter.
     restore: () => {
-      for (const [key, value] of saved) env[key] = value;
+      for (const key of keys.length > 0 ? keys : ["PATH"]) {
+        const rest = (env[key] ?? "").split(delimiter).filter((entry) => entry !== dir);
+        env[key] = rest.join(delimiter);
+      }
     },
   };
 }
