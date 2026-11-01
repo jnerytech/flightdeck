@@ -36,6 +36,8 @@ function CardTile(props: {
   workflow?: string;
   formatTime(iso: string): string;
   labels: { actions: string; start: string };
+  /** The ways to move the card without dragging it, in menu order. */
+  moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
   onOpen(): void;
   /** "Iniciar card" from the card's menu, without opening it (phase 10). */
   onStart(): void;
@@ -49,6 +51,7 @@ function CardTile(props: {
   return (
     <li
       draggable
+      data-card={card.id}
       aria-label={t("kanban.card", { title: card.title })}
       className="flex cursor-grab flex-col gap-2 rounded-md border bg-card p-2 text-sm hover:bg-accent"
       onDragStart={props.onDragStart}
@@ -66,7 +69,12 @@ function CardTile(props: {
               className="mt-1.5"
             />
           )}
-          <button type="button" className="min-w-0 text-left font-medium" onClick={props.onOpen}>
+          <button
+            type="button"
+            data-card-open
+            className="min-w-0 text-left font-medium"
+            onClick={props.onOpen}
+          >
             {card.title}
           </button>
         </span>
@@ -83,6 +91,11 @@ function CardTile(props: {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
+            {props.moves.map((move) => (
+              <DropdownMenuItem key={move.key} disabled={move.disabled} onSelect={move.onSelect}>
+                {move.label}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -153,18 +166,66 @@ export const BoardView = memo(function BoardView(props: {
   const all = projectCards(state, hostId, projectId);
   const shown = filterCards(all, filter);
 
-  const drop = (column: BoardColumn, targetId?: string) => {
-    const cardId = dragging.current;
-    if (!cardId) return;
-    const others = all.filter((card) => card.column === column && card.id !== cardId);
+  /** The card to focus once a move has happened: where it was, to tell when it has moved. */
+  const refocus = useRef<{ cardId: string; column: BoardColumn; index: number } | null>(null);
+  const columnOf = (column: BoardColumn) => all.filter((card) => card.column === column);
+  const move = (cardId: string, column: BoardColumn, targetId?: string) => {
+    const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
-    dragging.current = null;
     void store.hostCommand(hostId, "card.move", {
       cardId,
       column,
       ...(position !== undefined ? { position } : {}),
     });
   };
+  const drop = (column: BoardColumn, targetId?: string) => {
+    const cardId = dragging.current;
+    if (!cardId) return;
+    dragging.current = null;
+    move(cardId, column, targetId);
+  };
+  /** The menu's moves for a card: to each other column, and up or down within its own. */
+  const movesOf = (card: Card) => {
+    const here = columnOf(card.column);
+    const index = here.findIndex((other) => other.id === card.id);
+    const go = (column: BoardColumn, targetId?: string) => () => {
+      refocus.current = { cardId: card.id, column: card.column, index };
+      move(card.id, column, targetId);
+    };
+    return [
+      ...COLUMNS.filter(({ id }) => id !== card.column).map(({ id }) => ({
+        key: id,
+        label: t("board.moveTo", { column: t(`kanban.columns.${id}` as Key) }),
+        onSelect: go(id),
+      })),
+      {
+        key: "up",
+        label: t("board.moveUp"),
+        disabled: index <= 0,
+        onSelect: go(card.column, here[index - 1]?.id),
+      },
+      {
+        key: "down",
+        label: t("board.moveDown"),
+        disabled: index === here.length - 1,
+        onSelect: go(card.column, here[index + 2]?.id),
+      },
+    ];
+  };
+  // After a move the card is somewhere else, so its old element is gone: focus the new one.
+  const boardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const wanted = refocus.current;
+    if (!wanted) return;
+    const card = all.find((other) => other.id === wanted.cardId);
+    if (!card) return;
+    const index = columnOf(card.column).findIndex((other) => other.id === card.id);
+    if (card.column === wanted.column && index === wanted.index) return;
+    refocus.current = null;
+    boardRef.current
+      ?.querySelector<HTMLElement>(`li[data-card="${card.id}"] [data-card-open]`)
+      ?.focus();
+  });
 
   const create = () => {
     const made = store.hostCommand(hostId, "card.create", {
@@ -217,6 +278,7 @@ export const BoardView = memo(function BoardView(props: {
           />
         )}
         <div
+          ref={boardRef}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
@@ -249,6 +311,7 @@ export const BoardView = memo(function BoardView(props: {
                         actions: store.i18n.t("board.cardActions", { title: card.title }),
                         start: store.i18n.t("board.startCard"),
                       }}
+                      moves={movesOf(card)}
                       onOpen={() => props.onOpenCard(card.id)}
                       onStart={() =>
                         void store.hostCommand(hostId, "card.start", { cardId: card.id })
