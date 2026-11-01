@@ -15,6 +15,7 @@ import {
 } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
+import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 import { isBusy } from "../lib/status.ts";
@@ -249,6 +250,11 @@ function openedSession(route: Route, state: AppState): { id?: string; claude?: s
  */
 export function Screen(props: ScreenProps) {
   const { store, state, go } = props;
+  // The click of a measured action ends when its screen is painted.
+  useEffect(() => {
+    const action = actionOfRoute(props.route);
+    if (action) endMeasure(action);
+  }, [props.route]);
   const { t } = store.i18n;
   // A host removed while its screen was open: back to the hub.
   const waiting = hostToWait(props.route);

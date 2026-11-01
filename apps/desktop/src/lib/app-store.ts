@@ -59,6 +59,7 @@ import { type ConnectionStatus, HostConnection, RequestError } from "./host-conn
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
+import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
@@ -1497,8 +1498,10 @@ export class AppStore {
     }
   }
 
-  send(text: string): Promise<void> {
-    return this.onSelected((conn, sessionId) => conn.request("session.send", { sessionId, text }));
+  async send(text: string): Promise<void> {
+    startMeasure("send");
+    await this.onSelected((conn, sessionId) => conn.request("session.send", { sessionId, text }));
+    endMeasure("send");
   }
 
   interrupt(): Promise<void> {
@@ -1522,21 +1525,23 @@ export class AppStore {
     /** Why it was denied (phase 10: the card's reason). */
     message?: string,
   ): Promise<void> {
+    if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
     if (question) {
       question(decision === "allow" ? { scope: "once", via: "app" } : null);
-      return;
+    } else {
+      try {
+        await this.connections.get(hostId)?.request("permission.respond", {
+          requestId,
+          decision,
+          ...(updatedPermissions ? { updatedPermissions } : {}),
+          ...(message ? { message } : {}),
+        });
+      } catch (error) {
+        this.fail(error);
+      }
     }
-    try {
-      await this.connections.get(hostId)?.request("permission.respond", {
-        requestId,
-        decision,
-        ...(updatedPermissions ? { updatedPermissions } : {}),
-        ...(message ? { message } : {}),
-      });
-    } catch (error) {
-      this.fail(error);
-    }
+    if (decision === "allow") endMeasure("approve");
   }
 
   /** Answers an open gate, from the card or from the "Precisa de você" queue. */

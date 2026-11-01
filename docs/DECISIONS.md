@@ -2565,3 +2565,9 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   - Board PR poll: runs while a card has an open PR, or a merged card waits for its worktree to be removed (the retry the poll does). Creating a PR starts it; a round that leaves nothing to look at stops it.
   - PR watch: its own interval is gone. It looks after every round of the board's poll (`Board.onPrRound`), which already ran at the same interval over the same cards (`pr_state = 'open'`), so it also finds the PR state fresh.
 - **Not measured here.** Idle CPU over 60 s and memory after a long run on the Windows service are the maintainer's (question 7).
+
+## Measures in the app (`app-measures`)
+
+- **Flag.** `localStorage["flightdeck.debug.measures"] = "1"` turns them on (set it from the devtools console of a debug build); with it off, no mark, no measure and no animation frame is scheduled. It is not a setting and not in the manuals, because a person never needs it.
+- **What is measured.** Five `performance.measure` entries with fixed names: `fd:open-session`, `fd:open-board`, `fd:open-card` (from `Router.push` to two animation frames after the screen's effect), `fd:send` (from the call to two frames after the daemon answered) and `fd:approve` (same, for an `allow`). Nothing is written to the console.
+- **Limit.** Send and approve end after the answer, not at the paint of the item the daemon's event adds; the event may come later. The numbers are an upper bound on the click-to-answer path and a lower bound on click-to-event.

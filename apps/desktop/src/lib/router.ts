@@ -1,5 +1,6 @@
 import type { HostDraft } from "../ui/HostForm.tsx";
 import type { ReaderTarget } from "../ui/TranscriptReader.tsx";
+import { actionOfRoute, startMeasure } from "./measures.ts";
 import type { ActionSeed } from "./snippets.ts";
 
 /** Every screen of the app, with what it shows. */
@@ -95,6 +96,8 @@ export class Router {
   /** Opens `route`; the screens ahead of the current one (after a back) are dropped. */
   push(route: Route): void {
     if (JSON.stringify(route) === JSON.stringify(this.current)) return;
+    const action = actionOfRoute(route);
+    if (action) startMeasure(action);
     this.stack = [...this.stack.slice(0, this.index + 1), route];
     this.index = this.stack.length - 1;
     this.emit();
