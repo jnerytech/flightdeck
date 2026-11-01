@@ -181,6 +181,7 @@ export function FolderPicker(props: {
               type="button"
               variant="ghost"
               className="mr-auto"
+              aria-label={t("folderPicker.up")}
               onClick={() => void open(listing.parent ?? undefined)}
             >
               <ArrowUp aria-hidden />

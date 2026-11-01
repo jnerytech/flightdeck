@@ -1593,6 +1593,7 @@ export const en: Dictionary = {
     description: "Browse the folders this host allows, then choose one.",
     roots: "Host folders",
     path: "Path",
+    up: "Up one level",
     list: "Folders",
     choose: "Choose this folder",
     openFirst: "Open a folder first",

@@ -1596,6 +1596,7 @@ export const ptBR = {
     description: "Navegue pelas pastas que este host permite e escolha uma.",
     roots: "Pastas do host",
     path: "Caminho",
+    up: "Subir um nível",
     list: "Pastas",
     choose: "Escolher esta pasta",
     openFirst: "Abra uma pasta primeiro",
