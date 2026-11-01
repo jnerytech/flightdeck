@@ -44,7 +44,16 @@ export function useSessionState(store: AppStore, key: string): SessionState {
  */
 export function useStoreSlice<K extends keyof AppState>(
   store: AppStore,
-  _keys: readonly K[],
+  keys: readonly K[],
 ): Pick<AppState, K> {
-  return store.getState();
+  const held = useRef<Pick<AppState, K> | null>(null);
+  return useSyncExternalStore(store.subscribe, () => {
+    const state = store.getState();
+    const prev = held.current;
+    if (prev && keys.every((key) => prev[key] === state[key])) return prev;
+    const next = {} as Pick<AppState, K>;
+    for (const key of keys) next[key] = state[key];
+    held.current = next;
+    return next;
+  });
 }
