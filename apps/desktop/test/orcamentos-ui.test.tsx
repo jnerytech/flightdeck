@@ -223,7 +223,7 @@ describe("orcamentos-ui", () => {
     await settle(() => section() !== null);
     await choose("Escopo", "project");
     await settle(() => projectOptions().length > 1);
-    expect(projectOptions()).toEqual(["Escolha um projeto", "app", "kA", "web"]);
+    expect(projectOptions()).toEqual(["Escolha um projeto", "app", "kA", "web", "Outro projeto…"]);
     expect(saveButton().disabled).toBe(true);
     await choose("Limite (US$)", "10");
     expect(saveButton().disabled).toBe(true);
@@ -234,6 +234,33 @@ describe("orcamentos-ui", () => {
     await click("Criar orçamento");
     await settle(() => rows().length === 1);
     expect(rows()[0]).toContain("orçamento de web (dia)");
+  });
+
+  test("Outro projeto… mostra o campo da chave, com a ajuda, para um projeto sem uso recente", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await settle(() => projectOptions().length > 1);
+    expect(screen.queryByLabelText("Chave do projeto")).toBeNull();
+    await choose("Projeto do orçamento", "__other__");
+    const key = field("Chave do projeto") as HTMLInputElement;
+    const help = document.getElementById(key.getAttribute("aria-describedby") ?? "");
+    expect(help?.textContent).toBe(
+      "A chave é o endereço do repositório sem https:// (github.com/acme/app); sem repositório, host:<id>:<pasta>.",
+    );
+    await choose("Limite (US$)", "10");
+    expect(saveButton().disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText("Informe o projeto do orçamento."),
+    ).not.toBeNull();
+    await choose("Chave do projeto", "github.com/acme/novo");
+    expect(saveButton().disabled).toBe(false);
+    await click("Criar orçamento");
+    await settle(() => rows().length === 1);
+    expect(rows()[0]).toContain("orçamento de novo (dia)");
+    expect(screen.queryByLabelText("Chave do projeto")).toBeNull();
+    expect(projectOptions()).toContain("novo");
   });
 
   test("dois projetos com o mesmo nome mostram a chave ao lado do nome", async () => {
@@ -249,6 +276,7 @@ describe("orcamentos-ui", () => {
       "app · github.com/acme/app",
       "app · github.com/other/app",
       "kA",
+      "Outro projeto…",
     ]);
   });
 
