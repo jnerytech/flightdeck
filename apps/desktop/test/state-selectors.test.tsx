@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Profiler, type ReactNode } from "react";
+import type { Route } from "../src/lib/router.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -9,6 +10,9 @@ const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { useStoreSlice, useStoreState } = await import("../src/lib/use-store.ts");
+const { Screen } = await import("../src/ui/Screens.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
+const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(60_000);
 const cleanups: Array<() => unknown> = [];
@@ -106,6 +110,33 @@ function Parent(props: { store: InstanceType<typeof AppStore>; build(): ReactNod
   return <>{props.build()}</>;
 }
 
+const noop = () => {};
+
+/** What `App` does for a page: its state in a parent that renders for every change, and a stable `go`. */
+function Frame(props: {
+  route: Route;
+  store: InstanceType<typeof AppStore>;
+  shown: InstanceType<typeof AppStore>;
+  t: Parameters<typeof TContext.Provider>[0]["value"];
+}) {
+  const state = useStoreState(props.store);
+  return (
+    <TContext.Provider value={props.t}>
+      <TooltipProvider>
+        <Screen
+          route={props.route}
+          store={props.shown}
+          state={state}
+          theme="system"
+          density="comfortable"
+          go={noop}
+          onOpenRequest={noop}
+        />
+      </TooltipProvider>
+    </TContext.Provider>
+  );
+}
+
 describe("state-selectors: an unrelated change of the state does not render the screens that do not read it", () => {
   type Store = InstanceType<typeof AppStore>;
 
@@ -201,6 +232,50 @@ describe("state-selectors: an unrelated change of the state does not render the 
       CardDetail,
     ]) {
       expect((screen as unknown as { $$typeof: symbol }).$$typeof).toBe(memo);
+    }
+  });
+
+  test("the pages Screen draws with callbacks keep their memo: a render of Screen for another change leaves them alone", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    await act(async () => {
+      await store.addHost({ name: "gama", url: "ws://127.0.0.1:1/", token: TOKEN });
+    });
+    /** The store as the page sees it, with a translator that counts its calls: a page translates on every render. */
+    const seen = { calls: 0 };
+    const real = store.i18n;
+    const translator = new Proxy(real, {
+      get(target, prop) {
+        if (prop === "t") return countingT;
+        return Reflect.get(target, prop, target);
+      },
+    });
+    const countingT: typeof real.t = ((...args: Parameters<typeof real.t>) => {
+      seen.calls++;
+      return real.t(...args);
+    }) as typeof real.t;
+    const proxy = new Proxy(store, {
+      get(target, prop, receiver) {
+        return prop === "i18n" ? translator : Reflect.get(target, prop, receiver);
+      },
+    });
+    const routes: Route[] = [
+      { name: "settings" },
+      { name: "costs" },
+      { name: "snippets" },
+      { name: "connections" },
+      { name: "conversations" },
+    ];
+    for (const route of routes) {
+      seen.calls = 0;
+      const view = render(<Frame route={route} store={store} shown={proxy} t={countingT} />);
+      await act(() => Bun.sleep(150));
+      const mounted = seen.calls;
+      expect(mounted).toBeGreaterThan(0);
+      await act(async () => store.openSearch());
+      await act(async () => store.closeSearch());
+      expect([route.name, seen.calls]).toEqual([route.name, mounted]);
+      view.unmount();
     }
   });
 });
