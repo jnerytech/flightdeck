@@ -92,6 +92,7 @@ export function ProjectsPage(props: {
     if (result) {
       setList(result);
       setLimit(String(result.maxParallelRuns));
+      store.rememberProjects(hostId, result.projects);
     }
   }, [store, hostId]);
 
@@ -139,14 +140,21 @@ export function ProjectsPage(props: {
 
   if (props.focus) {
     const board = props.focus === "board";
+    // The picker shows the selected client's projects; the host's own screen below lists them all.
+    const state = store.getState();
+    const projects = store
+      .clientScope()
+      .filter(list?.projects ?? [], state.clientSelection, (p) => store.projectKeyOf(hostId, p));
+    const hidden = (list?.projects.length ?? 0) > 0 && projects.length === 0;
     return (
       <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>
         {loading && <LoadingState label={t("states.loadingProjects")} />}
         {!loading && list?.projects.length === 0 && (
           <EmptyState title={t("states.emptyProjects")} />
         )}
+        {!loading && hidden && <EmptyState title={t("clients.noneHere")} />}
         <ul aria-label={t("projectsUi.list")} className="flex flex-col">
-          {(list?.projects ?? []).map((project) => (
+          {projects.map((project) => (
             <li key={project.id} className="flex items-center gap-3">
               <Button
                 variant="ghost"

@@ -1671,6 +1671,9 @@ export const en: Dictionary = {
     closeButton: "Close",
     closeMessage: "Close the team {name}? Its sessions are told to stop.",
   },
+  clients: {
+    noneHere: "No project of this client on this host.",
+  },
   conversationsUi: {
     title: "Conversations",
     subtitle: "Messages between sessions, on every host",

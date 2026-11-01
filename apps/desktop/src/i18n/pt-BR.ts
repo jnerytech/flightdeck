@@ -1674,6 +1674,9 @@ export const ptBR = {
     closeButton: "Encerrar",
     closeMessage: "Encerrar o time {name}? As sessões recebem o aviso para parar.",
   },
+  clients: {
+    noneHere: "Nenhum projeto deste cliente neste host.",
+  },
   conversationsUi: {
     title: "Conversas",
     subtitle: "Mensagens entre sessões, em todos os hosts",

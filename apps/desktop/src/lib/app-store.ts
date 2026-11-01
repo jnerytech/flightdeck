@@ -979,8 +979,19 @@ export class AppStore {
     const conn = this.connections.get(hostId);
     const list = conn ? await quiet(conn.request("project.list", {})) : null;
     if (!list) return null;
-    this.update({ projects: { ...this.state.projects, [hostId]: list.projects } });
+    this.rememberProjects(hostId, list.projects);
     return list.projects;
+  }
+
+  /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
+  rememberProjects(hostId: string, projects: Project[]): void {
+    this.update({ projects: { ...this.state.projects, [hostId]: projects } });
+  }
+
+  /** The key of a project of a host: the daemon's, else the one its folder would have. */
+  projectKeyOf(hostId: string, project: Project): string {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return project.projectKey ?? `host:${host?.name ?? hostId}:${project.path}`;
   }
 
   /**
@@ -2275,15 +2286,10 @@ export class AppStore {
   clientScope(): ClientScope {
     if (this.scopeMemo?.state === this.state) return this.scopeMemo.scope;
     const { hosts, projects, clientList, clientOverrides } = this.state;
-    const named = (hostId: string) => hosts.find((h) => h.id === hostId)?.name ?? hostId;
     const known = knownProjects([
       ...hubRows(this.state),
       ...Object.entries(projects).flatMap(([hostId, list]) =>
-        list.map((p) => ({
-          hostId,
-          cwd: p.path,
-          projectKey: p.projectKey ?? `host:${named(hostId)}:${p.path}`,
-        })),
+        list.map((p) => ({ hostId, cwd: p.path, projectKey: this.projectKeyOf(hostId, p) })),
       ),
     ]);
     const scope = new ClientScope(
