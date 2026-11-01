@@ -49,8 +49,18 @@ describe("clients-budgets: a month limit on the roll-up", () => {
     expect(next.announced).toEqual({ "acme|2026-11": [0.5] });
   });
 
+  test("a threshold stays announced while the budget exists, even if the spend reads lower later", () => {
+    const kept = run({ acme: 10 }, { [`acme|${MONTH}`]: [0.5, 0.8] });
+    expect(kept.news).toEqual([]);
+    expect(kept.announced).toEqual({ [`acme|${MONTH}`]: [0.5, 0.8] });
+  });
+
   test("a client whose budget was removed is not kept in what was announced", () => {
-    const kept = run({ acme: 60 }, { [`ghost|${MONTH}`]: [1], [`beta|${MONTH}`]: [0.5] });
-    expect(Object.keys(kept.announced).sort()).toEqual([`acme|${MONTH}`]);
+    const kept = run(
+      { acme: 60 },
+      { [`ghost|${MONTH}`]: [1], [`beta|${MONTH}`]: [0.5] },
+      { acme: 100 },
+    );
+    expect(Object.keys(kept.announced)).toEqual([`acme|${MONTH}`]);
   });
 });
