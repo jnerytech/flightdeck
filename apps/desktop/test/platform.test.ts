@@ -297,7 +297,7 @@ describe("platform", () => {
       await createWebPlatform(noClipboard)
         .copyText("x")
         .catch((e: Error) => e.message),
-    ).toBe("área de transferência indisponível");
+    ).toBe("the clipboard is not available");
   });
 
   test("tauri: atalho global pelo plugin, janela pela Rust e cópia pela área de transferência", async () => {
