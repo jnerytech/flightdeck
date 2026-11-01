@@ -70,8 +70,10 @@ type Json = Record<string, unknown>;
 const isObject = (value: unknown): value is Json =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const text = (value: unknown) => (typeof value === "string" ? value : undefined);
-const asList = <T>(value: T | T[] | undefined): T[] =>
-  value === undefined ? [] : Array.isArray(value) ? value : [value];
+const asList = <T>(value: T | T[] | undefined): T[] => {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+};
 
 /** Every regular file under `root` (links are not followed, `.git` is skipped), sorted by path. */
 function filesUnder(root: string): { files: string[]; links: string[] } {
@@ -99,17 +101,40 @@ function filesUnder(root: string): { files: string[]; links: string[] } {
   };
 }
 
-export function inspectPlugin(dir: string): PluginInventory {
-  if (!existsSync(dir)) throw new FlightdeckError("not_found", `${dir} não existe`);
-  const root = realpathSync.native(resolve(dir));
-  const problems: string[] = [];
+/** What the reading of a plugin folder shares: where it is and what went wrong so far. */
+interface Reading {
+  root: string;
+  problems: string[];
+}
 
-  // The hash: every file's path, size and bytes in path order; a link counts by its name and target.
-  const listing = filesUnder(root);
-  const paths = listing.files;
+/** A path the manifest names, refused when it leaves the plugin; the real path or null. */
+function inside(reading: Reading, key: string, rel: string): string | null {
+  const target = resolve(reading.root, rel);
+  const real = existsSync(target) ? realpathSync.native(target) : target;
+  if (!isInside(reading.root, real)) {
+    reading.problems.push(`${key}: caminho fora do plugin: ${rel}`);
+    return null;
+  }
+  return existsSync(real) ? real : null;
+}
+
+function readJson(reading: Reading, path: string, label: string): unknown {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    reading.problems.push(`${label}: não é um JSON válido`);
+    return undefined;
+  }
+}
+
+/** The hash: every file's path, size and bytes in path order; a link counts by its name and target. */
+function contentHash(
+  root: string,
+  listing: { files: string[]; links: string[] },
+): { hash: string; bytes: number } {
   const hash = createHash("sha256");
   let bytes = 0;
-  for (const path of paths) {
+  for (const path of listing.files) {
     const content = readFileSync(join(root, path));
     bytes += content.length;
     if (bytes > MAX_BYTES) throw new FlightdeckError("bad_request", "plugin grande demais");
@@ -118,188 +143,221 @@ export function inspectPlugin(dir: string): PluginInventory {
   for (const link of listing.links) {
     hash.update(`L\0${link}\0${readlinkSync(join(root, link))}\0`);
   }
+  return { hash: hash.digest("hex"), bytes };
+}
 
-  /** A path the manifest names, refused when it leaves the plugin; the real path or null. */
-  const inside = (key: string, rel: string): string | null => {
-    const target = resolve(root, rel);
-    const real = existsSync(target) ? realpathSync.native(target) : target;
-    if (!isInside(root, real)) {
-      problems.push(`${key}: caminho fora do plugin: ${rel}`);
-      return null;
-    }
-    return existsSync(real) ? real : null;
+/** `{ key: value }` when the value is a non-empty string, else nothing to spread. */
+const field = <K extends string>(key: K, value: unknown): { [P in K]?: string } => {
+  const value_ = text(value);
+  return value_ ? ({ [key]: value_ } as { [P in K]: string }) : {};
+};
+
+function manifestOf(manifestJson: Json | null): PluginInventory["manifest"] {
+  if (!manifestJson) return null;
+  const author = manifestJson.author;
+  return {
+    ...field("name", manifestJson.name),
+    ...field("version", manifestJson.version),
+    ...field("description", manifestJson.description),
+    ...field("author", isObject(author) ? author.name : author),
   };
-  const readJson = (path: string, label: string): unknown => {
-    try {
-      return JSON.parse(readFileSync(path, "utf8"));
-    } catch {
-      problems.push(`${label}: não é um JSON válido`);
-      return undefined;
-    }
-  };
+}
 
-  const manifestPath = join(root, ".claude-plugin", "plugin.json");
-  const raw = existsSync(manifestPath) ? readJson(manifestPath, "plugin.json") : undefined;
-  const manifestJson = isObject(raw) ? raw : null;
-  const author = manifestJson?.author;
-  const manifest = manifestJson
-    ? {
-        ...(text(manifestJson.name) ? { name: text(manifestJson.name) as string } : {}),
-        ...(text(manifestJson.version) ? { version: text(manifestJson.version) as string } : {}),
-        ...(text(manifestJson.description)
-          ? { description: text(manifestJson.description) as string }
-          : {}),
-        ...(text(isObject(author) ? author.name : author)
-          ? { author: text(isObject(author) ? author.name : author) as string }
-          : {}),
-      }
-    : null;
-
-  // Hooks: hooks/hooks.json first, then what the manifest adds (a file, an inline map, or a list).
-  const hooks: PluginHook[] = [];
-  const addHooks = (events: unknown) => {
-    if (!isObject(events)) return;
-    for (const [event, groups] of Object.entries(events)) {
-      for (const group of asList(groups as unknown)) {
-        if (!isObject(group)) continue;
-        for (const hook of asList(group.hooks as unknown)) {
-          if (!isObject(hook)) continue;
-          const args = Array.isArray(hook.args) ? hook.args.map(String) : [];
-          const command = [text(hook.command) ?? text(hook.url) ?? text(hook.prompt), ...args]
-            .filter((part): part is string => part !== undefined)
-            .join(" ");
-          hooks.push({
-            event,
-            ...(text(group.matcher) ? { matcher: text(group.matcher) as string } : {}),
-            type: text(hook.type) ?? "command",
-            ...(command ? { command } : {}),
-            sensitive: SENSITIVE_EVENTS.includes(event),
-          });
-        }
+/** The hooks of one event map: `{ Event: [{ matcher, hooks: [{ type, command… }] }] }`. */
+function hooksOfEvents(events: unknown): PluginHook[] {
+  if (!isObject(events)) return [];
+  const found: PluginHook[] = [];
+  for (const [event, groups] of Object.entries(events)) {
+    for (const group of asList(groups as unknown).filter(isObject)) {
+      for (const hook of asList(group.hooks as unknown).filter(isObject)) {
+        const args = Array.isArray(hook.args) ? hook.args.map(String) : [];
+        const command = [text(hook.command) ?? text(hook.url) ?? text(hook.prompt), ...args]
+          .filter((part): part is string => part !== undefined)
+          .join(" ");
+        found.push({
+          event,
+          ...field("matcher", group.matcher),
+          type: text(hook.type) ?? "command",
+          ...(command ? { command } : {}),
+          sensitive: SENSITIVE_EVENTS.includes(event),
+        });
       }
     }
-  };
-  const addHooksFile = (path: string, label: string) => {
-    const file = readJson(path, label);
-    addHooks(isObject(file) ? file.hooks : undefined);
-  };
-  if (existsSync(join(root, "hooks", "hooks.json"))) {
-    addHooksFile(join(root, "hooks", "hooks.json"), "hooks/hooks.json");
   }
+  return found;
+}
+
+/** Hooks: hooks/hooks.json first, then what the manifest adds (a file, an inline map, or a list). */
+function hooksOf(reading: Reading, manifestJson: Json | null): PluginHook[] {
+  const fromFile = (path: string, label: string) => {
+    const file = readJson(reading, path, label);
+    return hooksOfEvents(isObject(file) ? file.hooks : undefined);
+  };
+  const own = join(reading.root, "hooks", "hooks.json");
+  const hooks = existsSync(own) ? fromFile(own, "hooks/hooks.json") : [];
   for (const item of asList(manifestJson?.hooks as unknown)) {
-    if (typeof item === "string") {
-      const path = inside("hooks", item);
-      if (path) addHooksFile(path, item);
-    } else addHooks(item);
-  }
-
-  // Monitors: the manifest's list or file, else monitors/monitors.json.
-  const monitors: PluginMonitor[] = [];
-  const addMonitors = (list: unknown) => {
-    for (const item of asList(list as unknown)) {
-      if (!isObject(item) || !text(item.name) || !text(item.command)) continue;
-      monitors.push({
-        name: text(item.name) as string,
-        command: text(item.command) as string,
-        description: text(item.description) ?? "",
-        when: text(item.when) ?? "always",
-      });
+    if (typeof item !== "string") {
+      hooks.push(...hooksOfEvents(item));
+      continue;
     }
-  };
+    const path = inside(reading, "hooks", item);
+    if (path) hooks.push(...fromFile(path, item));
+  }
+  return hooks;
+}
+
+function monitorsOfList(list: unknown): PluginMonitor[] {
+  return asList(list as unknown)
+    .filter(isObject)
+    .flatMap((item) =>
+      text(item.name) && text(item.command)
+        ? [
+            {
+              name: text(item.name) as string,
+              command: text(item.command) as string,
+              description: text(item.description) ?? "",
+              when: text(item.when) ?? "always",
+            },
+          ]
+        : [],
+    );
+}
+
+/** Monitors: the manifest's list or file, else monitors/monitors.json. */
+function monitorsOf(reading: Reading, manifestJson: Json | null): PluginMonitor[] {
   const experimental = isObject(manifestJson?.experimental) ? manifestJson?.experimental : null;
   const declared = experimental?.monitors ?? manifestJson?.monitors;
   if (declared === undefined) {
-    const file = join(root, "monitors", "monitors.json");
-    if (existsSync(file)) addMonitors(readJson(file, "monitors/monitors.json"));
-  } else if (typeof declared === "string") {
-    const path = inside("monitors", declared);
-    if (path) addMonitors(readJson(path, declared));
-  } else addMonitors(declared);
+    const file = join(reading.root, "monitors", "monitors.json");
+    return existsSync(file)
+      ? monitorsOfList(readJson(reading, file, "monitors/monitors.json"))
+      : [];
+  }
+  if (typeof declared !== "string") return monitorsOfList(declared);
+  const path = inside(reading, "monitors", declared);
+  return path ? monitorsOfList(readJson(reading, path, declared)) : [];
+}
 
-  // Skills: skills/ and the folders the manifest adds. A link is never followed.
-  const skills = new Set<string>();
-  const addSkills = (base: string) => {
-    if (!existsSync(base)) return;
-    const own = join(base, "SKILL.md");
-    if (existsSync(own) && !lstatSync(own).isSymbolicLink())
-      skills.add(skillName(own, basename(base)));
-    for (const entry of readdirSync(base, { withFileTypes: true })) {
-      const file = join(base, entry.name, "SKILL.md");
-      if (entry.isDirectory() && existsSync(file) && !lstatSync(file).isSymbolicLink()) {
-        skills.add(skillName(file, entry.name));
-      }
-    }
-  };
-  addSkills(join(root, "skills"));
+/** A skill's file when it is a regular file; a link is never followed. */
+const skillFile = (file: string): boolean => existsSync(file) && !lstatSync(file).isSymbolicLink();
+
+function skillsUnder(base: string): string[] {
+  if (!existsSync(base)) return [];
+  const own = join(base, "SKILL.md");
+  const names = skillFile(own) ? [skillName(own, basename(base))] : [];
+  for (const entry of readdirSync(base, { withFileTypes: true })) {
+    const file = join(base, entry.name, "SKILL.md");
+    if (entry.isDirectory() && skillFile(file)) names.push(skillName(file, entry.name));
+  }
+  return names;
+}
+
+/** Skills: skills/ and the folders the manifest adds. */
+function skillsOf(reading: Reading, manifestJson: Json | null): string[] {
+  const skills = new Set(skillsUnder(join(reading.root, "skills")));
   for (const item of asList(manifestJson?.skills as unknown)) {
     if (typeof item !== "string") continue;
-    const path = inside("skills", item);
-    if (path) addSkills(path);
+    const path = inside(reading, "skills", item);
+    if (path) for (const name of skillsUnder(path)) skills.add(name);
   }
+  return [...skills];
+}
 
-  // Agents and commands: the folder, or what the manifest names in its place.
-  const markdown = (base: string): string[] =>
-    existsSync(base)
-      ? readdirSync(base, { withFileTypes: true })
-          .filter((e) => e.isFile() && e.name.endsWith(".md"))
-          .map((e) => join(base, e.name))
-      : [];
-  const named = (key: "agents" | "commands"): string[] => {
-    const declaredPaths = manifestJson?.[key];
-    if (declaredPaths === undefined) return markdown(join(root, key));
-    if (isObject(declaredPaths)) return key === "commands" ? Object.keys(declaredPaths) : [];
-    return asList(declaredPaths as unknown).flatMap((item) => {
-      if (typeof item !== "string") return [];
-      const path = inside(key, item);
-      if (!path) return [];
-      return path.endsWith(".md") ? [path] : markdown(path);
-    });
-  };
-  const agents = named("agents").map((file) => agentName(file));
-  const commands = named("commands").map((file) =>
-    file.endsWith(".md") ? basename(file, ".md") : file,
-  );
+const markdownIn = (base: string): string[] =>
+  existsSync(base)
+    ? readdirSync(base, { withFileTypes: true })
+        .filter((e) => e.isFile() && e.name.endsWith(".md"))
+        .map((e) => join(base, e.name))
+    : [];
 
-  // MCP servers: .mcp.json first, then the manifest's; a later name replaces an earlier one.
-  const servers = new Map<string, PluginMcpServer>();
-  const addServers = (map: unknown) => {
-    const list = isObject(map) && isObject(map.mcpServers) ? map.mcpServers : map;
-    if (!isObject(list)) return;
-    for (const [name, server] of Object.entries(list)) {
-      if (!isObject(server)) continue;
+/** Agents and commands: the folder, or what the manifest names in its place. */
+function namedOf(reading: Reading, manifestJson: Json | null, key: "agents" | "commands") {
+  const declaredPaths = manifestJson?.[key];
+  if (declaredPaths === undefined) return markdownIn(join(reading.root, key));
+  if (isObject(declaredPaths)) return key === "commands" ? Object.keys(declaredPaths) : [];
+  return asList(declaredPaths as unknown).flatMap((item) => {
+    if (typeof item !== "string") return [];
+    const path = inside(reading, key, item);
+    if (!path) return [];
+    return path.endsWith(".md") ? [path] : markdownIn(path);
+  });
+}
+
+function serversOfMap(map: unknown): Array<[string, PluginMcpServer]> {
+  const list = isObject(map) && isObject(map.mcpServers) ? map.mcpServers : map;
+  if (!isObject(list)) return [];
+  return Object.entries(list)
+    .filter((entry): entry is [string, Json] => isObject(entry[1]))
+    .map(([name, server]) => {
       const url = text(server.url);
       const args = Array.isArray(server.args) ? server.args.map(String) : [];
-      servers.set(name, {
+      const fallback = url ? "http" : "stdio";
+      return [
         name,
-        transport: text(server.type) ?? (url ? "http" : "stdio"),
-        target: url ?? [text(server.command) ?? "", ...args].join(" ").trim(),
-      });
-    }
-  };
-  if (existsSync(join(root, ".mcp.json")))
-    addServers(readJson(join(root, ".mcp.json"), ".mcp.json"));
-  for (const item of asList(manifestJson?.mcpServers as unknown)) {
-    if (typeof item === "string" && /\.(mcpb|dxt)$|^https?:/.test(item)) {
-      servers.set(basename(item), { name: basename(item), transport: "bundle", target: item });
-    } else if (typeof item === "string") {
-      const path = inside("mcpServers", item);
-      if (path) addServers(readJson(path, item));
-    } else addServers(item);
-  }
+        {
+          name,
+          transport: text(server.type) ?? fallback,
+          target: url ?? [text(server.command) ?? "", ...args].join(" ").trim(),
+        },
+      ];
+    });
+}
 
+/** MCP servers: .mcp.json first, then the manifest's; a later name replaces an earlier one. */
+function serversOf(reading: Reading, manifestJson: Json | null): PluginMcpServer[] {
+  const servers = new Map<string, PluginMcpServer>();
+  const add = (map: unknown) => {
+    for (const [name, server] of serversOfMap(map)) servers.set(name, server);
+  };
+  const own = join(reading.root, ".mcp.json");
+  if (existsSync(own)) add(readJson(reading, own, ".mcp.json"));
+  for (const item of asList(manifestJson?.mcpServers as unknown)) {
+    if (typeof item !== "string") add(item);
+    else if (/\.(mcpb|dxt)$|^https?:/.test(item)) {
+      servers.set(basename(item), { name: basename(item), transport: "bundle", target: item });
+    } else {
+      const path = inside(reading, "mcpServers", item);
+      if (path) add(readJson(reading, path, item));
+    }
+  }
+  return [...servers.values()];
+}
+
+export function inspectPlugin(dir: string): PluginInventory {
+  if (!existsSync(dir)) throw new FlightdeckError("not_found", `${dir} não existe`);
+  const reading: Reading = { root: realpathSync.native(resolve(dir)), problems: [] };
+  const { root } = reading;
+
+  const listing = filesUnder(root);
+  const { hash, bytes } = contentHash(root, listing);
+
+  const manifestPath = join(root, ".claude-plugin", "plugin.json");
+  const raw = existsSync(manifestPath) ? readJson(reading, manifestPath, "plugin.json") : undefined;
+  const manifestJson = isObject(raw) ? raw : null;
+
+  const hooks = hooksOf(reading, manifestJson);
+  const monitors = monitorsOf(reading, manifestJson);
+  const skills = skillsOf(reading, manifestJson);
+  const agents = namedOf(reading, manifestJson, "agents").map((file) => agentName(file));
+  const commands = namedOf(reading, manifestJson, "commands").map((file) =>
+    file.endsWith(".md") ? basename(file, ".md") : file,
+  );
+  const mcpServers = serversOf(reading, manifestJson);
+
+  const byText = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   return {
-    manifest,
+    manifest: manifestOf(manifestJson),
     hooks,
     monitors,
-    skills: [...skills].sort((a, b) => (a < b ? -1 : Number(a > b))),
-    agents: [...agents].sort((a, b) => (a < b ? -1 : Number(a > b))),
+    skills: skills.sort(byText),
+    agents: agents.sort(byText),
     commands,
-    mcpServers: [...servers.values()],
+    mcpServers,
     attention: hooks.some((h) => h.sensitive),
-    hash: hash.digest("hex"),
-    files: paths.length,
+    hash,
+    files: listing.files.length,
     bytes,
-    problems,
+    problems: reading.problems,
   };
 }
 
