@@ -106,6 +106,7 @@ sessões num lugar só, sem abrir cada máquina.
 - Atualização automática assinada, do app e dos daemons.
 - Rastro de qualquer sessão: a árvore dos turnos, chamadas de ferramenta e subagentes com tempo, custo e tokens, o mais caro e o mais lento destacados, replay passo a passo e exportação para um relatório de bug.
 - Tempo e custo das sessões abertas no terminal, pela telemetria do próprio Claude Code (OTLP, recebida só nesta máquina): ferramenta lenta, tempo esperando suas permissões, erros de API.
+- Sessões em segundo plano do Claude Code (`claude --bg`) em Sessões, com parar, reiniciar, trazer para o terminal e mensagem, e "Iniciar em segundo plano" para as novas.
 - Leve em recursos: listas longas, texto ao vivo e saída de terminal são limitados e agrupados, as partes pesadas carregam sob demanda, e `bun run perf:baseline` imprime os números.
 - Temas claro e escuro; português e inglês.
 

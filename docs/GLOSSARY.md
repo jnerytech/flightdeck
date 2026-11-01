@@ -85,6 +85,8 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | Replay | Replay | The trace walked one node at a time, with play, pause and a speed |
 | mais caro | costliest | The turn or subagent of a trace that cost most |
 | mais lento | slowest | The tool call or subagent of a trace that took longest |
+| Segundo plano | Background | A Claude Code session with no terminal (`claude --bg`), listed by `claude agents`; the origin of its rows in Sessions |
+| Trazer para o terminal | Bring to the terminal | `claude attach <id>` in a terminal tab of the host |
 
 ## Estados de uma sessão
 
