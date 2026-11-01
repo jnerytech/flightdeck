@@ -1,6 +1,8 @@
 import type { ContextBudget } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { ListRow } from "@/components/layout/list-row";
+import { Stack } from "@/components/layout/stack";
 import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import type { AppStore } from "../lib/app-store.ts";
@@ -24,60 +26,62 @@ export function AgentContext(props: { store: AppStore; hostId: string; projectId
   const { memory } = budget;
   const cut = memory.cutBy !== null;
   return (
-    <section aria-label={t("contextUi.title")} className="flex flex-col gap-4">
-      <p className="text-sm">{t("contextUi.start", { tokens: budget.startTokens })}</p>
-      <table className="w-full text-left text-sm tabular-nums">
-        <tbody>
+    <section aria-label={t("contextUi.title")}>
+      <Stack>
+        <p className="text-sm">{t("contextUi.start", { tokens: budget.startTokens })}</p>
+        <Stack as="ul" gap={1}>
           {budget.sources.map((source) => (
-            <tr key={`${source.kind}/${source.path}`} className="border-t first:border-t-0">
-              <td className="py-1 pr-2">
-                <Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>
-              </td>
-              <td className="break-all py-1 pr-2">{source.path}</td>
-              <td className="py-1 pr-2 text-right">
-                {t("contextUi.tokens", { tokens: source.tokens })}
-              </td>
-              <td className="py-1">
-                {source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")}
-              </td>
-            </tr>
+            <li key={`${source.kind}/${source.path}`}>
+              <ListRow
+                leading={<Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>}
+                title={<span className="break-all">{source.path}</span>}
+                meta={source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")}
+                trailing={
+                  <span className="text-sm tabular-nums">
+                    {t("contextUi.tokens", { tokens: source.tokens })}
+                  </span>
+                }
+              />
+            </li>
           ))}
-        </tbody>
-      </table>
-      {memory.indexLines > 0 && (
-        <p className="text-sm">
-          {t("contextUi.index", {
-            loaded: memory.loadedLines,
-            total: memory.indexLines,
-            bytes: Math.round(memory.loadedBytes / 1024),
-            limit: Math.round(memory.limitBytes / 1024),
-          })}
-        </p>
-      )}
-      {cut && (
-        <InlineNotice tone="error">
-          {memory.cutBy === "lines"
-            ? t("contextUi.cutLines", { limit: memory.limitLines })
-            : t("contextUi.cutBytes", { limit: Math.round(memory.limitBytes / 1024) })}
-        </InlineNotice>
-      )}
-      {memory.leftOutLines.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <ul
-            aria-label={t("contextUi.leftOutLines")}
-            className="flex flex-col gap-1 font-mono text-xs"
-          >
-            {memory.leftOutLines.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          {memory.leftOutFiles.length > 0 && (
-            <p className="text-sm">
-              {t("contextUi.leftOutFiles", { files: memory.leftOutFiles.join(", ") })}
-            </p>
-          )}
-        </div>
-      )}
+        </Stack>
+        {memory.indexLines > 0 && (
+          <p className="text-sm">
+            {t("contextUi.index", {
+              loaded: memory.loadedLines,
+              total: memory.indexLines,
+              bytes: Math.round(memory.loadedBytes / 1024),
+              limit: Math.round(memory.limitBytes / 1024),
+            })}
+          </p>
+        )}
+        {cut && (
+          <InlineNotice tone="error">
+            {memory.cutBy === "lines"
+              ? t("contextUi.cutLines", { limit: memory.limitLines })
+              : t("contextUi.cutBytes", { limit: Math.round(memory.limitBytes / 1024) })}
+          </InlineNotice>
+        )}
+        {memory.leftOutLines.length > 0 && (
+          <Stack gap={2}>
+            <Stack
+              as="ul"
+              gap={1}
+              label={t("contextUi.leftOutLines")}
+              className="font-mono text-xs"
+            >
+              {memory.leftOutLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </Stack>
+            {memory.leftOutFiles.length > 0 && (
+              <p className="text-sm">
+                {t("contextUi.leftOutFiles", { files: memory.leftOutFiles.join(", ") })}
+              </p>
+            )}
+          </Stack>
+        )}
+      </Stack>
     </section>
   );
 }

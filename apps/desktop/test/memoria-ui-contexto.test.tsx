@@ -61,9 +61,7 @@ describe("memoria-ui: o orçamento de contexto", () => {
       put("a.md", "corpo\n");
     });
     await settle(() => budget() !== null && (budget()?.textContent ?? "").includes("CLAUDE.md"));
-    const rows = [...(budget()?.querySelectorAll("tbody tr") ?? [])].map(
-      (r) => r.textContent ?? "",
-    );
+    const rows = [...(budget()?.querySelectorAll("li") ?? [])].map((r) => r.textContent ?? "");
     const row = (part: string) => rows.find((r) => r.includes(part)) ?? "";
     const claude = rows.find((r) => r.includes("CLAUDE.md") && !r.includes("local")) ?? "";
     expect(claude).toContain("≈ 100 tokens");
