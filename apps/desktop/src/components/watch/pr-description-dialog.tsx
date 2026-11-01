@@ -13,7 +13,7 @@ import { useT } from "@/i18n/context";
 export function PrDescriptionDialog(props: {
   text: string;
   redacted: number;
-  onConfirm(text: string): Promise<unknown> | void;
+  onConfirm(text: string): unknown;
   onCancel(): void;
 }) {
   const t = useT();
