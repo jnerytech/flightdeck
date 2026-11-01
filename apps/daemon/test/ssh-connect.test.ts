@@ -875,7 +875,10 @@ describe("ssh-connect: entrega da chave do cofre", () => {
       exec: async () => ({ code: 5, stdout: "" }),
       id: () => "p2",
     });
-    await expect(failing.deliver(PRIVATE)).rejects.toMatchObject({ code: "internal", reason: "ssh_key_perms" });
+    await expect(failing.deliver(PRIVATE)).rejects.toMatchObject({
+      code: "internal",
+      reason: "ssh_key_perms",
+    });
     expect(readdirSync(dir).filter((name) => name.includes("p2"))).toEqual([]);
   });
 

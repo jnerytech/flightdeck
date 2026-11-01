@@ -747,6 +747,20 @@ export const ptBR = {
       "{name}: confira o fingerprint {fingerprint} e confirme para conectar.",
     ssh_hostkey_changed:
       "{name}: a chave do servidor mudou (guardada {pinned}, agora {fingerprint}). Fale com quem cuida dele; se a mudança é esperada, esqueça a chave guardada e confirme a nova.",
+    ssh_askpass_ticket_invalid: "O pedido de senha não vale mais. Conecte de novo.",
+    ssh_askpass_no_app:
+      "Nenhuma janela do Flightdeck está aberta para pedir a senha. Abra o app e conecte de novo.",
+    ssh_askpass_timeout: "Ninguém respondeu ao pedido de senha a tempo. Conecte de novo.",
+    ssh_askpass_request_unknown:
+      "Esse pedido de senha não existe mais: já foi respondido ou expirou.",
+    ssh_askpass_cancelled: "O pedido de senha foi cancelado.",
+    ssh_askpass_cmd_path:
+      "O caminho do daemon tem % ou aspas, que um .cmd do Windows não comporta. Mova o daemon para uma pasta sem eles.",
+    ssh_key_perms:
+      "Não foi possível restringir as permissões do arquivo da chave ao seu usuário, então a chave não foi usada.",
+    ssh_agent_down: "O ssh-agent desta conexão não subiu. Confira se o ssh-agent está instalado.",
+    ssh_add_refused:
+      "O ssh-add recusou a chave. Confira se a chave é válida e não tem frase-senha.",
     ssh_target_not_found: "Esse destino ssh não foi encontrado.",
     ssh_name_invalid: "O nome tem de 1 a 100 caracteres.",
     ssh_host_invalid: "O host não é um nome ou endereço válido.",

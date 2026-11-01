@@ -59,7 +59,8 @@ export function createFileDelivery(opts: FileDeliveryOptions): KeyDelivery {
           rmSync(file, { force: true });
           throw new FlightdeckError(
             "internal",
-            "não consegui restringir as permissões do arquivo da chave",
+            "could not restrict the permissions of the key file",
+            "ssh_key_perms",
           );
         }
       }
@@ -96,7 +97,11 @@ export function createAgentDelivery(opts: AgentDeliveryOptions): KeyDelivery {
       const agent = opts.ops.startAgent(sock);
       if (!(await opts.ops.waitForSocket(sock))) {
         agent.stop();
-        throw new FlightdeckError("internal", "o ssh-agent da conexão não subiu");
+        throw new FlightdeckError(
+          "internal",
+          "the ssh-agent of the connection did not start",
+          "ssh_agent_down",
+        );
       }
       const added = await opts.ops.run(["ssh-add", "-"], {
         env: { PATH: process.env.PATH ?? "", SSH_AUTH_SOCK: sock },
@@ -104,7 +109,7 @@ export function createAgentDelivery(opts: AgentDeliveryOptions): KeyDelivery {
       });
       if (added.code !== 0) {
         agent.stop();
-        throw new FlightdeckError("internal", "o ssh-add recusou a chave");
+        throw new FlightdeckError("internal", "ssh-add refused the key", "ssh_add_refused");
       }
       let stopped = false;
       return {

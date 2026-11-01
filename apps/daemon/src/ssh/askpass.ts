@@ -91,17 +91,31 @@ export class AskpassBroker {
   async ask(ticketId: string, prompt: string): Promise<string> {
     const ticket = this.tickets.get(ticketId);
     if (!ticket || ticket.expiresAt <= this.now() || ticket.uses >= MAX_USES) {
-      throw new FlightdeckError("unauthorized", "ticket do askpass inválido");
+      throw new FlightdeckError(
+        "unauthorized",
+        "askpass ticket is invalid",
+        "ssh_askpass_ticket_invalid",
+      );
     }
     if (this.watchers.size === 0) {
-      throw new FlightdeckError("invalid_state", "nenhum app conectado para responder à senha");
+      throw new FlightdeckError(
+        "invalid_state",
+        "no app is connected to answer the password",
+        "ssh_askpass_no_app",
+      );
     }
     ticket.uses++;
     const requestId = ulid(this.now());
     return new Promise<string>((resolve, reject) => {
       const timer = this.timers.set(() => {
         this.pending.delete(requestId);
-        reject(new FlightdeckError("invalid_state", "ninguém respondeu ao pedido a tempo"));
+        reject(
+          new FlightdeckError(
+            "invalid_state",
+            "nobody answered the request in time",
+            "ssh_askpass_timeout",
+          ),
+        );
       }, this.answerMs);
       this.pending.set(requestId, { resolve, reject, timer });
       const frame: AskpassRequest = {
@@ -120,11 +134,18 @@ export class AskpassBroker {
   /** The app's answer; `null` is a refusal. The first answer wins. */
   answer(requestId: string, secret: string | null): void {
     const pending = this.pending.get(requestId);
-    if (!pending) throw new FlightdeckError("not_found", "pedido não encontrado");
+    if (!pending)
+      throw new FlightdeckError("not_found", "request not found", "ssh_askpass_request_unknown");
     this.pending.delete(requestId);
     this.timers.clear(pending.timer);
     if (secret === null) {
-      pending.reject(new FlightdeckError("invalid_state", "pedido cancelado pelo app"));
+      pending.reject(
+        new FlightdeckError(
+          "invalid_state",
+          "request cancelled by the app",
+          "ssh_askpass_cancelled",
+        ),
+      );
     } else {
       pending.resolve(secret);
     }
@@ -149,7 +170,8 @@ export function writeAskpassScript(opts: {
     if (opts.self.some((part) => /["%]/.test(part))) {
       throw new FlightdeckError(
         "internal",
-        "o caminho do flightdeckd não cabe num .cmd (% ou aspas)",
+        "the flightdeckd path does not fit a .cmd (% or quotes)",
+        "ssh_askpass_cmd_path",
       );
     }
     text = `@echo off\r\n${opts.self.map((part) => `"${part}"`).join(" ")} askpass %*\r\n`;

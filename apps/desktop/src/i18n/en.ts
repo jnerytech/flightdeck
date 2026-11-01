@@ -751,6 +751,19 @@ export const en: Dictionary = {
       "{name}: check the fingerprint {fingerprint}, then confirm it to connect.",
     ssh_hostkey_changed:
       "{name}: the server key changed (saved {pinned}, now {fingerprint}). Check with whoever runs it; if the change is expected, forget the saved key and confirm the new one.",
+    ssh_askpass_ticket_invalid: "The password request is no longer valid. Connect again.",
+    ssh_askpass_no_app:
+      "No Flightdeck window is open to ask for the password. Open the app and connect again.",
+    ssh_askpass_timeout: "Nobody answered the password request in time. Connect again.",
+    ssh_askpass_request_unknown: "That password request is gone: it was answered or timed out.",
+    ssh_askpass_cancelled: "The password request was cancelled.",
+    ssh_askpass_cmd_path:
+      "The daemon's path has a % or a quote, which a Windows .cmd cannot hold. Move the daemon to a folder without them.",
+    ssh_key_perms:
+      "The key file's permissions could not be restricted to your user, so the key was not used.",
+    ssh_agent_down:
+      "The ssh-agent for this connection did not start. Check that ssh-agent is installed.",
+    ssh_add_refused: "ssh-add refused the key. Check that the key is valid and has no passphrase.",
     ssh_target_not_found: "That ssh destination was not found.",
     ssh_name_invalid: "The name takes 1 to 100 characters.",
     ssh_host_invalid: "The host is not a valid name or address.",
