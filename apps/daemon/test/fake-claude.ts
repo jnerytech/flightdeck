@@ -41,8 +41,10 @@ export interface FakeClaude {
   events(): FakeClaudeEvent[];
   /** What `claude agents --json` prints next (phase 27). */
   setAgents(agents: unknown[]): void;
-  /** Makes `claude stop`, `respawn`... fail (or work again). */
+  /** Makes `claude stop`, `respawn`... and `--bg` fail (or work again); the listing keeps answering. */
   failCli(on: boolean): void;
+  /** Makes `claude agents` itself fail, like a Claude Code that has no background sessions. */
+  failAgents(on: boolean): void;
   restore(): void;
 }
 
@@ -69,6 +71,10 @@ export function installFakeClaude(
   return {
     dir,
     setAgents: (agents) => writeFileSync(join(dir, "agents.json"), JSON.stringify(agents)),
+    failAgents: (on) => {
+      if (on) writeFileSync(join(dir, "fail-agents"), "");
+      else rmSync(join(dir, "fail-agents"), { force: true });
+    },
     failCli: (on) => {
       if (on) writeFileSync(join(dir, "fail"), "");
       else rmSync(join(dir, "fail"), { force: true });

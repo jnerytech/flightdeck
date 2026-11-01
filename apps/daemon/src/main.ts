@@ -12,7 +12,7 @@ import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
-import { Central } from "./central/central.ts";
+import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
 import {
@@ -978,6 +978,7 @@ export async function startDaemon(
     bg: new BgService({
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
+      channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),

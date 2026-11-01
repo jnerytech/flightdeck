@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { BgList, BgSession } from "@flightdeck/protocol";
 import { runCommand } from "../board/command.ts";
+import { FlightdeckError } from "../errors.ts";
 
 export interface BgServiceOptions {
   db: Database;
@@ -77,15 +78,73 @@ export class BgService {
     return { supported: true, sessions };
   }
 
-  async stop(_id: string): Promise<BgList> {
+  /** The session the listing has under `id`, or the refusal the app says in its language. */
+  private async find(id: string): Promise<BgSession> {
+    const found = (await this.list()).sessions.find((session) => session.id === id);
+    if (!found) {
+      throw new FlightdeckError(
+        "not_found",
+        `background session ${id} is not listed`,
+        "bg_not_found",
+        { id },
+      );
+    }
+    return found;
+  }
+
+  /** Runs a `claude` command; a refusal of Claude Code reaches the app with what it said. */
+  private async claudeDo(args: string[]): Promise<void> {
+    const claude = this.opts.claude();
+    if (!claude) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "claude is not installed on this host",
+        "bg_cli_failed",
+        {
+          message: "claude is not installed",
+        },
+      );
+    }
+    const result = await runCommand([claude, ...args], process.cwd(), undefined, CLI_TIMEOUT_MS);
+    if (result.code !== 0) {
+      const message = (result.stderr || result.stdout).trim().slice(0, 300);
+      throw new FlightdeckError("invalid_state", `claude ${args[0]}: ${message}`, "bg_cli_failed", {
+        message,
+      });
+    }
+  }
+
+  async stop(id: string): Promise<BgList> {
+    await this.find(id);
+    await this.claudeDo(["stop", id]);
     return this.list();
   }
 
-  async respawn(_id: string): Promise<BgList> {
+  /** Restarts the session so it runs the current Claude Code (it resumes its saved conversation). */
+  async respawn(id: string): Promise<BgList> {
+    await this.find(id);
+    await this.claudeDo(["respawn", id]);
     return this.list();
   }
 
-  async message(_id: string, _text: string): Promise<BgList> {
+  /**
+   * Claude Code has no command to type into a running background session. A message goes through
+   * the channel of a session opened with `flightdeckd claude`; a session with no process is
+   * continued with the message as its prompt (`--resume <id> --bg`); a running one without a
+   * channel cannot be told anything.
+   */
+  async message(id: string, text: string): Promise<BgList> {
+    const session = await this.find(id);
+    const claudeSessionId = session.claudeSessionId;
+    if (claudeSessionId && this.opts.channel?.(claudeSessionId, text)) return this.list();
+    if (session.pid !== null || !claudeSessionId) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "a running background session has no way to receive a message",
+        "bg_no_message_path",
+      );
+    }
+    await this.claudeDo(["--resume", claudeSessionId, "--bg", "--", text]);
     return this.list();
   }
 }

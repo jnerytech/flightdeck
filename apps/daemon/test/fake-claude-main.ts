@@ -40,10 +40,12 @@ const agents =
     ? JSON.parse(readFileSync(agentsPath, "utf8"))
     : null;
 // Claude Code's own subcommands for background sessions (`claude agents --json`, `stop`...): the
-// fake records the call and answers from <stateDir>/agents.json; <stateDir>/fail makes them fail.
+// fake records the call and answers from <stateDir>/agents.json; <stateDir>/fail makes the commands
+// that act (not the listing) fail.
 if (["agents", "stop", "kill", "respawn", "attach", "logs", "rm"].includes(args[0] ?? "")) {
   log({ type: "cli", args });
-  if (existsSync(join(stateDir, "fail"))) {
+  const failing = args[0] === "agents" ? "fail-agents" : "fail";
+  if (existsSync(join(stateDir, failing))) {
     console.error("no such session");
     process.exit(1);
   }

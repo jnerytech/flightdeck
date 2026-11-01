@@ -110,9 +110,9 @@ describe("bg-listar: the background sessions of the host", () => {
 
   test("a claude with no background sessions, none installed, or an answer that is not a list: not supported", async () => {
     const { fake, service } = setup();
-    fake.failCli(true);
+    fake.failAgents(true);
     expect(await service.list()).toEqual({ supported: false, sessions: [] });
-    fake.failCli(false);
+    fake.failAgents(false);
     fake.setAgents([]);
     expect(await service.list()).toEqual({ supported: true, sessions: [] });
     writeFileSync(join(fake.dir, "agents.json"), "this is not json");
