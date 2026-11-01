@@ -154,6 +154,19 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     expect(sent(daemon).filter((p) => (p as { patch?: unknown }).patch !== undefined)).toEqual([]);
   });
 
+  test("a time limit outside 1 to 60 minutes cannot be saved", async () => {
+    await openSettings();
+    await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
+    await act(async () => {
+      fireEvent.change(field("Tempo limite por check (min)"), { target: { value: "0" } });
+    });
+    const save = within(section() as HTMLElement).getByRole("button", { name: "Salvar" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText("Tempo limite por check: de 1 a 60 minutos"),
+    ).not.toBeNull();
+  });
+
   test("a host with no projects says so", async () => {
     const { daemon, store } = await openSettings();
     daemon.watch.projects = [];
