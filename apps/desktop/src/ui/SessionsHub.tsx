@@ -63,9 +63,10 @@ export function SessionsHub(props: {
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   const [name, setName] = useState("");
-  // Reload when hosts come online (and say what they offer) or sessions come and go.
+  // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
+  // keeps failing to connect changes status on every attempt: only being online counts.
   const signature = state.hosts
-    .map((h) => `${h.id}:${h.status}:${h.sessions.length}:${h.hostInfo ? "info" : ""}`)
+    .map((h) => `${h.id}:${h.status === "online"}:${h.sessions.length}:${h.hostInfo ? "info" : ""}`)
     .join();
   useEffect(() => {
     if (signature) void store.refreshHub();

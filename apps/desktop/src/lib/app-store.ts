@@ -566,6 +566,11 @@ function describeError(error: unknown): string {
  * All app state in one framework-free store: hosts and their connections, session timelines and
  * the current selection. React reads it through `useSyncExternalStore`.
  */
+/** Whether two values hold the same data (the answers of a host are plain JSON). */
+function sameJson(a: unknown, b: unknown): boolean {
+  return a === b || JSON.stringify(a) === JSON.stringify(b);
+}
+
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -1206,21 +1211,41 @@ export class AppStore {
             quiet(conn.request("external.list", {})),
             named ? quiet(conn.request("names.list", {})) : null,
           ]);
+          // Only what differs from what the state holds is replaced, so a refresh that finds the
+          // same lists tells nobody (the screens compare by reference).
           const meta = { ...this.state.meta };
           const externals = { ...this.state.externals };
+          let metaChanged = false;
+          let externalsChanged = false;
+          const putMeta = (key: string, value: SessionMeta) => {
+            if (sameJson(meta[key], value)) return;
+            meta[key] = value;
+            metaChanged = true;
+          };
           for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-            if (s.claudeSessionId && s.meta) meta[sessionKey(host.id, s.claudeSessionId)] = s.meta;
+            if (s.claudeSessionId && s.meta)
+              putMeta(sessionKey(host.id, s.claudeSessionId), s.meta);
           }
           for (const s of external?.sessions ?? []) {
-            externals[sessionKey(host.id, s.claudeSessionId)] = s;
-            if (s.meta) meta[sessionKey(host.id, s.claudeSessionId)] = s.meta;
+            const key = sessionKey(host.id, s.claudeSessionId);
+            if (!sameJson(externals[key], s)) {
+              externals[key] = s;
+              externalsChanged = true;
+            }
+            if (s.meta) putMeta(key, s.meta);
           }
-          const hub = {
-            ...this.state.hub,
-            [host.id]: { managed: managed?.sessions ?? [], history: history?.sessions ?? [] },
-          };
-          const names = { ...this.state.names, [host.id]: standard?.names ?? [] };
-          this.update({ hub, meta, externals, names });
+          const lists = { managed: managed?.sessions ?? [], history: history?.sessions ?? [] };
+          const standardNames = standard?.names ?? [];
+          const patch: Partial<AppState> = {};
+          if (!sameJson(this.state.hub[host.id], lists)) {
+            patch.hub = { ...this.state.hub, [host.id]: lists };
+          }
+          if (!sameJson(this.state.names[host.id], standardNames)) {
+            patch.names = { ...this.state.names, [host.id]: standardNames };
+          }
+          if (metaChanged) patch.meta = meta;
+          if (externalsChanged) patch.externals = externals;
+          if (Object.keys(patch).length > 0) this.update(patch);
         }),
     );
   }
