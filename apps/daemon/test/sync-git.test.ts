@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { installSleepingGit, type SleepingGit } from "../../../scripts/test/sleeping-git.ts";
@@ -18,8 +18,14 @@ setDefaultTimeout(30_000);
 
 const TOKEN = "sync-git-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];
+// A sleeping git left on PATH makes every later git call of the run sleep: each test puts PATH back.
+let pathBefore: string | undefined;
+beforeEach(() => {
+  pathBefore = process.env.PATH;
+});
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
+  expect(process.env.PATH).toBe(pathBefore);
 });
 
 const SRC = join(import.meta.dir, "../src");
