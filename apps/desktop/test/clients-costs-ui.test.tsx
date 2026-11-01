@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { legacyDaemon } from "./legacy-daemon.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -142,5 +143,22 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
     expect(screen.queryByRole("button", { name: "Exportar CSV" }) !== null).toBe(false);
+  });
+
+  test("a host without costs is named as skipped, and one that does not answer as failed", async () => {
+    const { store } = await setup();
+    const plain = legacyDaemon(cleanups);
+    const mute = legacyDaemon(cleanups);
+    mute.features.push("costs");
+    await act(async () => {
+      await store.addHost({ name: "gama", url: plain.url, token: TOKEN });
+      await store.addHost({ name: "delta", url: mute.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
+    await pickHost("__all__");
+    await settle(() => screen.queryByText("Sem resposta de: delta.") !== null);
+    expect(screen.queryByText("Sem resposta de: delta.") !== null).toBe(true);
+    expect(screen.queryByText("Sem custos de: gama.") !== null).toBe(true);
+    expect(total()).toBe("US$ 6.00");
   });
 });
