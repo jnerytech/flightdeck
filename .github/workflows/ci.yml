@@ -146,6 +146,10 @@ jobs:
         run: google-chrome --version
 
       - name: Prints (2 temas, 2 idiomas) e axe
+        # record: the prints are the candidates for apps/desktop/visual-baseline. Once the
+        # baselines are committed this becomes compare (docs/DECISIONS.md, "Visual baselines").
+        env:
+          VISUAL: record
         run: bun run demo:shots
 
       - name: Jornadas e2e (2 idiomas)
