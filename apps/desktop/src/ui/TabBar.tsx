@@ -1,5 +1,7 @@
 import {
+  ArrowLeft,
   ArrowLeftRight,
+  ArrowRight,
   BookOpen,
   Bot,
   type LucideIcon,
@@ -11,7 +13,7 @@ import {
   SquareTerminal,
   X,
 } from "lucide-react";
-import { type ReactNode, useRef, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -61,11 +63,28 @@ export function TabBar(props: {
   /** The tab being dragged to a new place. */
   const dragged = useRef<string | null>(null);
   const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
+  /** A move button just went off with the focus on it: the focus goes to the tab instead. */
+  const refocusTab = useRef(false);
+  const tablist = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!refocusTab.current) return;
+    refocusTab.current = false;
+    tablist.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+  });
+  const shift = (id: string, delta: -1 | 1) => {
+    tabs.shift(id, delta);
+    refocusTab.current = !tabs.canShift(id, delta);
+  };
   const activeLabel = active ? title(active, state, store) : "";
   return (
     <div className="flex h-9 items-end gap-1 border-b px-2">
       {/* Only tabs (and the presentation wrappers that hold them) in the tablist; the move and pin buttons act on the active tab and sit after it. */}
-      <div role="tablist" aria-label={t("tabs.list")} className="flex min-w-0 items-end gap-0.5">
+      <div
+        ref={tablist}
+        role="tablist"
+        aria-label={t("tabs.list")}
+        className="flex min-w-0 items-end gap-0.5"
+      >
         {tabs.tabs.map((tab) => {
           const label = title(tab, state, store);
           const kind = tabKind(tab.router.current);
@@ -158,6 +177,26 @@ export function TabBar(props: {
       </div>
       {active && (
         <div className="mb-0.5 flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            aria-label={t("tabs.moveLeft", { title: activeLabel })}
+            disabled={!tabs.canShift(active.id, -1)}
+            onClick={() => shift(active.id, -1)}
+          >
+            <ArrowLeft />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            aria-label={t("tabs.moveRight", { title: activeLabel })}
+            disabled={!tabs.canShift(active.id, 1)}
+            onClick={() => shift(active.id, 1)}
+          >
+            <ArrowRight />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

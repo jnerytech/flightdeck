@@ -164,14 +164,17 @@ export class Tabs {
     this.emit();
   }
 
+  /** The first and last index of the group a tab belongs to: the pinned ones or the others. */
+  private groupBounds(tab: Tab): [number, number] {
+    return tab.pinned ? [0, this.pinnedCount - 1] : [this.pinnedCount, this.tabs.length - 1];
+  }
+
   /** Reorders inside the tab's own group: a pinned tab never crosses an unpinned one. */
   move(id: string, toIndex: number): void {
     const from = this.tabs.findIndex((tab) => tab.id === id);
     const tab = this.tabs[from];
     if (!tab) return;
-    const [low, high] = tab.pinned
-      ? [0, this.pinnedCount - 1]
-      : [this.pinnedCount, this.tabs.length - 1];
+    const [low, high] = this.groupBounds(tab);
     const rest = this.tabs.filter((other) => other.id !== id);
     rest.splice(Math.min(Math.max(toIndex, low), high), 0, tab);
     this.tabs = rest;
@@ -179,12 +182,19 @@ export class Tabs {
   }
 
   /** Whether the tab can move `delta` places (-1 left, 1 right) inside its own group. */
-  canShift(_id: string, _delta: -1 | 1): boolean {
-    return true;
+  canShift(id: string, delta: -1 | 1): boolean {
+    const from = this.tabs.findIndex((tab) => tab.id === id);
+    const tab = this.tabs[from];
+    if (!tab) return false;
+    const [low, high] = this.groupBounds(tab);
+    return delta < 0 ? from > low : from < high;
   }
 
   /** Moves the tab one place left (-1) or right (1) inside its own group, as dragging does. */
-  shift(_id: string, _delta: -1 | 1): void {}
+  shift(id: string, delta: -1 | 1): void {
+    if (this.canShift(id, delta))
+      this.move(id, this.tabs.findIndex((tab) => tab.id === id) + delta);
+  }
 
   /** Removes a tab without remembering it as closed, to put it in another area; may leave none. */
   take(id: string): Tab | null {
