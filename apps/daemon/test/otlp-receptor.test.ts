@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import * as crypto from "node:crypto";
 import { gzipSync } from "node:zlib";
 import {
   decodeLogs,
@@ -74,6 +75,18 @@ describe("otlp-receptor: what it refuses, before anything is decoded", () => {
     expect((await post(none.server, "/v1/logs", body)).status).toBe(401);
     expect(got).toEqual([]);
     expect(none.got).toEqual([]);
+  });
+
+  test("the token is compared in constant time, so a token that differs in length or in the last character is simply refused", async () => {
+    const { server } = receiver();
+    const compare = spyOn(crypto, "timingSafeEqual");
+    const body = jsonLogs(RECORDS);
+    for (const given of [`${TOKEN}x`, TOKEN.slice(0, -1), `${TOKEN.slice(0, -1)}0`]) {
+      const res = await post(server, "/v1/logs", body, { authorization: `Bearer ${given}` });
+      expect(res.status).toBe(401);
+    }
+    expect(compare).toHaveBeenCalledTimes(3);
+    compare.mockRestore();
   });
 
   test("only POST on /v1/logs and /v1/metrics: other methods are 405, other paths 404", async () => {
