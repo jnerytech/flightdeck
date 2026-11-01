@@ -53,6 +53,8 @@ export interface ClientsData {
 
 export interface ClientsOptions {
   newId?: () => string;
+  /** Called after a change was written, so the app can show it. */
+  onChange?: () => void;
 }
 
 /** What an import did, or null when the text was not a client export. */
@@ -127,6 +129,7 @@ export class Clients {
 
   private write(data: ClientsData): void {
     this.platform.storage.setItem(CLIENTS_KEY, JSON.stringify(data));
+    this.options.onChange?.();
   }
 
   /** Changes the client `id` with `change`, which returns false to leave it as it was. */
