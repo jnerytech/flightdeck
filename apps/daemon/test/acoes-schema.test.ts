@@ -208,3 +208,11 @@ describe("acoes-schema: the issues, for the app to translate", () => {
     expect(twice.issues).toEqual([{ path: "a", code: "name_duplicate" }]);
   });
 });
+
+describe("acoes-schema: fields of the wrong type", () => {
+  test("host, ssh and cwd are texts, and params is a map", () => {
+    expect(errorsOf(action({ host: 7 }))).toEqual(["action acao: host is a text"]);
+    expect(errorsOf(action({ cwd: ["/tmp"] }))).toEqual(["action acao: cwd is a text"]);
+    expect(errorsOf(action({ params: ["env"] }))).toEqual(["action acao: params is a map of name to rule"]);
+  });
+});

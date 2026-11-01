@@ -222,6 +222,13 @@ describe("mcp-acoes", () => {
     expect(existsSync(join(silent.repo, "rodou.txt"))).toBe(false);
   });
 
+  test("run_with_secret refuses a secret name with characters outside the allowed set, before asking", async () => {
+    const d = await setup();
+    const result = await d.call("run_with_secret", { command: "echo hi", secrets: ["bad name!"] });
+    expect(result.error).toContain("invalid secret name");
+    expect(d.requests()).toEqual([]);
+  });
+
   test("o host de run_with_secret que não é este fica para a Fase 15", async () => {
     const { call } = await setup();
     const remote = await call("run_with_secret", { command: "ls", secrets: ["a"], host: "vps" });
