@@ -1,0 +1,143 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { translator } from "../src/i18n/index.ts";
+import { liveScreen, registerDom } from "./dom.ts";
+
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { TContext } = await import("../src/i18n/context.tsx");
+const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
+const { UpdateBanner } = await import("../src/ui/UpdateBanner.tsx");
+const { MaintenanceSection } = await import("../src/ui/MaintenanceSection.tsx");
+const { SessionMessages } = await import("../src/ui/SessionMessages.tsx");
+
+import type { AppStore } from "../src/lib/app-store.ts";
+
+setDefaultTimeout(30_000);
+afterEach(cleanup);
+
+const t = translator("pt-BR");
+
+/** A call that stays pending until `settle()`, as a slow host does; `calls` counts the presses. */
+function slow() {
+  const calls: unknown[][] = [];
+  let release: (value?: unknown) => void = () => {};
+  const call = (...args: unknown[]) => {
+    calls.push(args);
+    return new Promise((resolve) => {
+      release = resolve;
+    });
+  };
+  return { calls, call, settle: (value?: unknown) => act(async () => release(value)) };
+}
+
+const click = async (el: HTMLElement | null) => {
+  expect(el).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(el as HTMLElement);
+  });
+};
+const button = (name: string) => screen.queryByRole("button", { name }) as HTMLButtonElement | null;
+
+/** Pressed twice, a button is busy and disabled after the first and the work started once. */
+async function expectBusyOnce(name: string, calls: unknown[][], settle: () => Promise<void>) {
+  await click(button(name));
+  expect(button(name)?.getAttribute("aria-busy")).toBe("true");
+  expect(button(name)?.disabled).toBe(true);
+  await click(button(name));
+  expect(calls).toHaveLength(1);
+  await settle();
+  expect(button(name)?.getAttribute("aria-busy")).toBeNull();
+  expect(button(name)?.disabled).toBe(false);
+}
+
+describe("botoes-pendentes: a click is answered before the work is done", () => {
+  test("Abrir Claude aqui and Abrir no terminal go busy and start once", async () => {
+    const here = slow();
+    const open = slow();
+    const store = {
+      terminalLaunch: () => ({ kind: "spawn" }),
+      embeddedTerminal: () => true,
+      getState: () => ({ hosts: [] }),
+      openClaudeHere: here.call,
+      openInTerminal: open.call,
+    } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <TerminalButton
+          store={store}
+          hostId="h"
+          target={{ cwd: "/repo", claudeSessionId: null } as never}
+        />
+      </TContext.Provider>,
+    );
+    await expectBusyOnce("Abrir Claude aqui (terminal)", here.calls, () => here.settle());
+    await expectBusyOnce("Abrir no terminal", open.calls, () => open.settle());
+  });
+
+  test("Instalar atualização goes busy and installs once", async () => {
+    const install = slow();
+    const store = {
+      i18n: { t },
+      installAppUpdate: install.call,
+      dismissAppUpdate: () => {},
+    } as unknown as AppStore;
+    render(
+      <UpdateBanner
+        store={store}
+        state={
+          {
+            appUpdate: { offer: { version: "1.2.3", notes: "" }, error: null },
+            hosts: [],
+          } as never
+        }
+      />,
+    );
+    await expectBusyOnce("Instalar e reiniciar", install.calls, () => install.settle());
+  });
+
+  test("Fazer backup and Simular limpeza go busy and run once", async () => {
+    const backup = slow();
+    const prune = slow();
+    const store = {
+      i18n: { t },
+      formatDateTime: (iso: string) => iso,
+      hostCommand: (_host: string, command: string, ...rest: unknown[]) => {
+        if (command === "maintenance.backup") return backup.call(...rest);
+        if (command === "maintenance.prune") return prune.call(...rest);
+        return Promise.resolve(null);
+      },
+    } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <MaintenanceSection store={store} hostId="h" />
+      </TContext.Provider>,
+    );
+    await act(() => Bun.sleep(10));
+    await expectBusyOnce("Fazer backup agora", backup.calls, () => backup.settle(null));
+    await expectBusyOnce("Simular", prune.calls, () => prune.settle(null));
+  });
+
+  test("Enviar mensagem goes busy and sends once", async () => {
+    const send = slow();
+    const store = {
+      i18n: { t },
+      onMessageUpdated: () => () => {},
+      hostCommand: (_host: string, command: string, ...rest: unknown[]) => {
+        if (command === "messages.send") return send.call(...rest);
+        if (command === "messages.sessions") {
+          return Promise.resolve({ sessions: [{ address: "a@h", name: "alfa" }] });
+        }
+        return Promise.resolve({ messages: [] });
+      },
+    } as unknown as AppStore;
+    render(<SessionMessages store={store} hostId="h" sessionId="s1" />);
+    await act(() => Bun.sleep(10));
+    await click(button("Mandar para outra sessão…"));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Texto da mensagem"), { target: { value: "oi" } });
+    });
+    await expectBusyOnce("Enviar", send.calls, () => send.settle(null));
+  });
+});
