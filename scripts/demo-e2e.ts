@@ -218,6 +218,10 @@ const journeys: Record<string, (c: Context) => Promise<void>> = {
       "o prompt do shell",
     );
     await c.page.locator(".xterm").first().click();
+    // A short prompt first: the runner's is 50+ columns ("runner@host:/tmp/fd-demo-X/alfa/projects$")
+    // and the area of a split window is about 60, so the typed line would scroll sideways and the
+    // marker would come out cut in two.
+    await c.page.keyboard.type("PS1='$ '\n");
     await c.page.keyboard.type(`echo ${marker}\n`);
     // The typed line and the echo's output (a slow runner gets twice the wait).
     await waitFor(async () => (await shown()) >= 2, "o eco do terminal", WAIT * 2);
