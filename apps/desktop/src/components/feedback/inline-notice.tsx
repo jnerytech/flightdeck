@@ -9,9 +9,17 @@ const TONE = {
 } as const;
 
 /** A sentence that belongs to the screen (not a toast): a warning, a note or an error. */
-export function InlineNotice(props: { tone?: keyof typeof TONE; children: ReactNode }) {
+export function InlineNotice(props: {
+  tone?: keyof typeof TONE;
+  /** So a control can point at the note with aria-describedby. */
+  id?: string;
+  children: ReactNode;
+}) {
   return (
-    <p className={cn("rounded-md border px-3 py-2 text-sm", TONE[props.tone ?? "warn"])}>
+    <p
+      id={props.id}
+      className={cn("rounded-md border px-3 py-2 text-sm", TONE[props.tone ?? "warn"])}
+    >
       {props.children}
     </p>
   );

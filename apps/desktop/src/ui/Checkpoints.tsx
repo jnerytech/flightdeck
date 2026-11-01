@@ -1,6 +1,6 @@
 import type { RewindPreview, SnapshotFiles, SnapshotInfo } from "@flightdeck/protocol";
 import { GitBranch, History, Undo2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -234,6 +234,8 @@ function TurnRow(props: {
   store: AppStore;
   turn: Turn;
   busy: boolean;
+  /** The id of the panel's busy notice, which says why the rewind is off. */
+  busyId: string;
   files: SnapshotFiles | undefined;
   onToggle(): void;
   onRewind(): void;
@@ -241,6 +243,7 @@ function TurnRow(props: {
 }) {
   const { store, turn } = props;
   const { t } = store.i18n;
+  const noUuidId = useId();
   const summary = {
     changed: t("timeline.changed"),
     unchanged: t("timeline.unchanged"),
@@ -289,6 +292,7 @@ function TurnRow(props: {
           variant="outline"
           size="sm"
           disabled={props.busy}
+          aria-describedby={props.busy ? props.busyId : undefined}
           aria-label={t("timeline.rewindTurn", { n: turn.ordinal })}
           onClick={props.onRewind}
         >
@@ -299,6 +303,7 @@ function TurnRow(props: {
           variant="outline"
           size="sm"
           disabled={turn.uuid === null}
+          aria-describedby={turn.uuid === null ? noUuidId : undefined}
           aria-label={t("timeline.forkTurn", { n: turn.ordinal })}
           onClick={props.onFork}
         >
@@ -307,7 +312,9 @@ function TurnRow(props: {
         </Button>
       </div>
       {turn.uuid === null && (
-        <p className="text-muted-foreground text-xs">{t("timeline.noUuid")}</p>
+        <p id={noUuidId} className="text-muted-foreground text-xs">
+          {t("timeline.noUuid")}
+        </p>
       )}
     </li>
   );
@@ -317,6 +324,7 @@ function TurnRow(props: {
 function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId: string): void }) {
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
+  const busyId = useId();
   const [snapshots, setSnapshots] = useState<SnapshotInfo[] | null>(null);
   const [files, setFiles] = useState<Record<number, SnapshotFiles>>({});
   const [rewinding, setRewinding] = useState<Turn | null>(null);
@@ -377,7 +385,7 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
           )}
         </InlineNotice>
       )}
-      {props.busy && <InlineNotice>{t("timeline.busy")}</InlineNotice>}
+      {props.busy && <InlineNotice id={busyId}>{t("timeline.busy")}</InlineNotice>}
       {turns.length === 0 && <EmptyState icon={History} title={t("timeline.empty")} />}
       <ul aria-label={t("timeline.list")} className="flex flex-col gap-2">
         {turns.map((turn) => (
@@ -386,6 +394,7 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
             store={store}
             turn={turn}
             busy={props.busy}
+            busyId={busyId}
             files={files[turn.n]}
             onToggle={() => void toggle(turn)}
             onRewind={() => setRewinding(turn)}
