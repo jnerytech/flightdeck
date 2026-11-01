@@ -1846,7 +1846,8 @@ configuração a outro computador.
 **O seletor.** Depois que existe um cliente, um menu abaixo da marca, na barra lateral, escolhe
 **Todos os clientes**, um cliente (com as sessões que rodam ou esperam) ou **Sem cliente** (com a
 quantidade de projetos). Uma marca ao lado conta os pedidos que esperam em *outros* clientes. A
-escolha fica guardada entre as aberturas, e o **Ctrl+K** tem as entradas **Cliente: <nome>**.
+escolha fica guardada entre as aberturas, e o **Ctrl+K** tem as entradas **Cliente: <nome>**. **Alt+Shift+C** passa para o próximo: todos os
+clientes, cada cliente na ordem, **Sem cliente** e de novo todos (não faz nada antes de existir um cliente).
 
 **O que a escolha filtra.** Sessões (e um selo do cliente em cada cabeçalho de projeto enquanto
 todos os clientes aparecem), a escolha de projeto de Board e Workflows, Conversas (uma mensagem

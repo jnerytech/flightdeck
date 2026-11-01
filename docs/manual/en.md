@@ -1868,7 +1868,8 @@ client id (new ones added, the same id replaced, nothing deleted), to move to an
 **The switcher.** Once a client exists, a menu under the brand in the sidebar picks **All
 clients**, one client (with its running or waiting sessions) or **No client** (with its project
 count). A mark beside it counts requests waiting in *other* clients. The choice is kept between
-starts, and **Ctrl+K** has **Client: <name>** entries.
+starts, and **Ctrl+K** has **Client: <name>** entries. **Alt+Shift+C** switches to the next one: all
+clients, each client in order, **No client**, then all again (it does nothing before a client exists).
 
 **What the choice filters.** Sessions (and a client chip on each project header while all clients
 are shown), the Board and Workflows project picker, Conversations (a message shows when either of
