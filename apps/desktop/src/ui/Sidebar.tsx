@@ -81,7 +81,7 @@ function SectionTitle(props: {
         type="button"
         aria-expanded={props.open}
         onClick={props.onToggle}
-        className="flex items-center gap-1 rounded-sm font-medium text-muted-foreground text-xs uppercase tracking-wide hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-6 items-center gap-1 rounded-sm font-medium text-muted-foreground text-xs uppercase tracking-wide hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ChevronDown
           aria-hidden="true"

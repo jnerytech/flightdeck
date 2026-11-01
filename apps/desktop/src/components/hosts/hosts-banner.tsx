@@ -25,7 +25,7 @@ export function HostsBanner(props: { hosts: HostView[]; t: T }) {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-left font-medium text-status-needs-you focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-6 items-center gap-2 text-left font-medium text-status-needs-you focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
         {t("hosts.problems", { n: total })}
