@@ -28,7 +28,7 @@ import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
 /** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
 type Entry =
-  | { kind: "alert"; key: string; label: string }
+  | { kind: "alert"; key: string; label: string; clientId?: string }
   | { kind: "loop"; key: string; alert: LoopAlert }
   | { kind: "watch"; key: string; alert: WatchAlert }
   | { kind: "request"; key: string; item: PendingItem };
@@ -60,6 +60,7 @@ export function NeedsYou(props: {
       kind: "alert" as const,
       key: `alert/${a.hostId}/${a.label}`,
       label: a.label,
+      ...(a.clientId ? { clientId: a.clientId } : {}),
     })),
     ...state.loopAlerts.map((alert) => ({
       kind: "loop" as const,
@@ -88,7 +89,7 @@ export function NeedsYou(props: {
   };
   const chosen = entries.find((e) => e.key === selected);
   const open = (entry: Entry) => {
-    if (entry.kind === "alert") go({ name: "settings" });
+    if (entry.kind === "alert") go({ name: entry.clientId ? "clients" : "settings" });
     else setSelected(entry.key);
   };
 

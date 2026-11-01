@@ -1720,6 +1720,7 @@ export const en: Dictionary = {
     switcher: "Client: {name}",
     manage: "Manage clients…",
     manageShort: "Manage clients",
+    budgetAlert: "Budget of the client {name}: {percent}% of {limit} this month",
     switchTo: "Client: {name}",
     settingsHint: "Group the projects of several hosts by client and filter the screens by one.",
     othersWaiting: "Waiting for you in other clients: {count}",

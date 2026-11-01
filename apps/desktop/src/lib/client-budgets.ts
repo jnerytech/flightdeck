@@ -51,7 +51,10 @@ export function evaluateClientBudgets(args: {
     for (const threshold of state.crossed) {
       if (!seen.includes(threshold)) news.push({ clientId: state.clientId, threshold });
     }
-    if (state.crossed.length > 0) next[key] = state.crossed;
+    // Kept while the budget exists: a look that missed a host reads the spend lower, and the
+    // thresholds it already announced must not be announced again when the host is back.
+    const kept = [...new Set([...seen, ...state.crossed])].sort((x, y) => x - y);
+    if (kept.length > 0) next[key] = kept;
   }
   return { states, news, announced: next };
 }

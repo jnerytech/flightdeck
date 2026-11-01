@@ -1723,6 +1723,7 @@ export const ptBR = {
     switcher: "Cliente: {name}",
     manage: "Gerenciar clientes…",
     manageShort: "Gerenciar clientes",
+    budgetAlert: "Orçamento do cliente {name}: {percent}% de {limit} no mês",
     switchTo: "Cliente: {name}",
     settingsHint: "Agrupe os projetos de vários hosts por cliente e filtre as telas por um deles.",
     othersWaiting: "Esperando por você em outros clientes: {count}",

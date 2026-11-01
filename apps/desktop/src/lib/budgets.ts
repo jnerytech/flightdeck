@@ -44,13 +44,16 @@ export function budgetLine(budget: Budget, t: T = PT): string {
 }
 
 export interface BudgetAlert {
+  /** The host whose budget crossed a threshold; empty for a client's (phase 29). */
   hostId: string;
   label: string;
+  /** The client whose month limit crossed a threshold. */
+  clientId?: string;
 }
 
 /** Budgets that crossed a threshold in their current period, for "Precisa de você". */
 export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
-  return state.hosts.flatMap((host) =>
+  const hosts = state.hosts.flatMap((host) =>
     (state.budgets[host.id] ?? [])
       .filter((b) => b.crossed.length > 0)
       .map((b) => ({
@@ -63,4 +66,17 @@ export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
         }),
       })),
   );
+  // A client's month limit, kept by the app (phase 29).
+  const clients = (state.clientBudgets ?? [])
+    .filter((b) => b.crossed.length > 0)
+    .map((b) => ({
+      hostId: "",
+      clientId: b.clientId,
+      label: t("clients.budgetAlert", {
+        name: state.clientList.find((c) => c.id === b.clientId)?.name ?? b.clientId,
+        percent: Math.round(b.fraction * 100),
+        limit: usd(b.limitUsd),
+      }),
+    }));
+  return [...hosts, ...clients];
 }
