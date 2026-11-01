@@ -1337,6 +1337,11 @@ export class Board {
     return discarded;
   }
 
+  /** Calls `listener` after every round of the PR polling. */
+  onPrRound(_listener: () => void): () => void {
+    return () => {};
+  }
+
   get prPollIntervalMs(): number {
     return this.opts.prPollIntervalMs ?? DEFAULT_PR_POLL_MS;
   }

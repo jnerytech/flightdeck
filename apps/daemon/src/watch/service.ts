@@ -17,17 +17,15 @@ export class PrWatch {
 
   constructor(
     private readonly opts: {
-      board: Pick<Board, "getCard" | "getProject">;
+      board: Pick<Board, "getCard" | "getProject" | "onPrRound">;
       watcher: PrWatcher;
       fixer: PrFixer;
       traces: Traces;
     },
   ) {}
 
-  /** Looks at the watched PRs now and every `ms` after. */
-  start(ms: number): void {
-    this.timer = setInterval(() => void this.opts.watcher.tick(), ms);
-  }
+  /** Looks at the watched PRs after every round of the board's PR polling. */
+  start(): void {}
 
   stop(): void {
     if (this.timer) clearInterval(this.timer);

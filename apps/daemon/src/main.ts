@@ -896,7 +896,7 @@ export async function startDaemon(
     },
   });
   const prWatch = new PrWatch({ board, watcher: prWatcher, fixer: prFixer, traces });
-  prWatch.start(board.prPollIntervalMs);
+  prWatch.start();
   // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
   const runConfigs = new RunConfigs({ db: store.db });
   const cardPorts = new CardPorts({
