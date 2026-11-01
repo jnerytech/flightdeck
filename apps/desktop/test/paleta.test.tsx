@@ -146,6 +146,7 @@ describe("paleta", () => {
       "Alternar tema",
       "Trocar idioma",
       "Ir para Configurações",
+      "Gerenciar clientes",
     ]);
     // No screen for it on this host: no "Ir para Custos".
     expect(options()).not.toContain("Ir para Custos");

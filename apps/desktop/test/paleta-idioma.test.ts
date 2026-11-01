@@ -50,6 +50,7 @@ describe("paleta", () => {
       "Trocar idioma | ação",
       "Ir para Custos | ação",
       "Ir para Configurações | ação",
+      "Gerenciar clientes | ação",
     ]);
   });
 
@@ -70,6 +71,7 @@ describe("paleta", () => {
       "Switch language | action",
       "Go to Costs | action",
       "Go to Settings | action",
+      "Manage clients | action",
     ]);
   });
 });
