@@ -103,6 +103,54 @@ describe("browserLaunch: the browser of the e2e runner", () => {
   });
 });
 
+describe("browserLaunch on Windows: Edge when there is no Chrome, found as a file (nothing is launched)", () => {
+  const none = () => null;
+  const env = {
+    ProgramFiles: "C:\\PF",
+    "ProgramFiles(x86)": "C:\\PF86",
+    LOCALAPPDATA: "C:\\Local",
+  };
+  const host = (...files: string[]) => ({
+    env,
+    platform: "win32",
+    isFile: (path: string) => files.includes(path),
+  });
+  const chrome = "C:\\PF\\Google\\Chrome\\Application\\chrome.exe";
+
+  test("an installed Chrome is asked for by channel", () => {
+    expect(browserLaunch(none, host(chrome))).toEqual({ channel: "chrome" });
+    expect(browserLaunch(none, host("C:\\Local\\Google\\Chrome\\Application\\chrome.exe"))).toEqual(
+      { channel: "chrome" },
+    );
+  });
+
+  test("without Chrome, Edge is used by its path, from Program Files, the x86 one or the user's", () => {
+    for (const edge of [
+      "C:\\PF\\Microsoft\\Edge\\Application\\msedge.exe",
+      "C:\\PF86\\Microsoft\\Edge\\Application\\msedge.exe",
+      "C:\\Local\\Microsoft\\Edge\\Application\\msedge.exe",
+    ]) {
+      expect(browserLaunch(none, host(edge))).toEqual({ executablePath: edge });
+    }
+  });
+
+  test("Chrome wins over Edge, and with neither the channel is asked for (its error says what is missing)", () => {
+    const edge = "C:\\PF\\Microsoft\\Edge\\Application\\msedge.exe";
+    expect(browserLaunch(none, host(chrome, edge))).toEqual({ channel: "chrome" });
+    expect(browserLaunch(none, host())).toEqual({ channel: "chrome" });
+  });
+
+  test("a folder that is not set in the environment is skipped", () => {
+    const bare = { env: {}, platform: "win32", isFile: () => false };
+    expect(browserLaunch(none, bare)).toEqual({ channel: "chrome" });
+  });
+
+  test("other systems never look at those paths", () => {
+    const linux = { env, platform: "linux", isFile: () => true };
+    expect(browserLaunch(none, linux)).toEqual({ channel: "chrome" });
+  });
+});
+
 describe("whichOnNodePath: which without Bun", () => {
   const files = new Set(["/b/chromium", "C:\\x\\chromium.exe"]);
   const isFile = (path: string) => files.has(path);

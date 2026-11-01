@@ -50,9 +50,17 @@ export const RUNNER_BROWSER_NAMES = [
  * Chromium found, else the installed Chrome by channel (Windows). A channel cannot be probed
  * without launching, so no Edge fallback here. No browser is ever downloaded.
  */
+export interface BrowserHost {
+  env: Record<string, string | undefined>;
+  platform: string;
+  isFile: (path: string) => boolean;
+}
+
 export function browserLaunch(
   which: (name: string) => string | null,
+  host?: BrowserHost,
 ): { executablePath: string } | { channel: "chrome" } {
+  void host;
   for (const name of RUNNER_BROWSER_NAMES) {
     const executablePath = which(name);
     if (executablePath) return { executablePath };
