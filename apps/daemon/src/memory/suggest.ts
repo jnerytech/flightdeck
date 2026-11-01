@@ -50,6 +50,51 @@ const similar = (a: Set<string>, b: Set<string>) => {
   return a.size >= 2 && b.size >= 2 && shared / (a.size + b.size - shared) >= 0.6;
 };
 
+/** Topics with the same text (ignoring surrounding blank space). */
+function duplicatesOf(topics: Topic[]): MemorySuggestion[] {
+  const byContent = new Map<string, string[]>();
+  for (const t of topics) {
+    const key = createHash("sha256").update(t.text.trim()).digest("hex");
+    byContent.set(key, [...(byContent.get(key) ?? []), t.name]);
+  }
+  return [...byContent.values()]
+    .filter((files) => files.length > 1)
+    .map((files) => ({ kind: "duplicate", files }));
+}
+
+/** Index entries that point at a file that is not there. */
+function brokenLinksOf(dir: string, index: string): MemorySuggestion[] {
+  return index.split("\n").flatMap((line) =>
+    [...line.matchAll(/\]\(([^)\s]+\.md)\)/g)]
+      .map((match) => match[1] as string)
+      .filter((name) => !existsSync(join(dir, name)))
+      .map((name) => ({ kind: "broken-link", files: [name], detail: line })),
+  );
+}
+
+/** Topics the index does not mention, and topics not touched for a long time. */
+function orphansAndStaleOf(topics: Topic[], index: string, nowMs: number): MemorySuggestion[] {
+  return topics.flatMap((t) => {
+    const found: MemorySuggestion[] = [];
+    if (!index.includes(t.name)) found.push({ kind: "orphan", files: [t.name] });
+    if (nowMs - t.mtimeMs > STALE_AFTER_MS) found.push({ kind: "stale", files: [t.name] });
+    return found;
+  });
+}
+
+/** Two topics of the same type that say the same with and without a negation. */
+const contradicts = (a: Topic, b: Topic): boolean =>
+  a.type !== null && a.type === b.type && a.negated !== b.negated && similar(a.words, b.words);
+
+function contradictionsOf(topics: Topic[]): MemorySuggestion[] {
+  return topics.flatMap((a, i) =>
+    topics
+      .slice(i + 1)
+      .filter((b) => contradicts(a, b))
+      .map((b) => ({ kind: "contradiction", files: [a.name, b.name] })),
+  );
+}
+
 export function suggestCleanup(dir: string, nowMs: number): MemorySuggestion[] {
   if (!existsSync(dir)) return [];
   const topics = readdirSync(dir, { withFileTypes: true })
@@ -58,39 +103,12 @@ export function suggestCleanup(dir: string, nowMs: number): MemorySuggestion[] {
     .sort((a, b) => a.name.localeCompare(b.name));
   const indexPath = join(dir, "MEMORY.md");
   const index = existsSync(indexPath) ? readFileSync(indexPath, "utf8") : "";
-  const found: MemorySuggestion[] = [];
-
-  const byContent = new Map<string, string[]>();
-  for (const t of topics) {
-    const key = createHash("sha256").update(t.text.trim()).digest("hex");
-    byContent.set(key, [...(byContent.get(key) ?? []), t.name]);
-  }
-  for (const files of byContent.values()) {
-    if (files.length > 1) found.push({ kind: "duplicate", files });
-  }
-  for (const line of index.split("\n")) {
-    for (const match of line.matchAll(/\]\(([^)\s]+\.md)\)/g)) {
-      const name = match[1] as string;
-      if (!existsSync(join(dir, name)))
-        found.push({ kind: "broken-link", files: [name], detail: line });
-    }
-  }
-  for (const t of topics) {
-    if (!index.includes(t.name)) found.push({ kind: "orphan", files: [t.name] });
-    if (nowMs - t.mtimeMs > STALE_AFTER_MS) found.push({ kind: "stale", files: [t.name] });
-  }
-  for (const [i, a] of topics.entries()) {
-    for (const b of topics.slice(i + 1)) {
-      if (
-        a.type !== null &&
-        a.type === b.type &&
-        a.negated !== b.negated &&
-        similar(a.words, b.words)
-      ) {
-        found.push({ kind: "contradiction", files: [a.name, b.name] });
-      }
-    }
-  }
+  const found: MemorySuggestion[] = [
+    ...duplicatesOf(topics),
+    ...brokenLinksOf(dir, index),
+    ...orphansAndStaleOf(topics, index, nowMs),
+    ...contradictionsOf(topics),
+  ];
   return found.sort(
     (x, y) =>
       ORDER.indexOf(x.kind) - ORDER.indexOf(y.kind) || x.files.join().localeCompare(y.files.join()),
