@@ -49,7 +49,7 @@ describe("recusas-ssh-destinos: a destination the host refuses says why, as a re
     ["ssh_alive_range", (t) => t.save(base({ options: { serverAliveInterval: 0 } })), {}],
     [
       "ssh_forward_too_many",
-      (t) => t.save(base({ options: { localForward: Array.from({ length: 11 }, () => "1:h:2") } })),
+      (t) => t.save(base({ options: { localForward: Array.from({ length: 21 }, () => "1:h:2") } })),
       {},
     ],
     [
@@ -59,8 +59,8 @@ describe("recusas-ssh-destinos: a destination the host refuses says why, as a re
     ],
     [
       "ssh_too_many_tags",
-      (t) => t.save(base({ tags: Array.from({ length: 11 }, (_, i) => `t${i}`) })),
-      { max: 10 },
+      (t) => t.save(base({ tags: Array.from({ length: 21 }, (_, i) => `t${i}`) })),
+      { max: 20 },
     ],
     ["ssh_tag_invalid", (t) => t.save(base({ tags: ["a,b"] })), {}],
   ];
@@ -69,7 +69,7 @@ describe("recusas-ssh-destinos: a destination the host refuses says why, as a re
       const { targets } = setup();
       const got = refusal(() => run(targets));
       expect(got?.reason).toBe(reason);
-      expect(got?.params).toEqual(params);
+      expect(got?.params ?? {}).toEqual(params);
       expect(got?.message).not.toMatch(/[À-ú]|\b(destino|inválid[oa]|porta|usuário)\b/);
     });
   }

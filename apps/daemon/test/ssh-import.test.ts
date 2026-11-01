@@ -247,7 +247,7 @@ describe("ssh-import", () => {
     expect(targets.list().some((t) => t.name === "far" || t.name === "two")).toBe(false);
     expect(skipped["loop-a"]).toMatch(/ciclo/);
     expect(skipped["loop-b"]).toMatch(/ciclo/);
-    expect(skipped.tok).toMatch(/inválido/);
+    expect(skipped.tok).toMatch(/invalid/);
     expect(skipped.nada).toMatch(/não está/);
     expect(result.created.map((t) => t.name)).toEqual(["inner"]);
   });
