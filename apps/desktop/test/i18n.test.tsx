@@ -162,6 +162,14 @@ describe("i18n", () => {
     });
   });
 
+  test("an app-side error has no code and keeps its own text, with no generic title", () => {
+    expect(translateError("", "área de transferência indisponível", ptT)).toEqual({
+      title: "área de transferência indisponível",
+      detail: "",
+    });
+    expect(refusalText("", "port is invalid", enT)).toBe("port is invalid");
+  });
+
   test("every code of the protocol has a text of its own in both languages", () => {
     for (const code of ErrorCode.options) {
       for (const t of [ptT, enT]) {
