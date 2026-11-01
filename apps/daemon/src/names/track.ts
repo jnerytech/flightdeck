@@ -27,9 +27,9 @@ export interface TrackOptions {
    * Looks the project of a folder up without blocking; a managed session is named once it is done.
    * Nothing back means the folder is already known: the session is named on the spot.
    */
-  warm?: ((cwd: string) => Promise<unknown> | undefined) | undefined;
+  warm?: (cwd: string) => Promise<unknown> | undefined;
   /** The persona a session already has (phase 20's extension point); null when none. */
-  personaOf?: ((sessionId: string) => string | null) | undefined;
+  personaOf?: (sessionId: string) => string | null;
 }
 
 /** Naming is auxiliary: a failure must not break the event of the session; the next one tries again. */

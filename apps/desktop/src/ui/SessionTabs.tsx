@@ -22,7 +22,7 @@ export function SessionTabs(props: {
   /** The host announces `review`. */
   enabled: boolean;
   /** Phase 21: the session's id for messages, when the host announces `messaging`. */
-  messagingId?: string | null | undefined;
+  messagingId?: string | null;
   /** Phase 23: the host announces `telemetry`, so the Tempo tab has a timeline to show. */
   telemetry?: boolean;
   /** Phase 25: the host announces `trace`, so the Rastro tab can show the session's tree. */

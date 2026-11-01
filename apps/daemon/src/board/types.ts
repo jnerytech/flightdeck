@@ -23,20 +23,20 @@ export type {
 
 export interface NewProject {
   path: string;
-  name?: string | undefined;
-  baseBranch?: string | undefined;
-  prProvider?: PrProviderKind | undefined;
-  setupScript?: string | null | undefined;
-  promptTemplate?: string | undefined;
+  name?: string;
+  baseBranch?: string;
+  prProvider?: PrProviderKind;
+  setupScript?: string | null;
+  promptTemplate?: string;
   /** Phase 13: fields left out keep their value (or the default). */
-  autoApprove?: Partial<AutoApproveSettings> | undefined;
+  autoApprove?: Partial<AutoApproveSettings>;
   /** Phase 13: `null` removes the issue integration. */
-  issues?: IssuesConfig | null | undefined;
+  issues?: IssuesConfig | null;
 }
 
 export type ProjectPatch = Partial<Omit<NewProject, "path">> & {
   /** The default persona by column (phase 20); `null` removes a column's. */
-  personaByColumn?: Partial<Record<BoardColumn, string | null>> | undefined;
+  personaByColumn?: Partial<Record<BoardColumn, string | null>>;
   /** Which personas the project offers as subagents (phase 20). */
-  personaSubagents?: PersonaSubagentsMode | undefined;
+  personaSubagents?: PersonaSubagentsMode;
 };

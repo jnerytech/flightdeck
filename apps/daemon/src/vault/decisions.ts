@@ -108,9 +108,9 @@ export class Decisions {
 
   list(
     filter: {
-      secretId?: string | undefined;
-      days?: number | undefined;
-      limit?: number | undefined;
+      secretId?: string;
+      days?: number;
+      limit?: number;
     },
     nowMs: number,
   ): VaultDecisionInfo[] {

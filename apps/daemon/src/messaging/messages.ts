@@ -36,13 +36,13 @@ export interface MessagingOptions {
   /** This host's name, the first half of every address. */
   host: string;
   endpoints: Endpoints;
-  clock?: (() => number) | undefined;
+  clock?: () => number;
   /** The team a session belongs to, if any. */
-  teamOf?: ((sessionId: string) => string | null) | undefined;
+  teamOf?: (sessionId: string) => string | null;
   /** The persona badge of a session (phase 20); the endpoint's own when absent. */
-  personaOf?: ((sessionId: string) => string | null) | undefined;
+  personaOf?: (sessionId: string) => string | null;
   /** The standard names of the sessions: their aliases address them. */
-  names?: NameBook | undefined;
+  names?: NameBook;
 }
 
 /** What the messaging layer needs of the standard names. */
@@ -68,8 +68,8 @@ export type MessagingFrame =
 export interface PeerSession {
   id: string;
   name: string | null;
-  alias?: string | null | undefined;
-  aliases?: string[] | undefined;
+  alias?: string | null;
+  aliases?: string[];
   persona: string | null;
   projectKey: string | null;
   teamId: string | null;
@@ -658,7 +658,7 @@ export class Messaging {
   /** The app tells how a relayed message ended at the recipient's daemon (may come twice). */
   relayed(
     id: string,
-    result: { status: "delivered" | "queued" | "refused"; reason?: string | null | undefined },
+    result: { status: "delivered" | "queued" | "refused"; reason?: string | null },
   ): void {
     if (!this.row(id)) return;
     this.update(id, {
@@ -781,12 +781,12 @@ export class Messaging {
   // --- the history ---
 
   list(filter: {
-    team?: string | undefined;
-    session?: string | undefined;
-    host?: string | undefined;
-    status?: MessageInfo["status"] | undefined;
-    days?: number | undefined;
-    limit?: number | undefined;
+    team?: string;
+    session?: string;
+    host?: string;
+    status?: MessageInfo["status"];
+    days?: number;
+    limit?: number;
   }): MessageInfo[] {
     const since = this.ms() - (filter.days ?? 30) * DAY_MS;
     const session = filter.session ? split(filter.session).id : null;

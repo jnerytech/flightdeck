@@ -9,11 +9,11 @@ import { listSessions, notifyWhenIdle, readSession, sendToSession, teamStatus } 
 
 export interface MessageCliArgs {
   action: "list" | "send" | "idle" | "read" | "team";
-  to?: string | undefined;
-  text?: string | undefined;
-  session?: string | undefined;
-  last?: number | undefined;
-  team?: string | undefined;
+  to?: string;
+  text?: string;
+  session?: string;
+  last?: number;
+  team?: string;
 }
 
 /** The JSON to print. Errors of the daemon are thrown as `code: message`. */

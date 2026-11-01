@@ -21,7 +21,7 @@ export interface IdleOptions {
   endpoints: Endpoints;
   messaging: Messaging;
   host: string;
-  clock?: (() => number) | undefined;
+  clock?: () => number;
 }
 
 interface Subscription {

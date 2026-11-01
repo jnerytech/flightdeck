@@ -38,47 +38,48 @@ export interface TeamsOptions {
   manager: SessionManager;
   messaging: Messaging;
   host: string;
-  quota?: Pick<Quota, "watch" | "blocked"> | undefined;
-  personas?: TeamPersonas | undefined;
+  quota?: Pick<Quota, "watch" | "blocked">;
+  personas?: TeamPersonas;
   /** The standard names: a persona that arrives after the session started renames it. */
-  names?:
-    | {
-        get(sessionId: string): unknown;
-        setPersona(sessionId: string, persona: string | null): unknown;
-      }
-    | undefined;
-  clock?: (() => number) | undefined;
+  names?: {
+    get(sessionId: string): unknown;
+    setPersona(sessionId: string, persona: string | null): unknown;
+  };
+  clock?: () => number;
   /** Starts the coordinator session; phase 20 passes the persona on. */
-  startCoordinator?:
-    | ((input: { cwd: string; prompt: string; name: string; persona: string | null }) => {
-        sessionId: string;
-      })
-    | undefined;
+  startCoordinator?: (input: {
+    cwd: string;
+    prompt: string;
+    name: string;
+    persona: string | null;
+  }) => {
+    sessionId: string;
+  };
   /** Starts a worker's card; phase 20 passes the persona on. */
-  startWorker?: ((cardId: string, persona: string | null) => Promise<unknown>) | undefined;
+  startWorker?: (cardId: string, persona: string | null) => Promise<unknown>;
   /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
-  warm?: ((cwd: string) => Promise<unknown> | undefined) | undefined;
+  warm?: (cwd: string) => Promise<unknown> | undefined;
   /** Tells a running session its persona changed. */
-  applyPersona?: ((sessionId: string, persona: string | null) => void) | undefined;
+  applyPersona?: (sessionId: string, persona: string | null) => void;
 }
 
 export interface NewTeam {
   projectId: string;
   goal: string;
-  name?: string | undefined;
+  name?: string;
   workers: number;
-  coordinatorPersona?: string | undefined;
-  workerPersonas?: string[] | undefined;
-  checks?: string[] | undefined;
+  coordinatorPersona?: string;
+  workerPersonas?: string[];
+  checks?: string[];
 }
 
 export interface TeamPatch {
   team: string;
-  goal?: string | undefined;
-  checks?: string[] | undefined;
-  persona?: { member: string; persona: string | null } | undefined;
-  addWorkers?: number | undefined;
-  removeMember?: string | undefined;
+  goal?: string;
+  checks?: string[];
+  persona?: { member: string; persona: string | null };
+  addWorkers?: number;
+  removeMember?: string;
 }
 
 /** What a team keeps of a member; the live session of a worker comes from its card. */

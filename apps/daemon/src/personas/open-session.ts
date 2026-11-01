@@ -13,8 +13,8 @@ export interface OpenSessionPersonasOptions {
 }
 
 export interface SwitchTarget {
-  sessionId?: string | undefined;
-  claudeSessionId?: string | undefined;
+  sessionId?: string;
+  claudeSessionId?: string;
 }
 
 type Language = "pt-BR" | "en";

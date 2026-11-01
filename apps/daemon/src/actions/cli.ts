@@ -8,9 +8,9 @@ import { DaemonClient, daemonUrl, runnableActions } from "../mcp.ts";
 
 export interface ActionCliArgs {
   action: "list" | "run";
-  project?: string | undefined;
-  name?: string | undefined;
-  params?: Record<string, string> | undefined;
+  project?: string;
+  name?: string;
+  params?: Record<string, string>;
 }
 
 /** The JSON to print. Errors of the daemon are thrown as `code: message`. */
@@ -42,9 +42,9 @@ export async function runActionCli(
 
 export interface SnippetCliArgs {
   action: "list" | "get";
-  name?: string | undefined;
-  projectPath?: string | undefined;
-  query?: string | undefined;
+  name?: string;
+  projectPath?: string;
+  query?: string;
 }
 
 /**

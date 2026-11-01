@@ -78,7 +78,7 @@ export function ActionsPage(props: {
   projectId: string;
   projectName: string;
   /** Opens the form on a new action filled from a snippet (phase 18). */
-  draft?: ActionSeed | undefined;
+  draft?: ActionSeed;
 }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;

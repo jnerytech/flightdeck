@@ -61,28 +61,28 @@ export interface ActionsOptions {
   /** The project by id; throws `not_found` for one that does not exist. */
   projects: (id: string) => ActionProject;
   /** Where host actions (and free commands) run; the home folder when absent. */
-  hostBase?: string | undefined;
+  hostBase?: string;
   /** The daemon's environment; what reaches a program is cleaned. */
-  baseEnv?: Record<string, string | undefined> | undefined;
+  baseEnv?: Record<string, string | undefined>;
   /** The SSH destinations of phase 15 plug in here. */
-  ssh?: SshExecutor | undefined;
+  ssh?: SshExecutor;
   /** The vault secret that holds a destino's key (`vault-key`), or null when it has none. */
-  sshKey?: ((target: string) => string | null) | undefined;
+  sshKey?: (target: string) => string | null;
   /** Phase 19: the tags of an ssh destino (phase 15), which count in a use's tags. */
-  sshTags?: ((target: string) => string[]) | undefined;
+  sshTags?: (target: string) => string[];
   /** How long a request waits for the app, and then is denied (10 minutes when absent). */
-  requestTimeoutMs?: number | undefined;
+  requestTimeoutMs?: number;
   /** Phase 19: the rules of each secret; without them the requests of phase 17 apply. */
-  rules?: VaultRules | undefined;
+  rules?: VaultRules;
   /** This host's name, as the rules' `host` matches it. */
-  hostName?: string | undefined;
+  hostName?: string;
   /** What the classifier of phase 13 says of a command. */
-  risk?: ((command: string, cwd: string) => Risk) | undefined;
+  risk?: (command: string, cwd: string) => Risk;
   /** The `projectKey` of a project, as the rules' `project` matches it. */
-  projectKey?: ((projectId: string) => string | undefined) | undefined;
-  clock?: (() => number) | undefined;
+  projectKey?: (projectId: string) => string | undefined;
+  clock?: () => number;
   /** The PC's time zone for the rules' windows (the system's when absent). */
-  timeZone?: string | undefined;
+  timeZone?: string;
 }
 
 export type ActionsFrame = VaultRequestFrame | VaultUsed | VaultAlertFrame;
@@ -210,8 +210,8 @@ export class Actions {
     requestId: string,
     approval: {
       via: "app" | "tray";
-      heldMs?: number | undefined;
-      scope?: "once" | "session" | undefined;
+      heldMs?: number;
+      scope?: "once" | "session";
     },
   ): void {
     const waiting = this.pending.get(requestId);
@@ -277,14 +277,14 @@ export class Actions {
     secretId: string;
     requester: VaultRequester;
     purpose: "ssh" | "action" | "run_with_secret";
-    action?: string | undefined;
-    host?: string | undefined;
-    tags?: string[] | undefined;
-    project?: string | undefined;
-    session?: string | undefined;
-    risk?: Risk | undefined;
-    actionApproval?: "always" | "never" | "first-per-session" | undefined;
-    at?: number | undefined;
+    action?: string;
+    host?: string;
+    tags?: string[];
+    project?: string;
+    session?: string;
+    risk?: Risk;
+    actionApproval?: "always" | "never" | "first-per-session";
+    at?: number;
   }): VaultVerdict {
     const rules = this.opts.rules;
     const ctx: UseContext = {
@@ -302,15 +302,11 @@ export class Actions {
     return evaluate(rules?.rulesFor(use.secretId) ?? [], ctx, this.env(use.at));
   }
 
-  decisions(input: {
-    secretId?: string | undefined;
-    days?: number | undefined;
-    limit?: number | undefined;
-  }): VaultDecisionInfo[] {
+  decisions(input: { secretId?: string; days?: number; limit?: number }): VaultDecisionInfo[] {
     return this.audit.list(input, this.ms());
   }
 
-  report(input: { days?: number | undefined; format?: "json" | "csv" | undefined }): {
+  report(input: { days?: number; format?: "json" | "csv" }): {
     rows: VaultReportRow[];
     csv?: string;
   } {
@@ -331,9 +327,9 @@ export class Actions {
   }
 
   async save(input: {
-    projectId?: string | undefined;
+    projectId?: string;
     definition: Record<string, unknown>;
-    secretIds?: string[] | undefined;
+    secretIds?: string[];
   }): Promise<ActionInfo> {
     const { action, errors, issues } = validateAction(
       input.definition,
@@ -392,11 +388,11 @@ export class Actions {
   }
 
   async run(input: {
-    projectId?: string | undefined;
+    projectId?: string;
     name: string;
-    params?: Record<string, string> | undefined;
+    params?: Record<string, string>;
     requestedBy: VaultRequester;
-    session?: string | undefined;
+    session?: string;
   }): Promise<ActionResult> {
     const found = await this.find(input.projectId, input.name);
     this.assertTrusted(found);
@@ -438,9 +434,9 @@ export class Actions {
   async runFree(input: {
     command: string;
     secrets: string[];
-    host?: string | undefined;
+    host?: string;
     requestedBy: VaultRequester;
-    session?: string | undefined;
+    session?: string;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
     // Another host is a phase 15 destino of that name: the command runs there with sh -c.
@@ -494,11 +490,7 @@ export class Actions {
     }
   }
 
-  runs(input: {
-    projectId?: string | undefined;
-    name?: string | undefined;
-    limit?: number | undefined;
-  }): ActionRunInfo[] {
+  runs(input: { projectId?: string; name?: string; limit?: number }): ActionRunInfo[] {
     const rows = this.opts.db
       .query(
         `SELECT * FROM action_runs

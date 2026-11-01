@@ -49,16 +49,16 @@ export interface AgentPublishRequest extends PersonaAgent {
 
 /** What names a persona: its id in the host's or the project's list, or a definition from the app. */
 export interface PersonaRef {
-  id?: string | undefined;
+  id?: string;
   definition?: unknown;
   /** The language of the pack personas (the context's is used when absent). */
-  language?: Language | undefined;
+  language?: Language;
 }
 
 export interface PersonaContext {
-  projectPath?: string | undefined;
+  projectPath?: string;
   /** The language of the pack personas; `pt-BR` when absent. */
-  language?: Language | undefined;
+  language?: Language;
 }
 
 export interface ResolvedPersona {
@@ -176,7 +176,7 @@ export class Personas {
   publishAgent(request: {
     id: string;
     projectPath: string;
-    language?: Language | undefined;
+    language?: Language;
     confirm: boolean;
   }): { path: string } {
     if (!request.confirm) {

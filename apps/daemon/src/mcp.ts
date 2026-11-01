@@ -32,7 +32,7 @@ export interface McpOptions {
    * Which session this server serves: a managed session by its id, or a terminal one by the launch
    * it came from. Without it the messaging tools refuse (nobody is sending).
    */
-  identity?: SessionIdentity | undefined;
+  identity?: SessionIdentity;
 }
 
 /** The identity the environment of a Claude Code session gives its MCP servers. */

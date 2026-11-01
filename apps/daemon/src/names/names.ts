@@ -22,9 +22,9 @@ export interface SessionName {
 
 export interface NameInput {
   project: string;
-  persona?: string | null | undefined;
+  persona?: string | null;
   /** The card the session works for, if any. */
-  cardId?: string | null | undefined;
+  cardId?: string | null;
 }
 
 interface Row {

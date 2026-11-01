@@ -70,10 +70,10 @@ export interface LocalEndpointsOptions {
   cardOf: (sessionId: string) => string | null;
   /** Writes to the channel of a terminal launch; false when there is none. */
   sendToLaunch: (launchId: string, text: string) => boolean;
-  autoApprove?: Pick<AutoApprover, "suspend" | "suspended"> | undefined;
-  personaOf?: ((sessionId: string) => string | null) | undefined;
+  autoApprove?: Pick<AutoApprover, "suspend" | "suspended">;
+  personaOf?: (sessionId: string) => string | null;
   /** The text of a transcript file; null when it cannot be read. */
-  readFile?: ((path: string) => string | null) | undefined;
+  readFile?: (path: string) => string | null;
 }
 
 export const MANAGED_STATE: Record<SessionStatus, MessagingSession["state"]> = {
