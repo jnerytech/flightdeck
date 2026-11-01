@@ -138,6 +138,17 @@ export class TelemetryStore {
       }));
   }
 
+  /** How long each tool call of a session took, by its `tool_use_id`, as the exporter measured it. */
+  toolDurations(claudeSessionId: string): Map<string, number> {
+    const rows = this.db
+      .query<{ ref: string; duration: number }, [string]>(
+        `SELECT ref, duration_ms AS duration FROM telemetry_events
+         WHERE claude_session_id = ? AND name = 'tool_result' AND ref <> '' AND duration_ms IS NOT NULL`,
+      )
+      .all(claudeSessionId);
+    return new Map(rows.map((row) => [row.ref, row.duration]));
+  }
+
   /** Deletes the events older than `days`; returns how many. */
   prune(days: number, now: number): number {
     return this.db.query("DELETE FROM telemetry_events WHERE at < ?").run(now - days * DAY_MS)

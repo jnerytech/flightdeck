@@ -159,3 +159,71 @@ describe("rastro-modelo: cost, tokens and what stands out", () => {
     expect(result.durationMs).toBe(90_000);
   });
 });
+
+describe("rastro-modelo: a transcript as it is written while the session runs", () => {
+  const line = (value: object) => JSON.stringify(value);
+  test("a result made of blocks is read, a call with no result yet has no time, and an input with nothing to show has no summary", () => {
+    const main = [
+      line({
+        type: "user",
+        uuid: "u1",
+        timestamp: "2026-11-01T12:00:00.000Z",
+        message: { content: "oi" },
+      }),
+      line({
+        type: "assistant",
+        uuid: "a1",
+        timestamp: "2026-11-01T12:00:01.000Z",
+        message: {
+          id: "m1",
+          content: [{ type: "tool_use", id: "t1", name: "Odd", input: { x: 1 } }],
+        },
+      }),
+      line({
+        type: "user",
+        uuid: "u2",
+        timestamp: "2026-11-01T12:00:03.000Z",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "t1",
+              content: [
+                { type: "text", text: "um" },
+                { type: "image" },
+                { type: "text", text: "dois" },
+              ],
+            },
+          ],
+        },
+      }),
+      line({
+        type: "assistant",
+        uuid: "a2",
+        message: {
+          id: "m2",
+          content: [
+            { type: "tool_use", id: "t2", name: "Slow", input: { command: "x".repeat(300) } },
+          ],
+        },
+      }),
+      line({
+        type: "user",
+        uuid: "u3",
+        timestamp: "2026-11-01T12:00:09.000Z",
+        message: { content: [{ type: "tool_result", tool_use_id: "t3", content: 5 }] },
+      }),
+    ].join("\n");
+    const [turn] = buildTrace({
+      claudeSessionId: "x",
+      main,
+      subagents: [],
+      costOf: () => null,
+    }).turns;
+    const [odd, slow] = turn?.children ?? [];
+    expect(odd).toMatchObject({ input: null, result: "um dois", durationMs: 2_000 });
+    expect(slow).toMatchObject({ result: null, durationMs: null, startMs: null });
+    expect(slow?.input?.length).toBe(120);
+    expect(turn?.costUsd).toBeNull();
+  });
+});

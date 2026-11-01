@@ -112,6 +112,7 @@ import { TelemetryStore } from "./telemetry/store.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
+import { TraceService } from "./trace/service.ts";
 import {
   requestShutdown,
   runUpdate,
@@ -973,6 +974,7 @@ export async function startDaemon(
     usage,
     costs,
     telemetry: telemetryStore,
+    trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),
     budgets,
     quotaHistory,
