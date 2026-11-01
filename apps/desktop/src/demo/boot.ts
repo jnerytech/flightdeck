@@ -71,10 +71,16 @@ export function entryHtml(html: string, entry: string | undefined): string {
 /**
  * What the store gets in the demo: with seeded hosts, a long wait between attempts, so a host that
  * does not answer stays offline (or reconnecting) long enough for the prints instead of flickering.
+ * The e2e asks for `?reconnect=fast` instead: a first connection lost under load must heal in
+ * seconds, not after the long wait.
  */
 export function demoStoreOptions(
   hosts: DemoHost[],
-  _search = "",
+  search = "",
 ): { baseDelayMs?: number; maxDelayMs?: number } {
-  return hosts.length > 0 ? { baseDelayMs: 60_000 } : {};
+  if (hosts.length === 0) return {};
+  if (new URLSearchParams(search).get("reconnect") === "fast") {
+    return { baseDelayMs: 1000, maxDelayMs: 4000 };
+  }
+  return { baseDelayMs: 60_000 };
 }

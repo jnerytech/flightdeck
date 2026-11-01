@@ -17,7 +17,10 @@ const secrets = new Map<string, string>();
 const demoHosts = parseDemoHosts(import.meta.env.VITE_DEMO_HOSTS);
 seedDemoHosts(window.localStorage, secrets, demoHosts);
 applyDemoPrefs(window.localStorage, window.location.search);
-const store = new AppStore(createWebPlatform(undefined, secrets), demoStoreOptions(demoHosts));
+const store = new AppStore(
+  createWebPlatform(undefined, secrets),
+  demoStoreOptions(demoHosts, window.location.search),
+);
 const route = initialRoute(window.location.search);
 if (route) store.router.push(route);
 

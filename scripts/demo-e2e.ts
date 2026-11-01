@@ -13,6 +13,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import { DANGER_SESSION, type DemoIds } from "./demo-seed.ts";
 import { launchFirst } from "./lib/browser.ts";
 import { ACOES_ACTION, JOURNEYS, LANGUAGES, VIEWPORTS } from "./lib/e2e-journeys.ts";
+import { ensureOnline } from "./lib/e2e-online.ts";
 
 /** A failed journey leaves its print here; `E2E_ONLY=a,b` runs just those journeys. */
 const FAILURES_DIR = process.env.E2E_FAILURES ?? join(tmpdir(), "flightdeck-e2e");
@@ -34,8 +35,30 @@ async function open(c: Context, route: Route, prefs = true) {
     query.set("lang", c.lang);
     query.set("theme", "light");
   }
+  // The prints keep the demo's long wait between attempts; a journey needs a lost first
+  // connection to heal in seconds.
+  query.set("reconnect", "fast");
   await c.page.goto(`${c.url}?${query}`);
   await c.page.waitForTimeout(1500);
+  await ensureOnline({
+    online: () => demoHostsOnline(c),
+    reload: async () => void (await c.page.reload()),
+    sleep: (ms) => c.page.waitForTimeout(ms),
+    now: () => Date.now(),
+  });
+}
+
+/** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
+async function demoHostsOnline(c: Context): Promise<boolean> {
+  for (const name of ["alfa", "beta"]) {
+    const dot = (state: string | RegExp) =>
+      c.page.getByRole("img", { name: state, exact: typeof state === "string" });
+    const online = c.t("sidebar.hostState", { host: name, state: c.t("hosts.status.online") });
+    if ((await dot(online).count()) > 0) continue;
+    // A dot that says anything else is a host that is not up; no dot at all is a page that cannot tell.
+    if ((await dot(new RegExp(`^${name}: `)).count()) > 0) return false;
+  }
+  return true;
 }
 
 async function waitFor(check: () => Promise<boolean>, what: string, timeout = WAIT) {
