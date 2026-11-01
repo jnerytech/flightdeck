@@ -14,17 +14,18 @@ export function killTree(
   platform: string = process.platform,
   kill: (pid: number, signal: string) => void = process.kill,
   // The program is looked up on the current PATH: `Bun.spawn` alone keeps the one the process started with.
-  spawn: (cmd: string[]) => void = ([program, ...args]) =>
-    void Bun.spawn([whichOnPath(program as string) ?? (program as string), ...args], {
+  spawn: (cmd: string[]) => unknown = ([program, ...args]) =>
+    Bun.spawn([whichOnPath(program as string) ?? (program as string), ...args], {
       stdout: "ignore",
       stderr: "ignore",
-    }),
-): void {
+    }).exited,
+): Promise<void> {
   // Only a child's pid: a group kill with the daemon's own, 1 or a negative one would reach the
   // daemon or other processes.
-  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return;
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return Promise.resolve();
   if (platform === "win32") spawn(["taskkill", "/PID", String(pid), "/T", "/F"]);
   else kill(-pid, "SIGKILL");
+  return Promise.resolve();
 }
 
 /**
@@ -37,6 +38,7 @@ export async function runCommand(
   cwd: string,
   input?: string,
   timeoutMs?: number,
+  kill: (pid: number) => Promise<void> = killTree,
 ): Promise<CommandResult> {
   // `env` explicitly: without it Bun passes the environment the process started with. Its own
   // process group (outside Windows), so the whole tree can be killed at the limit.

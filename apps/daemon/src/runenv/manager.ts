@@ -36,8 +36,8 @@ export interface RunHost {
     terminalId: string;
     exited: Promise<number>;
   };
-  /** Ends the process and its whole tree. */
-  kill(terminalId: string): void;
+  /** Ends the process and its whole tree; settles when the tree is gone. */
+  kill(terminalId: string): void | Promise<void>;
 }
 
 export interface RunManagerOptions {

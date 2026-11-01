@@ -6,7 +6,7 @@ export interface TreeKillDeps {
   /** `process.kill`. */
   signal?: (pid: number, signal: string) => void;
   /** Runs a command to completion (`taskkill` on Windows). */
-  run?: (argv: string[]) => void;
+  run?: (argv: string[]) => unknown;
 }
 
 /**
@@ -14,9 +14,9 @@ export interface TreeKillDeps {
  * process group on Linux (the PTY's child leads its own), `taskkill /T /F` on Windows. A tree that
  * is already gone is not an error.
  */
-export function killTree(pid: number, deps: TreeKillDeps = {}): void {
+export function killTree(pid: number, deps: TreeKillDeps = {}): Promise<void> {
   // Never this daemon's own group (-pid would be it), init's, or a pid that is not one.
-  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return;
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return Promise.resolve();
   const platform = deps.platform ?? process.platform;
   try {
     if (platform === "win32")
@@ -32,9 +32,10 @@ export function killTree(pid: number, deps: TreeKillDeps = {}): void {
   } catch {
     // Already gone, or taskkill is not there: nothing left to end.
   }
+  return Promise.resolve();
 }
 
-export type TreeKiller = (pid: number) => void;
+export type TreeKiller = (pid: number) => unknown;
 
 /** The run environment's processes as tabs: each one a terminal of the host's terminal manager. */
 export function terminalRunHost(
@@ -58,7 +59,7 @@ export function terminalRunHost(
       });
       return { terminalId, exited };
     },
-    kill: (terminalId) => {
+    kill: async (terminalId) => {
       const pid = manager.pidOf(terminalId);
       if (pid === null) return;
       // The tree first, while its leader lives: after it, the children could not be found.
