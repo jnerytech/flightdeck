@@ -11,7 +11,11 @@ import type { Client, ClientRule, RuleInput } from "../lib/clients.ts";
 const ruleValue = (rule: ClientRule) => (rule.kind === "remote" ? rule.pattern : rule.path);
 
 /** The rules of one client: what joins a project to it, in order, and a form for a new one. */
-export function ClientRules(props: { store: AppStore; state: AppState; client: Client }) {
+export function ClientRules(props: {
+  store: AppStore;
+  state: Pick<AppState, "hosts">;
+  client: Client;
+}) {
   const { store, state, client } = props;
   const { t } = store.i18n;
   const [kind, setKind] = useState<RuleInput["kind"]>("remote");

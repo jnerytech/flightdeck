@@ -32,6 +32,7 @@ describe("erros-com-solucao: refusals shown by forms", () => {
   test("the vault rules editor says what the code means, then the daemon's message", async () => {
     const store = {
       vaultRules: () => [],
+      getState: () => ({ clientList: [] }),
       setVaultRules: async () => REFUSED,
     } as unknown as AppStore;
     const secret = { id: "s1", name: "token", rules: [] } as never;

@@ -73,6 +73,9 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     const store = {
       today: () => "2026-10-15",
       hostCommand: () => Promise.resolve(null),
+      clientScope: () => ({ includes: () => true }),
+      subscribe: () => () => {},
+      getState: () => ({ clientSelection: "all" }),
       setBudget: save.call,
     } as unknown as AppStore;
     render(

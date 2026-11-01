@@ -9,10 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
+import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import { budgetLabel, budgetLine, projectName } from "../lib/budgets.ts";
 import { periodRange } from "../lib/costs.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+
+/** What the client filter reads: the selection, the clients and where each project belongs. */
+const BUDGETS_KEYS = ["clientSelection", "clientList", "clientOverrides", "projects"] as const;
 
 interface Draft {
   id?: string;
@@ -55,7 +59,7 @@ export function BudgetsSection(props: {
   const editing = props.budgets.find((b) => b.id === draft.id);
   // The selected client's project budgets, and the host's own, which cap everything on the host.
   const scope = store.clientScope();
-  const selection = store.getState().clientSelection;
+  const { clientSelection: selection } = useStoreSlice(store, BUDGETS_KEYS);
   const visible = props.budgets.filter(
     (b) => b.scope === "host" || scope.includes(selection, b.projectKey ?? ""),
   );

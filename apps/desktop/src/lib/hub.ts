@@ -164,7 +164,13 @@ const NO_META: SessionMeta = { name: null, pinned: false, archived: false };
  * Every session of every host: managed ones (live status from the summaries), external ones
  * (from hooks) and the history, each claudeSessionId once (managed, then external, then history).
  */
-export function hubRows(state: AppState): HubRow[] {
+/** The parts of the state the rows are made of. */
+export type HubRowState = Pick<
+  AppState,
+  "hosts" | "hub" | "meta" | "externals" | "names" | "background"
+>;
+
+export function hubRows(state: HubRowState): HubRow[] {
   return state.hosts.flatMap((host) => {
     const data = state.hub[host.id] ?? { managed: [], history: [] };
     const meta = (id: string | null) =>

@@ -13,7 +13,11 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
  * What a client pre-fills: the persona its sessions open in, the tag its snippets carry, and the
  * tag of its secrets, with the opt-in that keeps them inside its projects.
  */
-export function ClientDefaults(props: { store: AppStore; state: AppState; client: Client }) {
+export function ClientDefaults(props: {
+  store: AppStore;
+  state: Pick<AppState, "hosts" | "secrets">;
+  client: Client;
+}) {
   const { store, state, client } = props;
   const { t } = store.i18n;
   const [persona, setPersona] = useState(client.defaults.persona ?? "");

@@ -8,7 +8,11 @@ import type { Client } from "../lib/clients.ts";
 import { usd } from "../lib/costs.ts";
 
 /** A client's month limit: what it is, what was spent against it, and a form to change it. */
-export function ClientBudget(props: { store: AppStore; state: AppState; client: Client }) {
+export function ClientBudget(props: {
+  store: AppStore;
+  state: Pick<AppState, "clientBudgets">;
+  client: Client;
+}) {
   const { store, state, client } = props;
   const { t } = store.i18n;
   const limit = store.clients.budgets()[client.id];

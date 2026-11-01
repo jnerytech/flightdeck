@@ -66,6 +66,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
       terminalLaunch: () => ({ kind: "spawn" }),
       embeddedTerminal: () => true,
       getState: () => ({ hosts: [] }),
+      clientScope: () => ({ defaultPersona: () => "" }),
       openClaudeHere: here.call,
       openInTerminal: open.call,
     } as unknown as AppStore;
@@ -240,6 +241,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     const save = slow();
     const store = {
       vaultRules: () => [],
+      getState: () => ({ clientList: [] }),
       previewVaultUse: () => Promise.resolve(null),
       setVaultRules: save.call,
     } as unknown as AppStore;

@@ -16,7 +16,7 @@ import type { AppState, AppStore, PendingItem } from "../../lib/app-store.ts";
 import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import { switcherCounts } from "../../lib/client-switcher.ts";
 import { UNASSIGNED } from "../../lib/clients.ts";
-import { hubRows } from "../../lib/hub.ts";
+import { type HubRowState, hubRows } from "../../lib/hub.ts";
 import type { Route } from "../../lib/router.ts";
 
 const Count = ({ n }: { n: number }) =>
@@ -29,7 +29,7 @@ const Count = ({ n }: { n: number }) =>
  */
 export function ClientSwitcher(props: {
   store: AppStore;
-  state: AppState;
+  state: HubRowState & Pick<AppState, "clientList" | "clientSelection">;
   pending: PendingItem[];
   collapsed: boolean;
   go(route: Route): void;

@@ -19,7 +19,10 @@ import { ClientsTransfer } from "./ClientsTransfer.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Phase 29: the clients that group projects across hosts, with their rules. */
-export function ClientsPage(props: { store: AppStore; state: AppState }) {
+export function ClientsPage(props: {
+  store: AppStore;
+  state: Pick<AppState, "clientList" | "clientOverrides" | "clientBudgets" | "hosts" | "secrets">;
+}) {
   const { store, state } = props;
   const { t } = store.i18n;
   const clients = state.clientList;

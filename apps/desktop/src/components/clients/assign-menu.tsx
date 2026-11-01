@@ -15,7 +15,7 @@ import { applySuggestion, suggestClients } from "../../lib/client-suggest.ts";
  */
 export function AssignMenu(props: {
   store: AppStore;
-  state: AppState;
+  state: Pick<AppState, "clientList" | "clientOverrides">;
   projectKey: string;
   name: string;
 }) {
