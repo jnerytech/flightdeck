@@ -149,6 +149,9 @@ jobs:
         run: bun run demo:shots
 
       - name: Jornadas e2e (2 idiomas)
+        # A failed journey leaves its print (and the text of the terminal) in the prints artifact.
+        env:
+          E2E_FAILURES: apps/desktop/screenshots/e2e-failures
         run: bun run e2e
 
       - name: Publicar os prints

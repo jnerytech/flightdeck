@@ -4,6 +4,7 @@
  * sideways, and the end of the long list shows after scrolling). Chrome through playwright-core,
  * like the prints.
  */
+import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
@@ -416,6 +417,16 @@ export async function runE2e(
         } catch (error) {
           const shot = join(FAILURES_DIR, `${lang}-${name}.png`);
           await page.screenshot({ path: shot }).catch(() => {});
+          // What the terminal's rows hold says whether the shell answered but nothing was drawn.
+          const rows = await page
+            .locator(".xterm-rows")
+            .first()
+            .textContent({ timeout: 2000 })
+            .catch(() => null);
+          if (rows !== null) {
+            mkdirSync(FAILURES_DIR, { recursive: true });
+            writeFileSync(shot.replace(/\.png$/, ".txt"), rows);
+          }
           problems.push(`${lang} ${name}: ${(error as Error).message.split("\n")[0]} (${shot})`);
         }
         await context.close();
