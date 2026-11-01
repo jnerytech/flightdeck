@@ -46,10 +46,10 @@ const CLASS_CHAR = String.raw`[^\s"'\`]`;
 /** A variant prefix (`sm:`, `@2xl:`, `hover:`, `[&_x]:`), kept in what is reported. */
 const VARIANTS = String.raw`(?:[\w@\[\]&>*=.-]+:)*`;
 /** `flex`, `grid`, and the gap, spacing and size families. */
-const LAYOUT_UTILITY = String.raw`(?:(?:inline-)?(?:flex|grid)|grid-(?:cols|rows)-${CLASS_CHAR}+|gap(?:-[xy])?-${CLASS_CHAR}+|space-[xy]-${CLASS_CHAR}+|-?[pm][xytblrse]?-${CLASS_CHAR}+|(?:min-|max-)?[wh]-${CLASS_CHAR}+)`;
+const LAYOUT_UTILITY = `(?:(?:inline-)?(?:flex|grid)|grid-(?:cols|rows)-${CLASS_CHAR}+|gap(?:-[xy])?-${CLASS_CHAR}+|space-[xy]-${CLASS_CHAR}+|-?[pm][xytblrse]?-${CLASS_CHAR}+|(?:min-|max-)?[wh]-${CLASS_CHAR}+)`;
 /** A whole class name: the characters around it are not part of a class. */
 const LAYOUT_CLASS = new RegExp(
-  String.raw`(?<!${CLASS_CHAR})(${VARIANTS}${LAYOUT_UTILITY})(?!${CLASS_CHAR})`,
+  `(?<!${CLASS_CHAR})(${VARIANTS}${LAYOUT_UTILITY})(?!${CLASS_CHAR})`,
   "g",
 );
 /** What a screen may still say itself: full size, the zero minimum and auto margins. */
