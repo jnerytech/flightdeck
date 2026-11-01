@@ -25,6 +25,7 @@ sessions from one place, without opening each machine.
 ## Features
 
 **Sessions**
+
 - One hub for the sessions of all your hosts, grouped by project, with live state and a summary
   line for each.
 - Sessions started in a terminal show up too, through opt-in Claude Code hooks.
@@ -34,6 +35,7 @@ sessions from one place, without opening each machine.
   ones.
 
 **Work**
+
 - A board per project: each card is a git worktree plus a session, with pull requests on GitHub
   and Azure DevOps.
 - YAML workflows with agents, checks, approval gates, loops, parallel steps and budgets.
@@ -86,11 +88,13 @@ sessions from one place, without opening each machine.
   have, call both in one script and join the lines (see the manual).
 
 **Cost and quota**
+
 - Estimated cost per project, model and origin, with CSV export.
 - Plan quota bars with a projection of when the window runs out, a quota queue, and budgets in
   US$ that alert you or hold new cards.
 
 **Desktop**
+
 - Tabs with their own history, pinned, reordered and kept between starts, and a split view with
   two areas side by side or stacked.
 - An embedded terminal on any host, in a tab, with no SSH: it survives the app and reattaches
@@ -194,6 +198,7 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
 ```
 
 ## Security model
+
 - **Token per host.** The app connects with a random token stored in the operating system's
   credential store. Tokens never appear in the logs, and `flightdeckd pair --rotate` replaces one.
 - **Folders.** Sessions can only be opened inside `allowedRoots`; paths are resolved with
@@ -234,6 +239,7 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
   code-signed.
 
 ## Documentation
+
 - Manual: [English](docs/manual/en.md) | [Português (Brasil)](docs/manual/pt-BR.md)
 - Roadmap and specs: [`docs/SPEC.md`](docs/SPEC.md)
 - Decisions and deviations from the specs: [`docs/DECISIONS.md`](docs/DECISIONS.md)
