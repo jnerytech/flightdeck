@@ -66,3 +66,15 @@ describe("bundle-lazy: what an entry point loads at start-up", () => {
     ]);
   });
 });
+
+describe("bundle-lazy: the heavy packages stay out of the entry chunk", () => {
+  test("neither entry point loads CodeMirror, age or xterm at start-up: they sit behind import() / React.lazy", () => {
+    const src = join(import.meta.dir, "../../apps/desktop/src");
+    const reached = reachedPackages(["main.tsx", "main.web.tsx"], src, [
+      "@codemirror/",
+      "age-encryption",
+      "@xterm/",
+    ]);
+    expect(reached).toEqual([]);
+  });
+});
