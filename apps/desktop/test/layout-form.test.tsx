@@ -4,7 +4,9 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Field, Form, FormActions } = await import("../src/components/layout/form.tsx");
+const { Field, Form, FormActions, NativeSelect } = await import(
+  "../src/components/layout/form.tsx"
+);
 
 afterEach(cleanup);
 
@@ -209,5 +211,45 @@ describe("form-layout: a primary that is working", () => {
     expect(primary.disabled).toBe(false);
     expect(primary.getAttribute("aria-busy")).toBeNull();
     expect(container.querySelector("svg.animate-spin")).toBeNull();
+  });
+});
+
+describe("form-layout: NativeSelect", () => {
+  const classesOf = (props: { inline?: boolean; compact?: boolean }) => {
+    const { container } = render(
+      <NativeSelect aria-label="lista" {...props}>
+        <option>a</option>
+      </NativeSelect>,
+    );
+    return (container.querySelector("select") as HTMLSelectElement).className.split(" ");
+  };
+
+  test("fills its row by default, at the height of an Input", () => {
+    const classes = classesOf({});
+    expect(classes).toContain("w-full");
+    expect(classes).toContain("h-9");
+    expect(classes).toContain("text-sm");
+  });
+
+  test("inline sizes it to its options, not to the row", () => {
+    const classes = classesOf({ inline: true });
+    expect(classes).toContain("w-auto");
+    expect(classes).not.toContain("w-full");
+    expect(classes).toContain("h-9");
+  });
+
+  test("compact is the toolbar height and text, and still fills the row alone", () => {
+    const classes = classesOf({ compact: true });
+    expect(classes).toContain("h-8");
+    expect(classes).toContain("text-xs");
+    expect(classes).not.toContain("h-9");
+    expect(classes).not.toContain("text-sm");
+    expect(classes).toContain("w-full");
+  });
+
+  test("a toolbar select is inline and compact together", () => {
+    const classes = classesOf({ inline: true, compact: true });
+    expect(classes).toContain("w-auto");
+    expect(classes).toContain("h-8");
   });
 });

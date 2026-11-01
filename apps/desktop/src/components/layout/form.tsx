@@ -87,8 +87,17 @@ export function Field(props: {
   );
 }
 
-/** The native `<select>` every form uses, sized like an `Input`: it takes a `Field`'s control props. */
-export function NativeSelect({ className, ...props }: ComponentProps<"select">) {
+/**
+ * The native `<select>` every form uses, sized like an `Input`: it takes a `Field`'s control props.
+ * `inline` sizes it to its options instead of the row, for a toolbar; `compact` is the toolbar's
+ * smaller height and text.
+ */
+export function NativeSelect({
+  className,
+  inline: _inline,
+  compact: _compact,
+  ...props
+}: ComponentProps<"select"> & { inline?: boolean; compact?: boolean }) {
   return (
     <select
       data-slot="native-select"
