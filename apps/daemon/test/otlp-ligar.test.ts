@@ -313,25 +313,35 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
 });
 
 describe("otlp-ligar: the daemon's receiver", () => {
-  function setup(telemetry: Record<string, unknown> = { port: 0 }) {
+  function setup(telemetry: Record<string, unknown> = { port: 0 }, hooks = true) {
     const dir = tempDir();
     const dataDir = join(dir, "data");
     mkdirSync(dataDir, { recursive: true });
     const configFile = join(dir, "config.json");
     writeFileSync(
       configFile,
-      JSON.stringify({ token: "t".repeat(32), dataDir, hooks: { port: 0 }, telemetry }),
+      JSON.stringify({
+        token: "t".repeat(32),
+        dataDir,
+        hooks: { port: 0, ...(hooks ? { token: "hooks-token-0123456789" } : {}) },
+        telemetry,
+      }),
     );
     const errors: string[] = [];
     const got: OtlpEvent[][] = [];
+    let purges = 0;
     const service = startTelemetry({
       config: loadConfig(configFile),
       configFile,
       log: { error: (m) => errors.push(m) },
       onEvents: (events) => got.push(events),
+      purge: () => {
+        purges++;
+      },
+      purgeEveryMs: 30,
     });
     cleanups.push(() => service.stop());
-    return { service, dataDir, configFile, errors, got };
+    return { service, dataDir, configFile, errors, got, purges: () => purges };
   }
   const send = (url: string | null, token: string) =>
     fetch(`${url}/v1/logs`, {
@@ -378,12 +388,34 @@ describe("otlp-ligar: the daemon's receiver", () => {
     expect(loadConfig(configFile).telemetry.token).toBeUndefined();
   });
 
+  test("it follows the hooks: without hooks.token nothing listens, as with the hooks receptor", () => {
+    const { service, dataDir, configFile, purges } = setup({ port: 0 }, false);
+    expect(service.url).toBeNull();
+    expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
+    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect(purges()).toBe(0);
+  });
+
+  test("the retention purge runs at start and then on a timer, only while the receiver listens", async () => {
+    const { service, purges } = setup();
+    expect(purges()).toBe(1);
+    await Bun.sleep(100);
+    expect(purges()).toBeGreaterThanOrEqual(3);
+    await service.stop();
+    const stopped = purges();
+    await Bun.sleep(80);
+    expect(purges()).toBe(stopped);
+  });
+
   test("a port that is taken is logged and the daemon carries on without the receiver", async () => {
     const taken = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("") });
     cleanups.push(() => taken.stop(true));
-    const { service, dataDir, errors } = setup({ port: taken.port });
+    const { service, dataDir, errors, purges } = setup({ port: taken.port });
     expect(service.url).toBeNull();
     expect(errors.join("\n")).toContain(`${taken.port}`);
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
+    // No receiver, no purge timer.
+    await Bun.sleep(80);
+    expect(purges()).toBe(0);
   });
 });

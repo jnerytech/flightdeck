@@ -9,6 +9,9 @@ export interface TelemetryOptions {
   configFile: string;
   log: { error(message: string): void };
   onEvents: (events: OtlpEvent[]) => void;
+  /** Deletes what is past the retention; runs at start and every `purgeEveryMs` while listening. */
+  purge?: () => void;
+  purgeEveryMs?: number;
 }
 
 export interface TelemetryService {
