@@ -90,6 +90,7 @@ import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
+import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
@@ -218,6 +219,8 @@ interface Connection {
   /** Where the connection came from (the address the origin filter looked at). */
   origin: string;
   subscriptions: Map<string, () => void>;
+  /** A frame was dropped: the client was cut off and gets nothing more (`sendFrame`). */
+  dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
   /** Stops the `sessions.watch` stream, when active. */
@@ -284,7 +287,7 @@ type Outgoing =
   | TeamsUpdatedFrame;
 
 function send(ws: Socket, message: Outgoing): void {
-  ws.send(JSON.stringify(message));
+  sendFrame(ws, message);
 }
 
 function ackError(ws: Socket, id: string, code: string, message: string): void {

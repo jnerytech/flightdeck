@@ -6,7 +6,16 @@ export interface FrameSocket {
   data: { dropped?: boolean };
 }
 
-/** Sends one frame to a client. */
+/**
+ * Sends one frame to a client. A frame Bun drops (0: the client's buffer is over the limit)
+ * would leave a hole in what the client has seen, so that client is cut off at once and gets
+ * nothing more: it reconnects and resumes from its last seq. `terminate`, not `close`: a close
+ * frame cannot reach a peer that stopped reading, which is how the buffer filled.
+ */
 export function sendFrame(ws: FrameSocket, message: unknown): void {
-  ws.send(JSON.stringify(message));
+  if (ws.data.dropped) return;
+  if (ws.send(JSON.stringify(message)) === 0) {
+    ws.data.dropped = true;
+    ws.terminate();
+  }
 }
