@@ -1,6 +1,7 @@
 import { KeyRound } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
+import { Stack } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +15,8 @@ import { VaultReport } from "@/components/vault/vault-report";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
+import { selectedClient } from "../lib/client-scope.ts";
+import { groupSecrets } from "../lib/client-vault.ts";
 import type { SecretMeta } from "../lib/vault.ts";
 import { describeSecret, type SecretInfo } from "../lib/vault-types.ts";
 
@@ -119,7 +122,7 @@ function SecretRow(props: {
   );
 }
 
-const VAULTPAGE_KEYS = ["secrets", "hosts"] as const;
+const VAULTPAGE_KEYS = ["secrets", "hosts", "clientList", "clientSelection"] as const;
 
 /** Phase 16: the vault's screen. */
 export const VaultPage = memo(function VaultPage(props: {
@@ -173,6 +176,14 @@ export const VaultPage = memo(function VaultPage(props: {
     };
   }, [store, state.secrets]);
 
+  // With a client that has a vault tag selected, its secrets come first (phase 29).
+  const selected = selectedClient(state.clientList, state.clientSelection);
+  const byClient = selected?.defaults.vaultTag !== undefined;
+  const groups = groupSecrets(state.secrets, state.clientList, selected);
+  const groupLabel = (kind: "client" | "none" | "others") =>
+    kind === "client"
+      ? t("clients.vaultGroupClient", { name: selected?.name ?? "" })
+      : t(kind === "none" ? "clients.vaultGroupNone" : "clients.vaultGroupOthers");
   return (
     <Page
       title={t("vault.title")}
@@ -181,7 +192,13 @@ export const VaultPage = memo(function VaultPage(props: {
         !creating && <Button onClick={() => setCreating(true)}>{t("vault.newSecret")}</Button>
       }
     >
-      {creating && <NewSecretForm store={store} onClose={() => setCreating(false)} />}
+      {creating && (
+        <NewSecretForm
+          store={store}
+          onClose={() => setCreating(false)}
+          {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
+        />
+      )}
       {editing && (
         <EditSecretForm
           key={editing.id}
@@ -218,23 +235,38 @@ export const VaultPage = memo(function VaultPage(props: {
               }
             />
           ) : (
-            <ul aria-label={t("vault.list")} className="flex flex-col gap-2">
-              {state.secrets.map((secret) => (
-                <SecretRow
-                  key={secret.id}
-                  secret={secret}
-                  info={infos[secret.id] ?? {}}
-                  revealed={shown?.id === secret.id ? shown.value : null}
-                  onReveal={() => setAsking(secret)}
-                  onCopy={() => void store.copySecret(secret.id, clearMs)}
-                  onRemove={() => setRemoving(secret)}
-                  onEdit={() => setEditing(secret)}
-                  onRules={() => setRuling(secret)}
-                  onCopyPublicKey={() => void store.copyText(infos[secret.id]?.publicKey ?? "")}
-                  hostName={(hostId) => state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
-                />
-              ))}
-            </ul>
+            groups.map((group) => (
+              <section key={group.kind} aria-label={groupLabel(group.kind)}>
+                <Stack gap={2}>
+                  {byClient && (
+                    <h2 className="font-medium text-muted-foreground text-sm">
+                      {groupLabel(group.kind)}
+                    </h2>
+                  )}
+                  <ul aria-label={t("vault.list")} className="flex flex-col gap-2">
+                    {group.secrets.map((secret) => (
+                      <SecretRow
+                        key={secret.id}
+                        secret={secret}
+                        info={infos[secret.id] ?? {}}
+                        revealed={shown?.id === secret.id ? shown.value : null}
+                        onReveal={() => setAsking(secret)}
+                        onCopy={() => void store.copySecret(secret.id, clearMs)}
+                        onRemove={() => setRemoving(secret)}
+                        onEdit={() => setEditing(secret)}
+                        onRules={() => setRuling(secret)}
+                        onCopyPublicKey={() =>
+                          void store.copyText(infos[secret.id]?.publicKey ?? "")
+                        }
+                        hostName={(hostId) =>
+                          state.hosts.find((h) => h.id === hostId)?.name ?? hostId
+                        }
+                      />
+                    ))}
+                  </ul>
+                </Stack>
+              </section>
+            ))
           )}
         </TabsContent>
         <TabsContent value="usage">
