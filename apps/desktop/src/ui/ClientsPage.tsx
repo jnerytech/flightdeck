@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../lib/clients.ts";
+import { ClientBudget } from "./ClientBudget.tsx";
 import { ClientRules } from "./ClientRules.tsx";
 import { ClientsSuggest } from "./ClientsSuggest.tsx";
 import { ClientsTransfer } from "./ClientsTransfer.tsx";
@@ -116,6 +117,7 @@ export function ClientsPage(props: { store: AppStore; state: AppState }) {
                     }
                   />
                   <ClientRules store={store} state={state} client={client} />
+                  <ClientBudget store={store} state={state} client={client} />
                 </Stack>
               </li>
             ))}
