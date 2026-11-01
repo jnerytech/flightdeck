@@ -444,9 +444,83 @@ export class Teams {
     return found;
   }
 
+  /** Gives a member another persona: stored, applied to its open session and to its name. */
+  private changePersona(
+    row: Row,
+    info: TeamInfo,
+    change: { member: string; persona: string | null },
+  ) {
+    const target = this.find(info, change.member);
+    const persona = this.checkPersona(change.persona);
+    const members = this.stored(this.row(row.id)).map((m) =>
+      m.name === target.name ? { ...m, persona } : m,
+    );
+    this.save(row.id, { members: JSON.stringify(members) });
+    if (!target.sessionId) return;
+    this.opts.applyPersona?.(target.sessionId, persona);
+    // A worker's name may still be waiting for its folder's project key: it is born with the
+    // card's persona, which is kept up to date here.
+    if (target.cardId) {
+      if (persona) this.cardPersonas.set(target.cardId, persona);
+      else this.cardPersonas.delete(target.cardId);
+    }
+    if (this.opts.names?.get(target.sessionId)) {
+      this.opts.names.setPersona(target.sessionId, persona);
+    }
+  }
+
+  /** Starts `count` more workers, numbered after the ones the team has, one at a time. */
+  private async addWorkers(
+    row: Row,
+    count: number,
+    coordinator: TeamMember | undefined,
+    tellCoordinator: (text: string) => void,
+  ) {
+    const members = this.stored(this.row(row.id));
+    const taken = members.flatMap((m) => /executora (\d+)$/.exec(m.name)?.[1] ?? []).map(Number);
+    const team = {
+      name: row.name,
+      goal: this.row(row.id).goal,
+      checks: JSON.parse(this.row(row.id).checks) as string[],
+      projectId: row.project_id,
+    };
+    for (let i = 0; i < count; i++) {
+      const number = Math.max(0, ...taken) + 1;
+      taken.push(number);
+      const added = await this.startWorker(
+        team,
+        `${label(row.name)} · executora ${number}`,
+        null,
+        coordinator?.address ?? null,
+      );
+      members.push(added);
+      this.save(row.id, { members: JSON.stringify(members) });
+      tellCoordinator(`Entrou uma executora no time: "${added.name}" (card ${added.cardId}).`);
+    }
+  }
+
+  /** Takes a worker out of the team and tells it so; the coordinator stays. */
+  private dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
+    const target = this.find(this.get(row.id), who);
+    if (target.role === "coordinator") {
+      throw invalid("a coordenadora não sai do time: encerre o time");
+    }
+    const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
+    this.save(row.id, { members: JSON.stringify(members) });
+    if (target.sessionId) {
+      this.opts.messaging.notice(
+        target.sessionId,
+        "system",
+        `Você saiu do time "${row.name}": não receba mais tarefas dele.`,
+        row.id,
+      );
+    }
+    tellCoordinator(`A executora "${target.name}" saiu do time.`);
+  }
+
   async update(patch: TeamPatch): Promise<TeamInfo> {
     const row = this.open(patch.team);
-    let info = this.get(row.id);
+    const info = this.get(row.id);
     const coordinator = info.members[0];
     const tellCoordinator = (text: string) =>
       this.notify(this.get(row.id), text, (m) => m.role === "coordinator");
@@ -463,67 +537,10 @@ export class Teams {
           : "Os comandos de verificação do time voltaram a ser os checks do projeto.",
       );
     }
-    if (patch.persona) {
-      const target = this.find(info, patch.persona.member);
-      const persona = this.checkPersona(patch.persona.persona);
-      const members = this.stored(this.row(row.id)).map((m) =>
-        m.name === target.name ? { ...m, persona } : m,
-      );
-      this.save(row.id, { members: JSON.stringify(members) });
-      if (target.sessionId) {
-        this.opts.applyPersona?.(target.sessionId, persona);
-        // A worker's name may still be waiting for its folder's project key: it is born with the
-        // card's persona, which is kept up to date here.
-        if (target.cardId) {
-          if (persona) this.cardPersonas.set(target.cardId, persona);
-          else this.cardPersonas.delete(target.cardId);
-        }
-        if (this.opts.names?.get(target.sessionId)) {
-          this.opts.names.setPersona(target.sessionId, persona);
-        }
-      }
-    }
-    if (patch.addWorkers) {
-      const members = this.stored(this.row(row.id));
-      const taken = members.flatMap((m) => /executora (\d+)$/.exec(m.name)?.[1] ?? []).map(Number);
-      const team = {
-        name: row.name,
-        goal: this.row(row.id).goal,
-        checks: JSON.parse(this.row(row.id).checks) as string[],
-        projectId: row.project_id,
-      };
-      for (let i = 0; i < patch.addWorkers; i++) {
-        const number = Math.max(0, ...taken) + 1;
-        taken.push(number);
-        const added = await this.startWorker(
-          team,
-          `${label(row.name)} · executora ${number}`,
-          null,
-          coordinator?.address ?? null,
-        );
-        members.push(added);
-        this.save(row.id, { members: JSON.stringify(members) });
-        tellCoordinator(`Entrou uma executora no time: "${added.name}" (card ${added.cardId}).`);
-      }
-    }
-    if (patch.removeMember) {
-      info = this.get(row.id);
-      const target = this.find(info, patch.removeMember);
-      if (target.role === "coordinator") {
-        throw invalid("a coordenadora não sai do time: encerre o time");
-      }
-      const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
-      this.save(row.id, { members: JSON.stringify(members) });
-      if (target.sessionId) {
-        this.opts.messaging.notice(
-          target.sessionId,
-          "system",
-          `Você saiu do time "${row.name}": não receba mais tarefas dele.`,
-          row.id,
-        );
-      }
-      tellCoordinator(`A executora "${target.name}" saiu do time.`);
-    }
+    if (patch.persona) this.changePersona(row, info, patch.persona);
+    if (patch.addWorkers)
+      await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
+    if (patch.removeMember) this.dropMember(row, patch.removeMember, tellCoordinator);
     return this.changed(row.id);
   }
 
