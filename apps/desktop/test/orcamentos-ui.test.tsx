@@ -260,6 +260,7 @@ describe("orcamentos-ui", () => {
     await settle(() => rows().length === 1);
     expect(rows()[0]).toContain("orçamento de novo (dia)");
     expect(screen.queryByLabelText("Chave do projeto")).toBeNull();
+    await choose("Escopo", "project");
     expect(projectOptions()).toContain("novo");
   });
 

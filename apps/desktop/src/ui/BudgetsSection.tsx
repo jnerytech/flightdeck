@@ -16,14 +16,20 @@ interface Draft {
   id?: string;
   scope: Budget["scope"];
   projectKey: string;
+  /** The project is one the list does not have: its key is typed. */
+  other: boolean;
   period: Budget["period"];
   limitUsd: string;
   action: Budget["action"];
 }
 
+/** The value of the list entry that opens the key field. */
+const OTHER = "__other__";
+
 const EMPTY: Draft = {
   scope: "host",
   projectKey: "",
+  other: false,
   period: "day",
   limitUsd: "",
   action: "notify",
@@ -112,6 +118,7 @@ export function BudgetsSection(props: {
                               id: budget.id,
                               scope: budget.scope,
                               projectKey: budget.projectKey ?? "",
+                              other: false,
                               period: budget.period,
                               limitUsd: String(budget.limitUsd),
                               action: budget.action,
@@ -167,8 +174,14 @@ export function BudgetsSection(props: {
                     ) : (
                       <NativeSelect
                         {...control}
-                        value={draft.projectKey}
-                        onChange={(e) => set({ projectKey: e.target.value })}
+                        value={draft.other ? OTHER : draft.projectKey}
+                        onChange={(e) =>
+                          set(
+                            e.target.value === OTHER
+                              ? { other: true, projectKey: "" }
+                              : { other: false, projectKey: e.target.value },
+                          )
+                        }
                       >
                         <option value="">{t("budgetsUi.pickProject")}</option>
                         {projects.map((project) => (
@@ -176,9 +189,21 @@ export function BudgetsSection(props: {
                             {project.label}
                           </option>
                         ))}
+                        <option value={OTHER}>{t("budgetsUi.otherProject")}</option>
                       </NativeSelect>
                     )
                   }
+                </Field>
+              )}
+              {draft.scope === "project" && draft.other && (
+                <Field label={t("budgetsUi.keyLabel")} help={t("budgetsUi.keyHelp")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      value={draft.projectKey}
+                      onChange={(e) => set({ projectKey: e.target.value })}
+                    />
+                  )}
                 </Field>
               )}
               <Field label={t("budgetsUi.period")}>

@@ -1576,6 +1576,10 @@ export const en: Dictionary = {
     notifyHelp: "Notifies at 50%, 80% and 100% of the limit.",
     queueHelp: "Notifies and holds the scope's new cards at 100% of the limit.",
     create: "Create budget",
+    otherProject: "Another project…",
+    keyLabel: "Project key",
+    keyHelp:
+      "The key is the repository address without https:// (github.com/acme/app); with no repository, host:<id>:<folder>.",
     pickProject: "Choose a project",
     save: "Save budget",
   },

@@ -1576,6 +1576,10 @@ export const ptBR = {
     notifyHelp: "Avisa ao chegar a 50%, 80% e 100% do limite.",
     queueHelp: "Avisa e segura os cards novos do escopo ao chegar a 100% do limite.",
     create: "Criar orçamento",
+    otherProject: "Outro projeto…",
+    keyLabel: "Chave do projeto",
+    keyHelp:
+      "A chave é o endereço do repositório sem https:// (github.com/acme/app); sem repositório, host:<id>:<pasta>.",
     pickProject: "Escolha um projeto",
     save: "Salvar orçamento",
   },
