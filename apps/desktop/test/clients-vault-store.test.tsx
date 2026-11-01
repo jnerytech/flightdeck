@@ -204,7 +204,7 @@ describe("clients-vault: reading the rules back from a host", () => {
     expect(readBack).toEqual([OWN]);
     await store.setVaultRules(secret.id, [...(readBack ?? []), OWN2]);
     const held = daemon.vaultRules[secret.id] as Array<{ id: string }>;
-    expect(held.filter((r) => r.id.startsWith(SCOPE_RULE_PREFIX)).length).toBe(4);
+    expect(held.filter((r) => r.id.startsWith(SCOPE_RULE_PREFIX)).length).toBe(5);
     expect(held.filter((r) => !r.id.startsWith(SCOPE_RULE_PREFIX))).toEqual([OWN, OWN2]);
     await act(async () => {
       store.clients.setDefaults(acme, { vaultScope: false });
@@ -278,5 +278,25 @@ describe("clients-vault: another writer", () => {
     await settle(() => said.length > 0);
     expect(said).toEqual(["As regras de segredos do cliente Acme mudaram com os projetos dele."]);
     expect(errors).toEqual([]);
+  });
+});
+
+describe("clients-vault: a host that refuses the generated rules", () => {
+  test("is said, since the secret is then not held in its client", async () => {
+    const { store, acme, daemon } = await open(false);
+    const errors: string[] = [];
+    const fail = (store as unknown as { fail(e: unknown, text?: string): void }).fail.bind(store);
+    (store as unknown as { fail(e: unknown, text?: string): void }).fail = (e, text) => {
+      errors.push(text ?? String(e));
+      fail(e, text);
+    };
+    daemon.refuse.set("vault.rules.set", "too many rules");
+    await act(async () => {
+      store.clients.setDefaults(acme, { vaultScope: true });
+    });
+    await settle(() => errors.length > 0);
+    expect(errors).toEqual([
+      "O host alfa não aceitou as regras do cliente Acme para o segredo token: too many rules. O segredo não está preso ao cliente nesse host.",
+    ]);
   });
 });
