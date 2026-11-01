@@ -10,6 +10,7 @@ import { runActionCli, runSnippetCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
+import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { Central } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
@@ -974,6 +975,10 @@ export async function startDaemon(
     usage,
     costs,
     telemetry: telemetryStore,
+    bg: new BgService({
+      db: store.db,
+      claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
+    }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),
     budgets,
