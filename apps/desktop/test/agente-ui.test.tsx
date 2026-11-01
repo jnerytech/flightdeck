@@ -360,9 +360,11 @@ describe("agente-ui", () => {
     await settle(() => screen.queryByText("Salvo.") !== null);
     expect(screen.queryByText("Salvo.")).not.toBeNull();
     await click("Prévia");
+    await settle(() => screen.queryByRole("heading", { name: "Regras novas" }) !== null);
     expect(screen.queryByRole("heading", { name: "Regras novas" })).not.toBeNull();
     expect(screen.queryByLabelText("Conteúdo de CLAUDE.md")).toBeNull();
     await click("Editar");
+    await settle(() => screen.queryByLabelText("Conteúdo de CLAUDE.md") !== null);
     expect(screen.queryByLabelText("Conteúdo de CLAUDE.md")).not.toBeNull();
   });
 
