@@ -68,9 +68,11 @@ function harness(
       calls.push("pair");
     },
   };
+  // A home given by the test is another platform's path: on this disk it is only a name (a
+  // `mkdir` of `C:\\Users\\dev` would leave a folder with that name here), and `isDirectory` is faked.
   const dir = (name: string) => {
     const path = join(home, name);
-    mkdirSync(path, { recursive: true });
+    if (options.home === undefined) mkdirSync(path, { recursive: true });
     return path;
   };
   // Unless a test says otherwise, the user gives one folder and then finishes.
