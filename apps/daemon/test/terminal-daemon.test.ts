@@ -111,6 +111,20 @@ describe("terminal-daemon", () => {
     expect(manager.list()).toEqual([info]);
   });
 
+  test("the shell is told it talks to an xterm, whatever the daemon's own TERM is: a service has none, and readline then scrolls a long line sideways", () => {
+    const bare = setup();
+    bare.open();
+    expect(bare.ptys.spawned[0]?.env.TERM).toBe("xterm-256color");
+    expect(bare.ptys.spawned[0]?.env.COLORTERM).toBe("truecolor");
+    const dumb = setup({ env: () => ({ SHELL: "/bin/zsh", TERM: "dumb" }) });
+    dumb.open();
+    expect(dumb.ptys.spawned[0]?.env.TERM).toBe("xterm-256color");
+    // What a client asks for still wins.
+    const asked = setup();
+    asked.manager.open({ cwd: asked.project, cols: 80, rows: 24, env: { TERM: "screen" } });
+    expect(asked.ptys.spawned[0]?.env.TERM).toBe("screen");
+  });
+
   test("open com command abre esse argv, sem shell; cwd fora de allowedRoots e spawn que falha são recusados", () => {
     const { manager, ptys, project, root } = setup();
     const info = manager.open({
