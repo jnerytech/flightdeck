@@ -51,11 +51,24 @@ export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE = "usage: bun run slot -- [--nice] <command...> | bun run slot -- --status";
 
 export function parseArgs(argv: string[]): SlotArgs {
-  const args = argv[0] === "--" ? argv.slice(1) : argv;
-  if (args.length === 1 && args[0] === "--status") return { kind: "status", maxAgeMs: 0 };
-  const nice = args[0] === "--nice";
-  const command = nice ? args.slice(1) : args;
-  return command.length > 0 ? { kind: "run", nice, maxAgeMs: 0, command } : { kind: "usage" };
+  let rest = argv[0] === "--" ? argv.slice(1) : argv;
+  let nice = false;
+  let asStatus = false;
+  let maxAgeMs = DEFAULT_MAX_AGE_MS;
+  for (;;) {
+    const flag = rest[0];
+    if (flag === "--nice") nice = true;
+    else if (flag === "--status") asStatus = true;
+    else if (flag === "--max-age") {
+      const minutes = Number(rest[1]);
+      if (!rest[1] || !(minutes > 0)) return { kind: "usage" };
+      maxAgeMs = minutes * 60_000;
+      rest = rest.slice(1);
+    } else break;
+    rest = rest.slice(1);
+  }
+  if (asStatus) return rest.length === 0 ? { kind: "status", maxAgeMs } : { kind: "usage" };
+  return rest.length > 0 ? { kind: "run", nice, maxAgeMs, command: rest } : { kind: "usage" };
 }
 
 export function parseHolder(text: string | null): SlotHolder | null {
@@ -110,7 +123,7 @@ export async function acquire(
   env: SlotEnv,
   command: string,
   stopped: () => boolean,
-  _maxAgeMs = DEFAULT_MAX_AGE_MS,
+  maxAgeMs = DEFAULT_MAX_AGE_MS,
 ): Promise<boolean> {
   let named = "";
   while (!stopped()) {
@@ -120,6 +133,11 @@ export async function acquire(
     if (holder && `${holder.pid}@${holder.startedAt}` !== named) {
       named = `${holder.pid}@${holder.startedAt}`;
       env.log(`slot busy: ${describeHolder(holder, env.now())}; waiting`);
+      if (env.now() - holder.startedAt > maxAgeMs) {
+        env.log(
+          `slot warning: ${holder.label} (pid ${holder.pid}) has held the slot for over ${Math.floor(maxAgeMs / 60_000)}m: check if it is stuck; not taking it over`,
+        );
+      }
     }
     await env.sleep(POLL_MS);
   }
@@ -131,13 +149,15 @@ export function release(env: SlotEnv): void {
   if (parseHolder(env.fs.read(env.path))?.pid === env.pid) env.fs.remove(env.path);
 }
 
-export function status(env: SlotEnv, _maxAgeMs = DEFAULT_MAX_AGE_MS): string {
+export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   const text = env.fs.read(env.path);
   if (text === null) return "free";
   const holder = parseHolder(text);
   if (!holder) return "free (stale lock)";
   if (!env.alive(holder.pid)) return `free (stale lock of pid ${holder.pid})`;
-  return `held by ${describeHolder(holder, env.now())}`;
+  const held = `held by ${describeHolder(holder, env.now())}`;
+  if (env.now() - holder.startedAt <= maxAgeMs) return held;
+  return `${held}; WARNING: older than ${Math.floor(maxAgeMs / 60_000)}m, check if it is stuck`;
 }
 
 /** Runs the command under the slot and returns its exit code (a signal's code when one stopped it). */
@@ -148,7 +168,7 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     return 2;
   }
   if (args.kind === "status") {
-    env.log(status(env));
+    env.log(status(env, args.maxAgeMs));
     return 0;
   }
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
@@ -157,7 +177,7 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     state.child?.kill();
   });
   try {
-    if (!(await acquire(env, args.command.join(" "), () => state.signal !== null))) {
+    if (!(await acquire(env, args.command.join(" "), () => state.signal !== null, args.maxAgeMs))) {
       return state.signal ?? 1;
     }
     try {
