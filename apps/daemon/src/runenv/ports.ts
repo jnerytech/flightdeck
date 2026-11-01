@@ -85,12 +85,14 @@ export class CardPorts {
     this.opts.db.query("DELETE FROM card_ports WHERE card_id = ?").run(cardId);
   }
 
-  /** Releases the block of every card that reaches `done`. */
+  /** Releases the block of every card that reaches `done` or is discarded. */
   follow(
-    watch: (listener: (card: { id: string; column: string }) => void) => () => void,
+    watch: (
+      listener: (card: { id: string; column: string; discarded?: boolean }) => void,
+    ) => () => void,
   ): () => void {
     return watch((card) => {
-      if (card.column === "done") this.release(card.id);
+      if (card.column === "done" || card.discarded === true) this.release(card.id);
     });
   }
 

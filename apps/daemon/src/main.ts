@@ -919,6 +919,8 @@ export async function startDaemon(
   ];
   // A worktree is not removed while a card's processes are still being ended.
   board.addIdle(runManager.idle.bind(runManager));
+  // A discarded card ends its processes first: a live tree locks the files of its worktree.
+  board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({

@@ -1320,6 +1320,7 @@ export class Board {
     this.follows.delete(id);
     const repo = this.getProject(card.projectId).path;
     if (card.worktreePath) {
+      await Promise.all(this.ends.map((end) => end(id)));
       await this.settle();
       must(
         await git(repo, "worktree", "remove", "--force", card.worktreePath),
