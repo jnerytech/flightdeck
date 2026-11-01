@@ -140,6 +140,10 @@ describe("vigiar-ui: watching and fixing a card's PR", () => {
     expect(screen.queryByText("Rodada 2 · falhou")).not.toBeNull();
     expect(screen.queryByText("local check failed")).not.toBeNull();
     expect(screen.queryByText("Precisa de você: limit of 2 rounds reached")).not.toBeNull();
+    // The card says it too: Voltar a vigiar starts the watch again from the card itself.
+    await click("Voltar a vigiar");
+    await settle(() => sent(mem.daemon, "watch.set").length > 0);
+    expect(sent(mem.daemon, "watch.set")).toEqual([{ cardId: "c1", enabled: true }]);
   });
 
   test("a card that asks for you is in Precisa de você, with a notification, and Voltar a vigiar puts it back", async () => {
@@ -213,5 +217,28 @@ describe("vigiar-ui: the PR description is the person's to confirm", () => {
     await click("Cancelar");
     expect(screen.queryByRole("textbox", { name: "Descrição do PR" })).toBeNull();
     expect(sent(daemon, "card.pr.create")).toEqual([]);
+  });
+
+  test("Esc closes the description like Cancelar: nothing is opened", async () => {
+    const { daemon } = await open({ prUrl: null, prState: null });
+    daemon.watch.describe = { text: "## Login", redacted: 0 };
+    await click("Abrir PR");
+    await settle(() => screen.queryByRole("textbox", { name: "Descrição do PR" }) !== null);
+    const box = screen.queryByRole("textbox", { name: "Descrição do PR" });
+    expect(box).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(box as HTMLElement, { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("textbox", { name: "Descrição do PR" }) === null);
+    expect(screen.queryByRole("textbox", { name: "Descrição do PR" })).toBeNull();
+    expect(sent(daemon, "card.pr.create")).toEqual([]);
+  });
+
+  test("two lines taken out say so in the plural", async () => {
+    const { daemon } = await open({ prUrl: null, prState: null });
+    daemon.watch.describe = { text: "## Login", redacted: 2 };
+    await click("Abrir PR");
+    await settle(() => screen.queryByText(/2 linhas tiradas/) !== null);
+    expect(screen.queryByText("2 linhas tiradas por parecerem segredos")).not.toBeNull();
   });
 });
