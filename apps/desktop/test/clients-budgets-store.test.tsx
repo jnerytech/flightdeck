@@ -60,6 +60,9 @@ async function setup(
   });
   const beta = makeDaemon(cleanups, { costs: true });
   spend(alfa, "github.com/acme/api", 2);
+  for (const name of ["web", "docs", "infra", "tools", "site"]) {
+    spend(alfa, `github.com/acme/${name}`, 0);
+  }
   spend(beta, "github.com/beta/app", 3);
   const platform = memoryPlatform(false);
   if (announced) platform.items.set(CLIENT_BUDGET_ALERTS_KEY, JSON.stringify(announced));
@@ -208,5 +211,20 @@ describe("clients-budgets: the app watches a client's month limit", () => {
         ["acme|2026-10", "beta|2026-10"],
       );
     }
+  });
+
+  test("a look costs one request per host, however many projects a client has", async () => {
+    const { store } = await setup();
+    await act(() => store.checkClientBudgets());
+    const asked: string[] = [];
+    const ask = store.hostCommand.bind(store);
+    store.hostCommand = ((hostId: string, type: string, payload: unknown) => {
+      asked.push(type);
+      return ask(hostId, type as never, payload as never);
+    }) as typeof store.hostCommand;
+    await act(() => store.checkClientBudgets());
+    await act(() => store.checkClientBudgets());
+    expect(asked.filter((type) => type === "costs.summary")).toHaveLength(4);
+    expect(asked.every((type) => type === "costs.summary")).toBe(true);
   });
 });
