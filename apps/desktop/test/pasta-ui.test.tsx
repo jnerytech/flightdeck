@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -150,7 +150,7 @@ describe("pasta: escolher uma pasta do host", () => {
   });
 
   test("a folder the host refuses says so, with the folders it allows", async () => {
-    const { root } = await setup({ native: () => "/tmp" });
+    const { root } = await setup({ native: (dir) => dirname(dir) });
     await press("Escolher no sistema");
     await waitFor(() =>
       expect(within(dialog() as HTMLElement).queryByRole("alert")).not.toBeNull(),

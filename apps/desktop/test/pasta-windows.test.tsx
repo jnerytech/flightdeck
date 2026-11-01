@@ -45,7 +45,7 @@ const TREE: Record<string, FsDirsResult> = {
 };
 
 function windowsHost() {
-  const store = new AppStore(memoryPlatform(false, "en").platform);
+  const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
   (store as unknown as { hostRequest: unknown }).hostRequest = async (
     _id: string,
     _type: string,
@@ -62,7 +62,7 @@ function windowsHost() {
   return { store, host };
 }
 
-const dialog = () => screen.queryByRole("dialog", { name: "Choose folder" });
+const dialog = () => screen.queryByRole("dialog", { name: "Escolher pasta" });
 const has = (name: string | RegExp) =>
   within(dialog() as HTMLElement).queryByRole("button", { name }) !== null;
 async function press(name: string | RegExp) {
@@ -89,14 +89,14 @@ describe("pasta: Windows paths", () => {
     await press("code");
     await press("app");
     await waitFor(() =>
-      expect(within(dialog() as HTMLElement).queryByText("No subfolders here.") !== null).toBe(
+      expect(within(dialog() as HTMLElement).queryByText("Nenhuma subpasta aqui.") !== null).toBe(
         true,
       ),
     );
     // The crumb of the root is a button that goes back; the folder open now is plain text.
     expect(has("code")).toBe(true);
     expect(has("app")).toBe(false);
-    await press("Choose this folder");
+    await press("Escolher esta pasta");
     expect(picked).toEqual(["C:\\Users\\me\\code\\app"]);
   });
 
@@ -108,14 +108,12 @@ describe("pasta: Windows paths", () => {
       </TContext.Provider>,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
     });
     await press("code");
     await press("app");
-    await press("Choose this folder");
-    expect((screen.getByLabelText("Folder") as HTMLSelectElement).value).toBe(
-      "C:\\Users\\me\\code",
-    );
-    expect((screen.getByLabelText("Subfolder") as HTMLInputElement).value).toBe("app");
+    await press("Escolher esta pasta");
+    expect((screen.getByLabelText("Pasta") as HTMLSelectElement).value).toBe("C:\\Users\\me\\code");
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("app");
   });
 });
