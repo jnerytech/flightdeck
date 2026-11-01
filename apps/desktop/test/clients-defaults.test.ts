@@ -51,6 +51,35 @@ describe("clients-defaults: the client of a folder", () => {
   });
 });
 
+describe("clients-defaults: the persona of a folder's client", () => {
+  const scope = new ClientScope(
+    {
+      clients: [
+        client("acme", ["/work/acme"], { persona: "host:qa" }),
+        client("beta", ["/work/beta"], { persona: "app:minha" }),
+        client("gama", ["/work/gama"]),
+      ],
+      overrides: {},
+    },
+    [],
+  );
+
+  test("a folder of a client with a default persona gets it, as the picker writes it", () => {
+    expect(scope.defaultPersona("h1", "/work/acme/api")).toBe("host:qa");
+    expect(scope.defaultPersona("h1", "/work/beta/app")).toBe("app:minha");
+  });
+
+  test("a client without one, and a folder no client has, get none", () => {
+    expect(scope.defaultPersona("h1", "/work/gama/x")).toBe("");
+    expect(scope.defaultPersona("h1", "/elsewhere")).toBe("");
+  });
+
+  test("a picker of plain host ids takes the host's personas only", () => {
+    expect(scope.defaultPersona("h1", "/work/acme/api", true)).toBe("qa");
+    expect(scope.defaultPersona("h1", "/work/beta/app", true)).toBe("");
+  });
+});
+
 describe("clients-defaults: the selected client and its tag", () => {
   const list = [client("acme", [], { snippetTag: "acme" }), client("beta", [])];
 
