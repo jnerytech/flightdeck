@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { BgService } from "../src/bg/service.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -113,6 +115,8 @@ describe("bg-listar: the background sessions of the host", () => {
     fake.failCli(false);
     fake.setAgents([]);
     expect(await service.list()).toEqual({ supported: true, sessions: [] });
+    writeFileSync(join(fake.dir, "agents.json"), "this is not json");
+    expect(await service.list()).toEqual({ supported: false, sessions: [] });
     const none = setup({ claude: false });
     expect(await none.service.list()).toEqual({ supported: false, sessions: [] });
     const odd = setup();
