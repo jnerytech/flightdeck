@@ -1733,6 +1733,12 @@ export const ptBR = {
     budgetRemove: "Remover orçamento de {name}",
     budgetLine: "Este mês: {spent} de {limit} ({percent}%)",
     budgetLimitOnly: "Limite do mês: {limit}",
+    defaultsOf: "Padrões de {name}",
+    defaultPersona: "Persona padrão",
+    snippetTag: "Tag dos snippets",
+    snippetTagHelp:
+      "Os snippets com essa tag aparecem primeiro, e um snippet novo já nasce com ela.",
+    saveDefaults: "Salvar padrões",
     switchTo: "Cliente: {name}",
     settingsHint: "Agrupe os projetos de vários hosts por cliente e filtre as telas por um deles.",
     othersWaiting: "Esperando por você em outros clientes: {count}",

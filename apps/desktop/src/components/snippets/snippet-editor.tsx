@@ -30,6 +30,8 @@ export function SnippetEditor(props: {
   snippet: AppSnippet | null;
   onSaved(): void;
   onClose(): void;
+  /** The tags a new snippet starts with (the selected client's tag, phase 29). */
+  defaultTags?: string;
   /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
   onMakeAction?(snippet: { name: string; command: string }): void;
 }) {
@@ -40,7 +42,7 @@ export function SnippetEditor(props: {
   const [name, setName] = useState(snippet?.name ?? "");
   const [type, setType] = useState<"command" | "prompt">(snippet?.type ?? "command");
   const [body, setBody] = useState(snippet?.run ?? snippet?.text ?? "");
-  const [tags, setTags] = useState((snippet?.tags ?? []).join(", "));
+  const [tags, setTags] = useState(snippet ? snippet.tags.join(", ") : (props.defaultTags ?? ""));
   const [place, setPlace] = useState<Place>("host");
   const [defaults, setDefaults] = useState<Record<string, string>>(() =>
     Object.fromEntries(Object.entries(snippet?.vars ?? {}).map(([k, v]) => [k, v.default ?? ""])),

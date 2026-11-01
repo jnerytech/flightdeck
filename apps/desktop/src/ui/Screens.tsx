@@ -718,7 +718,10 @@ function NewSession(props: {
 }) {
   const { host } = props;
   const t = useT();
-  const [persona, setPersona] = useState(props.persona ?? "");
+  // The persona the route asked for, else the one chosen, else the folder's client's default.
+  const [picked, setPicked] = useState<string | null>(props.persona ?? null);
+  const [cwd, setCwd] = useState("");
+  const persona = picked ?? props.store.clientScope().defaultPersona(host.id, cwd);
   const [background, setBackground] = useState(false);
   const personas = hasFeature(host.hostInfo?.features, "personas", false);
   const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
@@ -728,6 +731,7 @@ function NewSession(props: {
       store={props.store}
       host={host}
       {...(props.prompt ? { prompt: props.prompt } : {})}
+      onFolder={setCwd}
       extra={
         <>
           {personas && (
@@ -736,7 +740,7 @@ function NewSession(props: {
               hostId={host.id}
               label={t("personas.picker.label")}
               value={persona}
-              onChange={setPersona}
+              onChange={setPicked}
             />
           )}
           {withBackground && (

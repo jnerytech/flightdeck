@@ -1,5 +1,5 @@
 import type { CommandPayload, PermissionMode } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,8 @@ export function NewSessionForm(props: {
   prompt?: string;
   /** More fields above Criar sessão: the persona picker (phase 20). */
   extra?: React.ReactNode;
+  /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
+  onFolder?(cwd: string): void;
 }) {
   const t = useT();
   const roots = props.host.info?.allowedRoots ?? [];
@@ -63,6 +65,9 @@ export function NewSessionForm(props: {
       setSub("");
     }
   };
+  const { onFolder } = props;
+  const cwd = joinPath(root, sub);
+  useEffect(() => onFolder?.(cwd), [onFolder, cwd]);
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
   const [prompt, setPrompt] = useState(props.prompt ?? "");
@@ -71,7 +76,7 @@ export function NewSessionForm(props: {
   const submit = () => {
     if (!root || !prompt.trim() || creating) return;
     const done = props.onCreate({
-      cwd: joinPath(root, sub),
+      cwd,
       prompt: prompt.trim(),
       permissionMode: mode,
       ...(name.trim() ? { name: name.trim() } : {}),

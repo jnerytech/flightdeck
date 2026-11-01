@@ -21,7 +21,9 @@ export function TerminalButton(props: {
   const { store, hostId, target, name } = props;
   const launch = store.terminalLaunch(hostId, target);
   const embedded = store.embeddedTerminal(hostId);
-  const [persona, setPersona] = useState("");
+  // The persona chosen, else the default of the client the folder belongs to (phase 29).
+  const [picked, setPicked] = useState<string | null>(null);
+  const persona = picked ?? store.clientScope().defaultPersona(hostId, target.cwd, true);
   const personas =
     embedded &&
     hasFeature(
@@ -45,7 +47,7 @@ export function TerminalButton(props: {
           hostId={hostId}
           label={name ? t("personas.picker.hereNamed", { name }) : t("personas.picker.here")}
           value={persona}
-          onChange={setPersona}
+          onChange={setPicked}
           idsOnly
         />
       )}

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
+import { selectedClient, tagsFirst } from "../lib/client-scope.ts";
 import type { AppSnippet } from "../lib/global-snippets.ts";
 import type { Route } from "../lib/router.ts";
 import { actionSeedFromCommand } from "../lib/snippets.ts";
@@ -24,7 +25,13 @@ const originOf = (snippet: AppSnippet) => (snippet.source === "file" ? "file" : 
 /** The "Projeto" choice that shows the app's own snippets instead of the host's. */
 export const GLOBAL = "@global";
 
-const SNIPPETSPAGE_KEYS = ["snippetChoice", "projects", "hosts"] as const;
+const SNIPPETSPAGE_KEYS = [
+  "snippetChoice",
+  "projects",
+  "hosts",
+  "clientList",
+  "clientSelection",
+] as const;
 
 /** Phase 18: the snippets of the first online host that keeps them, and of one of its projects. */
 export const SnippetsPage = memo(function SnippetsPage(props: {
@@ -108,6 +115,9 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
     if (trusted) await reload();
   };
 
+  // The selected client's snippets (those with its tag) come first, and a new one starts with it.
+  const clientTag = selectedClient(state.clientList, state.clientSelection)?.defaults.snippetTag;
+  const ordered = tagsFirst(snippets, clientTag);
   const projects = hostId ? (state.projects[hostId] ?? []) : [];
   // Phase 17's actions are a project's: a snippet with a secret becomes one of the chosen project.
   const actionsProject =
@@ -146,6 +156,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           hostId={hostId}
           project={project === GLOBAL ? "" : project}
           snippet={editing === "new" ? null : editing}
+          {...(clientTag ? { defaultTags: clientTag } : {})}
           onSaved={() => {
             setEditing(null);
             void reload();
@@ -216,7 +227,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           )}
         </div>
       )}
-      {snippets.length === 0 ? (
+      {ordered.length === 0 ? (
         <EmptyState
           icon={SquareCode}
           title={t("snippets.empty")}
@@ -224,7 +235,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
         />
       ) : (
         <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
-          {snippets.map((snippet) => (
+          {ordered.map((snippet) => (
             <li key={snippet.id} className="flex flex-col gap-2 rounded-lg border p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span data-name className="font-medium">
