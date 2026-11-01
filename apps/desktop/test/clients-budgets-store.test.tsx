@@ -37,7 +37,11 @@ const client = (id: string, name: string, pattern: string) => ({
 });
 
 /** Acme spent 2 (on alfa) and Beta 3 (on beta) this month; Acme's limit is 4, Beta's 3. */
-async function setup(budgets: Record<string, number> = { acme: 4, beta: 3 }) {
+async function setup(
+  budgets: Record<string, number> = { acme: 4, beta: 3 },
+  timers: { clientBudgetIntervalMs?: number } = {},
+  announced?: Record<string, number[]>,
+) {
   const spend = (d: ReturnType<typeof makeDaemon>, key: string, cost: number) =>
     d.eventStore.db
       .query(
@@ -58,6 +62,7 @@ async function setup(budgets: Record<string, number> = { acme: 4, beta: 3 }) {
   spend(alfa, "github.com/acme/api", 2);
   spend(beta, "github.com/beta/app", 3);
   const platform = memoryPlatform(false);
+  if (announced) platform.items.set(CLIENT_BUDGET_ALERTS_KEY, JSON.stringify(announced));
   platform.items.set(
     CLIENTS_KEY,
     JSON.stringify({
@@ -74,6 +79,7 @@ async function setup(budgets: Record<string, number> = { acme: 4, beta: 3 }) {
     baseDelayMs: 60_000,
     now: () => START,
     day: () => TODAY,
+    ...timers,
   });
   render(<App store={store} />);
   await act(async () => {
@@ -113,10 +119,13 @@ describe("clients-budgets: the app watches a client's month limit", () => {
   });
 
   test("what was announced before a restart is not announced again", async () => {
-    const { store, platform } = await setup();
-    platform.items.set(
-      CLIENT_BUDGET_ALERTS_KEY,
-      JSON.stringify({ "acme|2026-10": [0.5], "beta|2026-10": [0.5, 0.8, 1] }),
+    const { store, platform } = await setup(
+      { acme: 4, beta: 3 },
+      {},
+      {
+        "acme|2026-10": [0.5],
+        "beta|2026-10": [0.5, 0.8, 1],
+      },
     );
     await act(() => store.checkClientBudgets());
     expect(platform.notifications).toEqual([]);
@@ -167,5 +176,37 @@ describe("clients-budgets: the app watches a client's month limit", () => {
     expect(store.getState().clientBudgets[0]?.crossed).toEqual([0.5, 0.8, 1]);
     await settle(() => platform.notifications.length === 3);
     expect(platform.notifications).toHaveLength(3);
+  });
+
+  test("two looks asked together make one announcement of each threshold", async () => {
+    const { store, platform } = await setup();
+    await act(async () => {
+      await Promise.all([store.checkClientBudgets(), store.checkClientBudgets()]);
+    });
+    expect(platform.notifications).toHaveLength(4);
+  });
+
+  test("the app looks by itself when the hosts with costs come online", async () => {
+    const { store } = await setup();
+    await settle(() => store.getState().clientBudgets.length === 2);
+    expect(store.getState().clientBudgets).toHaveLength(2);
+  });
+
+  test("and again every round", async () => {
+    const { store } = await setup({ acme: 4, beta: 3 }, { clientBudgetIntervalMs: 40 });
+    await settle(() => store.getState().clientBudgets.length === 2);
+    expect(store.getState().clientBudgets).toHaveLength(2);
+  });
+
+  test("announcements kept in an unreadable form are forgotten, not a reason to fail", async () => {
+    const { store, platform } = await setup();
+    for (const garbage of ["not json", "5", "null"]) {
+      platform.items.set(CLIENT_BUDGET_ALERTS_KEY, garbage);
+      await act(() => store.checkClientBudgets());
+      expect(store.getState().clientBudgets).toHaveLength(2);
+      expect(Object.keys(JSON.parse(platform.items.get(CLIENT_BUDGET_ALERTS_KEY) ?? "{}"))).toEqual(
+        ["acme|2026-10", "beta|2026-10"],
+      );
+    }
   });
 });
