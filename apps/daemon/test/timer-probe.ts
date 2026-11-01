@@ -3,8 +3,13 @@
  * Only those started from `apps/daemon/src` count, named by the file that started them, and
  * only the ones that live long: every interval and every timeout of a second or more.
  */
-export function fileOfStack(_stack: string): string | null {
-  return null;
+/** The file under `apps/daemon/src` of the first frame in `stack`, with `/` on every platform. */
+export function fileOfStack(stack: string): string | null {
+  const frame = stack
+    .replaceAll("\\", "/")
+    .split("\n")
+    .find((line) => line.includes("/apps/daemon/src/"));
+  return frame?.replace(/^.*\/apps\/daemon\/src\//, "").replace(/:\d+:\d+\)?$/, "") ?? null;
 }
 
 export function probeTimers() {
@@ -15,12 +20,7 @@ export function probeTimers() {
     clearInterval: globalThis.clearInterval,
     clearTimeout: globalThis.clearTimeout,
   };
-  const fileOf = () => {
-    const frame = (new Error().stack ?? "")
-      .split("\n")
-      .find((line) => line.includes("/apps/daemon/src/"));
-    return frame?.replace(/^.*\/apps\/daemon\/src\//, "").replace(/:\d+:\d+\)?$/, "") ?? null;
-  };
+  const fileOf = () => fileOfStack(new Error().stack ?? "");
   const any = globalThis as unknown as Record<string, unknown>;
   any.setInterval = (fn: () => void, ms: number, ...args: unknown[]) => {
     const handle = (real.setInterval as (...a: unknown[]) => unknown)(fn, ms, ...args);

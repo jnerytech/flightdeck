@@ -4,7 +4,7 @@
  * regression of the code split (phase 28, `bundle-lazy`).
  */
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 const IMPORT =
   /^[ \t]*(import|export)\s+(type\s+)?(?:([\w*{}\s,$]+?)\s+from\s+)?["']([^"']+)["']/gm;
@@ -35,8 +35,8 @@ const watches = (watched: string[], name: string) =>
   watched.some((w) => (w.endsWith("/") ? name.startsWith(w) : name === w));
 
 /** A path with `/` between its parts, whatever separator the platform uses. */
-export function slashed(path: string, _separator: string): string {
-  return path;
+export function slashed(path: string, separator: string): string {
+  return path.split(separator).join("/");
 }
 
 /**
@@ -58,7 +58,7 @@ export function reachedPackages(entries: string[], srcRoot: string, watched: str
       }
       const target = specifier.startsWith("@/")
         ? specifier.slice(2)
-        : relative(srcRoot, resolve(srcRoot, dirname(file), specifier));
+        : slashed(relative(srcRoot, resolve(srcRoot, dirname(file), specifier)), sep);
       const real = existsSync(join(srcRoot, target)) ? target : null;
       if (real && !seen.has(real)) {
         seen.add(real);
