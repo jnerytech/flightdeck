@@ -19,8 +19,19 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-/** The pointer targets of WCAG 2.5.8 are at least 24 px: `min-h-6` is 1.5 rem at the root size. */
-const tall = (el: Element | null) => (el?.className ?? "").split(" ").includes("min-h-6");
+/**
+ * The pointer targets of WCAG 2.5.8 are at least 24 px: `min-h-6` is 1.5 rem at the root size, and
+ * `hit-24` / `hit-inline` (styles.css) are the same height as one shared class, so a screen does
+ * not count a raw layout utility for it.
+ */
+const TALL = ["min-h-6", "hit-24", "hit-inline"];
+const tall = (el: Element | null) =>
+  (el?.className ?? "").split(" ").some((name) => TALL.includes(name));
+/** The screens the layout ratchet counts must use the shared class, never the raw utility. */
+const shared = (el: Element | null) => {
+  const names = (el?.className ?? "").split(" ");
+  return !names.includes("min-h-6") && names.some((name) => name.startsWith("hit-"));
+};
 
 describe("alvos: raw buttons keep a 24 px target", () => {
   test("the sidebar's section titles are 24 px tall", async () => {
@@ -31,7 +42,10 @@ describe("alvos: raw buttons keep a 24 px target", () => {
       .queryAllByRole("button")
       .filter((b) => b.hasAttribute("aria-expanded") && b.className.includes("uppercase"));
     expect(titles.length).toBeGreaterThan(0);
-    for (const title of titles) expect(tall(title)).toBe(true);
+    for (const title of titles) {
+      expect(tall(title)).toBe(true);
+      expect(shared(title)).toBe(true);
+    }
   });
 
   test("the hosts banner's toggle is 24 px tall", () => {
@@ -74,7 +88,10 @@ describe("alvos: raw buttons keep a 24 px target", () => {
     );
     const numbers = screen.queryAllByRole("button");
     expect(numbers.length).toBeGreaterThanOrEqual(3);
-    for (const number of numbers) expect(tall(number)).toBe(true);
+    for (const number of numbers) {
+      expect(tall(number)).toBe(true);
+      expect(shared(number)).toBe(true);
+    }
     store.dispose();
   });
 
@@ -106,6 +123,9 @@ describe("alvos: raw buttons keep a 24 px target", () => {
     await wait(() => screen.queryByRole("button", { name: "Abrir MEMORY.md" }) !== null);
     const titles = screen.queryAllByRole("button", { name: /^Abrir .+\.md$/ });
     expect(titles.length).toBeGreaterThanOrEqual(2);
-    for (const title of titles) expect(tall(title)).toBe(true);
+    for (const title of titles) {
+      expect(tall(title)).toBe(true);
+      expect(shared(title)).toBe(true);
+    }
   });
 });

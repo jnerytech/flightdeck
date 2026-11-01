@@ -292,10 +292,7 @@ describe("agente-ui", () => {
     for (const name of ["Ligar eco", "Ligar global"]) {
       const classes = (screen.queryByRole("switch", { name }) as HTMLElement).className.split(" ");
       // WCAG 2.5.8: the box is 24 px tall; the padding is not painted, so the track stays thin.
-      expect(classes).toContain("min-h-6");
-      expect(classes).toContain("py-1");
-      expect(classes).toContain("bg-clip-content");
-      expect(classes).toContain("shadow-none");
+      expect(classes).toContain("hit-switch");
     }
   });
 
