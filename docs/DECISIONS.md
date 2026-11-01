@@ -2419,3 +2419,9 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 - **Language of the daemon's messages.** The error and result messages of the daemon in this phase are in Portuguese, like the messages of the earlier phases (and some reach the English UI as they are); translating them all is a separate change of its own.
 - **Known limits of the memory folder check.** The memory folder must resolve inside `~/.claude` (a link out is refused), but a link from `memory` to another folder inside `~/.claude` would pass, and a link in a parent could make `mkdir` create a folder before the check. Both need a planted link.
 
+
+## SQLite durability (phase 28, done ahead of the phase)
+
+- **The daemon's database opens with `PRAGMA synchronous = NORMAL`, under the write-ahead log.** The user accepted this trade (phase 28, question 9): with `FULL` every commit waits for a sync of the disk, which is what limited the write rate of the event store (about 2,700 to 3,000 events/s against about 13,000 to 14,700 with `NORMAL` in the research). The pragma is set in one place, `EventStore`, next to the journal mode, the foreign keys and the busy timeout, and is not a config option: nobody asked for the other value.
+- **What is kept and what can be lost.** A crash of the app or the daemon loses nothing: the write-ahead log is on the disk. A power cut or a crash of the operating system can drop the last events written, never corrupt the file (WAL with `NORMAL` stays consistent). Claude's own transcript is written to its own files on disk anyway, so a lost event is a gap in what Flightdeck shows, not in what Claude kept.
+- **The gain is to be measured, not assumed.** Phase 28's Windows baseline measures the event-store write rate before and after, on the CI runner; the numbers above are from another machine.

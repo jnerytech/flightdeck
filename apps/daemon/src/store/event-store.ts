@@ -126,6 +126,10 @@ export class EventStore {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true, strict: true });
     this.db.exec("PRAGMA journal_mode = WAL;");
+    // Under WAL, NORMAL syncs at checkpoints instead of at every commit: a crash of the app or the
+    // daemon loses nothing, a power cut can drop the last events (never corrupt the file), and
+    // Claude's own transcript is on disk anyway.
+    this.db.exec("PRAGMA synchronous = NORMAL;");
     this.db.exec("PRAGMA foreign_keys = ON;");
     this.db.exec("PRAGMA busy_timeout = 5000;");
     this.migrate();
