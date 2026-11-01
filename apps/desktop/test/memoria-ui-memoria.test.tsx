@@ -118,6 +118,22 @@ describe("memoria-ui: a memória do projeto", () => {
     expect(screen.queryByText("Memória salva.")).not.toBeNull();
   });
 
+  test("Salvar desligado diz por quê: Nada mudou, até o texto mudar", async () => {
+    await open((put) => {
+      put("MEMORY.md", INDEX);
+      put("user_role.md", ROLE);
+    });
+    await settle(() => names().length === 2);
+    await click("Abrir user_role.md");
+    const save = () => screen.queryByRole("button", { name: "Salvar" }) as HTMLButtonElement;
+    expect(save().disabled).toBe(true);
+    expect(screen.queryByText("Nada mudou")).not.toBeNull();
+    expect(save().getAttribute("aria-describedby")).not.toBeNull();
+    await fill("Conteúdo de user_role.md", `${ROLE}Mais uma linha.\n`);
+    expect(save().disabled).toBe(false);
+    expect(screen.queryByText("Nada mudou")).toBeNull();
+  });
+
   test("se o arquivo mudou no disco depois de aberto, a gravação é recusada, o texto fica e há como recarregar", async () => {
     const { dir, put } = await open((p) => {
       p("MEMORY.md", INDEX);
