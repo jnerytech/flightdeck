@@ -1848,6 +1848,7 @@ export const ptBR = {
     pick: "Escolha um arquivo para ver ou editar a memória.",
     content: "Conteúdo de {name}",
     save: "Salvar",
+    nothingChanged: "Nada mudou",
     saved: "Memória salva.",
     saveMessage: "Gravar {name} na memória do Claude para este projeto?",
     saveConfirm: "Salvar na memória",

@@ -1,6 +1,7 @@
 import type { MemoryFile, MemorySuggestion } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
@@ -206,9 +207,13 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
                 onChange={(e) => setText(e.target.value)}
               />
               <Inline gap={3}>
-                <Button disabled={!dirty} onClick={() => setConfirming("save")}>
+                <ActionButton
+                  disabled={!dirty}
+                  disabledReason={t("memoryUi.nothingChanged")}
+                  onClick={() => setConfirming("save")}
+                >
                   {t("memoryUi.save")}
-                </Button>
+                </ActionButton>
                 {justSaved && !dirty && (
                   <span role="status" className="text-muted-foreground text-sm">
                     {t("memoryUi.saved")}

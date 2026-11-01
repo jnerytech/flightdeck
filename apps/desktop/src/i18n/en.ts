@@ -1844,6 +1844,7 @@ export const en: Dictionary = {
     pick: "Pick a file to see or edit the memory.",
     content: "Content of {name}",
     save: "Save",
+    nothingChanged: "Nothing changed",
     saved: "Memory saved.",
     saveMessage: "Write {name} to Claude's memory for this project?",
     saveConfirm: "Save to memory",
