@@ -40,9 +40,9 @@ describe("acoes-ssh: the remote command of an ssh action", () => {
   });
 
   test("a variable name that is not a shell name, or a value with a line break or a NUL, is refused", () => {
-    expect(() => envInput({ "BAD-NAME": "x" })).toThrow("nome de variável");
-    expect(() => envInput({ "1X": "x" })).toThrow("nome de variável");
-    expect(() => envInput({ KEY: "line1\nline2" })).toThrow("quebra de linha");
-    expect(() => envInput({ KEY: "a\0b" })).toThrow("quebra de linha");
+    expect(() => envInput({ "BAD-NAME": "x" })).toThrow("invalid variable name");
+    expect(() => envInput({ "1X": "x" })).toThrow("invalid variable name");
+    expect(() => envInput({ KEY: "line1\nline2" })).toThrow("line break");
+    expect(() => envInput({ KEY: "a\0b" })).toThrow("line break");
   });
 });

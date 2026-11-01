@@ -207,7 +207,7 @@ describe("mcp-acoes", () => {
     const running = denied.call("run_with_secret", { command, secrets: ["tok"] });
     const frame = (await poll(() => denied.requests()[0])) as Frame;
     await denied.app.request("vault.deny", { requestId: frame.requestId });
-    expect((await running).error).toContain("recusou");
+    expect((await running).error).toContain("refused");
 
     const silent = await setup({ requestTimeoutMs: 150 });
     expect((await silent.call("run_with_secret", { command, secrets: ["tok"] })).error).toContain(
@@ -225,6 +225,6 @@ describe("mcp-acoes", () => {
   test("o host de run_with_secret que não é este fica para a Fase 15", async () => {
     const { call } = await setup();
     const remote = await call("run_with_secret", { command: "ls", secrets: ["a"], host: "vps" });
-    expect(remote.error).toContain("Fase 15");
+    expect(remote.error).toContain("ssh destination");
   });
 });

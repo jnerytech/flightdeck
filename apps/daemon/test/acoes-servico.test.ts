@@ -31,7 +31,8 @@ const failure = async (promise: Promise<unknown>) => {
     await promise;
     return "ok";
   } catch (error) {
-    return `${(error as FlightdeckError).code}: ${(error as Error).message}`;
+    const why = (error as FlightdeckError).reason;
+    return `${(error as FlightdeckError).code}: ${(error as Error).message}${why ? ` [${why}]` : ""}`;
   }
 };
 
@@ -223,8 +224,10 @@ describe("acoes-servico: ações versionadas e confiança", () => {
       actions.run({ projectId: "p1", name: "echo", requestedBy: "you" }),
     );
     expect(refused).toContain("invalid_state");
-    expect(refused).toContain("não está confiada");
-    expect(await failure(actions.trust("p1", "echo", "0".repeat(64)))).toContain("mudou");
+    expect(refused).toContain("is not trusted [action_not_trusted]");
+    expect(await failure(actions.trust("p1", "echo", "0".repeat(64)))).toContain(
+      "[action_changed_review]",
+    );
     const trusted = await actions.trust("p1", "echo", info.hash);
     expect(trusted.trusted).toBe(true);
     const done = await actions.run({ projectId: "p1", name: "echo", requestedBy: "you" });
@@ -266,7 +269,7 @@ describe("acoes-servico: ações versionadas e confiança", () => {
     const refused = await failure(
       actions.run({ projectId: "p1", name: "echo", requestedBy: "you" }),
     );
-    expect(refused).toContain("mudou");
+    expect(refused).toContain("changed");
     expect(refused).toContain("declaração");
   });
 
@@ -446,7 +449,7 @@ describe("acoes-servico: execução", () => {
     without.deliverForYou("logs");
     expect(
       await failure(without.actions.run({ projectId: "p1", name: "logs", requestedBy: "you" })),
-    ).toContain("Fase 15");
+    ).toContain("ssh destination");
   });
 });
 
@@ -569,7 +572,7 @@ describe("acoes-servico: pedidos ao app", () => {
     actions.deny(frame.requestId);
     const error = await running;
     expect(error).toContain("invalid_state");
-    expect(error).toContain("recusou");
+    expect(error).toContain("[action_secret_refused]");
     expect(existsSync(marker)).toBe(false);
     // Denying twice, or something that never existed, is harmless.
     actions.deny(frame.requestId);
@@ -665,7 +668,7 @@ describe("acoes-servico: comando livre", () => {
     );
     const frame = (await poll(() => requests()[0])) as VaultRequestFrame;
     actions.deny(frame.requestId);
-    expect(await running).toContain("recusou");
+    expect(await running).toContain("refused");
     expect(existsSync(marker)).toBe(false);
   });
 
@@ -675,7 +678,7 @@ describe("acoes-servico: comando livre", () => {
       actions.runFree({ command: "ls", secrets: ["a"], host: "vps", requestedBy: "claude" }),
     );
     expect(remote).toContain("invalid_state");
-    expect(remote).toContain("Fase 15");
+    expect(remote).toContain("[action_ssh_host_unsupported]");
     const you = await failure(
       actions.runFree({ command: "ls", secrets: ["a"], requestedBy: "you" }),
     );
@@ -691,7 +694,7 @@ describe("acoes-servico: comando livre", () => {
     const frame = (await poll(() => requests()[0])) as VaultRequestFrame;
     expect(frame.host).toBe("local");
     actions.deny(frame.requestId);
-    expect(await failure(here)).toContain("recusou");
+    expect(await failure(here)).toContain("refused");
   });
 });
 

@@ -265,7 +265,7 @@ describe("acoes-execucao", () => {
       runAction(action, { lines: "10" }, { "deploy-token": TOKEN }, opts()),
     );
     expect(without).toStartWith("invalid_state:");
-    expect(without).toContain("Fase 15");
+    expect(without).toContain("ssh destination");
     const jobs: unknown[] = [];
     const result = await runAction(
       action,

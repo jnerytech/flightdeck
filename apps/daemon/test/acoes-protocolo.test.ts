@@ -301,7 +301,12 @@ describe("acoes-protocolo: o daemon montado pelo main", () => {
       await client.request("actions.run", { projectId, name: "remoto", requestedBy: "you" }),
     ).toMatchObject({
       ok: false,
-      error: { code: "not_found", message: "destino nao-existe não encontrado" },
+      error: {
+        code: "not_found",
+        message: "destination nao-existe not found",
+        reason: "ssh_target_unknown",
+        params: { name: "nao-existe" },
+      },
     });
   });
 });
