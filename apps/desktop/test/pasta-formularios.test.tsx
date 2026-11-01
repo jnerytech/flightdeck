@@ -195,6 +195,40 @@ describe("pasta: o seletor nos formulários", () => {
     expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("interna");
   });
 
+  test("Nova sessão: a folder clicked in the picker is the chosen one at once, before its listing arrives", async () => {
+    const { store, hostId, root } = await setup();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Procurar…" }) !== null).toBe(true),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await waitFor(() => expect(dialog() !== null).toBe(true));
+    await pressInDialog(new RegExp(`^${basename(root)}`));
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    // From here on the host answers fs.dirs only when the test lets it.
+    const request = store.hostRequest.bind(store);
+    const held: Array<() => void> = [];
+    store.hostRequest = (async (id: string, type: never, payload: never) => {
+      if ((type as string) === "fs.dirs") await new Promise<void>((release) => held.push(release));
+      return request(id, type, payload);
+    }) as typeof store.hostRequest;
+    await pressInDialog("interna");
+    expect(held.length).toBe(1);
+    const current = within(dialog() as HTMLElement).queryByText("interna", {
+      selector: "[aria-current='location']",
+    });
+    expect(current !== null).toBe(true);
+    await pressInDialog("Escolher esta pasta");
+    await waitFor(() => expect(dialog() === null).toBe(true));
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("alfa/interna");
+    for (const release of held) release();
+  });
+
   test("Cancelar closes the picker of Nova sessão and of Projetos without changing the form", async () => {
     const { store, hostId } = await setup();
     for (const route of [
