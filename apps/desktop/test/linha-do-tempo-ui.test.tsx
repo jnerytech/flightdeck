@@ -242,6 +242,22 @@ describe("linha-do-tempo-ui", () => {
     expect(text(join(repo, "README.md"))).toBe("v2\n");
   });
 
+  test("the fork form's radios and checkbox are 24 px targets (WCAG 2.5.8), through the shared class", async () => {
+    await setup();
+    await openTimeline();
+    await click("Bifurcar daqui (turno 2)");
+    await settle(
+      () => screen.queryByRole("dialog", { name: "Bifurcar a partir do turno 2" }) !== null,
+    );
+    const dialog = within(
+      screen.queryByRole("dialog", { name: "Bifurcar a partir do turno 2" }) as HTMLElement,
+    );
+    for (const label of ["Abrir no Flightdeck", "Abrir no terminal", "Voltar os arquivos também"]) {
+      const input = dialog.queryByLabelText(label) as HTMLInputElement;
+      expect(input.className.split(" ")).toContain("hit-control");
+    }
+  });
+
   test("bifurcar para o terminal, voltando os arquivos junto: mostra a prévia e o comando", async () => {
     const { repo, runtime } = await setup();
     await openTimeline();
