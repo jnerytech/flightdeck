@@ -1,6 +1,6 @@
 import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { SecretPicker } from "@/components/vault/secret-picker";
 import { useBusy } from "@/hooks/use-busy";
 import { actionIssueText, refusalText } from "@/i18n/errors";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
+import { InlineNotice } from "../components/feedback/inline-notice.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { ActionSeed } from "../lib/snippets.ts";
@@ -286,16 +287,14 @@ export function ActionForm(props: {
               </Button>
             </fieldset>
             {error && (
-              <p role="alert" className="text-sm text-status-error">
-                {error}
-              </p>
-            )}
-            {problems.length > 0 && (
-              <ul className="list-disc pl-5 text-status-error text-xs">
-                {problems.map((problem) => (
-                  <li key={problem}>{problem}</li>
+              <InlineNotice tone="error">
+                {[error, ...problems].map((line, i) => (
+                  <Fragment key={line}>
+                    {i > 0 && <br />}
+                    {line}
+                  </Fragment>
                 ))}
-              </ul>
+              </InlineNotice>
             )}
           </div>
           <FormActions
