@@ -245,6 +245,19 @@ describe("tempo-ui: Custos", () => {
     expect(text).toContain("3.0 s");
   });
 
+  test("the Custos page gives each of its children a key of its own (React warns about two with the host's id)", async () => {
+    const errors: string[] = [];
+    const real = console.error;
+    console.error = (...args: unknown[]) => void errors.push(args.map(String).join(" "));
+    try {
+      await costs(true);
+      await settle(() => region("Tempo por projeto") !== null);
+    } finally {
+      console.error = real;
+    }
+    expect(errors.filter((line) => line.includes("same key"))).toEqual([]);
+  });
+
   test("a session whose telemetry cost is far from the transcripts' is flagged", async () => {
     await costs(true);
     await settle(() => screen.queryByText(/o custo da telemetria difere/) !== null);
