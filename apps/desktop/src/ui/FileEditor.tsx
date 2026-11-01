@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
 
 type Phase =
@@ -40,11 +41,11 @@ export function FileEditor(props: {
   const read = useCallback(async () => {
     const result = await store.hostRequest(hostId, "file.read", { target, path });
     if (!result.ok) {
-      setPhase({ name: "refused", message: result.message });
+      setPhase({ name: "refused", message: refusalText(result.code, result.message, t) });
       return null;
     }
     return result.data;
-  }, [store, hostId, target, path]);
+  }, [store, hostId, target, path, t]);
 
   /** Puts the disk's text in the editor and remembers its hash. */
   const load = useCallback(async () => {
@@ -106,7 +107,7 @@ export function FileEditor(props: {
     } else if (result.code === "file_conflict") {
       setPhase((current) => (current.name === "ready" ? { ...current, conflict: true } : current));
     } else {
-      setPhase({ name: "refused", message: result.message });
+      setPhase({ name: "refused", message: refusalText(result.code, result.message, t) });
     }
   };
 
