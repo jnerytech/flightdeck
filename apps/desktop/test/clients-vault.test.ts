@@ -3,6 +3,7 @@ import { ClientScope } from "../src/lib/client-scope.ts";
 import {
   effectiveRules,
   generatedScopeRules,
+  groupSecrets,
   SCOPE_RULE_PREFIX,
   scopingClient,
   vaultFindings,
@@ -202,5 +203,45 @@ describe("clients-vault: what could take a secret out of its client", () => {
       holdingHosts: ["h1"],
     });
     expect(found).toEqual([]);
+  });
+});
+
+describe("clients-vault: the vault's list for a selected client", () => {
+  const acme = client("acme", { vaultTag: "client:acme" });
+  const beta = client("beta", { vaultTag: "client:beta" });
+  const plain = client("plain");
+  const secrets = [
+    secret("a", ["client:beta"]),
+    secret("b", []),
+    secret("c", ["client:acme", "x"]),
+    secret("d", ["other"]),
+    secret("e", ["client:acme"]),
+  ];
+
+  test("the client's secrets come first, then the ones of no client, then the other clients'", () => {
+    const groups = groupSecrets(secrets, [acme, beta, plain], acme);
+    expect(groups.map((g) => [g.kind, g.secrets.map((s) => s.id)])).toEqual([
+      ["client", ["c", "e"]],
+      ["none", ["b", "d"]],
+      ["others", ["a"]],
+    ]);
+  });
+
+  test("an empty group is left out, and every secret is in exactly one", () => {
+    const groups = groupSecrets([secret("x", ["client:acme"])], [acme, beta], acme);
+    expect(groups.map((g) => g.kind)).toEqual(["client"]);
+    const all = groupSecrets(secrets, [acme, beta], acme).flatMap((g) =>
+      g.secrets.map((s) => s.id),
+    );
+    expect(all.sort()).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  test("with no selected client, or one with no vault tag, there is one group in the list's own order", () => {
+    for (const selected of [null, plain]) {
+      const groups = groupSecrets(secrets, [acme, beta, plain], selected);
+      expect(groups.map((g) => [g.kind, g.secrets.map((s) => s.id)])).toEqual([
+        ["none", ["a", "b", "c", "d", "e"]],
+      ]);
+    }
   });
 });
