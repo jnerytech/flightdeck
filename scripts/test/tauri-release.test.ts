@@ -22,9 +22,12 @@ describe("tauri-release: the release build of the app is made for size and speed
     });
   });
 
-  test("nothing in the Rust code catches a panic, so aborting on one changes no behaviour", () => {
+  test("the only panic recovery is tokio's JoinError in the key generator, and that code cannot panic", () => {
     const source = readFileSync(join(ROOT, "apps/desktop/src-tauri/src/lib.rs"), "utf8");
     expect(source).not.toContain("catch_unwind");
+    // `spawn_blocking` turns a panic into an error string for the UI; `abort` would end the app
+    // instead. `generate_key` has no path that panics: a second use needs the same review.
+    expect(source.match(/spawn_blocking/g)).toHaveLength(1);
   });
 
   test("plugin commands no capability allows are left out of the build (removeUnusedCommands)", () => {

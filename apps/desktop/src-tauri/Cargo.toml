@@ -31,7 +31,8 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 
 # Release builds trade build time for a smaller, faster binary (Tauri's recommended profile).
-# `panic = "abort"` is safe here: nothing in src/ catches a panic (a test checks that).
+# `panic = "abort"`: the only panic recovery in src/ is tokio's JoinError around `generate_key`,
+# which cannot panic today (a test pins that there is one such use). A crash is then a silent exit.
 [profile.release]
 codegen-units = 1
 lto = true
