@@ -7,7 +7,9 @@
 import { join, resolve } from "node:path";
 import { runE2e } from "./demo-e2e.ts";
 import { seedDemo } from "./demo-seed.ts";
-import { takeShots } from "./demo-shots.ts";
+import { SHOTS_DIR, takeShots } from "./demo-shots.ts";
+import { runVisual } from "./demo-visual.ts";
+import { visualMode } from "./lib/visual.ts";
 
 const DESKTOP = resolve(import.meta.dir, "../apps/desktop");
 const PORT = 1420;
@@ -50,7 +52,9 @@ const stop = async () => {
 
 if (process.argv.includes("--shots")) {
   try {
-    const dir = await takeShots(url, seed.ids, browserEnv, log);
+    const visual = visualMode(process.env, process.argv);
+    const dir = await takeShots(url, seed.ids, browserEnv, log, visual);
+    runVisual(visual, SHOTS_DIR, log);
     console.log(`DEMO SHOTS OK: ${dir}`);
   } finally {
     await stop();

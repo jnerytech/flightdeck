@@ -12,6 +12,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
+import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
 
@@ -295,11 +296,34 @@ function shots(ids: DemoIds): Shot[] {
 /** axe-core's browser bundle. */
 const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
 
+/**
+ * Makes two runs print the same pixels: no animation or caret, and the text that changes from
+ * run to run (folders, ports, times, ages) written the same.
+ */
+async function stabilize(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content:
+      "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
+  });
+  await page.evaluate(
+    (rules) => {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        let text = node.nodeValue ?? "";
+        for (const [source, flags, to] of rules) text = text.replace(new RegExp(source, flags), to);
+        node.nodeValue = text;
+      }
+    },
+    VOLATILE_RULES.map(([pattern, to]) => [pattern.source, pattern.flags, to] as const),
+  );
+}
+
 export async function takeShots(
   url: string,
   ids: DemoIds,
   env: Record<string, string>,
   log: (msg: string) => void,
+  visual: VisualMode = "off",
 ): Promise<string> {
   const browser = await launchFirst((attempt) =>
     chromium.launch({ ...attempt, headless: true, env }),
@@ -310,7 +334,18 @@ export async function takeShots(
       for (const lang of ["pt-BR", "en"] as const) {
         const dir = join(SHOTS_DIR, `${theme}-${lang}`);
         mkdirSync(dir, { recursive: true });
-        const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+        // For the comparison: the same locale, zone and scale on every machine.
+        const context = await browser.newContext({
+          viewport: { width: 1280, height: 800 },
+          ...(visual === "off"
+            ? {}
+            : {
+                reducedMotion: "reduce" as const,
+                deviceScaleFactor: 1,
+                timezoneId: "UTC",
+                locale: lang,
+              }),
+        });
         for (const shot of shots(ids).filter((s) =>
           s.name.includes(process.env.DEMO_SHOTS ?? ""),
         )) {
@@ -332,7 +367,13 @@ export async function takeShots(
             await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
             throw error;
           });
-          await page.screenshot({ path: join(dir, `${shot.name}.png`) });
+          if (visual !== "off") await stabilize(page);
+          await page.screenshot({
+            path: join(dir, `${shot.name}.png`),
+            ...(visual === "off"
+              ? {}
+              : { animations: "disabled" as const, caret: "hide" as const }),
+          });
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });
           const found = await page.evaluate(() =>
