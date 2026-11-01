@@ -875,7 +875,7 @@ describe("ssh-connect: entrega da chave do cofre", () => {
       exec: async () => ({ code: 5, stdout: "" }),
       id: () => "p2",
     });
-    await expect(failing.deliver(PRIVATE)).rejects.toThrow(/permissões/);
+    await expect(failing.deliver(PRIVATE)).rejects.toMatchObject({ code: "internal", reason: "ssh_key_perms" });
     expect(readdirSync(dir).filter((name) => name.includes("p2"))).toEqual([]);
   });
 
@@ -921,12 +921,13 @@ describe("ssh-connect: entrega da chave do cofre", () => {
     const silent = agentOps({ waitForSocket: async () => false });
     await expect(
       createAgentDelivery({ sockDir: dir, ops: silent.ops, id: () => "s2" }).deliver(PRIVATE),
-    ).rejects.toThrow(/ssh-agent/);
+    ).rejects.toMatchObject({ code: "internal", reason: "ssh_agent_down" });
     expect(silent.calls.map((c) => c.what)).toEqual(["start", "stop"]);
     const refusing = agentOps({ run: async () => ({ code: 1 }) });
     const error = await createAgentDelivery({ sockDir: dir, ops: refusing.ops, id: () => "s3" })
       .deliver(PRIVATE)
       .catch((e: Error) => e);
+    expect(error).toMatchObject({ code: "internal", reason: "ssh_add_refused" });
     expect((error as Error).message).toMatch(/ssh-add/);
     expect((error as Error).message).not.toContain("TEST-ONLY");
     expect(refusing.calls.map((c) => c.what)).toEqual(["start", "stop"]);

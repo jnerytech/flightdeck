@@ -35,6 +35,15 @@ function setup() {
   return { time, broker, target, frames, stop };
 }
 
+const reasonOf = async (promise: Promise<unknown>): Promise<string | undefined> => {
+  try {
+    await promise;
+    return undefined;
+  } catch (error) {
+    return (error as { reason?: string }).reason;
+  }
+};
+
 const code = async (promise: Promise<unknown>): Promise<string> => {
   try {
     await promise;
@@ -72,7 +81,9 @@ describe("askpass: o corretor de pedidos", () => {
     const ticket = broker.issue(target, "passphrase");
     stop();
     expect(await code(broker.ask(ticket, "p"))).toBe("invalid_state");
+    expect(await reasonOf(broker.ask(ticket, "p"))).toBe("ssh_askpass_no_app");
     expect(await code(broker.ask("0".repeat(32), "p"))).toBe("unauthorized");
+    expect(await reasonOf(broker.ask("0".repeat(32), "p"))).toBe("ssh_askpass_ticket_invalid");
     // Back with someone listening, the same ticket still works: it asked no one.
     broker.watch((frame) => broker.answer(frame.requestId, SECRET));
     expect(await broker.ask(ticket, "Enter passphrase for key: ")).toBe(SECRET);
@@ -92,19 +103,21 @@ describe("askpass: o corretor de pedidos", () => {
     const refused = broker.ask(ticket, "p");
     broker.answer(frames[0]?.requestId ?? "", null);
     expect(await code(refused)).toBe("invalid_state");
+    expect(await reasonOf(refused)).toBe("ssh_askpass_cancelled");
     const silent = broker.ask(ticket, "p");
     time.advance(119_000);
     expect(frames).toHaveLength(2);
     time.advance(1_000);
     expect(await code(silent)).toBe("invalid_state");
+    expect(await reasonOf(silent)).toBe("ssh_askpass_timeout");
     // The answer came too late; and one that was never asked is just as unknown.
-    expect(() => broker.answer(frames[1]?.requestId ?? "", SECRET)).toThrow(/pedido/);
-    expect(() => broker.answer("nada", SECRET)).toThrow(/pedido/);
+    expect(() => broker.answer(frames[1]?.requestId ?? "", SECRET)).toThrow(/request not found/);
+    expect(() => broker.answer("nada", SECRET)).toThrow(/request not found/);
     // An answered request cannot be answered twice.
     const again = broker.ask(ticket, "p");
     broker.answer(frames[2]?.requestId ?? "", SECRET);
     await again;
-    expect(() => broker.answer(frames[2]?.requestId ?? "", "outra")).toThrow(/pedido/);
+    expect(() => broker.answer(frames[2]?.requestId ?? "", "outra")).toThrow(/request not found/);
   });
 
   test("todo app que acompanha recebe o pedido, a primeira resposta vale e quem parou de acompanhar não recebe mais", async () => {
@@ -116,7 +129,7 @@ describe("askpass: o corretor de pedidos", () => {
     expect([frames.length, second.length]).toEqual([1, 1]);
     broker.answer(second[0]?.requestId ?? "", SECRET);
     expect(await pending).toBe(SECRET);
-    expect(() => broker.answer(frames[0]?.requestId ?? "", "outra")).toThrow(/pedido/);
+    expect(() => broker.answer(frames[0]?.requestId ?? "", "outra")).toThrow(/request not found/);
     stopSecond();
     const next = broker.ask(ticket, "p");
     expect([frames.length, second.length]).toEqual([2, 1]);
@@ -151,7 +164,12 @@ describe("askpass: o script do SSH_ASKPASS", () => {
       '@echo off\r\n"C:\\bun\\bun.exe" "run" "C:\\fd\\bin.ts" askpass %*\r\n',
     );
     for (const bad of ["C:\\100%\\bun.exe", 'C:\\a"b\\bun.exe']) {
-      expect(() => writeAskpassScript({ dir, platform: "win32", self: [bad] })).toThrow(/cmd/);
+      expect(() => writeAskpassScript({ dir, platform: "win32", self: [bad] })).toThrow(/\.cmd/);
+      try {
+        writeAskpassScript({ dir, platform: "win32", self: [bad] });
+      } catch (error) {
+        expect((error as { reason?: string }).reason).toBe("ssh_askpass_cmd_path");
+      }
     }
   });
 

@@ -75,6 +75,15 @@ const REASONS = [
   "ssh_key_unreachable",
   "ssh_hostkey_unconfirmed",
   "ssh_hostkey_changed",
+  "ssh_askpass_ticket_invalid",
+  "ssh_askpass_no_app",
+  "ssh_askpass_timeout",
+  "ssh_askpass_request_unknown",
+  "ssh_askpass_cancelled",
+  "ssh_askpass_cmd_path",
+  "ssh_key_perms",
+  "ssh_agent_down",
+  "ssh_add_refused",
 ];
 
 const cleanups: Array<() => unknown> = [];
