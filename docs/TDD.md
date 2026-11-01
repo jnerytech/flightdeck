@@ -19,7 +19,13 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
    evidência que conta é a rodada vermelha por asserção imediatamente antes do commit de teste.
    Mostre todas as rodadas; não esconda as que falharam por erro.
    - UI: `queryBy*` + `expect(...).not.toBeNull()`, nunca `getBy*` (que lança).
-   - Esperas: poll que só devolve, seguido de `expect`; helpers que lançam timeout geram erro.
+   - Waits (desktop tests): `settle` from `apps/desktop/test/wait.ts` THROWS `WaitTimeout` when time
+    runs out, naming what it waited for (the check's own source, or a label): a wait that returns
+    silently makes a later assertion fail far from the cause. This is the one allowed exception
+    to "red by assertion", since the wait is itself the assertion. A wait whose answer may be
+    "never" uses `settleMaybe` (it returns a boolean). A wait that returns a value stays `poll`
+    followed by an `expect`. Never define a `settle`, `waitFor` or `until` of your own in a test
+    file: `wait-baseline.json` (a ratchet, like the layout one) only goes down.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.

@@ -2671,3 +2671,20 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - **Turning the scope on is shown and confirmed, off needs nothing.** The dialog says how many secrets carry the tag and how many rules they get, and what the rules do; confirming sends them. Turning it off sends each secret its own rules again, on the hosts that had the generated ones; a secret that was never scoped is not sent anything. When a client that stays scoped gains or loses a project, the rules are generated and sent again after a short wait (one look for a burst of changes), and a notice says so: a widening is never silent. A host that connects is sent the scoped rules from the start.
 - **The check that a client's secrets stay in the client is read-only.** For the secrets with the client's vault tag it names a rule that allows or asks for a project of another client, and `allowedHosts` that include a host holding none of the client's projects (said only when some host is known to hold them). It changes nothing; the person edits the rule or the secret.
 - **This desktop is the single writer of a scoped secret's rules.** `vault.rules.set` replaces the host's whole set, so the host holds the generated rules and the person's own together. Anything the app reads back (`readHostVaultRules`, from `vault.rules.get`) has the generated rules (ids starting `client-scope:`) stripped, so they are never folded into the own rules: turning the scope off, or editing an own rule, always sends exactly the own rules, with or without the generated ones in front. The scope holds only while this app writes: if another app, or an old version, saves a scoped secret's rules, the generated ones vanish from the host. The app checks when a host connects: a host that holds rules but none marked is told, in an error notice, that they were replaced, and the scope is sent again; marked rules that differ from what would be generated are the client's projects having changed while the host was away, and take the usual notice. A host that holds nothing yet is sent the rules without a warning, and one that cannot answer `vault.rules.get` is sent them all the same. A host that refuses the generated rules (the daemon accepts at most 200 per secret, so a client with many projects can exceed it) is named in an error notice, since the secret is then not held in its client on that host.
+
+## Waits that throw (`esperas`)
+
+- A test wait that runs out of time used to return silently (about 106 local copies of
+  `settle`), so the next assertion failed far from the cause: the failed-server test, and a
+  `region(...)?.querySelector(...) !== null` that is true when the region is absent, each cost
+  hours. `apps/desktop/test/wait.ts` now holds `settle` (inside `act`), `settlePlain` (no React),
+  the factories `waiter(ms)` and `plainWaiter(ms)` (a file keeps the default timeout it had) and
+  `settleMaybe` for waits that may end without the condition. A timeout throws `WaitTimeout`:
+  `timeout (5000 ms) waiting for: <label or the check's source>`.
+- `scripts/migrate-esperas.ts` (tested in `scripts/lib/migrate-esperas.ts`) swapped the own
+  `settle` of 132 desktop test files for the shared one. `wait-baseline.json` and
+  `scripts/test/wait-ratchet.test.ts` count the test files' own waits (8 left, in odd shapes) and
+  only let the number go down.
+- This replaces the old rule "helpers that throw a timeout count as an error": a wait that times
+  out is a failure of the wait, with its own message.
+
