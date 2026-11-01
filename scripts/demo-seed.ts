@@ -880,8 +880,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       traceSession: TRACE_SESSION,
     },
     stop: async () => {
-      gh.restore();
+      // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
       claude.restore();
+      gh.restore();
       old.stop(true);
       slow.stop(true);
       await alfa.stop();
