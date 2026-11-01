@@ -1,5 +1,5 @@
 import type { Budget, BudgetInput } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
-import { budgetLabel, budgetLine } from "../lib/budgets.ts";
+import { budgetLabel, budgetLine, projectName } from "../lib/budgets.ts";
+import { periodRange } from "../lib/costs.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 interface Draft {
@@ -40,6 +41,28 @@ export function BudgetsSection(props: {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [removing, setRemoving] = useState<Budget | null>(null);
   const editing = props.budgets.find((b) => b.id === draft.id);
+  const [spentOn, setSpentOn] = useState<string[]>([]);
+  // The keys a project budget can name are the ones the host has seen: those with usage in the
+  // last 30 days and those a budget already uses.
+  useEffect(() => {
+    void store
+      .hostCommand(hostId, "costs.summary", periodRange("30d", store.today()))
+      .then((summary) => summary && setSpentOn(summary.byProject.map((p) => p.projectKey)));
+  }, [store, hostId]);
+  const keys = [
+    ...new Set([
+      ...spentOn,
+      ...props.budgets.flatMap((b) => (b.projectKey ? [b.projectKey] : [])),
+      ...(draft.projectKey ? [draft.projectKey] : []),
+    ]),
+  ];
+  const projects = keys
+    .map((key) => {
+      const name = projectName(key);
+      const shared = keys.filter((other) => projectName(other) === name).length > 1;
+      return { key, label: shared ? `${name} · ${key}` : name };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const save = async () => {
     const input: BudgetInput = {
@@ -134,13 +157,28 @@ export function BudgetsSection(props: {
               </Field>
               {draft.scope === "project" && (
                 <Field label={t("budgetsUi.projectLabel")}>
-                  {(control) => (
-                    <Input
-                      {...control}
-                      value={draft.projectKey}
-                      onChange={(e) => set({ projectKey: e.target.value })}
-                    />
-                  )}
+                  {(control) =>
+                    projects.length === 0 ? (
+                      <Input
+                        {...control}
+                        value={draft.projectKey}
+                        onChange={(e) => set({ projectKey: e.target.value })}
+                      />
+                    ) : (
+                      <NativeSelect
+                        {...control}
+                        value={draft.projectKey}
+                        onChange={(e) => set({ projectKey: e.target.value })}
+                      >
+                        <option value="">{t("budgetsUi.pickProject")}</option>
+                        {projects.map((project) => (
+                          <option key={project.key} value={project.key}>
+                            {project.label}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    )
+                  }
                 </Field>
               )}
               <Field label={t("budgetsUi.period")}>
@@ -184,7 +222,7 @@ export function BudgetsSection(props: {
               </Field>
             </Grid>
             <FormActions
-              submit={t("budgetsUi.save")}
+              submit={t(editing ? "budgetsUi.save" : "budgetsUi.create")}
               disabled={needs !== null}
               disabledReason={needs}
               {...(editing

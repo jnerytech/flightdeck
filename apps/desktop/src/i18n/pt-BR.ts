@@ -1575,6 +1575,8 @@ export const ptBR = {
     projectNeeded: "Informe o projeto do orçamento.",
     notifyHelp: "Avisa ao chegar a 50%, 80% e 100% do limite.",
     queueHelp: "Avisa e segura os cards novos do escopo ao chegar a 100% do limite.",
+    create: "Criar orçamento",
+    pickProject: "Escolha um projeto",
     save: "Salvar orçamento",
   },
   periods: {

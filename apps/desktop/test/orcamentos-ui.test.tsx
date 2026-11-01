@@ -205,7 +205,7 @@ describe("orcamentos-ui", () => {
     await click("Criar orçamento");
     await settle(() => rows().length === 1);
     expect(rows()).toEqual([
-      "orçamento de flightdeck-web (dia) · notificar · US$ 0.00 de US$ 10.00 (0%)",
+      "orçamento de flightdeck-web (dia) · notificar · US$ 1.00 de US$ 10.00 (10%)",
     ]);
     const title = section()?.querySelector("li [data-row-title] span") as HTMLElement;
     expect(title.title).toBe("/srv/work/flightdeck-web");

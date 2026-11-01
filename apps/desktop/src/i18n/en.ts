@@ -1575,6 +1575,8 @@ export const en: Dictionary = {
     projectNeeded: "Enter the budget's project.",
     notifyHelp: "Notifies at 50%, 80% and 100% of the limit.",
     queueHelp: "Notifies and holds the scope's new cards at 100% of the limit.",
+    create: "Create budget",
+    pickProject: "Choose a project",
     save: "Save budget",
   },
   periods: {
