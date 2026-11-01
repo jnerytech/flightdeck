@@ -12,7 +12,7 @@ import { type Issues, UNTRUSTED_MARK } from "../issues/issues.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
-import { type CronSpec, cronMatches, parseCron, validTimeZone } from "./cron.ts";
+import { type CronError, type CronSpec, cronMatches, parseCron, validTimeZone } from "./cron.ts";
 
 export type AutomationEvent =
   | {
@@ -83,7 +83,12 @@ const WINDOW = 7 * 24 * 60 * MINUTE;
 /** Missed slots recorded per automation: the latest ones. */
 const MAX_MISSED = 10;
 
-const bad = (message: string) => new FlightdeckError("bad_request", message);
+const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const notFound = (id: string) =>
+  new FlightdeckError("not_found", `automation ${id} does not exist`, "automation_not_found", {
+    id,
+  });
 
 const toAutomation = (row: Row): Automation => ({
   id: row.id,
@@ -181,11 +186,12 @@ export class Automations {
     this.opts.board.getProject(input.projectId);
     const existing = input.id ? this.row(input.id) : null;
     if (input.id && !existing) {
-      throw new FlightdeckError("not_found", `automação ${input.id} não existe`);
+      throw notFound(input.id);
     }
-    if (!input.name.trim()) throw bad("a automação precisa de um nome");
+    if (!input.name.trim()) throw bad("the automation needs a name", "automation_name_required");
     const max = input.maxRunsPerDay ?? existing?.max_runs_per_day ?? 10;
-    if (!Number.isInteger(max) || max < 1) throw bad("maxRunsPerDay é um inteiro de 1 em diante");
+    if (!Number.isInteger(max) || max < 1)
+      throw bad("maxRunsPerDay is a whole number from 1 up", "automation_max_runs");
     this.check(input.trigger, input.action);
     const id = existing?.id ?? ulid();
     this.db
@@ -215,9 +221,13 @@ export class Automations {
 
   remove(id: string, confirm: boolean): Automation[] {
     if (!confirm)
-      throw new FlightdeckError("invalid_state", "remover a automação pede confirm: true");
+      throw new FlightdeckError(
+        "invalid_state",
+        "removing the automation needs confirm: true",
+        "automation_remove_confirm",
+      );
     const row = this.row(id);
-    if (!row) throw new FlightdeckError("not_found", `automação ${id} não existe`);
+    if (!row) throw notFound(id);
     for (const table of ["automation_runs", "automation_seen"]) {
       this.db.query(`DELETE FROM ${table} WHERE automation_id = ?`).run(id);
     }
@@ -230,9 +240,13 @@ export class Automations {
   /** Turning on needs a confirmation (the app shows the trigger and the action first). */
   toggle(id: string, enabled: boolean, confirm: boolean): Automation {
     if (enabled && !confirm) {
-      throw new FlightdeckError("invalid_state", "ligar a automação pede confirm: true");
+      throw new FlightdeckError(
+        "invalid_state",
+        "enabling the automation needs confirm: true",
+        "automation_enable_confirm",
+      );
     }
-    if (!this.row(id)) throw new FlightdeckError("not_found", `automação ${id} não existe`);
+    if (!this.row(id)) throw notFound(id);
     this.db.query("UPDATE automations SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
     this.arm();
     return toAutomation(this.row(id) as Row);
@@ -564,19 +578,24 @@ export class Automations {
       try {
         parseCron(trigger.expr);
       } catch (error) {
-        throw bad((error as Error).message);
+        const cron = error as CronError;
+        throw bad(cron.message, cron.reason, cron.params);
       }
-      if (!validTimeZone(trigger.tz)) throw bad(`fuso horário desconhecido: ${trigger.tz}`);
+      if (!validTimeZone(trigger.tz))
+        throw bad(`unknown time zone: ${trigger.tz}`, "automation_tz_unknown", { tz: trigger.tz });
     }
     if (
       action.type === "send_to_card" &&
       trigger.type !== "pr_comment" &&
       trigger.type !== "ci_failed"
     ) {
-      throw bad("send_to_card precisa de um gatilho com card: pr_comment ou ci_failed");
+      throw bad(
+        "send_to_card needs a trigger with a card: pr_comment or ci_failed",
+        "automation_send_needs_card",
+      );
     }
     if (action.type === "create_card" && trigger.type !== "issue_label") {
-      throw bad("create_card precisa do gatilho issue_label");
+      throw bad("create_card needs the issue_label trigger", "automation_create_needs_label");
     }
   }
 }

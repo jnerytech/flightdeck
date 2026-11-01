@@ -17,15 +17,31 @@ export interface CronSpec {
   dowAny: boolean;
 }
 
+/** A cron expression that cannot be used: an English text, and a reason with params for the app. */
+export class CronError extends Error {
+  constructor(
+    message: string,
+    readonly reason: string,
+    readonly params?: Record<string, string | number>,
+  ) {
+    super(message);
+    this.name = "CronError";
+  }
+}
+
 const NUMBER = /^\d+$/;
 
-function parseField(text: string, label: string, min: number, max: number): Set<number> {
+/** `field` is the position in the expression, counted from 1. */
+function parseField(text: string, field: number, min: number, max: number): Set<number> {
   const values = new Set<number>();
   for (const part of text.split(",")) {
     const [range = "", step, extra] = part.split("/");
     const every = step === undefined ? 1 : Number(step);
     if (extra !== undefined || (step !== undefined && !NUMBER.test(step)) || every < 1) {
-      throw new Error(`cron: passo inválido em ${label}: ${part}`);
+      throw new CronError(`cron: invalid step in field ${field}: ${part}`, "cron_step", {
+        field,
+        part,
+      });
     }
     let low: number;
     let high: number;
@@ -34,7 +50,10 @@ function parseField(text: string, label: string, min: number, max: number): Set<
     } else {
       const [from = "", to, more] = range.split("-");
       if (!NUMBER.test(from) || (to !== undefined && !NUMBER.test(to)) || more !== undefined) {
-        throw new Error(`cron: valor inválido em ${label}: ${part}`);
+        throw new CronError(`cron: invalid value in field ${field}: ${part}`, "cron_value", {
+          field,
+          part,
+        });
       }
       low = Number(from);
       // "5/10" runs from 5 to the end of the field; a plain "5" is just 5.
@@ -43,7 +62,12 @@ function parseField(text: string, label: string, min: number, max: number): Set<
       else if (step !== undefined) high = max;
     }
     if (low < min || high > max || low > high) {
-      throw new Error(`cron: ${label} fora de ${min}-${max}: ${part}`);
+      throw new CronError(`cron: field ${field} out of ${min}-${max}: ${part}`, "cron_range", {
+        field,
+        min,
+        max,
+        part,
+      });
     }
     for (let value = low; value <= high; value += every) values.add(value);
   }
@@ -54,15 +78,18 @@ function parseField(text: string, label: string, min: number, max: number): Set<
 export function parseCron(expr: string): CronSpec {
   const fields = expr.trim().split(/\s+/);
   if (fields.length !== 5)
-    throw new Error("cron: são 5 campos (minuto hora dia mês dia-da-semana)");
+    throw new CronError(
+      "cron: 5 fields (minute hour day-of-month month day-of-week)",
+      "cron_fields",
+    );
   const [minute, hour, dom, month, dow] = fields as [string, string, string, string, string];
-  const days = parseField(dow, "dia da semana", 0, 7);
+  const days = parseField(dow, 5, 0, 7);
   if (days.delete(7)) days.add(0);
   return {
-    minute: parseField(minute, "minuto", 0, 59),
-    hour: parseField(hour, "hora", 0, 23),
-    dom: parseField(dom, "dia do mês", 1, 31),
-    month: parseField(month, "mês", 1, 12),
+    minute: parseField(minute, 1, 0, 59),
+    hour: parseField(hour, 2, 0, 23),
+    dom: parseField(dom, 3, 1, 31),
+    month: parseField(month, 4, 1, 12),
     dow: days,
     domAny: dom.startsWith("*"),
     dowAny: dow.startsWith("*"),
