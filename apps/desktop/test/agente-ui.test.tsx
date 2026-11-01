@@ -78,12 +78,18 @@ const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
  * leaves a marker file when it starts), a settings.local.json, and a user ~/.claude.json with
  * one server. Opens the Agente screen of the project.
  */
-async function setup(options: { agentcfg?: boolean; empty?: boolean; live?: boolean } = {}) {
+type LiveStatuses = Array<{ name: string; status: string; error?: string }>;
+async function setup(
+  options: { agentcfg?: boolean; empty?: boolean; live?: boolean; mcpStatus?: LiveStatuses } = {},
+) {
   const d = makeDaemon(cleanups, {
     checkpoints: true,
     agentcfg: options.agentcfg ?? true,
     mcpServers: ["eco", "marcador"],
   });
+  // Before the app mounts: the screen asks for the live statuses as soon as it sees the session.
+  const statuses = options.mcpStatus;
+  if (statuses) d.manager.mcpStatus = (async () => statuses) as never;
   const repo = join(d.root, "repo");
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");
@@ -613,11 +619,13 @@ describe("agente-ui", () => {
     expect(runtime.mcpToggles).toEqual([]);
   });
   test("a server the live session reports as failed shows its error", async () => {
-    const { manager } = await setup({ live: true });
-    manager.mcpStatus = async () => [
-      { name: "eco", status: "failed", error: "spawn eco ENOENT" },
-      { name: "marcador", status: "needs-auth" },
-    ];
+    await setup({
+      live: true,
+      mcpStatus: [
+        { name: "eco", status: "failed", error: "spawn eco ENOENT" },
+        { name: "marcador", status: "needs-auth" },
+      ],
+    });
     await settle(() => screen.queryByText("spawn eco ENOENT") !== null);
     const row = (name: string) => screen.queryByRole("listitem", { name }) as HTMLElement;
     expect(within(row("eco")).queryByText("Falhou")).not.toBeNull();
