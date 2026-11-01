@@ -331,6 +331,31 @@ describe("vigiar-ado: the watcher", () => {
     expect(asked).toBe(2);
   });
 
+  test("a look that fails does not hold the card: the next tick looks again", async () => {
+    const { ctx, card } = await watched([]);
+    let asked = 0;
+    const provider: PrProvider = {
+      create: async () => PR,
+      url: async () => null,
+      status: async () => ({ state: "open", checks: null }),
+      comments: async () => [],
+      buildLog: async () => "",
+      health: async () => {
+        asked++;
+        throw new Error("host down");
+      },
+    };
+    const watcher = new PrWatcher({
+      db: ctx.store.db,
+      board: ctx.board,
+      provider: () => provider,
+    });
+    watcher.setEnabled(card.id, true);
+    await watcher.tick();
+    await watcher.tick();
+    expect(asked).toBe(2);
+  });
+
   test("a look in flight when the PR stops being open fires nothing", async () => {
     const { ctx, card } = await watched([]);
     let release: () => void = () => {};
