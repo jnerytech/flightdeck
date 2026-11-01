@@ -6,8 +6,10 @@ export interface AxeViolation {
   nodes: Array<{ target: unknown[] }>;
 }
 
-/** What axe is asked to check beyond its defaults. */
-export const AXE_RUN_OPTIONS: { rules: Record<string, { enabled: boolean }> } = { rules: {} };
+/** What axe is asked to check beyond its defaults: target size (WCAG 2.5.8), which it ships off. */
+export const AXE_RUN_OPTIONS: { rules: Record<string, { enabled: boolean }> } = {
+  rules: { "target-size": { enabled: true } },
+};
 
 /** The violations that fail the build. */
 export function blocking(violations: AxeViolation[]): AxeViolation[] {

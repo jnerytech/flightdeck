@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
-import { type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
+import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
@@ -434,14 +434,18 @@ export async function takeShots(
           });
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });
-          const found = await page.evaluate(() =>
-            (
-              globalThis as unknown as {
-                axe: { run(): Promise<{ violations: AxeViolation[] }> };
-              }
-            ).axe
-              .run()
-              .then((result) => result.violations),
+          const found = await page.evaluate(
+            (options) =>
+              (
+                globalThis as unknown as {
+                  axe: {
+                    run(options: unknown): Promise<{ violations: AxeViolation[] }>;
+                  };
+                }
+              ).axe
+                .run(options)
+                .then((result) => result.violations),
+            AXE_RUN_OPTIONS,
           );
           for (const violation of blocking(found)) {
             problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
