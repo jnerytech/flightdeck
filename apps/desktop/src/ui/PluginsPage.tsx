@@ -1,5 +1,5 @@
 import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Field, Form } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -15,19 +15,23 @@ import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
+
+const PLUGINSPAGE_KEYS = ["hosts"] as const;
 
 /**
  * Phase 26: the Claude Code plugins of the first online host that keeps them. A plugin runs code
  * on the machine, so each one shows what it installs, and the hooks that can decide for the user
  * carry a mark.
  */
-export function PluginsPage(props: { store: AppStore; state: AppState }) {
+export const PluginsPage = memo(function PluginsPage(props: { store: AppStore }) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, PLUGINSPAGE_KEYS);
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "plugins", false),
   );
@@ -390,4 +394,4 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
       )}
     </Page>
   );
-}
+});

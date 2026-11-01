@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 
 /** One request: the secret lives only in this field, and goes to the daemon only in the answer. */
 function Prompt(props: { store: AppStore; item: AppState["askpass"][number] }) {
@@ -59,8 +60,12 @@ function Prompt(props: { store: AppStore; item: AppState["askpass"][number] }) {
   );
 }
 
+const ASKPASSPROMPT_KEYS = ["askpass"] as const;
+
 /** Phase 15: ssh asks for a password or a key passphrase, one request at a time. */
-export function AskpassPrompt(props: { store: AppStore; state: AppState }) {
-  const first = props.state.askpass[0];
+export const AskpassPrompt = memo(function AskpassPrompt(props: { store: AppStore }) {
+  const { store } = props;
+  const state = useStoreSlice(store, ASKPASSPROMPT_KEYS);
+  const first = state.askpass[0];
   return first ? <Prompt key={first.request.requestId} store={props.store} item={first} /> : null;
-}
+});

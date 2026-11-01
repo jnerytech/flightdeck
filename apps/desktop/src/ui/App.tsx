@@ -1,6 +1,6 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
@@ -124,10 +124,13 @@ export function App({ store }: { store: AppStore }) {
   }, [store, projectHost, projectsKnown, projectHostOnline]);
 
   /** Opening anything closes the layers above it: the palette (dialogs go with their screen). */
-  const go = (next: Route) => {
-    store.closeSearch();
-    router.push(next);
-  };
+  const go = useCallback(
+    (next: Route) => {
+      store.closeSearch();
+      router.push(next);
+    },
+    [store, router],
+  );
 
   useEffect(() => {
     void store.init();
@@ -322,7 +325,7 @@ export function App({ store }: { store: AppStore }) {
           )}
         >
           <div className="flex h-full min-h-0 flex-col">
-            <UpdateBanner store={store} state={state} />
+            <UpdateBanner store={store} />
             <Areas
               store={store}
               state={state}
@@ -336,11 +339,11 @@ export function App({ store }: { store: AppStore }) {
               }}
             />
           </div>
-          <Notices store={store} state={state} />
+          <Notices store={store} />
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}
-          <AskpassPrompt store={store} state={state} />
+          <AskpassPrompt store={store} />
           {state.snippetChoice && (
             <SnippetUse
               store={store}

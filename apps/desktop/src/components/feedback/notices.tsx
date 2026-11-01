@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Toaster, toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { translateError } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
-import type { AppState, AppStore } from "@/lib/app-store";
+import type { AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 
 /** Mounted Notices so far: each one prefixes its toast ids with its number. */
 let instances = 0;
@@ -45,12 +46,15 @@ function ErrorToast(props: {
   );
 }
 
+const NOTICES_KEYS = ["notices"] as const;
+
 /**
  * The app's toasts (sonner): each error of a host, translated by its code with the daemon's
  * message behind "Detalhes", stays until closed (several at once); successes are short.
  */
-export function Notices(props: { store: AppStore; state: AppState }) {
-  const { store, state } = props;
+export const Notices = memo(function Notices(props: { store: AppStore }) {
+  const { store } = props;
+  const state = useStoreSlice(store, NOTICES_KEYS);
   const theme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const { t } = store.i18n;
   /** Notices already handed to sonner. */
@@ -94,4 +98,4 @@ export function Notices(props: { store: AppStore; state: AppState }) {
     }
   }, [state.notices, store, t, prefix]);
   return <Toaster theme={theme} position="bottom-right" visibleToasts={6} />;
-}
+});

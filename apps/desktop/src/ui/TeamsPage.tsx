@@ -1,6 +1,6 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -326,9 +327,12 @@ function Team(props: {
   );
 }
 
+const TEAMSPAGE_KEYS = ["hosts"] as const;
+
 /** Phase 21: the teams of a host, a new one, and the controls of each. */
-export function TeamsPage(props: { store: AppStore; state: AppState }) {
-  const { store, state } = props;
+export const TeamsPage = memo(function TeamsPage(props: { store: AppStore }) {
+  const { store } = props;
+  const state = useStoreSlice(store, TEAMSPAGE_KEYS);
   const { t } = store.i18n;
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "teams", false),
@@ -421,4 +425,4 @@ export function TeamsPage(props: { store: AppStore; state: AppState }) {
       </ul>
     </Page>
   );
-}
+});

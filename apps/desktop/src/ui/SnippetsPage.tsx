@@ -1,6 +1,6 @@
 import type { SnippetFileInfo } from "@flightdeck/protocol";
 import { SquareCode, Star } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -10,7 +10,8 @@ import { SnippetEditor } from "@/components/snippets/snippet-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import type { AppSnippet } from "../lib/global-snippets.ts";
 import type { Route } from "../lib/router.ts";
 import { actionSeedFromCommand } from "../lib/snippets.ts";
@@ -23,10 +24,16 @@ const originOf = (snippet: AppSnippet) => (snippet.source === "file" ? "file" : 
 /** The "Projeto" choice that shows the app's own snippets instead of the host's. */
 export const GLOBAL = "@global";
 
+const SNIPPETSPAGE_KEYS = ["snippetChoice", "projects", "hosts"] as const;
+
 /** Phase 18: the snippets of the first online host that keeps them, and of one of its projects. */
-export function SnippetsPage(props: { store: AppStore; state: AppState; go(route: Route): void }) {
+export const SnippetsPage = memo(function SnippetsPage(props: {
+  store: AppStore;
+  go(route: Route): void;
+}) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, SNIPPETSPAGE_KEYS);
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "snippets", false),
   );
@@ -295,4 +302,4 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
       )}
     </Page>
   );
-}
+});

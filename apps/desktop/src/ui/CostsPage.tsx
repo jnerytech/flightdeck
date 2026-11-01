@@ -1,6 +1,6 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { DayChart } from "@/components/costs/day-chart";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useFormatNumber, useT } from "@/i18n/context";
+import { useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../lib/app-store.ts";
 import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -46,19 +47,21 @@ function Breakdown(props: { name: string; rows: Array<{ label: string; costUsd: 
   );
 }
 
+const COSTSPAGE_KEYS = ["personas", "hosts"] as const;
+
 /**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
  * transcripts, in API prices: totals, a daily chart stacked by project, breakdowns, the most
  * expensive sessions and a CSV export.
  */
-export function CostsPage(props: {
+export const CostsPage = memo(function CostsPage(props: {
   store: AppStore;
-  state: AppState;
   onOpenSession(hostId: string, session: TopSession): void;
 }) {
   const t = useT();
   const number = useFormatNumber();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, COSTSPAGE_KEYS);
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
   );
@@ -331,4 +334,4 @@ export function CostsPage(props: {
       </div>
     </Page>
   );
-}
+});

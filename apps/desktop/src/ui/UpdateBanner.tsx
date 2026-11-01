@@ -1,13 +1,18 @@
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
+
+const UPDATEBANNER_KEYS = ["appUpdate", "hosts"] as const;
 
 /**
  * Phase 9: a newer app version on offer, with its notes, or why looking for one failed. With
  * daemons behind as well, it suggests updating the app first.
  */
-export function UpdateBanner(props: { store: AppStore; state: AppState }) {
+export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore }) {
   const t = props.store.i18n.t;
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, UPDATEBANNER_KEYS);
   const { offer, error } = state.appUpdate;
   if (!offer && !error) return null;
   const daemonsBehind = state.hosts.some((h) => h.hostInfo?.update?.available);
@@ -34,4 +39,4 @@ export function UpdateBanner(props: { store: AppStore; state: AppState }) {
       {error && <p className="text-status-needs-you">{error}</p>}
     </section>
   );
-}
+});

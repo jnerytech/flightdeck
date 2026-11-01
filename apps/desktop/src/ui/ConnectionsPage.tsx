@@ -1,6 +1,6 @@
 import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { ImportPanel } from "@/components/connections/import-panel";
 import { TargetForm } from "@/components/connections/target-form";
 import { Field, NativeSelect } from "@/components/layout/form";
@@ -19,7 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { savePayload } from "../lib/ssh.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -33,16 +34,18 @@ const matches = (target: SshTarget, needle: string) =>
     field.toLowerCase().includes(needle.toLowerCase()),
   );
 
+const CONNECTIONSPAGE_KEYS = ["hosts"] as const;
+
 /** Phase 15: the ssh destinos kept by the first online host that announces `ssh`. */
-export function ConnectionsPage(props: {
+export const ConnectionsPage = memo(function ConnectionsPage(props: {
   store: AppStore;
-  state: AppState;
   go(route: Route): void;
   /** The id of a destino to connect to once the list is in (the palette's choice). */
   connect?: string | undefined;
 }) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, CONNECTIONSPAGE_KEYS);
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "ssh", false),
   );
@@ -218,7 +221,6 @@ export function ConnectionsPage(props: {
         <TargetForm
           key={editing === "new" ? "new" : editing.id}
           store={store}
-          state={state}
           hostId={hostId}
           target={editing === "new" ? null : editing}
           others={targets.filter((other) => editing === "new" || other.id !== editing.id)}
@@ -359,4 +361,4 @@ export function ConnectionsPage(props: {
       )}
     </Page>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useState, useSyncExternalStore } from "react";
+import { memo, type ReactNode, useId, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -6,13 +6,9 @@ import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WatchSettingsSection } from "@/components/watch/watch-settings-section";
+import { useStoreSlice } from "@/lib/use-store";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
-import type {
-  AppState,
-  AppStore,
-  AppUpdateState,
-  Settings as SettingsState,
-} from "../lib/app-store.ts";
+import type { AppStore, AppUpdateState, Settings as SettingsState } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
 import type { ThemeMode } from "../lib/theme.ts";
@@ -31,13 +27,14 @@ function SettingRow(props: { label: string; children: (id: string) => ReactNode 
   );
 }
 
+const SETTINGS_KEYS = ["hosts", "budgets", "projects"] as const;
+
 /**
  * App preferences: close-to-tray (on by default), start with Windows (off by default) and the
  * global shortcut that opens the search (Ctrl+Alt+F by default).
  */
-export function Settings(props: {
+export const Settings = memo(function Settings(props: {
   store: AppStore;
-  state: AppState;
   settings: SettingsState;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
@@ -56,6 +53,8 @@ export function Settings(props: {
   onLang(lang: Lang): void;
   t: T;
 }) {
+  const { store } = props;
+  const state = useStoreSlice(store, SETTINGS_KEYS);
   const { t } = props;
   const terminalFont = useSyncExternalStore(
     props.store.terminalFont.subscribe,
@@ -195,7 +194,7 @@ export function Settings(props: {
             />
           </Form>
         </Panel>
-        {props.state.hosts
+        {state.hosts
           // Budgets came with the costs (phase 8).
           .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
           .map((h) => (
@@ -204,10 +203,10 @@ export function Settings(props: {
               store={props.store}
               hostId={h.id}
               hostName={h.name}
-              budgets={props.state.budgets[h.id] ?? []}
+              budgets={state.budgets[h.id] ?? []}
             />
           ))}
-        {props.state.hosts
+        {state.hosts
           .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "watch", false))
           .map((h) => (
             <WatchSettingsSection
@@ -215,10 +214,10 @@ export function Settings(props: {
               store={props.store}
               hostId={h.id}
               hostName={h.name}
-              projects={props.state.projects[h.id] ?? []}
+              projects={state.projects[h.id] ?? []}
             />
           ))}
-        {props.state.hosts
+        {state.hosts
           .filter(
             (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
           )
@@ -233,4 +232,4 @@ export function Settings(props: {
       </div>
     </Page>
   );
-}
+});

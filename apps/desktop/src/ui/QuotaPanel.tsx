@@ -1,6 +1,7 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Grid } from "@/components/layout/stack";
+import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore, HostView } from "../lib/app-store.ts";
 import { HISTORY_HOURS, projectionText, quotaBars, SHOWN } from "../lib/quota.ts";
@@ -15,10 +16,10 @@ const METER_HOT =
   "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
 /** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has the projection in its tooltip. */
-function HostQuota(props: { store: AppStore; state: AppState; host: HostView }) {
-  const { store, state, host } = props;
+function HostQuota(props: { store: AppStore; quota: AppState["quota"]; host: HostView }) {
+  const { store, host } = props;
   const { t } = store.i18n;
-  const quota = state.quota[host.id];
+  const quota = props.quota[host.id];
   const bars = quotaBars(quota, store.now(), (iso) => store.formatTime(iso), t);
   const pauseAt = Math.round((quota?.pauseAt ?? 0) * 100);
   const costs = hasFeature(host.hostInfo?.features, "costs", false);
@@ -100,9 +101,12 @@ function HostQuota(props: { store: AppStore; state: AppState; host: HostView }) 
   );
 }
 
+const QUOTAPANEL_KEYS = ["quota", "hosts"] as const;
+
 /** The plan quota of each online host, as cards in a grid: 5 hours and 7 days, red from `pauseAt`. */
-export function QuotaPanel(props: { store: AppStore; state: AppState }) {
-  const { store, state } = props;
+export const QuotaPanel = memo(function QuotaPanel(props: { store: AppStore }) {
+  const { store } = props;
+  const state = useStoreSlice(store, QUOTAPANEL_KEYS);
   const hosts = state.hosts.filter(
     // Only hosts that announce the quota (phase 7 or later).
     (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "quota", false),
@@ -111,8 +115,8 @@ export function QuotaPanel(props: { store: AppStore; state: AppState }) {
   return (
     <Grid cols={{ base: 1, md: 2, xl: 3 }} gap={4}>
       {hosts.map((host) => (
-        <HostQuota key={host.id} store={store} state={state} host={host} />
+        <HostQuota key={host.id} store={store} quota={state.quota} host={host} />
       ))}
     </Grid>
   );
-}
+});

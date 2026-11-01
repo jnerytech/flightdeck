@@ -335,7 +335,7 @@ export function Screen(props: ScreenProps) {
       empty={
         <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
           <EmptyState icon={MessagesSquare} title={t("hub.pick")} />
-          <QuotaPanel store={store} state={state} />
+          <QuotaPanel store={store} />
         </div>
       }
       onClose={() => go({ name: "hub" })}
@@ -368,7 +368,6 @@ function routeScreen(props: ScreenProps): ReactNode {
     return (
       <Settings
         store={store}
-        state={state}
         settings={state.settings}
         onCloseToTray={(enabled) => void store.setCloseToTray(enabled)}
         onAutostart={(enabled) => void store.setAutostart(enabled)}
@@ -404,22 +403,21 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
     case "teams":
-      return <TeamsPage store={store} state={state} />;
+      return <TeamsPage store={store} />;
     case "conversations":
-      return <ConversationsPage store={store} state={state} go={go} />;
+      return <ConversationsPage store={store} go={go} />;
     case "personas":
-      return <PersonasPage store={store} state={state} />;
+      return <PersonasPage store={store} />;
     case "plugins":
-      return <PluginsPage store={store} state={state} />;
+      return <PluginsPage store={store} />;
     case "snippets":
-      return <SnippetsPage store={store} state={state} go={go} />;
+      return <SnippetsPage store={store} go={go} />;
     case "connections":
-      return <ConnectionsPage store={store} state={state} go={go} connect={route.connect} />;
+      return <ConnectionsPage store={store} go={go} connect={route.connect} />;
     case "costs":
       return (
         <CostsPage
           store={store}
-          state={state}
           onOpenSession={(hostId, session) =>
             go(
               session.sessionId

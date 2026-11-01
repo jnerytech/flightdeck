@@ -1,12 +1,13 @@
 import { Drama } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { PersonaEditor } from "@/components/personas/persona-editor";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import type { AppPersona } from "../lib/global-personas.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -17,10 +18,13 @@ const APP = "@app";
 /** A pack persona the host edited is the host's own copy, still restorable to the pack's. */
 const originKey = (p: AppPersona) => (p.modified ? "packEdited" : p.scope);
 
+const PERSONASPAGE_KEYS = ["projects", "hosts"] as const;
+
 /** Phase 20: the personas of the first online host that keeps them, of a project, and the app's. */
-export function PersonasPage(props: { store: AppStore; state: AppState }) {
+export const PersonasPage = memo(function PersonasPage(props: { store: AppStore }) {
   const t = useT();
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, PERSONASPAGE_KEYS);
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "personas", false),
   );
@@ -243,4 +247,4 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
       )}
     </Page>
   );
-}
+});

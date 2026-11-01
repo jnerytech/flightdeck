@@ -1,12 +1,13 @@
 import type { SshAuth, SshTarget } from "@flightdeck/protocol";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "@/lib/app-store";
+import type { AppStore } from "@/lib/app-store";
+import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 const AUTHS: SshAuth[] = ["agent", "key-file", "vault-key", "password"];
@@ -24,10 +25,11 @@ const split = (text: string, separator: string): string[] =>
     .map((part) => part.trim())
     .filter(Boolean);
 
+const TARGETFORM_KEYS = ["secrets", "hosts"] as const;
+
 /** Creates or edits a ssh destino; only the reference to a secret is ever typed here. */
-export function TargetForm(props: {
+export const TargetForm = memo(function TargetForm(props: {
   store: AppStore;
-  state: AppState;
   hostId: string;
   /** The destino being edited; `null` for a new one. */
   target: SshTarget | null;
@@ -37,7 +39,8 @@ export function TargetForm(props: {
   onClose(): void;
 }) {
   const t = useT();
-  const { store, state, hostId, target } = props;
+  const { store, hostId, target } = props;
+  const state = useStoreSlice(store, TARGETFORM_KEYS);
   const [name, setName] = useState(target?.name ?? "");
   const [host, setHost] = useState(target?.host ?? "");
   const [port, setPort] = useState(String(target?.port ?? 22));
@@ -336,4 +339,4 @@ export function TargetForm(props: {
       )}
     </Form>
   );
-}
+});

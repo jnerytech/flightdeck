@@ -1,6 +1,6 @@
 import type { MessageInfo, MessageStatus } from "@flightdeck/protocol";
 import { MessagesSquare } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import { useStoreSlice } from "@/lib/use-store";
+import type { AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 
@@ -28,16 +29,18 @@ interface Row {
   message: MessageInfo;
 }
 
+const CONVERSATIONSPAGE_KEYS = ["hosts"] as const;
+
 /**
  * Phase 21: the messages between sessions on every host with messaging, newest first, with their
  * state and why one was refused. A message relayed between hosts is listed once.
  */
-export function ConversationsPage(props: {
+export const ConversationsPage = memo(function ConversationsPage(props: {
   store: AppStore;
-  state: AppState;
   go(route: Route): void;
 }) {
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, CONVERSATIONSPAGE_KEYS);
   const { t } = store.i18n;
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState<"" | MessageStatus>("");
@@ -170,4 +173,4 @@ export function ConversationsPage(props: {
       </ul>
     </Page>
   );
-}
+});
