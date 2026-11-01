@@ -57,6 +57,7 @@ import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
+import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs } from "./fs-dirs.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
@@ -237,6 +238,8 @@ interface Connection {
   /** Where the connection came from (the address the origin filter looked at). */
   origin: string;
   subscriptions: Map<string, () => void>;
+  /** One per subscription: the text that waits for its window or for the socket to drain. */
+  coalescers: Set<DeltaCoalescer>;
   /** A frame was dropped: the client was cut off and gets nothing more (`sendFrame`). */
   dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
@@ -715,8 +718,18 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
     ws.data.subscriptions.get(sessionId)?.();
-    const sub = manager.subscribe(sessionId, sinceSeq, (envelope) => send(ws, envelope));
-    ws.data.subscriptions.set(sessionId, sub.unsubscribe);
+    // The text of a stream goes out a few frames at a time; every other event flushes it first.
+    const coalescer = coalesceDeltas({
+      deliver: (envelope) => send(ws, envelope),
+      backlog: () => ws.getBufferedAmount(),
+    });
+    ws.data.coalescers.add(coalescer);
+    const sub = manager.subscribe(sessionId, sinceSeq, (envelope) => coalescer.push(envelope));
+    ws.data.subscriptions.set(sessionId, () => {
+      sub.unsubscribe();
+      coalescer.stop();
+      ws.data.coalescers.delete(coalescer);
+    });
     return sub;
   }
 
@@ -1761,6 +1774,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             authed: false,
             origin,
             subscriptions: new Map(),
+            coalescers: new Set(),
             pendingPings: new Map(),
             changeWatchers: new Map(),
           },
@@ -1772,6 +1786,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       return new Response("not found", { status: 404 });
     },
     websocket: {
+      drain: drainAll,
       message(ws, raw) {
         let frame: unknown;
         try {
