@@ -65,7 +65,7 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     );
     expect(section()).not.toBeNull();
     expect(within(section() as HTMLElement).queryByText("repo")).not.toBeNull();
-    await settle(() => (field("Rodadas por PR") as HTMLInputElement).value === "3");
+    await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
     expect((field("Vigiar PRs por padrão") as HTMLInputElement).checked).toBe(false);
     expect((field("Rodadas por PR") as HTMLInputElement).value).toBe("3");
     expect((field("Limite de custo por PR (US$)") as HTMLInputElement).value).toBe("5");
@@ -116,6 +116,31 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
       within(section() as HTMLElement).queryByText("Rodadas por PR: de 1 a 10"),
     ).not.toBeNull();
     expect(sent(daemon).filter((p) => (p as { patch?: unknown }).patch !== undefined)).toEqual([]);
+  });
+
+  test("a limit that is not above zero cannot be saved either, and says which one", async () => {
+    await openSettings();
+    await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
+    await act(async () => {
+      fireEvent.change(field("Limite de custo por dia (US$)"), { target: { value: "-1" } });
+    });
+    const save = within(section() as HTMLElement).getByRole("button", { name: "Salvar" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText(
+        "Limite de custo por dia (US$): vazio ou maior que zero",
+      ),
+    ).not.toBeNull();
+  });
+
+  test("a host with no projects says so", async () => {
+    const { daemon, store } = await openSettings();
+    daemon.watch.projects = [];
+    await act(async () => {
+      await store.loadProjects(store.getState().hosts[0]?.id ?? "");
+    });
+    await settle(() => screen.queryByText("Este host não tem projetos") !== null);
+    expect(screen.queryByText("Este host não tem projetos")).not.toBeNull();
   });
 
   test("a host that does not watch PRs has no such section", async () => {
