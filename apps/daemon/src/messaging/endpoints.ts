@@ -224,40 +224,42 @@ export class LocalEndpoints implements Endpoints {
     return () => this.stateListeners.delete(listener);
   }
 
+  /** The conversation of a session this daemon runs, and when it last changed. */
+  private managedMessages(id: string): { messages: ReadMessage[]; since: string | null } {
+    const messages: ReadMessage[] = [];
+    for (const { event } of this.opts.manager.eventsSince(id, 0)) {
+      if (event.type === "message.user") messages.push({ role: "user", text: event.text });
+      else if (event.type === "message.assistant") {
+        const text = event.blocks.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n");
+        if (text) messages.push({ role: "assistant", text });
+      }
+    }
+    return { messages, since: this.opts.manager.get(id).updatedAt };
+  }
+
+  /** The conversation of a terminal session, from its transcript, and its last event. */
+  private terminalMessages(id: string): { messages: ReadMessage[]; since: string | null } {
+    const terminal = this.opts.external.get(id);
+    const text = terminal?.transcriptPath
+      ? (this.opts.readFile ?? defaultRead)(terminal.transcriptPath)
+      : null;
+    const messages: ReadMessage[] = [];
+    for (const record of text ? parseLines(text).records : []) {
+      if (record.kind === "message" && (record.role === "user" || record.role === "assistant")) {
+        messages.push({ role: record.role, text: record.text });
+      }
+    }
+    return { messages, since: terminal?.lastEventAt ?? null };
+  }
+
   read(id: string, last: number): { summary: SessionLine | null; messages: ReadMessage[] } | null {
     const count = Math.max(1, Math.min(last, MAX_READ));
     const info = this.list().find((e) => e.id === id);
     if (!info) return null;
-    let messages: ReadMessage[] = [];
-    let since: string | null = null;
-    if (this.managed().some((s) => s.id === id)) {
-      const events = this.opts.manager.eventsSince(id, 0);
-      for (const { event } of events) {
-        if (event.type === "message.user") messages.push({ role: "user", text: event.text });
-        else if (event.type === "message.assistant") {
-          const text = event.blocks.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n");
-          if (text) messages.push({ role: "assistant", text });
-        }
-      }
-      since = this.opts.manager.get(id).updatedAt;
-    } else {
-      const terminal = this.opts.external.get(id);
-      const text = terminal?.transcriptPath
-        ? (this.opts.readFile ?? defaultRead)(terminal.transcriptPath)
-        : null;
-      if (text) {
-        for (const record of parseLines(text).records) {
-          if (
-            record.kind === "message" &&
-            (record.role === "user" || record.role === "assistant")
-          ) {
-            messages.push({ role: record.role, text: record.text });
-          }
-        }
-      }
-      since = terminal?.lastEventAt ?? null;
-    }
-    messages = messages
+    const read = this.managed().some((s) => s.id === id)
+      ? this.managedMessages(id)
+      : this.terminalMessages(id);
+    const messages = read.messages
       .slice(-count)
       .map((m) => ({ role: m.role, text: truncateUtf8(m.text, MAX_TEXT_BYTES) }));
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -265,7 +267,7 @@ export class LocalEndpoints implements Endpoints {
       request: lastUser ? requestLine(lastUser.text) || null : null,
       state: info.state,
       tool: null,
-      since,
+      since: read.since,
     };
     return { summary, messages };
   }
