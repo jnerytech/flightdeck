@@ -1307,6 +1307,20 @@ export const en: Dictionary = {
     ms: "{n} ms",
     seconds: "{n} s",
     note: "The wait is estimated from the gap before the answer. The text of prompts and answers is never collected.",
+    optinTitle: "Telemetry",
+    optinAsking: "Asking…",
+    optinHint:
+      "For a plain claude (flightdeckd claude gets it by itself): writes the keys that send the time and cost of sessions to this host into settings.json, on this machine only.",
+    optinInstalled: "Installed",
+    optinAbsent: "Not installed",
+    optinOutdated: "Out of date: install again",
+    optinConflict: "settings.json has an exporter of yours ({keys}): nothing will be changed.",
+    optinInstall: "Install telemetry",
+    optinUninstall: "Remove telemetry",
+    optinInstallMessage:
+      "This edits {path}: it adds the keys that send Claude Code's telemetry to this host's daemon, on this machine only, and keeps a copy in settings.json.flightdeck-telemetry-backup. Prompts and answers are never sent.",
+    optinUninstallMessage:
+      "This removes only Flightdeck's keys from {path} and changes the receiver's token. The rest of the file stays.",
     costsTitle: "Time per project",
     slowest: "Slowest tools",
     slowTool: "{tool}: {avg} on average, {max} at most ({calls})",

@@ -14,6 +14,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
 import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
+import { TelemetrySection } from "./TelemetrySection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
 
 const HOOK_LABELS = {
@@ -128,6 +129,9 @@ export function HostPage(props: {
               </div>
             </Panel>
           </section>
+        )}
+        {host.status === "online" && hasFeature(info?.features, "telemetry", false) && (
+          <TelemetrySection store={store} hostId={host.id} />
         )}
         {host.status === "online" && hasFeature(info?.features, "autoapprove", false) && (
           <Button variant="outline" className="self-start" onClick={props.onOpenAutoApprovals}>

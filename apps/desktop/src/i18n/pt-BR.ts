@@ -1303,6 +1303,20 @@ export const ptBR = {
     ms: "{n} ms",
     seconds: "{n} s",
     note: "A espera é estimada pelo intervalo até a resposta. Textos de prompts e respostas nunca são coletados.",
+    optinTitle: "Telemetria",
+    optinAsking: "Consultando…",
+    optinHint:
+      "Para o claude puro (o flightdeckd claude já recebe sozinho): grava no settings.json as chaves que mandam o tempo e o custo das sessões para este host, só nesta máquina.",
+    optinInstalled: "Instalada",
+    optinAbsent: "Não instalada",
+    optinOutdated: "Desatualizada: instale de novo",
+    optinConflict: "Há um exportador seu no settings.json ({keys}): nada será mudado.",
+    optinInstall: "Instalar telemetria",
+    optinUninstall: "Remover telemetria",
+    optinInstallMessage:
+      "Isto edita {path}: acrescenta as chaves que mandam a telemetria do Claude Code para o daemon deste host, só nesta máquina, e guarda uma cópia em settings.json.flightdeck-telemetry-backup. Prompts e respostas nunca são enviados.",
+    optinUninstallMessage:
+      "Isto tira de {path} só as chaves do Flightdeck e troca o token do receptor. O resto do arquivo não muda.",
     costsTitle: "Tempo por projeto",
     slowest: "Ferramentas mais lentas",
     slowTool: "{tool}: {avg} em média, {max} no máximo ({calls})",
