@@ -12,6 +12,8 @@ const { MessagingRulesSection } = await import("../src/ui/MessagingRulesSection.
 const { NewSecretForm } = await import("../src/components/vault/new-secret-form.tsx");
 const { PersonaEditor } = await import("../src/components/personas/persona-editor.tsx");
 const { SnippetEditor } = await import("../src/components/snippets/snippet-editor.tsx");
+const { ActionForm } = await import("../src/ui/ActionForm.tsx");
+const { TargetForm } = await import("../src/components/connections/target-form.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 
@@ -190,5 +192,53 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
       save.settle({ ok: false, code: "invalid", message: "snippet inválido" }),
     );
     expect(button("Salvar snippet")?.disabled).toBe(false);
+  });
+
+  test("Salvar (ação) goes busy and saves once", async () => {
+    const save = slow();
+    const store = {
+      i18n: { t },
+      getState: () => ({ secrets: [] }),
+      hostRequest: save.call,
+    } as unknown as AppStore;
+    render(
+      <ActionForm
+        store={store}
+        hostId="h"
+        projectId="p"
+        initial={null}
+        onClose={() => {}}
+        onSaved={() => {}}
+      />,
+    );
+    await type("Nome da ação", "testar");
+    await type("Comando, um argumento por linha", "bun\ntest");
+    await expectBusyOnce("Salvar", save.calls, () =>
+      save.settle({ ok: false, code: "invalid", message: "ação inválida" }),
+    );
+    expect(button("Salvar")?.disabled).toBe(false);
+  });
+
+  test("Salvar destino goes busy and saves once", async () => {
+    const save = slow();
+    const store = { hostCommand: save.call } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <TargetForm
+          store={store}
+          state={{ secrets: [], hosts: [] } as never}
+          hostId="h"
+          target={null}
+          others={[]}
+          onSaved={() => {}}
+          onClose={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    await type("Nome", "servidor");
+    await type("Host", "10.0.0.1");
+    await type("Usuário", "ana");
+    await expectBusyOnce("Salvar destino", save.calls, () => save.settle(null));
+    expect(button("Salvar destino")?.disabled).toBe(false);
   });
 });
