@@ -1,9 +1,9 @@
 import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Form, FormActions } from "@/components/layout/form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { type AppPersona, personaInput } from "@/lib/global-personas";
@@ -35,6 +35,7 @@ export function PersonaEditor(props: {
 }) {
   const t = useT();
   const id = useId();
+  const saving = useBusy();
   const { store, hostId, project, persona } = props;
   const [pid, setPid] = useState(persona?.id ?? "");
   const [name, setName] = useState(persona?.name ?? "");
@@ -100,7 +101,7 @@ export function PersonaEditor(props: {
       variant="panel"
       className="mb-4"
       onSubmit={() => {
-        if (ready) void save();
+        if (ready) saving.run(save);
       }}
     >
       {field("id", t("personas.editor.id"), (fid) => (
@@ -193,6 +194,7 @@ export function PersonaEditor(props: {
       )}
       <FormActions
         submit={t("personas.editor.save")}
+        busy={saving.busy}
         disabled={!ready}
         cancel={t("common.cancel")}
         onCancel={props.onClose}

@@ -4,6 +4,7 @@ import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
@@ -34,6 +35,7 @@ export function SnippetEditor(props: {
 }) {
   const t = useT();
   const id = useId();
+  const saving = useBusy();
   const { store, hostId, project, snippet } = props;
   const [name, setName] = useState(snippet?.name ?? "");
   const [type, setType] = useState<"command" | "prompt">(snippet?.type ?? "command");
@@ -120,7 +122,7 @@ export function SnippetEditor(props: {
       variant="panel"
       className="mb-4"
       onSubmit={() => {
-        if (ready) void save();
+        if (ready) saving.run(save);
       }}
     >
       {field("name", t("snippets.editor.name"), (fid) => (
@@ -214,6 +216,7 @@ export function SnippetEditor(props: {
       )}
       <FormActions
         submit={t("snippets.editor.save")}
+        busy={saving.busy}
         disabled={!ready}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
