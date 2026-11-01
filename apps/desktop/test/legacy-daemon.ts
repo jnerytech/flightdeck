@@ -40,6 +40,18 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     card: {} as unknown,
     /** What `watch.byUrl` answers. */
     byUrl: { via: "none", trace: null, sessions: [] } as unknown,
+    /** The projects `project.list` gives, and the watch settings `watch.settings` keeps per one. */
+    projects: [] as unknown[],
+    settings: {
+      enabled: false,
+      maxRounds: 3,
+      checks: [] as string[],
+      budgetUsd: 5 as number | null,
+      maxTurns: 30 as number | null,
+      persona: "revisor",
+      maxFailures: 2,
+      dailyUsd: 20 as number | null,
+    },
   };
   /** What `vault.rules.preview` answers (phase 19). */
   const preview = {
@@ -92,7 +104,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
             ...(features.length > 0 ? { features } : {}),
           },
           "hooks.status": { status: "absent", settingsPath: "/s.json" },
-          "project.list": { projects: [], maxParallelRuns: 2 },
+          "project.list": { projects: watch.projects, maxParallelRuns: 2 },
         };
         if (type in known) return ack(known[type]);
         if (type === "session.list") return ack({ sessions: hub.managed });
@@ -158,6 +170,11 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           return ack(watch.info);
         }
         if (type === "watch.describe") return ack(watch.describe);
+        if (type === "watch.settings") {
+          const { patch } = payload as { patch?: Partial<typeof watch.settings> };
+          if (patch) watch.settings = { ...watch.settings, ...patch };
+          return ack(watch.settings);
+        }
         if (type === "watch.byUrl") return ack(watch.byUrl);
         if (type === "card.get") return ack(watch.card);
         if (type === "card.pr.create") return ack(watch.card);
