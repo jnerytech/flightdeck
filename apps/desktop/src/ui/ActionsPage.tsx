@@ -68,6 +68,10 @@ function Runs(props: { store: AppStore; action: ActionInfo; runs: ActionRunInfo[
  * A project's actions: the commands that use a vault secret without Claude seeing it, each with
  * where it runs, how it asks for approval, the secrets it uses and its parameters.
  */
+/** The problems of the actions file in the app's language; an older host sends only its text. */
+const problemsOf = (list: ActionList, t: T): string[] =>
+  list.issues ? list.issues.map((issue) => actionIssueText(issue, t)) : list.errors;
+
 export function ActionsPage(props: {
   store: AppStore;
   hostId: string;
@@ -78,9 +82,6 @@ export function ActionsPage(props: {
 }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
-  /** The problems of the actions file in the app's language; an older host sends only its text. */
-  const problemsOf = (list: ActionList): string[] =>
-    list.issues ? list.issues.map((issue) => actionIssueText(issue, t)) : list.errors;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   /** The runs of the actions whose history is open, by `source:name`. */
@@ -95,8 +96,8 @@ export function ActionsPage(props: {
     const list = await store.hostCommand(hostId, "actions.list", { projectId });
     if (!list) return;
     setActions(list.actions);
-    setErrors(problemsOf(list));
-  }, [store, hostId, projectId]);
+    setErrors(problemsOf(list, t));
+  }, [store, hostId, projectId, t]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -122,7 +123,7 @@ export function ActionsPage(props: {
     });
     if (result) {
       setActions(result.actions);
-      setErrors(problemsOf(result));
+      setErrors(problemsOf(result, t));
     }
   };
   const trust = async (action: ActionInfo) => {
