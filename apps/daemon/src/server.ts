@@ -93,6 +93,7 @@ import type { HostKeys } from "./ssh/hostkey.ts";
 import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
 import type { Teams } from "./teams/teams.ts";
+import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
@@ -184,6 +185,8 @@ export interface ServerOptions {
   costs?: Costs;
   /** Phase 23: the timing of terminal sessions, from Claude Code's OTLP telemetry. */
   telemetry?: TelemetryStore;
+  /** The settings.json opt-in for a plain `claude` (phase 23). */
+  telemetryOptIn?: TelemetryOptIn;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
   /** The quota's samples behind `quota.history` (phase 8). */
@@ -614,6 +617,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function telemetry(): TelemetryStore {
     if (!opts.telemetry) throw featureOff("telemetry");
     return opts.telemetry;
+  }
+
+  function optIn(): TelemetryOptIn {
+    if (!opts.telemetryOptIn) throw featureOff("telemetry");
+    return opts.telemetryOptIn;
   }
 
   function budgets(): Budgets {
@@ -1395,6 +1403,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
         return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
+      case "telemetry.status":
+        return ok(command.type, optIn().status());
+      case "telemetry.install":
+        return ok(command.type, optIn().install(command.payload.confirm === true));
+      case "telemetry.uninstall":
+        return ok(command.type, optIn().uninstall(command.payload.confirm === true));
       case "telemetry.summary":
         return ok(command.type, telemetry().summary());
       case "costs.session":

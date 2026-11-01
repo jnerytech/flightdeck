@@ -688,10 +688,16 @@ export const ptBR = {
     forker: "bifurcar uma sessão",
     updater: "a atualização do daemon",
     shutdown: "desligar o daemon",
+    telemetry: "o tempo das sessões",
   },
   daemonRefusal: {
     budget_needs_project: "Um orçamento de projeto precisa de um projeto: escolha um.",
     budget_not_found: "Esse orçamento não existe mais.",
+    telemetry_confirm: "Mexer no ~/.claude/settings.json pede a sua confirmação.",
+    telemetry_owned_keys:
+      "O settings.json já define {keys}: são suas, então nada foi mudado. Remova-as e tente de novo.",
+    telemetry_port:
+      "O receptor de telemetria não tem porta fixa: defina telemetry.port (ou hooks.port) na config do host.",
     period_inverted: "O período está invertido: {from} é depois de {to}.",
     feature_off: "Este host não oferece {feature}: atualize o daemon ou confira as configurações.",
     cwd_missing: "A pasta {cwd} não existe neste host.",

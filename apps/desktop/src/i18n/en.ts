@@ -693,10 +693,16 @@ export const en: Dictionary = {
     forker: "forking a session",
     updater: "updating the daemon",
     shutdown: "shutting the daemon down",
+    telemetry: "session timing",
   },
   daemonRefusal: {
     budget_needs_project: "A project budget needs a project: choose one.",
     budget_not_found: "That budget no longer exists.",
+    telemetry_confirm: "Changing ~/.claude/settings.json asks for your confirmation.",
+    telemetry_owned_keys:
+      "settings.json already sets {keys}: those are yours, so nothing was changed. Remove them and try again.",
+    telemetry_port:
+      "The telemetry receiver has no fixed port: set telemetry.port (or hooks.port) in the host's config.",
     period_inverted: "The period is backwards: {from} is after {to}.",
     feature_off: "This host does not offer {feature}: update the daemon, or check its settings.",
     cwd_missing: "The folder {cwd} does not exist on this host.",

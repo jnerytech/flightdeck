@@ -19,6 +19,9 @@ export const DAEMON_REASONS = [
   "budget_needs_project",
   "budget_not_found",
   "period_inverted",
+  "telemetry_confirm",
+  "telemetry_owned_keys",
+  "telemetry_port",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 
@@ -69,5 +72,6 @@ export const DAEMON_FEATURES = [
   "forker",
   "updater",
   "shutdown",
+  "telemetry",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

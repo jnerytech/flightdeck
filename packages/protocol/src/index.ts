@@ -1284,6 +1284,19 @@ export const TelemetrySummary = z.object({
 });
 export type TelemetrySummary = z.infer<typeof TelemetrySummary>;
 
+/** Phase 23: whether Flightdeck's exporter keys are in the user's settings.json. */
+export const TelemetryOptInStatus = z.object({
+  /** `conflict`: settings.json already has an exporter of the user's, so install would refuse. */
+  status: z.enum(["installed", "absent", "outdated", "conflict"]),
+  /** The settings.json the keys go to. */
+  settingsPath: z.string(),
+  /** The receiver the keys point at; `null` when no fixed port is set. */
+  receiverUrl: z.string().nullable(),
+  /** The user's own keys that block an install. */
+  conflicts: z.array(z.string()),
+});
+export type TelemetryOptInStatus = z.infer<typeof TelemetryOptInStatus>;
+
 /** Phase 23: a terminal session whose cost in the OTLP telemetry and in the transcripts differ. */
 export const TelemetryDivergence = z.object({
   claudeSessionId: z.string(),
@@ -2697,6 +2710,10 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 23: the timing of a terminal session, from Claude Code's OTLP telemetry.
   cmd("telemetry.session", z.object({ claudeSessionId: z.string() })),
   cmd("telemetry.summary", z.object({}).strict()),
+  // The opt-in for a plain `claude`: Flightdeck's keys in the user's ~/.claude/settings.json.
+  cmd("telemetry.status", z.object({}).strict()),
+  cmd("telemetry.install", z.object({ confirm: z.boolean().optional() })),
+  cmd("telemetry.uninstall", z.object({ confirm: z.boolean().optional() })),
   cmd("costs.card", z.object({ cardId: z.string() })),
   cmd("costs.run", z.object({ runId: z.string() })),
   cmd("costs.export", CostsFilter),
@@ -3439,6 +3456,9 @@ export interface CommandResults {
   "costs.status": CostsStatus;
   "telemetry.session": TelemetrySession;
   "telemetry.summary": TelemetrySummary;
+  "telemetry.status": TelemetryOptInStatus;
+  "telemetry.install": TelemetryOptInStatus;
+  "telemetry.uninstall": TelemetryOptInStatus;
   "costs.reprice": { entries: number };
   "costs.summary": CostsSummary;
   "costs.session": CostsSession;
