@@ -9,7 +9,7 @@
  * long transcript; the plan quota; costs from usage in the transcripts; a very long title.
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
@@ -362,6 +362,17 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   writeUserConfig(home);
+  // The terminal of a host opens `$SHELL`: a fixed prompt, so no machine (the CI runner's user and
+  // host name, the folder) leaks into the prints. POSIX only: Windows keeps its own default shell.
+  if (process.platform !== "win32") {
+    const shell = join(work, "demo-shell.sh");
+    writeFileSync(
+      shell,
+      "#!/bin/sh\nexport PS1='demo$ ' USER=demo LOGNAME=demo HOSTNAME=demo\nexec bash --noprofile --norc -i\n",
+    );
+    chmodSync(shell, 0o755);
+    process.env.SHELL = shell;
+  }
   // A `gh` that lists one issue (the issues of phase 13 come through the CLI), before any daemon.
   const issue = {
     number: 7,
