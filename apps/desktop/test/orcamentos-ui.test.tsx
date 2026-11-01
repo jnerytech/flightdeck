@@ -232,6 +232,24 @@ describe("orcamentos-ui", () => {
     expect(section()).not.toBeNull();
   });
 
+  test("a notificação de um orçamento de projeto diz o nome do projeto, não a chave", async () => {
+    const { mem, spend, budgets } = await online();
+    spend(6, "github.com/acme/repo");
+    await act(async () => {
+      budgets.set({
+        scope: "project",
+        projectKey: "github.com/acme/repo",
+        period: "day",
+        limitUsd: 10,
+        action: "notify",
+      });
+    });
+    await settle(() => mem.notifications.length > 0);
+    expect(mem.notifications).toEqual([
+      { title: "Orçamento", body: "alfa: orçamento de repo (dia) em 50% de US$ 10.00" },
+    ]);
+  });
+
   test("host sem costs: sem orçamentos e sem banner de erro", async () => {
     const legacy = legacyDaemon(cleanups);
     const mem = memoryPlatform(false);
