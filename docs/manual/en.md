@@ -534,12 +534,32 @@ Each project (a git repository on the host) has a board with five columns: Backl
 Needs you, In review and Done. A card becomes a branch `fd/<slug>`, a worktree and a session; the
 card moves by itself according to the session and the PR, and it can also be dragged by hand.
 
+### Choosing a folder
+
+**New session** and the project form have a **Browse…** button next to the folder. It opens a
+dialog that lists the folders **of the host** (which may be another machine), one level at a
+time:
+
+- it starts at the host's `allowedRoots` and only ever shows folders inside them: no files,
+  no hidden folders unless you tick **Show hidden folders**, at most 500 per folder;
+- a breadcrumb names every step, **↑** goes up, the arrow keys move through the list, **Enter**
+  opens a folder and **Backspace** goes up;
+- **Choose this folder** hands its path to the form. It is disabled, with the reason beside it,
+  until you open a folder;
+- when the host is this machine, **Choose with the system dialog** opens the operating system's
+  folder dialog too. What it picks is checked by the host against its `allowedRoots`, like
+  everything else, and a folder outside them is refused with the folders that are allowed.
+
+Typing the path stays possible. The host command behind it is `fs.dirs`; a symlink that leads
+outside `allowedRoots` is neither listed nor followed.
+
 ### Registering a project
 
 In the app, the ▦ button next to the host opens **Projects of &lt;host&gt;**. Each project
 records:
 
-- **Repository path:** must be a git repository inside `allowedRoots`.
+- **Repository path:** must be a git repository inside `allowedRoots`. **Browse…** opens the
+  [folder picker](#choosing-a-folder).
 - **Name** and **base branch:** when left blank, they become the folder name and the
   repository's current branch.
 - **PR provider:** `github`, `azure-devops` or none.

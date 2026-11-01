@@ -2376,3 +2376,11 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 - **`setup` writes Windows roots with forward slashes** (`C:/Users/me/code`, as the manual shows) and keeps the roots already in the file exactly as written: `loadConfig` resolves them to native paths, so rewriting from the loaded config would have turned `/srv/old` into `D:\srv\old`. Two roots are the same folder when their resolved paths match, ignoring case and slash direction on Windows. The wizard takes the platform as a dependency, so these cases are tested on any host.
 - **The executable bit is not checked on Windows**: the stable binary runs because of its `.exe` name.
 - **Terminals get `TERM=xterm-256color` and `COLORTERM=truecolor`.** What is attached is xterm.js. A service starts with no `TERM` (or `dumb`), and readline then scrolls a long line sideways instead of wrapping it, which also cut the marker of the abas-terminal journey in two. A client's own `env` still wins.
+
+## The folder picker
+
+- **The picker browses the host, not this machine.** The folder of a session or project lives on the host, which may be remote, so the list comes from `fs.dirs` over the connection. The system dialog only makes sense for this machine: it is offered when the host's URL is loopback and the platform has one (the desktop app, not the browser).
+- **`fs.dirs` never leaves `allowedRoots`.** The path is resolved with realpath and compared with the real roots, so `..`, a sibling that shares a name's start and a symlink out of a root are refused, and a link inside a root is listed under its real path. Files and hidden folders stay out unless asked; a folder lists at most 500 subfolders and says when it cut.
+- **The system dialog's answer is a suggestion.** Rust (`pick_folder`) returns the path untouched; the app sends it to `fs.dirs`, so the host decides.
+- **Typing stays.** The picker is a button next to the typed fields (Nova sessão's folder and subfolder, Projetos' path), never a replacement. Where the host's resolved folder is not under any configured root string (a root reached through a link), Nova sessão keeps it as an extra root.
+- **Not covered:** the history screen's folder filter is a substring filter, not a folder to choose, and Snippets and Personas pick a project from the project list.

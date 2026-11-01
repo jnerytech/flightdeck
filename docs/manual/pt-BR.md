@@ -519,11 +519,30 @@ Cada projeto (um repositório git do host) tem um board com cinco colunas: Backl
 Esperando você, Em revisão e Concluído. Um card vira uma branch `fd/<slug>`, uma worktree e uma
 sessão; o card anda sozinho conforme a sessão e o PR, e também pode ser arrastado à mão.
 
+### Escolher uma pasta
+
+**Nova sessão** e o formulário do projeto têm um botão **Procurar…** ao lado da pasta. Ele abre
+uma janela que lista as pastas **do host** (que pode ser outra máquina), um nível por vez:
+
+- começa nas `allowedRoots` do host e só mostra pastas dentro delas: sem arquivos, sem pastas
+  ocultas a não ser que você marque **Mostrar pastas ocultas**, no máximo 500 por pasta;
+- um caminho de migalhas nomeia cada passo, **↑** sobe, as setas andam pela lista, **Enter** abre
+  uma pasta e **Backspace** sobe;
+- **Escolher esta pasta** entrega o caminho ao formulário. Fica desligado, com o motivo ao
+  lado, até você abrir uma pasta;
+- quando o host é esta máquina, **Escolher no sistema** abre também a janela de pastas do
+  sistema operacional. O que ela escolhe é conferido pelo host contra as `allowedRoots`, como
+  tudo o mais, e uma pasta fora delas é recusada com as pastas permitidas.
+
+Digitar o caminho continua possível. O comando do host por trás disso é `fs.dirs`; um link
+simbólico que leva para fora das `allowedRoots` nem é listado nem seguido.
+
 ### Cadastrar um projeto
 
 No app, o botão ▦ ao lado do host abre **Projetos de &lt;host&gt;**. Cada projeto registra:
 
 - **Caminho do repositório:** precisa ser um repositório git dentro de `allowedRoots`.
+  **Procurar…** abre o [seletor de pasta](#escolher-uma-pasta).
 - **Nome** e **branch base:** em branco, ficam o nome da pasta e a branch atual do repositório.
 - **Provedor de PR:** `github`, `azure-devops` ou nenhum.
 - **Script de preparação** (opcional, por exemplo `bun install`): roda na worktree antes da
