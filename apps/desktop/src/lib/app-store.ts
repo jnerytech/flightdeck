@@ -268,6 +268,7 @@ export type HostCommandType = Extract<
   | "vault.decisions"
   | `pr.${string}`
   | "files.sessions"
+  | "fs.dirs"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`

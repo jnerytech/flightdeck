@@ -56,6 +56,7 @@ import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
 import { FlightdeckError } from "./errors.ts";
+import { listDirs } from "./fs-dirs.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -319,6 +320,8 @@ export function startServer(opts: ServerOptions): RunningServer {
   const startedAt = Date.now();
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
   const features = [
+    // The folder picker of the app browses the host's folders with it.
+    "fs.dirs",
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
@@ -1225,6 +1228,13 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "files.sessions":
         return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
+      case "fs.dirs": {
+        const { path, hidden } = command.payload;
+        return ok(
+          command.type,
+          listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
+        );
+      }
       case "session.files":
         return ok(command.type, { files: sessionFiles().list(command.payload.claudeSessionId) });
       case "statusline.get": {

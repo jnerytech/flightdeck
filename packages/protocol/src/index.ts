@@ -1004,6 +1004,17 @@ export const FileSession = z.object({
 });
 export type FileSession = z.infer<typeof FileSession>;
 
+/** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
+export interface FsDirsResult {
+  /** The folder listed (a real path); null for the list of the allowed roots. */
+  path: string | null;
+  /** The folder above it, inside the roots; null at a root or at the list of roots. */
+  parent: string | null;
+  dirs: Array<{ name: string; path: string }>;
+  /** More subfolders than the daemon returns at once. */
+  truncated: boolean;
+}
+
 /** A review comment of a card's PR, read from GitHub or Azure DevOps; nothing is posted back. */
 export const PrComment = z.object({
   id: z.string(),
@@ -2529,6 +2540,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("statusline.get", z.object({ claudeSessionId: z.string().optional() })),
   /** The sessions that wrote a file, by its absolute path. */
   cmd("files.sessions", z.object({ path: z.string().min(1) })),
+  /** The subfolders of a folder inside the allowed roots; without a path, the roots themselves. */
+  cmd(
+    "fs.dirs",
+    z.object({ path: z.string().min(1).optional(), hidden: z.boolean().optional() }).strict(),
+  ),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
@@ -2982,6 +2998,7 @@ export interface CommandResults {
     sessionUsd: number | null;
   };
   "files.sessions": { sessions: FileSession[] };
+  "fs.dirs": FsDirsResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };
   "card.updateFromBase": Card;
