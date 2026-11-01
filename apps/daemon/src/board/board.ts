@@ -123,7 +123,7 @@ interface ProjectRow {
   persona_subagents: PersonaSubagentsMode | null;
 }
 
-function toProject(row: ProjectRow): Project {
+function toProject(row: ProjectRow, projectKey: string | undefined): Project {
   return {
     id: row.id,
     path: row.path,
@@ -137,6 +137,7 @@ function toProject(row: ProjectRow): Project {
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
+    ...(projectKey ? { projectKey } : {}),
   };
 }
 
@@ -299,13 +300,13 @@ export class Board {
     return this.db
       .query<ProjectRow, []>("SELECT * FROM projects ORDER BY name, path")
       .all()
-      .map(toProject);
+      .map((row) => toProject(row, this.opts.projectKeys?.keyFor(row.path)));
   }
 
   getProject(id: string): Project {
     const row = this.db.query<ProjectRow, [string]>("SELECT * FROM projects WHERE id = ?").get(id);
     if (!row) throw new FlightdeckError("not_found", `projeto ${id} não existe`);
-    return toProject(row);
+    return toProject(row, this.opts.projectKeys?.keyFor(row.path));
   }
 
   /** Registers a git repository that lives inside `allowedRoots`. */

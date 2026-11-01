@@ -563,6 +563,11 @@ export const Project = z.object({
   personaByColumn: z.partialRecord(BoardColumn, z.string()).default({}),
   /** The personas offered as `persona-<id>` subagents in this project (phase 20). */
   personaSubagents: PersonaSubagentsMode.default("all"),
+  /**
+   * Phase 29: the project key of the folder (the normalized remote, else the folder on this host),
+   * the same one sessions and costs carry; absent from a daemon that does not send it.
+   */
+  projectKey: z.string().optional(),
 });
 export type Project = z.infer<typeof Project>;
 
