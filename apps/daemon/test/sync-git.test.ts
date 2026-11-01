@@ -2,9 +2,10 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { installSleepingGit, type SleepingGit } from "../../../scripts/test/sleeping-git.ts";
+import { excludeLocalSettings, excludeLocalSettingsAsync } from "../src/board/worktree.ts";
 import { ProjectMemory } from "../src/memory/memory.ts";
 import { startServer } from "../src/server.ts";
-import { newBoard } from "./board-helpers.ts";
+import { gitRepo, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
@@ -84,6 +85,8 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     }, 5);
     try {
       await during();
+      // A tick after the work ends is where a block that came before it shows.
+      await Bun.sleep(15);
     } finally {
       clearInterval(ticker);
       sleeping.restore();
@@ -99,5 +102,18 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     );
     expect(sleeping.calls().some((args) => args.includes("--git-common-dir"))).toBe(true);
     expect(blocked).toBeLessThan(100);
+  });
+
+  test("looking up where a repository keeps its exclude file does not hold the event loop, and the synchronous call that follows asks git nothing", async () => {
+    const { repo } = gitRepo();
+    const sleeping = installSleepingGit(300);
+    const blocked = await longestBlockWhile(sleeping, () => excludeLocalSettingsAsync(repo));
+    expect(sleeping.calls().some((args) => args.includes("--git-path"))).toBe(true);
+    expect(blocked).toBeLessThan(100);
+    // The line is in the file, and a second look finds it there.
+    const again = installSleepingGit(300);
+    cleanups.push(() => again.restore());
+    excludeLocalSettings(repo);
+    expect(again.calls()).toEqual([]);
   });
 });

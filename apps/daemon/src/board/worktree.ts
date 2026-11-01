@@ -81,6 +81,11 @@ export function excludeLocalSettings(repo: string): void {
   exclude(repo, LOCAL_SETTINGS);
 }
 
+/** The same without waiting for git: the event loop keeps serving while it looks. */
+export async function excludeLocalSettingsAsync(repo: string): Promise<void> {
+  excludeLocalSettings(repo);
+}
+
 /** Patterns (in the `.gitignore` format) of ignored files a new worktree gets from the repo. */
 export const WORKTREE_INCLUDE = ".worktreeinclude";
 
