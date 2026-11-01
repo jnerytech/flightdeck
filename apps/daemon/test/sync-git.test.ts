@@ -9,7 +9,7 @@ import { UsageIndexer } from "../src/costs/usage-indexer.ts";
 import { ProjectMemory } from "../src/memory/memory.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { gitRepo, newBoard } from "./board-helpers.ts";
+import { git, gitRepo, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { writeUsageTranscript } from "./usage-helpers.ts";
@@ -56,7 +56,7 @@ describe("sync-git: the daemon does not wait for a process on the way to answer"
 describe("sync-git: a slow git does not stop the protocol", () => {
   async function served() {
     const claudeDir = tempDir("fd-claude-");
-    const { board, manager, repo } = newBoard();
+    const { board, manager, repo, root } = newBoard();
     const memory = new ProjectMemory({ claudeDir });
     const { id: projectId } = await board.addProject({ path: repo });
     const server = startServer({
@@ -73,7 +73,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    return { client, projectId };
+    return { client, projectId, root };
   }
 
   /**
@@ -98,6 +98,48 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     }
     return longest;
   }
+
+  /** How long `host.info` takes to answer while `during` runs on the same daemon. */
+  async function hostInfoWhile(
+    client: FrameClient,
+    sleeping: SleepingGit,
+    during: () => Promise<unknown>,
+  ) {
+    let slowest = 0;
+    const work = during();
+    for (let i = 0; i < 5; i++) {
+      const started = performance.now();
+      await client.request("host.info", {});
+      slowest = Math.max(slowest, performance.now() - started);
+      await Bun.sleep(20);
+    }
+    await work;
+    expect(sleeping.calls().length).toBeGreaterThan(0);
+    return slowest;
+  }
+
+  test("host.info answers under 100 ms while a project is added and while a card starts, with a git that sleeps", async () => {
+    const { client, projectId, root } = await served();
+    const other = join(root, "other");
+    mkdirSync(other);
+    git(other, "init", "-q", "-b", "main");
+    const sleeping = installSleepingGit(300);
+    const adding = await hostInfoWhile(client, sleeping, () =>
+      client.request("project.add", { path: other }),
+    );
+    expect(adding).toBeLessThan(100);
+    const card = (await client.request("card.create", {
+      projectId,
+      title: "t",
+      description: "d",
+    })) as {
+      id: string;
+    };
+    const starting = await hostInfoWhile(client, sleeping, () =>
+      client.request("card.start", { cardId: card.id }),
+    );
+    expect(starting).toBeLessThan(100);
+  });
 
   test("memory.list asks git for the repository root and the daemon does not hold the event loop", async () => {
     const { client, projectId } = await served();
