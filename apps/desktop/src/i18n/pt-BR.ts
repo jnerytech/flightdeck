@@ -347,7 +347,11 @@ export const ptBR = {
       exportNeeds: "Digite a frase-senha e repita-a.",
       importNeeds: "Digite a frase-senha do arquivo.",
       passphraseHelp: "Pelo menos 12 caracteres. Sem ela o backup não abre.",
-      exported: "Cofre exportado.",
+      exported:
+        "Cofre salvo como cofre.fdvault, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
+      conflictList: "Segredos em conflito",
+      replaceMessage: "Substituir {names} no cofre pelos do backup? Os valores atuais se perdem.",
+      replaceConfirm: "Substituir segredos",
       added: "Novos: {n}",
       same: "Iguais: {n}",
       conflicting: "Conflitantes: {n}",

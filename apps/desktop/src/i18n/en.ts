@@ -350,7 +350,12 @@ export const en: Dictionary = {
       exportNeeds: "Type the passphrase and repeat it.",
       importNeeds: "Type the file's passphrase.",
       passphraseHelp: "At least 12 characters. Without it the backup cannot be opened.",
-      exported: "Vault exported.",
+      exported:
+        "Vault saved as cofre.fdvault, where you chose. Keep the passphrase: without it the backup does not open.",
+      conflictList: "Conflicting secrets",
+      replaceMessage:
+        "Replace {names} in the vault with the backup's? The current values are lost.",
+      replaceConfirm: "Replace secrets",
       added: "New: {n}",
       same: "Same: {n}",
       conflicting: "Conflicting: {n}",

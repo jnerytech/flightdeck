@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import type { ConflictChoice, ImportPreview } from "@/lib/vault-backup";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** Phase 16: the encrypted backup (`.fdvault`): export, and import with a preview. */
 export function BackupPanel(props: { store: AppStore }) {
@@ -18,6 +19,7 @@ export function BackupPanel(props: { store: AppStore }) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [choice, setChoice] = useState<ConflictChoice>("skip");
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -136,12 +138,26 @@ export function BackupPanel(props: { store: AppStore }) {
             />
           </Form>
           {preview && (
-            <Form variant="page" onSubmit={() => void doApply()}>
+            <Form
+              variant="page"
+              onSubmit={() =>
+                preview.conflicting.length > 0 && choice === "overwrite"
+                  ? setReplacing(true)
+                  : void doApply()
+              }
+            >
               <Stack gap={1}>
                 <p>{t("vault.backup.added", { n: preview.added.length })}</p>
                 <p>{t("vault.backup.same", { n: preview.same.length })}</p>
                 <p>{t("vault.backup.conflicting", { n: preview.conflicting.length })}</p>
               </Stack>
+              {preview.conflicting.length > 0 && (
+                <Stack as="ul" gap={1} label={t("vault.backup.conflictList")}>
+                  {preview.conflicting.map((entry) => (
+                    <li key={entry.meta.id}>{entry.meta.name}</li>
+                  ))}
+                </Stack>
+              )}
               {preview.conflicting.length > 0 && (
                 <fieldset>
                   <Stack gap={1}>
@@ -172,6 +188,20 @@ export function BackupPanel(props: { store: AppStore }) {
           {importMessage && <p role="status">{importMessage}</p>}
         </Stack>
       </section>
+      {replacing && preview && (
+        <ConfirmDialog
+          message={t("vault.backup.replaceMessage", {
+            names: preview.conflicting.map((entry) => entry.meta.name).join(", "),
+          })}
+          confirmLabel={t("vault.backup.replaceConfirm")}
+          destructive
+          onConfirm={() => {
+            setReplacing(false);
+            void doApply();
+          }}
+          onCancel={() => setReplacing(false)}
+        />
+      )}
     </Stack>
   );
 }
