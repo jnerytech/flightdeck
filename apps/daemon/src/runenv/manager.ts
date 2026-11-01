@@ -87,6 +87,8 @@ const LIVE: ReadonlySet<RunState["status"]> = new Set(["setup", "running"]);
 /** The processes of the cards' run environments: setup once, then each one in its own tab. */
 export class RunManager {
   private readonly entries = new Map<string, Entry>();
+  /** The stops under way, so `idle` can wait for them. */
+  private readonly stopping = new Set<Promise<unknown>>();
   private readonly watchers = new Set<(state: RunState) => void>();
 
   constructor(private readonly opts: RunManagerOptions) {}
@@ -128,7 +130,14 @@ export class RunManager {
   }
 
   /** Ends the setup or the processes of the card, and everything they started. */
-  async stop(cardId: string): Promise<RunState> {
+  stop(cardId: string): Promise<RunState> {
+    const stopping = this.end(cardId);
+    this.stopping.add(stopping);
+    void stopping.finally(() => this.stopping.delete(stopping)).catch(() => {});
+    return stopping;
+  }
+
+  private async end(cardId: string): Promise<RunState> {
     const entry = this.entries.get(cardId);
     if (!entry || !LIVE.has(entry.status)) return this.state(cardId);
     entry.stopped = true;
@@ -148,7 +157,9 @@ export class RunManager {
   }
 
   /** Resolves when no card is being stopped: its trees are gone and its files and ports are free. */
-  async idle(): Promise<void> {}
+  async idle(): Promise<void> {
+    while (this.stopping.size > 0) await Promise.allSettled([...this.stopping]);
+  }
 
   state(cardId: string): RunState {
     const entry = this.entries.get(cardId);

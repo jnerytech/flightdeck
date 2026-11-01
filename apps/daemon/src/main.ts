@@ -917,6 +917,8 @@ export async function startDaemon(
     cardPorts.follow((listener) => board.watch(listener)),
     runManager.follow((listener) => board.watch(listener)),
   ];
+  // A worktree is not removed while a card's processes are still being ended.
+  board.addIdle(runManager.idle.bind(runManager));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({

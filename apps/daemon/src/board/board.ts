@@ -226,6 +226,7 @@ const script = (value: string | null | undefined) => value?.trim() || null;
 export class Board {
   private readonly db: Database;
   /** Card id → stops following the session of its active run. */
+  private readonly waits: Array<() => Promise<unknown>> = [];
   private readonly follows = new Map<string, () => void>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
@@ -859,7 +860,15 @@ export class Board {
   }
 
   /** Another thing to wait for before a worktree is removed, besides `idle` (the run environment's trees). */
-  addIdle(_wait: () => Promise<unknown>): void {}
+  addIdle(wait: () => Promise<unknown>): void {
+    this.waits.push(wait);
+  }
+
+  /** Everything a worktree must wait for before it is removed. */
+  private async settle(): Promise<void> {
+    await this.opts.idle?.();
+    await Promise.all(this.waits.map((wait) => wait()));
+  }
 
   /** Looks up the key of every registered project, so what asks for it later finds it at hand. */
   async warmProjectKeys(): Promise<void> {
@@ -1017,7 +1026,7 @@ export class Board {
       return;
     }
     const repo = this.getProject(card.projectId).path;
-    await this.opts.idle?.();
+    await this.settle();
     must(await git(repo, "worktree", "remove", card.worktreePath), "git worktree remove");
     this.db.query("UPDATE cards SET worktree_path = NULL, notice = NULL WHERE id = ?").run(id);
   }
@@ -1251,7 +1260,7 @@ export class Board {
     worktree: string,
     branch: string,
   ): Promise<{ worktree: boolean; branch: boolean; notice: string | null }> {
-    await this.opts.idle?.();
+    await this.settle();
     const removed = await git(repo, "worktree", "remove", worktree);
     if (removed.code !== 0) {
       const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
@@ -1305,7 +1314,7 @@ export class Board {
     this.follows.delete(id);
     const repo = this.getProject(card.projectId).path;
     if (card.worktreePath) {
-      await this.opts.idle?.();
+      await this.settle();
       must(
         await git(repo, "worktree", "remove", "--force", card.worktreePath),
         "git worktree remove",
