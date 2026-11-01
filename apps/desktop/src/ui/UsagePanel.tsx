@@ -65,9 +65,9 @@ export function UsagePanel(props: {
             <tr>
               <th className="py-1 font-medium">{t("usageUi.day")}</th>
               <th className="py-1 font-medium">{t("usageUi.project")}</th>
-              <th className="py-1 font-medium">{t("usageUi.cost")}</th>
-              <th className="py-1 font-medium">{t("usageUi.tokens")}</th>
-              {!costs && <th className="py-1 font-medium">{t("usageUi.turns")}</th>}
+              <th className="py-1 pl-4 text-right font-medium">{t("usageUi.cost")}</th>
+              <th className="py-1 pl-4 text-right font-medium">{t("usageUi.tokens")}</th>
+              {!costs && <th className="py-1 pl-4 text-right font-medium">{t("usageUi.turns")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -75,9 +75,9 @@ export function UsagePanel(props: {
               <tr key={`${row.day}/${row.projectKey}`} className="border-t">
                 <td className="py-1">{row.day}</td>
                 <td className="py-1">{row.projectKey}</td>
-                <td className="py-1">{usd(row.costUsd)}</td>
-                <td className="py-1">{row.tokens}</td>
-                {row.turns !== null && <td className="py-1">{row.turns}</td>}
+                <td className="py-1 pl-4 text-right">{usd(row.costUsd)}</td>
+                <td className="py-1 pl-4 text-right">{row.tokens}</td>
+                {row.turns !== null && <td className="py-1 pl-4 text-right">{row.turns}</td>}
               </tr>
             ))}
           </tbody>

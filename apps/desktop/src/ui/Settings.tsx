@@ -52,7 +52,7 @@ export function Settings(props: {
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
   const select =
-    "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "h-9 w-44 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   /** A checkbox with its sentence on its right. */
   const check = "flex items-center gap-2 text-sm";
   return (
@@ -88,7 +88,7 @@ export function Settings(props: {
             <span>{t("settings.terminalFont")}</span>
             <Input
               type="number"
-              className="h-8 w-20"
+              className="h-9 w-44"
               aria-label={t("settings.terminalFont")}
               min={TERMINAL_FONT_MIN}
               max={TERMINAL_FONT_MAX}

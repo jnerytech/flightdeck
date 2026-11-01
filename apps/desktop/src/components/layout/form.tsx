@@ -18,7 +18,7 @@ export interface FieldControl {
 const WIDTH: Record<FormVariant, string> = {
   page: "w-full max-w-xl",
   dialog: "w-full",
-  panel: "w-full rounded-lg border bg-card p-4",
+  panel: "w-full max-w-2xl rounded-lg border bg-card p-4",
 };
 
 const VariantContext = createContext<FormVariant>("page");
