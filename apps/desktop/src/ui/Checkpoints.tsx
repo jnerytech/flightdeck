@@ -377,7 +377,7 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
       {notice && (
         <InlineNotice tone="info">
-          {notice}{" "}
+          <span>{notice}</span>{" "}
           {undoable && (
             <Button variant="outline" size="sm" onClick={() => void undo()}>
               {t("timeline.undo")}
