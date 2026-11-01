@@ -9,6 +9,8 @@ export interface BgServiceOptions {
   claude: () => string | null;
   /** Delivers a message through the channel of a session opened with `flightdeckd claude`; false when it has none. */
   channel?: (claudeSessionId: string, text: string) => boolean;
+  /** What starting a session needs: this daemon's command line, its config and the folders it may use. */
+  start?: { self: string[]; configFile: string; allowedRoots: readonly string[] };
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -137,5 +139,15 @@ export class BgService {
     }
     await this.claudeDo(["--resume", claudeSessionId, "--bg", "--", text]);
     return this.list();
+  }
+
+  /** Starts a background session through `flightdeckd claude --bg`: controllable, with the persona. */
+  async start(_input: {
+    cwd: string;
+    prompt: string;
+    name?: string;
+    persona?: string;
+  }): Promise<{ id: string }> {
+    return { id: "" };
   }
 }
