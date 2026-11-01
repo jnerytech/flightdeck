@@ -151,7 +151,9 @@ describe("uso", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     await client.request("session.create", { cwd: project, prompt: "[cost:0.5]" });
     let rows: Array<{ costUsd: number; projectKey: string }> = [];
-    for (let i = 0; i < 100 && rows.length === 0; i++) {
+    // Bounded by time, not by tries: the turn waits on `git` processes, and a request that
+    // takes long on a slow machine must not eat the tries.
+    for (const until = Date.now() + 10_000; rows.length === 0 && Date.now() < until; ) {
       rows = (await client.data<{ rows: typeof rows }>("usage.summary", {}))?.rows ?? [];
       if (rows.length === 0) await Bun.sleep(20);
     }
@@ -176,5 +178,8 @@ describe("uso", () => {
     cleanups.push(() => second.close());
     await second.request("hello", { token: TOKEN, client: "t" });
     expect(await second.data("usage.summary", { days: 2 })).toEqual({ days: 2, rows: [] });
-  });
+    // A whole daemon whose turn runs `git` several times (project key, snapshots): on the
+    // Windows runner a stalled process start once took this test past the 5 s default. The other
+    // tests that start a daemon already give themselves 20 s.
+  }, 20_000);
 });
