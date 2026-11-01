@@ -17,6 +17,7 @@ import {
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -33,11 +34,6 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
 
 const clone = (root: string, name: string) => {
   const repo = join(root, name);

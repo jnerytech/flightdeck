@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -21,10 +22,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
+const settle = waiter(4000);
 
 const DESKTOP = resolve(import.meta.dir, "..");
 const css = readFileSync(resolve(DESKTOP, "src/styles.css"), "utf8");

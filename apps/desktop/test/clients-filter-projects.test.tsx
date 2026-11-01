@@ -5,6 +5,7 @@ import { git } from "../../daemon/test/board-helpers.ts";
 import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -20,11 +21,6 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
 
 const button = (name: string) => screen.queryByRole("button", { name });
 const shown = () =>

@@ -13,6 +13,7 @@ import { THEME_KEY } from "../src/lib/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "../src/lib/workspace.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -28,10 +29,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
+const settle = waiter(4000);
 
 const HOST = { id: "demo-alfa", name: "alfa", url: "ws://127.0.0.1:7777/v1/ws", token: TOKEN };
 

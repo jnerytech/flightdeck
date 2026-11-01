@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -19,11 +20,6 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
-}
 
 const TOKEN_LINE = "export GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789";
 const VAULT_VALUE = "cofre-valor-de-teste-77";

@@ -3,6 +3,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -19,10 +20,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
+const settle = waiter(4000);
 
 const click = async (name: string | RegExp) => {
   const button = screen.queryByRole("button", { name });

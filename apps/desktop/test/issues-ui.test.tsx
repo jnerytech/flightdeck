@@ -5,6 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { ghIssue, ghRules, issuesDaemon } from "./issues-fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -22,10 +23,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 6000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
+const settle = waiter(6000);
 
 const click = async (name: string | RegExp, within_: HTMLElement | null = null) => {
   const scope = within_ ? within(within_) : screen;

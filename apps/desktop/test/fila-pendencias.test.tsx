@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { plainWaiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -25,10 +26,7 @@ afterEach(async () => {
 });
 
 /** Waits for `check` without throwing, so the caller's `expect` reports the failure. */
-async function settle(check: () => boolean, timeoutMs = 3000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await Bun.sleep(5);
-}
+const settle = plainWaiter(3000);
 
 /** Two fake daemons, each with a session waiting for permission, created outside the app. */
 async function fleet() {

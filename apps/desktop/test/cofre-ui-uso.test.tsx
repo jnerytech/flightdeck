@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settlePlain as settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -18,11 +19,6 @@ afterEach(async () => {
 });
 
 const VALUE = "usage-ui-value-0123456789";
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await Bun.sleep(10);
-}
 
 /** Two secrets, and a daemon that asked for both and reported one use. */
 async function open(requests = true) {

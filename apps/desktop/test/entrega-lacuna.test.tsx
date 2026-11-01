@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { plainWaiter } from "./wait.ts";
 
 const { AppStore } = await import("../src/lib/app-store.ts");
 
@@ -10,10 +11,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 4000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await Bun.sleep(10);
-}
+const settle = plainWaiter(4000);
 
 const said = (seq: number) => ({
   seq,

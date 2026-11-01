@@ -5,6 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, waitFor } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
 import { fakeXterm } from "./terminal-fakes.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -43,10 +44,7 @@ async function setup() {
   return { store, x, status, eco, ...h };
 }
 
-async function settle(check: () => boolean, timeoutMs = 3000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
-}
+const settle = waiter(3000);
 
 const picker = () => screen.queryByRole("listbox", { name: "Snippets de comando" });
 const offered = () => {

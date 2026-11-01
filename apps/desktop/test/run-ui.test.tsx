@@ -5,6 +5,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { waiter } from "./wait.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 
 registerDom();
@@ -24,10 +25,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 6000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
-}
+const settle = waiter(6000);
 
 const click = async (name: string | RegExp) => {
   const button = screen.queryByRole("button", { name });

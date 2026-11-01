@@ -9,6 +9,7 @@ import { FrameClient } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -23,10 +24,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function settle(check: () => boolean, timeoutMs = 15_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(25));
-}
+const settle = waiter(15_000);
 const click = async (name: string | RegExp, scope: HTMLElement | null = null) => {
   const button = (scope ? within(scope) : screen).queryByRole("button", { name });
   expect(button).not.toBeNull();

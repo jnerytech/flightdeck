@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { memoriaHost } from "./memoria-ui-setup.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -18,11 +19,6 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
-}
 
 /** The Agente screen of the project, on its Contexto tab. */
 async function open(seed: (ctx: { put: (n: string, t: string) => void; repo: string }) => void) {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -12,10 +13,7 @@ const { App } = await import("../src/ui/App.tsx");
 
 afterEach(() => cleanup());
 
-async function settle(check: () => boolean, timeoutMs = 3000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(5));
-}
+const settle = waiter(3000);
 
 /** A web platform with a working fake global shortcut, Settings open. */
 async function openSettings(supported = true) {

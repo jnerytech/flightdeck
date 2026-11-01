@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { trayMenu } from "../src/lib/tray.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settlePlain as settle } from "./wait.ts";
 
 const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
 
@@ -13,11 +14,6 @@ afterEach(async () => {
 });
 
 const VALUE = "aprovacao-test-value-456";
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await Bun.sleep(10);
-}
 
 /** A store on a fake daemon, with the secret `deploy` allowed for that host. */
 async function setup() {

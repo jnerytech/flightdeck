@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { VaultOutcome } from "../src/lib/vault-requests.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settlePlain as settle } from "./wait.ts";
 
 const { AppStore } = await import("../src/lib/app-store.ts");
 
@@ -20,11 +21,6 @@ const FRAME = {
   purpose: "ssh",
   requester: "claude",
 };
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await Bun.sleep(10);
-}
 
 /** A store on a fake platform and a fake daemon, with a secret allowed for that host. */
 async function setup(options: ConstructorParameters<typeof AppStore>[1] = {}) {

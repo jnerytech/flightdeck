@@ -5,6 +5,7 @@ import type { FakeCli } from "../../../scripts/test/fake-cli.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { pluginsHost } from "./plugins-ui-setup.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -22,11 +23,6 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
   for (const fake of fakes.splice(0)) fake.restore();
 });
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
-}
 
 /** The Plugins screen of a host that keeps them. */
 async function open() {

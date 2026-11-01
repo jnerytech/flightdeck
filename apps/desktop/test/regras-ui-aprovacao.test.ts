@@ -3,6 +3,7 @@ import { trayMenu } from "../src/lib/tray.ts";
 import type { TrayAction } from "../src/platform/types.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settlePlain as settle } from "./wait.ts";
 
 const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
 
@@ -12,11 +13,6 @@ const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await Bun.sleep(10);
-}
 
 /** A store on a fake daemon with the secret `prod-key`, and a way to push a phase 19 request. */
 async function setup() {

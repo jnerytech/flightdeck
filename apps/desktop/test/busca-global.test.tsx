@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -17,10 +18,7 @@ afterEach(async () => {
 });
 
 /** Waits for `check` without throwing, so the caller's `expect` reports the failure. */
-async function settle(check: () => boolean, timeoutMs = 3000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (!check() && Date.now() < deadline) await act(() => Bun.sleep(5));
-}
+const settle = waiter(3000);
 
 /** A daemon with one transcript per entry of `messages` (`[uuid, text, ts]`). */
 function historyHost(messages: Array<[string, string, string]>) {
