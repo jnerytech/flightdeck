@@ -65,6 +65,11 @@ export class ClientScope {
     return [...this.hostsByName].filter(([, ids]) => ids.size > 1).map(([name]) => name);
   }
 
+  /** The projects the app knows, with the folders their sessions ran in. */
+  get knownProjects(): KnownProject[] {
+    return [...this.projects.values()];
+  }
+
   /** The keys of the projects a rule would claim right now, for its preview. */
   matching(rule: RuleInput): string[] {
     return [...this.projects.keys()].filter((key) => ruleMatches(rule, this.known(key)));
