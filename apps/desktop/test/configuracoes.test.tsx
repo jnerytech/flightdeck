@@ -59,6 +59,15 @@ const checkbox = (label: string) => {
 };
 
 describe("configuracoes", () => {
+  test("cada controle de Aparência tem um rótulo visível que o foca", async () => {
+    setup();
+    await openSettings();
+    for (const label of ["Tema", "Densidade da lista", "Tamanho da fonte do terminal", "Idioma"]) {
+      const control = screen.getByLabelText(label) as HTMLElement;
+      expect(control.labels?.length).toBe(1);
+    }
+  });
+
   test("padrões: fechar manda para a bandeja; iniciar com o Windows desligado", async () => {
     const { closeToTray } = setup("supported");
     await openSettings();
