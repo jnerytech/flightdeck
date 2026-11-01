@@ -2,12 +2,16 @@ import type { MemoryFile, MemorySuggestion } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Field, Form, FormActions } from "@/components/layout/form";
+import { ListRow } from "@/components/layout/list-row";
+import { Panel } from "@/components/layout/panel";
+import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { TwoPane } from "@/components/layout/two-pane";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -112,135 +116,139 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
   const dirty = opened ? opened.hash === null || text !== opened.saved : false;
   const label = (suggestion: MemorySuggestion) => t(`memoryUi.suggestion.${suggestion.kind}`);
 
-  return (
-    <div className="grid gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
-      <div className="flex flex-col gap-3">
-        <div>
-          <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
-            <Plus aria-hidden="true" />
-            {t("memoryUi.new")}
-          </Button>
-        </div>
-        {creating && (
-          <div className="flex flex-col gap-2 rounded-lg border p-3">
-            <Input
-              aria-label={t("memoryUi.fileName")}
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-            />
-            <Button size="sm" disabled={!NEW_NAME.test(typed.trim())} onClick={create}>
-              {t("memoryUi.create")}
-            </Button>
-          </div>
-        )}
-        {(!exists || files.length === 0) && <EmptyState title={t("memoryUi.empty")} />}
-        <ul aria-label={t("memoryUi.list")} className="flex flex-col gap-1">
-          {files.map((file) => (
-            <li
-              key={file.name}
-              className={cn(
-                "flex items-start gap-1 rounded-md border px-3 py-2 text-sm",
-                opened?.name === file.name && "bg-accent",
+  const side = (
+    <Stack gap={3}>
+      <Inline>
+        <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
+          <Plus aria-hidden="true" />
+          {t("memoryUi.new")}
+        </Button>
+      </Inline>
+      {creating && (
+        <Panel size="sm">
+          <Form variant="inline" onSubmit={create}>
+            <Field label={t("memoryUi.fileName")}>
+              {(control) => (
+                <Input {...control} value={typed} onChange={(e) => setTyped(e.target.value)} />
               )}
-            >
-              <button
-                type="button"
-                aria-label={t("memoryUi.open", { name: file.name })}
-                onClick={() => void open(file.name)}
-                className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left"
-              >
-                <span data-name className="break-all font-medium">
-                  {file.name}
-                </span>
-                <span className="flex flex-wrap gap-1">
+            </Field>
+            <FormActions submit={t("memoryUi.create")} disabled={!NEW_NAME.test(typed.trim())} />
+          </Form>
+        </Panel>
+      )}
+      {(!exists || files.length === 0) && <EmptyState title={t("memoryUi.empty")} />}
+      <Stack as="ul" gap={1} label={t("memoryUi.list")}>
+        {files.map((file) => (
+          <li key={file.name}>
+            <ListRow
+              boxed
+              selected={opened?.name === file.name}
+              title={
+                <button
+                  type="button"
+                  aria-label={t("memoryUi.open", { name: file.name })}
+                  onClick={() => void open(file.name)}
+                  className="text-left"
+                >
+                  <span data-name className="font-medium">
+                    {file.name}
+                  </span>
+                </button>
+              }
+              trailing={
+                <Inline gap={1}>
                   {file.type && <Badge variant="secondary">{file.type}</Badge>}
                   {!file.inIndex && <Badge variant="outline">{t("memoryUi.outOfIndex")}</Badge>}
-                </span>
-              </button>
-              {file.name !== "MEMORY.md" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={t("memoryUi.delete", { name: file.name })}
-                  onClick={() => setConfirming({ remove: file })}
-                >
-                  {t("memoryUi.deleteShort")}
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-4">
-        {!opened && <p className="text-muted-foreground text-sm">{t("memoryUi.pick")}</p>}
-        {opened && (
-          <div className="flex flex-col gap-3">
-            <code className="break-all text-sm">{opened.name}</code>
-            {stale && (
-              <InlineNotice>
-                {t("memoryUi.stale")}{" "}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    show({ ...opened, hash: stale.hash, saved: stale.content }, stale.content)
-                  }
-                >
-                  {t("memoryUi.reload")}
-                </Button>
-              </InlineNotice>
-            )}
-            <Textarea
-              aria-label={t("memoryUi.content", { name: opened.name })}
-              rows={14}
-              className="font-mono text-sm"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <div className="flex items-center gap-3">
-              <Button disabled={!dirty} onClick={() => setConfirming("save")}>
-                {t("memoryUi.save")}
-              </Button>
-              {justSaved && !dirty && (
-                <span role="status" className="text-muted-foreground text-sm">
-                  {t("memoryUi.saved")}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        <section
-          aria-label={t("memoryUi.suggestions")}
-          className="flex flex-col gap-2 rounded-lg border p-3"
-        >
-          <h3 className="font-medium text-sm">{t("memoryUi.suggestions")}</h3>
-          {suggestions?.length === 0 && (
-            <p className="text-muted-foreground text-sm">{t("memoryUi.noSuggestions")}</p>
-          )}
-          <ul className="flex flex-col gap-1 text-sm">
-            {(suggestions ?? []).map((suggestion) => (
-              <li key={`${suggestion.kind}/${suggestion.files.join(",")}`}>
-                {label(suggestion)}:{" "}
-                {suggestion.files.map((name, i) => (
-                  <span key={name}>
-                    {i > 0 && ", "}
-                    <button
-                      type="button"
-                      aria-label={t("memoryUi.view", { name })}
-                      className="underline"
-                      onClick={() => void open(name)}
+                  {file.name !== "MEMORY.md" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("memoryUi.delete", { name: file.name })}
+                      onClick={() => setConfirming({ remove: file })}
                     >
-                      {name}
-                    </button>
+                      {t("memoryUi.deleteShort")}
+                    </Button>
+                  )}
+                </Inline>
+              }
+            />
+          </li>
+        ))}
+      </Stack>
+    </Stack>
+  );
+
+  return (
+    <>
+      <TwoPane side={side}>
+        <Stack>
+          {!opened && <p className="text-muted-foreground text-sm">{t("memoryUi.pick")}</p>}
+          {opened && (
+            <Stack gap={3}>
+              <code className="break-all text-sm">{opened.name}</code>
+              {stale && (
+                <InlineNotice>
+                  {t("memoryUi.stale")}{" "}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      show({ ...opened, hash: stale.hash, saved: stale.content }, stale.content)
+                    }
+                  >
+                    {t("memoryUi.reload")}
+                  </Button>
+                </InlineNotice>
+              )}
+              <Textarea
+                aria-label={t("memoryUi.content", { name: opened.name })}
+                rows={14}
+                className="font-mono text-sm"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <Inline gap={3}>
+                <Button disabled={!dirty} onClick={() => setConfirming("save")}>
+                  {t("memoryUi.save")}
+                </Button>
+                {justSaved && !dirty && (
+                  <span role="status" className="text-muted-foreground text-sm">
+                    {t("memoryUi.saved")}
                   </span>
+                )}
+              </Inline>
+            </Stack>
+          )}
+          <section aria-label={t("memoryUi.suggestions")}>
+            <Panel size="sm" title={t("memoryUi.suggestions")}>
+              {suggestions?.length === 0 && (
+                <p className="text-muted-foreground text-sm">{t("memoryUi.noSuggestions")}</p>
+              )}
+              <Stack as="ul" gap={1} className="text-sm">
+                {(suggestions ?? []).map((suggestion) => (
+                  <li key={`${suggestion.kind}/${suggestion.files.join(",")}`}>
+                    {label(suggestion)}:{" "}
+                    {suggestion.files.map((name, i) => (
+                      <span key={name}>
+                        {i > 0 && ", "}
+                        <button
+                          type="button"
+                          aria-label={t("memoryUi.view", { name })}
+                          className="underline"
+                          onClick={() => void open(name)}
+                        >
+                          {name}
+                        </button>
+                      </span>
+                    ))}
+                  </li>
                 ))}
-              </li>
-            ))}
-          </ul>
-          <p className="text-muted-foreground text-xs">{t("memoryUi.neverAlone")}</p>
-        </section>
-      </div>
+              </Stack>
+              <p className="text-muted-foreground text-xs">{t("memoryUi.neverAlone")}</p>
+            </Panel>
+          </section>
+        </Stack>
+      </TwoPane>
 
       {confirming === "save" && opened && (
         <ConfirmDialog
@@ -259,6 +267,6 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
           onCancel={() => setConfirming(null)}
         />
       )}
-    </div>
+    </>
   );
 }
