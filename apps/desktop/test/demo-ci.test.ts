@@ -98,7 +98,7 @@ describe("demo-prints: axe e CI", () => {
     expect(pkg.devDependencies["@playwright/test"]).toBe(pkg.devDependencies["playwright-core"]);
   });
 
-  test("the CI e2e step keeps the HTML report, the traces and the videos as artifacts, even when it fails", () => {
+  test("the CI e2e step keeps the HTML report as an artifact, even when it fails", () => {
     const ci = read(".github/workflows/ci.yml");
     const rest = ci.slice(ci.indexOf("- name: Jornadas e2e"));
     expect(rest).toContain("name: relatorio-e2e");

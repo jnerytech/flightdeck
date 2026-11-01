@@ -13,11 +13,12 @@ const isFile = (path: string) => {
 };
 const which = (name: string) => whichOnNodePath(name, process.env, process.platform, isFile);
 
-const { use, outputDir, ...settings } = runnerSettings(process.env);
+const repoRoot = resolve(import.meta.dirname, "../..");
+const { use, outputDir, ...settings } = runnerSettings(process.env, repoRoot);
 
 export default defineConfig({
   ...settings,
-  testDir: resolve(import.meta.dirname, "../..", E2E_TEST_DIR),
+  testDir: resolve(repoRoot, E2E_TEST_DIR),
   testMatch: E2E_TEST_MATCH,
   outputDir,
   grep: grepFor(process.env.E2E_ONLY),

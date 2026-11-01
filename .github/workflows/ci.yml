@@ -179,14 +179,14 @@ jobs:
         run: bun run demo:shots
 
       - name: Jornadas e2e (2 idiomas)
-        # A failed journey leaves its trace, print, video and the text of the terminal in the prints
+        # A failed journey leaves its trace, print and the text of the terminal in the prints
         # artifact (E2E_FAILURES); the HTML report is its own artifact. CI retries a failure once.
         env:
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
         run: bun run e2e
 
       # A journey that failed and passed on its retry shows as flaky in the report, never hidden.
-      - name: Publicar o relatório e2e (traces, vídeos)
+      - name: Publicar o relatório e2e
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

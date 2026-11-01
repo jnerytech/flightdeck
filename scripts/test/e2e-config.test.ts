@@ -41,7 +41,9 @@ describe("e2e runner settings", () => {
   });
 
   test("E2E_FAILURES chooses where the traces and prints go", () => {
-    expect(runnerSettings({ E2E_FAILURES: "out/fail" }, ROOT).outputDir).toBe(join(ROOT, "out", "fail"));
+    expect(runnerSettings({ E2E_FAILURES: "out/fail" }, ROOT).outputDir).toBe(
+      join(ROOT, "out", "fail"),
+    );
     expect(runnerSettings({}, ROOT).outputDir).toMatch(/flightdeck-e2e$/);
   });
 });

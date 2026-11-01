@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 /** Settings of the e2e runner (`@playwright/test`), kept here so they are unit tested. */
 
@@ -15,7 +15,7 @@ export interface RunnerSettings {
   use: {
     trace: "retain-on-failure";
     screenshot: "only-on-failure";
-    video: "retain-on-failure";
+    video: "off";
   };
   outputDir: string;
 }
@@ -27,7 +27,7 @@ export function runnerSettings(
   const ci = Boolean(env.CI);
   const reporter: RunnerSettings["reporter"] = [
     ["list"],
-    ["html", { open: "never", outputFolder: "playwright-report" }],
+    ["html", { open: "never", outputFolder: join(root, "playwright-report") }],
   ];
   if (ci) reporter.push(["github"]);
   return {
@@ -41,9 +41,9 @@ export function runnerSettings(
     use: {
       trace: "retain-on-failure",
       screenshot: "only-on-failure",
-      video: "retain-on-failure",
+      video: "off",
     },
-    outputDir: env.E2E_FAILURES || join(tmpdir(), "flightdeck-e2e"),
+    outputDir: resolve(root, env.E2E_FAILURES || join(tmpdir(), "flightdeck-e2e")),
   };
 }
 
