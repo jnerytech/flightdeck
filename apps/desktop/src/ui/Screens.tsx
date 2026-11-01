@@ -284,11 +284,9 @@ export function Screen(props: ScreenProps) {
   const removed =
     waiting !== null && state.hostsLoaded && !state.hosts.some((h) => h.id === waiting);
   const route: Route = removed ? { name: "hub" } : props.route;
-  const detail = (
-    <Suspense fallback={<ScreenLoading label={t("states.loading")} />}>
-      {routeScreen({ ...props, route })}
-    </Suspense>
-  );
+  // A route with nothing of its own (`null`) keeps its empty pane: only a screen waits in Suspense.
+  const inner = routeScreen({ ...props, route });
+  const detail = inner === null ? null : <Suspense fallback={<LoadingScreen />}>{inner}</Suspense>;
   // Settings, the host form and the first start (no host) use the whole width.
   if (route.name === "settings" || route.name === "add-host" || state.hosts.length === 0) {
     return detail;
@@ -427,6 +425,12 @@ function ScreenLoading(props: { label: string }) {
       <LoadingState label={props.label} />
     </div>
   );
+}
+
+/** The wait for a screen that loads on demand; it translates itself, only while it is shown. */
+function LoadingScreen() {
+  const t = useT();
+  return <ScreenLoading label={t("states.loading")} />;
 }
 
 /** What a route shows on its own; `null` is the Sessões screen with nothing open. */
