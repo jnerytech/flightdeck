@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
+import { hasFeature } from "../lib/version.ts";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { RulesSection } from "./RulesSection.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
@@ -234,7 +235,7 @@ export function ProjectsPage(props: {
             disabled={editing !== null}
             {...field("path")}
           />
-          {editing === null && host && (
+          {editing === null && host && hasFeature(host.hostInfo?.features, "fs.dirs", false) && (
             <Button
               type="button"
               variant="outline"

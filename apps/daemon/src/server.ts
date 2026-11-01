@@ -104,6 +104,8 @@ export interface ServerOptions {
   port: number;
   token: string;
   allowedRoots: readonly string[];
+  /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
+  fsDirs?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
@@ -320,8 +322,8 @@ export function startServer(opts: ServerOptions): RunningServer {
   const startedAt = Date.now();
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
   const features = [
-    // The folder picker of the app browses the host's folders with it.
-    "fs.dirs",
+    // The folder picker of the app browses the host's folders with `fs.dirs`.
+    ...(opts.fsDirs ? ["fs.dirs"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),

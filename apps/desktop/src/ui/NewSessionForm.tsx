@@ -8,6 +8,7 @@ import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { trimTrailingSeparators } from "../lib/paths.ts";
+import { hasFeature } from "../lib/version.ts";
 import { FolderPicker } from "./FolderPicker.tsx";
 
 const MODES: PermissionMode[] = [
@@ -44,6 +45,9 @@ export function NewSessionForm(props: {
   const root = picked ?? roots[0] ?? "";
   const [sub, setSub] = useState("");
   const [browsing, setBrowsing] = useState(false);
+  /** The host answers `fs.dirs`: an older daemon does not, and there the folder is typed. */
+  const canBrowse =
+    props.store !== undefined && hasFeature(props.host.hostInfo?.features, "fs.dirs", false);
   /** A folder the host resolved to a path none of its configured roots start: kept as a root. */
   const [extra, setExtra] = useState<string | null>(null);
   const folders = extra && !roots.includes(extra) ? [...roots, extra] : roots;
@@ -114,7 +118,7 @@ export function NewSessionForm(props: {
           placeholder={t("newSession.optional")}
         />
       </label>
-      {props.store && (
+      {canBrowse && (
         <Button
           type="button"
           variant="outline"
@@ -124,7 +128,7 @@ export function NewSessionForm(props: {
           {t("folderPicker.browse")}
         </Button>
       )}
-      {browsing && props.store && (
+      {browsing && props.store && canBrowse && (
         <FolderPicker
           store={props.store}
           host={props.host}

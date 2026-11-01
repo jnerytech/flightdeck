@@ -820,6 +820,7 @@ export async function startDaemon(
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({
     manager,
+    fsDirs: true,
     messaging,
     names,
     idle,
