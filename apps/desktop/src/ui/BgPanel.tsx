@@ -1,28 +1,31 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Field } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { useStoreSlice } from "@/lib/use-store";
 import { Inline, Stack } from "../components/layout/stack.tsx";
 import type { Key } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { hasFeature } from "../lib/version.ts";
+
+const BGPANEL_KEYS = ["background", "hosts"] as const;
 
 /**
  * What can be done to a Claude Code background session (`claude --bg`): its state and what it
  * waits for, stop and restart through `claude`, bring it to a terminal tab, and a message. Nothing
  * when the session is not in the host's `claude agents` listing.
  */
-export function BgPanel(props: {
+export const BgPanel = memo(function BgPanel(props: {
   store: AppStore;
-  state: AppState;
   hostId: string;
   claudeSessionId: string;
 }) {
   const t = useT();
-  const { store, state, hostId } = props;
+  const { store, hostId } = props;
+  const state = useStoreSlice(store, BGPANEL_KEYS);
   const session = state.background[hostId]?.sessions.find(
     (s) => s.claudeSessionId === props.claudeSessionId,
   );
@@ -86,4 +89,4 @@ export function BgPanel(props: {
       </Panel>
     </section>
   );
-}
+});

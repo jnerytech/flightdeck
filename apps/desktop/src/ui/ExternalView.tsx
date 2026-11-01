@@ -111,7 +111,7 @@ export function ExternalView(props: {
           </>
         }
       />
-      <BgPanel store={store} state={state} hostId={hostId} claudeSessionId={id} />
+      <BgPanel store={store} hostId={hostId} claudeSessionId={id} />
       {requests.length > 0 && (
         <div className="flex flex-col gap-3 border-b p-3">
           {requests.map((request) => (
