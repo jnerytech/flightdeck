@@ -7,6 +7,7 @@ import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
+import { refusalText } from "@/i18n/errors";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
@@ -125,7 +126,7 @@ export function ActionForm(props: {
       secretIds: secrets.map((s) => s.id),
     });
     if (result.ok) props.onSaved(result.data);
-    else setError(result.message);
+    else setError(refusalText(result.code, result.message, t));
   };
 
   const ids = useId();

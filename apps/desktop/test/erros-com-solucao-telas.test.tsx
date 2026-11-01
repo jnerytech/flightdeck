@@ -42,7 +42,7 @@ describe("erros-com-solucao: refusals shown by forms", () => {
       hostRequest: async () => REFUSED,
       i18n: { t: (key: string) => key },
     } as unknown as AppStore;
-    const view = render(<MessagingRulesSection store={store} hostId="h" />);
+    const view = render(<MessagingRulesSection store={store} hostId="h" hostName="alfa" />);
     await act(() => Bun.sleep(10));
     await press(view, "Salvar retenção");
     expect(view.container.textContent).toContain(`${TEXT} sessão em uso`);

@@ -89,7 +89,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await click("Salvar regras", editor());
     await settle(() => within(editor() as HTMLElement).queryByRole("alert") !== null);
     expect(within(editor() as HTMLElement).queryByRole("alert")?.textContent).toBe(
-      "regra r1: allow para run_with_secret nunca é permitido",
+      "O host recusou o pedido. regra r1: allow para run_with_secret nunca é permitido",
     );
     expect(store.vaultRules(deploy.id)).toEqual([]);
   });

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
 import { type Selection, select } from "../lib/review.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -57,10 +58,10 @@ export function ChangesPanel(props: {
       setChanges(result.data);
       setUnavailable(null);
     } else {
-      setUnavailable(result.message);
+      setUnavailable(refusalText(result.code, result.message, t));
     }
     await loadComments();
-  }, [store, hostId, target, loadComments]);
+  }, [store, hostId, target, loadComments, t]);
 
   // The first read, then every change the host sees on disk.
   useEffect(() => {

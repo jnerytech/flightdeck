@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppState, AppStore } from "@/lib/app-store";
 import type { AppSnippet } from "@/lib/global-snippets";
 import { AppDialogContent } from "../feedback/dialog-content.tsx";
@@ -106,7 +107,7 @@ export function SnippetUse(props: {
       context,
       enter,
     });
-    return result.ok ? done() : fail(result.message);
+    return result.ok ? done() : fail(refusalText(result.code, result.message, t));
   };
 
   /** A global command opens a terminal on the host on screen, else the first online one. */
@@ -131,7 +132,7 @@ export function SnippetUse(props: {
       values: own,
       context: { ...context, cwd: folder },
     });
-    if (!result.ok) return fail(result.message);
+    if (!result.ok) return fail(refusalText(result.code, result.message, t));
     if (result.data.terminal) {
       store.tabs.open({
         name: "terminal",
@@ -172,7 +173,7 @@ export function SnippetUse(props: {
       values: own,
       context,
     });
-    return result.ok ? done() : fail(result.message);
+    return result.ok ? done() : fail(refusalText(result.code, result.message, t));
   };
 
   /** A new session on the snippet's host (a global one: the host on screen, else the first online). */
@@ -207,7 +208,7 @@ export function SnippetUse(props: {
         values: own,
         context,
       });
-      if (!result.ok) return fail(result.message);
+      if (!result.ok) return fail(refusalText(result.code, result.message, t));
       text = result.data.text;
     }
     if (text === null) return;

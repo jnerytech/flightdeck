@@ -2307,7 +2307,7 @@ export class AppStore {
   async setVaultRules(
     secretId: string,
     rules: unknown[],
-  ): Promise<{ ok: true } | { ok: false; message: string }> {
+  ): Promise<{ ok: true } | { ok: false; code: string; message: string }> {
     const secret = this.vault.list().find((s) => s.id === secretId);
     const accepted: string[] = [];
     for (const host of this.state.hosts) {
@@ -2328,7 +2328,7 @@ export class AppStore {
             rules: saved,
           });
         }
-        return { ok: false, message: result.message };
+        return { ok: false, code: result.code, message: result.message };
       }
       accepted.push(host.id);
     }

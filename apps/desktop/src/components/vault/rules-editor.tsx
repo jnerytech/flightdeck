@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulesPreview } from "@/components/vault/rules-preview";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import type { SecretMeta } from "@/lib/vault";
 import {
@@ -47,7 +48,7 @@ export function RulesEditor(props: {
   const save = async () => {
     const result = await store.setVaultRules(secret.id, drafts.map(ruleOf));
     if (result.ok) props.onClose();
-    else setError(result.message);
+    else setError(refusalText(result.code, result.message, t));
   };
 
   const text = (i: number, key: keyof RuleDraft, label: string, type = "text") => (

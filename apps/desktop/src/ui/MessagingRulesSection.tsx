@@ -6,6 +6,7 @@ import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 
@@ -72,7 +73,7 @@ export function MessagingRulesSection(props: {
       policy: { ...rules.policy, ...patch },
     });
     if (!result.ok) {
-      setError(result.message);
+      setError(refusalText(result.code, result.message, t));
       return false;
     }
     setError(null);

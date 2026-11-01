@@ -88,7 +88,11 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     const result = await store.setVaultRules(here.id, [
       { match: { purpose: "run_with_secret" }, decision: "allow" },
     ]);
-    expect(result).toEqual({ ok: false, message: "allow para run_with_secret nunca é permitido" });
+    expect(result).toEqual({
+      ok: false,
+      code: "bad_request",
+      message: "allow para run_with_secret nunca é permitido",
+    });
     expect(store.vaultRules(here.id)).toEqual([]);
   });
 
@@ -105,6 +109,7 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     const looser = [{ id: "r1", match: {}, decision: "allow" }];
     expect(await store.setVaultRules(here.id, looser)).toEqual({
       ok: false,
+      code: "bad_request",
       message: "regra inválida",
     });
     const sent = daemon.commands.filter((c) => c.type === "vault.rules.set").map((c) => c.payload);

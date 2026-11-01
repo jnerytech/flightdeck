@@ -154,8 +154,9 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     await change("Origem", "x");
     await change("Destino", "y");
     await click("Adicionar exceção");
-    await settle(() => screen.queryByText("exceção #2: from.host é um texto") !== null);
-    expect(screen.queryByText("exceção #2: from.host é um texto")).not.toBeNull();
+    const shown = "O host recusou o pedido. exceção #2: from.host é um texto";
+    await settle(() => screen.queryByText(shown) !== null);
+    expect(screen.queryByText(shown)).not.toBeNull();
     expect(screen.queryByText("de host x para host y")).toBeNull();
   });
 
