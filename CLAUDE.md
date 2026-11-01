@@ -23,6 +23,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Test a single file: `bun --config=bunfig.area.toml test <file>`. A plain `bun test <file>`
   exits with 1 even when it passes, because of the global coverage threshold.
 - Full suite (with the 100% line and function threshold): `bun run test`.
+- The heavy commands go through the slot: `bun run slot -- <command...>` (for example
+  `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
+  `bun run slot -- --status` shows the holder, `--nice` lowers the command's priority.
 - Before any code commit: `bun run test && bun run typecheck && bun run lint`.
 - Format: `bun run format`. Smokes: `bun run smoke:<name>` (list in `package.json`; never
   `smoke:real` unless asked).
@@ -55,6 +58,10 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
 - Phase sessions never push, tag or publish releases. They hand the green HEAD over; the
   maintainer integrates the phase into `main`, tags it and releases.
+
+- Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
+  `bun run slot --`, never bare: two of them at once overload the machine and make the
+  timing-sensitive tests flaky. Area tests, typecheck and lint do not need the slot.
 
 ## Conventions
 
