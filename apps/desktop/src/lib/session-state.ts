@@ -11,6 +11,8 @@ import type {
 } from "@flightdeck/protocol";
 
 export type ChatItem =
+  /** Part of the history is missing: a hole in the seqs the host could not fill. */
+  | { kind: "gap"; seq: number }
   | { kind: "user"; seq: number; text: string }
   | { kind: "assistant"; seq: number; blocks: AssistantBlock[] }
   | {

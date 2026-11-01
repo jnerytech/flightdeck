@@ -69,14 +69,32 @@ describe("entrega-lacuna: the app does not draw a conversation with holes", () =
     expect(asked()).toEqual([0]);
   });
 
-  test("when the daemon cannot fill the gap, the app asks once, not over and over", async () => {
+  test("when the daemon cannot fill the gap (retention cut it), the app asks once, applies what came after, and says so in the conversation", async () => {
     const { store, daemon, key, asked } = await follow();
-    // Seq 5 is gone for good (a retention that cut it): 6 and 7 keep arriving.
+    // Seq 5 is gone for good: the daemon has 6 and 7, and a frame of 6 arrives live.
+    daemon.streams.s1?.push(said(6), said(7));
     daemon.push(frame(6, said(6).event));
-    await settle(() => asked().length === 2);
+    await settle(() => store.getState().sessions[key]?.lastSeq === 7);
+    const session = store.getState().sessions[key];
+    expect(session?.lastSeq).toBe(7);
+    expect(session?.items.map((item) => [item.kind, item.seq])).toEqual([
+      ["assistant", 1],
+      ["assistant", 2],
+      ["assistant", 3],
+      ["assistant", 4],
+      ["gap", 5],
+      ["assistant", 6],
+      ["assistant", 7],
+    ]);
+    expect(asked()).toEqual([0, 4]);
+  });
+
+  test("frames that arrive while the answer is on its way are not applied, and do not ask again", async () => {
+    const { store, daemon, key, asked } = await follow();
+    daemon.push(frame(6, said(6).event));
     daemon.push(frame(7, said(7).event));
     daemon.push(frame(8, said(8).event));
-    await Bun.sleep(300);
+    await Bun.sleep(200);
     expect(asked()).toEqual([0, 4]);
     expect(store.getState().sessions[key]?.lastSeq).toBe(4);
   });

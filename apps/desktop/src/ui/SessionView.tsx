@@ -120,6 +120,8 @@ const TimelineItem = memo(function TimelineItem(props: {
           })}
         </div>
       );
+    case "gap":
+      return null;
     case "error":
       return (
         <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
