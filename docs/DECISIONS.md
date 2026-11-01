@@ -2370,3 +2370,9 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 - **The mouse gets the ×; the keyboard and the screen reader get Delete and Ctrl+W.** Every closable tab carries `aria-keyshortcuts="Delete"`. This is the VS Code approach.
 - **The × shows on the active tab, on hover and on focus-within, at 24 px.** A pinned tab has no ×.
 - **Tests find the × by its label.** An `aria-hidden` button has an empty accessible name, so `getByRole("button", { name })` never finds it; use `getByLabelText`.
+
+## Setup on Windows and the terminal's TERM
+
+- **`setup` writes Windows roots with forward slashes** (`C:/Users/me/code`, as the manual shows) and keeps the roots already in the file exactly as written: `loadConfig` resolves them to native paths, so rewriting from the loaded config would have turned `/srv/old` into `D:\srv\old`. Two roots are the same folder when their resolved paths match, ignoring case and slash direction on Windows. The wizard takes the platform as a dependency, so these cases are tested on any host.
+- **The executable bit is not checked on Windows**: the stable binary runs because of its `.exe` name.
+- **Terminals get `TERM=xterm-256color` and `COLORTERM=truecolor`.** What is attached is xterm.js. A service starts with no `TERM` (or `dumb`), and readline then scrolls a long line sideways instead of wrapping it, which also cut the marker of the abas-terminal journey in two. A client's own `env` still wins.
