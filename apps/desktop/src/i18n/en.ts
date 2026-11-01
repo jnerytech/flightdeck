@@ -1713,6 +1713,8 @@ export const en: Dictionary = {
     turns: "Turns",
     allSessions: "All the host's sessions; estimated cost at API prices.",
     managedOnly: "Managed sessions only; the cost is the estimate the SDK reports.",
+    empty:
+      "No usage in the last 7 days. The cost appears here after a session has run on this host.",
   },
   prefs: {
     title: "Settings",

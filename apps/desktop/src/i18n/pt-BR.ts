@@ -1715,6 +1715,8 @@ export const ptBR = {
     turns: "Turnos",
     allSessions: "Todas as sessões do host; custo estimado em preços de API.",
     managedOnly: "Só sessões gerenciadas; o custo é a estimativa que o SDK informa.",
+    empty:
+      "Nenhum uso nos últimos 7 dias. O custo aparece aqui depois que uma sessão rodar neste host.",
   },
   prefs: {
     title: "Configurações",

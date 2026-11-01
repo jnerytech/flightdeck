@@ -26,7 +26,7 @@ export function UsagePanel(props: {
 }) {
   const t = useT();
   const { store, hostId, online, costs } = props;
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<Row[] | null>(null);
   useEffect(() => {
     if (!online) return;
     if (costs) {
@@ -60,28 +60,35 @@ export function UsagePanel(props: {
         <p className="text-muted-foreground text-xs">
           {costs ? t("usageUi.allSessions") : t("usageUi.managedOnly")}
         </p>
-        <table className="w-full text-left text-sm tabular-nums">
-          <thead className="text-muted-foreground text-xs">
-            <tr>
-              <th className="py-1 font-medium">{t("usageUi.day")}</th>
-              <th className="py-1 font-medium">{t("usageUi.project")}</th>
-              <th className="py-1 pl-4 text-right font-medium">{t("usageUi.cost")}</th>
-              <th className="py-1 pl-4 text-right font-medium">{t("usageUi.tokens")}</th>
-              {!costs && <th className="py-1 pl-4 text-right font-medium">{t("usageUi.turns")}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.day}/${row.projectKey}`} className="border-t">
-                <td className="py-1">{row.day}</td>
-                <td className="py-1">{row.projectKey}</td>
-                <td className="py-1 pl-4 text-right">{usd(row.costUsd)}</td>
-                <td className="py-1 pl-4 text-right">{row.tokens}</td>
-                {row.turns !== null && <td className="py-1 pl-4 text-right">{row.turns}</td>}
+        {rows?.length === 0 && (
+          <p className="text-muted-foreground text-sm">{t("usageUi.empty")}</p>
+        )}
+        {rows && rows.length > 0 && (
+          <table className="w-full text-left text-sm tabular-nums">
+            <thead className="text-muted-foreground text-xs">
+              <tr>
+                <th className="py-1 font-medium">{t("usageUi.day")}</th>
+                <th className="py-1 font-medium">{t("usageUi.project")}</th>
+                <th className="py-1 pl-4 text-right font-medium">{t("usageUi.cost")}</th>
+                <th className="py-1 pl-4 text-right font-medium">{t("usageUi.tokens")}</th>
+                {!costs && (
+                  <th className="py-1 pl-4 text-right font-medium">{t("usageUi.turns")}</th>
+                )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.day}/${row.projectKey}`} className="border-t">
+                  <td className="py-1">{row.day}</td>
+                  <td className="py-1">{row.projectKey}</td>
+                  <td className="py-1 pl-4 text-right">{usd(row.costUsd)}</td>
+                  <td className="py-1 pl-4 text-right">{row.tokens}</td>
+                  {row.turns !== null && <td className="py-1 pl-4 text-right">{row.turns}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Panel>
     </section>
   );
