@@ -221,12 +221,16 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
 
   test("Salvar destino goes busy and saves once", async () => {
     const save = slow();
-    const store = { hostCommand: save.call } as unknown as AppStore;
+    const state = { secrets: [], hosts: [] };
+    const store = {
+      hostCommand: save.call,
+      subscribe: () => () => {},
+      getState: () => state,
+    } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>
         <TargetForm
           store={store}
-          state={{ secrets: [], hosts: [] } as never}
           hostId="h"
           target={null}
           others={[]}

@@ -84,22 +84,18 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Instalar atualização goes busy and installs once", async () => {
     const install = slow();
+    const state = {
+      appUpdate: { offer: { version: "1.2.3", notes: "" }, error: null },
+      hosts: [],
+    };
     const store = {
       i18n: { t },
       installAppUpdate: install.call,
       dismissAppUpdate: () => {},
+      subscribe: () => () => {},
+      getState: () => state,
     } as unknown as AppStore;
-    render(
-      <UpdateBanner
-        store={store}
-        state={
-          {
-            appUpdate: { offer: { version: "1.2.3", notes: "" }, error: null },
-            hosts: [],
-          } as never
-        }
-      />,
-    );
+    render(<UpdateBanner store={store} />);
     await expectBusyOnce("Instalar e reiniciar", install.calls, () => install.settle());
   });
 
@@ -264,26 +260,22 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Exportar CSV goes busy and exports once", async () => {
     const exported = slow();
+    const state = {
+      secrets: [],
+      hosts: [{ id: "h", name: "alfa", status: "online", hostInfo: { features: ["actions"] } }],
+    };
     const store = {
       hostCommand: (_host: string, _command: string, payload: { format?: string }) =>
         payload.format === "csv"
           ? exported.call(payload)
           : Promise.resolve({ rows: [], decisions: [] }),
       saveFile: () => Promise.resolve(),
+      subscribe: () => () => {},
+      getState: () => state,
     } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>
-        <VaultReport
-          store={store}
-          state={
-            {
-              secrets: [],
-              hosts: [
-                { id: "h", name: "alfa", status: "online", hostInfo: { features: ["actions"] } },
-              ],
-            } as never
-          }
-        />
+        <VaultReport store={store} />
       </TContext.Provider>,
     );
     await act(() => Bun.sleep(10));
