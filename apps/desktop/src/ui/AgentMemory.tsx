@@ -8,7 +8,6 @@ import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { TwoPane } from "@/components/layout/two-pane";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -155,21 +154,20 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
                   </span>
                 </button>
               }
+              meta={[file.type, file.inIndex ? null : t("memoryUi.outOfIndex")]
+                .filter(Boolean)
+                .join(" · ")}
               trailing={
-                <Inline gap={1}>
-                  {file.type && <Badge variant="secondary">{file.type}</Badge>}
-                  {!file.inIndex && <Badge variant="outline">{t("memoryUi.outOfIndex")}</Badge>}
-                  {file.name !== "MEMORY.md" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={t("memoryUi.delete", { name: file.name })}
-                      onClick={() => setConfirming({ remove: file })}
-                    >
-                      {t("memoryUi.deleteShort")}
-                    </Button>
-                  )}
-                </Inline>
+                file.name !== "MEMORY.md" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("memoryUi.delete", { name: file.name })}
+                    onClick={() => setConfirming({ remove: file })}
+                  >
+                    {t("memoryUi.deleteShort")}
+                  </Button>
+                )
               }
             />
           </li>

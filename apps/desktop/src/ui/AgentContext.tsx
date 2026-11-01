@@ -35,9 +35,9 @@ export function AgentContext(props: { store: AppStore; hostId: string; projectId
               <ListRow
                 leading={<Badge variant="secondary">{t(`contextUi.kind.${source.kind}`)}</Badge>}
                 title={<span className="break-all">{source.path}</span>}
-                meta={source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")}
                 trailing={
                   <span className="text-sm tabular-nums">
+                    {source.load === "start" ? t("contextUi.atStart") : t("contextUi.onDemand")} ·{" "}
                     {t("contextUi.tokens", { tokens: source.tokens })}
                   </span>
                 }
