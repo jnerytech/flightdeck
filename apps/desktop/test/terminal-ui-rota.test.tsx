@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -73,6 +75,14 @@ describe("terminal-ui: the route and the settings", () => {
     }
     expect([terminal.cols, terminal.rows]).toEqual([80, 24]);
     terminal.dispose();
+  });
+
+  test("the stylesheet takes xterm's own, which hides its helper textarea and measure element", () => {
+    const desktop = resolve(import.meta.dir, "..");
+    const css = readFileSync(resolve(desktop, "src/styles.css"), "utf8");
+    const imported = /@import\s+"(@xterm\/xterm\/css\/xterm\.css)"/.exec(css)?.[1] ?? "";
+    expect(imported).toBe("@xterm/xterm/css/xterm.css");
+    expect(existsSync(resolve(desktop, "node_modules", imported))).toBe(true);
   });
 
   test("the real links addon hands a clicked link to the app", () => {
