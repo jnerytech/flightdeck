@@ -1,9 +1,11 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
@@ -29,11 +31,13 @@ function BudgetMeter({ run }: { run: WorkflowRun }) {
 /** An open gate, answered here with an optional note. */
 function GateCard(props: {
   step: StepRun;
-  onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
+  onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
 }) {
   const t = useT();
   const { step } = props;
   const [note, setNote] = useState("");
+  // One answer at a time: both buttons wait for it.
+  const { busy, run } = useBusy();
   return (
     <section
       aria-label={t("runUi.gate", { step: step.stepId })}
@@ -52,12 +56,21 @@ function GateCard(props: {
         onChange={(e) => setNote(e.target.value)}
       />
       <div className="flex gap-2">
-        <Button size="sm" onClick={() => props.onRespond(step, "approve", note)}>
+        <ActionButton
+          size="sm"
+          pending={busy}
+          onClick={() => run(() => props.onRespond(step, "approve", note))}
+        >
           {t("runUi.approve")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => props.onRespond(step, "reject", note)}>
+        </ActionButton>
+        <ActionButton
+          variant="outline"
+          size="sm"
+          pending={busy}
+          onClick={() => run(() => props.onRespond(step, "reject", note))}
+        >
           {t("runUi.reject")}
-        </Button>
+        </ActionButton>
       </div>
     </section>
   );
@@ -72,7 +85,8 @@ export function RunTimeline(props: {
   /** HH:MM of an instant (the quota's reset). */
   formatTime(iso: string): string;
   onOpenStep(step: StepRun): void;
-  onRespond(step: StepRun, decision: "approve" | "reject", note: string): void;
+  /** A promise keeps the gate's buttons busy until the answer is in. */
+  onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
   /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
   costUsd?: number | null;
 }) {

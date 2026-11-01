@@ -1,5 +1,6 @@
 import type { Card, ChangesResult } from "@flightdeck/protocol";
 import { useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,9 +71,9 @@ export function CardReview(props: {
         <output aria-label={t("cardReview.positionLabel")} className="text-sm tabular-nums">
           {t("cardReview.position", { ahead, behind, base })}
         </output>
-        <Button variant="outline" size="sm" disabled={behind === 0} onClick={() => void update()}>
+        <ActionButton variant="outline" size="sm" disabled={behind === 0} onClick={() => update()}>
           {t("cardReview.updateFromBase")}
-        </Button>
+        </ActionButton>
         {!card.prUrl && (
           <Button
             variant="outline"

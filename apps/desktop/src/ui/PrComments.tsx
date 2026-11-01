@@ -1,7 +1,7 @@
 import type { PrComment } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { isExternalAuthor } from "../lib/review.ts";
@@ -94,9 +94,9 @@ export function PrComments(props: {
             ))}
           </ul>
           <div className="flex items-center gap-3">
-            <Button disabled={chosen.size === 0} onClick={() => void send()}>
+            <ActionButton disabled={chosen.size === 0} onClick={() => send()}>
               {t("cardReview.sendToAgent", { n: chosen.size })}
-            </Button>
+            </ActionButton>
             <span className="text-muted-foreground text-xs">{t("cardReview.prNote")}</span>
           </div>
         </>

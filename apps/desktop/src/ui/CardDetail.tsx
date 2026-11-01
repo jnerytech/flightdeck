@@ -474,7 +474,7 @@ export const CardDetail = memo(function CardDetail(props: {
             costUsd={runCost}
             onOpenStep={openStep}
             onRespond={(step, decision, note) =>
-              void store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
+              store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
             }
           />
         )}
