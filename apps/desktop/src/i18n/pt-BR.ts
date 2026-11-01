@@ -1441,6 +1441,9 @@ export const ptBR = {
   vaultRulesUi: {
     open: "Regras de {name}",
     title: "Regras de {name}",
+    scopeNote: "Regras geradas pelo cliente",
+    scope:
+      "{name}: {count} regras geradas vêm antes das suas e não se editam aqui. Desligue o escopo do cliente para tirá-las.",
     hint: "A primeira regra que casa com um uso decide. Os hosts conferem as regras quando você salva.",
     empty: "Nenhuma regra: valem os padrões",
     rule: "Regra {n}",

@@ -7,6 +7,7 @@ import { RulesPreview } from "@/components/vault/rules-preview";
 import { useT } from "@/i18n/context";
 import { refusalText, ruleIssueText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { generatedScopeRules, scopingClient } from "@/lib/client-vault";
 import type { SecretMeta } from "@/lib/vault";
 import {
   DAYS,
@@ -68,6 +69,15 @@ export function RulesEditor(props: {
   });
   const [error, setError] = useState<string | null>(null);
   const [issues, setIssues] = useState<readonly RuleIssue[]>([]);
+  // The rules a client generates for its secrets come first; they are not edited here (phase 29).
+  const scoping = scopingClient(secret, store.getState().clientList);
+  const generated = scoping
+    ? generatedScopeRules(
+        scoping,
+        store.clientScope().projectKeysOf(scoping.id),
+        store.vaultRules(secret.id),
+      ).length
+    : 0;
   // A ref: the drop reads it in the same gesture that set it, before any render.
   const dragged = useRef<number | null>(null);
   const edit = (i: number, patch: Partial<RuleDraft>) =>
@@ -157,6 +167,15 @@ export function RulesEditor(props: {
     >
       <h2 className="font-medium">{t("vaultRulesUi.title", { name: secret.name })}</h2>
       <p className="text-muted-foreground text-xs">{t("vaultRulesUi.hint")}</p>
+      {scoping && (
+        <p
+          role="note"
+          aria-label={t("vaultRulesUi.scopeNote")}
+          className="text-muted-foreground text-xs"
+        >
+          {t("vaultRulesUi.scope", { name: scoping.name, count: generated })}
+        </p>
+      )}
       {drafts.length === 0 && <p className="text-muted-foreground">{t("vaultRulesUi.empty")}</p>}
       {drafts.map((draft, i) => {
         const n = i + 1;

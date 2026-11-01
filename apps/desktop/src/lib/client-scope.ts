@@ -66,6 +66,14 @@ export class ClientScope {
     return [...this.hostsByName].filter(([, ids]) => ids.size > 1).map(([name]) => name);
   }
 
+  /** The keys of the projects of a client, in order. */
+  projectKeysOf(clientId: string): string[] {
+    return this.knownProjects
+      .map((p) => p.key)
+      .filter((key) => this.clientOf(key) === clientId)
+      .sort();
+  }
+
   /** The projects the app knows, with the folders their sessions ran in. */
   get knownProjects(): KnownProject[] {
     return [...this.projects.values()];

@@ -21,10 +21,7 @@ export function ClientDefaults(props: { store: AppStore; state: AppState; client
   const [vaultTag, setVaultTag] = useState(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
   const scope = store.clientScope();
-  const projects = scope.knownProjects
-    .filter((p) => scope.clientOf(p.key) === client.id)
-    .map((p) => p.key)
-    .sort();
+  const projects = scope.projectKeysOf(client.id);
   const saved = client.defaults.vaultTag;
   const tagged = saved ? state.secrets.filter((s) => s.tags.includes(saved)) : [];
   const preview = tagged.map((secret) => ({

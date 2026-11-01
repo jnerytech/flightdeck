@@ -2774,12 +2774,7 @@ export class AppStore {
   /** Rules the daemon is sent for a secret: its own, with its client's scope in front (phase 29). */
   private effectiveVaultRules(secret: SecretMeta, own: unknown[]): unknown[] {
     const scope = this.clientScope();
-    return effectiveRules(secret, own, this.state.clientList, (clientId) =>
-      scope.knownProjects
-        .map((p) => p.key)
-        .filter((key) => scope.clientOf(key) === clientId)
-        .sort(),
-    );
+    return effectiveRules(secret, own, this.state.clientList, (id) => scope.projectKeysOf(id));
   }
 
   /** What was last sent of each secret to each host (`hostId/secretId`), as text. */
