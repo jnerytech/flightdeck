@@ -284,6 +284,7 @@ export class UsageIndexer {
         owners.set(file.claudeSessionId, owner);
       }
       for (;;) {
+        if (this.opts.warmKeys) await this.warm(file, owner);
         const slice = this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
         added += slice.added;
         // The file counts as done when its last slice is in, before the pause that follows it.
@@ -385,6 +386,36 @@ export class UsageIndexer {
            first_at = MIN(first_at, $at), last_at = MAX(last_at, $at)`,
       )
       .run({ id: claudeSessionId, path: edit.path, at });
+  }
+
+  /**
+   * Looks up the project key of every folder the next slice of the file names, before the
+   * (synchronous) parse asks for it: asking git is the one thing in a pass that can take long.
+   * Reads the slice once more for it; it is the same bytes, and the page cache has them.
+   */
+  private async warm(file: TranscriptFile, owner: Owner): Promise<void> {
+    const size = sizeOf(file.path);
+    if (size === null || !this.opts.warmKeys) return;
+    const row = this.db
+      .query<{ offset: number; cwd: string | null }, [string]>(
+        "SELECT offset, cwd FROM usage_files WHERE path = ?",
+      )
+      .get(file.path);
+    const offset = size < (row?.offset ?? 0) ? 0 : (row?.offset ?? 0);
+    if (size === offset) return;
+    const chunk = Buffer.alloc(Math.min(size - offset, this.opts.sliceBytes ?? SLICE_BYTES));
+    const fd = openSync(file.path, "r");
+    try {
+      readSync(fd, chunk, 0, chunk.length, offset);
+    } finally {
+      closeSync(fd);
+    }
+    const folders = new Set<string>([row?.cwd ?? "", owner.projectPath ?? ""]);
+    for (const [, escaped] of chunk.toString("utf8").matchAll(/"cwd":"((?:[^"\\]|\\.)*)"/g)) {
+      folders.add(JSON.parse(`"${escaped}"`) as string);
+    }
+    folders.delete("");
+    await this.opts.warmKeys([...folders]);
   }
 
   /**

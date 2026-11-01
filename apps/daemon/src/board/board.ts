@@ -342,6 +342,9 @@ export class Board {
         JSON.stringify(project.autoApprove),
         project.issues ? JSON.stringify(project.issues) : null,
       );
+    // The key of the project is looked up now, without waiting for git, so the budget check and
+    // the vault find it cached when a card starts.
+    await this.opts.projectKeys?.resolve?.(path);
     return this.getProject(project.id);
   }
 
@@ -856,7 +859,12 @@ export class Board {
   }
 
   /** Looks up the key of every registered project, so what asks for it later finds it at hand. */
-  async warmProjectKeys(): Promise<void> {}
+  async warmProjectKeys(): Promise<void> {
+    const keys = this.opts.projectKeys;
+    if (!keys?.resolve) return;
+    const rows = this.db.query<{ path: string }, []>("SELECT path FROM projects").all();
+    await Promise.all(rows.map((row) => keys.resolve?.(row.path)));
+  }
 
   /** A `queue` budget of the host or of the card's project is at 100%. */
   private budgetBlocked(projectId: string): boolean {

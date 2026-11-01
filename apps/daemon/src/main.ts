@@ -613,6 +613,7 @@ export async function startDaemon(
     roots: config.history.roots,
     excludeCwds: historyExcludes(config),
     projectKey: (cwd) => keys.keyFor(cwd),
+    warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
     cost: (tokens) => costs.cost(tokens),
     log: (m) => logger.log(m),
     onPass: () => budgets.evaluate(),
@@ -638,6 +639,9 @@ export async function startDaemon(
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
+  // The key of every project is looked up in the background, so the budget check and the vault
+  // find it cached when the first card starts.
+  void board.warmProjectKeys();
   // The diff of every session and card, for the review (phase 11).
   const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
   const issues = new Issues({ board, autoApprove });
