@@ -1,5 +1,6 @@
 import type { SnippetContext } from "@flightdeck/protocol";
 import { useId, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -274,13 +275,14 @@ export function SnippetUse(props: {
             </>
           )}
           {isCommand && (
-            <Button
+            <ActionButton
               variant="outline"
               disabled={!snippet.runnable || folder.trim() === ""}
-              onClick={() => void runInNewTab()}
+              {...(snippet.runnable ? { disabledReason: t("snippets.use.folderNeeded") } : {})}
+              onClick={() => runInNewTab()}
             >
               {t("snippets.use.run")}
-            </Button>
+            </ActionButton>
           )}
           {!isCommand && (session || external) && (
             <Button onClick={() => void send()}>{t("snippets.use.send")}</Button>

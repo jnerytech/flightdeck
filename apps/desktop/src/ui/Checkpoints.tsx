@@ -1,6 +1,7 @@
 import type { RewindPreview, SnapshotFiles, SnapshotInfo } from "@flightdeck/protocol";
 import { GitBranch, History, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -98,13 +99,14 @@ function RewindDialog(props: Target & { turn: Turn; onClose(): void; onDone(): v
           <Button variant="outline" onClick={props.onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <ActionButton
             variant="destructive"
             disabled={preview === null || preview.files.length === 0}
-            onClick={() => void apply()}
+            {...(preview ? { disabledReason: t("timeline.nothingToRewind") } : {})}
+            onClick={() => apply()}
           >
             {t("timeline.rewindConfirm")}
-          </Button>
+          </ActionButton>
         </DialogFooter>
       </AppDialogContent>
     </Dialog>
