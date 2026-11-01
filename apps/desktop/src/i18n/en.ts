@@ -1738,6 +1738,10 @@ export const en: Dictionary = {
     vaultGroupNone: "Secrets with no client",
     vaultGroupOthers: "Secrets of other clients",
     scopeChanged: "The secret rules of the client {name} changed with its projects.",
+    scopeRefused:
+      "The host {host} did not accept the rules of the client {name} for the secret {secret}: {message}. The secret is not held in its client on that host.",
+    scopeVanished:
+      "The rules of the client {name} for the secret {secret} are gone from the host {host}: another app saved its rules. They were sent again.",
     defaultPersona: "Default persona",
     snippetTag: "Snippet tag",
     snippetTagHelp: "Snippets with this tag come first, and a new snippet starts with it.",

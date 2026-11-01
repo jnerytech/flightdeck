@@ -1741,6 +1741,10 @@ export const ptBR = {
     vaultGroupNone: "Segredos sem cliente",
     vaultGroupOthers: "Segredos de outros clientes",
     scopeChanged: "As regras de segredos do cliente {name} mudaram com os projetos dele.",
+    scopeRefused:
+      "O host {host} não aceitou as regras do cliente {name} para o segredo {secret}: {message}. O segredo não está preso ao cliente nesse host.",
+    scopeVanished:
+      "As regras do cliente {name} para o segredo {secret} sumiram do host {host}: outro app salvou as regras dele. Foram enviadas de novo.",
     defaultPersona: "Persona padrão",
     snippetTag: "Tag dos snippets",
     snippetTagHelp:

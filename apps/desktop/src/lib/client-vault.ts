@@ -139,3 +139,13 @@ export function groupSecrets(
   ];
   return groups.filter((g) => g.secrets.length > 0);
 }
+
+/** The rules without those a client generated (`client-scope:` ids): what is read back is the person's own. */
+export function stripGenerated(rules: unknown[]): unknown[] {
+  return rules.filter((rule) => !isGeneratedRule(rule));
+}
+
+/** Whether a rule is one a client generated: its id starts with the marker. */
+export function isGeneratedRule(rule: unknown): boolean {
+  return isRecord(rule) && typeof rule.id === "string" && rule.id.startsWith(SCOPE_RULE_PREFIX);
+}

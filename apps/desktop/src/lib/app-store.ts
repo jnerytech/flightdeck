@@ -62,7 +62,13 @@ import {
 import { costByClient, loadCostsSummary } from "./client-costs.ts";
 import { knownProjects } from "./client-rules.ts";
 import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
-import { effectiveRules, SCOPE_RULE_PREFIX } from "./client-vault.ts";
+import {
+  effectiveRules,
+  isGeneratedRule,
+  SCOPE_RULE_PREFIX,
+  scopingClient,
+  stripGenerated,
+} from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
@@ -294,6 +300,7 @@ export type HostCommandType = Extract<
   | "vault.deny"
   | "vault.approve"
   | "vault.rules.set"
+  | "vault.rules.get"
   | "vault.rules.preview"
   | "messages.watch"
   | "messaging.rules.get"
@@ -2777,6 +2784,12 @@ export class AppStore {
     return effectiveRules(secret, own, this.state.clientList, (id) => scope.projectKeysOf(id));
   }
 
+  /** A secret's rules as a host holds them, without the ones a client generated; null when it does not answer. */
+  async readHostVaultRules(hostId: string, secretId: string): Promise<unknown[] | null> {
+    const result = await this.hostRequest(hostId, "vault.rules.get", { secretId });
+    return result.ok ? stripGenerated(result.data.rules) : null;
+  }
+
   /** What was last sent of each secret to each host (`hostId/secretId`), as text. */
   private readonly vaultScopeSent = new Map<string, string>();
   private vaultScopeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2815,7 +2828,20 @@ export class AppStore {
           tags: secret.tags,
           rules,
         });
-        if (!result.ok) continue;
+        if (!result.ok) {
+          // Not held in its client on that host: said, not left to be found out.
+          const client = scopingClient(secret, this.state.clientList);
+          this.fail(
+            new Error(result.code),
+            this.i18n.t("clients.scopeRefused", {
+              host: host.name,
+              name: client?.name ?? "",
+              secret: secret.name,
+              message: result.message,
+            }),
+          );
+          continue;
+        }
         this.vaultScopeSent.set(key, text);
         if (scoped && before?.includes(SCOPE_RULE_PREFIX)) {
           const client = this.state.clientList.find((c) =>
@@ -2836,10 +2862,43 @@ export class AppStore {
       if (!own || !secret.allowedHosts.includes(hostId)) continue;
       const rules = this.effectiveVaultRules(secret, own);
       this.vaultScopeSent.set(`${hostId}/${secret.id}`, JSON.stringify(rules));
-      void conn
-        .request("vault.rules.set", { secretId: secret.id, tags: secret.tags, rules })
-        .catch((error: unknown) => this.fail(error));
+      void this.sendScopedRules(hostId, conn, secret, rules).catch((error: unknown) =>
+        this.fail(error),
+      );
     }
+  }
+
+  /**
+   * Sends a secret's rules to a host on connect. For a scoped secret the host is asked first what
+   * it holds: this app is the only writer of the generated rules, so a host that holds rules but
+   * none of them marked had them replaced by someone else (said, then sent again), and marked
+   * ones that differ are the client's projects having changed while the host was away.
+   */
+  private async sendScopedRules(
+    hostId: string,
+    conn: HostConnection,
+    secret: SecretMeta,
+    rules: unknown[],
+  ): Promise<void> {
+    const generated = rules.filter(isGeneratedRule);
+    const client = generated.length > 0 ? scopingClient(secret, this.state.clientList) : null;
+    if (client) {
+      const held = await conn
+        .request("vault.rules.get", { secretId: secret.id })
+        .then((answer) => answer.rules)
+        .catch(() => []);
+      const marked = held.filter(isGeneratedRule);
+      if (held.length > 0 && marked.length === 0) {
+        const host = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+        this.fail(
+          new Error("scope"),
+          this.i18n.t("clients.scopeVanished", { name: client.name, secret: secret.name, host }),
+        );
+      } else if (marked.length > 0 && JSON.stringify(marked) !== JSON.stringify(generated)) {
+        this.success(this.i18n.t("clients.scopeChanged", { name: client.name }));
+      }
+    }
+    await conn.request("vault.rules.set", { secretId: secret.id, tags: secret.tags, rules });
   }
 
   /**
