@@ -25,7 +25,6 @@ sessões num lugar só, sem abrir cada máquina.
 ## Recursos
 
 **Sessões**
-
 - Uma central para as sessões de todos os hosts, agrupadas por projeto, com o estado ao vivo e uma
   linha de resumo para cada uma.
 - Sessões abertas num terminal também aparecem, por hooks do Claude Code que você instala se
@@ -35,7 +34,6 @@ sessões num lugar só, sem abrir cada máquina.
 - Regras de "permitir sempre" gravadas na config local do projeto no Claude Code, nunca na global.
 
 **Trabalho**
-
 - Um board por projeto: cada card é uma worktree git mais uma sessão, com pull requests no GitHub
   e no Azure DevOps.
 - Workflows em YAML com agentes, checks, gates de aprovação, loops, etapas em paralelo e
@@ -77,6 +75,10 @@ sessões num lugar só, sem abrir cada máquina.
 - Um ambiente de execução por card: scripts para prepará-lo e rodá-lo a partir de um
   `.flightdeck/run.yaml` confiado, um bloco de portas próprio para dois cards rodarem lado a lado,
   cada processo numa aba de terminal e um preview do app rodando (só loopback).
+- Clientes: agrupe projetos entre hosts por regras (um prefixo de remoto ou uma pasta), com um
+  seletor que filtra sessões, board, custos, orçamentos, conversas e o cofre, a soma de custos e do
+  limite mensal por cliente e padrões (persona, snippets, tag do cofre) que nunca escondem uma
+  aprovação.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.
@@ -90,13 +92,11 @@ sessões num lugar só, sem abrir cada máquina.
   que você já tem, chame as duas em um só script e junte as linhas (veja o manual).
 
 **Custo e cota**
-
 - Custo estimado por projeto, modelo e origem, com exportação em CSV.
 - Barras da cota do plano com a projeção de quando a janela esgota, fila por cota e orçamentos em
   US$ que avisam ou seguram cards novos.
 
 **Desktop**
-
 - Abas com histórico próprio, fixadas, reordenadas e guardadas entre aberturas, e tela dividida em
   duas áreas, lado a lado ou empilhadas.
 - Terminal embutido em qualquer host, numa aba, sem SSH: sobrevive ao app e reanexa com o
@@ -202,7 +202,6 @@ só. Os hosts são independentes: nada é copiado entre eles.
 ```
 
 ## Modelo de segurança
-
 - **Um token por host.** O app conecta com um token aleatório, guardado no cofre de credenciais do
   sistema operacional. Tokens nunca aparecem nos logs, e `flightdeckd pair --rotate` troca o token.
 - **Pastas.** Sessões só abrem dentro de `allowedRoots`; o caminho é resolvido com realpath, então
@@ -244,7 +243,6 @@ só. Os hosts são independentes: nada é copiado entre eles.
   tem assinatura de código.
 
 ## Documentação
-
 - Manual: [English](docs/manual/en.md) | [Português (Brasil)](docs/manual/pt-BR.md)
 - Roadmap e specs: [`docs/SPEC.md`](docs/SPEC.md)
 - Decisões e divergências em relação às specs: [`docs/DECISIONS.md`](docs/DECISIONS.md)

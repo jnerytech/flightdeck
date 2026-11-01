@@ -25,7 +25,6 @@ sessions from one place, without opening each machine.
 ## Features
 
 **Sessions**
-
 - One hub for the sessions of all your hosts, grouped by project, with live state and a summary
   line for each.
 - Sessions started in a terminal show up too, through opt-in Claude Code hooks.
@@ -35,7 +34,6 @@ sessions from one place, without opening each machine.
   ones.
 
 **Work**
-
 - A board per project: each card is a git worktree plus a session, with pull requests on GitHub
   and Azure DevOps.
 - YAML workflows with agents, checks, approval gates, loops, parallel steps and budgets.
@@ -72,6 +70,9 @@ sessions from one place, without opening each machine.
 - A run environment per card: scripts to prepare and run it from a trusted `.flightdeck/run.yaml`,
   a block of ports of its own so two cards run side by side, each process in a terminal tab, and a
   preview of the running app (loopback only).
+- Clients: group projects across hosts by rules (a remote prefix or a folder), with a switcher that
+  filters sessions, board, costs, budgets, conversations and the vault, a cost and month-limit
+  roll-up per client, and defaults (persona, snippets, vault tag) that never hide an approval.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
@@ -85,13 +86,11 @@ sessions from one place, without opening each machine.
   have, call both in one script and join the lines (see the manual).
 
 **Cost and quota**
-
 - Estimated cost per project, model and origin, with CSV export.
 - Plan quota bars with a projection of when the window runs out, a quota queue, and budgets in
   US$ that alert you or hold new cards.
 
 **Desktop**
-
 - Tabs with their own history, pinned, reordered and kept between starts, and a split view with
   two areas side by side or stacked.
 - An embedded terminal on any host, in a tab, with no SSH: it survives the app and reattaches
@@ -195,7 +194,6 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
 ```
 
 ## Security model
-
 - **Token per host.** The app connects with a random token stored in the operating system's
   credential store. Tokens never appear in the logs, and `flightdeckd pair --rotate` replaces one.
 - **Folders.** Sessions can only be opened inside `allowedRoots`; paths are resolved with
@@ -236,7 +234,6 @@ daemon and merges them into a single view. Hosts are independent: nothing is cop
   code-signed.
 
 ## Documentation
-
 - Manual: [English](docs/manual/en.md) | [Português (Brasil)](docs/manual/pt-BR.md)
 - Roadmap and specs: [`docs/SPEC.md`](docs/SPEC.md)
 - Decisions and deviations from the specs: [`docs/DECISIONS.md`](docs/DECISIONS.md)
