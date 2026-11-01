@@ -41,7 +41,12 @@ export interface TeamsOptions {
   quota?: Pick<Quota, "watch" | "blocked"> | undefined;
   personas?: TeamPersonas | undefined;
   /** The standard names: a persona that arrives after the session started renames it. */
-  names?: { setPersona(sessionId: string, persona: string | null): unknown } | undefined;
+  names?:
+    | {
+        get(sessionId: string): unknown;
+        setPersona(sessionId: string, persona: string | null): unknown;
+      }
+    | undefined;
   clock?: (() => number) | undefined;
   /** Starts the coordinator session; phase 20 passes the persona on. */
   startCoordinator?:
@@ -467,7 +472,15 @@ export class Teams {
       this.save(row.id, { members: JSON.stringify(members) });
       if (target.sessionId) {
         this.opts.applyPersona?.(target.sessionId, persona);
-        this.opts.names?.setPersona(target.sessionId, persona);
+        // A worker's name may still be waiting for its folder's project key: it is born with the
+        // card's persona, which is kept up to date here.
+        if (target.cardId) {
+          if (persona) this.cardPersonas.set(target.cardId, persona);
+          else this.cardPersonas.delete(target.cardId);
+        }
+        if (this.opts.names?.get(target.sessionId)) {
+          this.opts.names.setPersona(target.sessionId, persona);
+        }
       }
     }
     if (patch.addWorkers) {
