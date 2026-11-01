@@ -107,6 +107,7 @@ jobs:
           bun run smoke:snippets
           bun run smoke:rules-vault
           bun run smoke:personas
+          bun run smoke:watch
           bun run smoke:teams
 
       # The Tauri context needs the built frontend (frontendDist) to exist.

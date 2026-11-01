@@ -35,6 +35,7 @@
     "smoke:ssh": "bun run scripts/smoke-ssh.ts",
     "smoke:snippets": "bun run scripts/smoke-snippets.ts",
     "smoke:personas": "bun run scripts/smoke-personas.ts",
+    "smoke:watch": "bun run scripts/smoke-watch.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
