@@ -48,11 +48,11 @@ export function UsagePanel(props: {
           (usage?.rows ?? []).map((r) => ({
             ...r,
             tokens: `${r.inputTokens} / ${r.outputTokens}`,
-            turns: `${r.turns} ${r.turns === 1 ? "turno" : "turnos"}`,
+            turns: t("usageUi.turnCount", { n: r.turns }),
           })),
         ),
       );
-  }, [store, hostId, online, costs]);
+  }, [store, hostId, online, costs, t]);
 
   return (
     <section aria-label={t("usageUi.title")}>
