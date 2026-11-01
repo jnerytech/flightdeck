@@ -10,6 +10,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const sockets = new Set<{ send(data: string): unknown }>();
   /** Commands the test makes this daemon refuse, with the message it answers. */
   const refuse = new Map<string, string>();
+  /** The folders the host lets sessions run in (`hello` says them); none by default. */
+  const roots: string[] = [];
   /** Features `host.info` announces (a phase 6 daemon announces none). */
   const features: string[] = [];
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
@@ -116,7 +118,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           return;
         }
         const known: Record<string, unknown> = {
-          hello: { hostName: "h", daemonVersion: "0.6.0", protocolVersion: 1, allowedRoots: [] },
+          hello: { hostName: "h", daemonVersion: "0.6.0", protocolVersion: 1, allowedRoots: roots },
           "host.info": {
             hostName: "h",
             os: "linux",
@@ -279,6 +281,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     telemetry,
     trace,
     bg,
+    roots,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
+import { BgPanel } from "./BgPanel.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
@@ -110,6 +111,7 @@ export function ExternalView(props: {
           </>
         }
       />
+      <BgPanel store={store} state={state} hostId={hostId} claudeSessionId={id} />
       {requests.length > 0 && (
         <div className="flex flex-col gap-3 border-b p-3">
           {requests.map((request) => (

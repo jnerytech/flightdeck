@@ -37,6 +37,9 @@ import {
 import { typing } from "../lib/keys.ts";
 import { hasFeature } from "../lib/version.ts";
 
+/** How often the hub asks the hosts about their background sessions. */
+const BG_REFRESH_MS = 10_000;
+
 const TONES: Record<HubState, StateTone> = {
   running: "running",
   needs_you: "needs-you",
@@ -72,11 +75,34 @@ export function SessionsHub(props: {
     if (signature) void store.refreshHub();
   }, [store, signature]);
 
+  // Background sessions change state on their own (a permission asked, a turn done): while the
+  // hub is open and a host has them, it asks again every BG_REFRESH_MS.
+  const withBackground = state.hosts.some(
+    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "bg", false),
+  );
+  useEffect(() => {
+    if (!withBackground) return;
+    let stopped = false;
+    let cancel = () => {};
+    const schedule = () => {
+      cancel = store.later(() => {
+        void store.refreshHub().then(() => {
+          if (!stopped) schedule();
+        });
+      }, BG_REFRESH_MS);
+    };
+    schedule();
+    return () => {
+      stopped = true;
+      cancel();
+    };
+  }, [store, withBackground]);
+
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
     () => hubRows(state),
-    [state.hosts, state.hub, state.meta, state.externals, state.names],
+    [state.hosts, state.hub, state.meta, state.externals, state.names, state.background],
   );
   const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
@@ -194,6 +220,7 @@ export function SessionsHub(props: {
             <option value="flightdeck">{t("hub.origins.flightdeck")}</option>
             <option value="terminal">{t("hub.origins.terminal")}</option>
             <option value="history">{t("hub.origins.history")}</option>
+            <option value="background">{t("hub.origins.background")}</option>
           </NativeSelect>
           <NativeSelect
             compact
@@ -357,13 +384,15 @@ export function SessionsHub(props: {
                           {usd(cost)}
                         </output>
                       )}
-                      <time
-                        dateTime={new Date(row.lastActivity).toISOString()}
-                        title={store.formatDateTime(row.lastActivity)}
-                        className="shrink-0 text-muted-foreground text-xs tabular-nums"
-                      >
-                        {store.formatWhen(row.lastActivity)}
-                      </time>
+                      {row.lastActivity && (
+                        <time
+                          dateTime={new Date(row.lastActivity).toISOString()}
+                          title={store.formatDateTime(row.lastActivity)}
+                          className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                        >
+                          {store.formatWhen(row.lastActivity)}
+                        </time>
+                      )}
                       {row.claudeSessionId && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

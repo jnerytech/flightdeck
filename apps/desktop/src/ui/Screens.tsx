@@ -1,3 +1,4 @@
+import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { SplitView } from "@/components/layout/split-view";
@@ -83,6 +84,10 @@ export function rowRoute(row: HubRow): Route {
   if (row.sessionId) return { name: "session", host: row.hostId, id: row.sessionId };
   if (row.origin === "terminal" && row.state !== "ended") {
     return { name: "external", host: row.hostId, claudeSessionId: id };
+  }
+  // A background session: its screen when the host knows its Claude session, else the hub.
+  if (row.origin === "background") {
+    return id ? { name: "external", host: row.hostId, claudeSessionId: id } : { name: "hub" };
   }
   return { name: "reader", target: { hostId: row.hostId, claudeSessionId: id } };
 }
@@ -684,6 +689,22 @@ function routeScreen(props: ScreenProps): ReactNode {
   return null;
 }
 
+/** "Iniciar em segundo plano": the session runs under Claude Code's supervisor; the hub shows it. */
+async function startInBackground(
+  store: AppStore,
+  hostId: string,
+  payload: CommandPayload<"session.create">,
+  persona: string,
+): Promise<void> {
+  const id = await store.startBackground(hostId, {
+    cwd: payload.cwd,
+    prompt: payload.prompt,
+    ...(payload.name ? { name: payload.name } : {}),
+    ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+  });
+  if (id) store.router.push({ name: "hub" });
+}
+
 /** The new-session form of a host; the created session opens. */
 function NewSession(props: {
   store: AppStore;
@@ -695,7 +716,9 @@ function NewSession(props: {
   const { host } = props;
   const t = useT();
   const [persona, setPersona] = useState(props.persona ?? "");
+  const [background, setBackground] = useState(false);
   const personas = hasFeature(host.hostInfo?.features, "personas", false);
+  const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
   return (
     <NewSessionForm
       key={`${host.id}/${props.prompt ?? ""}`}
@@ -703,18 +726,34 @@ function NewSession(props: {
       host={host}
       {...(props.prompt ? { prompt: props.prompt } : {})}
       extra={
-        personas ? (
-          <PersonaPicker
-            store={props.store}
-            hostId={host.id}
-            label={t("personas.picker.label")}
-            value={persona}
-            onChange={setPersona}
-          />
-        ) : null
+        <>
+          {personas && (
+            <PersonaPicker
+              store={props.store}
+              hostId={host.id}
+              label={t("personas.picker.label")}
+              value={persona}
+              onChange={setPersona}
+            />
+          )}
+          {withBackground && (
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={background}
+                  onChange={(e) => setBackground(e.target.checked)}
+                />{" "}
+                {t("bg.start")}
+              </label>
+              <span className="text-muted-foreground text-xs">{t("bg.startHint")}</span>
+            </>
+          )}
+        </>
       }
       // The created session opens by itself (AppStore.createSession).
       onCreate={(payload) => {
+        if (background) return startInBackground(props.store, host.id, payload, persona);
         const ref = props.store.personaRef(persona);
         return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });
       }}

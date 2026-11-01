@@ -149,6 +149,15 @@ function liveLine(
   return { ...line, state, tool, since: live.updatedAt };
 }
 
+/** What a background session's state means for the hub. */
+const BACKGROUND: Record<string, HubState> = {
+  working: "running",
+  blocked: "needs_you",
+  done: "idle",
+  failed: "ended",
+  stopped: "ended",
+};
+
 const NO_META: SessionMeta = { name: null, pinned: false, archived: false };
 
 /**
@@ -200,6 +209,24 @@ export function hubRows(state: AppState): HubRow[] {
         persona: s.persona ?? null,
       };
     });
+    // Claude Code's background sessions: a session the host has under another origin stays there.
+    const background = (state.background[host.id]?.sessions ?? [])
+      .filter((b) => !b.claudeSessionId || !seen.has(b.claudeSessionId))
+      .map((b): HubRow => {
+        const { name, ...common } = base(b.claudeSessionId, b.cwd, null);
+        return {
+          ...common,
+          key: `${host.id}/b/${b.id}`,
+          origin: "background",
+          sessionId: null,
+          title: name ?? b.name ?? basename(b.cwd),
+          state: BACKGROUND[b.state] ?? "idle",
+          controllable: false,
+          lastActivity: b.startedAt === null ? "" : new Date(b.startedAt).toISOString(),
+          summary: null,
+          persona: null,
+        };
+      });
     const externals = Object.entries(state.externals)
       .filter(([key, s]) => key.startsWith(`${host.id}/`) && !seen.has(s.claudeSessionId))
       .map(([, s]): HubRow => {
@@ -234,7 +261,7 @@ export function hubRows(state: AppState): HubRow[] {
           persona: null,
         };
       });
-    return [...managed, ...externals, ...history];
+    return [...managed, ...background, ...externals, ...history];
   });
 }
 

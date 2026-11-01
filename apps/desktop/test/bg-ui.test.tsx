@@ -3,12 +3,15 @@ import { hubRows } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { sidebarNav } from "./sidebar.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { rowRoute } = await import("../src/ui/Screens.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -60,6 +63,7 @@ async function open(features = ["bg", "terminal"], sessions: unknown[] = [BLOCKE
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
+  daemon.roots.push("/work");
   daemon.bg.list = { supported: true, sessions };
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
@@ -82,14 +86,30 @@ describe("bg-ui: the hub", () => {
     expect(store.getState().background[hostId]?.supported).toBe(true);
   });
 
+  test("a row opens the session's screen when the host knows its Claude session, else it stays in the hub; a state it does not know reads as idle", async () => {
+    const { store, hostId } = await open(
+      ["bg"],
+      [BLOCKED, { ...DONE, state: "something-new", startedAt: null }],
+    );
+    await act(async () => {
+      await store.loadBackground(hostId);
+    });
+    const rows = hubRows(store.getState()).filter((r) => r.origin === "background");
+    expect(rows.map((r) => rowRoute(r).name)).toEqual(["external", "hub"]);
+    expect(rows[1]).toMatchObject({ state: "idle", lastActivity: "" });
+  });
+
   test("the rows show the badge and the origin filter keeps only them", async () => {
     const { store } = await open();
     await act(async () => {
       store.router.push({ name: "hub" });
     });
     await settle(() => screen.queryByRole("listitem", { name: "faxina" }) !== null);
-    const row = screen.queryByRole("listitem", { name: "faxina" }) as HTMLElement;
-    expect(row.textContent).toContain("segundo plano");
+    // The origin is in the header of the group, or in the row when the group mixes origins.
+    expect(screen.queryByRole("region", { name: "Projeto app" })?.textContent).toContain(
+      "segundo plano",
+    );
+    await sidebar.openFilters();
     const origin = screen.queryByLabelText("Origem") as HTMLSelectElement;
     expect([...origin.options].map((o) => o.textContent)).toContain("Segundo plano");
     await act(async () => {
@@ -97,6 +117,53 @@ describe("bg-ui: the hub", () => {
     });
     expect(screen.queryByRole("listitem", { name: "faxina" })).not.toBeNull();
     expect(screen.queryByRole("listitem", { name: "relatorio" })).not.toBeNull();
+  });
+});
+
+describe("bg-ui: the hub follows them", () => {
+  test("while the hub is open it asks the host again every 10 s, and stops when it closes", async () => {
+    const timers: Array<{ fn: () => void; ms: number; cancelled: boolean }> = [];
+    const store = new AppStore(memoryPlatform().platform, {
+      baseDelayMs: 60_000,
+      timers: {
+        setTimeout: (fn, ms) => {
+          timers.push({ fn, ms, cancelled: false });
+          return timers.length - 1;
+        },
+        clearTimeout: (handle) => {
+          const timer = timers[handle as number];
+          if (timer) timer.cancelled = true;
+        },
+      },
+    });
+    cleanups.push(() => store.dispose());
+    const daemon = legacyDaemon(cleanups);
+    daemon.features.push("bg");
+    daemon.bg.list = { supported: true, sessions: [BLOCKED] };
+    const { unmount } = render(<App store={store} />);
+    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    await settle(() => store.getState().hosts[0]?.hostInfo != null);
+    await act(async () => {
+      store.router.push({ name: "hub" });
+    });
+    await settle(() => timers.some((t) => t.ms === 10_000));
+    const asks = () => daemon.commands.filter((c) => c.type === "bg.list").length;
+    const before = asks();
+    daemon.bg.list = { supported: true, sessions: [{ ...BLOCKED, state: "done" }] };
+    const pending = timers.filter((t) => t.ms === 10_000 && !t.cancelled).at(-1);
+    await act(async () => {
+      // A timer that fired is over.
+      if (pending) pending.cancelled = true;
+      pending?.fn();
+    });
+    await settle(() => asks() > before);
+    expect(asks()).toBeGreaterThan(before);
+    await settle(() => store.getState().background[hostId]?.sessions[0]?.state === "done");
+    expect(store.getState().background[hostId]?.sessions[0]?.state).toBe("done");
+    // Another one is scheduled; closing the hub cancels it.
+    await settle(() => timers.filter((t) => t.ms === 10_000 && !t.cancelled).length > 0);
+    unmount();
+    expect(timers.filter((t) => t.ms === 10_000 && !t.cancelled)).toHaveLength(0);
   });
 });
 
@@ -125,10 +192,9 @@ describe("bg-ui: the actions of a session", () => {
     await click("Reiniciar");
     await click("Trazer para o terminal");
     const asked = daemon.commands.filter(
-      (c) => c.type.startsWith("bg.") || c.type === "terminal.open",
+      (c) => (c.type.startsWith("bg.") && c.type !== "bg.list") || c.type === "terminal.open",
     );
     expect(asked.map((c) => [c.type, c.payload])).toEqual([
-      ["bg.list", {}],
       ["bg.stop", { id: "7c5dcf5d" }],
       ["bg.respawn", { id: "7c5dcf5d" }],
       [
@@ -136,7 +202,9 @@ describe("bg-ui: the actions of a session", () => {
         { cwd: "/work/app", command: ["claude", "attach", "7c5dcf5d"], cols: 80, rows: 24 },
       ],
     ]);
-    expect(store.tabs.tabs.some((t) => t.router.current.name === "terminal")).toBe(true);
+    const inTab = () => store.tabs.tabs.some((t) => t.router.current.name === "terminal");
+    await settle(inTab);
+    expect(inTab()).toBe(true);
   });
 
   test("a message goes to the host, and a refusal is said in the app's language", async () => {
@@ -155,8 +223,8 @@ describe("bg-ui: the actions of a session", () => {
       fireEvent.change(field, { target: { value: "de novo" } });
     });
     await click("Enviar");
-    await settle(() => store.getState().notices.length > 0);
-    expect(store.getState().notices[0]).toMatchObject({ reason: "bg_no_message_path" });
+    await settle(() => store.getState().notices.some((n) => n.reason === "bg_no_message_path"));
+    expect(store.getState().notices.find((n) => n.reason === "bg_no_message_path")).toBeDefined();
     await settle(() => screen.queryByText(/Não dá para mandar mensagem/) !== null);
     expect(screen.queryByText(/Não dá para mandar mensagem/)).not.toBeNull();
   });
@@ -173,7 +241,7 @@ describe("bg-ui: Iniciar em segundo plano", () => {
     await act(async () => {
       ctx.store.router.push({ name: "new-session", host: ctx.hostId });
     });
-    await settle(() => screen.queryByLabelText("Prompt") !== null);
+    await settle(() => screen.queryByLabelText("Primeiro prompt") !== null);
     return ctx;
   }
 
@@ -182,16 +250,12 @@ describe("bg-ui: Iniciar em segundo plano", () => {
     const box = screen.queryByLabelText("Iniciar em segundo plano") as HTMLInputElement;
     expect(box).not.toBeNull();
     await act(async () => {
-      fireEvent.change(screen.queryByLabelText("Prompt") as HTMLTextAreaElement, {
+      fireEvent.change(screen.queryByLabelText("Primeiro prompt") as HTMLTextAreaElement, {
         target: { value: "limpe os logs" },
       });
       fireEvent.click(box);
     });
-    await act(async () => {
-      fireEvent.submit(
-        screen.queryByRole("button", { name: "Criar sessão" })?.closest("form") as HTMLFormElement,
-      );
-    });
+    await click("Criar sessão");
     await settle(() => daemon.commands.some((c) => c.type === "bg.start"));
     const started = daemon.commands.find((c) => c.type === "bg.start")?.payload as {
       prompt: string;

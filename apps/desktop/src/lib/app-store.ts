@@ -1214,11 +1214,13 @@ export class AppStore {
         .map(async (host) => {
           const conn = this.connections.get(host.id) as HostConnection;
           const named = hasFeature(host.hostInfo?.features, "names", false);
-          const [managed, history, external, standard] = await Promise.all([
+          const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
+          const [managed, history, external, standard, background] = await Promise.all([
             quiet(conn.request("session.list", {})),
             quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
             quiet(conn.request("external.list", {})),
             named ? quiet(conn.request("names.list", {})) : null,
+            withBackground ? quiet(conn.request("bg.list", {})) : null,
           ]);
           // Only what differs from what the state holds is replaced, so a refresh that finds the
           // same lists tells nobody (the screens compare by reference).
@@ -1251,6 +1253,9 @@ export class AppStore {
           }
           if (!sameJson(this.state.names[host.id], standardNames)) {
             patch.names = { ...this.state.names, [host.id]: standardNames };
+          }
+          if (background && !sameJson(this.state.background[host.id], background)) {
+            patch.background = { ...this.state.background, [host.id]: background };
           }
           if (metaChanged) patch.meta = meta;
           if (externalsChanged) patch.externals = externals;
@@ -2092,29 +2097,50 @@ export class AppStore {
   }
 
   /** Reads a host's background sessions (`claude agents`), for the hub and their screen. */
-  async loadBackground(_hostId: string): Promise<void> {}
+  async loadBackground(hostId: string): Promise<void> {
+    const list = await this.hostCommand(hostId, "bg.list", {});
+    if (list) this.update({ background: { ...this.state.background, [hostId]: list } });
+  }
+
+  private async withBackground(hostId: string, run: Promise<BgList | null>): Promise<boolean> {
+    const list = await run;
+    if (!list) return false;
+    this.update({ background: { ...this.state.background, [hostId]: list } });
+    return true;
+  }
 
   /** Stops or restarts a background session; the list comes back with the answer. */
-  async bgAction(_hostId: string, _kind: "stop" | "respawn", _id: string): Promise<boolean> {
-    return false;
+  bgAction(hostId: string, kind: "stop" | "respawn", id: string): Promise<boolean> {
+    return this.withBackground(hostId, this.hostCommand(hostId, `bg.${kind}`, { id }));
   }
 
   /** Sends a message to a background session; false when the host refuses. */
-  async bgMessage(_hostId: string, _id: string, _text: string): Promise<boolean> {
-    return false;
+  bgMessage(hostId: string, id: string, text: string): Promise<boolean> {
+    return this.withBackground(hostId, this.hostCommand(hostId, "bg.message", { id, text }));
   }
 
   /** "Trazer para o terminal": `claude attach <id>` in a terminal tab of the host. */
-  async bgAttach(_hostId: string, _session: BgSession): Promise<string | null> {
-    return null;
+  async bgAttach(hostId: string, session: BgSession): Promise<string | null> {
+    const opened = await this.hostCommand(hostId, "terminal.open", {
+      cwd: session.cwd,
+      command: ["claude", "attach", session.id],
+      cols: 80,
+      rows: 24,
+    });
+    if (!opened) return null;
+    this.tabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
+    return opened.terminalId;
   }
 
   /** Starts a session in the background (`flightdeckd claude --bg`) and reads the list again. */
   async startBackground(
-    _hostId: string,
-    _payload: CommandPayload<"bg.start">,
+    hostId: string,
+    payload: CommandPayload<"bg.start">,
   ): Promise<string | null> {
-    return null;
+    const started = await this.hostCommand(hostId, "bg.start", payload);
+    if (!started) return null;
+    await this.loadBackground(hostId);
+    return started.id;
   }
 
   /** What a picker's value asks a session for: a persona by id, or an app persona whole. */
