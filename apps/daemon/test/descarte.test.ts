@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -50,7 +51,7 @@ describe("descarte", () => {
     await board.startCard(card.id);
     const started = await cardWhen(board, card.id, (c) => c.column === "review");
     expect(started).not.toBeNull();
-    const worktree = started?.worktreePath ?? "";
+    const worktree = must(started?.worktreePath, "worktreePath");
     writeFileSync(join(worktree, "README.md"), "alterado\n");
     writeFileSync(join(worktree, "novo.txt"), "não rastreado\n");
     const last = await board.discardCard(card.id, true);

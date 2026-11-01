@@ -5,7 +5,7 @@ import { Changes } from "../src/review/changes.ts";
 import { ReviewComments, type ReviewCommentsOptions } from "../src/review/comments.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { newManager, poll } from "./helpers.ts";
+import { must, newManager, poll } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 // Real git and FakeRuntime turns: more than the default 5 s.
@@ -191,7 +191,7 @@ describe("revisao-inline", () => {
       card.id,
       (c) => c.worktreePath !== null && c.sessionStatus === "idle",
     );
-    writeFileSync(join(started?.worktreePath ?? "", "README.md"), "# repo\nnovo\n");
+    writeFileSync(join(must(started?.worktreePath, "worktreePath"), "README.md"), "# repo\nnovo\n");
     const review = new ReviewComments({
       db: ctx.store.db,
       changes: new Changes({ db: ctx.store.db, board: ctx.board }),

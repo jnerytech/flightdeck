@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { addWorktree } from "../src/board/worktree.ts";
 import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
-import { record } from "./helpers.ts";
+import { must, record } from "./helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {
@@ -85,7 +85,7 @@ describe("worktree", () => {
     await board.startCard(card.id);
     const started = await cardWhen(board, card.id, (c) => c.worktreePath !== null);
     expect(started).not.toBeNull();
-    const path = started?.worktreePath ?? "";
+    const path = must(started?.worktreePath, "worktreePath");
     expect(existsSync(join(path, "develop.txt"))).toBe(true);
     expect(git(path, "rev-parse", "HEAD")).toBe(git(repo, "rev-parse", "develop"));
   });

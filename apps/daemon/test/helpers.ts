@@ -76,3 +76,15 @@ export function record(manager: SessionManager, sessionId: string, sinceSeq = 0)
     events().filter((e): e is Extract<SessionEvent, { type: T }> => e.type === type);
   return { envelopes, events, statuses, count, find, unsubscribe: sub.unsubscribe };
 }
+
+/**
+ * A value a test needs for the next step (a worktree path, an id): it throws when it is missing.
+ * A `?? ""` there turns a failed precondition into a path of "", the current folder, and the test
+ * then writes into the repository it runs in.
+ */
+export function must<T>(value: T | null | undefined, what: string): T {
+  if (value === null || value === undefined || value === "") {
+    throw new Error(`the test needs ${what}, and it is not there`);
+  }
+  return value;
+}

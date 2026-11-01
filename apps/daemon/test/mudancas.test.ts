@@ -5,7 +5,7 @@ import { Changes, type ChangesOptions } from "../src/review/changes.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
-import { newManager, poll, tempDir } from "./helpers.ts";
+import { must, newManager, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { manualTime } from "./time-helpers.ts";
 import { insertSession } from "./usage-helpers.ts";
@@ -134,7 +134,7 @@ describe("mudancas", () => {
     const card = ctx.board.createCard(project.id, { title: "Mudar", description: "oi" });
     await ctx.board.startCard(card.id);
     const started = await cardWhen(ctx.board, card.id, (c) => c.worktreePath !== null);
-    const worktree = started?.worktreePath ?? "";
+    const worktree = must(started?.worktreePath, "worktreePath");
     writeFileSync(join(worktree, "feito.txt"), "feito\n");
     git(worktree, "add", "feito.txt");
     git(worktree, "commit", "-q", "-m", "feito");

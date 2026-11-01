@@ -6,7 +6,7 @@ import { ruleString } from "../src/board/project-rules.ts";
 import { excludeLocalSettings } from "../src/board/worktree.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { poll, tempDir } from "./helpers.ts";
+import { must, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
@@ -116,7 +116,7 @@ describe("regras-projeto", () => {
     const { repo, board, project, asking } = await setup();
     writeSettings(repo, { permissions: { allow: ["Bash(npm test:*)"] } });
     const { card, ready } = await asking("Cópia");
-    const worktree = ready?.worktreePath ?? "";
+    const worktree = must(ready?.worktreePath, "worktreePath");
     const copy = join(worktree, SETTINGS);
     expect(existsSync(copy) ? readJson(copy) : null).toEqual({
       permissions: { allow: ["Bash(npm test:*)"] },
@@ -157,7 +157,9 @@ describe("regras-projeto", () => {
     const requestId = store.pendingPermissions(again?.sessionId ?? "")[0]?.id ?? "";
     allow(requestId, [rule("ls:*")]);
     expect(excluded()).toBe(true);
-    writeSettings(again?.worktreePath ?? "", { permissions: { allow: ["Bash(ls:*)"] } });
+    writeSettings(must(again?.worktreePath, "worktreePath"), {
+      permissions: { allow: ["Bash(ls:*)"] },
+    });
     const diff = await board.diff(first.card.id);
     expect(diff.files.map((f) => f.path)).not.toContain(SETTINGS);
   });
@@ -169,7 +171,7 @@ describe("regras-projeto", () => {
     git(repo, "commit", "-q", "-m", "settings versionado");
     writeSettings(repo, { permissions: { allow: ["Local"] } });
     const { ready } = await asking("Versionado");
-    expect(readJson(join(ready?.worktreePath ?? "", SETTINGS))).toEqual({
+    expect(readJson(join(must(ready?.worktreePath, "worktreePath"), SETTINGS))).toEqual({
       permissions: { allow: ["Versionada"] },
     });
   });

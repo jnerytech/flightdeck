@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import type { BoardOptions } from "../src/board/board.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { poll } from "./helpers.ts";
+import { must, poll } from "./helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -39,7 +39,7 @@ async function cardWithPr(overrides: Partial<BoardOptions> = {}) {
   git(ctx.repo, "remote", "add", "origin", join(ctx.root, "remote.git"));
   await ctx.board.createPr(card.id);
   const views = () => gh.calls().filter((args) => args.includes(VIEW)).length;
-  return { ...ctx, gh, card, views, worktree: reviewed?.worktreePath ?? "" };
+  return { ...ctx, gh, card, views, worktree: must(reviewed?.worktreePath, "worktreePath") };
 }
 
 /** An idle() that holds until `release()`, counting the calls. */
@@ -69,7 +69,7 @@ async function idleCard(idle: () => Promise<void>) {
     (c) => c.worktreePath !== null && c.sessionStatus === "idle",
   );
   expect(started).not.toBeNull();
-  return { ...ctx, card, worktree: started?.worktreePath ?? "" };
+  return { ...ctx, card, worktree: must(started?.worktreePath, "worktreePath") };
 }
 
 describe("board", () => {

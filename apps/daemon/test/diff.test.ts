@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { parseUnifiedDiff } from "../src/board/diff.ts";
 import type { DiffFile } from "../src/board/types.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {
@@ -17,7 +18,7 @@ async function startedCard() {
   const card = ctx.board.createCard(project.id, { title: "Diff", description: "faça" });
   await ctx.board.startCard(card.id);
   const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review");
-  return { ...ctx, card, worktree: started?.worktreePath ?? "" };
+  return { ...ctx, card, worktree: must(started?.worktreePath, "worktreePath") };
 }
 
 const byPath = (files: DiffFile[], path: string) => files.find((f) => f.path === path);

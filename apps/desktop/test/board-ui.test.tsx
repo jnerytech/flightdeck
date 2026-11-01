@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
+import { must } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -312,7 +313,10 @@ describe("board-ui", () => {
       .columns.flatMap((c) => c.cards)
       .find((c) => c.title === "Jogar fora")?.id;
     await settle(() => board.getCard(discardId ?? "").sessionStatus === "idle");
-    writeFileSync(join(board.getCard(discardId ?? "").worktreePath ?? "", "rascunho.txt"), "x\n");
+    writeFileSync(
+      join(must(board.getCard(discardId ?? "").worktreePath, "worktreePath"), "rascunho.txt"),
+      "x\n",
+    );
     await click("Descartar");
     await settle(() => (dialog()?.textContent ?? "").includes("não enviadas"));
     expect(dialog()?.textContent ?? "").toContain("Descartar este card?");
@@ -371,7 +375,10 @@ describe("board-ui", () => {
     await settle(() => board.getCard(id).sessionStatus === "idle");
     await click("Parar");
 
-    writeFileSync(join(board.getCard(id).worktreePath ?? "", "solto.txt"), "não commitado\n");
+    writeFileSync(
+      join(must(board.getCard(id).worktreePath, "worktreePath"), "solto.txt"),
+      "não commitado\n",
+    );
     await click("Mudanças");
     await settle(() => screen.queryByRole("list", { name: "Arquivos alterados" }) !== null);
     const files = screen.queryByRole("list", { name: "Arquivos alterados" })?.textContent ?? "";

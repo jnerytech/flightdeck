@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 import { commitWorkflow, EXAMPLE, sha256 } from "./workflow-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
@@ -121,7 +122,7 @@ describe("trust", () => {
     await board.trustWorkflow(project.id, "feature", sha256(EXAMPLE));
     await board.startCard(card.id);
     const ready = await cardWhen(board, card.id, (c) => c.sessionStatus === "idle");
-    const worktree = ready?.worktreePath ?? "";
+    const worktree = must(ready?.worktreePath, "worktreePath");
     expect(worktree).not.toBe("");
     commitWorkflow(worktree, "feature", EXAMPLE.replace("bun test", "rm -rf ."));
     commitWorkflow(worktree, "sneaky", "steps:\n  - id: x\n    check: curl evil\n");

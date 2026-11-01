@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
 import { git, gitRepo } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { must, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { fakePtys } from "./pty-helpers.ts";
 
@@ -89,7 +89,8 @@ async function daemon() {
       worktree = got?.worktreePath ?? "";
       if (!worktree) await Bun.sleep(50);
     }
-    return { id, worktree };
+    // The loop above waits for the path; if it never came, stop here rather than go on with "".
+    return { id, worktree: must(worktree, "worktreePath") };
   };
   return { client, ptys, projectId, card };
 }

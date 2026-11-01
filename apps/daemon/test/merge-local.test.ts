@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { Changes } from "../src/review/changes.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 // Real git in temp repositories, several worktrees per test: more than the default 5 s.
@@ -49,7 +50,7 @@ async function ready(title = "Integrar", description = "oi", base?: string) {
     ...ctx,
     project,
     cardId: card.id,
-    worktree: started?.worktreePath ?? "",
+    worktree: must(started?.worktreePath, "worktreePath"),
     branch: started?.branch ?? "",
   };
 }

@@ -6,6 +6,7 @@ import { Issues } from "../src/issues/issues.ts";
 import { azureCoords, githubCoords } from "../src/issues/remote.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 // Real git, worktrees and fake CLIs (a Bun process each): more than the default 5 s.
@@ -437,7 +438,7 @@ describe("issues", () => {
     });
     await ctx.board.startCard(card.id);
     const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review");
-    const worktree = started?.worktreePath ?? "";
+    const worktree = must(started?.worktreePath, "worktreePath");
     writeFileSync(join(worktree, "novo.txt"), "novo\n");
     git(worktree, "add", "novo.txt");
     git(worktree, "commit", "-q", "-m", "arquivo novo");
@@ -520,7 +521,7 @@ async function openPr(work: Awaited<ReturnType<typeof withWork>>, issueRef: stri
   });
   await board.startCard(card.id);
   const started = await cardWhen(board, card.id, (c) => c.column === "review");
-  const worktree = started?.worktreePath ?? "";
+  const worktree = must(started?.worktreePath, "worktreePath");
   writeFileSync(join(worktree, "novo.txt"), "novo\n");
   git(worktree, "add", "novo.txt");
   git(worktree, "commit", "-q", "-m", "arquivo novo");

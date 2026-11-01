@@ -8,7 +8,7 @@ import { Issues } from "../src/issues/issues.ts";
 import type { Quota } from "../src/quota/quota.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git } from "./board-helpers.ts";
-import { poll, record } from "./helpers.ts";
+import { must, poll, record } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
@@ -570,7 +570,7 @@ describe("automacoes", () => {
     // Started, the automations listen to the board's PR polling.
     ctx.automations.start();
     const card = await ctx.sessionCard();
-    const worktree = card.worktreePath ?? "";
+    const worktree = must(card.worktreePath, "worktreePath");
     writeFileSync(join(worktree, "novo.txt"), "novo\n");
     git(worktree, "add", "novo.txt");
     git(worktree, "commit", "-q", "-m", "arquivo novo");

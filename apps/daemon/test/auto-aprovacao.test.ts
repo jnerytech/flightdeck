@@ -20,7 +20,7 @@ import type { JudgeOptions, JudgeResult } from "../src/runtime/types.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { cardWhen, gitRepo, newBoard } from "./board-helpers.ts";
-import { newManager, poll, record, tempDir } from "./helpers.ts";
+import { must, newManager, poll, record, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "auto-token-0123456789abcdef";
@@ -293,7 +293,7 @@ describe("auto-aprovacao", () => {
     const card = board.createCard(project.id, { title: "Login", description: "corrigir o login" });
     await board.startCard(card.id);
     const started = await cardWhen(board, card.id, (c) => c.column === "review");
-    const worktree = started?.worktreePath ?? "";
+    const worktree = must(started?.worktreePath, "worktreePath");
     expect(board.projectForCwd(join(worktree, "src"))).toMatchObject({
       project: { id: project.id },
       card: { id: card.id, description: "corrigir o login" },

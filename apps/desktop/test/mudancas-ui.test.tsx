@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, watch, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { cardWhen, git } from "../../daemon/test/board-helpers.ts";
-import { poll } from "../../daemon/test/helpers.ts";
+import { must, poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -533,7 +533,7 @@ describe("mudancas-ui", () => {
     const card = ctx.board.createCard(project.id, { title: "Com mudanças", description: "oi" });
     await ctx.board.startCard(card.id);
     const started = await cardWhen(ctx.board, card.id, (c) => c.sessionStatus === "idle");
-    writeFileSync(join(started?.worktreePath ?? "", "solto.txt"), "não commitado");
+    writeFileSync(join(must(started?.worktreePath, "worktreePath"), "solto.txt"), "não commitado");
     await act(async () => {
       ctx.store.router.push({
         name: "card",

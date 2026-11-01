@@ -10,7 +10,7 @@ import {
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { startDaemon } from "../../daemon/src/main.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
-import { poll } from "../../daemon/test/helpers.ts";
+import { must, poll } from "../../daemon/test/helpers.ts";
 import { isLocalUrl, terminalLaunch } from "../src/lib/terminal.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -366,7 +366,7 @@ describe("abrir-terminal", () => {
     await click("Abrir no terminal");
     await settle(() => opened.length === 3);
     expect(opened[2]).toEqual(
-      expected(started.worktreePath ?? "", cardSession) as [string, string[]],
+      expected(must(started.worktreePath, "worktreePath"), cardSession) as [string, string[]],
     );
     cleanup();
 

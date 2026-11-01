@@ -14,7 +14,7 @@ import { Changes } from "../src/review/changes.ts";
 import { ReviewFiles } from "../src/review/files.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { must, newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { insertSession } from "./usage-helpers.ts";
 
@@ -112,7 +112,7 @@ describe("reverter-editar", () => {
     const card = ctx.board.createCard(project.id, { title: "Desfazer", description: "oi" });
     await ctx.board.startCard(card.id);
     const started = await cardWhen(ctx.board, card.id, (c) => c.worktreePath !== null);
-    const worktree = started?.worktreePath ?? "";
+    const worktree = must(started?.worktreePath, "worktreePath");
     writeFileSync(join(worktree, "README.md"), "# mudado\n");
     writeFileSync(join(worktree, "criado.txt"), "criado\n");
     git(worktree, "add", ".");

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { shellCommand } from "../src/board/setup.ts";
 import type { StartOptions } from "../src/runtime/types.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
+import { must } from "./helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {
@@ -35,7 +36,7 @@ describe("preparacao", () => {
     await board.startCard(card.id);
     const started = await cardWhen(board, card.id, (c) => c.sessionId !== null);
     expect(started).not.toBeNull();
-    const file = join(started?.worktreePath ?? "", "preparado.txt");
+    const file = join(must(started?.worktreePath, "worktreePath"), "preparado.txt");
     expect(existsSync(file) ? readFileSync(file, "utf8").trim() : "").toBe("pronto");
     expect(existsSync(join(repo, "preparado.txt"))).toBe(false);
     expect(prepared).toEqual([true]);
