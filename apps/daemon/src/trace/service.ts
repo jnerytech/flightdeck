@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { SecretScanner, SessionTrace, TraceExport } from "@flightdeck/protocol";
+import type { SecretScanner, SessionTrace, TraceExport, TraceNode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { TelemetryStore } from "../telemetry/store.ts";
 import { buildTrace } from "./model.ts";
@@ -59,7 +59,38 @@ export class TraceService {
     });
   }
 
-  export(claudeSessionId: string, _includeContent: boolean): TraceExport {
-    return { filename: `${claudeSessionId}.json`, json: "", redacted: 0 };
+  export(claudeSessionId: string, includeContent: boolean): TraceExport {
+    const trace = this.get(claudeSessionId);
+    let redacted = 0;
+    /** Text leaves only on request, and not when it holds a secret. */
+    const keep = (value: string | null): string | null => {
+      if (value === null || !includeContent) return null;
+      const kinds = this.opts.scanner.scan(value);
+      if (kinds.length === 0) return value;
+      redacted++;
+      return `[redacted: ${kinds.join(", ")}]`;
+    };
+    const clean = (node: TraceNode): TraceNode => ({
+      ...node,
+      label: keep(node.label),
+      input: keep(node.input),
+      result: keep(node.result),
+      children: node.children.map(clean),
+    });
+    const turns = trace.turns.map(clean);
+    return {
+      filename: `trace-${claudeSessionId.slice(0, 8)}.json`,
+      json: JSON.stringify(
+        {
+          format: "flightdeck-trace",
+          version: 1,
+          includesContent: includeContent,
+          trace: { ...trace, turns },
+        },
+        null,
+        2,
+      ),
+      redacted,
+    };
   }
 }
