@@ -86,6 +86,16 @@ export class ClientScope {
     return resolveClient({ key: `host:?:${path}`, cwds: [{ hostId, path }] }, this.data).clientId;
   }
 
+  /**
+   * The persona the client of a folder opens sessions in, as a picker value (`host:<id>` or
+   * `app:<id>`); with `idsOnly`, as the host's plain id, and only if it is a host's. "" for none.
+   */
+  defaultPersona(hostId: string, path: string, idsOnly = false): string {
+    const persona = this.client(this.clientOfFolder(hostId, path))?.defaults.persona ?? "";
+    if (!idsOnly) return persona;
+    return persona.startsWith("host:") ? persona.slice("host:".length) : "";
+  }
+
   /** The keys of the projects a rule would claim right now, for its preview. */
   matching(rule: RuleInput): string[] {
     return [...this.projects.keys()].filter((key) => ruleMatches(rule, this.known(key)));
