@@ -208,6 +208,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { VaultPage } = await import("../src/ui/VaultPage.tsx");
     const { BoardView } = await import("../src/ui/BoardView.tsx");
     const { CardDetail } = await import("../src/ui/CardDetail.tsx");
+    const { BgPanel } = await import("../src/ui/BgPanel.tsx");
     const memo = Symbol.for("react.memo");
     for (const screen of [
       UpdateBanner,
@@ -230,6 +231,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
       VaultPage,
       BoardView,
       CardDetail,
+      BgPanel,
     ]) {
       expect((screen as unknown as { $$typeof: symbol }).$$typeof).toBe(memo);
     }
