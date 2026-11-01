@@ -287,25 +287,25 @@ export function NeedsYou(props: {
           onCopyPath={(text) => void store.copyText(text)}
           onRespond={(decision, message) =>
             item.gate
-              ? void store.respondGate(
+              ? store.respondGate(
                   item.hostId,
                   item.gate,
                   decision === "allow" ? "approve" : "reject",
                   message,
                 )
-              : void store.respondTo(item.hostId, item.requestId, decision, undefined, message)
+              : store.respondTo(item.hostId, item.requestId, decision, undefined, message)
           }
           actions={
             // A request for a secret belongs to no session: the card is all there is to open.
             item.vault ? (
               <>
                 {item.vaultOnce && (
-                  <Button
+                  <ActionButton
                     variant="outline"
-                    onClick={() => void store.approveVaultForSession(item.hostId, item.requestId)}
+                    onClick={() => store.approveVaultForSession(item.hostId, item.requestId)}
                   >
                     {t("vaultRulesUi.approveSession")}
-                  </Button>
+                  </ActionButton>
                 )}
                 <Button
                   variant="ghost"

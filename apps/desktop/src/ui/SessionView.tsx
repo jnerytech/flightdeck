@@ -93,7 +93,7 @@ const TimelineItem = memo(function TimelineItem(props: {
           alwaysAllow={props.alwaysAllow}
           {...(item.resolution ? { resolution: item.resolution } : {})}
           onRespond={(decision, message, updates) =>
-            void actions.respond(item.requestId, decision, message, updates)
+            actions.respond(item.requestId, decision, message, updates)
           }
         />
       );

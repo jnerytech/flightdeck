@@ -10,6 +10,8 @@ export function HoldButton(props: {
   label: string;
   holdMs: number;
   onHeld(): void;
+  /** Off while the last hold is being answered. */
+  disabled?: boolean;
   /** The tooltip: why the button has to be held. */
   hint?: string;
 }) {
@@ -22,7 +24,7 @@ export function HoldButton(props: {
     setHolding(false);
   };
   const start = () => {
-    if (timer.current) return;
+    if (timer.current || props.disabled) return;
     setHolding(true);
     timer.current = setTimeout(() => {
       timer.current = null;
@@ -39,6 +41,7 @@ export function HoldButton(props: {
     <Button
       type="button"
       title={props.hint}
+      disabled={props.disabled}
       data-holding={holding ? "true" : "false"}
       className="relative overflow-hidden"
       onClick={(e) => e.preventDefault()}

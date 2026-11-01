@@ -6,6 +6,7 @@ import type {
 } from "@flightdeck/protocol";
 import { Copy } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatAgo } from "@/i18n/format";
@@ -150,11 +151,12 @@ export function ApprovalCard(props: {
   resolution?: { decision: PermissionResolution; message?: string; auto?: AutoApproval };
   /** Test seam: the hold time of a high-risk approval (2 s when absent). */
   holdMs?: number;
+  /** A promise keeps the card busy until the answer is in; anything else answers at once. */
   onRespond(
     decision: "allow" | "deny",
     message?: string,
     updatedPermissions?: PermissionUpdate[],
-  ): void;
+  ): unknown;
   /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
   actions?: ReactNode;
   /** Copies the session's folder (the whole path) when the user asks. */
@@ -163,6 +165,22 @@ export function ApprovalCard(props: {
   const { request, t, resolution } = props;
   const [denying, setDenying] = useState(false);
   const [reason, setReason] = useState("");
+  /** An answer is on its way: the card is busy and takes no other. */
+  const [pending, setPending] = useState(false);
+  // A ref too: two presses in the same event see the first before React renders it.
+  const sent = useRef(false);
+  const respond = (...args: Parameters<typeof props.onRespond>) => {
+    if (sent.current) return;
+    const result = props.onRespond(...args) as PromiseLike<void> | undefined;
+    if (typeof result?.then !== "function") return;
+    sent.current = true;
+    setPending(true);
+    const done = () => {
+      sent.current = false;
+      setPending(false);
+    };
+    result.then(done, done);
+  };
   const reasonRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (denying) reasonRef.current?.focus();
@@ -172,16 +190,16 @@ export function ApprovalCard(props: {
   const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
   const deny = () => {
     const message = reason.trim();
-    if (message) props.onRespond("deny", message);
-    else props.onRespond("deny");
+    if (message) respond("deny", message);
+    else respond("deny");
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     // Keys typed in the reason (or any other field of the card) are text, not shortcuts.
-    if (e.target !== e.currentTarget || resolution) return;
+    if (e.target !== e.currentTarget || resolution || pending) return;
     const key = e.key.toLowerCase();
     // A high-risk request is approved by holding the button, never by a key.
-    if (key === "a" && !high) props.onRespond("allow");
+    if (key === "a" && !high) respond("allow");
     else if (key === "n") setDenying(true);
     else if (e.key === "Escape") e.currentTarget.blur();
   };
@@ -232,10 +250,10 @@ export function ApprovalCard(props: {
                   onChange={(e) => setReason(e.target.value)}
                   className="w-56"
                 />
-                <Button variant="destructive" onClick={deny}>
+                <ActionButton variant="destructive" pending={pending} onClick={deny}>
                   {t("approval.deny")}
-                </Button>
-                <Button variant="ghost" onClick={() => setDenying(false)}>
+                </ActionButton>
+                <Button variant="ghost" disabled={pending} onClick={() => setDenying(false)}>
                   {t("approval.cancel")}
                 </Button>
               </>
@@ -246,12 +264,15 @@ export function ApprovalCard(props: {
                     label={t("approval.hold")}
                     hint={t("approval.holdHint")}
                     holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
-                    onHeld={() => props.onRespond("allow")}
+                    disabled={pending}
+                    onHeld={() => respond("allow")}
                   />
                 ) : (
-                  <Button onClick={() => props.onRespond("allow")}>{t("approval.approve")}</Button>
+                  <ActionButton pending={pending} onClick={() => respond("allow")}>
+                    {t("approval.approve")}
+                  </ActionButton>
                 )}
-                <Button variant="outline" onClick={() => setDenying(true)}>
+                <Button variant="outline" disabled={pending} onClick={() => setDenying(true)}>
                   {t("approval.deny")}
                 </Button>
               </>
@@ -263,7 +284,8 @@ export function ApprovalCard(props: {
               toolName={request.toolName}
               input={request.input}
               suggestions={request.suggestions}
-              onAllow={(updates) => props.onRespond("allow", undefined, updates)}
+              disabled={pending}
+              onAllow={(updates) => respond("allow", undefined, updates)}
             />
           )}
           <p className="text-muted-foreground text-xs">

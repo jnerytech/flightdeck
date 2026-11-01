@@ -28,6 +28,8 @@ export function AlwaysAllow(props: {
   input: Record<string, unknown>;
   suggestions: PermissionUpdate[] | undefined;
   onAllow(updatedPermissions: PermissionUpdate[]): void;
+  /** An answer is on its way: nothing here can be pressed. */
+  disabled?: boolean;
 }) {
   const t = useT();
   const [rule, setRule] = useState<string | null>(null);
@@ -41,7 +43,11 @@ export function AlwaysAllow(props: {
           onChange={(e) => setRule(e.target.value)}
           className="h-8 min-w-48 flex-1 font-mono text-xs"
         />
-        <Button size="sm" onClick={() => props.onAllow([projectRule(rule)])}>
+        <Button
+          size="sm"
+          disabled={props.disabled}
+          onClick={() => props.onAllow([projectRule(rule)])}
+        >
           {t("alwaysAllow.saveRule")}
         </Button>
         <Button variant="outline" size="sm" onClick={() => setRule(null)}>
@@ -53,13 +59,19 @@ export function AlwaysAllow(props: {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {session.length > 0 && (
-        <Button variant="outline" size="sm" onClick={() => props.onAllow(session)}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={props.disabled}
+          onClick={() => props.onAllow(session)}
+        >
           {t("alwaysAllow.session")}
         </Button>
       )}
       <Button
         variant="outline"
         size="sm"
+        disabled={props.disabled}
         onClick={() => setRule(defaultRule(props.toolName, props.input))}
       >
         {t("alwaysAllow.project")}
