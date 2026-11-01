@@ -11,6 +11,9 @@ const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
 const { UpdateBanner } = await import("../src/ui/UpdateBanner.tsx");
 const { MaintenanceSection } = await import("../src/ui/MaintenanceSection.tsx");
 const { SessionMessages } = await import("../src/ui/SessionMessages.tsx");
+const { RunTimeline } = await import("../src/ui/RunTimeline.tsx");
+const { CardReview } = await import("../src/ui/CardReview.tsx");
+const { PrComments } = await import("../src/ui/PrComments.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 
@@ -139,5 +142,85 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
       fireEvent.change(screen.getByLabelText("Texto da mensagem"), { target: { value: "oi" } });
     });
     await expectBusyOnce("Enviar", send.calls, () => send.settle(null));
+  });
+
+  test("Aprovar and Recusar on a gate share one answer: busy at once, the other off, sent once", async () => {
+    const answer = slow();
+    const step = {
+      stepId: "revisar",
+      attempt: 1,
+      type: "gate",
+      status: "waiting",
+      message: "Pode seguir?",
+    };
+    render(
+      <TContext.Provider value={t}>
+        <RunTimeline
+          run={
+            {
+              workflowName: "w",
+              status: "running",
+              steps: [step],
+              usage: { turns: 0, minutes: 0, costUsd: 0 },
+              budget: {},
+            } as never
+          }
+          formatTime={(iso) => iso}
+          onOpenStep={() => {}}
+          onRespond={answer.call}
+        />
+      </TContext.Provider>,
+    );
+    await click(button("Aprovar"));
+    expect(button("Aprovar")?.getAttribute("aria-busy")).toBe("true");
+    expect(button("Recusar")?.disabled).toBe(true);
+    await click(button("Aprovar"));
+    await click(button("Recusar"));
+    expect(answer.calls).toHaveLength(1);
+    await answer.settle();
+    expect(button("Aprovar")?.disabled).toBe(false);
+    expect(button("Recusar")?.disabled).toBe(false);
+  });
+
+  test("Atualizar com a base goes busy and updates once", async () => {
+    const update = slow();
+    const store = {
+      hostRequest: (_host: string, _command: string, ...rest: unknown[]) => update.call(...rest),
+      success: () => {},
+    } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <CardReview
+          store={store}
+          hostId="h"
+          card={{ id: "c1", prUrl: null } as never}
+          changes={{ base: "main", position: { ahead: 1, behind: 2 } } as never}
+          refresh={async () => {}}
+        />
+      </TContext.Provider>,
+    );
+    await expectBusyOnce("Atualizar com a base", update.calls, () =>
+      update.settle({ ok: true, data: {} }),
+    );
+  });
+
+  test("Enviar comentários goes busy and sends once", async () => {
+    const send = slow();
+    const store = {
+      hostCommand: (_host: string, command: string, ...rest: unknown[]) =>
+        command === "pr.comments.send"
+          ? send.call(...rest)
+          : Promise.resolve({
+              comments: [{ id: "k1", author: "ana", body: "ajuste", resolved: false, path: null }],
+            }),
+      success: () => {},
+    } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <PrComments store={store} hostId="h" cardId="c1" moment="m" />
+      </TContext.Provider>,
+    );
+    await act(() => Bun.sleep(10));
+    await expectBusyOnce("Enviar ao agente (1)", send.calls, () => send.settle({ sent: 1 }));
   });
 });
