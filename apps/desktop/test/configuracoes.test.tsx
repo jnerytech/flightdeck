@@ -50,6 +50,10 @@ async function openSettings() {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
+  // The Settings screen loads on demand: wait for it (its "Tema" control) before the test reads it.
+  for (let waited = 0; screen.queryByLabelText("Tema") === null && waited < 5000; waited += 20) {
+    await act(() => Bun.sleep(20));
+  }
 }
 
 const checkbox = (label: string) => {

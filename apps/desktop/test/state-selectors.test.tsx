@@ -271,7 +271,14 @@ describe("state-selectors: an unrelated change of the state does not render the 
     for (const route of routes) {
       seen.calls = 0;
       const view = render(<Frame route={route} store={store} shown={proxy} t={countingT} />);
-      await act(() => Bun.sleep(150));
+      // The screens load on demand: wait for the page to draw and its counter to stop moving
+      // (it translates on every render).
+      let before = -1;
+      for (let waited = 0; (seen.calls === 0 || seen.calls !== before) && waited < 5000; ) {
+        before = seen.calls;
+        await act(() => Bun.sleep(150));
+        waited += 150;
+      }
       const mounted = seen.calls;
       expect(mounted).toBeGreaterThan(0);
       await act(async () => store.openSearch());
