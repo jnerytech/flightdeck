@@ -269,3 +269,31 @@ describe("clients-model: export and import", () => {
     expect(names(clients)).toEqual(["Acme"]);
   });
 });
+
+describe("clients-model: telling the app", () => {
+  test("every change that was written is announced, a refused one is not", () => {
+    const items = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        items.set(key, value);
+      },
+    };
+    let n = 0;
+    let told = 0;
+    const clients = new Clients({ storage }, { newId: () => `id${++n}`, onChange: () => told++ });
+    clients.add("Acme");
+    expect(told).toBe(1);
+    clients.add("acme");
+    clients.rename("nope", "X");
+    clients.clearOverride("github.com/x/never");
+    clients.importJson("not json");
+    expect(told).toBe(1);
+    clients.setOverride("github.com/x/a", "id1");
+    clients.addRule("id1", { kind: "remote", pattern: "github.com/acme/*" });
+    clients.setDefaults("id1", { persona: "qa" });
+    expect(told).toBe(4);
+    clients.remove("id1");
+    expect(told).toBe(5);
+  });
+});
