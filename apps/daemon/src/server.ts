@@ -1710,6 +1710,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     },
     stop: () => {
       clearInterval(heartbeat);
+      opts.plugins?.close();
       return server.stop(true);
     },
   };

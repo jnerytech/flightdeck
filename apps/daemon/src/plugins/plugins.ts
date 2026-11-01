@@ -192,8 +192,12 @@ function split(id: string): { name: string; marketplace: string } {
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
 
-  /** Stops the work: after this no more CLI calls start. */
-  close(): void {}
+  private closed = false;
+
+  /** Stops the work: a call in flight finishes, but no more CLI calls start. */
+  close(): void {
+    this.closed = true;
+  }
 
   async list(): Promise<PluginList> {
     const listed = await this.json(["list", "--json", "--available"]);
@@ -283,7 +287,7 @@ export class Plugins {
   async previewUpdate(id: string): Promise<UpdatePreview> {
     arg(id);
     const { marketplace } = split(id);
-    const refreshed = await this.opts.cli.run(["marketplace", "update", marketplace, "--json"]);
+    const refreshed = await this.cli(["marketplace", "update", marketplace, "--json"]);
     if (refreshed.code !== 0) {
       throw invalid(
         `não deu para atualizar o marketplace ${marketplace}: ${refreshed.stderr.trim()}`,
@@ -503,7 +507,7 @@ export class Plugins {
 
   /** `claude plugin validate`: whether it passed and the errors of the manifest. */
   private async validate(dir: string): Promise<{ success: boolean; errors: string[] }> {
-    const result = await this.opts.cli.run(["validate", dir, "--json"]);
+    const result = await this.cli(["validate", dir, "--json"]);
     try {
       const report = JSON.parse(result.stdout) as Json;
       const manifest = isObject(report.manifest) ? report.manifest : {};
@@ -525,7 +529,7 @@ export class Plugins {
       throw invalid("só se aceita o comando que foi mostrado: peça de novo para ver");
     }
     const sent = acceptCommand ? [...args, "--accept-command", acceptCommand] : args;
-    const result = await this.opts.cli.run(sent);
+    const result = await this.cli(sent);
     const line = result.stdout.trim().split(/\r?\n/).at(-1) ?? "";
     let parsed: Json | null = null;
     try {
@@ -579,9 +583,15 @@ export class Plugins {
     };
   }
 
+  /** Runs the CLI unless the manager was closed: nothing starts after a stop. */
+  private cli(args: string[]): Promise<CliResult> {
+    if (this.closed) throw invalid("o gerenciador de plugins foi parado");
+    return this.opts.cli.run(args);
+  }
+
   /** Runs the CLI and parses its stdout as JSON; the reason when it fails. */
   private async json(args: string[]): Promise<unknown> {
-    const result = await this.opts.cli.run(args);
+    const result = await this.cli(args);
     if (result.code !== 0) {
       throw invalid(
         `claude plugin ${args[0]} falhou: ${result.stderr.trim() || `código ${result.code}`}`,
