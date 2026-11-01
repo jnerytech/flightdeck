@@ -87,7 +87,7 @@ export function SessionsHub(props: {
   useEffect(() => {
     if (!withBackground) return;
     let stopped = false;
-    let cancel = () => {};
+    let cancel: (() => void) | undefined;
     const schedule = () => {
       cancel = store.later(() => {
         void store.refreshHub().then(() => {
@@ -98,7 +98,7 @@ export function SessionsHub(props: {
     schedule();
     return () => {
       stopped = true;
-      cancel();
+      cancel?.();
     };
   }, [store, withBackground]);
 
