@@ -240,7 +240,9 @@ export class Board {
   /** Workflow runs back from a gate, waiting for a slot; served before queued cards. */
   private readonly waiters: Array<{ cardId: string; resume(): void }> = [];
   private limit: number;
-  private readonly pollTimer: ReturnType<typeof setInterval>;
+  /** Runs while a PR is open or a merge waits to be finished; see `armPoll`. */
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly prRoundListeners = new Set<() => void>();
   private polling = false;
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
@@ -277,7 +279,7 @@ export class Board {
     );
     this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
-    this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
+    this.armPoll();
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
       .query<RunRow, []>(
@@ -1170,6 +1172,7 @@ export class Board {
       )
       .run(url, id);
     this.place(id, { type: "pr", state: "open" });
+    this.armPoll();
     if (project.issues?.commentOnPr && card.issueRef) {
       await this.commentOnIssue(id, project.path, card.issueRef, url);
     }
@@ -1338,8 +1341,31 @@ export class Board {
   }
 
   /** Calls `listener` after every round of the PR polling. */
-  onPrRound(_listener: () => void): () => void {
-    return () => {};
+  onPrRound(listener: () => void): () => void {
+    this.prRoundListeners.add(listener);
+    return () => this.prRoundListeners.delete(listener);
+  }
+
+  /**
+   * The PR polling runs while some card has an open PR, or a merged card waits for its worktree
+   * to be removed; with none it owns no timer, and a PR that is opened starts it.
+   */
+  private armPoll(): void {
+    const wanted =
+      !this.stopped &&
+      this.db
+        .query(
+          `SELECT 1 FROM cards WHERE pr_state = 'open'
+           OR (pr_state = 'merged' AND board_column = 'done' AND worktree_path IS NOT NULL
+               AND notice IS NOT NULL AND notice <> ?) LIMIT 1`,
+        )
+        .get(PENDING_NOTICE) !== null;
+    if (wanted && this.pollTimer === null) {
+      this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
+    } else if (!wanted && this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
   }
 
   get prPollIntervalMs(): number {
@@ -1374,8 +1400,10 @@ export class Board {
         )
         .all(PENDING_NOTICE);
       for (const { id } of unfinished) await this.finish(id).catch(failed(id));
+      for (const listener of this.prRoundListeners) listener();
     } finally {
       this.polling = false;
+      this.armPoll();
     }
   }
 
@@ -1414,7 +1442,8 @@ export class Board {
 
   stop(): void {
     this.stopped = true;
-    clearInterval(this.pollTimer);
+    if (this.pollTimer !== null) clearInterval(this.pollTimer);
+    this.pollTimer = null;
     this.unwatchQuota();
     this.unwatchBudgets();
     for (const unfollow of this.follows.values()) unfollow();

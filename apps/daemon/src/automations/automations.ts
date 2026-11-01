@@ -152,7 +152,10 @@ export class Automations {
   private readonly clock: () => number;
   private readonly day: (ms: number) => string;
   private readonly specs = new Map<string, CronSpec>();
-  private timers: Array<ReturnType<typeof setInterval>> = [];
+  /** The minute tick, while a cron automation is on; the issue search, while an issue one is. */
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private started = false;
   private unwatchChecks: () => void = () => {};
   /** The search and the tick in progress, so `idle` can wait for them. */
   private searching: Promise<void> | null = null;
@@ -206,6 +209,7 @@ export class Automations {
         existing?.created_at ?? new Date(this.clock()).toISOString(),
       );
     this.specs.delete(id);
+    this.arm();
     return toAutomation(this.row(id) as Row);
   }
 
@@ -219,6 +223,7 @@ export class Automations {
     }
     this.db.query("DELETE FROM automations WHERE id = ?").run(id);
     this.specs.delete(id);
+    this.arm();
     return this.list(row.project_id);
   }
 
@@ -229,6 +234,7 @@ export class Automations {
     }
     if (!this.row(id)) throw new FlightdeckError("not_found", `automação ${id} não existe`);
     this.db.query("UPDATE automations SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
+    this.arm();
     return toAutomation(this.row(id) as Row);
   }
 
@@ -317,10 +323,32 @@ export class Automations {
     this.unwatchChecks = this.opts.board.onChecksFailing((cardId, failed) =>
       this.onChecksFailing(cardId, failed),
     );
-    this.timers = [
-      setInterval(() => void this.tick(this.clock()), this.opts.tickMs ?? MINUTE),
-      setInterval(() => void this.pollIssues(), this.opts.pollMs ?? 5 * MINUTE),
-    ];
+    this.started = true;
+    this.arm(false);
+  }
+
+  /**
+   * Each timer runs only while an automation needs it: the minute tick for a cron one, the issue
+   * search for an `issue_label` one. A tick that starts later (the first cron automation was just
+   * turned on) starts from this minute: the time before it was nobody's slot to miss.
+   */
+  private arm(afterStart = true): void {
+    const on = this.started ? this.enabled() : [];
+    const wantTick = on.some((auto) => auto.trigger.type === "cron");
+    const wantPoll = on.some((auto) => auto.trigger.type === "issue_label");
+    if (wantTick && this.tickTimer === null) {
+      if (afterStart) this.markClock(this.clock());
+      this.tickTimer = setInterval(() => void this.tick(this.clock()), this.opts.tickMs ?? MINUTE);
+    } else if (!wantTick && this.tickTimer !== null) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
+    if (wantPoll && this.pollTimer === null) {
+      this.pollTimer = setInterval(() => void this.pollIssues(), this.opts.pollMs ?? 5 * MINUTE);
+    } else if (!wantPoll && this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
   }
 
   /** Resolves when the tick and the search in progress, if any, are done. */
@@ -329,10 +357,18 @@ export class Automations {
   }
 
   stop(): void {
-    for (const timer of this.timers) clearInterval(timer);
-    this.timers = [];
+    this.started = false;
+    this.arm();
     this.unwatchChecks();
     this.unwatchChecks = () => {};
+  }
+
+  private markClock(now: number): void {
+    this.db
+      .query(
+        "INSERT INTO automation_clock (id, last_tick) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET last_tick = excluded.last_tick",
+      )
+      .run(Math.floor(now / MINUTE) * MINUTE);
   }
 
   /** The minutes since the last one seen, up to `now`: recent ones fire (when `fire`), old ones are missed. */

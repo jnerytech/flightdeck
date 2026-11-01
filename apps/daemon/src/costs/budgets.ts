@@ -60,6 +60,7 @@ export class Budgets {
   /** The signature last announced of each budget. */
   private readonly seen = new Map<string, string>();
   private timer: unknown = null;
+  private started = false;
 
   constructor(readonly opts: BudgetsOptions) {
     this.db = opts.db;
@@ -111,6 +112,7 @@ export class Budgets {
     }
     const { budget, threshold } = this.check(this.row(id));
     this.announce({ budget, threshold, removed: false });
+    this.arm();
     return budget;
   }
 
@@ -120,6 +122,7 @@ export class Budgets {
     this.db.query("DELETE FROM budget_alerts WHERE budget_id = ?").run(id);
     this.seen.delete(id);
     this.announce({ budget, threshold: null, removed: true });
+    this.arm();
   }
 
   watch(listener: (update: BudgetUpdate) => void): () => void {
@@ -147,19 +150,30 @@ export class Budgets {
     );
   }
 
-  /** The period check, every `checkMs`. */
+  /** The period check, every `checkMs`, for as long as there is a budget to check. */
   start(): void {
+    this.started = true;
+    this.arm();
+  }
+
+  stop(): void {
+    this.started = false;
+    this.arm();
+  }
+
+  private arm(): void {
+    const wanted = this.started && this.db.query("SELECT 1 FROM budgets LIMIT 1").get() !== null;
+    if (!wanted) {
+      if (this.timer !== null) this.timers.clear(this.timer);
+      this.timer = null;
+      return;
+    }
     if (this.timer !== null) return;
     const tick = () => {
       this.evaluate();
       this.timer = this.timers.set(tick, this.opts.checkMs ?? CHECK_MS);
     };
     this.timer = this.timers.set(tick, this.opts.checkMs ?? CHECK_MS);
-  }
-
-  stop(): void {
-    if (this.timer !== null) this.timers.clear(this.timer);
-    this.timer = null;
   }
 
   private rows(): Row[] {

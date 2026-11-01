@@ -13,7 +13,7 @@ import type { PrWatcher } from "./watch.ts";
 /** What the server talks to for phase 22: the watch of a card's PR, its rounds and its trail. */
 export class PrWatch {
   private readonly listeners = new Set<(frame: WatchUpdatedFrame) => void>();
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private unfollow: (() => void) | null = null;
 
   constructor(
     private readonly opts: {
@@ -25,10 +25,13 @@ export class PrWatch {
   ) {}
 
   /** Looks at the watched PRs after every round of the board's PR polling. */
-  start(): void {}
+  start(): void {
+    this.unfollow = this.opts.board.onPrRound(() => void this.opts.watcher.tick());
+  }
 
   stop(): void {
-    if (this.timer) clearInterval(this.timer);
+    this.unfollow?.();
+    this.unfollow = null;
     this.opts.watcher.stop();
     this.opts.fixer.stop();
   }
