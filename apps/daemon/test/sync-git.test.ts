@@ -28,6 +28,13 @@ afterEach(async () => {
   expect(process.env.PATH).toBe(pathBefore);
 });
 
+/** A slow git on PATH, taken off again when the test ends, whatever the test did. */
+function sleepingGit(delayMs: number): SleepingGit {
+  const sleeping = installSleepingGit(delayMs);
+  cleanups.push(() => sleeping.restore());
+  return sleeping;
+}
+
 const SRC = join(import.meta.dir, "../src");
 
 /** Every file under `dir` that is TypeScript. */
@@ -129,7 +136,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const other = join(root, "other");
     mkdirSync(other);
     git(other, "init", "-q", "-b", "main");
-    const sleeping = installSleepingGit(300);
+    const sleeping = sleepingGit(300);
     const adding = await hostInfoWhile(client, sleeping, () =>
       client.request("project.add", { path: other }),
     );
@@ -149,7 +156,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
 
   test("memory.list asks git for the repository root and the daemon does not hold the event loop", async () => {
     const { client, projectId } = await served();
-    const sleeping = installSleepingGit(300);
+    const sleeping = sleepingGit(300);
     const blocked = await longestBlockWhile(sleeping, () =>
       client.request("memory.list", { projectId }),
     );
@@ -159,13 +166,12 @@ describe("sync-git: a slow git does not stop the protocol", () => {
 
   test("looking up where a repository keeps its exclude file does not hold the event loop, and the synchronous call that follows asks git nothing", async () => {
     const { repo } = gitRepo();
-    const sleeping = installSleepingGit(300);
+    const sleeping = sleepingGit(300);
     const blocked = await longestBlockWhile(sleeping, () => excludeLocalSettingsAsync(repo));
     expect(sleeping.calls().some((args) => args.includes("--git-path"))).toBe(true);
     expect(blocked).toBeLessThan(100);
     // The line is in the file, and a second look finds it there.
-    const again = installSleepingGit(300);
-    cleanups.push(() => again.restore());
+    const again = sleepingGit(300);
     excludeLocalSettings(repo);
     expect(again.calls()).toEqual([]);
   });
@@ -184,8 +190,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
       },
     });
     const { id } = await board.addProject({ path: repo });
-    const sleeping = installSleepingGit(300);
-    cleanups.push(() => sleeping.restore());
+    const sleeping = sleepingGit(300);
     const blocked = (board as unknown as { budgetBlocked(id: string): boolean }).budgetBlocked(id);
     expect(blocked).toBe(false);
     expect(asked).toEqual([keys.keyFor(repo)]);
@@ -197,7 +202,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const root = join(tempDir("fd-usage-"), "projects");
     mkdirSync(root);
     writeUsageTranscript(root, "p", repo, { subagent: false });
-    const sleeping = installSleepingGit(300);
+    const sleeping = sleepingGit(300);
     const keys = new ProjectKeys("h");
     const indexer = new UsageIndexer({
       db: new EventStore(":memory:").db,
