@@ -77,7 +77,7 @@ describe("clients-vault: the vault's list for a selected client", () => {
     await open("acme");
     await settle(() => region("Segredos de Acme") !== null);
     expect(namesIn(region("Segredos de Acme"))).toEqual(["s-acme"]);
-    expect(namesIn(region("Segredos sem cliente"))).toEqual(["s-solto"]);
+    expect(namesIn(region("Sem vínculo com cliente"))).toEqual(["s-solto"]);
     expect(namesIn(region("Segredos de outros clientes"))).toEqual(["s-beta"]);
   });
 
