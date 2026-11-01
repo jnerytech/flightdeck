@@ -1731,6 +1731,7 @@ export const en: Dictionary = {
     budgetLine: "This month: {spent} of {limit} ({percent}%)",
     budgetLimitOnly: "Limit for the month: {limit}",
     defaultsOf: "Defaults of {name}",
+    scopeChanged: "The secret rules of the client {name} changed with its projects.",
     defaultPersona: "Default persona",
     snippetTag: "Snippet tag",
     snippetTagHelp: "Snippets with this tag come first, and a new snippet starts with it.",

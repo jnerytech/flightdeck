@@ -1734,6 +1734,7 @@ export const ptBR = {
     budgetLine: "Este mês: {spent} de {limit} ({percent}%)",
     budgetLimitOnly: "Limite do mês: {limit}",
     defaultsOf: "Padrões de {name}",
+    scopeChanged: "As regras de segredos do cliente {name} mudaram com os projetos dele.",
     defaultPersona: "Persona padrão",
     snippetTag: "Tag dos snippets",
     snippetTagHelp:

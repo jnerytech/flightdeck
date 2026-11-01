@@ -62,6 +62,7 @@ import {
 import { costByClient, loadCostsSummary } from "./client-costs.ts";
 import { knownProjects } from "./client-rules.ts";
 import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
+import { effectiveRules, SCOPE_RULE_PREFIX } from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
@@ -234,6 +235,9 @@ export interface AppUpdateState {
 
 /** How often the app looks for its own update while open. */
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
+
+/** How long the app waits for changes to settle before it sends scoped rules again. */
+const VAULT_SCOPE_DELAY_MS = 300;
 
 /** How often the app looks at the clients' month limits. */
 const CLIENT_BUDGET_INTERVAL_MS = 10 * 60_000;
@@ -1653,6 +1657,8 @@ export class AppStore {
     this.updateTimer = null;
     if (this.clientBudgetTimer) clearInterval(this.clientBudgetTimer);
     this.clientBudgetTimer = null;
+    if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
+    this.vaultScopeTimer = null;
     this.theme.stop();
   }
 
@@ -2290,6 +2296,7 @@ export class AppStore {
       clientOverrides: this.clients.overrides(),
       clientSelection: valid ? kept : ALL_CLIENTS,
     });
+    this.scheduleVaultScope();
     // A limit that was set, changed or cleared is looked at now, not at the next round.
     const limits = JSON.stringify(this.clients.budgets());
     if (limits !== this.clientBudgetsSeen) {
@@ -2735,7 +2742,7 @@ export class AppStore {
       const result = await this.hostRequest(host.id, "vault.rules.set", {
         secretId,
         tags: secret.tags,
-        rules,
+        rules: this.effectiveVaultRules(secret, rules),
       });
       if (!result.ok) {
         // The hosts that took the refused set go back to the saved one: none keeps rules the
@@ -2745,7 +2752,7 @@ export class AppStore {
           await this.hostRequest(hostId, "vault.rules.set", {
             secretId,
             tags: secret.tags,
-            rules: saved,
+            rules: this.effectiveVaultRules(secret, saved),
           });
         }
         return result;
@@ -2753,15 +2760,85 @@ export class AppStore {
       accepted.push(host.id);
     }
     this.rules.set(secretId, rules);
+    for (const hostId of accepted) {
+      this.vaultScopeSent.set(
+        `${hostId}/${secretId}`,
+        JSON.stringify(this.effectiveVaultRules(secret as SecretMeta, rules)),
+      );
+    }
     return { ok: true };
+  }
+
+  /** Rules the daemon is sent for a secret: its own, with its client's scope in front (phase 29). */
+  private effectiveVaultRules(secret: SecretMeta, own: unknown[]): unknown[] {
+    const scope = this.clientScope();
+    return effectiveRules(secret, own, this.state.clientList, (clientId) =>
+      scope.knownProjects
+        .map((p) => p.key)
+        .filter((key) => scope.clientOf(key) === clientId)
+        .sort(),
+    );
+  }
+
+  /** What was last sent of each secret to each host (`hostId/secretId`), as text. */
+  private readonly vaultScopeSent = new Map<string, string>();
+  private vaultScopeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Looks again, soon, at what scoped secrets are sent: one look for a burst of changes. */
+  private scheduleVaultScope(): void {
+    const scoped = this.state.clientList.some((c) => c.defaults.vaultScope);
+    if (!scoped && this.vaultScopeSent.size === 0) return;
+    if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
+    this.vaultScopeTimer = setTimeout(() => {
+      this.vaultScopeTimer = null;
+      void this.pushVaultScopes();
+    }, VAULT_SCOPE_DELAY_MS);
+  }
+
+  /**
+   * Sends the hosts what changed in the rules of scoped secrets: a client's projects came or went,
+   * or scope was turned on or off (the own rules go back). A change in the projects of a client
+   * that stays scoped says so, so a widening is never silent.
+   */
+  private async pushVaultScopes(): Promise<void> {
+    const changed = new Set<string>();
+    for (const secret of this.vault.list()) {
+      const own = this.rules.get(secret.id);
+      const rules = this.effectiveVaultRules(secret, own);
+      const text = JSON.stringify(rules);
+      for (const host of this.state.hosts) {
+        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) continue;
+        const key = `${host.id}/${secret.id}`;
+        const before = this.vaultScopeSent.get(key);
+        const scoped = text.includes(SCOPE_RULE_PREFIX);
+        // Nothing of this secret was sent by the scope, and none is now: leave it alone.
+        if (before === undefined ? !scoped : before === text) continue;
+        const result = await this.hostRequest(host.id, "vault.rules.set", {
+          secretId: secret.id,
+          tags: secret.tags,
+          rules,
+        });
+        if (!result.ok) continue;
+        this.vaultScopeSent.set(key, text);
+        if (scoped && before?.includes(SCOPE_RULE_PREFIX)) {
+          const client = this.state.clientList.find((c) =>
+            text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`),
+          );
+          if (client) changed.add(client.name);
+        }
+      }
+    }
+    for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
   }
 
   /** On connect: the host gets the rules of the secrets it may receive, and of no other. */
   private sendVaultRules(hostId: string, conn: HostConnection): void {
     const all = this.rules.all();
     for (const secret of this.vault.list()) {
-      const rules = all[secret.id];
-      if (!rules || !secret.allowedHosts.includes(hostId)) continue;
+      const own = all[secret.id];
+      if (!own || !secret.allowedHosts.includes(hostId)) continue;
+      const rules = this.effectiveVaultRules(secret, own);
+      this.vaultScopeSent.set(`${hostId}/${secret.id}`, JSON.stringify(rules));
       void conn
         .request("vault.rules.set", { secretId: secret.id, tags: secret.tags, rules })
         .catch((error: unknown) => this.fail(error));
@@ -2980,6 +3057,7 @@ export class AppStore {
     this.state = { ...this.state, ...patch };
     if (patch.hosts) this.syncTray();
     if (patch.hosts) this.watchClientBudgetHosts();
+    if (patch.hub || patch.projects) this.scheduleVaultScope();
     if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
       this.scheduleTrayMenu();
     }
