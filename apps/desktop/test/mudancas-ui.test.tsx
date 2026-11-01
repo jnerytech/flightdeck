@@ -502,7 +502,10 @@ describe("mudancas-ui", () => {
     await click("Salvar");
     await settle(() => document.querySelector(".cm-content") === null);
     expect(document.querySelector(".cm-content")).toBeNull();
-    expect(screen.queryByRole("dialog")?.textContent ?? "").toContain("fora de allowedRoots");
+    const shown = screen.queryByRole("dialog")?.textContent ?? "";
+    // The translated sentence (with the fix), then the host's own English text behind it.
+    expect(shown).toContain("está fora das pastas permitidas do host");
+    expect(shown).toContain("outside allowedRoots");
     expect(readFileSync(join(outside, "a.txt"), "utf8")).toBe("um\ndois\n");
   });
 

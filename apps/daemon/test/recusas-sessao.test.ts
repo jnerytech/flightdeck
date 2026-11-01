@@ -36,15 +36,29 @@ async function refusalOf(run: () => Promise<unknown>) {
 describe("recusas-sessao: folders and sessions refuse with a reason the app translates", () => {
   test("a folder that does not exist, or lies outside allowedRoots, says which and where", () => {
     const { root } = newManager();
-    expect(refusal(() => resolveAllowedCwd("/does/not/exist", [root]))).toMatchObject({
+    expect(refusal(() => resolveAllowedCwd(`${root}/nope/deeper`, [root]))).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_missing",
-      params: { cwd: "/does/not/exist" },
+      params: { cwd: `${root}/nope/deeper` },
     });
     expect(refusal(() => resolveAllowedCwd("/tmp", [root]))).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_outside_roots",
       params: { cwd: "/tmp" },
+    });
+  });
+
+  test("a path outside allowedRoots is refused as outside whether it exists or not, so it never tells which", () => {
+    const { root } = newManager();
+    expect(refusal(() => resolveAllowedCwd("/tmp", [root]))?.reason).toBe("cwd_outside_roots");
+    expect(refusal(() => resolveAllowedCwd("/does/not/exist", [root]))).toMatchObject({
+      code: "forbidden_cwd",
+      reason: "cwd_outside_roots",
+      params: { cwd: "/does/not/exist" },
+    });
+    // Inside a root, a folder nobody made is missing.
+    expect(refusal(() => resolveAllowedCwd(`${root}/nobody-made-this`, [root]))).toMatchObject({
+      reason: "cwd_missing",
     });
   });
 

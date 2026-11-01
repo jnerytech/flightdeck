@@ -67,7 +67,7 @@ describe("recusas-daemon: the daemon's refusals about folders and sessions", () 
     await store.createSession(hostId, { cwd: "/folder/nobody/made", prompt: "hi" });
     expect(store.getState().notices[0]).toMatchObject({
       code: "forbidden_cwd",
-      reason: "cwd_missing",
+      reason: "cwd_outside_roots",
       params: { cwd: "/folder/nobody/made" },
     });
   });

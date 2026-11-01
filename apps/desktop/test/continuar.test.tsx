@@ -135,7 +135,7 @@ describe("continuar", () => {
     await settle(() => screen.queryByRole("alert") !== null);
     // A toast titled by the code (phase 10).
     expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
-      "A pasta está fora das pastas permitidas do host.",
+      "A pasta /fora/dos/roots está fora das pastas permitidas do host.",
     );
     expect(runtime.starts).toEqual([]);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
