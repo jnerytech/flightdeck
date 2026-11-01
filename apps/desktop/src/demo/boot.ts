@@ -72,6 +72,9 @@ export function entryHtml(html: string, entry: string | undefined): string {
  * What the store gets in the demo: with seeded hosts, a long wait between attempts, so a host that
  * does not answer stays offline (or reconnecting) long enough for the prints instead of flickering.
  */
-export function demoStoreOptions(hosts: DemoHost[]): { baseDelayMs?: number } {
+export function demoStoreOptions(
+  hosts: DemoHost[],
+  _search = "",
+): { baseDelayMs?: number; maxDelayMs?: number } {
   return hosts.length > 0 ? { baseDelayMs: 60_000 } : {};
 }

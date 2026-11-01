@@ -119,4 +119,19 @@ describe("demo-prints", () => {
       demoStoreOptions([{ id: "a", name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: "t" }]),
     ).toEqual({ baseDelayMs: 60_000 });
   });
+
+  test("o e2e pede ?reconnect=fast: reconecta em segundos, para que uma primeira conexão perdida não custe 30 s", () => {
+    const hosts = [{ id: "a", name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: "t" }];
+    expect(demoStoreOptions(hosts, "?reconnect=fast")).toEqual({
+      baseDelayMs: 1000,
+      maxDelayMs: 4000,
+    });
+    expect(demoStoreOptions(hosts, "?route=%7B%7D&reconnect=fast&lang=en")).toEqual({
+      baseDelayMs: 1000,
+      maxDelayMs: 4000,
+    });
+    expect(demoStoreOptions(hosts, "?reconnect=slow")).toEqual({ baseDelayMs: 60_000 });
+    expect(demoStoreOptions(hosts, "")).toEqual({ baseDelayMs: 60_000 });
+    expect(demoStoreOptions([], "?reconnect=fast")).toEqual({});
+  });
 });
