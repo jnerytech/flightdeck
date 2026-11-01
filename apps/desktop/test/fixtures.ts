@@ -43,6 +43,7 @@ import { SecretScanner } from "../../daemon/src/snippets/model.ts";
 import { Snippets } from "../../daemon/src/snippets/store.ts";
 import { SnippetUse } from "../../daemon/src/snippets/use.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
+import { TelemetryOptIn } from "../../daemon/src/telemetry/optin.ts";
 import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
@@ -245,6 +246,7 @@ export function daemon(
       })
     : undefined;
   const telemetry = options.telemetry ? new TelemetryStore(store.db) : undefined;
+  const telemetryOptIn = new TelemetryOptIn({ configFile, settingsPath: () => settingsFile });
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   const budgets = options.budgets?.(store.db);
   const issues = options.issues || options.automations ? new Issues({ board }) : undefined;
@@ -322,7 +324,7 @@ export function daemon(
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
-      ...(telemetry ? { telemetry } : {}),
+      ...(telemetry ? { telemetry, telemetryOptIn } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
