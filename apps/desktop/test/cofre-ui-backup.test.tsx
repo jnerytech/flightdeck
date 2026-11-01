@@ -136,6 +136,84 @@ describe("cofre-ui: backup", () => {
     expect(screen.queryByText("As frases-senha não são iguais.")).not.toBeNull();
   });
 
+  test("Exportar cofre stays off, and says why, until the passphrase is typed twice", async () => {
+    await open();
+    const button = () =>
+      screen.getByRole("button", { name: "Exportar cofre" }) as HTMLButtonElement;
+    const reason = "Digite a frase-senha e repita-a.";
+    expect(button().disabled).toBe(true);
+    expect(screen.queryByText(reason)).not.toBeNull();
+    await fill("Frase-senha", PASS);
+    expect(button().disabled).toBe(true);
+    await fill("Confirmar frase-senha", PASS);
+    expect(button().disabled).toBe(false);
+    expect(screen.queryByText(reason)).toBeNull();
+  });
+
+  test("Enter in a passphrase exports: the fields and the button are one form", async () => {
+    const { saved } = await open();
+    await fill("Frase-senha", PASS);
+    await fill("Confirmar frase-senha", PASS);
+    const form = (screen.getByLabelText("Frase-senha") as HTMLElement).closest("form");
+    expect(form).not.toBeNull();
+    expect((screen.getByRole("button", { name: "Exportar cofre" }) as HTMLButtonElement).type).toBe(
+      "submit",
+    );
+    await act(async () => {
+      fireEvent.submit(form as HTMLFormElement);
+    });
+    await act(() => Bun.sleep(30));
+    expect(saved).toHaveLength(1);
+  });
+
+  test("the passphrase says how long it must be and what losing it means", async () => {
+    await open();
+    const field = screen.getByLabelText("Frase-senha") as HTMLElement;
+    const help = document.getElementById(field.getAttribute("aria-describedby") ?? "");
+    expect(help?.textContent).toBe("Pelo menos 12 caracteres. Sem ela o backup não abre.");
+  });
+
+  test("Importar cofre stays off, and says why, until the file's passphrase is typed", async () => {
+    await open(await backupText());
+    const button = () =>
+      screen.getByRole("button", { name: "Importar cofre" }) as HTMLButtonElement;
+    const reason = "Digite a frase-senha do arquivo.";
+    expect(button().disabled).toBe(true);
+    expect(screen.queryByText(reason)).not.toBeNull();
+    await fill("Frase-senha do arquivo", PASS);
+    expect(button().disabled).toBe(false);
+    expect(screen.queryByText(reason)).toBeNull();
+  });
+
+  test("while the backup is being saved the button shows it is busy", async () => {
+    const { platform } = memoryPlatform();
+    let release: (() => void) | null = null;
+    platform.saveFile = () =>
+      new Promise<boolean>((resolve) => {
+        release = () => resolve(true);
+      });
+    const store = new AppStore(platform, { baseDelayMs: 60_000, vaultWorkFactor: 4 });
+    const daemon = legacyDaemon(cleanups);
+    await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+    render(<VaultPage store={store} state={store.getState()} />);
+    const tab = screen.getByRole("tab", { name: "Backup" });
+    await act(async () => {
+      fireEvent.mouseDown(tab, { button: 0 });
+      fireEvent.click(tab);
+    });
+    await fill("Frase-senha", PASS);
+    await fill("Confirmar frase-senha", PASS);
+    await click("Exportar cofre");
+    const busy = () =>
+      screen.getByRole("button", { name: "Exportar cofre" }).getAttribute("aria-busy");
+    expect(busy()).toBe("true");
+    await act(async () => {
+      (release as (() => void) | null)?.();
+      await Bun.sleep(30);
+    });
+    expect(busy()).toBeNull();
+  });
+
   test("Importar cofre previews new, same and conflicting secrets and changes nothing until Aplicar", async () => {
     const { store } = await open(await backupText());
     await fill("Frase-senha do arquivo", PASS);
