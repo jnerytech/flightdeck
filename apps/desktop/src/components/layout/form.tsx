@@ -94,15 +94,17 @@ export function Field(props: {
  */
 export function NativeSelect({
   className,
-  inline: _inline,
-  compact: _compact,
+  inline,
+  compact,
   ...props
 }: ComponentProps<"select"> & { inline?: boolean; compact?: boolean }) {
   return (
     <select
       data-slot="native-select"
       className={cn(
-        "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "rounded-md border border-input bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        compact ? "h-8 text-xs" : "h-9 text-sm",
+        inline ? "w-auto" : "w-full",
         className,
       )}
       {...props}
