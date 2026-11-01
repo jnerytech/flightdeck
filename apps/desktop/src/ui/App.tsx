@@ -29,7 +29,7 @@ type InPlace =
   | "switch-language"
   | "start-card"
   | "snippet"
-  | "pr-link";
+  | "pull-link";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -254,7 +254,7 @@ export function App({ store }: { store: AppStore }) {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
     } else if (target.kind === "snippet") {
       store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
-    } else if (target.kind === "pr-link") {
+    } else if (target.kind === "pull-link") {
       void store.openPrLink(target.url).then((route) => {
         if (route) go(route);
       });

@@ -14,6 +14,7 @@ export function PreviewPage(props: { store: AppStore; url: string; title: string
   const allowed = isPreviewUrl(url);
   return (
     <Page
+      fill
       title={title}
       subtitle={url}
       actions={
@@ -30,7 +31,7 @@ export function PreviewPage(props: { store: AppStore; url: string; title: string
           src={url}
           referrerPolicy="no-referrer"
           sandbox="allow-scripts allow-forms allow-same-origin"
-          className="h-[70vh] w-full rounded-md border bg-background"
+          className="min-h-0 w-full flex-1 rounded-md border bg-background"
         />
       ) : (
         <InlineNotice>{t("runEnv.previewRefused")}</InlineNotice>

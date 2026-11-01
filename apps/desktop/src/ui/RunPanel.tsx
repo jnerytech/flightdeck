@@ -1,6 +1,7 @@
 import type { Card, RunConfigInfo } from "@flightdeck/protocol";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Panel } from "@/components/layout/panel";
+import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -42,32 +43,36 @@ export function RunPanel(props: { store: AppStore; hostId: string; card: Card })
     <section aria-label={t("runEnv.title")}>
       <Panel title={t("runEnv.title")}>
         {info.errors.length > 0 && (
-          <div className="flex flex-col gap-1 text-sm">
+          <Stack gap={1} className="text-sm">
             <p>{t("runEnv.errors")}</p>
             {info.errors.map((error) => (
               <p key={error} className="font-mono text-status-error text-xs">
                 {error}
               </p>
             ))}
-          </div>
+          </Stack>
         )}
         {info.config && !info.trusted && (
           <>
             <p className="text-muted-foreground text-sm">{t("runEnv.review")}</p>
-            <ul className="flex flex-col gap-1 text-sm">
+            <Stack as="ul" gap={1} className="text-sm">
               {info.config.setup && (
-                <li className="flex gap-2">
-                  <span className="text-muted-foreground">{t("runEnv.setupLabel")}</span>
-                  <code className="font-mono text-xs">{info.config.setup.join(" ")}</code>
+                <li>
+                  <Inline gap={2}>
+                    <span className="text-muted-foreground">{t("runEnv.setupLabel")}</span>
+                    <code className="font-mono text-xs">{info.config.setup.join(" ")}</code>
+                  </Inline>
                 </li>
               )}
               {info.config.run.map((process) => (
-                <li key={process.name} className="flex gap-2">
-                  <span>{process.name}</span>
-                  <code className="font-mono text-xs">{process.cmd.join(" ")}</code>
+                <li key={process.name}>
+                  <Inline gap={2}>
+                    <span>{process.name}</span>
+                    <code className="font-mono text-xs">{process.cmd.join(" ")}</code>
+                  </Inline>
                 </li>
               ))}
-            </ul>
+            </Stack>
             <Button size="sm" className="self-start" onClick={() => setTrusting(true)}>
               {t("runEnv.trust")}
             </Button>
@@ -75,7 +80,7 @@ export function RunPanel(props: { store: AppStore; hostId: string; card: Card })
         )}
         {info.config && info.trusted && (
           <>
-            <div className="flex items-center gap-2">
+            <Inline gap={2}>
               {live ? (
                 <Button
                   size="sm"
@@ -90,7 +95,7 @@ export function RunPanel(props: { store: AppStore; hostId: string; card: Card })
                 </Button>
               )}
               <span className="text-sm">{t(`runEnv.status.${status}`)}</span>
-            </div>
+            </Inline>
             {state?.error && <p className="text-status-error text-sm">{state.error}</p>}
             {state && Object.keys(state.ports).length > 0 && (
               <p className="text-muted-foreground text-sm">
@@ -111,44 +116,46 @@ export function RunPanel(props: { store: AppStore; hostId: string; card: Card })
                 {t("runEnv.viewLog", { name: t("runEnv.setupLabel") })}
               </Button>
             )}
-            <ul className="flex flex-col gap-2 text-sm">
+            <Stack as="ul" gap={2} className="text-sm">
               {state?.processes.map((process) => (
-                <li key={process.terminalId} className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{process.name}</span>
-                  <span className="text-muted-foreground">
-                    {process.status === "running"
-                      ? t("runEnv.procRunning")
-                      : t("runEnv.procExited", { code: String(process.exitCode) })}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => open("terminal", process.terminalId)}
-                  >
-                    {t("runEnv.viewLog", { name: process.name })}
-                  </Button>
-                  {process.ready === "ready" && process.url && (
+                <li key={process.terminalId}>
+                  <Inline gap={2}>
+                    <span className="font-medium">{process.name}</span>
+                    <span className="text-muted-foreground">
+                      {process.status === "running"
+                        ? t("runEnv.procRunning")
+                        : t("runEnv.procExited", { code: String(process.exitCode) })}
+                    </span>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => open("preview", "", process.url ?? "", process.name)}
+                      onClick={() => open("terminal", process.terminalId)}
                     >
-                      {t("runEnv.openPreview", { name: process.name })}
+                      {t("runEnv.viewLog", { name: process.name })}
                     </Button>
-                  )}
-                  {process.ready === "waiting" && (
-                    <span className="text-muted-foreground text-xs">
-                      {t("runEnv.previewWaiting", { name: process.name })}
-                    </span>
-                  )}
-                  {process.ready === "timeout" && (
-                    <span className="text-muted-foreground text-xs">
-                      {t("runEnv.previewTimeout", { name: process.name })}
-                    </span>
-                  )}
+                    {process.ready === "ready" && process.url && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => open("preview", "", process.url ?? "", process.name)}
+                      >
+                        {t("runEnv.openPreview", { name: process.name })}
+                      </Button>
+                    )}
+                    {process.ready === "waiting" && (
+                      <span className="text-muted-foreground text-xs">
+                        {t("runEnv.previewWaiting", { name: process.name })}
+                      </span>
+                    )}
+                    {process.ready === "timeout" && (
+                      <span className="text-muted-foreground text-xs">
+                        {t("runEnv.previewTimeout", { name: process.name })}
+                      </span>
+                    )}
+                  </Inline>
                 </li>
               ))}
-            </ul>
+            </Stack>
           </>
         )}
       </Panel>

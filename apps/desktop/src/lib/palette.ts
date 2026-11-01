@@ -29,7 +29,7 @@ export type PaletteTarget =
   /** A snippet to fill and use: a host's, or a global one of the app (`hostId` null). */
   | { kind: "snippet"; hostId: string | null; snippetId: string }
   /** A pasted PR link (phase 22): the hosts that watch PRs are asked which card or session it is. */
-  | { kind: "pr-link"; url: string };
+  | { kind: "pull-link"; url: string };
 
 export interface PaletteAction {
   label: string;
@@ -269,7 +269,7 @@ export function paletteSections(
   const link = query.trim();
   const prLink: PaletteItem[] =
     PR_LINK.test(link) && online.some((h) => hasFeature(h.hostInfo?.features, "watch", false))
-      ? [action(`pr-link:${link}`, t("palette.openPrLink"), { kind: "pr-link", url: link }, link)]
+      ? [action(`pr-link:${link}`, t("palette.openPrLink"), { kind: "pull-link", url: link }, link)]
       : [];
   const filtered = [
     { title: t("palette.sectionSessions"), items: sessions },

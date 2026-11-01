@@ -1,8 +1,9 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { SplitView } from "@/components/layout/split-view";
+import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,16 @@ type Entry =
 
 const ROW =
   "flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent";
+
+/** The first line of a row: a dot, then the text. A span, since a row is a button. */
+function RowHead(props: { children: ReactNode }) {
+  return <span className="flex items-center gap-2">{props.children}</span>;
+}
+
+/** The right-hand side for something that is not a request: a column that scrolls by itself. */
+function DetailColumn(props: { children: ReactNode }) {
+  return <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">{props.children}</div>;
+}
 
 /** The requests waiting for the user: the list on the left, the chosen request's card on the right. */
 export function NeedsYou(props: {
@@ -144,10 +155,10 @@ export function NeedsYou(props: {
                     open(entry);
                   }}
                 >
-                  <span className="flex items-center gap-2">
+                  <RowHead>
                     <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
                     <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
-                  </span>
+                  </RowHead>
                 </button>
               </li>
             );
@@ -165,12 +176,12 @@ export function NeedsYou(props: {
                     open(entry);
                   }}
                 >
-                  <span className="flex items-center gap-2">
+                  <RowHead>
                     <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
                     <span className="min-w-0 flex-1 truncate text-sm">
                       {t("needsYou.loopRow", { from: entry.alert.from, to: entry.alert.to })}
                     </span>
-                  </span>
+                  </RowHead>
                 </button>
               </li>
             );
@@ -190,7 +201,7 @@ export function NeedsYou(props: {
                   open(entry);
                 }}
               >
-                <span className="flex items-center gap-2">
+                <RowHead>
                   <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
                   <span className="min-w-0 flex-1 truncate text-sm">{`${item.hostName} · ${item.sessionName}`}</span>
                   <time
@@ -199,7 +210,7 @@ export function NeedsYou(props: {
                   >
                     {formatAgo(store.now() - Date.parse(item.createdAt), t)}
                   </time>
-                </span>
+                </RowHead>
                 <span className="truncate pl-4 text-muted-foreground text-xs">
                   {summary ? `${item.toolName}: ${summary}` : item.toolName}
                 </span>
@@ -215,19 +226,19 @@ export function NeedsYou(props: {
   const loop = chosen?.kind === "loop" ? chosen.alert : null;
   const watching = chosen?.kind === "watch" ? chosen.alert : null;
   const detail = watching ? (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+    <DetailColumn>
       <h2 className="font-semibold text-base">{t("watchUi.notifyTitle")}</h2>
       <p className="text-sm">{watching.title}</p>
       <p className="text-sm">{t("watchUi.needsYou", { reason: watching.watch.reason ?? "" })}</p>
-      <ul className="flex flex-col gap-1 text-sm">
+      <Stack as="ul" gap={1} className="text-sm">
         {watching.watch.rounds.map((round) => (
           <li key={round.id}>
             {t("watchUi.round", { n: round.n, status: t(`watchUi.status.${round.status}` as Key) })}
             {round.summary ? ` — ${round.summary}` : ""}
           </li>
         ))}
-      </ul>
-      <div className="flex gap-2">
+      </Stack>
+      <Inline gap={2}>
         <ActionButton onClick={() => store.setWatch(watching.hostId, watching.cardId, true)}>
           {t("watchUi.resume")}
         </ActionButton>
@@ -246,10 +257,10 @@ export function NeedsYou(props: {
             {t("watchUi.openCard")}
           </Button>
         )}
-      </div>
-    </div>
+      </Inline>
+    </DetailColumn>
   ) : loop ? (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+    <DetailColumn>
       <h2 className="font-semibold text-base">{t("needsYou.loopTitle")}</h2>
       <p className="text-sm">{loop.message}</p>
       <div>
@@ -257,7 +268,7 @@ export function NeedsYou(props: {
           {t("needsYou.release")}
         </Button>
       </div>
-    </div>
+    </DetailColumn>
   ) : (
     item && (
       <div className="h-full overflow-y-auto p-4">
