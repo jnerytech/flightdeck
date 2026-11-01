@@ -70,7 +70,9 @@ export function BudgetsSection(props: {
               {props.budgets.map((budget) => (
                 <li key={budget.id}>
                   <ListRow
-                    title={budgetLine(budget, t)}
+                    title={
+                      <span className="whitespace-normal break-words">{budgetLine(budget, t)}</span>
+                    }
                     trailing={
                       <Inline gap={1}>
                         <Button
