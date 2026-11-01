@@ -2198,7 +2198,20 @@ export const ActionRunInfo = z.object({
 export type ActionRunInfo = z.infer<typeof ActionRunInfo>;
 
 /** The actions of a scope, and what is wrong with the versioned file (the valid ones still load). */
-export const ActionList = z.object({ actions: z.array(ActionInfo), errors: z.array(z.string()) });
+export const ActionList = z.object({
+  actions: z.array(ActionInfo),
+  errors: z.array(z.string()),
+  /** What is wrong in the actions file, one item per problem, for the app to translate. */
+  issues: z
+    .array(
+      z.object({
+        path: z.string(),
+        code: z.string(),
+        params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+      }),
+    )
+    .optional(),
+});
 export type ActionList = z.infer<typeof ActionList>;
 
 export const ActionResult = z.object({

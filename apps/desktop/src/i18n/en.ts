@@ -666,6 +666,35 @@ export const en: Dictionary = {
     unknown:
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
+  actionIssue: {
+    not_object: "The action must be a block of fields.",
+    unknown_field: "This field does not exist: {field}.",
+    name_format: "The name takes lowercase letters, digits and hyphens, up to 63 characters.",
+    description_required: "The description is required.",
+    field_text: "{field} must be a text.",
+    run_list: "run is a list: the program, then its arguments. Never a shell line.",
+    env_map: "env is a map of NAME to value.",
+    env_entry: "env {key} needs a valid variable name and a text.",
+    params_map: "params is a map of name to rule.",
+    param_pattern_missing: "The parameter {param} needs a pattern.",
+    param_regex_invalid: "The pattern of the parameter {param} is not a valid regex.",
+    param_default_mismatch: "The default of the parameter {param} does not match its pattern.",
+    timeout_range: "timeoutS is a whole number from 1 to {max}.",
+    approval_values: "approval is always, never or first-per-session.",
+    tags_list: "tags is a list of up to {max} short labels without spaces (like prod).",
+    secret_in_arg:
+      "A secret cannot go in an argument, where the process list shows it: {arg}. Use env or secretFile.",
+    exec_param: "The program (run[0]) cannot be a parameter.",
+    param_in_code: "A parameter cannot take the code position of an interpreter (after {arg}).",
+    cwd_secret: "cwd cannot carry a secret.",
+    param_undeclared: "The parameter {param} is used but not declared.",
+    secret_unknown: "The secret {secret} is not in the vault.",
+    ssh_secret_file:
+      "An ssh action has no secretFile: it would be a local path in a remote command. Use env.",
+    name_duplicate: "Another action has this name.",
+    yaml_invalid: "The file is not valid YAML: {detail}",
+    file_not_list: "The actions file is a list of actions.",
+  },
   ruleIssue: {
     required: "The rule needs an id.",
     duplicate: "Another rule has the same id.",
@@ -813,6 +842,7 @@ export const en: Dictionary = {
     action_secret_refused: "The app refused the secret {secret}.",
     action_secret_expired: "The request for the secret {secret} expired unanswered and was denied.",
     action_ssh_env_name: "{name} is not a valid variable name for an ssh action.",
+    action_invalid: "The action has problems. Fix them and save again.",
     action_ssh_env_value:
       "The variable {name} has a line break or NUL, which an ssh action does not send.",
     ssh_target_not_found: "That ssh destination was not found.",

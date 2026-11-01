@@ -1,4 +1,4 @@
-import type { ActionInfo, ActionRunInfo } from "@flightdeck/protocol";
+import type { ActionInfo, ActionList, ActionRunInfo } from "@flightdeck/protocol";
 import { Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
@@ -6,6 +6,7 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { actionIssueText } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { ActionSeed } from "../lib/snippets.ts";
@@ -77,6 +78,9 @@ export function ActionsPage(props: {
 }) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
+  /** The problems of the actions file in the app's language; an older host sends only its text. */
+  const problemsOf = (list: ActionList): string[] =>
+    list.issues ? list.issues.map((issue) => actionIssueText(issue, t)) : list.errors;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   /** The runs of the actions whose history is open, by `source:name`. */
@@ -91,7 +95,7 @@ export function ActionsPage(props: {
     const list = await store.hostCommand(hostId, "actions.list", { projectId });
     if (!list) return;
     setActions(list.actions);
-    setErrors(list.errors);
+    setErrors(problemsOf(list));
   }, [store, hostId, projectId]);
   useEffect(() => {
     void load();
@@ -118,7 +122,7 @@ export function ActionsPage(props: {
     });
     if (result) {
       setActions(result.actions);
-      setErrors(result.errors);
+      setErrors(problemsOf(result));
     }
   };
   const trust = async (action: ActionInfo) => {

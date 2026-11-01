@@ -661,6 +661,36 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
+  actionIssue: {
+    not_object: "A ação precisa ser um bloco de campos.",
+    unknown_field: "Esse campo não existe: {field}.",
+    name_format: "O nome usa letras minúsculas, números e hífens, até 63 caracteres.",
+    description_required: "A descrição é obrigatória.",
+    field_text: "{field} precisa ser um texto.",
+    run_list: "run é uma lista: o programa e depois os argumentos. Nunca uma linha de shell.",
+    env_map: "env é um mapa de NOME para valor.",
+    env_entry: "env {key} precisa de um nome de variável válido e de um texto.",
+    params_map: "params é um mapa de nome para regra.",
+    param_pattern_missing: "O parâmetro {param} precisa de um pattern.",
+    param_regex_invalid: "O pattern do parâmetro {param} não é uma regex válida.",
+    param_default_mismatch: "O default do parâmetro {param} não casa com o pattern.",
+    timeout_range: "timeoutS é um número inteiro de 1 a {max}.",
+    approval_values: "approval é always, never ou first-per-session.",
+    tags_list: "tags é uma lista de até {max} rótulos curtos sem espaço (como prod).",
+    secret_in_arg:
+      "Um segredo não pode ir em argumento, onde a lista de processos o mostra: {arg}. Use env ou secretFile.",
+    exec_param: "O programa (run[0]) não pode ser um parâmetro.",
+    param_in_code:
+      "Um parâmetro não pode ocupar a posição de código de um interpretador (depois de {arg}).",
+    cwd_secret: "cwd não pode levar segredo.",
+    param_undeclared: "O parâmetro {param} é usado mas não foi declarado.",
+    secret_unknown: "O segredo {secret} não está no cofre.",
+    ssh_secret_file:
+      "Uma ação ssh não tem secretFile: seria um caminho local num comando remoto. Use env.",
+    name_duplicate: "Outra ação tem esse nome.",
+    yaml_invalid: "O arquivo não é um YAML válido: {detail}",
+    file_not_list: "O arquivo de ações é uma lista de ações.",
+  },
   ruleIssue: {
     required: "A regra precisa de um id.",
     duplicate: "Outra regra tem o mesmo id.",
@@ -809,6 +839,7 @@ export const ptBR = {
     action_secret_refused: "O app recusou o segredo {secret}.",
     action_secret_expired: "O pedido do segredo {secret} venceu sem resposta e foi negado.",
     action_ssh_env_name: "{name} não é um nome de variável válido para uma ação ssh.",
+    action_invalid: "A ação tem problemas. Corrija e salve de novo.",
     action_ssh_env_value:
       "A variável {name} tem quebra de linha ou NUL, que uma ação ssh não envia.",
     ssh_target_not_found: "Esse destino ssh não foi encontrado.",

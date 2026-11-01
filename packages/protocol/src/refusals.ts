@@ -89,6 +89,7 @@ export const DAEMON_REASONS = [
   "ssh_test_hostkey",
   "ssh_test_exit",
   "ssh_test_no_password",
+  "action_invalid",
   "action_param_unknown",
   "action_param_missing",
   "action_param_pattern",
@@ -179,6 +180,35 @@ export interface RuleIssue {
   code: string;
   params?: RefusalParams;
 }
+
+/** Every kind of issue an actions file or definition can have: the app has a text for each, in both languages. */
+export const ACTION_ISSUE_CODES = [
+  "not_object",
+  "unknown_field",
+  "name_format",
+  "description_required",
+  "field_text",
+  "run_list",
+  "env_map",
+  "env_entry",
+  "params_map",
+  "param_pattern_missing",
+  "param_regex_invalid",
+  "param_default_mismatch",
+  "timeout_range",
+  "approval_values",
+  "tags_list",
+  "secret_in_arg",
+  "exec_param",
+  "param_in_code",
+  "cwd_secret",
+  "param_undeclared",
+  "secret_unknown",
+  "ssh_secret_file",
+  "name_duplicate",
+  "yaml_invalid",
+  "file_not_list",
+] as const;
 
 /** Every kind of issue the rules validation reports: the app has a text for each, in both languages. */
 export const RULE_ISSUE_CODES = [

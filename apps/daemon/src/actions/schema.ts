@@ -5,6 +5,10 @@
  * interpreter reads, so a loose `pattern` can never turn an action into a free command.
  */
 
+import type { RuleIssue } from "@flightdeck/protocol";
+
+type ActionIssue = RuleIssue;
+
 export type ApprovalMode = "always" | "never" | "first-per-session";
 
 export interface ActionParam {
@@ -112,52 +116,71 @@ const MAX_TAGS = 8;
 export function validateAction(
   raw: unknown,
   opts: ParseOptions = {},
-): { action: ActionDef | null; errors: string[] } {
-  if (!isRecord(raw)) return { action: null, errors: ["a ação tem de ser um objeto"] };
-  const label = isText(raw.name) && raw.name ? `ação ${raw.name}` : "ação";
-  const errors: string[] = [];
-  const bad = (message: string) => errors.push(`${label}: ${message}`);
-
-  for (const key of Object.keys(raw)) if (!FIELDS.has(key)) bad(`campo desconhecido: ${key}`);
-  if (!isText(raw.name) || !NAME.test(raw.name)) {
-    bad("name tem letras minúsculas, números e hífens, até 63 caracteres");
+): { action: ActionDef | null; errors: string[]; issues: ActionIssue[] } {
+  if (!isRecord(raw)) {
+    return {
+      action: null,
+      errors: ["the action must be an object"],
+      issues: [{ path: "", code: "not_object" }],
+    };
   }
-  if (!isText(raw.description) || !raw.description.trim()) bad("description é obrigatório");
+  const label = isText(raw.name) && raw.name ? `action ${raw.name}` : "action";
+  const path = isText(raw.name) ? raw.name : "";
+  const errors: string[] = [];
+  const issues: ActionIssue[] = [];
+  const bad = (code: string, message: string, params?: Record<string, string | number>) => {
+    errors.push(`${label}: ${message}`);
+    issues.push({ path, code, ...(params ? { params } : {}) });
+  };
+
+  for (const key of Object.keys(raw))
+    if (!FIELDS.has(key)) bad("unknown_field", `unknown field: ${key}`, { field: key });
+  if (!isText(raw.name) || !NAME.test(raw.name)) {
+    bad("name_format", "name takes lowercase letters, digits and hyphens, up to 63 characters");
+  }
+  if (!isText(raw.description) || !raw.description.trim())
+    bad("description_required", "description is required");
   for (const key of ["host", "ssh", "cwd"] as const) {
-    if (raw[key] !== undefined && !isText(raw[key])) bad(`${key} é um texto`);
+    if (raw[key] !== undefined && !isText(raw[key]))
+      bad("field_text", `${key} is a text`, { field: key });
   }
 
   const run = raw.run;
   const argv = Array.isArray(run) && run.length > 0 && run.every(isText) ? (run as string[]) : null;
   if (!argv)
-    bad("run é uma lista de textos (o programa e os argumentos), nunca uma linha de shell");
+    bad("run_list", "run is a list of texts (the program and its arguments), never a shell line");
 
   const env = isRecord(raw.env) ? raw.env : {};
-  if (raw.env !== undefined && !isRecord(raw.env)) bad("env é um mapa de NOME para valor");
+  if (raw.env !== undefined && !isRecord(raw.env)) bad("env_map", "env is a map of NAME to value");
   for (const [key, value] of Object.entries(env)) {
     if (!ENV_NAME.test(key) || !isText(value))
-      bad(`env ${key} precisa de um nome de variável e um texto`);
+      bad("env_entry", `env ${key} needs a variable name and a text`, { key });
   }
 
   const params: Record<string, ActionParam> = {};
   const rawParams = isRecord(raw.params) ? raw.params : {};
-  if (raw.params !== undefined && !isRecord(raw.params)) bad("params é um mapa de nome para regra");
+  if (raw.params !== undefined && !isRecord(raw.params))
+    bad("params_map", "params is a map of name to rule");
   for (const [key, spec] of Object.entries(rawParams)) {
     const pattern = isRecord(spec) ? spec.pattern : undefined;
     if (!isText(pattern) || pattern === "") {
-      bad(`o parâmetro ${key} precisa de um pattern`);
+      bad("param_pattern_missing", `parameter ${key} needs a pattern`, { param: key });
       continue;
     }
     let regex: RegExp | null = null;
     try {
       regex = paramRegex(pattern);
     } catch {
-      bad(`o pattern do parâmetro ${key} não é uma regex válida`);
+      bad("param_regex_invalid", `the pattern of parameter ${key} is not a valid regex`, {
+        param: key,
+      });
       continue;
     }
     const given = (spec as Record<string, unknown>).default;
     if (given !== undefined && (!isText(given) || !regex.test(given))) {
-      bad(`o default do parâmetro ${key} não casa com o pattern`);
+      bad("param_default_mismatch", `the default of parameter ${key} does not match the pattern`, {
+        param: key,
+      });
       continue;
     }
     params[key] = { pattern, ...(given !== undefined ? { default: given as string } : {}) };
@@ -171,7 +194,9 @@ export function validateAction(
       seconds < 1 ||
       seconds > MAX_TIMEOUT_S
     ) {
-      bad(`timeoutS é um inteiro de 1 a ${MAX_TIMEOUT_S}`);
+      bad("timeout_range", `timeoutS is an integer from 1 to ${MAX_TIMEOUT_S}`, {
+        max: MAX_TIMEOUT_S,
+      });
     }
   }
   if (
@@ -180,7 +205,7 @@ export function validateAction(
     raw.approval !== "never" &&
     raw.approval !== "first-per-session"
   ) {
-    bad("approval é always, never ou first-per-session");
+    bad("approval_values", "approval is always, never or first-per-session");
   }
 
   let tags: string[] | undefined;
@@ -191,7 +216,9 @@ export function validateAction(
       given.length > MAX_TAGS ||
       !given.every((tag) => isText(tag) && TAG.test(tag))
     ) {
-      bad(`tags é uma lista de até ${MAX_TAGS} rótulos curtos, sem espaço (como prod)`);
+      bad("tags_list", `tags is a list of up to ${MAX_TAGS} short labels, no spaces (like prod)`, {
+        max: MAX_TAGS,
+      });
     } else {
       tags = [...new Set((given as string[]).map((tag) => tag.toLowerCase()))];
     }
@@ -201,11 +228,13 @@ export function validateAction(
     for (const [i, arg] of argv.entries()) {
       if (referencesIn(arg).some((r) => r.kind === "secret")) {
         bad(
-          `o segredo não pode ir em argumento (aparece na lista de processos): "${arg}"; use env ou secretFile`,
+          "secret_in_arg",
+          `a secret cannot go in an argument (it shows in the process list): "${arg}"; use env or secretFile`,
+          { arg },
         );
       }
       if (i === 0 && referencesIn(arg).some((r) => r.kind === "param")) {
-        bad("o executável (run[0]) não pode ser um parâmetro");
+        bad("exec_param", "the executable (run[0]) cannot be a parameter");
       }
     }
     argv.forEach((arg, i) => {
@@ -213,12 +242,16 @@ export function validateAction(
       if (!flag) return;
       const codeArgs = flag.all ? argv.slice(i + 1) : argv.slice(i + 1, i + 2);
       if (codeArgs.some((code) => referencesIn(code).some((r) => r.kind === "param"))) {
-        bad(`{{param}} não pode ocupar a posição de código de um interpretador (depois de ${arg})`);
+        bad(
+          "param_in_code",
+          `{{param}} cannot take the code position of an interpreter (after ${arg})`,
+          { arg },
+        );
       }
     });
   }
   if (isText(raw.cwd) && referencesIn(raw.cwd).some((r) => r.kind !== "param")) {
-    bad("cwd não pode levar segredo");
+    bad("cwd_secret", "cwd cannot carry a secret");
   }
 
   const texts = [
@@ -228,10 +261,12 @@ export function validateAction(
   ];
   for (const ref of texts.flatMap(referencesIn)) {
     if (ref.kind === "param" && !(ref.name in params)) {
-      bad(`o parâmetro ${ref.name} é usado e não foi declarado`);
+      bad("param_undeclared", `parameter ${ref.name} is used and was not declared`, {
+        param: ref.name,
+      });
     }
     if (ref.kind !== "param" && opts.secretIds && !opts.secretIds.has(ref.name)) {
-      bad(`o segredo ${ref.name} não existe no cofre`);
+      bad("secret_unknown", `secret ${ref.name} is not in the vault`, { secret: ref.name });
     }
   }
 
@@ -240,11 +275,12 @@ export function validateAction(
     texts.some((text) => referencesIn(text).some((r) => r.kind === "secretFile"))
   ) {
     bad(
-      "numa ação ssh o secretFile não existe: seria um caminho local num comando remoto; use env",
+      "ssh_secret_file",
+      "an ssh action has no secretFile: it would be a local path in a remote command; use env",
     );
   }
 
-  if (errors.length > 0 || !argv) return { action: null, errors };
+  if (errors.length > 0 || !argv) return { action: null, errors, issues };
   const action: ActionDef = {
     name: raw.name as string,
     description: (raw.description as string).trim(),
@@ -258,37 +294,49 @@ export function validateAction(
     ...(raw.approval ? { approval: raw.approval as ApprovalMode } : {}),
     ...(tags ? { tags } : {}),
   };
-  return { action, errors };
+  return { action, errors, issues };
 }
 
 /** An `actions.yaml`: the valid actions, and the errors of the others. */
 export function parseActions(
   yaml: string,
   opts: ParseOptions = {},
-): { actions: ActionDef[]; errors: string[] } {
+): { actions: ActionDef[]; errors: string[]; issues: ActionIssue[] } {
   let document: unknown;
   try {
     document = Bun.YAML.parse(yaml);
   } catch (error) {
-    return { actions: [], errors: [`YAML inválido: ${(error as Error).message}`] };
+    const detail = (error as Error).message;
+    return {
+      actions: [],
+      errors: [`invalid YAML: ${detail}`],
+      issues: [{ path: "", code: "yaml_invalid", params: { detail } }],
+    };
   }
-  if (document === null || document === undefined) return { actions: [], errors: [] };
+  if (document === null || document === undefined) return { actions: [], errors: [], issues: [] };
   if (!Array.isArray(document)) {
-    return { actions: [], errors: ["o arquivo de ações é uma lista de ações"] };
+    return {
+      actions: [],
+      errors: ["the actions file is a list of actions"],
+      issues: [{ path: "", code: "file_not_list" }],
+    };
   }
   const actions: ActionDef[] = [];
   const errors: string[] = [];
+  const issues: ActionIssue[] = [];
   const names = new Set<string>();
   for (const raw of document) {
     const result = validateAction(raw, opts);
     errors.push(...result.errors);
+    issues.push(...result.issues);
     if (!result.action) continue;
     if (names.has(result.action.name)) {
-      errors.push(`ação ${result.action.name}: nome repetido`);
+      errors.push(`action ${result.action.name}: duplicate name`);
+      issues.push({ path: result.action.name, code: "name_duplicate" });
       continue;
     }
     names.add(result.action.name);
     actions.push(result.action);
   }
-  return { actions, errors };
+  return { actions, errors, issues };
 }

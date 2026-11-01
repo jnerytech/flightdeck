@@ -48,6 +48,15 @@ export function refusalText(
   return detail ? `${title} ${detail}` : title;
 }
 
+/** One thing wrong in an action file or definition, with the action it belongs to. */
+export function actionIssueText(issue: RuleIssue, t: T): string {
+  const text =
+    issue.code in ptBR.actionIssue
+      ? t(`actionIssue.${issue.code}` as Key, issue.params)
+      : issue.code;
+  return issue.path ? `${issue.path}: ${text}` : text;
+}
+
 /** One thing wrong in a vault rule, in the app's language. */
 export function ruleIssueText(issue: RuleIssue, t: T): string {
   if (!(issue.code in ptBR.ruleIssue)) return `${issue.path}: ${issue.code}`;

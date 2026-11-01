@@ -16,6 +16,7 @@ import type {
   ActionList,
   ActionResult,
   ActionRunInfo,
+  RuleIssue,
   VaultAlertFrame,
   VaultDaemonRequester,
   VaultDecisionInfo,
@@ -325,8 +326,8 @@ export class Actions {
 
   /** The actions a project sees (its own, then the host's) or, with no project, the host's. */
   async list(projectId?: string): Promise<ActionList> {
-    const { found, errors } = await this.visible(projectId);
-    return { actions: found.map((f) => this.info(f)), errors };
+    const { found, errors, issues } = await this.visible(projectId);
+    return { actions: found.map((f) => this.info(f)), errors, issues };
   }
 
   async save(input: {
@@ -334,11 +335,19 @@ export class Actions {
     definition: Record<string, unknown>;
     secretIds?: string[] | undefined;
   }): Promise<ActionInfo> {
-    const { action, errors } = validateAction(
+    const { action, errors, issues } = validateAction(
       input.definition,
       input.secretIds ? { secretIds: new Set(input.secretIds) } : {},
     );
-    if (!action) throw bad(errors.join("; "));
+    if (!action) {
+      throw new FlightdeckError(
+        "bad_request",
+        errors.join("; "),
+        "action_invalid",
+        undefined,
+        issues,
+      );
+    }
     const scope = input.projectId ?? "";
     const base = this.baseOf(input.projectId);
     this.opts.db
@@ -530,17 +539,19 @@ export class Actions {
   }
 
   /** `.flightdeck/actions.yaml` as committed on the base branch; never the worktree. */
-  private async versioned(project: ActionProject): Promise<{ found: Found[]; errors: string[] }> {
+  private async versioned(
+    project: ActionProject,
+  ): Promise<{ found: Found[]; errors: string[]; issues: RuleIssue[] }> {
     const listed = must(
       await git(project.path, "ls-tree", "--name-only", project.baseBranch, "--", ACTIONS_FILE),
       "git ls-tree",
     );
-    if (!listed.stdout.trim()) return { found: [], errors: [] };
+    if (!listed.stdout.trim()) return { found: [], errors: [], issues: [] };
     const shown = must(
       await git(project.path, "show", `${project.baseBranch}:${ACTIONS_FILE}`),
       "git show",
     );
-    const { actions, errors } = parseActions(shown.stdout);
+    const { actions, errors, issues } = parseActions(shown.stdout);
     return {
       found: actions.map((action) => ({
         action,
@@ -549,13 +560,16 @@ export class Actions {
         base: project.path,
       })),
       errors,
+      issues,
     };
   }
 
   /** What a project sees: its own actions, the versioned ones, then the host's; the first name wins. */
-  private async visible(projectId?: string): Promise<{ found: Found[]; errors: string[] }> {
+  private async visible(
+    projectId?: string,
+  ): Promise<{ found: Found[]; errors: string[]; issues: RuleIssue[] }> {
     const host = this.appActions("", this.baseOf());
-    if (!projectId) return { found: host, errors: [] };
+    if (!projectId) return { found: host, errors: [], issues: [] };
     const project = this.opts.projects(projectId);
     const versioned = await this.versioned(project);
     const all = [...this.appActions(projectId, project.path), ...versioned.found, ...host];
@@ -564,6 +578,7 @@ export class Actions {
     return {
       found: found.sort((a, b) => a.action.name.localeCompare(b.action.name)),
       errors: versioned.errors,
+      issues: versioned.issues,
     };
   }
 

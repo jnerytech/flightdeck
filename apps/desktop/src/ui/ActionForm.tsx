@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
 import { useBusy } from "@/hooks/use-busy";
-import { refusalText } from "@/i18n/errors";
+import { actionIssueText, refusalText } from "@/i18n/errors";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
@@ -115,6 +115,7 @@ export function ActionForm(props: {
   const { t } = store.i18n;
   const [draft, setDraft] = useState<Draft>(() => draftOf(initial, props.seed));
   const [error, setError] = useState<string | null>(null);
+  const [problems, setProblems] = useState<string[]>([]);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const secrets = store.getState().secrets;
   const saving = useBusy();
@@ -126,7 +127,10 @@ export function ActionForm(props: {
       secretIds: secrets.map((s) => s.id),
     });
     if (result.ok) props.onSaved(result.data);
-    else setError(refusalText(result.code, result.message, t));
+    else {
+      setError(refusalText(result.code, result.message, t, result));
+      setProblems((result.items ?? []).map((issue) => actionIssueText(issue, t)));
+    }
   };
 
   const field = (key: Key, value: string, onChange: (value: string) => void, disabled = false) => (
@@ -285,6 +289,13 @@ export function ActionForm(props: {
               <p role="alert" className="text-sm text-status-error">
                 {error}
               </p>
+            )}
+            {problems.length > 0 && (
+              <ul className="list-disc pl-5 text-status-error text-xs">
+                {problems.map((problem) => (
+                  <li key={problem}>{problem}</li>
+                ))}
+              </ul>
             )}
           </div>
           <FormActions
