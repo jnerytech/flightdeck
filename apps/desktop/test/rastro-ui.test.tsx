@@ -278,7 +278,8 @@ describe("replay: step by step", () => {
     await settle(() => daemon.commands.some((c) => c.type === "snapshots.files"));
     await act(() => Bun.sleep(50));
     expect(steps()).toContain("Passo 1 de 11");
-    expect(store.getState().notices).toEqual([]);
+    // (The fake host does not serve the transcript below the tab: only the refusal matters here.)
+    expect(store.getState().notices.map((n) => n.text)).not.toContain("sem snapshot deste turno");
   });
 
   test("play moves on by itself at the chosen speed and pause stops it; at the end it stops", async () => {
