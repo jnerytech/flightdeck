@@ -247,7 +247,7 @@ function writeTraceSession(dir: string, cwd: string): void {
 }
 
 /** Transcripts of finished terminal sessions: many short ones, a long one and two with usage. */
-function writeHistory(history: string, cwd: string): void {
+export function writeHistory(history: string, cwd: string): void {
   const dir = join(history, "-demo");
   mkdirSync(dir, { recursive: true });
   const topics = ["testes", "build", "deploy", "migração", "lint", "docs", "cache", "fila", "logs"];
