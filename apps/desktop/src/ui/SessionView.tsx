@@ -1,5 +1,5 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import {
@@ -36,15 +36,21 @@ export interface SessionActions {
   ): Promise<void>;
 }
 
-function TimelineItem(props: {
+/**
+ * One message of the conversation. It takes only what it draws (not the whole session), and the
+ * clock only when it is a request waiting, so a token on the way leaves the finished messages
+ * alone: that is what keeps a long conversation from being drawn again on every word.
+ */
+const TimelineItem = memo(function TimelineItem(props: {
   item: ChatItem;
-  session: SessionState;
+  toolResults: SessionState["toolResults"];
+  cwd: string | null;
   actions: SessionActions;
   alwaysAllow: boolean;
   t: T;
   nowMs: number;
 }) {
-  const { item, session, actions } = props;
+  const { item, toolResults, actions } = props;
   switch (item.kind) {
     case "user":
       return <Message from="user">{item.text}</Message>;
@@ -60,7 +66,7 @@ function TimelineItem(props: {
                 key={block.id}
                 name={block.name}
                 input={block.input}
-                result={session.toolResults[block.id]}
+                result={toolResults[block.id]}
               />
             ),
           )}
@@ -73,7 +79,7 @@ function TimelineItem(props: {
             requestId: item.requestId,
             toolName: item.toolName,
             input: item.input,
-            cwd: session.cwd ?? null,
+            cwd: props.cwd,
             createdAt: item.at ?? null,
             ...(item.suggestions ? { suggestions: item.suggestions } : {}),
             ...(item.risk ? { risk: item.risk } : {}),
@@ -119,7 +125,7 @@ function TimelineItem(props: {
         <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
       );
   }
-}
+});
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
 export function SessionView(props: {
@@ -240,11 +246,12 @@ export function SessionView(props: {
           <TimelineItem
             key={item.seq}
             item={item}
-            session={session}
+            toolResults={session.toolResults}
+            cwd={session.cwd ?? null}
             actions={actions}
             alwaysAllow={props.alwaysAllow === true}
             t={t}
-            nowMs={props.nowMs ?? Date.now()}
+            nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
           />
         ))}
         {session.streaming && (
