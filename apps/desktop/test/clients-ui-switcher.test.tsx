@@ -178,6 +178,13 @@ describe("clients-ui: the client switcher", () => {
     expect(screen.queryByRole("img", { name: /em outros clientes/ })).toBeNull();
   });
 
+  test("the open menu does not hide the rest of the window from assistive technology", async () => {
+    await setup(TWO, false);
+    await openMenu();
+    expect(choices().length).toBeGreaterThan(0);
+    expect(document.querySelector("[data-aria-hidden]")).toBeNull();
+  });
+
   test("Manage clients opens the Clients screen", async () => {
     const { store } = await setup(TWO, false);
     await openMenu();
