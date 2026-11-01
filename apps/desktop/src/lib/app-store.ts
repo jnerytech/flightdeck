@@ -54,13 +54,16 @@ import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
+import { knownProjects } from "./client-rules.ts";
+import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
+import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import { type HubFilter, loadHubFilter, saveHubFilter } from "./hub.ts";
+import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -200,6 +203,12 @@ export interface AppState {
   notices: Notice[];
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
+  /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
+  clientList: Client[];
+  /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
+  clientOverrides: Record<string, string | null>;
+  /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
+  clientSelection: string;
   /** The saved hosts are in `hosts` (init done with them); routes wait for it (phase 10). */
   hostsLoaded: boolean;
   /** Phase 9: the app's own update. */
@@ -620,6 +629,7 @@ export class AppStore {
     this.rules = new VaultRules(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
+    this.clients = new Clients(platform, { onChange: () => this.syncClients() });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
@@ -658,6 +668,9 @@ export class AppStore {
       hub: {},
       terminalEnv: null,
       projects: {},
+      clientList: this.clients.list(),
+      clientOverrides: this.clients.overrides(),
+      clientSelection: loadSelection(platform.storage, this.clients.list()),
       notices: [],
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
@@ -2227,6 +2240,63 @@ export class AppStore {
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
   readonly globalPersonas: GlobalPersonas;
+  /** Phase 29: the clients, their rules and overrides, kept by the app. */
+  readonly clients: Clients;
+  private scopeMemo: { state: AppState; scope: ClientScope } | null = null;
+
+  /** A client was changed: the screens read the new list, and a selection that is gone is all. */
+  private syncClients(): void {
+    const clientList = this.clients.list();
+    const kept = this.state.clientSelection;
+    const valid =
+      kept === ALL_CLIENTS ||
+      (clientList.length > 0 && (kept === UNASSIGNED || clientList.some((c) => c.id === kept)));
+    if (!valid) saveSelection(this.platform.storage, ALL_CLIENTS);
+    this.update({
+      clientList,
+      clientOverrides: this.clients.overrides(),
+      clientSelection: valid ? kept : ALL_CLIENTS,
+    });
+  }
+
+  /** What the work screens show: all clients, Unassigned or one client; a name nobody has is refused. */
+  setClientSelection(selection: string): void {
+    const { clientList } = this.state;
+    const valid =
+      selection === ALL_CLIENTS ||
+      (clientList.length > 0 &&
+        (selection === UNASSIGNED || clientList.some((c) => c.id === selection)));
+    if (!valid) return;
+    saveSelection(this.platform.storage, selection);
+    this.update({ clientSelection: selection });
+  }
+
+  /** Which client each project belongs to, from the rows and projects the app has now. */
+  clientScope(): ClientScope {
+    if (this.scopeMemo?.state === this.state) return this.scopeMemo.scope;
+    const { hosts, projects, clientList, clientOverrides } = this.state;
+    const named = (hostId: string) => hosts.find((h) => h.id === hostId)?.name ?? hostId;
+    const known = knownProjects([
+      ...hubRows(this.state),
+      ...Object.entries(projects).flatMap(([hostId, list]) =>
+        list.map((p) => ({
+          hostId,
+          cwd: p.path,
+          projectKey: p.projectKey ?? `host:${named(hostId)}:${p.path}`,
+        })),
+      ),
+    ]);
+    const scope = new ClientScope(
+      { clients: clientList, overrides: clientOverrides },
+      known,
+      hosts.map((h) => ({
+        id: h.id,
+        names: h.hostInfo?.hostName ? [h.name, h.hostInfo.hostName] : [h.name],
+      })),
+    );
+    this.scopeMemo = { state: this.state, scope };
+    return scope;
+  }
   /** Phase 16: what was asked of the vault, kept in `storage`. */
   readonly usage: VaultUsageLog;
 

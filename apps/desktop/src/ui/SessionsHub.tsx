@@ -101,8 +101,23 @@ export function SessionsHub(props: {
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
-    () => hubRows(state),
-    [state.hosts, state.hub, state.meta, state.externals, state.names, state.background],
+    () =>
+      store
+        .clientScope()
+        .filter(hubRows(state), state.clientSelection, (row) => row.projectKey),
+    [
+      store,
+      state.hosts,
+      state.hub,
+      state.meta,
+      state.externals,
+      state.names,
+      state.background,
+      state.projects,
+      state.clientList,
+      state.clientOverrides,
+      state.clientSelection,
+    ],
   );
   const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
