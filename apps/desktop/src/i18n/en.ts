@@ -1555,6 +1555,7 @@ export const en: Dictionary = {
   },
   budgetsUi: {
     title: "Budgets of {host}",
+    meter: "{label}: {percent}% of the limit",
     edit: "Edit {label}",
     editShort: "Edit",
     remove: "Remove {label}",

@@ -1555,6 +1555,7 @@ export const ptBR = {
   },
   budgetsUi: {
     title: "Orçamentos de {host}",
+    meter: "{label}: {percent}% do limite",
     edit: "Editar {label}",
     editShort: "Editar",
     remove: "Remover {label}",

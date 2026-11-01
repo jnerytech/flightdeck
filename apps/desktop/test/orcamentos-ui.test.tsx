@@ -297,6 +297,26 @@ describe("orcamentos-ui", () => {
     expect(rows()[0]).toContain("orçamento de solo");
   });
 
+  test("cada orçamento tem uma barra com o percentual, vermelha ao passar de 80%", async () => {
+    const { spend } = await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    await choose("Limite (US$)", "10");
+    await click("Criar orçamento");
+    await settle(() => rows().length === 1);
+    const bar = () => section()?.querySelector("li meter") as HTMLMeterElement | null;
+    expect(bar()?.getAttribute("aria-label")).toBe("orçamento do host (dia): 60% do limite");
+    expect(bar()?.value).toBeCloseTo(0.6);
+    expect(bar()?.max).toBe(1);
+    expect(bar()?.dataset.hot).toBe("false");
+    spend(3);
+    await click("Editar orçamento do host (dia)");
+    await click("Salvar orçamento");
+    await settle(() => bar()?.dataset.hot === "true");
+    expect(bar()?.getAttribute("aria-label")).toBe("orçamento do host (dia): 90% do limite");
+    expect(bar()?.value).toBeCloseTo(0.9);
+  });
+
   test("o botão diz Criar num orçamento novo e Salvar ao editar um", async () => {
     await online();
     await click("Configurações");
