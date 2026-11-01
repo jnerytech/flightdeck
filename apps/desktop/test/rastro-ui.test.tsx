@@ -270,6 +270,17 @@ describe("replay: step by step", () => {
     });
   });
 
+  test("a turn whose files the host cannot give is shown without them, and no error is raised", async () => {
+    const { daemon, store } = await open(["trace", "checkpoints"]);
+    daemon.refuse.set("snapshots.files", "sem snapshot deste turno");
+    await openTrace();
+    await click("Replay");
+    await settle(() => daemon.commands.some((c) => c.type === "snapshots.files"));
+    await act(() => Bun.sleep(50));
+    expect(steps()).toContain("Passo 1 de 11");
+    expect(store.getState().notices).toEqual([]);
+  });
+
   test("play moves on by itself at the chosen speed and pause stops it; at the end it stops", async () => {
     await open();
     await openTrace();

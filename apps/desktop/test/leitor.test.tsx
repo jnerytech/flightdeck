@@ -174,3 +174,35 @@ describe("leitor", () => {
     expect(within(log()).queryByText("primeira")?.className ?? "").toContain("bg-secondary");
   });
 });
+
+describe("leitor: a transcript opened at start-up", () => {
+  test("waits for the saved hosts to connect, with no error about an unknown host", async () => {
+    const d = makeDaemon(cleanups);
+    writeTranscript(d.historyRoot, "-p", "longa", [
+      userLine({ uuid: "m0", text: "mensagem inicial", cwd: d.project }),
+    ]);
+    d.history.scan();
+    const server = d.listen();
+    const mem = memoryPlatform();
+    const first = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    const hostId = await first.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    first.dispose();
+    // The next start reads its token slowly, as a real secret store can: the route is already
+    // there when the app first draws.
+    const secrets = mem.platform.secrets;
+    mem.platform.secrets = {
+      ...secrets,
+      get: async (id: string) => {
+        await Bun.sleep(80);
+        return secrets.get(id);
+      },
+    };
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    store.router.push({ name: "external", host: hostId, claudeSessionId: "longa" });
+    render(<App store={store} />);
+    await settle(() => screen.queryAllByText(/mensagem inicial/).length > 0, 5000);
+    expect(screen.queryAllByText(/mensagem inicial/).length).toBeGreaterThan(0);
+    expect(store.getState().notices).toEqual([]);
+  });
+});
