@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { expandHome, loadConfig } from "../src/config.ts";
+import { expandHome, loadConfig, updateConfigFile } from "../src/config.ts";
 import { runCli } from "../src/main.ts";
+import type { OtlpEvent } from "../src/telemetry/otlp.ts";
 import {
   installTelemetry,
   MANAGED_KEYS,
@@ -12,8 +13,10 @@ import {
   uninstallTelemetry,
   wrapperTelemetryEnv,
 } from "../src/telemetry/otlp-env.ts";
+import { startTelemetry } from "../src/telemetry/service.ts";
 import { installFakeClaude } from "./fake-claude.ts";
 import { tempDir } from "./helpers.ts";
+import { jsonLogs } from "./otlp-helpers.ts";
 
 const TARGET: TelemetryTarget = {
   url: "http://127.0.0.1:7422",
@@ -290,5 +293,73 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
       message = (error as Error).message;
     }
     expect(message).toContain("invalid telemetry action: wipe");
+  });
+});
+
+describe("otlp-ligar: the daemon's receiver", () => {
+  function setup(telemetry: Record<string, unknown> = { port: 0 }) {
+    const dir = tempDir();
+    const dataDir = join(dir, "data");
+    mkdirSync(dataDir, { recursive: true });
+    const configFile = join(dir, "config.json");
+    writeFileSync(
+      configFile,
+      JSON.stringify({ token: "t".repeat(32), dataDir, hooks: { port: 0 }, telemetry }),
+    );
+    const errors: string[] = [];
+    const got: OtlpEvent[][] = [];
+    const service = startTelemetry({
+      config: loadConfig(configFile),
+      configFile,
+      log: { error: (m) => errors.push(m) },
+      onEvents: (events) => got.push(events),
+    });
+    cleanups.push(() => service.stop());
+    return { service, dataDir, configFile, errors, got };
+  }
+  const send = (url: string | null, token: string) =>
+    fetch(`${url}/v1/logs`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: jsonLogs([{ name: "api_error", timeMs: 1, attrs: { "session.id": "s" } }]),
+    });
+
+  test("it makes the token once, listens, publishes its URL for the wrapper and removes it on stop", async () => {
+    const { service, dataDir, configFile, got } = setup();
+    const token = loadConfig(configFile).telemetry.token ?? "";
+    expect(token.length).toBeGreaterThanOrEqual(16);
+    expect(service.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    expect(read(join(dataDir, "telemetry.json"))).toEqual({ url: service.url });
+    expect((await send(service.url, token)).status).toBe(200);
+    expect(got.map((events) => events.map((e) => e.name))).toEqual([["api_error"]]);
+    await service.stop();
+    expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
+  });
+
+  test("a token rotated in the config file takes effect at once, without a restart", async () => {
+    const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
+    expect((await send(service.url, "first-token-0123456789")).status).toBe(200);
+    updateConfigFile(configFile, (raw) => ({
+      ...raw,
+      telemetry: { port: 0, token: "second-token-0123456789" },
+    }));
+    expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
+    expect((await send(service.url, "second-token-0123456789")).status).toBe(200);
+  });
+
+  test("telemetry off: no receiver, no file, no token", () => {
+    const { service, dataDir, configFile } = setup({ enabled: false, port: 0 });
+    expect(service.url).toBeNull();
+    expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
+    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+  });
+
+  test("a port that is taken is logged and the daemon carries on without the receiver", async () => {
+    const taken = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("") });
+    cleanups.push(() => taken.stop(true));
+    const { service, dataDir, errors } = setup({ port: taken.port });
+    expect(service.url).toBeNull();
+    expect(errors.join("\n")).toContain(`${taken.port}`);
+    expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
   });
 });
