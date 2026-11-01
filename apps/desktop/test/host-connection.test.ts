@@ -172,4 +172,14 @@ describe("desktop: conexão com o host", () => {
     conn.dispose();
     expect(await slow.catch((e) => e.code)).toBe("offline");
   });
+
+  test("the real daemon's own heartbeat keeps an idle link alive under the watchdog", async () => {
+    const { listen } = daemon();
+    const { conn, statuses } = connect(listen(0, 25).url, TOKEN, { staleMs: 120 });
+    await waitFor(() => conn.status === "online", "online");
+    await Bun.sleep(500);
+    expect(conn.status).toBe("online");
+    expect(statuses).toEqual(["connecting", "online"]);
+    expect(conn.latencyMs).not.toBeNull();
+  });
 });
