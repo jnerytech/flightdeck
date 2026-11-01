@@ -9,11 +9,13 @@ export interface CheckResult {
   exitCode: number;
   /** The last 8 KB of stdout followed by stderr. */
   output: string;
+  /** The command ran out of time and was killed. */
+  timedOut?: boolean;
 }
 
 /** Runs the `check` commands of trusted workflows. */
 export interface CheckRunner {
-  run(command: string, cwd: string): Promise<CheckResult>;
+  run(command: string, cwd: string, timeoutMs?: number): Promise<CheckResult>;
 }
 
 /** Set by the tests and smokes (scripts/test/check-guard.ts). */

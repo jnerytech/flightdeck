@@ -4,13 +4,24 @@ export interface CommandResult {
   code: number;
   stdout: string;
   stderr: string;
+  /** The command ran out of time and was killed. */
+  timedOut?: boolean;
 }
+
+/** Kills a process and everything it started. */
+export function killTree(
+  pid: number,
+  platform: string = process.platform,
+  kill: (pid: number, signal: string) => void = process.kill,
+  spawn: (cmd: string[]) => void = (cmd) => void Bun.spawnSync(cmd),
+): void {}
 
 /** Runs a command in `cwd` and collects its exit code and output; `input` goes to its stdin. */
 export async function runCommand(
   cmd: string[],
   cwd: string,
   input?: string,
+  _timeoutMs?: number,
 ): Promise<CommandResult> {
   // `env` explicitly: without it Bun passes the environment the process started with.
   const proc = Bun.spawn(cmd, {

@@ -48,6 +48,8 @@ export interface FixtureOptions {
   board?: Partial<BoardOptions>;
   /** Exit code of a local check command; 0 for the others. */
   checkExit?: Record<string, number>;
+  /** Local check commands that run out of time. */
+  checkTimedOut?: string[];
   /** Runs while the local checks run: where the world changes under a round. */
   duringChecks?: () => void;
 }
@@ -129,6 +131,8 @@ export async function fixture(options: FixtureOptions = {}) {
   const watcher = new PrWatcher({ db: store.db, board, provider: () => provider });
   watcher.setSettings(project.id, { enabled: true, ...options.settings });
   const ran: Array<{ command: string; cwd: string }> = [];
+  /** The time limit each local check was given, in order. */
+  const timeouts: Array<number | undefined> = [];
   const gitCalls: string[][] = [];
   const fixer = new PrFixer({
     db: store.db,
@@ -136,9 +140,13 @@ export async function fixture(options: FixtureOptions = {}) {
     watcher,
     provider: () => provider,
     checks: {
-      run: async (command, cwd) => {
+      run: async (command, cwd, timeoutMs) => {
         ran.push({ command, cwd });
+        timeouts.push(timeoutMs);
         options.duringChecks?.();
+        if (options.checkTimedOut?.includes(command)) {
+          return { exitCode: 137, output: "", timedOut: true };
+        }
         return { exitCode: options.checkExit?.[command] ?? 0, output: `saída de ${command}` };
       },
     },
@@ -179,6 +187,7 @@ export async function fixture(options: FixtureOptions = {}) {
     promptOf,
     commitsAhead,
     ran,
+    timeouts,
     gitCalls,
     worktree,
     branch,

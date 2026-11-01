@@ -1883,6 +1883,8 @@ export const WatchSettings = z.object({
         .refine(isWatchCheck, "a check is a command and its arguments, with nothing a shell reads"),
     )
     .max(10),
+  /** Minutes each local check gets before it is killed. */
+  checkTimeoutMin: z.number(),
   /** Estimated cost of the rounds of a PR, in US$; `null` for no limit. */
   budgetUsd: z.number().positive().nullable(),
   maxTurns: z.number().int().positive().nullable(),

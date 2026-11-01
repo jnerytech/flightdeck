@@ -21,6 +21,8 @@ export interface WatchSettings {
   maxRounds: number;
   /** Commands that must pass in the card's worktree before anything is pushed. */
   checks: string[];
+  /** Minutes each local check gets before it is killed. */
+  checkTimeoutMin: number;
   /** Estimated cost of the rounds of a PR, in US$; `null` for no limit. */
   budgetUsd: number | null;
   /** Turns of the rounds of a PR; `null` for no limit. */
@@ -49,6 +51,7 @@ const DEFAULT_SETTINGS: WatchSettings = {
   enabled: false,
   maxRounds: 3,
   checks: [],
+  checkTimeoutMin: 0,
   budgetUsd: 5,
   maxTurns: 30,
   persona: "revisor",

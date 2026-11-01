@@ -179,6 +179,7 @@ describe("vigiar-ado: the watcher", () => {
       enabled: false,
       maxRounds: 3,
       checks: [],
+      checkTimeoutMin: 10,
       budgetUsd: 5,
       maxTurns: 30,
       persona: "revisor",
