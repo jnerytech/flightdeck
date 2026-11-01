@@ -19,11 +19,39 @@ export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots")
 interface Shot {
   name: string;
   route: Route;
+  /**
+   * Clients kept in the page's storage before it loads (phase 29), and the one selected; the other
+   * prints have none, so they look as they did before clients existed.
+   */
+  clients?: { selected?: string };
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
 }
 
 const ALFA = "demo-alfa";
+
+/** The clients the client prints start with: Acme claims the demo's `github.com/acme/*` projects. */
+const DEMO_CLIENTS = JSON.stringify({
+  v: 1,
+  clients: [
+    {
+      id: "acme",
+      name: "Acme",
+      color: "indigo",
+      rules: [{ id: "r1", kind: "remote", pattern: "github.com/acme/*" }],
+      defaults: { vaultScope: false },
+    },
+    {
+      id: "beta",
+      name: "Beta",
+      color: "rose",
+      rules: [{ id: "r2", kind: "remote", pattern: "github.com/beta/*" }],
+      defaults: { vaultScope: false },
+    },
+  ],
+  overrides: {},
+  budgets: { acme: 500 },
+});
 
 const agentRoute = (ids: DemoIds): Route => ({
   name: "agent",
@@ -297,6 +325,29 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(400);
       },
     },
+    // Phase 29: the clients' screen, the switcher open, Sessões for one client, and Custos by client.
+    { name: "clientes", route: { name: "clients" }, clients: {} },
+    {
+      name: "seletor-de-clientes",
+      route: { name: "hub" },
+      clients: {},
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Cliente|Client): / }).click();
+        await page.waitForTimeout(400);
+      },
+    },
+    { name: "sessoes-do-cliente", route: { name: "hub" }, clients: { selected: "acme" } },
+    {
+      name: "custos-por-cliente",
+      route: { name: "costs" },
+      clients: {},
+      prepare: async (page) => {
+        await page
+          .getByRole("combobox", { name: /^(Host dos custos|Costs host)/ })
+          .selectOption("__all__");
+        await page.waitForTimeout(1500);
+      },
+    },
     {
       name: "paleta",
       route: { name: "hub" },
@@ -410,6 +461,24 @@ export async function takeShots(
           const page = await context.newPage();
           page.on("pageerror", (error) =>
             log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`),
+          );
+          // The storage is the context's: a print with no clients clears what an earlier one kept.
+          await page.addInitScript(
+            (seed) => {
+              try {
+                const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
+                for (const key of [...keys, "flightdeck.clientBudgetAlerts"]) {
+                  localStorage.removeItem(key);
+                }
+                if (seed) {
+                  localStorage.setItem(keys[0] as string, seed.clients);
+                  if (seed.selected) localStorage.setItem(keys[1] as string, seed.selected);
+                }
+              } catch {
+                // No storage, no clients.
+              }
+            },
+            shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
           );
           const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
           await page.goto(`${url}?${query}`);
