@@ -286,6 +286,19 @@ describe("agente-ui", () => {
     });
   });
 
+  test("the server switches keep a 24 px hit box while the sm track keeps its look", async () => {
+    await setup();
+    await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
+    for (const name of ["Ligar eco", "Ligar global"]) {
+      const classes = (screen.queryByRole("switch", { name }) as HTMLElement).className.split(" ");
+      // WCAG 2.5.8: the box is 24 px tall; the padding is not painted, so the track stays thin.
+      expect(classes).toContain("min-h-6");
+      expect(classes).toContain("py-1");
+      expect(classes).toContain("bg-clip-content");
+      expect(classes).toContain("shadow-none");
+    }
+  });
+
   test("ligar e desligar grava o settings.local.json; o servidor do usuário não liga", async () => {
     const { repo } = await setup();
     await settle(() => screen.queryByRole("switch", { name: "Ligar eco" }) !== null);
