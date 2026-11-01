@@ -1,5 +1,6 @@
 import type { MaintenanceStatus, PruneCounts } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
+import { Facts } from "@/components/layout/facts";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -64,31 +65,29 @@ export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
   const last = status?.lastBackup;
   const cleanup = status?.lastPrune;
   const backupText = last
-    ? t("maintenance.lastBackup", {
+    ? t("maintenance.backupValue", {
         when: store.formatDateTime(last.at),
         size: formatBytes(last.bytes),
       })
     : t("maintenance.noBackup");
   const dryRunNote = cleanup?.dryRun ? t("maintenance.dryRun") : "";
   const cleanupText = cleanup
-    ? t("maintenance.lastCleanup", { when: store.formatDateTime(cleanup.at) }) + dryRunNote
+    ? store.formatDateTime(cleanup.at) + dryRunNote
     : t("maintenance.noCleanup");
   return (
     <section aria-label={t("maintenance.title")}>
       <Panel title={t("maintenance.title")}>
         {status ? (
-          <ul className="flex flex-col gap-1 text-sm">
-            <li>{t("maintenance.db", { size: formatBytes(status.dbBytes) })}</li>
-            <li>
-              {t("maintenance.counts", {
-                sessions: status.counts.sessions,
-                events: status.counts.events,
-                external: status.counts.externalSessions,
-              })}
-            </li>
-            <li>{backupText}</li>
-            <li>{cleanupText}</li>
-          </ul>
+          <Facts
+            items={[
+              { label: t("maintenance.fields.db"), value: formatBytes(status.dbBytes) },
+              { label: t("maintenance.fields.sessions"), value: status.counts.sessions },
+              { label: t("maintenance.fields.events"), value: status.counts.events },
+              { label: t("maintenance.fields.external"), value: status.counts.externalSessions },
+              { label: t("maintenance.fields.lastBackup"), value: backupText },
+              { label: t("maintenance.fields.lastCleanup"), value: cleanupText },
+            ]}
+          />
         ) : (
           <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
         )}
