@@ -189,6 +189,27 @@ function split(id: string): { name: string; marketplace: string } {
     : { name: id.slice(0, at), marketplace: id.slice(at + 1) };
 }
 
+/** The CLI prints its answer as JSON on the last line; null when that line is not an object. */
+function lastJsonLine(stdout: string): Json | null {
+  const line = stdout.trim().split(/\r?\n/).at(-1) ?? "";
+  try {
+    const json = JSON.parse(line);
+    return isObject(json) ? json : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The command the marketplace wants shown, when it came with a hash to send back. */
+function shownCommandOf(value: unknown): ChangeResult["shownCommand"] | null {
+  if (!isObject(value)) return null;
+  const sha256 = text(value.sha256);
+  if (!sha256) return null;
+  const command = text(value.command);
+  const plugin = text(value.plugin);
+  return { ...(command ? { command } : {}), ...(plugin ? { plugin } : {}), sha256 };
+}
+
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
 
@@ -205,9 +226,7 @@ export class Plugins {
     const pins = this.opts.pins.all();
     const installedRaw = Array.isArray(listed)
       ? listed
-      : isObject(listed)
-        ? list(listed.installed)
-        : [];
+      : list(isObject(listed) ? listed.installed : []);
     const availableRaw = isObject(listed) ? list(listed.available) : [];
     return {
       installed: installedRaw.filter(isObject).map((item) => this.installed(item, pins)),
@@ -530,33 +549,17 @@ export class Plugins {
     }
     const sent = acceptCommand ? [...args, "--accept-command", acceptCommand] : args;
     const result = await this.cli(sent);
-    const line = result.stdout.trim().split(/\r?\n/).at(-1) ?? "";
-    let parsed: Json | null = null;
-    try {
-      const json = JSON.parse(line);
-      parsed = isObject(json) ? json : null;
-    } catch {
-      parsed = null;
-    }
+    const parsed = lastJsonLine(result.stdout);
     if (!parsed || typeof parsed.outcome !== "string") {
       return result.code === 0
         ? { outcome: "ok", message: result.stdout.trim() }
         : { outcome: "failed", message: result.stderr.trim() || `código ${result.code}` };
     }
     const message = text(parsed.message) ?? "";
-    const command = isObject(parsed.shownCommand) ? parsed.shownCommand : null;
-    if (parsed.outcome !== "ok" && command && text(command.sha256)) {
-      const sha256 = text(command.sha256) as string;
-      this.shown.set(key, sha256);
-      return {
-        outcome: "needs-command-confirmation",
-        message,
-        shownCommand: {
-          ...(text(command.command) ? { command: text(command.command) as string } : {}),
-          ...(text(command.plugin) ? { plugin: text(command.plugin) as string } : {}),
-          sha256,
-        },
-      };
+    const shown = parsed.outcome !== "ok" ? shownCommandOf(parsed.shownCommand) : null;
+    if (shown) {
+      this.shown.set(key, shown.sha256);
+      return { outcome: "needs-command-confirmation", message, shownCommand: shown };
     }
     return { outcome: parsed.outcome === "ok" ? "ok" : "failed", message };
   }
@@ -593,9 +596,8 @@ export class Plugins {
   private async json(args: string[]): Promise<unknown> {
     const result = await this.cli(args);
     if (result.code !== 0) {
-      throw invalid(
-        `claude plugin ${args[0]} falhou: ${result.stderr.trim() || `código ${result.code}`}`,
-      );
+      const why = result.stderr.trim() || `código ${result.code}`;
+      throw invalid(`claude plugin ${args[0]} falhou: ${why}`);
     }
     try {
       return JSON.parse(result.stdout);
