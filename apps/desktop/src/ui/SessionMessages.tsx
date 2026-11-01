@@ -91,26 +91,30 @@ export function SessionMessages(props: { store: AppStore; hostId: string; sessio
           {t("sessionMessages.write")}
         </Button>
       )}
-      <ul aria-label={t("sessionMessages.list")} className="flex flex-col gap-2">
-        {messages.map((m) => (
-          <li key={m.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
-                {store.formatDateTime(m.createdAt)}
-              </time>
-              <Badge variant="outline">
-                {m.fromSession === sessionId
-                  ? t("sessionMessages.sent")
-                  : t("sessionMessages.received")}
-              </Badge>
-              <span className="font-mono">{`${m.fromHost}/${m.fromSession} → ${m.toHost}/${m.toSession}`}</span>
-              <strong>{t(`conversationsUi.statuses.${m.status}`)}</strong>
-            </div>
-            <p className="whitespace-pre-wrap">{m.text}</p>
-            {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
-          </li>
-        ))}
-      </ul>
+      {messages.length === 0 ? (
+        <p className="text-muted-foreground">{t("sessionMessages.empty")}</p>
+      ) : (
+        <ul aria-label={t("sessionMessages.list")} className="flex flex-col gap-2">
+          {messages.map((m) => (
+            <li key={m.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
+                  {store.formatDateTime(m.createdAt)}
+                </time>
+                <Badge variant="outline">
+                  {m.fromSession === sessionId
+                    ? t("sessionMessages.sent")
+                    : t("sessionMessages.received")}
+                </Badge>
+                <span className="font-mono">{`${m.fromHost}/${m.fromSession} → ${m.toHost}/${m.toSession}`}</span>
+                <strong>{t(`conversationsUi.statuses.${m.status}`)}</strong>
+              </div>
+              <p className="whitespace-pre-wrap">{m.text}</p>
+              {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

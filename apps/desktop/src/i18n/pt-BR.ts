@@ -1136,6 +1136,7 @@ export const ptBR = {
     result: "Resultado do envio",
     sent: "Enviada",
     received: "Recebida",
+    empty: "Nenhuma mensagem ainda. Use “Mandar para outra sessão…” para escrever a primeira.",
   },
   teamsUi: {
     notifyTitle: "Time {name}",
@@ -1488,6 +1489,8 @@ export const ptBR = {
     remove: "Remover {rule}",
     removeMessage: "Remover a regra {rule} do .claude/settings.local.json do projeto?",
     removeConfirm: "Remover regra",
+    empty:
+      'Nenhuma regra ainda. Escolha "Sempre neste projeto" quando o Claude pedir permissão e a regra aparece aqui.',
   },
   budgets: {
     label: "orçamento {scope} ({period})",

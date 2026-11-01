@@ -1139,6 +1139,7 @@ export const en: Dictionary = {
     result: "Send result",
     sent: "Sent",
     received: "Received",
+    empty: "No messages yet. Use “Send to another session…” to write the first one.",
   },
   teamsUi: {
     notifyTitle: "Team {name}",
@@ -1486,6 +1487,8 @@ export const en: Dictionary = {
     remove: "Remove {rule}",
     removeMessage: "Remove the rule {rule} from the project's .claude/settings.local.json?",
     removeConfirm: "Remove rule",
+    empty:
+      'No rules yet. Choose "Always in this project" when Claude asks for permission and the rule shows up here.',
   },
   budgets: {
     label: "{scope} budget ({period})",
