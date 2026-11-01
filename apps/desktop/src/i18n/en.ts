@@ -666,6 +666,7 @@ export const en: Dictionary = {
     unknown:
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
+  ruleIssue: {},
   daemonFeature: {
     history: "the history",
     central: "the central session list",

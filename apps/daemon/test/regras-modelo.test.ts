@@ -276,54 +276,122 @@ describe("regras-modelo: validar as regras", () => {
     ] as Rule[]);
   });
 
-  test("o que não é uma lista de regras, ou uma regra malformada, é erro com o motivo", () => {
-    const errorsOf = (raw: unknown) => validateRules(raw).errors.join(" | ");
-    expect(errorsOf("regra")).toContain("lista");
-    expect(errorsOf([42])).toContain("objeto");
-    expect(errorsOf([{ decision: "allow" }])).toContain("id");
-    expect(errorsOf([{ id: "a", decision: "talvez" }])).toContain("decision");
-    expect(errorsOf([{ id: "a", decision: "deny", extra: 1 }])).toContain("extra");
-    expect(errorsOf([{ id: "a", decision: "deny", match: { quem: "x" } }])).toContain("quem");
-    expect(errorsOf([{ id: "a", decision: "deny", match: { requester: "root" } }])).toContain(
-      "requester",
+  test("o que não é uma lista de regras, ou uma regra malformada, é erro com o caminho e o código", () => {
+    const errorsOf = (raw: unknown) =>
+      validateRules(raw)
+        .errors.map((e) => `${e.path}:${e.code}`)
+        .join(" | ");
+    expect(errorsOf("regra")).toBe(":not_list");
+    expect(errorsOf([42])).toBe("0:not_object");
+    expect(errorsOf([{ decision: "allow" }])).toBe("0.id:required");
+    expect(errorsOf([{ id: "a", decision: "talvez" }])).toBe("0.decision:not_one_of");
+    expect(errorsOf([{ id: "a", decision: "deny", extra: 1 }])).toBe("0.extra:unknown_field");
+    expect(errorsOf([{ id: "a", decision: "deny", match: { quem: "x" } }])).toBe(
+      "0.match.quem:unknown_field",
     );
-    expect(errorsOf([{ id: "a", decision: "deny", match: { purpose: "sudo" } }])).toContain(
-      "purpose",
+    expect(errorsOf([{ id: "a", decision: "deny", match: { requester: "root" } }])).toBe(
+      "0.match.requester:not_one_of",
     );
-    expect(errorsOf([{ id: "a", decision: "deny", match: { tags: "prod" } }])).toContain("tags");
-    expect(errorsOf([{ id: "a", decision: "deny", match: { host: 3 } }])).toContain("host");
-    expect(errorsOf([{ id: "a", decision: "deny", match: "tudo" }])).toContain("match");
+    expect(errorsOf([{ id: "a", decision: "deny", match: { purpose: "sudo" } }])).toBe(
+      "0.match.purpose:not_one_of",
+    );
+    expect(errorsOf([{ id: "a", decision: "deny", match: { tags: "prod" } }])).toBe(
+      "0.match.tags:not_list_of_text",
+    );
+    expect(errorsOf([{ id: "a", decision: "deny", match: { host: 3 } }])).toBe(
+      "0.match.host:not_text",
+    );
+    expect(errorsOf([{ id: "a", decision: "deny", match: "tudo" }])).toBe("0.match:not_object");
     expect(
       errorsOf([
         { id: "a", decision: "deny" },
         { id: "a", decision: "deny" },
       ]),
-    ).toContain("repetido");
+    ).toBe("1.id:duplicate");
+  });
+
+  test("a code that lists the accepted values carries them as a param", () => {
+    expect(validateRules([{ id: "a", decision: "talvez" }]).errors).toEqual([
+      { path: "0.decision", code: "not_one_of", params: { allowed: "allow, ask, deny" } },
+    ]);
+    expect(
+      validateRules([
+        { id: "a", decision: "ask", window: { days: ["x"], from: "08:00", to: "18:00" } },
+      ]).errors[0],
+    ).toEqual({
+      path: "0.window.days",
+      code: "not_one_of",
+      params: { allowed: "mon, tue, wed, thu, fri, sat, sun" },
+    });
+    expect(
+      validateRules([
+        { id: "a", decision: "ask", window: { days: ["mon"], from: "08:00", to: "25:00" } },
+      ]).errors[0],
+    ).toEqual({ path: "0.window.to", code: "bad_time", params: { last: "24:00" } });
   });
 
   test("once só com ask; janela com dias, horas e from diferente de to; limites inteiros positivos", () => {
     const errorsOf = (over: Record<string, unknown>) =>
-      validateRules([{ id: "a", decision: "ask", ...over }]).errors.join(" | ");
-    expect(errorsOf({ decision: "allow", once: "session" })).toContain("once");
-    expect(errorsOf({ once: "sempre" })).toContain("once");
-    expect(errorsOf({ window: { days: ["mon"], from: "8h", to: "18:00" } })).toContain("from");
-    expect(errorsOf({ window: { days: ["mon"], from: "08:00", to: "25:00" } })).toContain("to");
-    expect(errorsOf({ window: { days: ["mon"], from: "08:00", to: "08:00" } })).toContain("igual");
-    expect(errorsOf({ window: { days: ["segunda"], from: "08:00", to: "18:00" } })).toContain(
-      "days",
+      validateRules([{ id: "a", decision: "ask", ...over }])
+        .errors.map((e) => `${e.path}:${e.code}`)
+        .join(" | ");
+    expect(errorsOf({ decision: "allow", once: "session" })).toBe("0.once:once_needs_ask");
+    expect(errorsOf({ once: "sempre" })).toBe("0.once:once_needs_ask");
+    expect(errorsOf({ window: { days: ["mon"], from: "8h", to: "18:00" } })).toBe(
+      "0.window.from:bad_time",
     );
-    expect(errorsOf({ window: { days: [], from: "08:00", to: "18:00" } })).toContain("days");
-    expect(errorsOf({ window: "dia útil" })).toContain("window");
-    expect(errorsOf({ outsideWindow: "deny" })).toContain("window");
+    expect(errorsOf({ window: { days: ["mon"], from: "08:00", to: "25:00" } })).toBe(
+      "0.window.to:bad_time",
+    );
+    expect(errorsOf({ window: { days: ["mon"], from: "08:00", to: "08:00" } })).toBe(
+      "0.window.to:same_time",
+    );
+    expect(errorsOf({ window: { days: ["segunda"], from: "08:00", to: "18:00" } })).toBe(
+      "0.window.days:not_one_of",
+    );
+    expect(errorsOf({ window: { days: [], from: "08:00", to: "18:00" } })).toBe(
+      "0.window.days:not_one_of",
+    );
+    expect(errorsOf({ window: "dia útil" })).toBe("0.window:not_object");
+    expect(errorsOf({ outsideWindow: "deny" })).toBe("0.outsideWindow:outside_needs_window");
     expect(
       errorsOf({ outsideWindow: "x", window: { days: ["mon"], from: "08:00", to: "24:00" } }),
-    ).toContain("outsideWindow");
-    expect(errorsOf({ maxPerHour: 0 })).toContain("maxPerHour");
-    expect(errorsOf({ maxPerDay: 1.5 })).toContain("maxPerDay");
-    expect(errorsOf({ expiresAt: "hoje" })).toContain("expiresAt");
+    ).toBe("0.outsideWindow:not_one_of");
+    expect(errorsOf({ maxPerHour: 0 })).toBe("0.maxPerHour:not_positive_int");
+    expect(errorsOf({ maxPerDay: 1.5 })).toBe("0.maxPerDay:not_positive_int");
+    expect(errorsOf({ expiresAt: "hoje" })).toBe("0.expiresAt:not_timestamp");
     expect(
       errorsOf({ window: { days: ["mon"], from: "08:00", to: "24:00" }, outsideWindow: "ask" }),
     ).toBe("");
+  });
+
+  test("o teto: run_with_secret nunca é liberado, e allow numa tag prod pede janela e não vale fora dela", () => {
+    const errorsOf = (rule: Record<string, unknown>) =>
+      validateRules([{ id: "a", ...rule }])
+        .errors.map((e) => `${e.path}:${e.code}`)
+        .join(" | ");
+    expect(errorsOf({ decision: "allow", match: { purpose: "run_with_secret" } })).toBe(
+      "0.decision:no_allow_run_with_secret",
+    );
+    expect(
+      errorsOf({
+        decision: "ask",
+        outsideWindow: "allow",
+        window: { days: ["mon"], from: "08:00", to: "18:00" },
+        match: { purpose: "run_with_secret" },
+      }),
+    ).toBe("0.outsideWindow:no_allow_run_with_secret");
+    expect(errorsOf({ decision: "allow", match: { tags: ["prod"] } })).toBe(
+      "0.window:prod_needs_window",
+    );
+    expect(
+      errorsOf({
+        decision: "ask",
+        outsideWindow: "allow",
+        window: { days: ["mon"], from: "08:00", to: "18:00" },
+        match: { tags: ["prod"] },
+      }),
+    ).toBe("0.outsideWindow:prod_needs_window");
   });
 
   test("com erro em alguma regra, nenhuma é devolvida como válida", () => {

@@ -1,3 +1,4 @@
+import type { RuleIssue } from "@flightdeck/protocol";
 import type { Key, T } from "./index.ts";
 import { ptBR } from "./pt-BR.ts";
 
@@ -45,4 +46,9 @@ export function refusalText(
 ): string {
   const { title, detail } = translateError(code, message, t, why);
   return detail ? `${title} ${detail}` : title;
+}
+
+/** One thing wrong in a vault rule, in the app's language. */
+export function ruleIssueText(_issue: RuleIssue, _t: T): string {
+  return "";
 }

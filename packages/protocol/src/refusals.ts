@@ -90,3 +90,14 @@ export const DAEMON_FEATURES = [
   "bg",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
+
+/** One thing wrong in a list the person typed (a vault rule): where, which kind, and what its text fills in. */
+export interface RuleIssue {
+  /** `<rule index>.<field path>` (the index counts from 0); empty for the list itself. */
+  path: string;
+  code: string;
+  params?: RefusalParams;
+}
+
+/** Every kind of issue the rules validation reports: the app has a text for each, in both languages. */
+export const RULE_ISSUE_CODES: readonly string[] = [];

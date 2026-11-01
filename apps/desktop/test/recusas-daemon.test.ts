@@ -43,6 +43,7 @@ const REASONS = [
   "vault_closed",
   "secret_not_here",
   "secret_purpose_mismatch",
+  "vault_rules_invalid",
 ];
 
 const cleanups: Array<() => unknown> = [];

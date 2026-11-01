@@ -4,7 +4,7 @@
  * can loosen a default but never past the ceiling (no `allow` for `run_with_secret`, none for
  * `prod` without a time window), and a use the risk classifier calls high is always asked.
  */
-import { isProdTag, type VaultRequester } from "@flightdeck/protocol";
+import { isProdTag, type RuleIssue, type VaultRequester } from "@flightdeck/protocol";
 
 export type Decision = "allow" | "ask" | "deny";
 export type Purpose = "ssh" | "action" | "run_with_secret";
@@ -149,8 +149,13 @@ const RULE_KEYS = new Set([
 ]);
 
 /** The rules that are valid, or why they are not (including what the ceiling refuses). */
-export function validateRules(raw: unknown): { rules: Rule[]; errors: string[] } {
-  if (!Array.isArray(raw)) return { rules: [], errors: ["as regras são uma lista"] };
+export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[] } {
+  if (!Array.isArray(raw)) {
+    return {
+      rules: [],
+      errors: [{ path: "", code: "unknown", params: { message: "as regras são uma lista" } }],
+    };
+  }
   const errors: string[] = [];
   const rules: Rule[] = [];
   const ids = new Set<string>();
@@ -258,8 +263,13 @@ export function validateRules(raw: unknown): { rules: Rule[]; errors: string[] }
 
     if (errors.length === before) rules.push(item as unknown as Rule);
   }
-  if (errors.length > 0) return { rules: [], errors };
-  return { rules: rules.map((rule) => ({ ...rule, match: rule.match ?? {} })), errors };
+  if (errors.length > 0) {
+    return {
+      rules: [],
+      errors: errors.map((message) => ({ path: "", code: "unknown", params: { message } })),
+    };
+  }
+  return { rules: rules.map((rule) => ({ ...rule, match: rule.match ?? {} })), errors: [] };
 }
 
 /** `deploy-*` against a name: `*` is the only wildcard, everything else is literal. */

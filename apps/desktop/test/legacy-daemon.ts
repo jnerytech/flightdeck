@@ -12,6 +12,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const refuse = new Map<string, string>();
   /** The folders the host lets sessions run in (`hello` says them); none by default. */
   const roots: string[] = [];
+  /** Commands it refuses with a whole error: code, message, reason, params and items. */
+  const refuseWith = new Map<string, Record<string, unknown>>();
   /** Features `host.info` announces (a phase 6 daemon announces none). */
   const features: string[] = [];
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
@@ -105,6 +107,11 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         const ack = (data?: unknown) => {
           ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
         };
+        const refusedWith = refuseWith.get(type);
+        if (refusedWith !== undefined) {
+          ws.send(JSON.stringify({ type: "ack", id, ok: false, error: refusedWith }));
+          return;
+        }
         const refused = refuse.get(type);
         if (refused !== undefined) {
           ws.send(
@@ -272,6 +279,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     commands,
     hub,
     refuse,
+    refuseWith,
     features,
     preview,
     audit,

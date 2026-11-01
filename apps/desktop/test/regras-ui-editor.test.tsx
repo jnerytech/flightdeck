@@ -94,6 +94,40 @@ describe("regras-ui-editor: the rules of a secret", () => {
     expect(store.vaultRules(deploy.id)).toEqual([]);
   });
 
+  test("a refusal that lists what is wrong marks each field, in the language, and says how many in all", async () => {
+    const { store, daemon, deploy, editor } = await open();
+    daemon.refuseWith.set("vault.rules.set", {
+      code: "bad_request",
+      message: "invalid rules: 0.decision: no_allow_run_with_secret",
+      reason: "vault_rules_invalid",
+      params: { count: 2 },
+      items: [
+        { path: "0.decision", code: "no_allow_run_with_secret" },
+        {
+          path: "0.window.days",
+          code: "not_one_of",
+          params: { allowed: "mon, tue, wed, thu, fri, sat, sun" },
+        },
+      ],
+    });
+    await click("Adicionar regra");
+    await change("Finalidade na regra 1", "run_with_secret");
+    await change("Decisão na regra 1", "allow");
+    await click("Salvar regras", editor());
+    const decision = () => screen.queryByLabelText("Decisão na regra 1");
+    await settle(() => decision()?.getAttribute("aria-invalid") === "true");
+    const describedBy = decision()?.getAttribute("aria-describedby") ?? "";
+    expect(document.getElementById(describedBy)?.textContent).toBe(
+      "Nenhuma regra libera run_with_secret sem aprovação: use ask.",
+    );
+    const alerts = within(editor() as HTMLElement)
+      .queryAllByRole("alert")
+      .map((a) => a.textContent);
+    expect(alerts).toContain("Só estes valores são aceitos: mon, tue, wed, thu, fri, sat, sun.");
+    expect(alerts).toContain("Algumas regras não valem: corrija o que está marcado.");
+    expect(store.vaultRules(deploy.id)).toEqual([]);
+  });
+
   test("the order changes with Descer and Subir and by dragging, and a rule can be removed", async () => {
     const { store, deploy, editor } = await open([ONE, TWO]);
     await click("Descer regra 1");

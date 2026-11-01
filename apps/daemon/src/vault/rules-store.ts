@@ -21,7 +21,12 @@ export class VaultRules {
    */
   set(secretId: string, tags: readonly string[], raw: unknown): number {
     const { rules, errors } = validateRules(raw);
-    if (errors.length > 0) throw new FlightdeckError("bad_request", errors.join("; "));
+    if (errors.length > 0) {
+      throw new FlightdeckError(
+        "bad_request",
+        errors.map((e) => String(e.params?.message)).join("; "),
+      );
+    }
     this.bySecret.set(secretId, {
       tags: [...new Set(tags.map((tag) => tag.toLowerCase()))],
       rules,

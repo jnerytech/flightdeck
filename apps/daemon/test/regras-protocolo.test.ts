@@ -121,6 +121,12 @@ describe("regras-protocolo", () => {
     });
     expect(refused).toMatchObject({ ok: false, error: { code: "bad_request" } });
     expect(JSON.stringify(refused)).toContain("run_with_secret");
+    expect(refused.error).toMatchObject({
+      reason: "vault_rules_invalid",
+      params: { count: 1 },
+      items: [{ path: "0.decision", code: "no_allow_run_with_secret" }],
+    });
+    expect((refused.error as { message: string }).message).not.toMatch(/[À-ú]|\bregra\b/);
     // The previous rules stay.
     expect(
       (await app.data<{ rules: unknown[] }>("vault.rules.get", { secretId: "token" }))?.rules,
