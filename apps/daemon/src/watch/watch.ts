@@ -160,6 +160,9 @@ export class PrWatcher {
       .run(cardId, reason, new Date().toISOString());
   }
 
+  /** The cards with a look in flight. */
+  private readonly looking = new Set<string>();
+
   /** Phase 22: after this nothing is read, saved or fired (the daemon is stopping). */
   stop(): void {
     this.stopped = true;
@@ -175,8 +178,17 @@ export class PrWatcher {
       .all();
     for (const { id } of open) {
       if (this.stopped) return;
-      if (this.enabled(id) && this.status(id).status === "watching")
-        await this.look(id).catch(() => {});
+      // One look at a time per card: on a slow host the next tick comes before the last look
+      // answered, and two looks would both see the same new failure.
+      if (this.looking.has(id)) continue;
+      if (this.enabled(id) && this.status(id).status === "watching") {
+        this.looking.add(id);
+        try {
+          await this.look(id).catch(() => {});
+        } finally {
+          this.looking.delete(id);
+        }
+      }
     }
   }
 
