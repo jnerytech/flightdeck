@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { liveScreen, registerDom } from "./dom.ts";
 import type { HostView } from "../src/lib/app-store.ts";
+import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
 registerDom();
