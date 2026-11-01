@@ -1,6 +1,6 @@
 import { type ReactNode, useId, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { NativeSelect } from "@/components/layout/form";
+import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -168,32 +168,31 @@ export function Settings(props: {
           </Panel>
         )}
         <Panel title={t("prefs.shortcut")}>
-          <small className="text-muted-foreground text-xs">{t("prefs.shortcutNote")}</small>
           {settings.shortcutProblem && <InlineNotice>{settings.shortcutProblem}</InlineNotice>}
-          <div className="flex items-center gap-2">
-            <Input
-              aria-label={t("prefs.shortcut")}
-              className="w-56"
-              value={shortcut}
-              disabled={shortcutOff}
-              onChange={(e) => setShortcut(e.target.value)}
-            />
-            <Button
-              variant="outline"
-              disabled={shortcutOff}
-              onClick={() => props.onGlobalShortcut(shortcut)}
+          <Form variant="inline" onSubmit={() => props.onGlobalShortcut(shortcut)}>
+            <Field
+              label={t("prefs.shortcut")}
+              help={t("prefs.shortcutNote")}
+              error={settings.shortcutError}
             >
-              {t("prefs.saveShortcut")}
-            </Button>
-          </div>
-          {settings.shortcutError && (
-            <small className="text-status-error text-xs">{settings.shortcutError}</small>
-          )}
-          {shortcutOff && (
-            <small className="text-muted-foreground text-xs">
-              {t("prefs.shortcutUnavailable")}
-            </small>
-          )}
+              {(control) => (
+                <Input
+                  {...control}
+                  className="w-56"
+                  value={shortcut}
+                  disabled={shortcutOff}
+                  onChange={(e) => setShortcut(e.target.value)}
+                />
+              )}
+            </Field>
+            <FormActions
+              submit={t("prefs.saveShortcut")}
+              disabled={shortcutOff || shortcut === settings.globalShortcut}
+              disabledReason={
+                shortcutOff ? t("prefs.shortcutUnavailable") : t("prefs.shortcutUnchanged")
+              }
+            />
+          </Form>
         </Panel>
         {props.state.hosts
           // Budgets came with the costs (phase 8).

@@ -1758,6 +1758,7 @@ export const ptBR = {
     shortcutNote:
       "Traz o Flightdeck para frente com a busca aberta, mesmo em segundo plano. Dentro do app, Ctrl+K continua abrindo a busca.",
     saveShortcut: "Salvar atalho",
+    shortcutUnchanged: "Nada mudou",
     shortcutUnavailable: "atalho global indisponível nesta plataforma",
   },
   contextUi: {

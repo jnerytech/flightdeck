@@ -1757,6 +1757,7 @@ export const en: Dictionary = {
     shortcutNote:
       "Brings Flightdeck to the front with the search open, even in the background. Inside the app, Ctrl+K still opens the search.",
     saveShortcut: "Save shortcut",
+    shortcutUnchanged: "Nothing changed",
     shortcutUnavailable: "global shortcut unavailable on this platform",
   },
   contextUi: {
