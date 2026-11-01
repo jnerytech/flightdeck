@@ -28,7 +28,7 @@ function LineNumber(props: {
       type="button"
       aria-label={t(key, { line: props.line, path: props.path })}
       aria-pressed={props.picked}
-      className="w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums hover:text-foreground aria-pressed:text-foreground"
+      className="min-h-6 w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums hover:text-foreground aria-pressed:text-foreground"
       onClick={(e) => props.onPick(props.path, props.side, props.line, e.shiftKey)}
     >
       {props.line}
