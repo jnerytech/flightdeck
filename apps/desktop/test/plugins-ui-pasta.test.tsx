@@ -59,7 +59,7 @@ async function pressInDialog(name: string | RegExp) {
 describe("plugins-ui: a pasta de um plugin local", () => {
   test("Procurar… abre o seletor e a pasta escolhida preenche o campo, que continua digitável", async () => {
     const { d } = await open();
-    mkdirSync(join(d.root, "meu-plugin"), { recursive: true });
+    mkdirSync(join(d.root, "meu-plugin", "hooks"), { recursive: true });
     await settle(() => screen.queryByRole("button", { name: "Procurar…" }) !== null);
     expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull();
     await act(async () => {
@@ -68,6 +68,8 @@ describe("plugins-ui: a pasta de um plugin local", () => {
     await settle(() => dialog() !== null);
     await pressInDialog(new RegExp(`^${basename(d.root)}`));
     await pressInDialog("meu-plugin");
+    // Its own subfolder shows once the listing of meu-plugin has arrived.
+    await settle(() => inDialog("hooks") !== null);
     await pressInDialog("Escolher esta pasta");
     const field = screen.getByLabelText("Pasta de um plugin local") as HTMLInputElement;
     await settle(() => field.value !== "");
