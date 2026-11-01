@@ -5,6 +5,7 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WatchSettingsSection } from "@/components/watch/watch-settings-section";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
 import type {
   AppState,
@@ -204,6 +205,17 @@ export function Settings(props: {
               hostId={h.id}
               hostName={h.name}
               budgets={props.state.budgets[h.id] ?? []}
+            />
+          ))}
+        {props.state.hosts
+          .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "watch", false))
+          .map((h) => (
+            <WatchSettingsSection
+              key={`watch/${h.id}`}
+              store={props.store}
+              hostId={h.id}
+              hostName={h.name}
+              projects={props.state.projects[h.id] ?? []}
             />
           ))}
         {props.state.hosts

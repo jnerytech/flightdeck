@@ -40,6 +40,7 @@ import type {
   VaultRequestFrame,
   VaultVerdict,
   WatchInfo,
+  WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
@@ -2296,6 +2297,14 @@ export class AppStore {
     }
     this.fail(new Error(this.i18n.t("palette.noPrMatch")), this.i18n.t("palette.noPrMatch"));
     return null;
+  }
+
+  /**
+   * Phase 22: a project's PR watch settings, with `patch` changed first when given. The host's
+   * settings after it, or null when it refuses (the toast says why).
+   */
+  watchSettings(hostId: string, projectId: string, patch?: Partial<WatchSettings>) {
+    return this.hostCommand(hostId, "watch.settings", { projectId, ...(patch ? { patch } : {}) });
   }
 
   /** Phase 22: the PR description made from the card's sessions, for the person to edit. */
