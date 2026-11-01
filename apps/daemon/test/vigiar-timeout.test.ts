@@ -78,6 +78,36 @@ describe("check-timeout: a command that runs out of time is killed with everythi
     expect(killed).toEqual([[-42, "SIGKILL"]]);
   });
 
+  test("a pid that is not a child's is never killed: the daemon's own, 1, 0, negative, NaN, fractions", () => {
+    const killed: number[] = [];
+    const spawned: string[][] = [];
+    for (const pid of [
+      process.pid,
+      1,
+      0,
+      -1,
+      -process.pid,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      4.5,
+    ]) {
+      killTree(
+        pid,
+        "linux",
+        (target) => killed.push(target),
+        () => {},
+      );
+      killTree(
+        pid,
+        "win32",
+        () => {},
+        (cmd) => spawned.push(cmd),
+      );
+    }
+    expect(killed).toEqual([]);
+    expect(spawned).toEqual([]);
+  });
+
   test("the check runner gives a check 10 minutes by default and says when one timed out", async () => {
     const dir = tempDir("fd-check-");
     const file = hangingScript();
