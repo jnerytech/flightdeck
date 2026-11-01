@@ -37,6 +37,17 @@ async function openTimeline(page: Page): Promise<void> {
   await page.waitForTimeout(1000);
 }
 
+/** Scrolls the first text matching `title` to the top of its scrolling box and lets it settle. */
+function showSection(title: RegExp): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page
+      .getByText(title)
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: "start" }));
+    await page.waitForTimeout(400);
+  };
+}
+
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
@@ -201,6 +212,31 @@ function shots(ids: DemoIds): Shot[] {
     },
     { name: "custos", route: { name: "costs" } },
     { name: "configuracoes", route: { name: "settings" } },
+    // The sections below the first screen of Settings, the host page and the vault: their rows of
+    // buttons and fields are checked in the prints too.
+    {
+      name: "configuracoes-orcamentos",
+      route: { name: "settings" },
+      prepare: showSection(/^(Budgets of|Orçamentos de) /),
+    },
+    {
+      name: "configuracoes-mensagens",
+      route: { name: "settings" },
+      prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
+    },
+    {
+      name: "host-manutencao",
+      route: { name: "host", host: ALFA },
+      prepare: showSection(/^(Maintenance|Manutenção)$/),
+    },
+    {
+      name: "cofre-backup",
+      route: { name: "vault" },
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: "Backup" }).click();
+        await page.waitForTimeout(400);
+      },
+    },
     {
       name: "paleta",
       route: { name: "hub" },
