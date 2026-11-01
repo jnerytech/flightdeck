@@ -23,8 +23,11 @@ export interface TrackOptions {
   projectOf: (cwd: string) => string;
   /** The card a managed session works for, if any. */
   cardOf: (sessionId: string) => string | null;
-  /** Looks the project of a folder up without blocking; a managed session is named once it is done. */
-  warm?: ((cwd: string) => Promise<unknown>) | undefined;
+  /**
+   * Looks the project of a folder up without blocking; a managed session is named once it is done.
+   * Nothing back means the folder is already known: the session is named on the spot.
+   */
+  warm?: ((cwd: string) => Promise<unknown> | undefined) | undefined;
   /** The persona a session already has (phase 20's extension point); null when none. */
   personaOf?: ((sessionId: string) => string | null) | undefined;
 }

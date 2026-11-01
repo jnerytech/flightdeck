@@ -58,6 +58,12 @@ describe("chave-quente: the project key is looked up before the places that read
     expect(await poll(() => display(names, id))).toBe("repo · geral · 1");
   });
 
+  test("a session whose folder is already known is named on the spot, so the code that reads its name right after creating it finds it", () => {
+    const { names, start, create } = rig({ warm: () => undefined });
+    start();
+    expect(display(names, create())).toBe("repo · geral · 1");
+  });
+
   test("sessions created while the lookup is pending are named in the order they were created", async () => {
     const gate = Promise.withResolvers<void>();
     const { names, start, create } = rig({ warm: () => gate.promise });

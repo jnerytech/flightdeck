@@ -169,6 +169,33 @@ describe("times: criar", () => {
     expect(started.map((s) => s.persona)).toEqual(["arquiteto", "qa", null]);
   });
 
+  test("the coordinator starts once the project of its folder has been looked up, and the lookup is skipped when the folder is known", async () => {
+    const gate = Promise.withResolvers<void>();
+    const asked: string[] = [];
+    const started: string[] = [];
+    let known = false;
+    const { teams, project, manager } = await setup({
+      warm: (cwd) => {
+        asked.push(cwd);
+        return known ? undefined : gate.promise;
+      },
+      startCoordinator: (input) => {
+        started.push(input.cwd);
+        return manager.create({ cwd: input.cwd, prompt: input.prompt, name: input.name });
+      },
+    });
+    const creating = teams.create({ ...NEW, projectId: project.id, workers: 1 });
+    await Bun.sleep(30);
+    expect(asked).toEqual([project.path]);
+    expect(started).toEqual([]);
+    gate.resolve();
+    await creating;
+    expect(started).toEqual([project.path]);
+    known = true;
+    await teams.create({ ...NEW, projectId: project.id, workers: 1 });
+    expect(started).toEqual([project.path, project.path]);
+  });
+
   test("recusa o projeto que não existe e mais executoras do que o limite não passa pelo protocolo", async () => {
     const { teams } = await setup();
     expect(await failure(teams.create({ ...NEW, projectId: "nada" }))).toContain("not_found");

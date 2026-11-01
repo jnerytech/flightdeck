@@ -51,6 +51,8 @@ export interface TeamsOptions {
     | undefined;
   /** Starts a worker's card; phase 20 passes the persona on. */
   startWorker?: ((cardId: string, persona: string | null) => Promise<unknown>) | undefined;
+  /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
+  warm?: ((cwd: string) => Promise<unknown> | undefined) | undefined;
   /** Tells a running session its persona changed. */
   applyPersona?: ((sessionId: string, persona: string | null) => void) | undefined;
 }
