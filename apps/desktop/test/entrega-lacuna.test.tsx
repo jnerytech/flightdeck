@@ -112,4 +112,30 @@ describe("entrega-lacuna: the app does not draw a conversation with holes", () =
     ]);
     expect(asked()).toEqual([0, 4, 6]);
   });
+
+  test("a coalesced stream (several words in one frame, all at the current seq) is not a gap: no new subscription, the text is whole", async () => {
+    const { store, daemon, key, asked } = await follow();
+    // The daemon merges the words of a 25 ms window into one frame that carries the last persisted
+    // seq, and sends the persisted event after it.
+    daemon.push(frame(4, { type: "message.delta", text: "uma resposta " }));
+    daemon.push(frame(4, { type: "message.delta", text: "mais comprida, em poucos quadros" }));
+    await settle(() => store.getState().sessions[key]?.streaming.length === 45);
+    expect(store.getState().sessions[key]?.streaming).toBe(
+      "uma resposta mais comprida, em poucos quadros",
+    );
+    expect(store.getState().sessions[key]?.lastSeq).toBe(4);
+    daemon.push(frame(5, said(5).event));
+    await settle(() => store.getState().sessions[key]?.lastSeq === 5);
+    const session = store.getState().sessions[key];
+    expect(session?.lastSeq).toBe(5);
+    expect(session?.streaming).toBe("");
+    expect(session?.items.map((item) => item.kind)).toEqual([
+      "assistant",
+      "assistant",
+      "assistant",
+      "assistant",
+      "assistant",
+    ]);
+    expect(asked()).toEqual([0]);
+  });
 });
