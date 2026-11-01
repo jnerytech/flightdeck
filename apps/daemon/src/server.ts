@@ -47,6 +47,7 @@ import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
 import type { Automations } from "./automations/automations.ts";
+import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
@@ -190,6 +191,8 @@ export interface ServerOptions {
   telemetryOptIn?: TelemetryOptIn;
   /** Phase 25: the trace of a session, built from its transcript and its subagents'. */
   trace?: TraceService;
+  /** Phase 27: Claude Code's background sessions, through its own CLI. */
+  bg?: BgService;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
   /** The quota's samples behind `quota.history` (phase 8). */
@@ -380,6 +383,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.costs ? ["costs"] : []),
     ...(opts.telemetry ? ["telemetry"] : []),
     ...(opts.trace ? ["trace"] : []),
+    ...(opts.bg ? ["bg"] : []),
     ...(opts.changes ? ["review"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
@@ -621,6 +625,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function telemetry(): TelemetryStore {
     if (!opts.telemetry) throw featureOff("telemetry");
     return opts.telemetry;
+  }
+
+  function bg(): BgService {
+    if (!opts.bg) throw featureOff("bg");
+    return opts.bg;
   }
 
   function trace(): TraceService {
@@ -1412,6 +1421,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
         return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
+      case "bg.list":
+        return ok(command.type, await bg().list());
       case "trace.get":
         return ok(command.type, trace().get(command.payload.claudeSessionId));
       case "trace.export": {

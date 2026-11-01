@@ -1284,6 +1284,39 @@ export const TelemetrySummary = z.object({
 });
 export type TelemetrySummary = z.infer<typeof TelemetrySummary>;
 
+const BgId = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "id de sessão em segundo plano inválido");
+
+/** Phase 27: a Claude Code background session (`claude --bg`), as `claude agents --json` lists it. */
+export const BgSession = z.object({
+  /** The short id `claude attach`, `logs` and `stop` take. */
+  id: z.string(),
+  name: z.string().nullable(),
+  cwd: z.string(),
+  /** `working`, `blocked`, `done`, `failed` or `stopped`; anything newer is kept as it is. */
+  state: z.string(),
+  /** While its process is alive: `busy`, `waiting` or `idle`. */
+  status: z.string().nullable(),
+  /** What a waiting session waits for: `permission prompt`, `input needed`... */
+  waitingFor: z.string().nullable(),
+  pid: z.number().int().nullable(),
+  /** The Claude Code session id, for `--resume`, the transcript and the cost. */
+  claudeSessionId: z.string().nullable(),
+  /** Unix ms. */
+  startedAt: z.number().nullable(),
+  /** From the usage of the transcripts (phase 8); `null` when there is none. */
+  costUsd: z.number().nullable(),
+});
+export type BgSession = z.infer<typeof BgSession>;
+
+export const BgList = z.object({
+  /** `false` when this host's `claude` has no background sessions (an older one, or none). */
+  supported: z.boolean(),
+  sessions: z.array(BgSession),
+});
+export type BgList = z.infer<typeof BgList>;
+
 /** Phase 25: a node of a session's trace: a turn, a tool call, a subagent or a thought. */
 export interface TraceNode {
   /** Stable inside a trace: `turn:2`, `tool:<tool_use_id>`, `agent:<id>`, `thought:<uuid>`. */
@@ -2779,6 +2812,23 @@ export const Command = z.discriminatedUnion("type", [
   cmd("telemetry.session", z.object({ claudeSessionId: z.string() })),
   cmd("telemetry.summary", z.object({}).strict()),
   // The opt-in for a plain `claude`: Flightdeck's keys in the user's ~/.claude/settings.json.
+  // Phase 27: Claude Code's background sessions.
+  cmd("bg.list", z.object({}).strict()),
+  cmd("bg.stop", z.object({ id: BgId })),
+  cmd("bg.respawn", z.object({ id: BgId })),
+  cmd("bg.message", z.object({ id: BgId, text: z.string().min(1).max(32_000) })),
+  cmd(
+    "bg.start",
+    z.object({
+      cwd: z.string().min(1),
+      prompt: z.string().min(1).max(32_000),
+      name: z.string().min(1).max(120).optional(),
+      persona: z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+        .optional(),
+    }),
+  ),
   cmd("telemetry.status", z.object({}).strict()),
   // Phase 25: the trace of a session, built from its transcript and its subagents'.
   cmd("trace.get", z.object({ claudeSessionId: z.string().min(1) })),
@@ -3532,6 +3582,11 @@ export interface CommandResults {
   "telemetry.summary": TelemetrySummary;
   "trace.get": SessionTrace;
   "trace.export": TraceExport;
+  "bg.list": BgList;
+  "bg.stop": BgList;
+  "bg.respawn": BgList;
+  "bg.message": BgList;
+  "bg.start": { id: string };
   "telemetry.status": TelemetryOptInStatus;
   "telemetry.install": TelemetryOptInStatus;
   "telemetry.uninstall": TelemetryOptInStatus;

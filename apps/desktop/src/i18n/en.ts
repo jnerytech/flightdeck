@@ -695,6 +695,7 @@ export const en: Dictionary = {
     shutdown: "shutting the daemon down",
     telemetry: "session timing",
     trace: "the session trace",
+    bg: "background sessions",
   },
   daemonRefusal: {
     budget_needs_project: "A project budget needs a project: choose one.",
@@ -704,6 +705,10 @@ export const en: Dictionary = {
       "settings.json already sets {keys}: those are yours, so nothing was changed. Remove them and try again.",
     telemetry_port:
       "The telemetry receiver has no fixed port: set telemetry.port (or hooks.port) in the host's config.",
+    bg_cli_failed: "Claude Code refused: {message}",
+    bg_not_found: "The background session {id} is not listed by claude agents.",
+    bg_no_message_path:
+      "A message cannot be sent to a background session that is running: attach to it in a terminal, or wait until it is done.",
     period_inverted: "The period is backwards: {from} is after {to}.",
     feature_off: "This host does not offer {feature}: update the daemon, or check its settings.",
     cwd_missing: "The folder {cwd} does not exist on this host.",

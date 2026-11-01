@@ -5,7 +5,7 @@
  * Code's shell, see hook-shell.ts), transcript lines and channel
  * messages. Payloads follow the proof of concept (docs/SPEC-fase-5.md).
  */
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 
@@ -39,6 +39,10 @@ export interface FakeClaude {
   dir: string;
   /** What the fake did, in order: start (args, FLIGHTDECK_* env), hooks, channel messages. */
   events(): FakeClaudeEvent[];
+  /** What `claude agents --json` prints next (phase 27). */
+  setAgents(agents: unknown[]): void;
+  /** Makes `claude stop`, `respawn`... fail (or work again). */
+  failCli(on: boolean): void;
   restore(): void;
 }
 
@@ -64,6 +68,11 @@ export function installFakeClaude(
   }
   return {
     dir,
+    setAgents: (agents) => writeFileSync(join(dir, "agents.json"), JSON.stringify(agents)),
+    failCli: (on) => {
+      if (on) writeFileSync(join(dir, "fail"), "");
+      else rmSync(join(dir, "fail"), { force: true });
+    },
     events: () => {
       const file = join(dir, "events.jsonl");
       if (!existsSync(file)) return [];

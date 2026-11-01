@@ -690,6 +690,7 @@ export const ptBR = {
     shutdown: "desligar o daemon",
     telemetry: "o tempo das sessões",
     trace: "o rastro da sessão",
+    bg: "sessões em segundo plano",
   },
   daemonRefusal: {
     budget_needs_project: "Um orçamento de projeto precisa de um projeto: escolha um.",
@@ -699,6 +700,10 @@ export const ptBR = {
       "O settings.json já define {keys}: são suas, então nada foi mudado. Remova-as e tente de novo.",
     telemetry_port:
       "O receptor de telemetria não tem porta fixa: defina telemetry.port (ou hooks.port) na config do host.",
+    bg_cli_failed: "O Claude Code recusou: {message}",
+    bg_not_found: "A sessão em segundo plano {id} não aparece no claude agents.",
+    bg_no_message_path:
+      "Não dá para mandar mensagem a uma sessão em segundo plano que está rodando: trazer para o terminal, ou esperar ela terminar.",
     period_inverted: "O período está invertido: {from} é depois de {to}.",
     feature_off: "Este host não oferece {feature}: atualize o daemon ou confira as configurações.",
     cwd_missing: "A pasta {cwd} não existe neste host.",

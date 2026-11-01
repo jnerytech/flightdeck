@@ -22,6 +22,9 @@ export const DAEMON_REASONS = [
   "telemetry_confirm",
   "telemetry_owned_keys",
   "telemetry_port",
+  "bg_cli_failed",
+  "bg_not_found",
+  "bg_no_message_path",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 
@@ -74,5 +77,6 @@ export const DAEMON_FEATURES = [
   "shutdown",
   "telemetry",
   "trace",
+  "bg",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

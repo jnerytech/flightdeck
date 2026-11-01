@@ -30,6 +30,9 @@ const REASONS = [
   "telemetry_confirm",
   "telemetry_owned_keys",
   "telemetry_port",
+  "bg_cli_failed",
+  "bg_not_found",
+  "bg_no_message_path",
 ];
 
 const cleanups: Array<() => unknown> = [];

@@ -39,6 +39,20 @@ const agents =
   args.includes("--agents") && agentsPath && existsSync(agentsPath)
     ? JSON.parse(readFileSync(agentsPath, "utf8"))
     : null;
+// Claude Code's own subcommands for background sessions (`claude agents --json`, `stop`...): the
+// fake records the call and answers from <stateDir>/agents.json; <stateDir>/fail makes them fail.
+if (["agents", "stop", "kill", "respawn", "attach", "logs", "rm"].includes(args[0] ?? "")) {
+  log({ type: "cli", args });
+  if (existsSync(join(stateDir, "fail"))) {
+    console.error("no such session");
+    process.exit(1);
+  }
+  const listed = join(stateDir, "agents.json");
+  if (args[0] === "agents")
+    process.stdout.write(existsSync(listed) ? readFileSync(listed, "utf8") : "[]");
+  else console.log("ok");
+  process.exit(0);
+}
 log({
   type: "start",
   args,
@@ -128,6 +142,11 @@ async function until(check: () => boolean, ms: number): Promise<boolean> {
   return true;
 }
 
+// `claude --bg` starts the session under the supervisor and returns at once.
+if (args.includes("--bg") || args.includes("--background")) {
+  console.log("backgrounded · fake0001 · bg");
+  process.exit(0);
+}
 const steps = JSON.parse(readFileSync(join(stateDir, "script.json"), "utf8")) as FakeClaudeStep[];
 let code = 0;
 for (const step of steps) {
