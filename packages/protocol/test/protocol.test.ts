@@ -290,6 +290,8 @@ const validCommands: Record<CommandType, unknown> = {
   "rules.list": { projectId: "p" },
   "rules.remove": { projectId: "p", rule: "Bash(npm test:*)", confirm: true },
   "costs.status": {},
+  "telemetry.session": { claudeSessionId: "c-1" },
+  "telemetry.summary": {},
   "costs.reprice": {},
   "costs.summary": { from: "2026-10-01", to: "2026-10-31", origin: "card" },
   "costs.session": { claudeSessionId: "c" },

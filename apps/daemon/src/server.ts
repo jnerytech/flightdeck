@@ -55,6 +55,7 @@ import type { Snapshots } from "./checkpoints/snapshots.ts";
 import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
+import type { TelemetryStore } from "./telemetry/store.ts";
 import { statuslineData } from "./costs/statusline.ts";
 import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
@@ -181,6 +182,8 @@ export interface ServerOptions {
   usage?: UsageLedger;
   /** Estimated costs behind the `costs.*` commands (phase 8). */
   costs?: Costs;
+  /** Phase 23: the timing of terminal sessions, from Claude Code's OTLP telemetry. */
+  telemetry?: TelemetryStore;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
   /** The quota's samples behind `quota.history` (phase 8). */
@@ -369,6 +372,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Project rules live in the board's projects.
     ...(opts.board ? ["rules"] : []),
     ...(opts.costs ? ["costs"] : []),
+    ...(opts.telemetry ? ["telemetry"] : []),
     ...(opts.changes ? ["review"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
@@ -605,6 +609,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function costs(): Costs {
     if (!opts.costs) throw featureOff("costs");
     return opts.costs;
+  }
+
+  function telemetry(): TelemetryStore {
+    if (!opts.telemetry) throw featureOff("telemetry");
+    return opts.telemetry;
   }
 
   function budgets(): Budgets {
@@ -1384,6 +1393,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, costs().reprice());
       case "costs.summary":
         return ok(command.type, costs().summary(command.payload));
+      case "telemetry.session":
+        return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
+      case "telemetry.summary":
+        return ok(command.type, telemetry().summary());
       case "costs.session":
         return ok(command.type, costs().session(command.payload.claudeSessionId));
       case "costs.sessions":

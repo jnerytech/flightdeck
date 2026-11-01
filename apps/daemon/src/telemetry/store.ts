@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import type { TelemetrySession, TelemetrySummary } from "@flightdeck/protocol";
 import type { OtlpEvent } from "./otlp.ts";
 
 /** One stored event of a terminal session's telemetry. */
@@ -120,5 +121,15 @@ export class TelemetryStore {
   prune(days: number, now: number): number {
     return this.db.query("DELETE FROM telemetry_events WHERE at < ?").run(now - days * DAY_MS)
       .changes;
+  }
+
+  /** A session's prompts, each with its tools, permissions and API calls in order. */
+  timeline(_claudeSessionId: string): TelemetrySession {
+    return { prompts: [] };
+  }
+
+  /** Per project: permission wait and the slowest tools, over every session. */
+  summary(): TelemetrySummary {
+    return { projects: [] };
   }
 }

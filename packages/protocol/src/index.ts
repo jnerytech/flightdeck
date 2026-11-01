@@ -1233,6 +1233,57 @@ export const CostsDivergence = z.object({
 });
 export type CostsDivergence = z.infer<typeof CostsDivergence>;
 
+/** One step of a prompt in a session's timeline (phase 23). */
+export const TelemetryItem = z.object({
+  kind: z.enum(["tool", "permission", "api", "error"]),
+  /** Epoch ms. */
+  at: z.number(),
+  toolName: z.string().nullable(),
+  durationMs: z.number().nullable(),
+  costUsd: z.number().nullable(),
+  success: z.boolean().nullable(),
+  /** The tool's `error_type` or the HTTP status of an API error. */
+  error: z.string().nullable(),
+  /** `accept` or `reject`, for a permission. */
+  decision: z.string().nullable(),
+  /** Who decided: `config`, `hook`, `user_temporary`... */
+  source: z.string().nullable(),
+  /** For a permission a person answered: the time from the step before it to the answer. */
+  waitMs: z.number().nullable(),
+});
+export type TelemetryItem = z.infer<typeof TelemetryItem>;
+
+export const TelemetryPrompt = z.object({
+  /** `null` for events that carry no prompt id. */
+  promptId: z.string().nullable(),
+  startedAt: z.number(),
+  endedAt: z.number(),
+  costUsd: z.number(),
+  /** Sum of the permission waits of the prompt. */
+  waitMs: z.number(),
+  items: z.array(TelemetryItem),
+});
+export type TelemetryPrompt = z.infer<typeof TelemetryPrompt>;
+
+export const TelemetrySession = z.object({ prompts: z.array(TelemetryPrompt) });
+export type TelemetrySession = z.infer<typeof TelemetrySession>;
+
+export const SlowTool = z.object({
+  toolName: z.string(),
+  calls: z.number().int(),
+  avgMs: z.number(),
+  maxMs: z.number(),
+});
+export type SlowTool = z.infer<typeof SlowTool>;
+
+/** Per project: the time spent waiting for a person's permission and the slowest tools. */
+export const TelemetrySummary = z.object({
+  projects: z.array(
+    z.object({ projectKey: z.string(), waitMs: z.number(), slowest: z.array(SlowTool) }),
+  ),
+});
+export type TelemetrySummary = z.infer<typeof TelemetrySummary>;
+
 /** Phase 23: a terminal session whose cost in the OTLP telemetry and in the transcripts differ. */
 export const TelemetryDivergence = z.object({
   claudeSessionId: z.string(),
@@ -2643,6 +2694,9 @@ export const Command = z.discriminatedUnion("type", [
   cmd("costs.summary", CostsFilter),
   cmd("costs.session", z.object({ claudeSessionId: z.string() })),
   cmd("costs.sessions", z.object({ claudeSessionIds: z.array(z.string()).max(500) })),
+  // Phase 23: the timing of a terminal session, from Claude Code's OTLP telemetry.
+  cmd("telemetry.session", z.object({ claudeSessionId: z.string() })),
+  cmd("telemetry.summary", z.object({}).strict()),
   cmd("costs.card", z.object({ cardId: z.string() })),
   cmd("costs.run", z.object({ runId: z.string() })),
   cmd("costs.export", CostsFilter),
@@ -3383,6 +3437,8 @@ export interface CommandResults {
   "rules.list": { rules: string[] };
   "rules.remove": { rules: string[] };
   "costs.status": CostsStatus;
+  "telemetry.session": TelemetrySession;
+  "telemetry.summary": TelemetrySummary;
   "costs.reprice": { entries: number };
   "costs.summary": CostsSummary;
   "costs.session": CostsSession;
