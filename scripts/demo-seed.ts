@@ -310,6 +310,8 @@ interface HostRun {
   client: Client;
   config: string;
   projects: string;
+  /** The daemon's data folder: where it publishes its OTLP receiver (phase 23). */
+  dataDir: string;
   stop(): Promise<void>;
 }
 
@@ -331,7 +333,9 @@ async function host(work: string, name: string): Promise<HostRun> {
       dataDir: join(base, "data"),
       allowedRoots: [projects],
       runtime: "fake",
-      hooks: { port: 0 },
+      // The hooks token and a free port for the OTLP receiver, which listens once hooks are set up.
+      hooks: { port: 0, token: crypto.randomUUID().replaceAll("-", "") },
+      telemetry: { port: 0 },
       history: { roots: [history] },
     }),
   );
@@ -348,12 +352,126 @@ async function host(work: string, name: string): Promise<HostRun> {
     client,
     config,
     projects,
+    dataDir: join(base, "data"),
     stop: async () => {
       client.close();
       await daemon.stop();
     },
   };
 }
+
+/** The OTLP log records of one prompt, in the shape Claude Code's exporter sends. */
+interface DemoEvent {
+  name: string;
+  afterMs: number;
+  attrs: Record<string, string | number>;
+}
+
+/** Sends events to the host's OTLP receiver, as an exporter would: the same path as a real session. */
+async function sendTelemetry(
+  host: HostRun,
+  sessionId: string,
+  promptId: string,
+  startedAt: number,
+  events: DemoEvent[],
+): Promise<void> {
+  const published = JSON.parse(readFileSync(join(host.dataDir, "telemetry.json"), "utf8")) as {
+    url: string;
+  };
+  const token = (JSON.parse(readFileSync(host.config, "utf8")) as { telemetry: { token: string } })
+    .telemetry.token;
+  const value = (v: string | number) =>
+    typeof v === "number"
+      ? Number.isInteger(v)
+        ? { intValue: String(v) }
+        : { doubleValue: v }
+      : { stringValue: v };
+  const body = {
+    resourceLogs: [
+      {
+        resource: { attributes: [] },
+        scopeLogs: [
+          {
+            logRecords: events.map((e) => ({
+              timeUnixNano: String(BigInt(startedAt + e.afterMs) * 1_000_000n),
+              body: { stringValue: `claude_code.${e.name}` },
+              attributes: Object.entries({
+                "event.name": `claude_code.${e.name}`,
+                "session.id": sessionId,
+                "prompt.id": promptId,
+                ...e.attrs,
+              }).map(([key, v]) => ({ key, value: value(v) })),
+            })),
+          },
+        ],
+      },
+    ],
+  };
+  const res = await fetch(`${published.url}/v1/logs`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`telemetria do demo: ${res.status}`);
+}
+
+/** Two prompts: API requests, a permission you answered after 9 s, a slow Bash, an API error. */
+const PROMPT_ONE: DemoEvent[] = [
+  { name: "user_prompt", afterMs: 0, attrs: { prompt_length: 42 } },
+  {
+    name: "api_request",
+    afterMs: 1_200,
+    attrs: { request_id: "r1", duration_ms: 1_100, cost_usd: 0.012, model: "claude-opus-5-5" },
+  },
+  {
+    name: "tool_decision",
+    afterMs: 1_300,
+    attrs: { tool_use_id: "t1", tool_name: "Read", decision: "accept", source: "config" },
+  },
+  {
+    name: "tool_result",
+    afterMs: 1_450,
+    attrs: { tool_use_id: "t1", tool_name: "Read", duration_ms: 120, success: "true" },
+  },
+  {
+    name: "api_request",
+    afterMs: 3_000,
+    attrs: { request_id: "r2", duration_ms: 1_400, cost_usd: 0.018, model: "claude-opus-5-5" },
+  },
+  {
+    name: "tool_decision",
+    afterMs: 12_000,
+    attrs: { tool_use_id: "t2", tool_name: "Bash", decision: "accept", source: "user_temporary" },
+  },
+  {
+    name: "tool_result",
+    afterMs: 16_200,
+    attrs: { tool_use_id: "t2", tool_name: "Bash", duration_ms: 4_200, success: "true" },
+  },
+  {
+    name: "api_error",
+    afterMs: 17_000,
+    attrs: { request_id: "r3", status_code: 529, duration_ms: 90 },
+  },
+];
+const PROMPT_TWO: DemoEvent[] = [
+  { name: "user_prompt", afterMs: 0, attrs: { prompt_length: 18 } },
+  {
+    name: "api_request",
+    afterMs: 900,
+    attrs: { request_id: "r4", duration_ms: 800, cost_usd: 0.009, model: "claude-opus-5-5" },
+  },
+  {
+    name: "tool_decision",
+    afterMs: 1_000,
+    attrs: { tool_use_id: "t3", tool_name: "Edit", decision: "accept", source: "config" },
+  },
+  {
+    name: "tool_result",
+    afterMs: 1_300,
+    attrs: { tool_use_id: "t3", tool_name: "Edit", duration_ms: 300, success: "true" },
+  },
+];
 
 /** Hosts the demo pairs with: the seeded ones, an offline one and one of an old protocol. */
 export async function seedDemo(log: (msg: string) => void = () => {}): Promise<DemoSeed> {
@@ -560,6 +678,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     }>("session.list", {});
     return list.sessions.find((s) => s.id === sessionId)?.claudeSessionId;
   };
+  // Timing for the Tempo tab (the idle session) and for Custos (the session with usage).
+  const telemetrySession = (await until(() => claudeOf(idle.sessionId), "id da revisão")) as string;
+  const when = Date.now() - 10 * 60_000;
+  for (const id of [telemetrySession, "aaaaaaaa-0000-4000-8000-000000000001"]) {
+    await sendTelemetry(alfa, id, "demo-prompt-1", when, PROMPT_ONE);
+    await sendTelemetry(alfa, id, "demo-prompt-2", when + 60_000, PROMPT_TWO);
+  }
   const rewindClaude = (await until(() => claudeOf(rewind.sessionId), "id do carrinho")) as string;
   const snapshotsOf = async () =>
     (
@@ -718,7 +843,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       gateCard: gated.id,
       projectName: "flightdeck-web",
       rewindSession: rewind.sessionId,
-      telemetrySession: "",
+      telemetrySession,
     },
     stop: async () => {
       gh.restore();

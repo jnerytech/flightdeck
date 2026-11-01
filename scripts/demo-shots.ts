@@ -231,6 +231,26 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "custos", route: { name: "costs" } },
+    // The time panel of Custos (phase 23): the wait for permissions and the slowest tools.
+    {
+      name: "custos-tempo",
+      route: { name: "costs" },
+      prepare: showSection(/^(Tempo por projeto|Time per project)$/),
+    },
+    {
+      // A session's Tempo tab: each prompt with its tools, the permission wait and the API error.
+      name: "sessao-tempo",
+      route: { name: "session", host: ALFA, id: ids.idleSession },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Tempo|Time)$/ }).click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "host-telemetria",
+      route: { name: "host", host: ALFA },
+      prepare: showSection(/^(Telemetria|Telemetry)$/),
+    },
     { name: "configuracoes", route: { name: "settings" } },
     // The sections below the first screen of Settings, the host page and the vault: their rows of
     // buttons and fields are checked in the prints too.

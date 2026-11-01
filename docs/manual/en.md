@@ -1157,12 +1157,12 @@ tool, the time Claude waited for you to answer a permission, an API error.
     (`CLAUDE_CODE_ENABLE_TELEMETRY`, the OTLP exporters for metrics and logs, the endpoint, the
     header with the token and short intervals). It adds nothing over an exporter you already set
     yourself, and nothing in print mode (`-p`).
-  - For a plain `claude`, run `flightdeckd telemetry install`: it writes the same eight keys into
+  - For a plain `claude`, use **Install telemetry** in the **Telemetry** panel of the host page (it asks first, naming the file and the backup), or run `flightdeckd telemetry install`: it writes the same eight keys into
     `env` of `~/.claude/settings.json`, after a copy in
     `settings.json.flightdeck-telemetry-backup`. If any of those keys already holds a value of
     yours it stops, names the keys and changes nothing. `flightdeckd telemetry status` says
     `installed`, `absent`, `outdated` or that an exporter of yours is there;
-    `flightdeckd telemetry uninstall` takes out only Flightdeck's keys and **changes the token**,
+    `flightdeckd telemetry uninstall` (or **Remove telemetry**) takes out only Flightdeck's keys and **changes the token**,
     so a copy of the old one stops working.
 - **What is kept:** for each event the session, the prompt, the time, how long it took, the cost,
   the tokens, whether a tool worked, the error type or HTTP status, and who answered a permission.

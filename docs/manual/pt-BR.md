@@ -1134,11 +1134,11 @@ lenta, o tempo que o Claude esperou você responder uma permissão, um erro de A
     (`CLAUDE_CODE_ENABLE_TELEMETRY`, os exportadores OTLP de métricas e logs, o endereço, o
     cabeçalho com o token e intervalos curtos). Não acrescenta nada sobre um exportador que você
     já configurou, nem no modo de impressão (`-p`).
-  - Para um `claude` puro, rode `flightdeckd telemetry install`: ele grava as mesmas oito chaves em
+  - Para um `claude` puro, use **Instalar telemetria** no painel **Telemetria** da página do host (ele pergunta antes, dizendo o arquivo e a cópia), ou rode `flightdeckd telemetry install`: ele grava as mesmas oito chaves em
     `env` do `~/.claude/settings.json`, depois de uma cópia em
     `settings.json.flightdeck-telemetry-backup`. Se alguma dessas chaves já tem um valor seu, ele
     para, diz quais e não muda nada. `flightdeckd telemetry status` diz `installed`, `absent`,
-    `outdated` ou que há um exportador seu; `flightdeckd telemetry uninstall` tira só as chaves do
+    `outdated` ou que há um exportador seu; `flightdeckd telemetry uninstall` (ou **Remover telemetria**) tira só as chaves do
     Flightdeck e **troca o token**, e uma cópia do antigo deixa de valer.
 - **O que fica guardado:** de cada evento, a sessão, o prompt, a hora, quanto demorou, o custo, os
   tokens, se uma ferramenta funcionou, o tipo do erro ou o status HTTP e quem respondeu uma
