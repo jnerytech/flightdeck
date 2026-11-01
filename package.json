@@ -11,6 +11,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "layout:ratchet": "bun run scripts/layout-ratchet.ts",
+    "perf:baseline": "bun run scripts/perf-baseline.ts",
     "test": "bun test && bun run scripts/check-coverage.ts",
     "coverage": "bun test && bun run scripts/check-coverage.ts",
     "smoke": "bun run scripts/smoke.ts",

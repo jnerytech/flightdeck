@@ -118,6 +118,22 @@ jobs:
           bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
 
+      # Phase 28: the numbers of the performance baseline on this runner, kept as an artifact. It
+      # is not a gate: a measure that cannot run says why in its row, and the step never fails the job.
+      - name: Performance baseline
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        run: bun run perf:baseline --out perf-baseline
+
+      - name: Performance baseline (artifact)
+        if: runner.os == 'Windows' && always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: perf-baseline-windows
+          path: perf-baseline
+          if-no-files-found: ignore
+
   # The prints of every screen in both themes and languages, the axe check on them and the five
   # end-to-end journeys, all against the seeded demo (fake runtime: no real Claude, no network).
   screenshots:
