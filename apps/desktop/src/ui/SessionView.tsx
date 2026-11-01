@@ -195,7 +195,6 @@ export function SessionView(props: {
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
             {props.timeline}
-            {props.persona}
             {props.terminal}
             {closed ? (
               <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
@@ -231,6 +230,7 @@ export function SessionView(props: {
             )}
           </>
         }
+        extra={props.persona}
       />
       <Timeline ref={timeline}>
         {session.pruned && session.items.length === 0 && (

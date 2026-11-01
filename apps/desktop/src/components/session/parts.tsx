@@ -6,6 +6,8 @@ export function SessionHeader(props: {
   title: ReactNode;
   subtitle?: ReactNode;
   controls?: ReactNode;
+  /** A row of its own under the buttons (the persona controls). */
+  extra?: ReactNode;
 }) {
   return (
     <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
@@ -15,7 +17,16 @@ export function SessionHeader(props: {
           <div className="flex flex-col text-muted-foreground text-xs">{props.subtitle}</div>
         )}
       </div>
-      {props.controls && <div className="flex flex-wrap items-center gap-2">{props.controls}</div>}
+      {props.controls && (
+        <div data-slot="session-controls" className="flex flex-wrap items-end gap-2">
+          {props.controls}
+        </div>
+      )}
+      {props.extra && (
+        <div data-slot="session-extra" className="basis-full">
+          {props.extra}
+        </div>
+      )}
     </header>
   );
 }
