@@ -1233,6 +1233,14 @@ export const CostsDivergence = z.object({
 });
 export type CostsDivergence = z.infer<typeof CostsDivergence>;
 
+/** Phase 23: a terminal session whose cost in the OTLP telemetry and in the transcripts differ. */
+export const TelemetryDivergence = z.object({
+  claudeSessionId: z.string(),
+  computedUsd: z.number(),
+  telemetryUsd: z.number(),
+});
+export type TelemetryDivergence = z.infer<typeof TelemetryDivergence>;
+
 /** Where the usage of a message came from; `subagent` keeps the parent session's id. */
 /** `auto-approve` (phase 13): the automatic approval's own queries. */
 export const UsageOrigin = z.enum([
@@ -1397,6 +1405,8 @@ export const CostsStatus = z.object({
   unpriced: z.array(UnpricedModel),
   /** Over 10% and US$ 0.05 apart: the price table may be out of date. */
   divergences: z.array(CostsDivergence),
+  /** Phase 23: the same check against the cost the sessions' telemetry reported. */
+  telemetryDivergences: z.array(TelemetryDivergence).default([]),
 });
 export type CostsStatus = z.infer<typeof CostsStatus>;
 

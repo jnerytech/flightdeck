@@ -346,7 +346,13 @@ export class Costs {
     const initialLoad = this.opts.initialLoad?.() ?? { state: "done", filesDone: 0, filesTotal: 0 };
     // Halfway through the load a session's cost is partial: no divergence until it ends.
     const divergences = initialLoad.state === "done" ? this.divergences() : [];
-    return { initialLoad, pricingDate: PRICING_DATE, unpriced, divergences };
+    return {
+      initialLoad,
+      pricingDate: PRICING_DATE,
+      unpriced,
+      divergences,
+      telemetryDivergences: [],
+    };
   }
 
   /**

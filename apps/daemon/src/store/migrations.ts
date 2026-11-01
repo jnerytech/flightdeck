@@ -690,4 +690,32 @@ export const MIGRATIONS: readonly string[] = [
     done_at TEXT NOT NULL
   );
   `,
+  // Phase 23: the events Claude Code's OTLP exporter sends for terminal sessions (timings, cost,
+  // tokens, decisions; never content). `ref` (tool_use_id or request_id) keeps a resent batch
+  // from being counted twice.
+  `
+  CREATE TABLE telemetry_events (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    claude_session_id     TEXT NOT NULL,
+    prompt_id             TEXT,
+    name                  TEXT NOT NULL,
+    at                    INTEGER NOT NULL,
+    ref                   TEXT NOT NULL,
+    tool_name             TEXT,
+    duration_ms           REAL,
+    cost_usd              REAL,
+    input_tokens          INTEGER,
+    output_tokens         INTEGER,
+    cache_read_tokens     INTEGER,
+    cache_creation_tokens INTEGER,
+    success               INTEGER,
+    error                 TEXT,
+    decision              TEXT,
+    source                TEXT
+  );
+
+  CREATE UNIQUE INDEX telemetry_events_once ON telemetry_events (claude_session_id, name, at, ref);
+  CREATE INDEX telemetry_events_session ON telemetry_events (claude_session_id, at);
+  CREATE INDEX telemetry_events_at ON telemetry_events (at);
+  `,
 ];

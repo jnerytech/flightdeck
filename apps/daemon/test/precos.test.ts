@@ -240,6 +240,7 @@ describe("precos", () => {
       pricingDate: "2026-10-06",
       unpriced: [{ model: "claude-mystery-9", entries: 1, tokens: 10 }],
       divergences: [],
+      telemetryDivergences: [],
     });
     expect(usageEntries(db)).toHaveLength(5);
   });
