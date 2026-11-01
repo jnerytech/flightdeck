@@ -4,6 +4,7 @@ import {
   checkShots,
   comparePng,
   type VisualCheck,
+  normalizeVolatile,
   type VisualIO,
   visualMode,
 } from "../lib/visual.ts";
@@ -191,5 +192,27 @@ describe("visual: the prints of a run", () => {
       "shots/visual-diff/light-en/hub.png": OTHER,
     });
     expect(checkShots(check(io, {})).compared).toBe(1);
+  });
+});
+
+describe("visual: what changes from run to run is written the same", () => {
+  test("temporary folders, ports, clock times, dates and relative ages are replaced", () => {
+    expect(normalizeVolatile("/tmp/fd-demo-VGJZr0/alfa/projects")).toBe(
+      "/tmp/fd-demo-X/alfa/projects",
+    );
+    expect(normalizeVolatile("ws://127.0.0.1:38593/v1/ws")).toBe("ws://127.0.0.1:PORT/v1/ws");
+    expect(normalizeVolatile("08:44 PM")).toBe("00:00 PM");
+    expect(normalizeVolatile("resets at 10:44 PM · read 4 min ago")).toBe(
+      "resets at 00:00 PM · read N min ago",
+    );
+    expect(normalizeVolatile("2026-11-01")).toBe("0000-00-00");
+    expect(normalizeVolatile("há 12 min")).toBe("há N min");
+    expect(normalizeVolatile("37 s ago")).toBe("N s ago");
+  });
+
+  test("text with none of those is left alone, numbers of the data included", () => {
+    for (const text of ["US$ 0.06", "35800", "app · geral · 3", "turn 2 · 0.4 s", "Sessions"]) {
+      expect(normalizeVolatile(text)).toBe(text);
+    }
   });
 });
