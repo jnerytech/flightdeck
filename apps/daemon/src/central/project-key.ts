@@ -1,4 +1,5 @@
-import { basename, dirname, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { whichOnPath } from "../which.ts";
 
 export type GitResult = { code: number; stdout: string };
@@ -75,6 +76,8 @@ function rootOf(commonDir: string): string {
  */
 export class ProjectKeys {
   private readonly cache = new Map<string, string>();
+  /** The cwds cached with a folder key because git found no repository: whether `.git` existed then. */
+  private readonly notRepo = new Map<string, boolean>();
   private readonly pending = new Map<string, Promise<string>>();
 
   constructor(
@@ -84,7 +87,7 @@ export class ProjectKeys {
   ) {}
 
   keyFor(cwd: string): string {
-    const cached = this.cache.get(cwd);
+    const cached = this.cached(cwd);
     if (cached) return cached;
     const common = this.git(commonDirArgs(cwd));
     let key = this.folderKey(cwd);
@@ -92,18 +95,39 @@ export class ProjectKeys {
       const root = rootOf(common.stdout);
       key = this.remoteKey(root, this.git(remoteArgs(root)));
     }
-    this.cache.set(cwd, key);
+    this.keep(cwd, key, common.code !== 0);
     return key;
+  }
+
+  /**
+   * The cached key. A folder key that git gave for a folder with no repository is dropped when the
+   * folder has a `.git` now, which it did not have then: it became a repository, and git is asked
+   * again.
+   */
+  private cached(cwd: string): string | undefined {
+    const key = this.cache.get(cwd);
+    if (key && this.notRepo.has(cwd) && existsSync(join(cwd, ".git")) !== this.notRepo.get(cwd)) {
+      this.cache.delete(cwd);
+      this.notRepo.delete(cwd);
+      return undefined;
+    }
+    return key;
+  }
+
+  private keep(cwd: string, key: string, noRepo: boolean): void {
+    this.cache.set(cwd, key);
+    if (noRepo) this.notRepo.set(cwd, existsSync(join(cwd, ".git")));
+    else this.notRepo.delete(cwd);
   }
 
   /** The key without blocking: the cached one, else a promise of it. */
   lookup(cwd: string): string | Promise<string> {
-    return this.cache.get(cwd) ?? this.resolve(cwd);
+    return this.cached(cwd) ?? this.resolve(cwd);
   }
 
   /** The key, asking git without blocking the event loop; asked once per cwd, then cached. */
   resolve(cwd: string): Promise<string> {
-    const cached = this.cache.get(cwd);
+    const cached = this.cached(cwd);
     if (cached) return Promise.resolve(cached);
     let pending = this.pending.get(cwd);
     if (!pending) {
@@ -122,7 +146,7 @@ export class ProjectKeys {
         const root = rootOf(common.stdout);
         key = this.remoteKey(root, await this.gitAsync(remoteArgs(root)));
       }
-      this.cache.set(cwd, key);
+      this.keep(cwd, key, common.code !== 0);
       return key;
     } catch {
       return this.folderKey(cwd);
