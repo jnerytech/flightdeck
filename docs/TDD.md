@@ -83,6 +83,10 @@ em vez de depender de cuidado.
   seconds and blocks the event loop on every retry, so the socket's answer never arrives and the
   test times out. Use a boolean (`expect(button(name) !== null).toBe(true)`). A button with
   `aria-hidden` has an empty accessible name: find it with `getByLabelText`.
+- A file that `mock.module`s a project module must capture the real module first
+  (`const real = { ...(await import(path)) }`) and restore it in `afterAll`
+  (`mock.module(path, () => real)`), because Bun module mocks outlive their file and later files
+  in the same run would draw the stand-in.
 
 ## Evidência para o /goal
 
