@@ -24,5 +24,9 @@ export default defineConfig({
   timeout: 90_000,
   globalSetup: "./global-setup.ts",
   globalTeardown: "./global-teardown.ts",
-  use: { ...use, launchOptions: browserLaunch(which), headless: true },
+  use: {
+    ...use,
+    launchOptions: browserLaunch(which, { env: process.env, platform: process.platform, isFile }),
+    headless: true,
+  },
 });

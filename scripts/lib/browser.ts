@@ -48,8 +48,12 @@ export const RUNNER_BROWSER_NAMES = [
 /**
  * The browser the e2e runner (`@playwright/test`, under Node) starts: the first system Chrome or
  * Chromium found, else the installed Chrome by channel (Windows). A channel cannot be probed
- * without launching, so no Edge fallback here. No browser is ever downloaded.
+ * without launching, so on Windows the known install paths are checked as files: Chrome by channel, else Edge by
+ * path. No browser is ever downloaded.
  */
+const CHROME_FILE = "Google\\Chrome\\Application\\chrome.exe";
+const EDGE_FILE = "Microsoft\\Edge\\Application\\msedge.exe";
+
 export interface BrowserHost {
   env: Record<string, string | undefined>;
   platform: string;
@@ -60,10 +64,19 @@ export function browserLaunch(
   which: (name: string) => string | null,
   host?: BrowserHost,
 ): { executablePath: string } | { channel: "chrome" } {
-  void host;
   for (const name of RUNNER_BROWSER_NAMES) {
     const executablePath = which(name);
     if (executablePath) return { executablePath };
+  }
+  if (host?.platform === "win32") {
+    const under = (suffix: string) =>
+      ["ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"]
+        .map((name) => host.env[name])
+        .filter((dir): dir is string => Boolean(dir))
+        .map((dir) => `${dir}\\${suffix}`);
+    if (under(CHROME_FILE).some(host.isFile)) return { channel: "chrome" };
+    const edge = under(EDGE_FILE).find(host.isFile);
+    if (edge) return { executablePath: edge };
   }
   return { channel: "chrome" };
 }
