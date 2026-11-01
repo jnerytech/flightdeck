@@ -42,7 +42,7 @@ export function tightened(counts: LayoutBaseline, baseline: LayoutBaseline): Lay
 /** The baseline `--init` writes: the current counts, and null (refused) once the baseline has entries. */
 export function initialised(
   counts: LayoutBaseline,
-  _baseline: LayoutBaseline,
+  baseline: LayoutBaseline,
 ): LayoutBaseline | null {
-  return counts;
+  return Object.keys(baseline).length === 0 ? counts : null;
 }
