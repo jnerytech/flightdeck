@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../lib/clients.ts";
+import { ClientRules } from "./ClientRules.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Phase 29: the clients that group projects across hosts, with their rules. */
@@ -22,6 +23,7 @@ export function ClientsPage(props: { store: AppStore; state: AppState }) {
   const [renaming, setRenaming] = useState<Client | null>(null);
   const [removing, setRemoving] = useState<Client | null>(null);
 
+  const ambiguous = store.clientScope().ambiguousNames;
   const clean = name.trim();
   const taken = clients.some(
     (c) => c.id !== renaming?.id && c.name.toLowerCase() === clean.toLowerCase(),
@@ -38,73 +40,81 @@ export function ClientsPage(props: { store: AppStore; state: AppState }) {
   return (
     <Page title={t("clients.title")} subtitle={t("clients.subtitle")}>
       <Stack gap={4}>
+        {ambiguous.length > 0 && (
+          <p className="text-muted-foreground text-sm">
+            {t("clients.ambiguousHosts", { names: ambiguous.join(", ") })}
+          </p>
+        )}
         {clients.length === 0 ? (
           <EmptyState icon={Briefcase} title={t("clients.emptyTitle")} />
         ) : (
           <Stack as="ul" label={t("clients.list")} gap={2}>
             {clients.map((client, index) => (
               <li key={client.id}>
-                <ListRow
-                  boxed
-                  leading={<ClientDot color={client.color} />}
-                  title={<span data-client-name>{client.name}</span>}
-                  trailing={
-                    <Inline gap={1}>
-                      <NativeSelect
-                        inline
-                        compact
-                        aria-label={t("clients.color", { name: client.name })}
-                        value={client.color}
-                        onChange={(e) =>
-                          store.clients.recolor(client.id, e.target.value as ClientColor)
-                        }
-                      >
-                        {CLIENT_COLORS.map((color) => (
-                          <option key={color} value={color}>
-                            {t(`clients.colors.${color}`)}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("clients.up", { name: client.name })}
-                        disabled={index === 0}
-                        onClick={() => store.clients.move(client.id, index - 1)}
-                      >
-                        <ArrowUp />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("clients.down", { name: client.name })}
-                        disabled={index === clients.length - 1}
-                        onClick={() => store.clients.move(client.id, index + 1)}
-                      >
-                        <ArrowDown />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={t("clients.rename", { name: client.name })}
-                        onClick={() => {
-                          setRenaming(client);
-                          setName(client.name);
-                        }}
-                      >
-                        {t("clients.renameShort")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={t("clients.remove", { name: client.name })}
-                        onClick={() => setRemoving(client)}
-                      >
-                        {t("clients.removeShort")}
-                      </Button>
-                    </Inline>
-                  }
-                />
+                <Stack gap={2}>
+                  <ListRow
+                    boxed
+                    leading={<ClientDot color={client.color} />}
+                    title={<span data-client-name>{client.name}</span>}
+                    trailing={
+                      <Inline gap={1}>
+                        <NativeSelect
+                          inline
+                          compact
+                          aria-label={t("clients.color", { name: client.name })}
+                          value={client.color}
+                          onChange={(e) =>
+                            store.clients.recolor(client.id, e.target.value as ClientColor)
+                          }
+                        >
+                          {CLIENT_COLORS.map((color) => (
+                            <option key={color} value={color}>
+                              {t(`clients.colors.${color}`)}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("clients.up", { name: client.name })}
+                          disabled={index === 0}
+                          onClick={() => store.clients.move(client.id, index - 1)}
+                        >
+                          <ArrowUp />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("clients.down", { name: client.name })}
+                          disabled={index === clients.length - 1}
+                          onClick={() => store.clients.move(client.id, index + 1)}
+                        >
+                          <ArrowDown />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={t("clients.rename", { name: client.name })}
+                          onClick={() => {
+                            setRenaming(client);
+                            setName(client.name);
+                          }}
+                        >
+                          {t("clients.renameShort")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={t("clients.remove", { name: client.name })}
+                          onClick={() => setRemoving(client)}
+                        >
+                          {t("clients.removeShort")}
+                        </Button>
+                      </Inline>
+                    }
+                  />
+                  <ClientRules store={store} state={state} client={client} />
+                </Stack>
               </li>
             ))}
           </Stack>
