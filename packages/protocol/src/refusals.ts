@@ -20,3 +20,6 @@ export type DaemonReason = (typeof DAEMON_REASONS)[number];
 
 /** What a reason's text fills in: a path, a session id. */
 export type RefusalParams = Record<string, string | number>;
+
+/** Every host feature a command can find off: the app names each one in both languages. */
+export const DAEMON_FEATURES: readonly string[] = [];

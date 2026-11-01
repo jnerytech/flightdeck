@@ -23,6 +23,7 @@ const REASONS = [
   "external_no_channel",
   "transcript_not_indexed",
   "session_maybe_active",
+  "feature_off",
 ];
 
 const cleanups: Array<() => unknown> = [];

@@ -641,6 +641,7 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
+  daemonFeature: {},
   daemonRefusal: {
     cwd_missing: "A pasta {cwd} não existe neste host.",
     cwd_outside_roots:
