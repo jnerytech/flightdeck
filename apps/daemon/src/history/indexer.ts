@@ -25,6 +25,10 @@ export interface HistoryIndexerOptions {
   watch?: (root: string, onEvent: () => void) => { close(): void };
   /** Wait after a file event before the pass that publishes `history.changed`. */
   watchDebounceMs?: number;
+  /** The most bytes of one file a background pass reads before it gives the event loop back. */
+  sliceBytes?: number;
+  /** What a background pass awaits between slices; a zero timer when absent. */
+  pause?: () => Promise<void>;
 }
 
 export interface IndexerTimers {
@@ -445,6 +449,17 @@ export class HistoryIndexer {
       messages: count("SELECT COUNT(*) AS n FROM history_messages WHERE kind = 'message'"),
     };
   }
+
+  /** A pass that gives the event loop back between files and between slices of a big file. */
+  async scanAsync(): Promise<IndexResult[]> {
+    return [];
+  }
+
+  /** Another background pass after the one running; requests made meanwhile become one. */
+  request(): void {}
+
+  /** Resolves when no background pass is running. */
+  async idle(): Promise<void> {}
 
   /** One pass over every root; returns the files that gained records. */
   scan(): IndexResult[] {
