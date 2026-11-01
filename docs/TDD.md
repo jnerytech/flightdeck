@@ -78,6 +78,11 @@ em vez de depender de cuidado.
 - `cargo check` exige `apps/desktop/dist`: rode `bun run build:desktop` antes. Plugins do Tauri
   ficam no major 2.
 - No Git Bash, `schtasks /TN ...` tem o `/TN` reescrito como caminho; use PowerShell.
+- UI tests that wait on a daemon: inside `waitFor`, never `expect(element).toBeNull()` or
+  `.not.toBeNull()` on a DOM element. A failed `expect` formats the happy-dom tree, which takes
+  seconds and blocks the event loop on every retry, so the socket's answer never arrives and the
+  test times out. Use a boolean (`expect(button(name) !== null).toBe(true)`). A button with
+  `aria-hidden` has an empty accessible name: find it with `getByLabelText`.
 
 ## Evidência para o /goal
 
