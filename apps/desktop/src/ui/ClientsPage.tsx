@@ -13,6 +13,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../lib/clients.ts";
 import { ClientRules } from "./ClientRules.tsx";
 import { ClientsSuggest } from "./ClientsSuggest.tsx";
+import { ClientsTransfer } from "./ClientsTransfer.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Phase 29: the clients that group projects across hosts, with their rules. */
@@ -121,6 +122,7 @@ export function ClientsPage(props: { store: AppStore; state: AppState }) {
           </Stack>
         )}
         <ClientsSuggest store={store} state={state} />
+        <ClientsTransfer store={store} />
         <Panel>
           <Form variant="inline" onSubmit={submit}>
             <Field label={t("clients.nameLabel")}>
