@@ -621,6 +621,7 @@ export const ptBR = {
     endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
     endConfirm: "Encerrar sessão",
     pruned: "conversa removida pela retenção",
+    historyGap: "parte do histórico não está mais disponível no host",
     message: "Mensagem",
     snippets: "Snippets de prompt",
     placeholder: "Mensagem (Ctrl+Enter envia)",

@@ -71,6 +71,12 @@ export const emptySession = (): SessionState => ({
   pending: [],
 });
 
+/** The history has a hole here: a seq the host cannot give back, noted in the conversation. */
+export const markGap = (state: SessionState): SessionState => ({
+  ...state,
+  items: [...state.items, { kind: "gap", seq: state.lastSeq + 1 }],
+});
+
 export const endStreaming = (state: SessionState): SessionState => ({ ...state, streaming: "" });
 
 /**

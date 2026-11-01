@@ -623,6 +623,7 @@ export const en: Dictionary = {
     endMessage: "End this session? Claude Code stops; you can resume it later.",
     endConfirm: "End session",
     pruned: "conversation removed by retention",
+    historyGap: "part of the history is no longer available on the host",
     message: "Message",
     snippets: "Prompt snippets",
     placeholder: "Message (Ctrl+Enter sends)",

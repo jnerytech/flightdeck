@@ -227,6 +227,11 @@ export class HostConnection {
     return this.send(type, payload);
   }
 
+  /** Asks again from the last seq seen: the replay fills a hole in what arrived. */
+  resync(sessionId: string): void {
+    if (this.status === "online") this.sendSubscribe(sessionId);
+  }
+
   /** Tracks a session: subscribes now if online and again after every reconnect. */
   subscribe(sessionId: string): void {
     if (this.subscriptions.has(sessionId)) return;

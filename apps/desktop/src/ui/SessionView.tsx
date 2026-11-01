@@ -121,7 +121,7 @@ const TimelineItem = memo(function TimelineItem(props: {
         </div>
       );
     case "gap":
-      return null;
+      return <div className="text-muted-foreground text-xs">{props.t("session.historyGap")}</div>;
     case "error":
       return (
         <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>

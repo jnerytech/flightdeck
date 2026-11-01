@@ -41,6 +41,7 @@ import type {
   VaultVerdict,
   WorkflowRun,
 } from "@flightdeck/protocol";
+import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
@@ -59,7 +60,13 @@ import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
-import { applyEnvelope, emptySession, endStreaming, type SessionState } from "./session-state.ts";
+import {
+  applyEnvelope,
+  emptySession,
+  endStreaming,
+  markGap,
+  type SessionState,
+} from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
@@ -1684,6 +1691,9 @@ export class AppStore {
    */
   private onSubscribed(hostId: string, sessionId: string, result: SessionSubscribeResult): void {
     const key = sessionKey(hostId, sessionId);
+    // What the host has after our last seq is on its way (it follows the answer): a hole that is
+    // still there when it arrives is one the host cannot fill.
+    if (this.resyncing.get(key) === "asked") this.resyncing.set(key, "answered");
     const current = this.state.sessions[key] ?? emptySession();
     if (result.replayed > 0 || result.session.lastSeq === 0 || current.lastSeq > 0) return;
     const pruned = {
@@ -1755,7 +1765,27 @@ export class AppStore {
       return;
     }
     const key = sessionKey(hostId, envelope.sessionId);
-    const session = applyEnvelope(this.state.sessions[key] ?? emptySession(), envelope);
+    const known = this.state.sessions[key] ?? emptySession();
+    let current = known;
+    if (!EPHEMERAL_EVENTS.has(envelope.event.type) && known.lastSeq > 0) {
+      if (envelope.seq === known.lastSeq + 1) this.resyncing.delete(key);
+      else if (envelope.seq > known.lastSeq + 1) {
+        // A frame was lost on the way: this one is not applied (it would leave a hole). The
+        // daemon replays from the last seq we have, once per hole.
+        const asked = this.resyncing.get(key);
+        if (asked === undefined) {
+          this.resyncing.set(key, "asked");
+          this.connections.get(hostId)?.resync(envelope.sessionId);
+          return;
+        }
+        if (asked === "asked") return;
+        // The host answered and the hole is still there (its retention cut it): go on from
+        // here and say so in the conversation.
+        this.resyncing.delete(key);
+        current = markGap(known);
+      }
+    }
+    const session = applyEnvelope(current, envelope);
     this.update({ sessions: { ...this.state.sessions, [key]: session } });
   }
 
@@ -2182,6 +2212,8 @@ export class AppStore {
   private defaultVaultPolicy: VaultPolicy | null = null;
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
+  /** Sessions whose lost frame was asked for again (cleared when the next frame fits). */
+  private readonly resyncing = new Map<string, "asked" | "answered">();
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
 
