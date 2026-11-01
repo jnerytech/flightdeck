@@ -124,4 +124,24 @@ describe("sessao-clique: the session screen answers a click", () => {
     expect(a.calls).toEqual(["send:oi"]);
     expect((screen.queryByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
   });
+
+  test("the header keeps the buttons in one row aligned at the bottom, and the persona controls in a row of their own", async () => {
+    const a = actions();
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "idle" }}
+        actions={a.actions}
+        terminal={<button type="button">Terminal</button>}
+        persona={<div data-testid="persona">Aplicar persona</div>}
+      />,
+    );
+    const controls = document.querySelector("[data-slot='session-controls']");
+    const extra = document.querySelector("[data-slot='session-extra']");
+    expect(controls?.className ?? "").toContain("items-end");
+    expect(controls?.textContent ?? "").toContain("Terminal");
+    expect(controls?.textContent ?? "").toContain("Interromper");
+    expect(controls?.querySelector("[data-testid='persona']")).toBeNull();
+    expect(extra?.querySelector("[data-testid='persona']")).not.toBeNull();
+  });
 });
