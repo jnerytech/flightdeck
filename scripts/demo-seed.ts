@@ -483,7 +483,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   });
   await client.call("budget.set", {
     scope: "project",
-    projectKey: web,
+    projectKey: "github.com/acme/app",
     period: "month",
     limitUsd: 5000,
     action: "queue",
