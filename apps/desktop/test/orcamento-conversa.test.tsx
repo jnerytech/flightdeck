@@ -5,12 +5,11 @@ registerDom();
 
 /** How many times a message's text was drawn: the work a token must not repeat. */
 const drawn = { markdown: 0 };
-mock.module("../src/ui/Markdown.tsx", () => ({
-  Markdown: (props: { text: string }) => {
-    drawn.markdown++;
-    return <p>{props.text}</p>;
-  },
-}));
+function CountedMarkdown(props: { text: string }) {
+  drawn.markdown++;
+  return <p>{props.text}</p>;
+}
+mock.module("../src/ui/Markdown.tsx", () => ({ Markdown: CountedMarkdown }));
 
 const { act, cleanup, render } = await import("@testing-library/react");
 const { SessionView } = await import("../src/ui/SessionView.tsx");
