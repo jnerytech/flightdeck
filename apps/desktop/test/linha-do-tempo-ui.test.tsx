@@ -193,9 +193,14 @@ describe("linha-do-tempo-ui", () => {
         .queryByRole("button", { name: "Voltar arquivos até aqui (turno 2)" })
         ?.hasAttribute("disabled"),
     ).toBe(true);
+    const busy = screen.queryByText("A sessão está num turno: pare-a antes de voltar arquivos.");
+    expect(busy).not.toBeNull();
+    // The reason is tied to the button, not only near it.
     expect(
-      screen.queryByText("A sessão está num turno: pare-a antes de voltar arquivos."),
-    ).not.toBeNull();
+      screen
+        .queryByRole("button", { name: "Voltar arquivos até aqui (turno 2)" })
+        ?.getAttribute("aria-describedby"),
+    ).toBe(busy?.id ?? "?");
   });
 
   test("bifurcar abre uma sessão do Flightdeck a partir do turno, sem mexer nos arquivos", async () => {
@@ -280,7 +285,13 @@ describe("linha-do-tempo-ui", () => {
     expect(
       screen.queryByRole("button", { name: "Bifurcar daqui (turno 4)" })?.hasAttribute("disabled"),
     ).toBe(true);
-    expect(within(turn("sem uuid")).queryByText(/Não achei a mensagem deste turno/)).not.toBeNull();
+    const why = within(turn("sem uuid")).queryByText(/Não achei a mensagem deste turno/);
+    expect(why).not.toBeNull();
+    expect(
+      screen
+        .queryByRole("button", { name: "Bifurcar daqui (turno 4)" })
+        ?.getAttribute("aria-describedby"),
+    ).toBe(why?.id ?? "?");
     expect(
       screen.queryByRole("button", { name: "Bifurcar daqui (turno 3)" })?.hasAttribute("disabled"),
     ).toBe(false);
