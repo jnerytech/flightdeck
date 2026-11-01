@@ -5,6 +5,9 @@ import { shellCommand } from "../board/setup.ts";
 import { whichOnPath } from "../which.ts";
 import { MAX_VALUE } from "./interpolate.ts";
 
+/** How long a check may run before it is killed, unless the caller gives another limit. */
+export const DEFAULT_CHECK_TIMEOUT_MS = 10 * 60_000;
+
 export interface CheckResult {
   exitCode: number;
   /** The last 8 KB of stdout followed by stderr. */
@@ -42,7 +45,7 @@ export function shellCheckRunner(
   env: Record<string, string | undefined> = process.env,
 ): CheckRunner {
   return {
-    async run(command, cwd) {
+    async run(command, cwd, timeoutMs = DEFAULT_CHECK_TIMEOUT_MS) {
       const guard = env[CHECK_GUARD_ENV];
       if (guard && !allowedByGuard(command, guard)) {
         return {
@@ -50,8 +53,15 @@ export function shellCheckRunner(
           output: `trava de check: comando recusado (não é um comando falso do teste): ${command}`,
         };
       }
-      const result = await runCommand(shellCommand(command), cwd);
-      return { exitCode: result.code, output: (result.stdout + result.stderr).slice(-MAX_VALUE) };
+      const result = await runCommand(shellCommand(command), cwd, undefined, timeoutMs);
+      const output = (result.stdout + result.stderr).slice(-MAX_VALUE);
+      return result.timedOut
+        ? {
+            exitCode: result.code,
+            output: `${output}\ntimed out after ${timeoutMs} ms`,
+            timedOut: true,
+          }
+        : { exitCode: result.code, output };
     },
   };
 }

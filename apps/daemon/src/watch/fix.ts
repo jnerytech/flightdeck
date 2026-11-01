@@ -358,7 +358,19 @@ export class PrFixer {
       if (!isWatchCheck(command)) {
         return this.failed(cardId, end, `local check refused: ${masked(command)}`, spent);
       }
-      const result = await this.opts.checks.run(command, worktree);
+      const result = await this.opts.checks.run(
+        command,
+        worktree,
+        settings.checkTimeoutMin * 60_000,
+      );
+      if (result.timedOut) {
+        return this.failed(
+          cardId,
+          end,
+          `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`,
+          spent,
+        );
+      }
       if (result.exitCode !== 0) {
         return this.failed(
           cardId,

@@ -51,7 +51,7 @@ const DEFAULT_SETTINGS: WatchSettings = {
   enabled: false,
   maxRounds: 3,
   checks: [],
-  checkTimeoutMin: 0,
+  checkTimeoutMin: 10,
   budgetUsd: 5,
   maxTurns: 30,
   persona: "revisor",

@@ -8,35 +8,53 @@ export interface CommandResult {
   timedOut?: boolean;
 }
 
-/** Kills a process and everything it started. */
+/** Kills a process and everything it started: `taskkill /T` on Windows, the process group elsewhere. */
 export function killTree(
   pid: number,
   platform: string = process.platform,
   kill: (pid: number, signal: string) => void = process.kill,
   spawn: (cmd: string[]) => void = (cmd) => void Bun.spawnSync(cmd),
-): void {}
+): void {
+  if (platform === "win32") spawn(["taskkill", "/PID", String(pid), "/T", "/F"]);
+  else kill(-pid, "SIGKILL");
+}
 
-/** Runs a command in `cwd` and collects its exit code and output; `input` goes to its stdin. */
+/**
+ * Runs a command in `cwd` and collects its exit code and output; `input` goes to its stdin. With
+ * `timeoutMs`, a command still running at the limit is killed with everything it started and the
+ * result says `timedOut`.
+ */
 export async function runCommand(
   cmd: string[],
   cwd: string,
   input?: string,
-  _timeoutMs?: number,
+  timeoutMs?: number,
 ): Promise<CommandResult> {
-  // `env` explicitly: without it Bun passes the environment the process started with.
+  // `env` explicitly: without it Bun passes the environment the process started with. Its own
+  // process group (outside Windows), so the whole tree can be killed at the limit.
   const proc = Bun.spawn(cmd, {
     cwd,
     env: process.env,
     stdout: "pipe",
     stderr: "pipe",
     stdin: input === undefined ? "ignore" : new TextEncoder().encode(input),
+    detached: timeoutMs !== undefined && process.platform !== "win32",
   });
+  let timedOut = false;
+  const timer =
+    timeoutMs === undefined
+      ? null
+      : setTimeout(() => {
+          timedOut = true;
+          killTree(proc.pid);
+        }, timeoutMs);
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
     proc.exited,
   ]);
-  return { code, stdout, stderr };
+  if (timer) clearTimeout(timer);
+  return { code, stdout, stderr, ...(timedOut ? { timedOut } : {}) };
 }
 
 /** `git` from the current PATH, always with an explicit working directory. */

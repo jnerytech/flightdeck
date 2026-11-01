@@ -1884,7 +1884,7 @@ export const WatchSettings = z.object({
     )
     .max(10),
   /** Minutes each local check gets before it is killed. */
-  checkTimeoutMin: z.number(),
+  checkTimeoutMin: z.number().int().min(1).max(60),
   /** Estimated cost of the rounds of a PR, in US$; `null` for no limit. */
   budgetUsd: z.number().positive().nullable(),
   maxTurns: z.number().int().positive().nullable(),
