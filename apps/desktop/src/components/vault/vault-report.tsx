@@ -1,6 +1,6 @@
 import type { VaultDecisionInfo, VaultReportRow } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/feedback/action-button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
@@ -68,9 +68,9 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
           </select>
         )}
         <span className="text-muted-foreground text-xs">{t("vaultAudit.days")}</span>
-        <Button variant="outline" size="sm" className="ml-auto" onClick={() => void exportCsv()}>
+        <ActionButton variant="outline" size="sm" className="ml-auto" onClick={() => exportCsv()}>
           {t("vaultAudit.export")}
-        </Button>
+        </ActionButton>
       </div>
       {rows.length === 0 ? (
         <p className="text-muted-foreground">{t("vaultAudit.empty")}</p>

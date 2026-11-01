@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulesPreview } from "@/components/vault/rules-preview";
@@ -210,9 +211,9 @@ export function RulesEditor(props: {
         >
           {t("vaultRulesUi.add")}
         </Button>
-        <Button type="button" onClick={() => void save()}>
+        <ActionButton type="button" onClick={() => save()}>
           {t("vaultRulesUi.save")}
-        </Button>
+        </ActionButton>
         <Button type="button" variant="ghost" onClick={props.onClose}>
           {t("vaultRulesUi.cancel")}
         </Button>

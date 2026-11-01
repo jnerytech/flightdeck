@@ -1,6 +1,6 @@
 import type { VaultVerdict } from "@flightdeck/protocol";
 import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -69,9 +69,9 @@ export function RulesPreview(props: { store: AppStore; secretId: string }) {
           <Input id={`${id}-action`} value={action} onChange={(e) => setAction(e.target.value)} />
         </div>
       </div>
-      <Button type="button" variant="outline" className="self-start" onClick={() => void run()}>
+      <ActionButton type="button" variant="outline" className="self-start" onClick={() => run()}>
         {t("vaultRulesUi.preview.run")}
-      </Button>
+      </ActionButton>
       {result !== null && (
         <p role="status" aria-label={t("vaultRulesUi.preview.result")}>
           {result === "none"
