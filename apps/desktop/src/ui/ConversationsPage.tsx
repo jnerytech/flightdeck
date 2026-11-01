@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
+import { sessionProjectKeys } from "../lib/client-scope.ts";
+import { hubRows } from "../lib/hub.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 
@@ -29,7 +31,19 @@ interface Row {
   message: MessageInfo;
 }
 
-const CONVERSATIONSPAGE_KEYS = ["hosts"] as const;
+/** The hosts, and what the client filter reads: the hub's rows, the projects, the clients, the selection. */
+const CONVERSATIONSPAGE_KEYS = [
+  "hosts",
+  "hub",
+  "meta",
+  "externals",
+  "names",
+  "background",
+  "projects",
+  "clientList",
+  "clientOverrides",
+  "clientSelection",
+] as const;
 
 /**
  * Phase 21: the messages between sessions on every host with messaging, newest first, with their
@@ -74,7 +88,12 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   }, [store, load]);
 
   const needle = text.trim().toLowerCase();
+  // A message belongs to the selected client when either of its sessions does.
+  const scope = store.clientScope();
+  const projectOf = sessionProjectKeys(hubRows(store.getState()));
   const shown = rows.filter(({ message: m, hostName }) => {
+    const ends = [projectOf.get(m.fromSession) ?? null, projectOf.get(m.toSession) ?? null];
+    if (!scope.includesAny(state.clientSelection, ends)) return false;
     if (status && m.status !== status) return false;
     if (!needle) return true;
     return [m.text, m.fromSession, m.toSession, m.fromHost, m.toHost, m.teamId ?? "", hostName]
