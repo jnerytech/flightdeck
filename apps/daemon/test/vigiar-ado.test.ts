@@ -284,6 +284,53 @@ describe("vigiar-ado: the watcher", () => {
     expect(triggers).toEqual([]);
   });
 
+  test("a tick that comes while a look of the same card is still in flight skips it: one look at a time", async () => {
+    const { ctx, card } = await watched([]);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = 0;
+    const provider: PrProvider = {
+      create: async () => PR,
+      url: async () => null,
+      status: async () => ({ state: "open", checks: null }),
+      comments: async () => [],
+      buildLog: async () => "",
+      health: async () => {
+        asked++;
+        await gate;
+        return {
+          checks: [{ name: "CI", state: "failing", kind: "build", buildId: "88" }],
+          conflicts: false,
+        };
+      },
+    };
+    const fired: WatchTrigger[] = [];
+    const watcher = new PrWatcher({
+      db: ctx.store.db,
+      board: ctx.board,
+      provider: () => provider,
+      onTrigger: (trigger) => {
+        fired.push(trigger);
+      },
+    });
+    watcher.setEnabled(card.id, true);
+    const first = watcher.tick();
+    await Bun.sleep(20);
+    // The host is slow: the next tick of the timer arrives before the look answered.
+    const second = watcher.tick();
+    await Bun.sleep(20);
+    release();
+    await first;
+    await second;
+    expect(asked).toBe(1);
+    expect(fired).toHaveLength(1);
+    // Once it ended, the next tick looks again.
+    await watcher.tick();
+    expect(asked).toBe(2);
+  });
+
   test("a look in flight when the PR stops being open fires nothing", async () => {
     const { ctx, card } = await watched([]);
     let release: () => void = () => {};
