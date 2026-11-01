@@ -1056,6 +1056,7 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
       log: deps.log,
       configFile: file,
       home: base.home,
+      platform: base.platform as NodeJS.Platform,
       isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
       tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
       installBinary: () => {
