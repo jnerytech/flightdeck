@@ -195,7 +195,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
               <div className="flex flex-wrap items-center gap-2">
                 <Switch
                   size="sm"
-                  className="min-h-6 bg-clip-content py-1 shadow-none"
+                  className="hit-switch"
                   aria-label={t("agent.mcp.switch", { name: server.name })}
                   checked={server.enabled}
                   disabled={server.readOnly}

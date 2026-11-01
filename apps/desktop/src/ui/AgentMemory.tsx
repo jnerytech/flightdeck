@@ -148,7 +148,7 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
                   type="button"
                   aria-label={t("memoryUi.open", { name: file.name })}
                   onClick={() => void open(file.name)}
-                  className="inline-flex min-h-6 items-center text-left"
+                  className="hit-inline text-left"
                 >
                   <span data-name className="font-medium">
                     {file.name}
@@ -237,7 +237,7 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
                         <button
                           type="button"
                           aria-label={t("memoryUi.view", { name })}
-                          className="inline-flex min-h-6 items-center underline"
+                          className="hit-inline underline"
                           onClick={() => void open(name)}
                         >
                           {name}
