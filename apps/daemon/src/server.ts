@@ -1368,14 +1368,18 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "project.list":
         return ok(command.type, {
-          projects: board().listProjects(),
+          projects: await Promise.all(
+            board()
+              .listProjects()
+              .map((p) => board().withKey(p)),
+          ),
           maxParallelRuns: board().maxParallelRuns,
         });
       case "project.add":
-        return ok(command.type, await board().addProject(command.payload));
+        return ok(command.type, await board().withKey(await board().addProject(command.payload)));
       case "project.update": {
         const { projectId, ...patch } = command.payload;
-        return ok(command.type, board().updateProject(projectId, patch));
+        return ok(command.type, await board().withKey(board().updateProject(projectId, patch)));
       }
       case "board.get":
         return ok(command.type, board().getBoard(command.payload.projectId));

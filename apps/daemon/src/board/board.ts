@@ -123,7 +123,7 @@ interface ProjectRow {
   persona_subagents: PersonaSubagentsMode | null;
 }
 
-function toProject(row: ProjectRow, projectKey: string | undefined): Project {
+function toProject(row: ProjectRow): Project {
   return {
     id: row.id,
     path: row.path,
@@ -137,7 +137,6 @@ function toProject(row: ProjectRow, projectKey: string | undefined): Project {
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
-    ...(projectKey ? { projectKey } : {}),
   };
 }
 
@@ -300,13 +299,22 @@ export class Board {
     return this.db
       .query<ProjectRow, []>("SELECT * FROM projects ORDER BY name, path")
       .all()
-      .map((row) => toProject(row, this.opts.projectKeys?.keyFor(row.path)));
+      .map(toProject);
+  }
+
+  /**
+   * Phase 29: the project with its key, for the wire. The key is asked without blocking (`resolve`
+   * answers from a cache and asks git once per folder); a host without it sends none.
+   */
+  async withKey(project: Project): Promise<Project> {
+    const projectKey = await this.opts.projectKeys?.resolve?.(project.path);
+    return projectKey ? { ...project, projectKey } : project;
   }
 
   getProject(id: string): Project {
     const row = this.db.query<ProjectRow, [string]>("SELECT * FROM projects WHERE id = ?").get(id);
     if (!row) throw new FlightdeckError("not_found", `projeto ${id} não existe`);
-    return toProject(row, this.opts.projectKeys?.keyFor(row.path));
+    return toProject(row);
   }
 
   /** Registers a git repository that lives inside `allowedRoots`. */
