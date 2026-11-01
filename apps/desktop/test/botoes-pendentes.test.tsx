@@ -14,6 +14,9 @@ const { SessionMessages } = await import("../src/ui/SessionMessages.tsx");
 const { RunTimeline } = await import("../src/ui/RunTimeline.tsx");
 const { CardReview } = await import("../src/ui/CardReview.tsx");
 const { PrComments } = await import("../src/ui/PrComments.tsx");
+const { RulesPreview } = await import("../src/components/vault/rules-preview.tsx");
+const { RulesEditor } = await import("../src/components/vault/rules-editor.tsx");
+const { VaultReport } = await import("../src/components/vault/vault-report.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 
@@ -222,5 +225,68 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     );
     await act(() => Bun.sleep(10));
     await expectBusyOnce("Enviar ao agente (1)", send.calls, () => send.settle({ sent: 1 }));
+  });
+
+  test("Prever goes busy and asks the host once", async () => {
+    const preview = slow();
+    const store = { previewVaultUse: preview.call } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <RulesPreview store={store} secretId="s1" />
+      </TContext.Provider>,
+    );
+    await expectBusyOnce("Prever", preview.calls, () =>
+      preview.settle({ decision: "allow", reason: "regra 1" }),
+    );
+  });
+
+  test("Salvar regras goes busy and saves once, and a refusal brings the button back", async () => {
+    const save = slow();
+    const store = {
+      vaultRules: () => [],
+      previewVaultUse: () => Promise.resolve(null),
+      setVaultRules: save.call,
+    } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <RulesEditor
+          store={store}
+          secret={{ id: "s1", name: "chave" } as never}
+          onClose={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    await expectBusyOnce("Salvar regras", save.calls, () =>
+      save.settle({ ok: false, code: "invalid", message: "regra inválida" }),
+    );
+    expect(screen.queryByRole("alert")).not.toBeNull();
+  });
+
+  test("Exportar CSV goes busy and exports once", async () => {
+    const exported = slow();
+    const store = {
+      hostCommand: (_host: string, _command: string, payload: { format?: string }) =>
+        payload.format === "csv"
+          ? exported.call(payload)
+          : Promise.resolve({ rows: [], decisions: [] }),
+      saveFile: () => Promise.resolve(),
+    } as unknown as AppStore;
+    render(
+      <TContext.Provider value={t}>
+        <VaultReport
+          store={store}
+          state={
+            {
+              secrets: [],
+              hosts: [
+                { id: "h", name: "alfa", status: "online", hostInfo: { features: ["actions"] } },
+              ],
+            } as never
+          }
+        />
+      </TContext.Provider>,
+    );
+    await act(() => Bun.sleep(10));
+    await expectBusyOnce("Exportar CSV", exported.calls, () => exported.settle({ csv: "a,b" }));
   });
 });
