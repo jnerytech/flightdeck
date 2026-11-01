@@ -2,7 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type BrowserAttempt, browserAttempts, launchFirst } from "../lib/browser.ts";
+import {
+  type BrowserAttempt,
+  browserAttempts,
+  browserLaunch,
+  launchFirst,
+  whichOnNodePath,
+} from "../lib/browser.ts";
 
 const realPath = process.env.PATH;
 afterEach(() => {
@@ -71,5 +77,45 @@ describe("browser: where the demo scripts get a Chromium", () => {
       () => "/opt/chromium",
     );
     await expect(attempts).rejects.toThrow("no chrome; no msedge; no /opt/chromium");
+  });
+});
+
+describe("browserLaunch: the browser of the e2e runner", () => {
+  const found = (...names: string[]) => (name: string) =>
+    names.includes(name) ? `/usr/bin/${name}` : null;
+
+  test("a system Chrome comes before a Chromium, and the path is used", () => {
+    expect(browserLaunch(found("chromium", "google-chrome"))).toEqual({
+      executablePath: "/usr/bin/google-chrome",
+    });
+  });
+
+  test("with only the distribution's Chromium (Linux arm64) that one is used", () => {
+    expect(browserLaunch(found("chromium-browser"))).toEqual({
+      executablePath: "/usr/bin/chromium-browser",
+    });
+  });
+
+  test("with none on the PATH the installed Chrome is asked for by channel", () => {
+    expect(browserLaunch(found())).toEqual({ channel: "chrome" });
+  });
+});
+
+describe("whichOnNodePath: which without Bun", () => {
+  const files = new Set(["/b/chromium", "C:\\x\\chromium.exe"]);
+  const isFile = (path: string) => files.has(path);
+
+  test("it scans the PATH in order", () => {
+    expect(whichOnNodePath("chromium", { PATH: "/a:/b" }, "linux", isFile)).toBe("/b/chromium");
+    expect(whichOnNodePath("nope", { PATH: "/a:/b" }, "linux", isFile)).toBeNull();
+    expect(whichOnNodePath("chromium", {}, "linux", isFile)).toBeNull();
+  });
+
+  test("on Windows it separates with ; and tries the PATHEXT extensions", () => {
+    const env = { PATH: "C:\\w;C:\\x", PATHEXT: ".COM;.EXE" };
+    expect(whichOnNodePath("chromium", env, "win32", isFile)).toBe("C:\\x\\chromium.exe");
+    expect(whichOnNodePath("chromium", { PATH: "C:\\x" }, "win32", isFile)).toBe(
+      "C:\\x\\chromium.exe",
+    );
   });
 });

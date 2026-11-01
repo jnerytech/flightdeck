@@ -36,3 +36,28 @@ export async function launchFirst<T>(
   }
   throw new Error(reasons.join("; "));
 }
+
+/** Executables the e2e runner looks for on a Linux or macOS PATH, best first. */
+export const RUNNER_BROWSER_NAMES = [
+  "google-chrome",
+  "google-chrome-stable",
+  "chromium",
+  "chromium-browser",
+];
+
+export function browserLaunch(
+  which: (name: string) => string | null,
+): { executablePath: string } | { channel: "chrome" } {
+  void which;
+  return { channel: "chrome" };
+}
+
+export function whichOnNodePath(
+  name: string,
+  env: Record<string, string | undefined>,
+  platform: string,
+  isFile: (path: string) => boolean,
+): string | null {
+  void [name, env, platform, isFile];
+  return "";
+}
