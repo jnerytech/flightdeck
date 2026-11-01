@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Field, Form, FormActions } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
+import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -108,12 +110,7 @@ export function MessagingRulesSection(props: {
     </select>
   );
   const ids = {
-    from: `mr-from-${hostId}`,
-    fromValue: `mr-from-value-${hostId}`,
-    to: `mr-to-${hostId}`,
-    toValue: `mr-to-value-${hostId}`,
     both: `mr-both-${hostId}`,
-    retention: `mr-retention-${hostId}`,
   };
   return (
     <section aria-label={title}>
@@ -140,35 +137,37 @@ export function MessagingRulesSection(props: {
             ))}
           </ul>
         )}
-        <div className="flex flex-wrap items-end gap-2">
-          <label htmlFor={ids.from} className="flex flex-col gap-1 text-xs">
-            {t("messagingRulesUi.from")}
-          </label>
-          {kindSelect(ids.from, fromKind, setFromKind)}
-          <label htmlFor={ids.fromValue} className="sr-only">
-            {t("messagingRulesUi.fromValue")}
-          </label>
-          <Input
-            id={ids.fromValue}
-            className="w-40"
-            placeholder={t("messagingRulesUi.fromValue")}
-            value={fromValue}
-            onChange={(e) => setFromValue(e.target.value)}
-          />
-          <label htmlFor={ids.to} className="flex flex-col gap-1 text-xs">
-            {t("messagingRulesUi.to")}
-          </label>
-          {kindSelect(ids.to, toKind, setToKind)}
-          <label htmlFor={ids.toValue} className="sr-only">
-            {t("messagingRulesUi.toValue")}
-          </label>
-          <Input
-            id={ids.toValue}
-            className="w-40"
-            placeholder={t("messagingRulesUi.toValue")}
-            value={toValue}
-            onChange={(e) => setToValue(e.target.value)}
-          />
+        <Form variant="inline" onSubmit={() => void add()}>
+          <Inline gap={4}>
+            <Field label={t("messagingRulesUi.from")}>
+              {(control) => (
+                <Inline gap={2}>
+                  {kindSelect(control.id, fromKind, setFromKind)}
+                  <Input
+                    aria-label={t("messagingRulesUi.fromValue")}
+                    className="w-40"
+                    placeholder={t("messagingRulesUi.fromValue")}
+                    value={fromValue}
+                    onChange={(e) => setFromValue(e.target.value)}
+                  />
+                </Inline>
+              )}
+            </Field>
+            <Field label={t("messagingRulesUi.to")}>
+              {(control) => (
+                <Inline gap={2}>
+                  {kindSelect(control.id, toKind, setToKind)}
+                  <Input
+                    aria-label={t("messagingRulesUi.toValue")}
+                    className="w-40"
+                    placeholder={t("messagingRulesUi.toValue")}
+                    value={toValue}
+                    onChange={(e) => setToValue(e.target.value)}
+                  />
+                </Inline>
+              )}
+            </Field>
+          </Inline>
           <label htmlFor={ids.both} className="flex items-center gap-2 text-sm">
             <input
               id={ids.both}
@@ -178,30 +177,26 @@ export function MessagingRulesSection(props: {
             />
             {t("messagingRulesUi.both")}
           </label>
-          <Button
-            variant="outline"
+          <FormActions
+            submit={t("messagingRulesUi.add")}
             disabled={fromValue.trim() === "" || toValue.trim() === ""}
-            onClick={() => void add()}
-          >
-            {t("messagingRulesUi.add")}
-          </Button>
-        </div>
-        <div className="flex items-end gap-2">
-          <label htmlFor={ids.retention} className="flex flex-col gap-1 text-xs">
-            {t("messagingRulesUi.retention")}
-          </label>
-          <Input
-            id={ids.retention}
-            type="number"
-            min={1}
-            className="w-24"
-            value={retention}
-            onChange={(e) => setRetention(e.target.value)}
           />
-          <Button variant="outline" onClick={() => void save({ retentionDays: Number(retention) })}>
-            {t("messagingRulesUi.saveRetention")}
-          </Button>
-        </div>
+        </Form>
+        <Form variant="inline" onSubmit={() => void save({ retentionDays: Number(retention) })}>
+          <Field label={t("messagingRulesUi.retention")}>
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                min={1}
+                className="w-24"
+                value={retention}
+                onChange={(e) => setRetention(e.target.value)}
+              />
+            )}
+          </Field>
+          <FormActions submit={t("messagingRulesUi.saveRetention")} />
+        </Form>
         <h3 className="font-medium text-sm">{t("messagingRulesUi.paused")}</h3>
         {rules.paused.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("messagingRulesUi.noPaused")}</p>
