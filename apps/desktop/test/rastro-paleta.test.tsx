@@ -169,4 +169,32 @@ describe("rastro-paleta: a pasted PR link opens what was made for it", () => {
     await typeQuery(PR);
     expect(labels()).not.toContain(OPEN_PR);
   });
+
+  test("openPrLink asks only the hosts that are online and watch PRs, in order, and opens the card of the first that knows it", async () => {
+    const mem = memoryPlatform();
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const plain = legacyDaemon(cleanups);
+    const watcher = legacyDaemon(cleanups);
+    watcher.features.push("watch");
+    watcher.watch.card = card;
+    watcher.watch.byUrl = { via: "card", trace, sessions: [] };
+    render(<App store={store} />);
+    // A host nobody answers for, one that does not watch PRs, then the one that does.
+    await act(() => store.addHost({ name: "mudo", url: "ws://127.0.0.1:9/v1/ws", token: TOKEN }));
+    await act(() => store.addHost({ name: "simples", url: plain.url, token: TOKEN }));
+    await act(() => store.addHost({ name: "vigia", url: watcher.url, token: TOKEN }));
+    await settle(() => store.getState().hosts.filter((h) => h.status === "online").length === 2);
+    await settle(() =>
+      store.getState().hosts.every((h) => h.hostInfo != null || h.status !== "online"),
+    );
+    expect(store.getState().hosts.map((h) => h.status)).toEqual(["offline", "online", "online"]);
+    let route: Awaited<ReturnType<typeof store.openPrLink>> = null;
+    await act(async () => {
+      route = await store.openPrLink(PR);
+    });
+    expect(route).toMatchObject({ name: "card", projectId: "p1", cardId: "c1" });
+    expect(plain.commands.filter((c) => c.type === "watch.byUrl")).toEqual([]);
+    expect(asked(watcher)).toEqual([{ url: PR }]);
+  });
 });
