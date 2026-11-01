@@ -77,6 +77,10 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | laço | loop | A pair of sessions messaging back and forth too fast; the host pauses the pair and tells you |
 | Soltar o par | Free the pair | Lets a pair paused for a loop talk again, in Needs you and in Settings |
 | exceção | exception | A pair (by session, project, team or host) allowed to talk beyond the default, one way or both |
+| Tempo | Time | A session's tab with the timeline of its prompts: tools, permission waits, API requests and errors (OTLP telemetry) |
+| Tempo por projeto | Time per project | The panel of Costs with the permission wait and the slowest tools of each project |
+| telemetria | telemetry | The OpenTelemetry (OTLP) Claude Code exports; the daemon receives it locally and keeps timings, never text |
+| espera por permissão | permission wait | How long Claude waited for you to answer a permission: the gap before your answer, an estimate |
 
 ## Estados de uma sessão
 
