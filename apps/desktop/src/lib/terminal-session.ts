@@ -47,14 +47,24 @@ export class TerminalSession {
   state: TerminalState = "detached";
   exitCode: number | null = null;
   private cancelResize: (() => void) | null = null;
+  /** The host holds output back until it is acknowledged. */
+  private flow = false;
+  /** Counts the attaches, so a write that finishes after a new attach is not acknowledged. */
+  private attaches = 0;
+  /** Bytes xterm has drawn that the host has not been told about. */
+  private drawn = 0;
 
   constructor(readonly opts: TerminalSessionOptions) {}
 
   /** Attaches and draws what the host kept; also the way to reopen a detached terminal. */
   async start(): Promise<void> {
     this.set("attaching", null);
+    this.attaches++;
+    this.drawn = 0;
+    this.flow = false;
     try {
       const attached = await this.opts.host.attach(this.opts.terminalId);
+      this.flow = attached.flow === true;
       this.opts.screen.reset();
       this.opts.screen.write(decode(attached.scrollback));
       this.set(attached.exitCode === null ? "live" : "ended", attached.exitCode);
@@ -64,7 +74,23 @@ export class TerminalSession {
   }
 
   data(base64: string): void {
-    this.opts.screen.write(decode(base64));
+    const bytes = decode(base64);
+    if (!this.flow) {
+      this.opts.screen.write(bytes);
+      return;
+    }
+    const attach = this.attaches;
+    this.opts.screen.write(bytes, () => this.wasDrawn(attach, bytes.length));
+  }
+
+  /** Tells the host what xterm has drawn, in steps, so it sends more. */
+  private wasDrawn(attach: number, bytes: number): void {
+    if (attach !== this.attaches) return;
+    this.drawn += bytes;
+    if (this.drawn < ACK_BYTES) return;
+    const drawn = this.drawn;
+    this.drawn = 0;
+    this.opts.host.ack(this.opts.terminalId, drawn).catch(() => {});
   }
 
   exited(exitCode: number): void {

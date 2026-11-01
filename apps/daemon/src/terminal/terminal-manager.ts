@@ -117,6 +117,12 @@ interface Client {
   queued: number;
   /** The queue overflowed: nothing goes to this client until it attaches again. */
   resync: boolean;
+  /** The client acknowledges what it draws, and gets no more while too much is unacknowledged. */
+  flow: boolean;
+  /** Bytes sent and not acknowledged yet (only counted for a `flow` client). */
+  unacked: number;
+  /** `unacked` reached the high watermark and has not come down to the low one. */
+  paused: boolean;
   exitSent: boolean;
 }
 
@@ -332,7 +338,7 @@ export class TerminalManager {
    * The connection follows the terminal from now on. Attaching again (after a `resync`) starts
    * the queue over: the scrollback returned is the position to continue from.
    */
-  attach(terminalId: string, sink: TerminalSink, _flow = false): AttachResult {
+  attach(terminalId: string, sink: TerminalSink, flow = false): AttachResult {
     this.assertOn();
     const entry = this.get(terminalId);
     const exited = entry.exitCode !== null;
@@ -341,6 +347,9 @@ export class TerminalManager {
       queue: [],
       queued: 0,
       resync: false,
+      flow,
+      unacked: 0,
+      paused: false,
       // The result already says it ended.
       exitSent: exited,
     });
@@ -352,12 +361,23 @@ export class TerminalManager {
       cols: entry.cols,
       rows: entry.rows,
       exitCode: entry.exitCode,
-      flow: false,
+      flow,
     };
   }
 
-  /** The client has drawn `bytes` more of the terminal's output. */
-  ack(_terminalId: string, _sink: TerminalSink, _bytes: number): void {}
+  /**
+   * The client has drawn `bytes` more of the terminal's output. An ack that is late (the client
+   * detached, the terminal is gone) or from a client that did not ask for flow control is ignored.
+   */
+  ack(terminalId: string, sink: TerminalSink, bytes: number): void {
+    const client = this.entries.get(terminalId)?.clients.get(sink);
+    if (!client?.flow) return;
+    client.unacked = Math.max(0, client.unacked - bytes);
+    if (client.paused && client.unacked <= FLOW_LOW_BYTES) {
+      client.paused = false;
+      this.scheduleFlush();
+    }
+  }
 
   detach(terminalId: string, sink: TerminalSink): void {
     this.assertOn();
@@ -437,8 +457,10 @@ export class TerminalManager {
       if (client.resync) continue;
       client.queue.push(copy);
       client.queued += copy.length;
-      // Held back because the connection is full, and over what is kept for it: it resyncs.
-      if (client.queued > QUEUE_LIMIT_BYTES && client.sink.backlog() > BACKLOG_LIMIT_BYTES) {
+      // Held back because the connection is full or the client is not drawing, and over what is
+      // kept for it: it resyncs.
+      const stalled = client.paused || client.sink.backlog() > BACKLOG_LIMIT_BYTES;
+      if (client.queued > QUEUE_LIMIT_BYTES && stalled) {
         client.queue = [];
         client.queued = 0;
         client.resync = true;
@@ -463,15 +485,26 @@ export class TerminalManager {
   private flush(entry: Entry): boolean {
     let held = false;
     for (const client of entry.clients.values()) {
-      while (!client.resync && client.queued > 0 && client.sink.backlog() <= BACKLOG_LIMIT_BYTES) {
+      while (
+        !client.resync &&
+        !client.paused &&
+        client.queued > 0 &&
+        client.sink.backlog() <= BACKLOG_LIMIT_BYTES
+      ) {
+        const batch = this.take(client);
         client.sink.send({
           type: "terminal.data",
           terminalId: entry.id,
-          data: Buffer.from(this.take(client)).toString("base64"),
+          data: Buffer.from(batch).toString("base64"),
         });
+        if (client.flow) {
+          client.unacked += batch.length;
+          client.paused = client.unacked >= FLOW_HIGH_BYTES;
+        }
       }
       if (!client.resync && client.queued > 0) {
-        held = true;
+        // A paused client is not looked at again until its ack arrives.
+        if (!client.paused) held = true;
       } else if (entry.exitCode !== null && !client.exitSent) {
         client.exitSent = true;
         client.sink.send({
