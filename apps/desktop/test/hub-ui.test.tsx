@@ -175,9 +175,12 @@ describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
       const meta = (item(title) as HTMLElement).querySelector("[data-slot='row-meta']");
       expect(meta?.textContent ?? "").not.toContain("alfa");
     }
-    expect(
-      (item("repo-run") as HTMLElement).querySelector("[data-slot='row-meta']")?.textContent,
-    ).toBe("terminal");
+    const runMeta = (item("repo-run") as HTMLElement).querySelector("[data-slot='row-meta']");
+    expect(runMeta?.textContent).toBe("terminal");
+    // The row's own meta shrinks first and hides below 320 px of list.
+    for (const cls of ["shrink-[3]", "hidden", "@[20rem]:inline"]) {
+      expect(runMeta?.className ?? "").toContain(cls);
+    }
     expect(
       (item("Gerenciada") as HTMLElement).querySelector("[data-slot='row-meta']")?.textContent,
     ).toBe("Flightdeck");

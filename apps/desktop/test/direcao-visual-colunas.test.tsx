@@ -103,13 +103,17 @@ describe("direcao-visual: três colunas", () => {
     expect(row("Alpha")?.getAttribute("aria-current")).toBeNull();
   });
 
-  test("a linha compacta tem 32 px: pontinho, título, host em cinza e a hora à direita", async () => {
+  test("a linha compacta tem 32 px: pontinho, título, e a hora à direita; o host em cinza fica no cabeçalho do grupo", async () => {
     await setup();
     const alpha = row("Alpha") as HTMLElement;
     expect(alpha.className).toContain("h-8");
     expect(alpha.className).not.toContain("min-h-10");
     expect(within(alpha).queryByRole("img", { name: "ociosa" })).not.toBeNull();
-    expect(within(alpha).queryByText(/^alfa/)?.className ?? "").toContain("text-muted-foreground");
+    // The host is the same for the whole group: gray, once, in its header.
+    const groupMeta = alpha.closest("section")?.querySelector("[data-slot='group-meta']");
+    expect(groupMeta?.textContent).toContain("alfa");
+    expect(groupMeta?.className ?? "").toContain("text-muted-foreground");
+    expect(within(alpha).queryByText(/^alfa/)).toBeNull();
     const time = alpha.querySelector("time");
     expect(time?.className ?? "").toContain("tabular-nums");
     // The time closes the line; the actions wait for hover or focus.

@@ -26,8 +26,8 @@ async function setup(ssh?: { name: string; tags: string[] }) {
 }
 
 const sshTab = () => screen.queryByRole("tab", { name: /^SSH · / });
-// Since phase 14 on main the tab is the element that is marked (no wrapper around it).
-const wrapper = () => sshTab();
+// The mark and the border are on the box around the tab, next to its × (the tab has no button in it).
+const wrapper = () => sshTab()?.parentElement;
 
 describe("conexoes-ui: the tab of a SSH terminal", () => {
   test("the tab is named after the destino and carries its tags", async () => {

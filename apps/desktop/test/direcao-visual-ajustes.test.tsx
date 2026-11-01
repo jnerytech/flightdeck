@@ -103,13 +103,14 @@ describe("direcao-visual: ajustes finos", () => {
     expect(filtersButton()?.querySelector("[data-slot='badge']")?.textContent).toBe("2");
   });
 
-  test("o título leva a linha: host e origem encolhem primeiro, somem abaixo de 320 px e o título inteiro vai no tooltip", async () => {
+  test("o título leva a linha: o que sobra de host e origem encolhe primeiro e o título inteiro vai no tooltip", async () => {
     await setup();
     const row = within(main()).queryByRole("listitem", { name: "Alpha" }) as HTMLElement;
-    const meta = within(row).queryByText(/^alfa/);
-    expect(meta?.className ?? "").toContain("shrink-[3]");
-    expect(meta?.className ?? "").toContain("hidden");
-    expect(meta?.className ?? "").toContain("@[20rem]:inline");
+    // What the group shares (the host) is in its header and truncates there; a row's own meta
+    // (hub-ui checks it where origins differ) is what shrinks first.
+    const meta = row.closest("section")?.querySelector("[data-slot='group-meta']");
+    expect(meta?.className ?? "").toContain("truncate");
+    expect(meta?.className ?? "").toContain("min-w-0");
     // The list is the container the width is measured on.
     expect(main().querySelector("[class*='@container']")).not.toBeNull();
     const title = within(row).queryByRole("button", { name: "Alpha" });
