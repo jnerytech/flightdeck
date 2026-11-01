@@ -36,4 +36,4 @@ Origem: pesquisa de 30/10/2026. O `/memory` e o `/plugin` do CLI não têm inter
 | `plugins` | listar e detalhar pela CLI falsa; instalar e atualizar com resumo, hash e confirmação; fixar versão; selo em hooks sensíveis |
 | `memoria-plugins-ui` | as telas e os avisos |
 
-**Critérios de aceite:** os de sempre, a versão `0.26.0` e a prova de conceito dos caminhos e comandos na versão instalada.
+**Critérios de aceite:** os de sempre (the version is set by the maintainer at release time, since phases now land out of order) e a prova de conceito dos caminhos e comandos na versão instalada.
