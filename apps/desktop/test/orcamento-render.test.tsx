@@ -26,6 +26,22 @@ const delta = (sessionId: string, seq: number) => ({
   event: { type: "message.delta", text: "palavra " },
 });
 
+/** What the probes counted; the tests reset it. */
+const seen = { renders: 0 };
+type Store = InstanceType<typeof AppStore>;
+
+function StateProbe(props: { store: Store }) {
+  seen.renders++;
+  const state = useStoreState(props.store);
+  return <span>{state.hosts.length}</span>;
+}
+
+function SessionProbe(props: { store: Store; keyOf: string }) {
+  seen.renders++;
+  const session = useSessionState(props.store, props.keyOf);
+  return <span>{session.streaming}</span>;
+}
+
 async function online() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
   cleanups.push(() => store.dispose());
@@ -54,50 +70,32 @@ async function stream(daemon: ReturnType<typeof legacyDaemon>, sessionId: string
 describe("orcamento-render: what a token costs", () => {
   test("a screen that is not a conversation does not render for a session's events", async () => {
     const { store, daemon } = await online();
-    let renders = 0;
-    function Probe() {
-      renders++;
-      useStoreState(store);
-      return <span>probe</span>;
-    }
-    render(<Probe />);
-    const before = renders;
+    render(<StateProbe store={store} />);
+    const before = seen.renders;
     await stream(daemon, "s1", 20);
-    expect(renders - before).toBe(0);
+    expect(seen.renders - before).toBe(0);
   });
 
   test("it still follows what is not a session's events", async () => {
     const { store, daemon } = await online();
-    let renders = 0;
-    function Probe() {
-      renders++;
-      const state = useStoreState(store);
-      return <span>{state.hosts.length}</span>;
-    }
-    render(<Probe />);
-    const before = renders;
+    render(<StateProbe store={store} />);
+    const before = seen.renders;
     await act(async () => {
       await store.addHost({ name: "beta", url: daemon.url, token: TOKEN });
     });
-    expect(renders - before).toBeGreaterThan(0);
+    expect(seen.renders - before).toBeGreaterThan(0);
     expect(screen.queryByText("2")).not.toBeNull();
   });
 
   test("a conversation renders for its own session's events and for no other's", async () => {
     const { store, daemon } = await online();
     const hostId = store.getState().hosts[0]?.id ?? "";
-    let renders = 0;
-    function Probe() {
-      renders++;
-      const session = useSessionState(store, `${hostId}/s1`);
-      return <span>{session.streaming}</span>;
-    }
-    render(<Probe />);
-    const before = renders;
+    render(<SessionProbe store={store} keyOf={`${hostId}/s1`} />);
+    const before = seen.renders;
     await stream(daemon, "s2", 20);
-    expect(renders - before).toBe(0);
+    expect(seen.renders - before).toBe(0);
     await stream(daemon, "s1", 5);
-    expect(renders - before).toBe(5);
+    expect(seen.renders - before).toBe(5);
     expect(screen.queryByText(/palavra/)).not.toBeNull();
   });
 
