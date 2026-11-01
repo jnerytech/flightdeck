@@ -199,6 +199,18 @@ async fn vault_pick_file(
     }))
 }
 
+/// Opens the system folder dialog; `None` when it is cancelled. The folder is only a suggestion:
+/// the daemon checks it against its allowed roots before anything uses it.
+#[tauri::command]
+async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let Some(picked) = app.dialog().file().blocking_pick_folder() else {
+        return Ok(None);
+    };
+    let path = picked.into_path().map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
 #[tauri::command]
 fn vault_remove_file(path: String, state: State<PickedFile>) -> Result<(), String> {
@@ -519,6 +531,7 @@ pub fn run() {
             vault_delete,
             vault_generate_key,
             vault_pick_file,
+            pick_folder,
             vault_remove_file,
             tray_set_status,
             tray_set_menu,
