@@ -25,7 +25,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Full suite (with the 100% line and function threshold): `bun run test`.
 - The heavy commands go through the slot: `bun run slot -- <command...>` (for example
   `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
-  `bun run slot -- --status` shows the holder, `--nice` lowers the command's priority.
+  `bun run slot -- --status` shows the holder (with a warning past `--max-age`, 90 min by
+  default), `--nice` lowers the command's priority.
 - Before any code commit: `bun run test && bun run typecheck && bun run lint`.
 - Format: `bun run format`. Smokes: `bun run smoke:<name>` (list in `package.json`; never
   `smoke:real` unless asked).
