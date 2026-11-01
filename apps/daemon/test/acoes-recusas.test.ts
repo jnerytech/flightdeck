@@ -3,12 +3,15 @@ import { resolveParams, runAction } from "../src/actions/run.ts";
 import type { ActionDef } from "../src/actions/schema.ts";
 import { envInput } from "../src/actions/ssh-command.ts";
 import type { FlightdeckError } from "../src/errors.ts";
+import { tempDir } from "./helpers.ts";
 
 const action = (extra: Partial<ActionDef> = {}): ActionDef =>
   ({
     name: "deploy",
     description: "d",
     run: ["echo", "{{param.env}}"],
+    env: {},
+    timeoutS: 30,
     params: { env: { pattern: "prod|dev" } },
     ...extra,
   }) as ActionDef;
@@ -47,21 +50,21 @@ describe("acoes-recusas: running an action says why with a reason", () => {
       action({ params: {}, env: { TOKEN: "{{secret.tok}}" } } as Partial<ActionDef>),
       {},
       {},
-      {},
+      { base: tempDir() },
     ).catch((e: FlightdeckError) => e);
     expect(secret).toMatchObject({ reason: "action_secret_missing", params: { secret: "tok" } });
     const ssh = await runAction(
       action({ params: {}, ssh: "vps" } as Partial<ActionDef>),
       {},
       {},
-      {},
+      { base: tempDir() },
     ).catch((e: FlightdeckError) => e);
     expect(ssh).toMatchObject({ reason: "action_ssh_unavailable", params: { action: "deploy" } });
     const spawn = await runAction(
       action({ params: {}, run: ["/nonexistent/bin"] } as Partial<ActionDef>),
       {},
       {},
-      {},
+      { base: tempDir() },
     ).catch((e: FlightdeckError) => e);
     expect(spawn).toMatchObject({
       reason: "action_spawn_failed",

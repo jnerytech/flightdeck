@@ -37,7 +37,8 @@ const failure = async (promise: Promise<unknown>) => {
     await promise;
     return "ok";
   } catch (error) {
-    return `${(error as FlightdeckError).code}: ${(error as Error).message}`;
+    const why = (error as FlightdeckError).reason;
+    return `${(error as FlightdeckError).code}: ${(error as Error).message}${why ? ` [${why}]` : ""}`;
   }
 };
 
@@ -239,7 +240,7 @@ describe("regras-aprovacao: aprovar", () => {
     const f = await t.frame();
     const refused = await failure(Promise.resolve().then(() => t.actions.gate(f.purpose)));
     expect(refused).toContain("invalid_state");
-    expect(refused).toContain("aprovação");
+    expect(refused).toContain("[action_needs_approval]");
     // Deliveries that are not for a request of the daemon are not its business.
     t.actions.gate("action:echo:you");
     t.actions.gate("ssh:qualquer");
@@ -261,7 +262,7 @@ describe("regras-aprovacao: aprovar", () => {
     const g = await t.frame();
     expect(
       await failure(Promise.resolve().then(() => t.actions.approve(g.requestId, { via: "app" }))),
-    ).toContain("não precisa");
+    ).toContain("[action_no_approval_needed]");
     t.deliver(g);
     await free;
 
@@ -342,7 +343,7 @@ describe("regras-aprovacao: aprovar", () => {
       ),
     );
     expect(error).toContain("invalid_state");
-    expect(error).toContain("sessão");
+    expect(error).toContain("[action_session_refused_rule]");
     t.approveAndDeliver(f);
     await running;
 
@@ -373,7 +374,7 @@ describe("regras-aprovacao: aprovar", () => {
     const running = failure(t.run());
     const f = await t.frame();
     t.actions.deny(f.requestId);
-    expect(await running).toContain("recusou");
+    expect(await running).toContain("[action_secret_refused]");
     expect(
       await failure(Promise.resolve().then(() => t.actions.approve(f.requestId, { via: "app" }))),
     ).toContain("not_found");
@@ -449,7 +450,9 @@ describe("regras-aprovacao: prod e risco alto", () => {
     expect(f).toMatchObject({ decision: "ask", needsHold: true });
     const approve = (input: Parameters<Actions["approve"]>[1]) =>
       failure(Promise.resolve().then(() => t.actions.approve(f.requestId, input)));
-    expect(await approve({ via: "app", heldMs: 2000, scope: "session" })).toContain("sessão");
+    expect(await approve({ via: "app", heldMs: 2000, scope: "session" })).toContain(
+      "[action_session_refused_risky]",
+    );
     expect(await approve({ via: "app", heldMs: 2000 })).toBe("ok");
     t.deliver(f);
     await running;
@@ -464,12 +467,12 @@ describe("regras-aprovacao: prod e risco alto", () => {
     expect(f).toMatchObject({ decision: "ask", once: false, needsHold: true, ruleId: "liberar" });
     const approve = (input: Parameters<Actions["approve"]>[1]) =>
       failure(Promise.resolve().then(() => t.actions.approve(f.requestId, input)));
-    expect(await approve({ via: "tray", heldMs: 5000 })).toContain("bandeja");
-    expect(await approve({ via: "app" })).toContain("2 s");
-    expect(await approve({ via: "app", heldMs: 1999 })).toContain("2 s");
+    expect(await approve({ via: "tray", heldMs: 5000 })).toContain("[action_tray_refused]");
+    expect(await approve({ via: "app" })).toContain("[action_hold_needed]");
+    expect(await approve({ via: "app", heldMs: 1999 })).toContain("[action_hold_needed]");
     // Nothing was approved by the refusals.
     expect(await failure(Promise.resolve().then(() => t.actions.gate(f.purpose)))).toContain(
-      "aprovação",
+      "[action_needs_approval]",
     );
     expect(await approve({ via: "app", heldMs: 2000 })).toBe("ok");
     t.actions.gate(f.purpose);
@@ -563,9 +566,9 @@ describe("regras-aprovacao: run_with_secret", () => {
         t.actions.approve(f.requestId, { via: "app", scope: "session" }),
       ),
     );
-    expect(error).toContain("sessão");
+    expect(error).toContain("[action_session_refused_rule]");
     expect(await failure(Promise.resolve().then(() => t.actions.gate(f.purpose)))).toContain(
-      "aprovação",
+      "[action_needs_approval]",
     );
     t.approveAndDeliver(f);
     expect((await running).output).toBe("•••(token)\n");
@@ -596,7 +599,7 @@ describe("regras-aprovacao: vence em 10 minutos", () => {
     await t.actions.save({ projectId: "p1", definition: echoDef() });
     const error = await failure(t.run());
     expect(error).toContain("invalid_state");
-    expect(error).toContain("venceu");
+    expect(error).toContain("[action_secret_expired]");
     const f = t.requests()[0] as VaultRequestFrame;
     expect(
       await failure(Promise.resolve().then(() => t.actions.approve(f.requestId, { via: "app" }))),

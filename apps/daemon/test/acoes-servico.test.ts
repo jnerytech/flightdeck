@@ -224,7 +224,7 @@ describe("acoes-servico: ações versionadas e confiança", () => {
       actions.run({ projectId: "p1", name: "echo", requestedBy: "you" }),
     );
     expect(refused).toContain("invalid_state");
-    expect(refused).toContain("is not trusted [action_not_trusted]");
+    expect(refused).toContain("[action_not_trusted]");
     expect(await failure(actions.trust("p1", "echo", "0".repeat(64)))).toContain(
       "[action_changed_review]",
     );
