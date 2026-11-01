@@ -5,8 +5,10 @@ import { visibleTsLiterals } from "../../../scripts/lib/i18n-sweep.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 
-/** Where text for a person can hide outside the JSX: the lib, the screens, the hooks, the parts. */
-const FILES = [...new Bun.Glob("src/{lib,ui,hooks,components}/**/*.{ts,tsx}").scanSync(ROOT)];
+/** Where text for a person can hide outside the JSX: the lib, the screens, the hooks, the parts, the platform. */
+const FILES = [
+  ...new Bun.Glob("src/{lib,ui,hooks,components,platform}/**/*.{ts,tsx}").scanSync(ROOT),
+];
 
 /** Names that are not translated, and the code the `error:` key of a table also matches. */
 const ALLOWED = [

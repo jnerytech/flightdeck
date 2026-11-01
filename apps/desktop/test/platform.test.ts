@@ -330,7 +330,7 @@ describe("platform", () => {
     const platform = tauriPlatform(fakeWindow().win);
     expect(platform.updater.supported).toBe(true);
     const early = await platform.updater.install().catch((e: Error) => e.message);
-    expect(early).toBe("nenhuma atualização encontrada para instalar");
+    expect(early).toBe("no update found to install");
     expect(await platform.updater.check()).toBeNull();
     updateOffer = { version: "0.9.1", body: "Notas" };
     expect(await platform.updater.check()).toEqual({ version: "0.9.1", notes: "Notas" });

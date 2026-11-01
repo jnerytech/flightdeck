@@ -17,6 +17,15 @@ function setup() {
   return { platform, options, items, snippets: new GlobalSnippets(platform, options) };
 }
 
+const messageOf = (fn: () => unknown) => {
+  try {
+    fn();
+    return "ok";
+  } catch (error) {
+    return (error as Error).message;
+  }
+};
+
 const codeOf = (fn: () => unknown) => {
   try {
     fn();
@@ -76,6 +85,12 @@ describe("snippets-escopos: the global snippets of the app", () => {
     );
     expect(codeOf(() => snippets.save({ name: "status", type: "command", run: "git log" }))).toBe(
       "bad_request",
+    );
+    expect(
+      messageOf(() => snippets.save({ name: "status", type: "command", run: "git log" })),
+    ).toBe("a global snippet named status already exists");
+    expect(messageOf(() => snippets.use("nope", {}, { cwd: "/repo" }))).toBe(
+      "global snippet not found",
     );
     expect(snippets.list().map((s) => s.name)).toEqual(["status"]);
   });
