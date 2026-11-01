@@ -312,6 +312,8 @@ export class Teams {
       ((start: { cwd: string; prompt: string; name: string }) =>
         this.opts.manager.create({ cwd: start.cwd, prompt: start.prompt, name: start.name }));
     const coordinatorName = `${label(name)} · coordenadora`;
+    // The session is named as it starts, and its persona is set on that name right below.
+    await this.opts.warm?.(project.path);
     const { sessionId } = startCoordinator({
       cwd: project.path,
       prompt,

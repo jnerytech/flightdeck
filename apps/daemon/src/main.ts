@@ -798,6 +798,7 @@ export async function startDaemon(
       manager.create({ cwd, prompt, name, ...(persona ? { persona: { id: persona } } : {}) }),
     startWorker: (cardId, persona) =>
       board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
+    warm: (cwd) => warmKeys(cwd),
     applyPersona: (sessionId, persona) => {
       const done = persona
         ? personaSessions.apply({ sessionId, persona: { id: persona } })
@@ -813,13 +814,18 @@ export async function startDaemon(
   };
   // A session is named after its project, or after the card's project when it runs in a worktree.
   const keyedPath = (cwd: string) => board.projectForCwd(cwd)?.project.path ?? cwd;
+  // Both folders, without blocking: naming, lists and messages read their keys right after. Nothing
+  // back when both are known, so whoever starts a session can read its name at once.
+  const warmKeys = (cwd: string) => {
+    const looked = [cwd, keyedPath(cwd)].map((folder) => keys.lookup(folder));
+    return looked.every((key) => typeof key === "string") ? undefined : Promise.all(looked);
+  };
   const nameOptions: TrackOptions = {
     names,
     manager,
     external: central.external,
     projectOf: (cwd) => keys.keyFor(keyedPath(cwd)),
-    // Both folders, without blocking: naming, lists and messages read their keys right after.
-    warm: (cwd) => Promise.all([keys.resolve(cwd), keys.resolve(keyedPath(cwd))]),
+    warm: warmKeys,
     cardOf,
     personaOf: (sessionId) => {
       const card = cardOf(sessionId);

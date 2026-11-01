@@ -93,7 +93,12 @@ export function trackNames(opts: TrackOptions): () => void {
         if (!warm || names.get(id)) return name();
         // The key of the folder is looked up first, so that naming does not wait for git; a
         // failed lookup names the session all the same (the key is then asked for on the spot).
-        safely(() => void warm(opts.manager.get(id).cwd).then(name, name));
+        // A folder that is known needs no wait: whoever created the session may read its name.
+        safely(() => {
+          const lookup = warm(opts.manager.get(id).cwd);
+          if (lookup) void lookup.then(name, name);
+          else name();
+        });
       }
     }).unwatch,
     opts.external.onChange((session) => safely(() => terminal(session))),
