@@ -10,6 +10,7 @@ import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { AppStore } from "../lib/app-store.ts";
 import {
@@ -41,6 +42,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
   const [servers, setServers] = useState<McpServerView[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState<McpDraft | null>(null);
+  const saving = useBusy();
   const [removing, setRemoving] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ name: string; line: string; url: boolean } | null>(
     null,
@@ -287,7 +289,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
                 : t("agent.mcp.formNew")}
             </DialogTitle>
           </DialogHeader>
-          <Form variant="dialog" onSubmit={() => void save()}>
+          <Form variant="dialog" onSubmit={() => saving.run(save)}>
             <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
             <Input
               aria-label={t("agent.mcp.name")}
@@ -329,6 +331,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
             )}
             <FormActions
               submit={t("agent.mcp.save")}
+              busy={saving.busy}
               disabled={problem !== null}
               cancel={t("common.cancel")}
               onCancel={() => setDraft(null)}

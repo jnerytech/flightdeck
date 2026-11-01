@@ -7,6 +7,7 @@ import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
+import { useBusy } from "@/hooks/use-busy";
 import { refusalText } from "@/i18n/errors";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
@@ -116,6 +117,7 @@ export function ActionForm(props: {
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const secrets = store.getState().secrets;
+  const saving = useBusy();
 
   const save = async () => {
     const result = await store.hostRequest(props.hostId, "actions.save", {
@@ -148,7 +150,7 @@ export function ActionForm(props: {
             {t(initial ? "actionsUi.form.editTitle" : "actionsUi.form.newTitle")}
           </DialogTitle>
         </DialogHeader>
-        <Form variant="dialog" onSubmit={() => void save()}>
+        <Form variant="dialog" onSubmit={() => saving.run(save)}>
           <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
             {field("actionsUi.form.name", draft.name, (name) => set({ name }), initial !== null)}
             {field("actionsUi.form.description", draft.description, (description) =>
@@ -287,6 +289,7 @@ export function ActionForm(props: {
           </div>
           <FormActions
             submit={t("actionsUi.form.save")}
+            busy={saving.busy}
             cancel={t("actionsUi.form.cancel")}
             onCancel={props.onClose}
           />

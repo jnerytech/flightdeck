@@ -1,10 +1,12 @@
 import type { SshAuth, SshTarget } from "@flightdeck/protocol";
 import { memo, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/components/vault/secret-picker";
+import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
@@ -66,6 +68,7 @@ export const TargetForm = memo(function TargetForm(props: {
   const [hostKey, setHostKey] = useState(target?.hostKey ?? null);
   const [testResult, setTestResult] = useState<string | null>(null);
 
+  const saving = useBusy();
   const ready =
     name.trim() !== "" &&
     host.trim() !== "" &&
@@ -128,7 +131,7 @@ export const TargetForm = memo(function TargetForm(props: {
       variant="panel"
       className="mb-4"
       onSubmit={() => {
-        if (ready) void save();
+        if (ready) saving.run(save);
       }}
     >
       {
@@ -303,14 +306,15 @@ export const TargetForm = memo(function TargetForm(props: {
       {testResult && <p role="status">{testResult}</p>}
       <FormActions
         submit={t("connections.form.save")}
+        busy={saving.busy}
         disabled={!ready}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
           <>
-            <Button type="button" variant="outline" disabled={!target} onClick={() => void test()}>
+            <ActionButton type="button" variant="outline" disabled={!target} onClick={() => test()}>
               {t("connections.form.test")}
-            </Button>
+            </ActionButton>
           </>
         }
       />
