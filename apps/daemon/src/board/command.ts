@@ -39,12 +39,14 @@ export async function runCommand(
   input?: string,
   timeoutMs?: number,
   kill: (pid: number) => Promise<void> = killTree,
+  /** Variables to add to the process's environment. */
+  extraEnv: Record<string, string> = {},
 ): Promise<CommandResult> {
   // `env` explicitly: without it Bun passes the environment the process started with. Its own
   // process group (outside Windows), so the whole tree can be killed at the limit.
   const proc = Bun.spawn(cmd, {
     cwd,
-    env: process.env,
+    env: { ...process.env, ...extraEnv },
     stdout: "pipe",
     stderr: "pipe",
     stdin: input === undefined ? "ignore" : new TextEncoder().encode(input),

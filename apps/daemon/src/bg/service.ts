@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { BgList, BgSession } from "@flightdeck/protocol";
 import { runCommand } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
+import { resolveAllowedCwd } from "../paths.ts";
 
 export interface BgServiceOptions {
   db: Database;
@@ -142,12 +143,45 @@ export class BgService {
   }
 
   /** Starts a background session through `flightdeckd claude --bg`: controllable, with the persona. */
-  async start(_input: {
+  async start(input: {
     cwd: string;
     prompt: string;
     name?: string;
     persona?: string;
   }): Promise<{ id: string }> {
-    return { id: "" };
+    const { start } = this.opts;
+    if (!start) {
+      throw new FlightdeckError("invalid_state", "background start is not set up", "feature_off", {
+        feature: "bg",
+      });
+    }
+    const cwd = resolveAllowedCwd(input.cwd, start.allowedRoots);
+    const result = await runCommand(
+      [
+        ...start.self,
+        "claude",
+        "--bg",
+        ...(input.persona ? ["--persona", input.persona] : []),
+        ...(input.name ? ["--name", input.name] : []),
+        "--",
+        input.prompt,
+      ],
+      cwd,
+      undefined,
+      CLI_TIMEOUT_MS,
+      undefined,
+      { FLIGHTDECK_CONFIG: start.configFile },
+    );
+    const id = /backgrounded\s*·\s*(\S+)/.exec(result.stdout)?.[1];
+    if (result.code !== 0 || !id) {
+      const message = (result.stderr || result.stdout).trim().slice(0, 300);
+      throw new FlightdeckError(
+        "invalid_state",
+        `could not start in the background: ${message}`,
+        "bg_cli_failed",
+        { message },
+      );
+    }
+    return { id };
   }
 }

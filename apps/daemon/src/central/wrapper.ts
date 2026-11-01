@@ -161,6 +161,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     }
   }
   const print = args.includes("-p") || args.includes("--print");
+  const background = args.includes("--bg") || args.includes("--background");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
   const token = opts.config.hooks.token;
   let mcpConfigPath: string | null = null;
@@ -230,8 +231,12 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     );
     return await proc.exited;
   } finally {
-    if (mcpConfigPath) rmSync(mcpConfigPath, { force: true });
-    for (const file of files) rmSync(file, { force: true });
+    // `claude --bg` returns at once and the session goes on: its channel config and persona
+    // files are still read, so they stay (a few small files per background session).
+    if (!background) {
+      if (mcpConfigPath) rmSync(mcpConfigPath, { force: true });
+      for (const file of files) rmSync(file, { force: true });
+    }
   }
 }
 

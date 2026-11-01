@@ -979,6 +979,11 @@ export async function startDaemon(
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
+      start: {
+        self: daemonCommand(process.execPath, Bun.main),
+        configFile,
+        allowedRoots: config.allowedRoots,
+      },
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),

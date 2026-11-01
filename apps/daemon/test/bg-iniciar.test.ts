@@ -143,6 +143,12 @@ process.exit(${code});
     expect(run.config).toBe(h.configFile);
   });
 
+  test("a host set up without a way to start one says the feature is off", async () => {
+    const bg = new BgService({ db: new EventStore(":memory:").db, claude: () => "claude" });
+    const error = (await bg.start({ cwd: "/x", prompt: "x" }).catch((e) => e)) as FlightdeckError;
+    expect(error.reason).toBe("feature_off");
+  });
+
   test("a folder outside the allowed ones is refused before anything runs", async () => {
     const { self } = stub();
     const { bg } = service(self);
@@ -153,11 +159,12 @@ process.exit(${code});
 
   test("a flightdeckd that fails, or does not say an id, is reported with what it said", async () => {
     const refused = stub("", 1);
-    const first = (await service(refused.self)
-      .bg.start({ cwd: host().work, prompt: "x" })
+    const first = service(refused.self);
+    const failure = (await first.bg
+      .start({ cwd: first.h.work, prompt: "x" })
       .catch((e) => e)) as FlightdeckError;
-    expect(first.reason).toBe("bg_cli_failed");
-    expect(String(first.params?.message)).toContain("persona nope");
+    expect(failure.reason).toBe("bg_cli_failed");
+    expect(String(failure.params?.message)).toContain("persona nope");
     const silent = stub("started\n");
     const { h, bg } = service(silent.self);
     const second = (await bg
