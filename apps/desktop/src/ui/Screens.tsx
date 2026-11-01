@@ -1,6 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ComponentType, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -23,40 +23,54 @@ import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
-import { ActionsPage } from "./ActionsPage.tsx";
-import { AgentPage } from "./AgentPage.tsx";
-import { AutoApprovalsPage } from "./AutoApprovalsPage.tsx";
-import { AutomationsPage } from "./AutomationsPage.tsx";
-import { BoardView } from "./BoardView.tsx";
-import { CardDetail } from "./CardDetail.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
-import { ClientsPage } from "./ClientsPage.tsx";
-import { ConnectionsPage } from "./ConnectionsPage.tsx";
-import { ConversationsPage } from "./ConversationsPage.tsx";
-import { CostsPage, type TopSession } from "./CostsPage.tsx";
+import type { TopSession } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
-import { HostPage } from "./HostPage.tsx";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
-import { PersonasPage } from "./PersonasPage.tsx";
-import { PluginsPage } from "./PluginsPage.tsx";
-import { PreviewPage } from "./PreviewPage.tsx";
-import { ProjectsPage } from "./ProjectsPage.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
-import { Settings } from "./Settings.tsx";
-import { SnippetsPage } from "./SnippetsPage.tsx";
-import { TeamsPage } from "./TeamsPage.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
-import { VaultPage } from "./VaultPage.tsx";
-import { WorkflowsPage } from "./WorkflowsPage.tsx";
+
+/**
+ * The screens the first one does not need are loaded when their route opens (`bundle:budget`
+ * keeps the entry chunk under its limit; scripts/test/screens-lazy.test.ts lists them).
+ */
+function lazyScreen<M extends Record<K, unknown>, K extends keyof M & string>(
+  load: () => Promise<M>,
+  name: K,
+): M[K] {
+  const component = lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+  return component as unknown as M[K];
+}
+
+const ActionsPage = lazyScreen(() => import("./ActionsPage.tsx"), "ActionsPage");
+const AgentPage = lazyScreen(() => import("./AgentPage.tsx"), "AgentPage");
+const AutoApprovalsPage = lazyScreen(() => import("./AutoApprovalsPage.tsx"), "AutoApprovalsPage");
+const AutomationsPage = lazyScreen(() => import("./AutomationsPage.tsx"), "AutomationsPage");
+const BoardView = lazyScreen(() => import("./BoardView.tsx"), "BoardView");
+const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
+const ClientsPage = lazyScreen(() => import("./ClientsPage.tsx"), "ClientsPage");
+const ConnectionsPage = lazyScreen(() => import("./ConnectionsPage.tsx"), "ConnectionsPage");
+const ConversationsPage = lazyScreen(() => import("./ConversationsPage.tsx"), "ConversationsPage");
+const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
+const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
+const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPage");
+const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
+const PreviewPage = lazyScreen(() => import("./PreviewPage.tsx"), "PreviewPage");
+const ProjectsPage = lazyScreen(() => import("./ProjectsPage.tsx"), "ProjectsPage");
+const SnippetsPage = lazyScreen(() => import("./SnippetsPage.tsx"), "SnippetsPage");
+const TeamsPage = lazyScreen(() => import("./TeamsPage.tsx"), "TeamsPage");
+const VaultPage = lazyScreen(() => import("./VaultPage.tsx"), "VaultPage");
+const WorkflowsPage = lazyScreen(() => import("./WorkflowsPage.tsx"), "WorkflowsPage");
+const Settings = lazyScreen(() => import("./Settings.tsx"), "Settings");
 
 /** The host a route's screen loads from when it opens, if any. */
 function hostToWait(route: Route): string | null {
@@ -270,7 +284,11 @@ export function Screen(props: ScreenProps) {
   const removed =
     waiting !== null && state.hostsLoaded && !state.hosts.some((h) => h.id === waiting);
   const route: Route = removed ? { name: "hub" } : props.route;
-  const detail = routeScreen({ ...props, route });
+  const detail = (
+    <Suspense fallback={<ScreenLoading label={t("states.loading")} />}>
+      {routeScreen({ ...props, route })}
+    </Suspense>
+  );
   // Settings, the host form and the first start (no host) use the whole width.
   if (route.name === "settings" || route.name === "add-host" || state.hosts.length === 0) {
     return detail;
@@ -403,6 +421,14 @@ function costsOpener(go: (route: Route) => void): OpenCostSession {
   return opener;
 }
 
+function ScreenLoading(props: { label: string }) {
+  return (
+    <div className="p-6">
+      <LoadingState label={props.label} />
+    </div>
+  );
+}
+
 /** What a route shows on its own; `null` is the Sessões screen with nothing open. */
 function routeScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
@@ -414,11 +440,7 @@ function routeScreen(props: ScreenProps): ReactNode {
   if (waiting && waitHost?.status !== "online") {
     const { t } = store.i18n;
     const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
-    return (
-      <div className="p-6">
-        <LoadingState label={label} />
-      </div>
-    );
+    return <ScreenLoading label={label} />;
   }
 
   if (route.name === "settings") {
