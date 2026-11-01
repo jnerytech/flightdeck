@@ -259,6 +259,19 @@ describe("clients-vault: another writer", () => {
     expect(held.some((r) => r.id === "theirs")).toBe(false);
   });
 
+  test("a host that cannot say what it holds is sent the rules all the same", async () => {
+    const opened = await open(true);
+    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    opened.daemon.vaultRules[opened.secret.id] = [OTHER];
+    opened.daemon.refuse.set("vault.rules.get", "not now");
+    const { errors } = await reconnect(opened);
+    await settle(() => (opened.daemon.vaultRules[opened.secret.id]?.length ?? 0) === 5);
+    expect(errors).toEqual([]);
+    expect((opened.daemon.vaultRules[opened.secret.id] as Array<{ id: string }>).at(-1)?.id).toBe(
+      "mine",
+    );
+  });
+
   test("a host that holds nothing yet gets the rules without a warning", async () => {
     const opened = await open(true);
     await opened.store.setVaultRules(opened.secret.id, [OWN]);
