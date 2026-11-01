@@ -5,7 +5,6 @@ import {
   MoreHorizontal,
   Plane,
   Plus,
-  Puzzle,
   Search,
   SunMoon,
   TriangleAlert,
@@ -197,7 +196,7 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "plugins", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<Puzzle aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
             label={t("sidebar.plugins")}
             onClick={() => go({ name: "plugins" })}
           />

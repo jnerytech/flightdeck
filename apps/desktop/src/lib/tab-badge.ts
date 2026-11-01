@@ -34,6 +34,7 @@ const KINDS: Partial<Record<Route["name"], TabKind>> = {
   workflows: "workflows",
   history: "history",
   host: "host",
+  plugins: "plugins",
   costs: "costs",
   conversations: "conversations",
   teams: "teams",
