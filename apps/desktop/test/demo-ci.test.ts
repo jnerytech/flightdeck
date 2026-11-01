@@ -62,6 +62,16 @@ describe("demo-prints: axe e CI", () => {
     expect(step).toContain("E2E_FAILURES: apps/desktop/screenshots/e2e-failures");
   });
 
+  test("the CI prints run the visual check: VISUAL names the mode, and the diffs land in the prints artifact", () => {
+    const ci = read(".github/workflows/ci.yml");
+    const step = ci.slice(ci.indexOf("- name: Prints"), ci.indexOf("- name: Jornadas e2e"));
+    expect(step).toContain("bun run demo:shots");
+    expect(step).toMatch(/VISUAL: (record|compare)/);
+    // The comparison writes visual-diff/ next to the prints, inside what the artifact uploads.
+    expect(read("scripts/demo-visual.ts")).toContain('"visual-diff"');
+    expect(read(".github/workflows/ci.yml")).toContain("apps/desktop/screenshots");
+  });
+
   test("o package.json tem os comandos e2e e demo, com o axe fixado", () => {
     const pkg = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>;
