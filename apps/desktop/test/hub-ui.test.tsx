@@ -10,9 +10,9 @@ import {
   HUB_FILTER_KEY,
   type HubRow,
   hubGroups,
-  sharedMeta,
   loadHubFilter,
   saveHubFilter,
+  sharedMeta,
 } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
