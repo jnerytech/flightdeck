@@ -34,6 +34,8 @@ export interface UsageIndexerOptions {
   cost?: (tokens: UsageTokens) => number | null;
   /** Awaited between files of a pass, so the daemon keeps answering; a zero timer when absent. */
   pause?: () => Promise<void>;
+  /** The most bytes of one file a pass reads before it pauses; the rest comes next. */
+  sliceBytes?: number;
   log?: (message: string) => void;
   /** After each pass, with the entries it added (budgets are checked again). */
   onPass?: (added: number) => void;
