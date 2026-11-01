@@ -190,6 +190,26 @@ describe("orcamentos-ui", () => {
     expect(rows()).toHaveLength(1);
   });
 
+  test("um orçamento de projeto mostra o nome do projeto e deixa o caminho inteiro no title", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await choose("Projeto do orçamento", "/srv/work/flightdeck-web");
+    await choose("Limite (US$)", "10");
+    await click("Salvar orçamento");
+    await settle(() => rows().length === 1);
+    expect(rows()).toEqual([
+      "orçamento de flightdeck-web (dia) · notificar · US$ 0.00 de US$ 10.00 (0%)",
+    ]);
+    const title = section()?.querySelector("li [data-row-title] span") as HTMLElement;
+    expect(title.title).toBe("/srv/work/flightdeck-web");
+    await click("Editar orçamento de flightdeck-web (dia)");
+    expect((field("Projeto do orçamento") as HTMLInputElement).value).toBe(
+      "/srv/work/flightdeck-web",
+    );
+  });
+
   test("limiar cruzado notifica e aparece em Precisa de você; o alerta abre os orçamentos", async () => {
     const { mem, spend, budgets } = await online();
     await act(async () => {
