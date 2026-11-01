@@ -289,6 +289,12 @@ describe("orcamentos-ui", () => {
     await act(() => Bun.sleep(100));
     const project = field("Projeto do orçamento");
     expect(project.tagName).toBe("INPUT");
+    await choose("Projeto do orçamento", "/work/solo");
+    expect(field("Projeto do orçamento").value).toBe("/work/solo");
+    await choose("Limite (US$)", "5");
+    await click("Criar orçamento");
+    await settle(() => rows().length === 1);
+    expect(rows()[0]).toContain("orçamento de solo");
   });
 
   test("o botão diz Criar num orçamento novo e Salvar ao editar um", async () => {
