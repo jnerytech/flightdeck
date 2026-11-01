@@ -47,7 +47,7 @@ const START = Date.UTC(2026, 9, 15, 12);
 let seq = 0;
 
 /** A daemon with costs and budgets on a fixed day, US$ 6 spent on it, and the app on it. */
-async function online() {
+async function online(withSpend = true) {
   let budgets: Budgets | null = null;
   const d = makeDaemon(cleanups, {
     costs: true,
@@ -64,7 +64,7 @@ async function online() {
          VALUES (?, 's', ?, ?, ?, 'claude-opus-5-5', 'terminal', 'standard', 1, 1, 0, 0, 0, ?)`,
       )
       .run(`b${++seq}`, `${TODAY}T12:00:00.000Z`, TODAY, key, cost);
-  spend(6);
+  if (withSpend) spend(6);
   const server = d.listen();
   const mem = memoryPlatform(false);
   const store = new AppStore(mem.platform, {
@@ -86,8 +86,10 @@ const rows = () =>
 const form = () => section()?.querySelector("form") as HTMLFormElement;
 const field = (label: string) =>
   screen.getByLabelText(label) as HTMLInputElement | HTMLSelectElement;
-const saveButton = () =>
-  screen.getByRole("button", { name: "Salvar orçamento" }) as HTMLButtonElement;
+const saveButton = (name = "Criar orçamento") =>
+  screen.getByRole("button", { name }) as HTMLButtonElement;
+const projectOptions = () =>
+  [...((field("Projeto do orçamento") as HTMLSelectElement).options ?? [])].map((o) => o.text);
 
 describe("orcamentos-ui", () => {
   test("criar, editar e remover orçamento, com o percentual atual", async () => {
@@ -96,7 +98,7 @@ describe("orcamentos-ui", () => {
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
     await choose("Limite (US$)", "10");
-    await click("Salvar orçamento");
+    await click("Criar orçamento");
     await settle(() => rows().length === 1);
     expect(rows()).toEqual(["orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)"]);
     await click("Editar orçamento do host (dia)");
@@ -108,10 +110,11 @@ describe("orcamentos-ui", () => {
       "orçamento do host (dia) · segurar cards novos · US$ 6.00 de US$ 20.00 (30%)",
     ]);
     await choose("Escopo", "project");
+    await settle(() => projectOptions().includes("kA"));
     await choose("Projeto do orçamento", "kA");
     await choose("Período", "month");
     await choose("Limite (US$)", "100");
-    await click("Salvar orçamento");
+    await click("Criar orçamento");
     await settle(() => rows().length === 2);
     expect(rows()[1]).toBe("orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)");
     await click("Remover orçamento do host (dia)");
@@ -177,7 +180,7 @@ describe("orcamentos-ui", () => {
     await settle(() => section() !== null);
     expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).not.toBeNull();
     await choose("Limite (US$)", "10");
-    await click("Salvar orçamento");
+    await click("Criar orçamento");
     await settle(() => rows().length === 1);
     expect(within(section() as HTMLElement).queryByText("Nenhum orçamento ainda.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancelar edição" })).toBeNull();
@@ -191,13 +194,15 @@ describe("orcamentos-ui", () => {
   });
 
   test("um orçamento de projeto mostra o nome do projeto e deixa o caminho inteiro no title", async () => {
-    await online();
+    const { spend } = await online();
+    spend(1, "/srv/work/flightdeck-web");
     await click("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
+    await settle(() => projectOptions().includes("flightdeck-web"));
     await choose("Projeto do orçamento", "/srv/work/flightdeck-web");
     await choose("Limite (US$)", "10");
-    await click("Salvar orçamento");
+    await click("Criar orçamento");
     await settle(() => rows().length === 1);
     expect(rows()).toEqual([
       "orçamento de flightdeck-web (dia) · notificar · US$ 0.00 de US$ 10.00 (0%)",
@@ -208,6 +213,66 @@ describe("orcamentos-ui", () => {
     expect((field("Projeto do orçamento") as HTMLInputElement).value).toBe(
       "/srv/work/flightdeck-web",
     );
+  });
+
+  test("o projeto do orçamento é uma lista dos projetos conhecidos, com o nome por rótulo e a chave por valor", async () => {
+    const { spend } = await online();
+    spend(1, "github.com/acme/app");
+    spend(1, "github.com/acme/web");
+    await click("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await settle(() => projectOptions().length > 1);
+    expect(projectOptions()).toEqual(["Escolha um projeto", "app", "kA", "web"]);
+    expect(saveButton().disabled).toBe(true);
+    await choose("Limite (US$)", "10");
+    expect(saveButton().disabled).toBe(true);
+    expect(
+      within(section() as HTMLElement).queryByText("Informe o projeto do orçamento."),
+    ).not.toBeNull();
+    await choose("Projeto do orçamento", "github.com/acme/web");
+    await click("Criar orçamento");
+    await settle(() => rows().length === 1);
+    expect(rows()[0]).toContain("orçamento de web (dia)");
+  });
+
+  test("dois projetos com o mesmo nome mostram a chave ao lado do nome", async () => {
+    const { spend } = await online();
+    spend(1, "github.com/acme/app");
+    spend(1, "github.com/other/app");
+    await click("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await settle(() => projectOptions().length > 1);
+    expect(projectOptions()).toEqual([
+      "Escolha um projeto",
+      "app · github.com/acme/app",
+      "app · github.com/other/app",
+      "kA",
+    ]);
+  });
+
+  test("sem projetos conhecidos o projeto é um campo de texto", async () => {
+    await online(false);
+    await click("Configurações");
+    await settle(() => section() !== null);
+    await choose("Escopo", "project");
+    await act(() => Bun.sleep(100));
+    const project = field("Projeto do orçamento");
+    expect(project.tagName).toBe("INPUT");
+  });
+
+  test("o botão diz Criar num orçamento novo e Salvar ao editar um", async () => {
+    await online();
+    await click("Configurações");
+    await settle(() => section() !== null);
+    expect(screen.queryByRole("button", { name: "Salvar orçamento" })).toBeNull();
+    await choose("Limite (US$)", "10");
+    await click("Criar orçamento");
+    await settle(() => rows().length === 1);
+    await click("Editar orçamento do host (dia)");
+    expect(screen.queryByRole("button", { name: "Criar orçamento" })).toBeNull();
+    expect(saveButton("Salvar orçamento")).not.toBeNull();
   });
 
   test("limiar cruzado notifica e aparece em Precisa de você; o alerta abre os orçamentos", async () => {
