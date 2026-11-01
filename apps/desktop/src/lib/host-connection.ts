@@ -108,6 +108,10 @@ export interface HostConnectionOptions {
   maxDelayMs?: number;
   /** Silence from the host after which the link counts as dead (the daemon pings every 15 s). */
   staleMs?: number;
+  /** How long a connection may take to get its `hello` answered before it is given up. */
+  connectTimeoutMs?: number;
+  /** Test seam: the watchdog's clock and interval (the real ones when absent). */
+  watchdog?: { now(): number; repeat(check: () => void, ms: number): () => void };
 }
 
 interface Pending {

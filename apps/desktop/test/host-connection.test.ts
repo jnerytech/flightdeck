@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { EventEnvelope, SessionSubscribeResult } from "@flightdeck/protocol";
-import { type ConnectionStatus, HostConnection, RequestError } from "../src/lib/host-connection.ts";
+import {
+  type ConnectionStatus,
+  HostConnection,
+  type HostConnectionOptions,
+  RequestError,
+} from "../src/lib/host-connection.ts";
 import { daemon as makeDaemon, TOKEN, waitFor } from "./fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];
@@ -9,7 +14,7 @@ afterEach(async () => {
 });
 const daemon = () => makeDaemon(cleanups);
 
-function connect(url: string, token = TOKEN, extra: { staleMs?: number } = {}) {
+function connect(url: string, token = TOKEN, extra: Partial<HostConnectionOptions> = {}) {
   const events: EventEnvelope[] = [];
   const statuses: ConnectionStatus[] = [];
   const subscribed: Array<[string, SessionSubscribeResult]> = [];
@@ -116,7 +121,10 @@ describe("desktop: conexão com o host", () => {
   });
 
   /** A host that acks `hello` and then says nothing but what `speak` sends: a half-open link. */
-  function quietHost(speak?: (send: (frame: unknown) => void) => void) {
+  function quietHost(
+    speak?: (send: (frame: unknown) => void) => void,
+    options: { ackHello?: boolean } = {},
+  ) {
     const server = Bun.serve({
       port: 0,
       fetch(request, srv) {
@@ -128,7 +136,7 @@ describe("desktop: conexão com o host", () => {
         },
         message(ws, raw) {
           const frame = JSON.parse(String(raw)) as { id: string; type: string };
-          if (frame.type !== "hello") return;
+          if (frame.type !== "hello" || options.ackHello === false) return;
           const data = {
             hostName: "quieto",
             daemonVersion: "0.0.0",
@@ -181,5 +189,89 @@ describe("desktop: conexão com o host", () => {
     expect(conn.status).toBe("online");
     expect(statuses).toEqual(["connecting", "online"]);
     expect(conn.latencyMs).not.toBeNull();
+  });
+
+  /** A clock and an interval the test drives by hand: `tick()` is one check of the watchdog. */
+  function handWatchdog() {
+    let time = 0;
+    const checks: Array<() => void> = [];
+    return {
+      watchdog: {
+        now: () => time,
+        repeat: (fn: () => void) => {
+          checks.push(fn);
+          return () => {
+            const at = checks.indexOf(fn);
+            if (at >= 0) checks.splice(at, 1);
+          };
+        },
+      },
+      advance: (ms: number) => {
+        time += ms;
+      },
+      tick: () => {
+        expect(checks.length).toBeGreaterThan(0);
+        for (const check of [...checks]) check();
+      },
+    };
+  }
+
+  test("one stale check is only a suspicion: a frame that arrives before the next one keeps the link", async () => {
+    const hand = handWatchdog();
+    let speak: (frame: unknown) => void = () => {};
+    const url = quietHost((send) => {
+      speak = send;
+    });
+    const { conn, statuses } = connect(url, TOKEN, { staleMs: 1000, watchdog: hand.watchdog });
+    await waitFor(() => conn.status === "online", "online");
+    hand.advance(1500);
+    hand.tick();
+    expect(conn.status).toBe("online");
+    speak({ type: "ping", id: "p", lastRttMs: 7 });
+    await waitFor(() => conn.latencyMs === 7, "ping");
+    hand.tick();
+    expect(conn.status).toBe("online");
+    expect(statuses).toEqual(["connecting", "online"]);
+    // Silent again: the first check suspects, the second gives the link up.
+    hand.advance(1500);
+    hand.tick();
+    expect(conn.status).toBe("online");
+    const pending = conn.request("session.list", {}).catch((e) => e);
+    hand.tick();
+    expect(conn.status).toBe("offline");
+    expect(((await pending) as RequestError).message).toBe("connection lost");
+  });
+
+  test("a hello that never comes back is given up after connectTimeoutMs, and the app retries", async () => {
+    const hand = handWatchdog();
+    const url = quietHost(undefined, { ackHello: false });
+    const { conn, statuses } = connect(url, TOKEN, {
+      connectTimeoutMs: 1000,
+      staleMs: 60_000,
+      watchdog: hand.watchdog,
+    });
+    await waitFor(() => statuses.includes("connecting"), "connecting");
+    await Bun.sleep(50);
+    expect(conn.status).toBe("connecting");
+    hand.advance(1500);
+    hand.tick();
+    expect(conn.status).toBe("connecting");
+    hand.tick();
+    expect(conn.status).toBe("offline");
+    await waitFor(() => statuses.filter((s) => s === "connecting").length >= 2, "retry");
+  });
+
+  test("a link that is online is not held to the connect timeout", async () => {
+    const hand = handWatchdog();
+    const { conn } = connect(quietHost(), TOKEN, {
+      connectTimeoutMs: 1000,
+      staleMs: 60_000,
+      watchdog: hand.watchdog,
+    });
+    await waitFor(() => conn.status === "online", "online");
+    hand.advance(5000);
+    hand.tick();
+    hand.tick();
+    expect(conn.status).toBe("online");
   });
 });
