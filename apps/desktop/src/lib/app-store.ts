@@ -49,6 +49,7 @@ import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
+import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
 import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
@@ -87,18 +88,7 @@ import { ThemeController } from "./theme.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
-import {
-  applyImport,
-  BackupError,
-  type BackupErrorCode,
-  type ConflictChoice,
-  exportVault,
-  fromFdvault,
-  type ImportPreview,
-  type ImportResult,
-  previewImport,
-  toFdvault,
-} from "./vault-backup.ts";
+import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
 import {
   answerVaultRequest,
   checkDelivery,
@@ -2183,6 +2173,7 @@ export class AppStore {
     confirmation: string,
   ): Promise<{ ok: true } | { ok: false; code: BackupErrorCode | "cancelled" }> {
     try {
+      const { exportVault, toFdvault } = await import("./vault-backup.ts");
       const file = await exportVault(this.vault, passphrase, confirmation, {
         ...(this.options.vaultWorkFactor !== undefined && {
           workFactor: this.options.vaultWorkFactor,
@@ -2206,6 +2197,7 @@ export class AppStore {
     try {
       const file = await this.platform.vault.pickFile();
       if (!file) return { ok: false, code: "cancelled" };
+      const { fromFdvault, previewImport } = await import("./vault-backup.ts");
       const preview = await previewImport(this.vault, fromFdvault(file.text), passphrase);
       return { ok: true, preview };
     } catch (error) {
@@ -2219,6 +2211,7 @@ export class AppStore {
     preview: ImportPreview,
     onConflict: ConflictChoice,
   ): Promise<ImportResult> {
+    const { applyImport } = await import("./vault-backup.ts");
     const result = await applyImport(this.vault, preview, onConflict);
     this.update({ secrets: this.vault.list() });
     return result;

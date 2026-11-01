@@ -1,6 +1,6 @@
 import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,11 @@ import type { AppStore } from "../lib/app-store.ts";
 import { type Selection, select } from "../lib/review.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DiffView } from "./DiffView.tsx";
-import { FileEditor } from "./FileEditor.tsx";
 import { FileSessions } from "./FileSessions.tsx";
 import { ReviewList } from "./ReviewList.tsx";
+
+// CodeMirror is ~800 KB of source and only opens with a file: it loads when an editor is opened.
+const FileEditor = lazy(() => import("./FileEditor.tsx").then((m) => ({ default: m.FileEditor })));
 
 /** What the host offers to take back a revert: the file and when the offer ends. */
 interface Undo {
@@ -284,14 +286,16 @@ export function ChangesPanel(props: {
         />
       )}
       {editing && (
-        <FileEditor
-          store={store}
-          hostId={hostId}
-          target={target}
-          path={editing}
-          onSaved={() => void refresh()}
-          onClose={() => setEditing(null)}
-        />
+        <Suspense fallback={null}>
+          <FileEditor
+            store={store}
+            hostId={hostId}
+            target={target}
+            path={editing}
+            onSaved={() => void refresh()}
+            onClose={() => setEditing(null)}
+          />
+        </Suspense>
       )}
     </section>
   );

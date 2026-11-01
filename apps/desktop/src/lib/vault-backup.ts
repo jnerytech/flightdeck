@@ -1,16 +1,11 @@
 import { armor, Decrypter, Encrypter } from "age-encryption";
+import { BackupError } from "./backup-error.ts";
 import type { SecretMeta, Vault } from "./vault.ts";
 
 export const MIN_PASSPHRASE = 12;
 
-export type BackupErrorCode = "short-passphrase" | "mismatch" | "unreadable";
-
-/** Why a backup was not written or not read. */
-export class BackupError extends Error {
-  constructor(readonly code: BackupErrorCode) {
-    super(code);
-  }
-}
+// The error lives apart so the store can tell it without loading `age` (see backup-error.ts).
+export { BackupError, type BackupErrorCode } from "./backup-error.ts";
 
 export interface BackupOptions {
   /** scrypt work factor (log2 N); tests lower it to stay fast. */
