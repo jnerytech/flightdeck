@@ -47,7 +47,8 @@ export function ClientSwitcher(props: {
 
   return (
     <Inline gap={1}>
-      <DropdownMenu>
+      {/* Not modal: a modal menu aria-hides the header and the sidebar, which stay focusable. */}
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
