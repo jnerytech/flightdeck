@@ -165,6 +165,15 @@ describe("clients-rules: which client a project belongs to", () => {
     expect(resolve(p, [b, a]).clientId).toBe("b");
   });
 
+  test("every other client that claims a folder is listed, in the order of the clients", () => {
+    const [a, b, c] = ["a", "b", "c"].map((id) => client(id, folder(`/work/${id}`)));
+    const p = project("github.com/x/y", ["h", "/work/c/y"], ["h", "/work/b/y"], ["h", "/work/a/y"]);
+    expect(resolve(p, [c as Client, a as Client, b as Client])).toMatchObject({
+      clientId: "c",
+      conflict: ["a", "b"],
+    });
+  });
+
   test("two rules of different clients on the same key are not a conflict", () => {
     const p = project("github.com/acme/api");
     expect(resolve(p, [acme, beta]).conflict).toEqual([]);
