@@ -3,9 +3,10 @@ import { ExternalSessions } from "../src/central/external.ts";
 import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { Names } from "../src/names/names.ts";
-import { trackNames } from "../src/names/track.ts";
+import { type TrackOptions, trackNames } from "../src/names/track.ts";
 import { Teams } from "../src/teams/teams.ts";
 import { newBoard, whenChanged } from "./board-helpers.ts";
+import { poll } from "./helpers.ts";
 
 setDefaultTimeout(30_000);
 
@@ -15,7 +16,7 @@ afterEach(async () => {
 });
 
 /** A team over the real board, with the standard names following every session it starts. */
-async function setup() {
+async function setup(warm?: TrackOptions["warm"]) {
   const ctx = newBoard({}, 1);
   cleanups.push(() => ctx.board.stop());
   const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
@@ -50,6 +51,7 @@ async function setup() {
       external,
       projectOf: (cwd) => ctx.board.projectForCwd(cwd)?.project.path ?? cwd,
       cardOf,
+      warm,
       personaOf: (id) => {
         const card = cardOf(id);
         return card ? teams.personaOfCard(card) : null;
@@ -113,5 +115,29 @@ describe("nomes-sessao: os times", () => {
       display: "repo · qa · 1",
       aliases: ["repo-geral-1", "repo-qa-1"],
     });
+  });
+
+  test("trocar a persona de uma executora que ainda espera o nome não falha: o nome nasce com a persona nova", async () => {
+    const gate = Promise.withResolvers<void>();
+    const { teams, names, project, board } = await setup(() => gate.promise);
+    const team = await teams.create({
+      goal: "Implementar o login.",
+      workers: 1,
+      projectId: project.id,
+    });
+    const worker = (await whenChanged(
+      board,
+      () => board.getCard(team.members[1]?.cardId as string).sessionId,
+    )) as string;
+    expect(names.get(worker)).toBeNull();
+    await teams.update({
+      team: team.id,
+      persona: { member: `pc/${worker}`, persona: "qa" },
+    });
+    gate.resolve();
+    expect(await poll(() => names.get(worker)?.display)).toBe("repo · qa · card 1");
+    // Taking it away later renames the session that has a name by now.
+    await teams.update({ team: team.id, persona: { member: `pc/${worker}`, persona: null } });
+    expect(names.get(worker)?.display).toBe("repo · geral · card 1");
   });
 });
