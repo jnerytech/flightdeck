@@ -161,4 +161,21 @@ describe("clients-costs: the Costs screen across hosts", () => {
     expect(screen.queryByText("Sem custos de: gama.") !== null).toBe(true);
     expect(total()).toBe("US$ 6.00");
   });
+
+  test("a selected client costs one round of requests, not two, when no filter is set", async () => {
+    const { store } = await setup();
+    await pickHost("__all__");
+    await settle(() => total() === "US$ 6.00");
+    const asked: string[] = [];
+    const ask = store.hostCommand.bind(store);
+    store.hostCommand = ((hostId: string, type: string, payload: unknown) => {
+      if (type === "costs.summary")
+        asked.push(JSON.stringify((payload as { projectKey?: string }).projectKey ?? "*"));
+      return ask(hostId, type as never, payload as never);
+    }) as typeof store.hostCommand;
+    await act(async () => store.setClientSelection("acme"));
+    await settle(() => total() === "US$ 2.00");
+    await act(() => Bun.sleep(100));
+    expect(asked.sort()).toEqual(['"*"', '"*"', '"github.com/acme/api"']);
+  });
 });
