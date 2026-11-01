@@ -125,6 +125,38 @@ describe("orcamentos", () => {
     expect(budgets.list()).toEqual([budget]);
   });
 
+  test("a refusal of a budget carries a reason and params the app translates, and an English message", () => {
+    const { budgets } = setup();
+    const refusal = (fn: () => unknown) => {
+      try {
+        fn();
+        return null;
+      } catch (error) {
+        const { code, reason, params, message } = error as {
+          code: string;
+          reason?: string;
+          params?: Record<string, string>;
+          message: string;
+        };
+        return { code, reason, params, message };
+      }
+    };
+    const noProject = refusal(() =>
+      budgets.set({ scope: "project", period: "day", limitUsd: 5, action: "queue" }),
+    );
+    expect(noProject).toMatchObject({ code: "bad_request", reason: "budget_needs_project" });
+    expect(refusal(() => budgets.set({ ...HOST_DAY, id: "nada" }))).toMatchObject({
+      code: "not_found",
+      reason: "budget_not_found",
+      params: { id: "nada" },
+    });
+    expect(refusal(() => budgets.remove("nada"))).toMatchObject({
+      reason: "budget_not_found",
+      params: { id: "nada" },
+    });
+    expect(noProject?.message).not.toMatch(/[À-ú]|orçamento/);
+  });
+
   test("validação: projeto sem chave e id desconhecido recusados; host ignora projectKey; editar mantém a criação", () => {
     const { time, budgets } = setup();
     const refused = (fn: () => unknown) => {

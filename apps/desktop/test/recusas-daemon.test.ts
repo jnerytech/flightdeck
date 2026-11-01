@@ -24,6 +24,9 @@ const REASONS = [
   "transcript_not_indexed",
   "session_maybe_active",
   "feature_off",
+  "budget_needs_project",
+  "budget_not_found",
+  "period_inverted",
 ];
 
 const cleanups: Array<() => unknown> = [];

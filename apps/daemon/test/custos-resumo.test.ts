@@ -297,7 +297,14 @@ describe("custos-resumo", () => {
     expect(csv?.filename).toBe("flightdeck-custos-2026-10-01-a-2026-10-02.csv");
     expect(
       await client.request("costs.summary", { from: "2026-10-02", to: "2026-10-01" }),
-    ).toMatchObject({ ok: false, error: { code: "bad_request" } });
+    ).toMatchObject({
+      ok: false,
+      error: {
+        code: "bad_request",
+        reason: "period_inverted",
+        params: { from: "2026-10-02", to: "2026-10-01" },
+      },
+    });
     expect(
       await client.request("costs.summary", { from: "ontem", to: "2026-10-01" }),
     ).toMatchObject({ ok: false, error: { code: "bad_request" } });
