@@ -82,6 +82,7 @@ describe("protocolo-workflow", () => {
       trusted: false,
       checks: ["fd-lint"],
       errors: [],
+      issues: [],
       inputs: [],
     });
     const wrong = await client.request("workflow.trust", {
@@ -89,7 +90,14 @@ describe("protocolo-workflow", () => {
       name: "outro",
       hash: "x",
     });
-    expect(wrong).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+    expect(wrong).toMatchObject({
+      ok: false,
+      error: {
+        code: "invalid_state",
+        reason: "workflow_changed_review",
+        params: { name: "outro" },
+      },
+    });
     const trusted = await client.data<{ trusted: boolean }>("workflow.trust", {
       projectId: project.id,
       name: "outro",
@@ -100,7 +108,14 @@ describe("protocolo-workflow", () => {
       projectId: project.id,
       name: "nada",
     });
-    expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
+    expect(missing).toMatchObject({
+      ok: false,
+      error: {
+        code: "not_found",
+        reason: "workflow_not_on_branch",
+        params: { name: "nada", branch: expect.any(String) },
+      },
+    });
   });
 
   test("card.start com workflow e inputs; run.watch e run.get acompanham; gate.respond aprova", async () => {
@@ -167,14 +182,19 @@ describe("protocolo-workflow", () => {
     const client = await connect();
     expect(await client.request("run.get", { runId: "nada" })).toMatchObject({
       ok: false,
-      error: { code: "not_found" },
+      error: { code: "not_found", reason: "workflow_run_not_found", params: { id: "nada" } },
     });
     await start({ task: "x" });
     const run = await runWhen((r) => r.status === "waiting");
     const closed = { runId: run?.id, stepId: "plan", attempt: 1, decision: "approve" };
     expect(await client.request("gate.respond", closed)).toMatchObject({
       ok: false,
-      error: { code: "invalid_state", message: "gate plan (tentativa 1) não está aberto" },
+      error: {
+        code: "invalid_state",
+        message: "gate plan (attempt 1) is not open",
+        reason: "workflow_gate_closed",
+        params: { step: "plan", attempt: 1 },
+      },
     });
     const bad = { ...closed, stepId: "approve", decision: "talvez" };
     expect(await client.request("gate.respond", bad)).toMatchObject({

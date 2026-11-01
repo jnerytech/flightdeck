@@ -73,7 +73,7 @@ describe("workflows-ui", () => {
     const feature = screen.queryByRole("listitem", { name: "Workflow feature" });
     expect(feature?.textContent ?? "").toContain("não confiado");
     expect(items("Comandos de feature")).toEqual(["fd-test --all"]);
-    expect(items("Erros de quebrado")).toEqual(["steps.0.id: obrigatório"]);
+    expect(items("Erros de quebrado")).toEqual(["steps.0.id: Esse campo é obrigatório."]);
     expect(screen.queryByRole("button", { name: "Confiar em quebrado" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Confiar em feature" })).not.toBeNull();
   });
