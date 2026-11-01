@@ -429,8 +429,10 @@ export const CostsPage = memo(function CostsPage(props: {
                 />
               )}
             </div>
-            {!acrossHosts && <QuotaCharts key={hostId} store={store} hostId={hostId} />}
-            {withTelemetry && <TimingBreakdown key={hostId} store={store} hostId={hostId} />}
+            {!acrossHosts && <QuotaCharts key={`quota-${hostId}`} store={store} hostId={hostId} />}
+            {withTelemetry && (
+              <TimingBreakdown key={`timing-${hostId}`} store={store} hostId={hostId} />
+            )}
             <section aria-label={t("costsUi.top")}>
               <Panel title={t("costsUi.top")}>
                 <ul className="flex flex-col">
