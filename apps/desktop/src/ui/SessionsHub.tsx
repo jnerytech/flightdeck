@@ -1,6 +1,8 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { AssignMenu } from "@/components/clients/assign-menu";
+import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -21,6 +23,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import { ALL_CLIENTS } from "../lib/client-scope.ts";
+import { UNASSIGNED } from "../lib/clients.ts";
 import { usd } from "../lib/costs.ts";
 import type { Density } from "../lib/density.ts";
 import {
@@ -123,6 +127,7 @@ export function SessionsHub(props: {
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
   const [limit, setLimit] = useState(HUB_ROW_CAP);
   const { groups, hidden } = useMemo(() => capGroups(allGroups, limit), [allGroups, limit]);
+  const scope = store.clientScope();
   // The personas the sessions run in: the Persona filter offers only those.
   const personas = [
     ...new Map(
@@ -309,6 +314,7 @@ export function SessionsHub(props: {
         )}
         {groups.map((group) => {
           const shared = sharedMeta(group.rows);
+          const clientChip = scope.chipOf(group.key);
           return (
             <section
               key={group.key}
@@ -317,6 +323,17 @@ export function SessionsHub(props: {
             >
               <div className="flex items-baseline gap-2 px-2 text-xs">
                 <h3 className="shrink-0 font-medium text-muted-foreground">{group.name}</h3>
+                {clientChip && state.clientSelection === ALL_CLIENTS && (
+                  <ClientChip name={clientChip.name} color={clientChip.color} />
+                )}
+                {scope.active && scope.clientOf(group.key) === UNASSIGNED && (
+                  <AssignMenu
+                    store={store}
+                    state={state}
+                    projectKey={group.key}
+                    name={group.name}
+                  />
+                )}
                 {(shared.hostName || shared.origin) && (
                   <span
                     data-slot="group-meta"

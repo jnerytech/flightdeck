@@ -1,6 +1,7 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { ClientChip } from "@/components/clients/client-chip";
 import { ActionButton } from "@/components/feedback/action-button";
 import { SplitView } from "@/components/layout/split-view";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -18,6 +19,8 @@ import {
   type PendingItem,
 } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
+import { sessionProjectKeys } from "../lib/client-scope.ts";
+import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
 import { inputSummary } from "../lib/tool-input.ts";
@@ -77,6 +80,12 @@ export function NeedsYou(props: {
   const [selected, setSelected] = useState<string | null>(null);
   /** The row the keyboard is on (-1: none yet). */
   const [cursor, setCursor] = useState(-1);
+  const scope = store.clientScope();
+  const projectOf = sessionProjectKeys(hubRows(state));
+  const chipOf = (sessionId: string) => {
+    const key = projectOf.get(sessionId);
+    return key === undefined ? null : scope.chipOf(key);
+  };
   const chosen = entries.find((e) => e.key === selected);
   const open = (entry: Entry) => {
     if (entry.kind === "alert") go({ name: "settings" });
@@ -188,6 +197,7 @@ export function NeedsYou(props: {
           }
           const { item } = entry;
           const summary = inputSummary(item.input);
+          const chip = chipOf(item.sessionId);
           return (
             <li key={entry.key}>
               <button
@@ -204,6 +214,7 @@ export function NeedsYou(props: {
                 <RowHead>
                   <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
                   <span className="min-w-0 flex-1 truncate text-sm">{`${item.hostName} · ${item.sessionName}`}</span>
+                  {chip && <ClientChip name={chip.name} color={chip.color} />}
                   <time
                     dateTime={item.createdAt}
                     className="shrink-0 text-muted-foreground text-xs tabular-nums"
