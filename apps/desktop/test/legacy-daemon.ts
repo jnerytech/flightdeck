@@ -38,6 +38,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     },
     describe: { text: "", redacted: 0 },
     card: {} as unknown,
+    /** What `watch.byUrl` answers. */
+    byUrl: { via: "none", trace: null, sessions: [] } as unknown,
   };
   /** What `vault.rules.preview` answers (phase 19). */
   const preview = {
@@ -156,6 +158,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
           return ack(watch.info);
         }
         if (type === "watch.describe") return ack(watch.describe);
+        if (type === "watch.byUrl") return ack(watch.byUrl);
+        if (type === "card.get") return ack(watch.card);
         if (type === "card.pr.create") return ack(watch.card);
         if (type === "teams.list") return ack({ teams: messaging.teams });
         if (type === "teams.status") {
