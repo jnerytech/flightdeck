@@ -20,7 +20,10 @@ export interface RunnerSettings {
   outputDir: string;
 }
 
-export function runnerSettings(env: Record<string, string | undefined>): RunnerSettings {
+export function runnerSettings(
+  env: Record<string, string | undefined>,
+  root: string,
+): RunnerSettings {
   const ci = Boolean(env.CI);
   const reporter: RunnerSettings["reporter"] = [
     ["list"],

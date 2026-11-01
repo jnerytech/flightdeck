@@ -1,44 +1,48 @@
 import { describe, expect, test } from "bun:test";
+import { join, resolve } from "node:path";
 import { E2E_TEST_DIR, E2E_TEST_MATCH, grepFor, runnerSettings } from "../lib/e2e-config.ts";
+
+/** The repo root, which the report folder hangs from (the config lives deeper, in scripts/e2e). */
+const ROOT = resolve("/repo", "root");
 
 describe("e2e runner settings", () => {
   test("on CI a failed journey is retried once, and a retried pass is kept as flaky", () => {
-    const ci = runnerSettings({ CI: "true" });
+    const ci = runnerSettings({ CI: "true" }, ROOT);
     expect(ci.retries).toBe(1);
     expect(ci.forbidOnly).toBe(true);
-    expect(runnerSettings({}).retries).toBe(0);
-    expect(runnerSettings({}).forbidOnly).toBe(false);
+    expect(runnerSettings({}, ROOT).retries).toBe(0);
+    expect(runnerSettings({}, ROOT).forbidOnly).toBe(false);
   });
 
   test("journeys run one at a time, in file order: the second language relies on the first's state", () => {
-    const settings = runnerSettings({});
+    const settings = runnerSettings({}, ROOT);
     expect(settings.workers).toBe(1);
     expect(settings.fullyParallel).toBe(false);
   });
 
-  test("a failure keeps a trace, a print and a video; a pass keeps nothing", () => {
-    expect(runnerSettings({}).use).toEqual({
+  test("a failure keeps a trace and a print (no video: it needs a downloaded ffmpeg); a pass keeps nothing", () => {
+    expect(runnerSettings({}, ROOT).use).toEqual({
       trace: "retain-on-failure",
       screenshot: "only-on-failure",
-      video: "retain-on-failure",
+      video: "off",
     });
   });
 
   test("the reports are the list, the HTML report (never opened) and, on CI, the github annotations", () => {
-    expect(runnerSettings({}).reporter).toEqual([
+    expect(runnerSettings({}, ROOT).reporter).toEqual([
       ["list"],
-      ["html", { open: "never", outputFolder: "playwright-report" }],
+      ["html", { open: "never", outputFolder: join(ROOT, "playwright-report") }],
     ]);
-    expect(runnerSettings({ CI: "1" }).reporter).toEqual([
+    expect(runnerSettings({ CI: "1" }, ROOT).reporter).toEqual([
       ["list"],
-      ["html", { open: "never", outputFolder: "playwright-report" }],
+      ["html", { open: "never", outputFolder: join(ROOT, "playwright-report") }],
       ["github"],
     ]);
   });
 
-  test("E2E_FAILURES chooses where the traces, prints and videos go", () => {
-    expect(runnerSettings({ E2E_FAILURES: "out/fail" }).outputDir).toBe("out/fail");
-    expect(runnerSettings({}).outputDir).toMatch(/flightdeck-e2e$/);
+  test("E2E_FAILURES chooses where the traces and prints go", () => {
+    expect(runnerSettings({ E2E_FAILURES: "out/fail" }, ROOT).outputDir).toBe(join(ROOT, "out", "fail"));
+    expect(runnerSettings({}, ROOT).outputDir).toMatch(/flightdeck-e2e$/);
   });
 });
 
