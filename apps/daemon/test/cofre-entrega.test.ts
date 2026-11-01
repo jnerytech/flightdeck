@@ -134,7 +134,7 @@ describe("cofre-entrega", () => {
       vault.deliver(delivery({ secretId: `s${i}` }), "127.0.0.1");
     }
     expect(code(() => vault.deliver(delivery({ secretId: "extra" }), "127.0.0.1"))).toContain(
-      "cheio",
+      "full",
     );
     // Delivering the same secret again replaces it instead of filling a slot.
     vault.deliver(delivery({ secretId: "s3", value: "outro" }), "127.0.0.1");

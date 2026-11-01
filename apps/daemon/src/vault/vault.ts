@@ -29,7 +29,7 @@ export function requireVaultTransport(
   log?.(
     `vault: ${what} recusado, origem ${origin || "desconhecida"}: fora do loopback e da Tailscale`,
   );
-  throw invalid(REFUSED_TRANSPORT);
+  throw invalid(REFUSED_TRANSPORT, "transport_refused");
 }
 
 export interface VaultDelivery {
@@ -71,10 +71,11 @@ const MAX_TTL_MS = 60_000;
 /** A rogue client must not fill the memory with secrets. */
 const MAX_HELD = 64;
 
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const invalid = (message: string, reason: string, params: Record<string, string | number> = {}) =>
+  new FlightdeckError("invalid_state", message, reason, params);
 
 const REFUSED_TRANSPORT =
-  "entrega recusada: o cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard";
+  "delivery refused: the vault only delivers over loopback or Tailscale, which WireGuard encrypts";
 
 export class Vault {
   private readonly values = new Map<string, Held>();
@@ -89,11 +90,13 @@ export class Vault {
       this.opts.log?.(
         `vault: entrega do segredo ${input.secretId} recusada, origem ${origin || "desconhecida"}: fora do loopback e da Tailscale`,
       );
-      throw invalid(REFUSED_TRANSPORT);
+      throw invalid(REFUSED_TRANSPORT, "transport_refused");
     }
-    if (input.expiresAt <= now) throw invalid("o prazo de uso do segredo já passou");
+    if (input.expiresAt <= now) {
+      throw invalid("the time to use the secret has passed", "secret_expired");
+    }
     if (!this.values.has(input.secretId) && this.values.size >= MAX_HELD) {
-      throw invalid("o cofre do daemon está cheio de segredos entregues");
+      throw invalid("the daemon's vault is full of delivered secrets", "vault_full");
     }
     const expiresAt = Math.min(input.expiresAt, now + (this.opts.ttlMs ?? MAX_TTL_MS));
     this.drop(input.secretId);
@@ -120,7 +123,9 @@ export class Vault {
   ): { result: string; requester: VaultRequester } {
     const held = this.peek(secretId, purpose);
     const actions = this.opts.actions ?? {};
-    if (!Object.hasOwn(actions, action)) throw invalid(`ação desconhecida: ${action}`);
+    if (!Object.hasOwn(actions, action)) {
+      throw invalid(`unknown action: ${action}`, "vault_action_unknown", { action });
+    }
     this.drop(secretId);
     try {
       return {
@@ -130,7 +135,7 @@ export class Vault {
     } catch {
       // The reason could hold the value: it is not passed on.
       this.opts.log?.(`vault: a ação ${action} falhou para o segredo ${secretId}`);
-      throw invalid(`a ação ${action} falhou`);
+      throw invalid(`action ${action} failed`, "vault_action_failed", { action });
     }
   }
 
@@ -153,7 +158,10 @@ export class Vault {
     signal?: AbortSignal,
   ): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      const cancelled = () => invalid(`a espera pelo segredo ${secretId} foi cancelada`);
+      const cancelled = () =>
+        invalid(`the wait for secret ${secretId} was cancelled`, "secret_wait_cancelled", {
+          id: secretId,
+        });
       if (signal?.aborted) return reject(cancelled());
       const held = this.live(secretId);
       if (held?.purpose === purpose) {
@@ -171,7 +179,11 @@ export class Vault {
       };
       const timer = setTimeout(() => {
         finish();
-        reject(invalid(`o segredo ${secretId} não foi entregue a tempo`));
+        reject(
+          invalid(`secret ${secretId} was not delivered in time`, "secret_wait_timeout", {
+            id: secretId,
+          }),
+        );
       }, timeoutMs);
       const waiter: Waiter = {
         secretId,
@@ -199,7 +211,8 @@ export class Vault {
   /** Drops everything: nothing outlives the daemon. */
   stop(): void {
     for (const id of [...this.values.keys()]) this.drop(id);
-    for (const waiter of [...this.waiters]) waiter.reject(invalid("o cofre foi encerrado"));
+    for (const waiter of [...this.waiters])
+      waiter.reject(invalid("the vault was closed", "vault_closed"));
   }
 
   private now(): number {
@@ -222,11 +235,17 @@ export class Vault {
     if (!held) {
       throw new FlightdeckError(
         "not_found",
-        `o segredo ${secretId} não está com este daemon: o cofre é do app, que precisa estar aberto para entregá-lo`,
+        `secret ${secretId} is not with this daemon: the vault belongs to the app, which must be open to deliver it`,
+        "secret_not_here",
+        { id: secretId },
       );
     }
     if (held.purpose !== purpose) {
-      throw invalid(`o segredo ${secretId} foi entregue para ${held.purpose}, não para ${purpose}`);
+      throw invalid(
+        `secret ${secretId} was delivered for ${held.purpose}, not for ${purpose}`,
+        "secret_purpose_mismatch",
+        { held: held.purpose, purpose },
+      );
     }
     return held;
   }

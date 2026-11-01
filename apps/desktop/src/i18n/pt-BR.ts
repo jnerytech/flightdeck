@@ -709,6 +709,20 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    transport_refused:
+      "O cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard.",
+    secret_expired: "O prazo de uso do segredo passou: peça de novo.",
+    vault_full:
+      "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
+    vault_action_unknown: "A ação do cofre {action} não existe.",
+    vault_action_failed: "A ação do cofre {action} falhou.",
+    secret_wait_cancelled: "A espera pelo segredo foi cancelada.",
+    secret_wait_timeout:
+      "O segredo não foi entregue a tempo: o app está aberto, com o cofre destravado?",
+    vault_closed: "O cofre foi encerrado.",
+    secret_not_here:
+      "O segredo não está com este daemon: o cofre é do app, que precisa estar aberto para entregá-lo.",
+    secret_purpose_mismatch: "O segredo foi entregue para {held}, não para {purpose}.",
     budget_needs_project: "Um orçamento de projeto precisa de um projeto: escolha um.",
     budget_not_found: "Esse orçamento não existe mais.",
     telemetry_confirm: "Mexer no ~/.claude/settings.json pede a sua confirmação.",

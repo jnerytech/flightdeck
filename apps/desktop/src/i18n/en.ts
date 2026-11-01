@@ -714,6 +714,20 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    transport_refused:
+      "The vault only delivers over loopback or Tailscale, which WireGuard encrypts.",
+    secret_expired: "The time to use that secret has passed: ask for it again.",
+    vault_full:
+      "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",
+    vault_action_unknown: "The vault action {action} does not exist.",
+    vault_action_failed: "The vault action {action} failed.",
+    secret_wait_cancelled: "The wait for the secret was cancelled.",
+    secret_wait_timeout:
+      "The secret was not delivered in time: is the app open, with the vault unlocked?",
+    vault_closed: "The vault was closed.",
+    secret_not_here:
+      "The secret is not with this daemon: the vault belongs to the app, which must be open to deliver it.",
+    secret_purpose_mismatch: "The secret was delivered for {held}, not for {purpose}.",
     budget_needs_project: "A project budget needs a project: choose one.",
     budget_not_found: "That budget no longer exists.",
     telemetry_confirm: "Changing ~/.claude/settings.json asks for your confirmation.",

@@ -98,12 +98,12 @@ describe("cofre-espera", () => {
     controller.abort();
     const error = await waiting;
     expect(error).toContain("invalid_state");
-    expect(error).toContain("cancelada");
+    expect(error).toContain("cancelled");
     // Nobody is waiting any more: a delivery just stays held.
     vault.deliver(delivery(), "127.0.0.1");
     expect(vault.held()).toBe(1);
     const aborted = AbortSignal.abort();
-    expect(await failure(vault.waitFor("s2", "p", 5000, aborted))).toContain("cancelada");
+    expect(await failure(vault.waitFor("s2", "p", 5000, aborted))).toContain("cancelled");
   });
 
   test("stop encerra quem espera, e o erro não leva valor", async () => {
@@ -112,6 +112,6 @@ describe("cofre-espera", () => {
     vault.stop();
     const error = await waiting;
     expect(error).toContain("invalid_state");
-    expect(error).toContain("encerr");
+    expect(error).toContain("closed");
   });
 });
