@@ -1166,8 +1166,10 @@ app shows nothing and asks nothing.
     `flightdeckd claude`, or, for a session with no process, by continuing it with the message as
     its prompt. A background session that is running and has no channel cannot be written to:
     Claude Code has no command for it, and the app says so.
-- **Approving:** a permission a background session asks is answered like a terminal session's
-  when the Claude Code hooks of Flightdeck are installed; otherwise attach in a terminal.
+- **Approving:** a permission a background session asks should be answered like a terminal
+  session's when the Claude Code hooks of Flightdeck are installed, but this has not been
+  confirmed on a real background session yet (see DECISIONS); the sure way is **Bring to the
+  terminal** and answering there.
 - **Starting one:** tick **Start in the background** in the new-session form (the host must offer
   it), or run `flightdeckd claude --bg "prompt"`. The session runs with the Flightdeck channel and
   the persona, and shows up in Sessions.

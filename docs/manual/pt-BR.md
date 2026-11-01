@@ -1143,9 +1143,10 @@ não tem, o app não mostra nem pergunta nada.
     ou, para uma sessão sem processo, continuando-a com a mensagem como prompt. Uma sessão em
     segundo plano que está rodando e não tem canal não recebe mensagem: o Claude Code não tem
     comando para isso, e o app diz.
-- **Aprovar:** uma permissão pedida por uma sessão em segundo plano é respondida como a de uma
-  sessão do terminal quando os hooks do Flightdeck do Claude Code estão instalados; senão, anexe
-  num terminal.
+- **Aprovar:** uma permissão pedida por uma sessão em segundo plano deve ser respondida como a de
+  uma sessão do terminal quando os hooks do Flightdeck do Claude Code estão instalados, mas isso
+  ainda não foi confirmado numa sessão real em segundo plano (veja DECISIONS); o caminho seguro é
+  **Trazer para o terminal** e responder lá.
 - **Iniciar uma:** marque **Iniciar em segundo plano** no formulário de nova sessão (o host precisa
   oferecer), ou rode `flightdeckd claude --bg "prompt"`. A sessão roda com o canal do Flightdeck e
   a persona, e aparece em Sessões.
