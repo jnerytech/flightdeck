@@ -4,6 +4,7 @@ import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
 import { Grid, Inline, Stack } from "@/components/layout/stack";
+import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -22,6 +23,9 @@ interface Draft {
   limitUsd: string;
   action: Budget["action"];
 }
+
+/** The fraction of the limit from which a budget's bar turns red. */
+const HOT_FROM = 0.8;
 
 /** The value of the list entry that opens the key field. */
 const OTHER = "__other__";
@@ -98,46 +102,58 @@ export function BudgetsSection(props: {
             <Stack as="ul" gap={2}>
               {props.budgets.map((budget) => (
                 <li key={budget.id}>
-                  <ListRow
-                    title={
-                      <span
-                        className="whitespace-normal break-words"
-                        title={budget.projectKey ?? undefined}
-                      >
-                        {budgetLine(budget, t)}
-                      </span>
-                    }
-                    trailing={
-                      <Inline gap={1}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={t("budgetsUi.edit", { label: budgetLabel(budget, t) })}
-                          onClick={() =>
-                            setDraft({
-                              id: budget.id,
-                              scope: budget.scope,
-                              projectKey: budget.projectKey ?? "",
-                              other: false,
-                              period: budget.period,
-                              limitUsd: String(budget.limitUsd),
-                              action: budget.action,
-                            })
-                          }
+                  <Stack gap={1}>
+                    <ListRow
+                      title={
+                        <span
+                          className="whitespace-normal break-words"
+                          title={budget.projectKey ?? undefined}
                         >
-                          {t("budgetsUi.editShort")}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={t("budgetsUi.remove", { label: budgetLabel(budget, t) })}
-                          onClick={() => setRemoving(budget)}
-                        >
-                          {t("budgetsUi.removeShort")}
-                        </Button>
-                      </Inline>
-                    }
-                  />
+                          {budgetLine(budget, t)}
+                        </span>
+                      }
+                      trailing={
+                        <Inline gap={1}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t("budgetsUi.edit", { label: budgetLabel(budget, t) })}
+                            onClick={() =>
+                              setDraft({
+                                id: budget.id,
+                                scope: budget.scope,
+                                projectKey: budget.projectKey ?? "",
+                                other: false,
+                                period: budget.period,
+                                limitUsd: String(budget.limitUsd),
+                                action: budget.action,
+                              })
+                            }
+                          >
+                            {t("budgetsUi.editShort")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t("budgetsUi.remove", { label: budgetLabel(budget, t) })}
+                            onClick={() => setRemoving(budget)}
+                          >
+                            {t("budgetsUi.removeShort")}
+                          </Button>
+                        </Inline>
+                      }
+                    />
+                    <Meter
+                      label={t("budgetsUi.meter", {
+                        label: budgetLabel(budget, t),
+                        percent: Math.round(budget.fraction * 100),
+                      })}
+                      value={Math.min(budget.fraction, 1)}
+                      max={1}
+                      hot={budget.fraction >= HOT_FROM}
+                      className="w-full"
+                    />
+                  </Stack>
                 </li>
               ))}
             </Stack>
