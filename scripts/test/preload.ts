@@ -11,6 +11,7 @@ import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
+import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
@@ -26,6 +27,10 @@ const checks = installCheckGuard();
 // No test reaches the internet: only 127.0.0.1 and localhost (phase 9).
 const network = installNetworkGuard();
 const tauri = installTauriGuard();
+// The repository the suite runs in, and PATH as the guards left it: a test that writes into the
+// first or leaves a fake on the second fails the run.
+const repo = installRepoGuard(join(import.meta.dir, "../.."));
+const pathBefore = process.env.PATH;
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the
 // current one. Make sure that lookup now lands on the sentinel, or stop before any test runs.
@@ -49,6 +54,8 @@ afterAll(() => {
   assertNoNetwork(network);
   // The executor of "Abrir no terminal" is injected; the real one goes through the Tauri bridge.
   assertNoTauriCalls(tauri);
+  assertRepoUntouched(repo);
+  assertPathUntouched(pathBefore);
   if (existsSync(serviceGuard)) {
     throw new Error(`controlador de serviço real chamado: ${readFileSync(serviceGuard, "utf8")}`);
   }
