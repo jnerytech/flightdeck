@@ -17,18 +17,21 @@ export interface TeamBrief {
   workers: Array<{ name: string; persona: string | null; cardId: string | null }>;
 }
 
-const checksLine = (checks: readonly string[]): string =>
-  checks.length > 0
-    ? `os comandos de verificação do time, na worktree da executora: ${checks.map((c) => `\`${c}\``).join(", ")}`
-    : "os checks do projeto (os mesmos que o board roda nos cards: testes, tipos e lint), na worktree da executora";
+const checksLine = (checks: readonly string[]): string => {
+  if (checks.length === 0)
+    return "os checks do projeto (os mesmos que o board roda nos cards: testes, tipos e lint), na worktree da executora";
+  const commands = checks.map((c) => `\`${c}\``).join(", ");
+  return `os comandos de verificação do time, na worktree da executora: ${commands}`;
+};
 
 /** The text the coordinator starts with. */
 export function coordinatorInstructions(brief: TeamBrief): string {
   const workers = brief.workers
-    .map(
-      (w) =>
-        `- "${w.name}"${w.persona ? ` (persona ${w.persona})` : ""}${w.cardId ? `, card ${w.cardId}` : ""}`,
-    )
+    .map((w) => {
+      const persona = w.persona ? ` (persona ${w.persona})` : "";
+      const card = w.cardId ? `, card ${w.cardId}` : "";
+      return `- "${w.name}"${persona}${card}`;
+    })
     .join("\n");
   return `# Você é a coordenadora do time "${brief.name}" (instruções de coordenação, versão ${INSTRUCTIONS_VERSION})
 

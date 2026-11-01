@@ -29,7 +29,10 @@ interface Rules {
 
 const side = (selector: Selector, t: T): string =>
   KINDS.filter((k) => selector[k])
-    .map((k) => `${t(`messagingRulesUi.kinds.${k}`)} ${selector[k]}`)
+    .map((k) => {
+      const kind = t(`messagingRulesUi.kinds.${k}`);
+      return `${kind} ${selector[k]}`;
+    })
     .join(", ");
 
 const label = (e: Exception, t: T): string =>

@@ -109,7 +109,7 @@ export function FolderPicker(props: {
           aria-label={t("folderPicker.path")}
           className="flex flex-wrap items-center gap-1 text-sm"
         >
-          <Button type="button" variant="ghost" size="xs" onClick={() => void open(undefined)}>
+          <Button type="button" variant="ghost" size="xs" onClick={() => void open()}>
             {t("folderPicker.roots")}
           </Button>
           {crumbs.map((step, index) => (

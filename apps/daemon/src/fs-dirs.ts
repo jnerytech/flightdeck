@@ -1,4 +1,4 @@
-import { readdirSync, realpathSync, statSync } from "node:fs";
+import { type Dirent, readdirSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { isInside, resolveAllowedCwd } from "./paths.ts";
 
@@ -36,6 +36,10 @@ function realDir(path: string): string | null {
   }
 }
 
+/** Where a link points when it points at a folder; anything that is not a link has no target. */
+const linkTarget = (entry: Dirent, child: string): string | null =>
+  entry.isSymbolicLink() ? realDir(child) : null;
+
 const byName = (a: DirEntry, b: DirEntry) => {
   const [x, y] = [a.name.toLowerCase(), b.name.toLowerCase()];
   if (x === y) return a.name < b.name ? -1 : 1;
@@ -64,7 +68,7 @@ export function listDirs(
   for (const entry of readdirSync(real, { withFileTypes: true })) {
     if (!options.hidden && entry.name.startsWith(".")) continue;
     const child = join(real, entry.name);
-    const target = entry.isDirectory() ? child : entry.isSymbolicLink() ? realDir(child) : null;
+    const target = entry.isDirectory() ? child : linkTarget(entry, child);
     if (target !== null && roots.some((root) => isInside(root, target))) {
       dirs.push({ name: entry.name, path: target });
     }

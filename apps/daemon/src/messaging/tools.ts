@@ -18,11 +18,12 @@ export interface Caller {
 export const listSessions = (daemon: Caller, as: SessionIdentity) =>
   daemon.call("messages.sessions", { as });
 
+const SEND_RESULT: Record<string, string> = { delivered: "entregue", queued: "na fila" };
+
 /** `entregue`, `na fila` or `recusada` with the reason. */
 export async function sendToSession(daemon: Caller, as: SessionIdentity, to: string, text: string) {
   const sent = await daemon.call("messages.send", { as, to, text });
-  const resultado =
-    sent.status === "delivered" ? "entregue" : sent.status === "queued" ? "na fila" : "recusada";
+  const resultado = SEND_RESULT[sent.status] ?? "recusada";
   return { resultado, ...(sent.reason ? { motivo: sent.reason } : {}), id: sent.id };
 }
 

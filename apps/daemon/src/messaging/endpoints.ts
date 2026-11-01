@@ -95,6 +95,8 @@ const TERMINAL_STATE: Record<ExternalStatus, MessagingSession["state"]> = {
 
 const PLAIN_REASON = "claude puro, sem canal: só recebe pela troca nativa do Claude Code";
 const ENDED_REASON = "a sessão terminou";
+const notControllableReason = (state: string): string =>
+  state === "ended" ? ENDED_REASON : PLAIN_REASON;
 /** `read_session` shows at most this many messages, each cut to 8 KB. */
 const MAX_READ = 20;
 
@@ -168,7 +170,7 @@ export class LocalEndpoints implements Endpoints {
         projectKey: s.cwd ? this.opts.projectKey(s.cwd) : s.projectKey,
         state,
         controllable,
-        reason: controllable ? null : state === "ended" ? ENDED_REASON : PLAIN_REASON,
+        reason: controllable ? null : notControllableReason(state),
       });
     }
     return infos;
