@@ -7,6 +7,8 @@
 @import "tw-animate-css";
 /* Inter, variable, bundled as local woff2 files (OFL): no network, and the CSP already allows it. */
 @import "@fontsource-variable/inter";
+/* xterm's own rules: they hide its helper textarea and measure element, and place its layers. */
+@import "@xterm/xterm/css/xterm.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
