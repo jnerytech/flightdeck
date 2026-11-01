@@ -180,7 +180,13 @@ export class SessionManager {
 
   get(sessionId: string): SessionSummary {
     const session = this.store.getSession(sessionId);
-    if (!session) throw new FlightdeckError("not_found", `sessão ${sessionId} não existe`);
+    if (!session)
+      throw new FlightdeckError(
+        "not_found",
+        `session ${sessionId} does not exist`,
+        "session_not_found",
+        { id: sessionId },
+      );
     return session;
   }
 
@@ -252,7 +258,8 @@ export class SessionManager {
     if (session.status === "ended" || session.status === "error") {
       throw new FlightdeckError(
         "invalid_state",
-        `sessão está ${session.status}; use session.resume`,
+        `session is ${session.status}; use session.resume`,
+        "session_ended",
       );
     }
     let live = this.live.get(sessionId);
@@ -295,7 +302,11 @@ export class SessionManager {
   resume(sessionId: string): Promise<void> {
     const session = this.get(sessionId);
     if (session.status !== "ended" && session.status !== "error") {
-      throw new FlightdeckError("invalid_state", `sessão está ${session.status}; nada a retomar`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `session is ${session.status}; nothing to resume`,
+        "session_not_ended",
+      );
     }
     this.startRun(sessionId, session.claudeSessionId ?? undefined);
     this.setStatus(sessionId, "idle", "retomada");
@@ -417,7 +428,11 @@ export class SessionManager {
 
   private resolvePersona(ref: PersonaRef, cwd: string): ResolvedPersona {
     if (!this.opts.personas) {
-      throw new FlightdeckError("invalid_state", "personas indisponíveis neste host");
+      throw new FlightdeckError(
+        "invalid_state",
+        "personas unavailable on this host",
+        "personas_off",
+      );
     }
     return this.opts.personas.resolve(ref, { projectPath: cwd, language: ref.language });
   }
@@ -516,7 +531,12 @@ export class SessionManager {
 
   private deliver(sessionId: string, text: string): void {
     const live = this.live.get(sessionId);
-    if (!live) throw new FlightdeckError("invalid_state", "sessão sem runtime ativo");
+    if (!live)
+      throw new FlightdeckError(
+        "invalid_state",
+        "session has no active runtime",
+        "session_not_running",
+      );
     const status = this.get(sessionId).status;
     if (status !== "starting") this.setStatus(sessionId, "running");
     this.emit(sessionId, { type: "message.user", text });
@@ -557,7 +577,8 @@ export class SessionManager {
     if (!run?.toggleMcpServer) {
       throw new FlightdeckError(
         "invalid_state",
-        "a sessão não está viva para mudar os servidores MCP",
+        "the session is not alive to change its MCP servers",
+        "mcp_set_not_live",
       );
     }
     await run.toggleMcpServer(name, enabled);
@@ -569,7 +590,8 @@ export class SessionManager {
     if (!run?.mcpServerStatus) {
       throw new FlightdeckError(
         "invalid_state",
-        "a sessão não está viva para consultar os servidores MCP",
+        "the session is not alive to query its MCP servers",
+        "mcp_query_not_live",
       );
     }
     return run.mcpServerStatus();

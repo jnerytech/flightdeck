@@ -69,11 +69,11 @@ describe("estados-avisos", () => {
   test("erros viram toasts traduzidos pelo code, com Detalhes, e não se apagam uns aos outros", async () => {
     const { store, hostId } = await online();
     await act(async () => {
-      await store.createSession(hostId, { cwd: "/fora/de/tudo", prompt: "oi" });
+      await store.createSession(hostId, { cwd: "/", prompt: "oi" });
       await store.hostCommand(hostId, "card.get", { cardId: "nao-existe" });
     });
     await settle(() => alerts().length === 2);
-    expect(alertTexts().join(" | ")).toContain("A pasta está fora das pastas permitidas do host.");
+    expect(alertTexts().join(" | ")).toContain("está fora das pastas permitidas do host.");
     expect(alertTexts().join(" | ")).toContain("flightdeckd setup");
     expect(alertTexts().join(" | ")).toContain("Não encontrado no host.");
     const notFound = alerts().find((a) => (a.textContent ?? "").includes("Não encontrado"));
@@ -92,7 +92,7 @@ describe("estados-avisos", () => {
       await Bun.sleep(400);
     });
     await settle(() => alerts().length === 1);
-    expect(alertTexts()).toEqual([expect.stringContaining("A pasta está fora")]);
+    expect(alertTexts()).toEqual([expect.stringContaining("está fora das pastas permitidas")]);
   });
 
   test("código desconhecido mostra a mensagem do daemon; em inglês, os títulos também", async () => {

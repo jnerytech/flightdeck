@@ -74,23 +74,23 @@ describe("fs-dirs: listing the folders of a host", () => {
       join(base, "root-evil"),
       "/",
     ]) {
-      expect(() => listDirs(path, [root])).toThrow(/fora de allowedRoots/);
+      expect(() => listDirs(path, [root])).toThrow(/outside allowedRoots/);
     }
   });
 
   test("a folder that does not exist, or a file, is refused", () => {
     const { root } = tree();
-    expect(() => listDirs(join(root, "nope"), [root])).toThrow(/inexistente/);
-    expect(() => listDirs(join(root, "code", "notes.txt"), [root])).toThrow(/inexistente/);
+    expect(() => listDirs(join(root, "nope"), [root])).toThrow(/does not exist/);
+    expect(() => listDirs(join(root, "code", "notes.txt"), [root])).toThrow(/does not exist/);
   });
 
   test("a symlink out of the roots is neither listed nor followed", () => {
     const { root, outside } = tree();
     symlinkSync(outside, join(root, "code", "escape"));
     expect(names(listDirs(join(root, "code"), [root]))).toEqual(["app", "lib"]);
-    expect(() => listDirs(join(root, "code", "escape"), [root])).toThrow(/fora de allowedRoots/);
+    expect(() => listDirs(join(root, "code", "escape"), [root])).toThrow(/outside allowedRoots/);
     expect(() => listDirs(join(root, "code", "escape", "secret"), [root])).toThrow(
-      /fora de allowedRoots/,
+      /outside allowedRoots/,
     );
   });
 

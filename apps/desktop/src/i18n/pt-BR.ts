@@ -641,7 +641,24 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
-  daemonRefusal: {},
+  daemonRefusal: {
+    cwd_missing: "A pasta {cwd} não existe neste host.",
+    cwd_outside_roots:
+      "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
+    session_not_found: "A sessão {id} não existe neste host.",
+    session_ended:
+      "A sessão não está rodando (terminou ou deu erro): retome-a para mandar uma mensagem.",
+    session_not_ended: "A sessão ainda está rodando: não há o que retomar.",
+    personas_off: "Personas não estão disponíveis neste host.",
+    session_not_running: "A sessão não tem um processo rodando: retome-a antes.",
+    mcp_set_not_live: "A sessão não está rodando, então os servidores MCP não podem ser mudados.",
+    mcp_query_not_live: "A sessão não está rodando, então não dá para consultar os servidores MCP.",
+    external_no_channel:
+      "Esta sessão não tem canal: só sessões abertas com flightdeckd claude recebem mensagens.",
+    transcript_not_indexed: "O transcript {id} não está indexado neste host.",
+    session_maybe_active:
+      "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
+  },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
     needs_run: "Um comando precisa de algo para rodar.",

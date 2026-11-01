@@ -73,7 +73,7 @@ export function Notices(props: { store: AppStore; state: AppState }) {
         store.dismissNotice(notice.id);
         continue;
       }
-      const { title, detail } = translateError(notice.code, notice.text, t);
+      const { title, detail } = translateError(notice.code, notice.text, t, notice);
       const id = `${prefix}e${notice.id}`;
       toast.custom(
         () => (

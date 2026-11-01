@@ -752,12 +752,19 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "external.message": {
         const { claudeSessionId, text } = command.payload;
         const hub = central();
-        if (!hub.external.get(claudeSessionId))
-          throw new FlightdeckError("not_found", `sessão ${claudeSessionId} não existe`);
+        if (!hub.external.get(claudeSessionId)) {
+          throw new FlightdeckError(
+            "not_found",
+            `session ${claudeSessionId} does not exist`,
+            "session_not_found",
+            { id: claudeSessionId },
+          );
+        }
         if (!messageExternal(hub, claudeSessionId, text)) {
           throw new FlightdeckError(
             "invalid_state",
-            "sessão sem canal: só sessões abertas com flightdeckd claude recebem mensagens",
+            "session has no channel: only sessions opened with flightdeckd claude receive messages",
+            "external_no_channel",
           );
         }
         return ok(command.type);
@@ -1220,12 +1227,18 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { claudeSessionId, force, name, permissionMode } = command.payload;
         const session = history().session(claudeSessionId);
         if (!session) {
-          throw new FlightdeckError("not_found", `transcript ${claudeSessionId} não indexado`);
+          throw new FlightdeckError(
+            "not_found",
+            `transcript ${claudeSessionId} not indexed`,
+            "transcript_not_indexed",
+            { id: claudeSessionId },
+          );
         }
         if (session.maybeActive && !force) {
           throw new FlightdeckError(
             "invalid_state",
-            "sessão possivelmente em uso em outro lugar; envie force: true para retomar mesmo assim",
+            "session possibly in use elsewhere; send force: true to resume anyway",
+            "session_maybe_active",
           );
         }
         return ok(

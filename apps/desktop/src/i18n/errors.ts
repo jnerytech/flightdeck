@@ -10,8 +10,16 @@ export function translateError(
   code: string,
   message: string,
   t: T,
-  _why?: { reason?: string; params?: Record<string, string | number> },
+  why?: { reason?: string; params?: Record<string, string | number> },
 ): { title: string; detail: string } {
+  // A reason the app has a text for is the whole sentence; the message is for logs.
+  const reason = why?.reason;
+  if (reason && reason in ptBR.daemonRefusal) {
+    return { title: t(`daemonRefusal.${reason}` as Key, why?.params), detail: "" };
+  }
+  if (reason && reason in ptBR.snippetRefusal) {
+    return { title: t(`snippetRefusal.${reason}` as Key, why?.params), detail: "" };
+  }
   if (code === "") return { title: message, detail: "" };
   const known = code in ptBR.errors && code !== "unknown";
   return { title: t(`errors.${known ? code : "unknown"}` as Key), detail: message };
@@ -24,10 +32,6 @@ export function refusalText(
   t: T,
   why?: { reason?: string; params?: Record<string, string | number> },
 ): string {
-  // A reason the app has a text for is the whole sentence; the message is for logs.
-  if (why?.reason && why.reason in ptBR.snippetRefusal) {
-    return t(`snippetRefusal.${why.reason}` as Key, why.params);
-  }
-  const { title, detail } = translateError(code, message, t);
+  const { title, detail } = translateError(code, message, t, why);
   return detail ? `${title} ${detail}` : title;
 }

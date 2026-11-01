@@ -60,16 +60,11 @@ describe("recusas-daemon: the daemon's refusals about folders and sessions", () 
     while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
       await Bun.sleep(10);
     }
-    // Any refusal that has a reason: a snippet with no command.
-    await store.hostCommand(hostId, "snippets.save", {
-      scope: "host",
-      name: "x",
-      type: "command",
-    });
+    await store.createSession(hostId, { cwd: "/folder/nobody/made", prompt: "hi" });
     expect(store.getState().notices[0]).toMatchObject({
-      code: "bad_request",
-      reason: "needs_run",
-      params: {},
+      code: "forbidden_cwd",
+      reason: "cwd_missing",
+      params: { cwd: "/folder/nobody/made" },
     });
   });
 });

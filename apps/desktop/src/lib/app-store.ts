@@ -1410,6 +1410,10 @@ export class AppStore {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
+    if (error instanceof RequestError && error.reason) {
+      notice.reason = error.reason;
+      notice.params = error.params ?? {};
+    }
     this.update({
       error: text ?? describeError(error),
       notices: [...this.state.notices, notice],

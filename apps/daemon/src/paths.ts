@@ -30,10 +30,18 @@ export function samePath(a: string, b: string): boolean {
 /** Resolves `cwd` with realpath and refuses it unless it lives inside one of `allowedRoots`. */
 export function resolveAllowedCwd(cwd: string, allowedRoots: readonly string[]): string {
   const real = realDir(cwd);
-  if (!real) throw new FlightdeckError("forbidden_cwd", `diretório inexistente: ${cwd}`);
+  if (!real)
+    throw new FlightdeckError("forbidden_cwd", `directory does not exist: ${cwd}`, "cwd_missing", {
+      cwd,
+    });
   for (const root of allowedRoots) {
     const realRoot = realDir(root);
     if (realRoot && isInside(realRoot, real)) return real;
   }
-  throw new FlightdeckError("forbidden_cwd", `diretório fora de allowedRoots: ${cwd}`);
+  throw new FlightdeckError(
+    "forbidden_cwd",
+    `directory outside allowedRoots: ${cwd}`,
+    "cwd_outside_roots",
+    { cwd },
+  );
 }

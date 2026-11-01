@@ -646,7 +646,23 @@ export const en: Dictionary = {
     unknown:
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
-  daemonRefusal: {},
+  daemonRefusal: {
+    cwd_missing: "The folder {cwd} does not exist on this host.",
+    cwd_outside_roots:
+      "The folder {cwd} is outside the host's allowed folders. Add it with flightdeckd setup, or in allowedRoots in ~/.flightdeck/config.json.",
+    session_not_found: "Session {id} does not exist on this host.",
+    session_ended: "The session is not running (it ended or failed): resume it to send a message.",
+    session_not_ended: "The session is still running: there is nothing to resume.",
+    personas_off: "Personas are not available on this host.",
+    session_not_running: "The session has no running process: resume it first.",
+    mcp_set_not_live: "The session is not running, so its MCP servers cannot be changed.",
+    mcp_query_not_live: "The session is not running, so its MCP servers cannot be queried.",
+    external_no_channel:
+      "This session has no channel: only sessions opened with flightdeckd claude receive messages.",
+    transcript_not_indexed: "The transcript {id} is not indexed on this host.",
+    session_maybe_active:
+      "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
+  },
   snippetRefusal: {
     name_invalid: "Name must be 1 to 64 characters: letters, numbers, space, . _ -",
     needs_run: "A command needs something to run.",
