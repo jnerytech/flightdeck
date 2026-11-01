@@ -55,7 +55,7 @@ import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
-import { FlightdeckError } from "./errors.ts";
+import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs } from "./fs-dirs.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
@@ -434,12 +434,12 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function history(): HistoryIndexer {
-    if (!opts.history) throw new FlightdeckError("invalid_state", "histórico desativado");
+    if (!opts.history) throw featureOff("history");
     return opts.history;
   }
 
   function central() {
-    if (!opts.central) throw new FlightdeckError("invalid_state", "central de sessões desativada");
+    if (!opts.central) throw featureOff("central");
     return opts.central;
   }
 
@@ -464,76 +464,74 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function vault(): Vault {
-    if (!opts.vault) throw new FlightdeckError("invalid_state", "cofre indisponível");
+    if (!opts.vault) throw featureOff("vault");
     return opts.vault;
   }
 
   function names(): Names {
-    if (!opts.names) throw new FlightdeckError("invalid_state", "nomes de sessão indisponíveis");
+    if (!opts.names) throw featureOff("names");
     return opts.names;
   }
 
   function teams(): Teams {
-    if (!opts.teams) throw new FlightdeckError("invalid_state", "times indisponíveis");
+    if (!opts.teams) throw featureOff("teams");
     return opts.teams;
   }
 
   function messaging(): Messaging {
-    if (!opts.messaging) throw new FlightdeckError("invalid_state", "mensagens indisponíveis");
+    if (!opts.messaging) throw featureOff("messaging");
     return opts.messaging;
   }
 
   function idle(): Idle {
-    if (!opts.idle) throw new FlightdeckError("invalid_state", "aviso de ocioso indisponível");
+    if (!opts.idle) throw featureOff("idle");
     return opts.idle;
   }
 
   function actions(): Actions {
-    if (!opts.actions) throw new FlightdeckError("invalid_state", "ações indisponíveis");
+    if (!opts.actions) throw featureOff("actions");
     return opts.actions;
   }
 
   function automations(): Automations {
-    if (!opts.automations) throw new FlightdeckError("invalid_state", "automações indisponíveis");
+    if (!opts.automations) throw featureOff("automations");
     return opts.automations;
   }
 
   function issues(): Issues {
-    if (!opts.issues) throw new FlightdeckError("invalid_state", "issues indisponíveis");
+    if (!opts.issues) throw featureOff("issues");
     return opts.issues;
   }
 
   function autoApprove(): AutoApprover {
-    if (!opts.autoApprove) {
-      throw new FlightdeckError("invalid_state", "aprovação automática indisponível");
-    }
+    if (!opts.autoApprove) throw featureOff("autoApprove");
     return opts.autoApprove;
   }
 
   function agentcfg(): AgentConfig {
-    if (!opts.agentcfg) throw new FlightdeckError("invalid_state", "config de agente indisponível");
+    if (!opts.agentcfg) throw featureOff("agentcfg");
     return opts.agentcfg;
   }
 
   function mcp(): McpConfig {
-    if (!opts.mcp) throw new FlightdeckError("invalid_state", "MCP do projeto indisponível");
+    if (!opts.mcp) throw featureOff("mcp");
     return opts.mcp;
   }
 
   const projectPath = (projectId: string) => board().getProject(projectId).path;
 
   function pluginsApi(): Plugins {
-    if (!opts.plugins) throw new FlightdeckError("invalid_state", "plugins indisponíveis");
+    if (!opts.plugins) throw featureOff("plugins");
     return opts.plugins;
   }
 
   function memory(): ProjectMemory {
-    if (!opts.memory) throw new FlightdeckError("invalid_state", "memória indisponível");
+    if (!opts.memory) throw featureOff("memory");
     return opts.memory;
   }
 
   function rewinder(): Rewinder {
-    if (!opts.rewinder) throw new FlightdeckError("invalid_state", "voltar arquivos indisponível");
+    if (!opts.rewinder) throw featureOff("rewinder");
     return opts.rewinder;
   }
 
@@ -569,111 +567,107 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function maintenance(): Maintenance {
-    if (!opts.maintenance) throw new FlightdeckError("invalid_state", "manutenção indisponível");
+    if (!opts.maintenance) throw featureOff("maintenance");
     return opts.maintenance;
   }
 
   function usage(): UsageLedger {
-    if (!opts.usage) throw new FlightdeckError("invalid_state", "uso desativado");
+    if (!opts.usage) throw featureOff("usage");
     return opts.usage;
   }
 
   function quota(): Quota {
-    if (!opts.quota) throw new FlightdeckError("invalid_state", "cota desativada");
+    if (!opts.quota) throw featureOff("quota");
     return opts.quota;
   }
 
   function costs(): Costs {
-    if (!opts.costs) throw new FlightdeckError("invalid_state", "custos desativados");
+    if (!opts.costs) throw featureOff("costs");
     return opts.costs;
   }
 
   function budgets(): Budgets {
-    if (!opts.budgets) throw new FlightdeckError("invalid_state", "orçamentos desativados");
+    if (!opts.budgets) throw featureOff("budgets");
     return opts.budgets;
   }
 
   function quotaHistory(): QuotaHistory {
-    if (!opts.quotaHistory) throw new FlightdeckError("invalid_state", "sem histórico da cota");
+    if (!opts.quotaHistory) throw featureOff("quotaHistory");
     return opts.quotaHistory;
   }
 
   function changes(): Changes {
-    if (!opts.changes) throw new FlightdeckError("invalid_state", "revisão de mudanças desativada");
+    if (!opts.changes) throw featureOff("changes");
     return opts.changes;
   }
 
   function ssh(): SshTargets {
-    if (!opts.ssh) throw new FlightdeckError("invalid_state", "destinos ssh desativados");
+    if (!opts.ssh) throw featureOff("ssh");
     return opts.ssh;
   }
 
   function snippets(): Snippets {
-    if (!opts.snippets) throw new FlightdeckError("invalid_state", "snippets desativados");
+    if (!opts.snippets) throw featureOff("snippets");
     return opts.snippets;
   }
 
   function personaSessions(): OpenSessionPersonas {
-    if (!opts.personaSessions) {
-      throw new FlightdeckError("invalid_state", "personas em sessões abertas desativadas");
-    }
+    if (!opts.personaSessions) throw featureOff("personaSessions");
     return opts.personaSessions;
   }
 
   function personas(): Personas {
-    if (!opts.personas) throw new FlightdeckError("invalid_state", "personas desativadas");
+    if (!opts.personas) throw featureOff("personas");
     return opts.personas;
   }
 
   function snippetUse(): SnippetUse {
-    if (!opts.snippetUse) throw new FlightdeckError("invalid_state", "usar snippets desativado");
+    if (!opts.snippetUse) throw featureOff("snippetUse");
     return opts.snippetUse;
   }
 
   function snippetHistory(): HistoryImporter {
-    if (!opts.snippetHistory)
-      throw new FlightdeckError("invalid_state", "importar do histórico desativado");
+    if (!opts.snippetHistory) throw featureOff("snippetHistory");
     return opts.snippetHistory;
   }
 
   function askpass(): AskpassBroker {
-    if (!opts.askpass) throw new FlightdeckError("invalid_state", "senhas do ssh desativadas");
+    if (!opts.askpass) throw featureOff("askpass");
     return opts.askpass;
   }
 
   function sshConnect(): SshConnector {
-    if (!opts.sshConnect) throw new FlightdeckError("invalid_state", "conectar por ssh desativado");
+    if (!opts.sshConnect) throw featureOff("sshConnect");
     return opts.sshConnect;
   }
 
   function sshHostKeys(): HostKeys {
-    if (!opts.sshHostKeys)
-      throw new FlightdeckError("invalid_state", "chaves do servidor desativadas");
+    if (!opts.sshHostKeys) throw featureOff("sshHostKeys");
     return opts.sshHostKeys;
   }
 
   function sshImport(): SshImporter {
-    if (!opts.sshImport) throw new FlightdeckError("invalid_state", "importar do ssh desativado");
+    if (!opts.sshImport) throw featureOff("sshImport");
     return opts.sshImport;
   }
 
   function review(): ReviewComments {
-    if (!opts.review) throw new FlightdeckError("invalid_state", "revisão desativada");
+    if (!opts.review) throw featureOff("review");
     return opts.review;
   }
 
   function files(): ReviewFiles {
-    if (!opts.files) throw new FlightdeckError("invalid_state", "edição de arquivos desativada");
+    if (!opts.files) throw featureOff("files");
     return opts.files;
   }
 
   function sessionFiles(): SessionFiles {
-    if (!opts.sessionFiles) throw new FlightdeckError("invalid_state", "sem arquivos das sessões");
+    if (!opts.sessionFiles) throw featureOff("sessionFiles");
     return opts.sessionFiles;
   }
 
   function terminals(): TerminalManager {
-    if (!opts.terminals) throw new FlightdeckError("invalid_state", "terminal indisponível");
+    if (!opts.terminals) throw featureOff("terminals");
     return opts.terminals;
   }
 
@@ -687,7 +681,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function board(): Board {
-    if (!opts.board) throw new FlightdeckError("invalid_state", "board desativado");
+    if (!opts.board) throw featureOff("board");
     return opts.board;
   }
 
@@ -797,7 +791,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ),
         });
       case "snapshots.files": {
-        if (!opts.snapshots) throw new FlightdeckError("invalid_state", "snapshots indisponíveis");
+        if (!opts.snapshots) throw featureOff("snapshots");
         const { claudeSessionId, n } = command.payload;
         return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
       }
@@ -1118,7 +1112,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           suggestions: memory().suggest(projectPath(command.payload.projectId)),
         });
       case "session.fork": {
-        if (!opts.forker) throw new FlightdeckError("invalid_state", "bifurcar indisponível");
+        if (!opts.forker) throw featureOff("forker");
         return ok(command.type, await opts.forker.fork(command.payload));
       }
       case "rewind.preview": {
@@ -1134,14 +1128,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await rewinder().undo(claudeSessionId, confirm === true));
       }
       case "daemon.update.apply": {
-        if (!opts.updater)
-          throw new FlightdeckError("invalid_state", "este daemon não se atualiza");
+        if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
       case "daemon.shutdown": {
         const shutdown = opts.onShutdown;
-        if (!shutdown)
-          throw new FlightdeckError("invalid_state", "desligamento remoto indisponível");
+        if (!shutdown) throw featureOff("shutdown");
         ok(command.type);
         // Right after the ack is written (a microtask, not a timer tick that may come late).
         queueMicrotask(shutdown);

@@ -15,6 +15,7 @@ export const DAEMON_REASONS = [
   "external_no_channel",
   "transcript_not_indexed",
   "session_maybe_active",
+  "feature_off",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 
@@ -22,4 +23,48 @@ export type DaemonReason = (typeof DAEMON_REASONS)[number];
 export type RefusalParams = Record<string, string | number>;
 
 /** Every host feature a command can find off: the app names each one in both languages. */
-export const DAEMON_FEATURES: readonly string[] = [];
+export const DAEMON_FEATURES = [
+  "history",
+  "central",
+  "vault",
+  "names",
+  "teams",
+  "messaging",
+  "idle",
+  "actions",
+  "automations",
+  "issues",
+  "autoApprove",
+  "agentcfg",
+  "mcp",
+  "plugins",
+  "memory",
+  "rewinder",
+  "maintenance",
+  "usage",
+  "quota",
+  "costs",
+  "budgets",
+  "quotaHistory",
+  "changes",
+  "ssh",
+  "snippets",
+  "personaSessions",
+  "personas",
+  "snippetUse",
+  "snippetHistory",
+  "askpass",
+  "sshConnect",
+  "sshHostKeys",
+  "sshImport",
+  "review",
+  "files",
+  "sessionFiles",
+  "terminals",
+  "board",
+  "snapshots",
+  "forker",
+  "updater",
+  "shutdown",
+] as const;
+export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

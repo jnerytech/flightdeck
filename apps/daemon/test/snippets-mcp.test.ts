@@ -191,7 +191,9 @@ describe("snippets-mcp", () => {
 
   test("sem os snippets no daemon, a ferramenta diz o erro", async () => {
     const { call } = await setup({ snippets: false });
-    expect((await call("list_snippets")).error).toMatch(/desativados/);
-    expect((await call("get_snippet", { name: "x" })).error).toMatch(/desativados/);
+    expect((await call("list_snippets")).error).toMatch(/snippets is off on this host/);
+    expect((await call("get_snippet", { name: "x" })).error).toMatch(
+      /snippets is off on this host/,
+    );
   });
 });

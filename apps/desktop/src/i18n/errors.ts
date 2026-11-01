@@ -15,7 +15,7 @@ export function translateError(
   // A reason the app has a text for is the whole sentence; the message is for logs.
   const reason = why?.reason;
   if (reason && reason in ptBR.daemonRefusal) {
-    return { title: t(`daemonRefusal.${reason}` as Key, why?.params), detail: "" };
+    return { title: t(`daemonRefusal.${reason}` as Key, paramsOf(why, t)), detail: "" };
   }
   if (reason && reason in ptBR.snippetRefusal) {
     return { title: t(`snippetRefusal.${reason}` as Key, why?.params), detail: "" };
@@ -23,6 +23,17 @@ export function translateError(
   if (code === "") return { title: message, detail: "" };
   const known = code in ptBR.errors && code !== "unknown";
   return { title: t(`errors.${known ? code : "unknown"}` as Key), detail: message };
+}
+
+/** The params of a reason; a feature's id is named in the app's language (an unknown one stays as it is). */
+function paramsOf(
+  why: { reason?: string; params?: Record<string, string | number> },
+  t: T,
+): Record<string, string | number> | undefined {
+  const feature = why.params?.feature;
+  if (why.reason !== "feature_off" || typeof feature !== "string") return why.params;
+  const named = feature in ptBR.daemonFeature ? t(`daemonFeature.${feature}` as Key) : feature;
+  return { ...why.params, feature: named };
 }
 
 /** One line for a form or a panel: the translated text, then the daemon's message when it has one. */

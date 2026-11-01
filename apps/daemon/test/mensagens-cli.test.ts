@@ -128,7 +128,7 @@ describe("mcp-mensagens: flightdeckd message", () => {
     // Teams are not on this daemon.
     const team = await run(["team", "t1"]);
     expect(team.exits).toEqual([1]);
-    expect(team.errors).toContain("times indisponíveis");
+    expect(team.errors).toContain("teams is off on this host");
     const dead = join(tempDir(), "config.json");
     writeFileSync(
       dead,

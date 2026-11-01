@@ -13,3 +13,10 @@ export class FlightdeckError extends Error {
     this.name = "FlightdeckError";
   }
 }
+
+/** A command that needs a part this daemon runs without: the app names the feature in its language. */
+export function featureOff(feature: string): FlightdeckError {
+  return new FlightdeckError("invalid_state", `${feature} is off on this host`, "feature_off", {
+    feature,
+  });
+}
