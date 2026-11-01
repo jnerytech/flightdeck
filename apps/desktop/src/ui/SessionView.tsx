@@ -36,6 +36,80 @@ export interface SessionActions {
   ): Promise<void>;
 }
 
+type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
+
+function AssistantMessage(props: {
+  item: Item<"assistant">;
+  toolResults: SessionState["toolResults"];
+}) {
+  return (
+    <Message from="assistant">
+      {props.item.blocks.map((block, i) =>
+        block.type === "text" ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: blocks are immutable and ordered
+          <Markdown key={i} text={block.text} />
+        ) : (
+          <ToolCall
+            key={block.id}
+            name={block.name}
+            input={block.input}
+            result={props.toolResults[block.id]}
+          />
+        ),
+      )}
+    </Message>
+  );
+}
+
+function PermissionItem(props: {
+  item: Item<"permission">;
+  cwd: string | null;
+  actions: SessionActions;
+  alwaysAllow: boolean;
+  t: T;
+  nowMs: number;
+}) {
+  const { item, actions } = props;
+  return (
+    <ApprovalCard
+      request={{
+        requestId: item.requestId,
+        toolName: item.toolName,
+        input: item.input,
+        cwd: props.cwd,
+        createdAt: item.at ?? null,
+        ...(item.suggestions ? { suggestions: item.suggestions } : {}),
+        ...(item.risk ? { risk: item.risk } : {}),
+        ...(item.riskReason ? { riskReason: item.riskReason } : {}),
+      }}
+      t={props.t}
+      nowMs={props.nowMs}
+      {...(actions.copyText ? { onCopyPath: (path: string) => void actions.copyText?.(path) } : {})}
+      alwaysAllow={props.alwaysAllow}
+      {...(item.resolution ? { resolution: item.resolution } : {})}
+      onRespond={(decision, message, updates) =>
+        actions.respond(item.requestId, decision, message, updates)
+      }
+    />
+  );
+}
+
+function TurnResult(props: { item: Item<"result">; t: T }) {
+  const { item } = props;
+  const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
+  const key = item.isError ? "session.turnFailed" : "session.turnDone";
+  return (
+    <div
+      className={cn(
+        "text-muted-foreground text-xs tabular-nums",
+        item.isError && "text-status-error",
+      )}
+    >
+      {props.t(key, { seconds: (item.durationMs / 1000).toFixed(1) }) + cost}
+    </div>
+  );
+}
+
 /**
  * One message of the conversation. It takes only what it draws (not the whole session), and the
  * clock only when it is a request waiting, so a token on the way leaves the finished messages
@@ -50,68 +124,16 @@ const TimelineItem = memo(function TimelineItem(props: {
   t: T;
   nowMs: number;
 }) {
-  const { item, toolResults, actions } = props;
+  const { item } = props;
   switch (item.kind) {
     case "user":
       return <Message from="user">{item.text}</Message>;
     case "assistant":
-      return (
-        <Message from="assistant">
-          {item.blocks.map((block, i) =>
-            block.type === "text" ? (
-              // biome-ignore lint/suspicious/noArrayIndexKey: blocks are immutable and ordered
-              <Markdown key={i} text={block.text} />
-            ) : (
-              <ToolCall
-                key={block.id}
-                name={block.name}
-                input={block.input}
-                result={toolResults[block.id]}
-              />
-            ),
-          )}
-        </Message>
-      );
+      return <AssistantMessage item={item} toolResults={props.toolResults} />;
     case "permission":
-      return (
-        <ApprovalCard
-          request={{
-            requestId: item.requestId,
-            toolName: item.toolName,
-            input: item.input,
-            cwd: props.cwd,
-            createdAt: item.at ?? null,
-            ...(item.suggestions ? { suggestions: item.suggestions } : {}),
-            ...(item.risk ? { risk: item.risk } : {}),
-            ...(item.riskReason ? { riskReason: item.riskReason } : {}),
-          }}
-          t={props.t}
-          nowMs={props.nowMs}
-          {...(actions.copyText
-            ? { onCopyPath: (path: string) => void actions.copyText?.(path) }
-            : {})}
-          alwaysAllow={props.alwaysAllow}
-          {...(item.resolution ? { resolution: item.resolution } : {})}
-          onRespond={(decision, message, updates) =>
-            actions.respond(item.requestId, decision, message, updates)
-          }
-        />
-      );
-    case "result": {
-      const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
-      return (
-        <div
-          className={cn(
-            "text-muted-foreground text-xs tabular-nums",
-            item.isError && "text-status-error",
-          )}
-        >
-          {props.t(item.isError ? "session.turnFailed" : "session.turnDone", {
-            seconds: (item.durationMs / 1000).toFixed(1),
-          }) + cost}
-        </div>
-      );
-    }
+      return <PermissionItem {...props} item={item} />;
+    case "result":
+      return <TurnResult item={item} t={props.t} />;
     case "persona":
       return (
         <div className="text-muted-foreground text-xs">
