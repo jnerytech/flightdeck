@@ -474,6 +474,21 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const done = await card("Atualizar dependências", "Atualize e rode os testes.");
   await client.call("card.move", { cardId: done.id, column: "done" });
 
+  // Two budgets far above the day's usage, so Configurações lists them without raising an alert.
+  await client.call("budget.set", {
+    scope: "host",
+    period: "day",
+    limitUsd: 500,
+    action: "notify",
+  });
+  await client.call("budget.set", {
+    scope: "project",
+    projectKey: web,
+    period: "month",
+    limitUsd: 5000,
+    action: "queue",
+  });
+
   // The project's auto memory (phase 26): an index, two topic files and one the index leaves out.
   const remember = (name: string, content: string) =>
     client.call("memory.write", {
