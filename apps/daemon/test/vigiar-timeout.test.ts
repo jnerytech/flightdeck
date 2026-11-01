@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { WatchSettings } from "@flightdeck/protocol";
+import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { killTree, runCommand } from "../src/board/command.ts";
 import { shellCheckRunner } from "../src/workflows/check-runner.ts";
 import { tempDir } from "./helpers.ts";
@@ -59,6 +60,16 @@ describe("check-timeout: a command that runs out of time is killed with everythi
       20_000,
     );
     expect(result).toEqual({ code: 0, stdout: "oi\n", stderr: "" });
+  });
+
+  test("the default taskkill is looked up on the current PATH, so a fake one on the test PATH is what runs", () => {
+    const taskkill = installFakeCli("taskkill", []);
+    try {
+      expect(() => killTree(4242, "win32", () => {})).not.toThrow();
+      expect(taskkill.calls()).toEqual([["/PID", "4242", "/T", "/F"]]);
+    } finally {
+      taskkill.restore();
+    }
   });
 
   test("on Windows the tree goes with taskkill, elsewhere the whole process group is killed", () => {
