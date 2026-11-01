@@ -17,6 +17,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   /** What `messages.list` answers (phase 21); the payloads asked are in `commands`. */
   /** Phase 21: the hub's lists and the host's standard names, when a test fills them. */
   const hub = { managed: [] as unknown[], names: [] as unknown[] };
+  /** The events each session has, by id: `session.subscribe` replays what is after `sinceSeq`. */
+  const streams: Record<string, Array<{ seq: number; event: unknown }>> = {};
   const messaging = {
     policy: { exceptions: [] } as Record<string, unknown>,
     paused: [] as string[],
@@ -80,6 +82,38 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         };
         if (type in known) return ack(known[type]);
         if (type === "session.list") return ack({ sessions: hub.managed });
+        if (type === "session.subscribe") {
+          const ask = payload as { sessionId: string; sinceSeq?: number };
+          const events = (streams[ask.sessionId] ?? []).filter((e) => e.seq > (ask.sinceSeq ?? 0));
+          const last = streams[ask.sessionId]?.at(-1)?.seq ?? 0;
+          ack({
+            session: {
+              id: ask.sessionId,
+              name: null,
+              cwd: "/w",
+              status: "idle",
+              permissionMode: "default",
+              model: null,
+              claudeSessionId: null,
+              lastSeq: last,
+              createdAt: "2026-10-31T12:00:00.000Z",
+              updatedAt: "2026-10-31T12:00:00.000Z",
+            },
+            replayed: events.length,
+          });
+          for (const e of events) {
+            ws.send(
+              JSON.stringify({
+                type: "event",
+                sessionId: ask.sessionId,
+                seq: e.seq,
+                ts: "2026-10-31T12:00:00.000Z",
+                event: e.event,
+              }),
+            );
+          }
+          return;
+        }
         if (type === "names.list") return ack({ names: hub.names });
         if (type === "vault.deliver") return ack({ expiresAt: 0 });
         // Phase 19: the approval of a request that asked, before its delivery.
@@ -135,6 +169,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     features,
     preview,
     audit,
+    streams,
     messaging,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
