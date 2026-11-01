@@ -221,20 +221,38 @@ export class SshConnector {
   }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
     const named = this.opts.targets.list().filter((t) => t.name === req.target);
     if (named.length === 0) {
-      throw new FlightdeckError("not_found", `destino ${req.target} não encontrado`);
+      throw new FlightdeckError(
+        "not_found",
+        `destination ${req.target} not found`,
+        "ssh_target_unknown",
+        { name: req.target },
+      );
     }
     if (named.length > 1) {
-      throw new FlightdeckError("invalid_state", `há mais de um destino chamado ${req.target}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `more than one destination is named ${req.target}`,
+        "ssh_target_ambiguous",
+        { name: req.target },
+      );
     }
     const target = named[0] as SshTarget;
     if (target.auth === "password") {
       throw new FlightdeckError(
         "invalid_state",
-        `${target.name} usa senha: uma ação ssh roda sem ninguém para digitá-la`,
+        `${target.name} uses a password: an ssh action runs with nobody to type it`,
+        "ssh_password_in_action",
+        { name: target.name },
       );
     }
     const run = this.opts.exec;
-    if (!run) throw new FlightdeckError("invalid_state", "este daemon não roda ações ssh");
+    if (!run) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "this daemon does not run ssh actions",
+        "ssh_exec_off",
+      );
+    }
     // Checked before a key is delivered: a bad variable stops here.
     const input = envInput(req.env);
     const plan = await this.plan(target, req.privateKey, "exec", req.argv);
@@ -258,7 +276,9 @@ export class SshConnector {
 
   private target(id: string): SshTarget {
     const target = this.opts.targets.get(id);
-    if (!target) throw new FlightdeckError("not_found", "destino não encontrado");
+    if (!target) {
+      throw new FlightdeckError("not_found", "destination not found", "ssh_target_not_found");
+    }
     return target;
   }
 
@@ -270,13 +290,25 @@ export class SshConnector {
   ): Promise<Plan> {
     const { targets } = this.opts;
     if (target.auth === "vault-key" && !privateKey) {
-      throw new FlightdeckError("bad_request", "a chave do cofre não veio com o pedido");
+      throw new FlightdeckError(
+        "bad_request",
+        "the vault key did not come with the request",
+        "ssh_key_missing",
+      );
     }
     if (target.auth !== "vault-key" && privateKey) {
-      throw new FlightdeckError("bad_request", "a chave do cofre só vale para vault-key");
+      throw new FlightdeckError(
+        "bad_request",
+        "a vault key only applies to vault-key",
+        "ssh_key_not_for_auth",
+      );
     }
     if (target.auth === "password" && !this.opts.askpass) {
-      throw new FlightdeckError("invalid_state", "senha pede o askpass, que não está disponível");
+      throw new FlightdeckError(
+        "invalid_state",
+        "a password needs askpass, which is not available",
+        "ssh_askpass_off",
+      );
     }
     // The outermost jump first, the target last.
     const members: SshTarget[] = [];
@@ -288,7 +320,9 @@ export class SshConnector {
       if (hop.auth === "vault-key" || hop.auth === "password") {
         throw new FlightdeckError(
           "invalid_state",
-          `o jump ${hop.name} usa ${hop.auth}: um jump só pode usar agent ou chave em arquivo`,
+          `jump ${hop.name} uses ${hop.auth}: a jump can only use agent or a key file`,
+          "ssh_jump_auth",
+          { name: hop.name, auth: hop.auth },
         );
       }
     }
@@ -331,19 +365,25 @@ export class SshConnector {
       if (this.opts.targets.pinned(member.id)) return;
       throw new FlightdeckError(
         "invalid_state",
-        `não consegui ler a chave de ${member.name} daqui: a primeira conexão precisa alcançá-lo direto`,
+        `could not read the key of ${member.name} from here: the first connection must reach it directly`,
+        "ssh_key_unreachable",
+        { name: member.name },
       );
     }
     if (check.status === "unknown") {
       throw new FlightdeckError(
         "hostkey_unconfirmed",
-        `${member.name}: confirme o fingerprint ${check.fingerprint} antes de conectar`,
+        `${member.name}: confirm the fingerprint ${check.fingerprint} before connecting`,
+        "ssh_hostkey_unconfirmed",
+        { name: member.name, fingerprint: check.fingerprint },
       );
     }
     if (check.status === "changed") {
       throw new FlightdeckError(
         "hostkey_changed",
-        `${member.name}: a chave do servidor mudou (guardada ${check.pinned}, agora ${check.fingerprint})`,
+        `${member.name}: the server key changed (pinned ${check.pinned}, now ${check.fingerprint})`,
+        "ssh_hostkey_changed",
+        { name: member.name, pinned: check.pinned ?? "", fingerprint: check.fingerprint },
       );
     }
   }

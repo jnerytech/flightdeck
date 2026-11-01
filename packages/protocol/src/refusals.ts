@@ -54,6 +54,19 @@ export const DAEMON_REASONS = [
   "ssh_forward_invalid",
   "ssh_too_many_tags",
   "ssh_tag_invalid",
+  "ssh_hostkey_exists",
+  "ssh_hostkey_mismatch",
+  "ssh_target_unknown",
+  "ssh_target_ambiguous",
+  "ssh_password_in_action",
+  "ssh_exec_off",
+  "ssh_key_missing",
+  "ssh_key_not_for_auth",
+  "ssh_askpass_off",
+  "ssh_jump_auth",
+  "ssh_key_unreachable",
+  "ssh_hostkey_unconfirmed",
+  "ssh_hostkey_changed",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 

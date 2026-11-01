@@ -733,6 +733,24 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    ssh_hostkey_exists:
+      "A server key is already saved for this destination: forget it before replacing it.",
+    ssh_hostkey_mismatch: "Confirm the fingerprint that was just shown: check it again.",
+    ssh_target_unknown: "There is no ssh destination named {name}.",
+    ssh_target_ambiguous: "More than one ssh destination is named {name}: rename one.",
+    ssh_password_in_action:
+      "{name} uses a password: an ssh action runs with nobody to type it. Use an agent or a key.",
+    ssh_exec_off: "This host does not run ssh actions.",
+    ssh_key_missing: "The vault key did not come with the request: unlock the vault and try again.",
+    ssh_key_not_for_auth: "A vault key only applies to a destination that uses one.",
+    ssh_askpass_off: "A password needs askpass, which is not available on this host.",
+    ssh_jump_auth: "The jump {name} uses {auth}: a jump can only use the agent or a key file.",
+    ssh_key_unreachable:
+      "Could not read the server key of {name} from here: the first connection has to reach it directly.",
+    ssh_hostkey_unconfirmed:
+      "{name}: check the fingerprint {fingerprint}, then confirm it to connect.",
+    ssh_hostkey_changed:
+      "{name}: the server key changed (saved {pinned}, now {fingerprint}). Check with whoever runs it; if the change is expected, forget the saved key and confirm the new one.",
     ssh_target_not_found: "That ssh destination was not found.",
     ssh_name_invalid: "The name takes 1 to 100 characters.",
     ssh_host_invalid: "The host is not a valid name or address.",

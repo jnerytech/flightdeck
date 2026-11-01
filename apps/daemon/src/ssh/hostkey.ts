@@ -84,14 +84,16 @@ export class HostKeys {
     if (this.opts.targets.pinned(targetId)) {
       throw new FlightdeckError(
         "invalid_state",
-        "já há uma chave do servidor guardada: esqueça-a antes de trocar",
+        "a server key is already pinned: forget it before replacing it",
+        "ssh_hostkey_exists",
       );
     }
     const shown = this.pending.get(targetId);
     if (!shown || this.now() - shown.at > PENDING_MS || shown.scan.fingerprint !== fingerprint) {
       throw new FlightdeckError(
         "invalid_state",
-        "confirme o fingerprint que acabou de ser mostrado: verifique de novo",
+        "confirm the fingerprint that was just shown: check again",
+        "ssh_hostkey_mismatch",
       );
     }
     this.pending.delete(targetId);
@@ -106,7 +108,9 @@ export class HostKeys {
 
   private target(id: string): SshTarget {
     const target = this.opts.targets.get(id);
-    if (!target) throw new FlightdeckError("not_found", "destino não encontrado");
+    if (!target) {
+      throw new FlightdeckError("not_found", "destination not found", "ssh_target_not_found");
+    }
     return target;
   }
 

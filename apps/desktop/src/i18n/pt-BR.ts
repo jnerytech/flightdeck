@@ -728,6 +728,25 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    ssh_hostkey_exists:
+      "Já há uma chave de servidor guardada para este destino: esqueça-a antes de trocar.",
+    ssh_hostkey_mismatch: "Confirme o fingerprint que acabou de ser mostrado: verifique de novo.",
+    ssh_target_unknown: "Não há um destino ssh chamado {name}.",
+    ssh_target_ambiguous: "Mais de um destino ssh se chama {name}: renomeie um.",
+    ssh_password_in_action:
+      "{name} usa senha: uma ação ssh roda sem ninguém para digitá-la. Use um agent ou uma chave.",
+    ssh_exec_off: "Este host não roda ações ssh.",
+    ssh_key_missing: "A chave do cofre não veio com o pedido: destrave o cofre e tente de novo.",
+    ssh_key_not_for_auth: "Uma chave do cofre só vale para um destino que use uma.",
+    ssh_askpass_off: "Senha pede o askpass, que não está disponível neste host.",
+    ssh_jump_auth:
+      "O jump {name} usa {auth}: um jump só pode usar o agent ou uma chave em arquivo.",
+    ssh_key_unreachable:
+      "Não deu para ler a chave do servidor de {name} daqui: a primeira conexão precisa alcançá-lo direto.",
+    ssh_hostkey_unconfirmed:
+      "{name}: confira o fingerprint {fingerprint} e confirme para conectar.",
+    ssh_hostkey_changed:
+      "{name}: a chave do servidor mudou (guardada {pinned}, agora {fingerprint}). Fale com quem cuida dele; se a mudança é esperada, esqueça a chave guardada e confirme a nova.",
     ssh_target_not_found: "Esse destino ssh não foi encontrado.",
     ssh_name_invalid: "O nome tem de 1 a 100 caracteres.",
     ssh_host_invalid: "O host não é um nome ou endereço válido.",
