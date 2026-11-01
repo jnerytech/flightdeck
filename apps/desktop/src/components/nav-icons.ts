@@ -9,6 +9,7 @@ import {
   type LucideIcon,
   MessagesSquare,
   Network,
+  Server,
   Settings,
   SquareCode,
   UsersRound,
@@ -29,6 +30,7 @@ export type NavKey =
   | "connections"
   | "vault"
   | "history"
+  | "host"
   | "settings";
 
 /** The one icon of each screen the sidebar lists: the sidebar and the tab of that screen both read it. */
@@ -45,5 +47,6 @@ export const NAV_ICONS: Record<NavKey, LucideIcon> = {
   connections: Network,
   vault: KeyRound,
   history: History,
+  host: Server,
   settings: Settings,
 };
