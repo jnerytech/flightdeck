@@ -75,6 +75,17 @@ export class ClientScope {
     return selection === ALL_CLIENTS || this.clientOf(projectKey) === selection;
   }
 
+  /**
+   * Whether a thing that touches several projects (a message between two sessions) shows: any of
+   * them is in the selection; a `null` is a project the app cannot place, which is Unassigned.
+   */
+  includesAny(selection: string, projectKeys: ReadonlyArray<string | null>): boolean {
+    if (selection === ALL_CLIENTS) return true;
+    return projectKeys.some((key) =>
+      key === null ? selection === UNASSIGNED : this.includes(selection, key),
+    );
+  }
+
   filter<T>(items: readonly T[], selection: string, keyOf: (item: T) => string): T[] {
     return items.filter((item) => this.includes(selection, keyOf(item)));
   }
@@ -85,4 +96,19 @@ export class ClientScope {
     const found = this.data.clients.find((c) => c.id === id);
     return found ? { id: found.id, name: found.name, color: found.color } : null;
   }
+}
+
+/** The project key of every session the app lists, by the managed id and by Claude's id. */
+export function sessionProjectKeys(
+  rows: ReadonlyArray<{
+    sessionId: string | null;
+    claudeSessionId: string | null;
+    projectKey: string;
+  }>,
+): Map<string, string> {
+  const keys = new Map<string, string>();
+  for (const row of rows) {
+    for (const id of [row.sessionId, row.claudeSessionId]) if (id) keys.set(id, row.projectKey);
+  }
+  return keys;
 }
