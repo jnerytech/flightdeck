@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
+import {
+  AXE_RUN_OPTIONS,
+  type AxeViolation,
+  blocking,
+  describeViolation,
+} from "../../../scripts/lib/axe.ts";
 import { ACOES_ACTION, JOURNEYS, LANGUAGES, VIEWPORTS } from "../../../scripts/lib/e2e-journeys.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
@@ -39,6 +44,11 @@ describe("demo-prints: axe e CI", () => {
     expect(line).toBe(
       "light pt-BR hub: color-contrast (serious): ajuda de color-contrast [#a, #b, #c]",
     );
+  });
+
+  test("o axe das telas confere o tamanho dos alvos (WCAG 2.5.8), que ele traz desligado", () => {
+    expect(AXE_RUN_OPTIONS.rules["target-size"]).toEqual({ enabled: true });
+    expect(read("scripts/demo-shots.ts")).toContain("AXE_RUN_OPTIONS");
   });
 
   test("o CI tem o job screenshots no ubuntu: prints, axe, e2e e o artefato", () => {

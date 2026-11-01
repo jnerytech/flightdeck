@@ -6,6 +6,9 @@ export interface AxeViolation {
   nodes: Array<{ target: unknown[] }>;
 }
 
+/** What axe is asked to check beyond its defaults. */
+export const AXE_RUN_OPTIONS: { rules: Record<string, { enabled: boolean }> } = { rules: {} };
+
 /** The violations that fail the build. */
 export function blocking(violations: AxeViolation[]): AxeViolation[] {
   return violations.filter((v) => v.impact === "serious" || v.impact === "critical");
