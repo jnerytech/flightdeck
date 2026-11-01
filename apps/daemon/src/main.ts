@@ -56,7 +56,7 @@ import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
-import { trackNames } from "./names/track.ts";
+import { type TrackOptions, trackNames, warmKnown } from "./names/track.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
@@ -681,6 +681,7 @@ export async function startDaemon(
     autoApprove,
     snapshots,
     db: store.db,
+    keys,
     manager,
     hooks: config.hooks,
     dataDir: config.dataDir,
@@ -810,17 +811,23 @@ export async function startDaemon(
     const cwd = manager.list().find((s) => s.id === sessionId)?.cwd;
     return cwd ? (board.projectForCwd(cwd)?.card?.id ?? null) : null;
   };
-  const stopNames = trackNames({
+  // A session is named after its project, or after the card's project when it runs in a worktree.
+  const keyedPath = (cwd: string) => board.projectForCwd(cwd)?.project.path ?? cwd;
+  const nameOptions: TrackOptions = {
     names,
     manager,
     external: central.external,
-    projectOf: (cwd) => keys.keyFor(board.projectForCwd(cwd)?.project.path ?? cwd),
+    projectOf: (cwd) => keys.keyFor(keyedPath(cwd)),
+    // Both folders, without blocking: naming, lists and messages read their keys right after.
+    warm: (cwd) => Promise.all([keys.resolve(cwd), keys.resolve(keyedPath(cwd))]),
     cardOf,
     personaOf: (sessionId) => {
       const card = cardOf(sessionId);
       return card ? (teams?.personaOfCard(card) ?? null) : null;
     },
-  });
+  };
+  await warmKnown(nameOptions);
+  const stopNames = trackNames(nameOptions);
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({

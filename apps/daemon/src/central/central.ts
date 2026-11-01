@@ -66,7 +66,7 @@ export class Central {
 
   constructor(private readonly opts: CentralOptions) {
     this.permissions = new ExternalPermissions({ risk: opts.risk, auto: opts.autoApprove });
-    this.keys = new ProjectKeys(opts.hostName);
+    this.keys = opts.keys ?? new ProjectKeys(opts.hostName);
     this.meta = new SessionMetaStore(opts.db);
     this.external = new ExternalSessions({
       db: opts.db,
@@ -164,6 +164,7 @@ export class Central {
       external: this.external,
       permissions: this.permissions,
       isManaged: (id) => this.opts.manager.list().some((s) => s.claudeSessionId === id),
+      warm: (cwd) => this.keys.resolve(cwd),
       onHook: (event, payload) => {
         const snapshot = snapshotForHook(event, payload);
         if (snapshot) this.opts.snapshots?.enqueue(snapshot);

@@ -42,7 +42,12 @@ function safely(name: () => void): void {
 export async function warmKnown(
   opts: Pick<TrackOptions, "manager" | "external" | "warm">,
 ): Promise<void> {
-  // Stub: waits for nothing.
+  const { warm } = opts;
+  if (!warm) return;
+  const folders = [...opts.manager.list(), ...opts.external.list()].flatMap((s) =>
+    s.cwd ? [s.cwd] : [],
+  );
+  await Promise.allSettled(folders.map((cwd) => warm(cwd)));
 }
 
 /** Starts naming; returns the function that stops it. */
@@ -80,7 +85,12 @@ export function trackNames(opts: TrackOptions): () => void {
     opts.manager.watchSummaries(({ event }) => {
       if (event.type === "session.summary" && event.sessionId) {
         const id = event.sessionId;
-        safely(() => managed(opts.manager.get(id)));
+        const name = () => safely(() => managed(opts.manager.get(id)));
+        const { warm } = opts;
+        if (!warm || names.get(id)) return name();
+        // The key of the folder is looked up first, so that naming does not wait for git; a
+        // failed lookup names the session all the same (the key is then asked for on the spot).
+        safely(() => void warm(opts.manager.get(id).cwd).then(name, name));
       }
     }).unwatch,
     opts.external.onChange((session) => safely(() => terminal(session))),

@@ -53,6 +53,8 @@ export function startReceptor(opts: ReceptorOptions): Receptor {
     const id = typeof payload.session_id === "string" ? payload.session_id : "";
     if (payload.managed === true) managed.add(id);
     if (managed.has(id) || opts.isManaged(id)) return empty();
+    // Applying the hook reads the project key: have it looked up before, without blocking.
+    if (typeof payload.cwd === "string" && payload.cwd) await opts.warm?.(payload.cwd);
     // Any later event of the session means a held request was answered in the terminal; the
     // permission_prompt notification is the terminal dialog itself, shown while the hook holds.
     const prompt = event === "Notification" && payload.notification_type === "permission_prompt";
