@@ -19,8 +19,9 @@ const cleanups: Array<() => unknown> = [];
 const fakes: FakeCli[] = [];
 afterEach(async () => {
   cleanup();
-  for (const fake of fakes.splice(0)) fake.restore();
+  // The daemon stops first: a request still in flight must not meet the sentinel `claude`.
   for (const fn of cleanups.splice(0).reverse()) await fn();
+  for (const fake of fakes.splice(0)) fake.restore();
 });
 
 async function settle(check: () => boolean, timeoutMs = 5000): Promise<void> {
