@@ -12,7 +12,6 @@
   "src/ui/AutomationForm.tsx": 11,
   "src/ui/AutomationsPage.tsx": 21,
   "src/ui/BoardView.tsx": 26,
-  "src/ui/BudgetsSection.tsx": 10,
   "src/ui/CardDetail.tsx": 30,
   "src/ui/CardReview.tsx": 10,
   "src/ui/ChangesPanel.tsx": 17,

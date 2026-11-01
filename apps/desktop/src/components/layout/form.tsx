@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useId } from "react";
+import { type ComponentProps, createContext, type ReactNode, useContext, useId } from "react";
 import { Spinner } from "@/components/feedback/busy";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,20 @@ export function Field(props: {
         </p>
       )}
     </div>
+  );
+}
+
+/** The native `<select>` every form uses, sized like an `Input`: it takes a `Field`'s control props. */
+export function NativeSelect({ className, ...props }: ComponentProps<"select">) {
+  return (
+    <select
+      data-slot="native-select"
+      className={cn(
+        "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
