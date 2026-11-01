@@ -210,6 +210,18 @@ describe("visual: what changes from run to run is written the same", () => {
     expect(normalizeVolatile("37 s ago")).toBe("N s ago");
   });
 
+  test("the rate-limit stamps of the fake runtime and the duration of a finished turn are replaced", () => {
+    expect(normalizeVolatile("Echo: hi [ratelimit:five_hour=0.62@1793521637]")).toBe(
+      "Echo: hi [ratelimit:five_hour=0.62@0000000000]",
+    );
+    expect(normalizeVolatile("turn finished · 0.4 s · US$ 0.0000")).toBe(
+      "turn finished · N s · US$ 0.0000",
+    );
+    expect(normalizeVolatile("turno concluído · 0,3 s · US$ 0.0000")).toBe(
+      "turno concluído · N s · US$ 0.0000",
+    );
+  });
+
   test("text with none of those is left alone, numbers of the data included", () => {
     for (const text of ["US$ 0.06", "35800", "app · geral · 3", "turn 2 · 0.4 s", "Sessions"]) {
       expect(normalizeVolatile(text)).toBe(text);
