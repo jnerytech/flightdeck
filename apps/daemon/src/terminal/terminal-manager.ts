@@ -40,6 +40,8 @@ export interface AttachResult {
   cols: number;
   rows: number;
   exitCode: number | null;
+  /** Output is held back until the client acknowledges it. */
+  flow: boolean;
 }
 
 export interface TerminalSettings {
@@ -94,6 +96,10 @@ export const SCROLLBACK_BYTES = 2 * 1024 * 1024;
 const QUEUE_LIMIT_BYTES = 1024 * 1024;
 /** A connection with more than this queued gets no more until it empties. */
 const BACKLOG_LIMIT_BYTES = 1024 * 1024;
+/** A flow-controlled client gets no more output while this much is unacknowledged. */
+export const FLOW_HIGH_BYTES = 512 * 1024;
+/** ...until it has acknowledged enough to be under this. */
+export const FLOW_LOW_BYTES = 128 * 1024;
 const BATCH_BYTES = 16 * 1024;
 const FLUSH_MS = 16;
 const DEFAULT_MAX = 10;
@@ -326,7 +332,7 @@ export class TerminalManager {
    * The connection follows the terminal from now on. Attaching again (after a `resync`) starts
    * the queue over: the scrollback returned is the position to continue from.
    */
-  attach(terminalId: string, sink: TerminalSink): AttachResult {
+  attach(terminalId: string, sink: TerminalSink, _flow = false): AttachResult {
     this.assertOn();
     const entry = this.get(terminalId);
     const exited = entry.exitCode !== null;
@@ -346,8 +352,12 @@ export class TerminalManager {
       cols: entry.cols,
       rows: entry.rows,
       exitCode: entry.exitCode,
+      flow: false,
     };
   }
+
+  /** The client has drawn `bytes` more of the terminal's output. */
+  ack(_terminalId: string, _sink: TerminalSink, _bytes: number): void {}
 
   detach(terminalId: string, sink: TerminalSink): void {
     this.assertOn();

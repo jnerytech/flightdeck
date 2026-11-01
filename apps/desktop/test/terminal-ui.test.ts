@@ -29,6 +29,7 @@ function setup(attach: Partial<TerminalAttachResult> = {}) {
         calls.push(["attach", id]);
         return attachResult;
       },
+      ack: async (id, bytes) => void calls.push(["ack", id, bytes]),
       write: async (id, data) => void calls.push(["write", id, data]),
       resize: async (id, cols, rows) => void calls.push(["resize", id, cols, rows]),
       close: async (id, kill) => void calls.push(["close", id, kill]),
@@ -167,6 +168,7 @@ describe("terminal-ui: the session of one terminal", () => {
       terminalId: "t1",
       host: {
         attach: async () => ({ terminalId: "t1", scrollback, cols: 80, rows: 24, exitCode: null }),
+        ack: async () => null,
         write: async () => null,
         resize: async () => null,
         close: async () => null,
@@ -201,6 +203,7 @@ describe("terminal-ui: the session of one terminal", () => {
           rows: 24,
           exitCode: null,
         }),
+        ack: async () => null,
         write: async () => null,
         resize: async (_id, cols, rows) => void sizes.push([cols, rows]),
         close: async () => null,

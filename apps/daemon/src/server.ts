@@ -1457,7 +1457,17 @@ export function startServer(opts: ServerOptions): RunningServer {
         terminals().resize(command.payload.terminalId, command.payload.cols, command.payload.rows);
         return ok(command.type);
       case "terminal.attach":
-        return ok(command.type, terminals().attach(command.payload.terminalId, terminalSink(ws)));
+        return ok(
+          command.type,
+          terminals().attach(
+            command.payload.terminalId,
+            terminalSink(ws),
+            command.payload.flow === true,
+          ),
+        );
+      case "terminal.ack":
+        terminals().ack(command.payload.terminalId, terminalSink(ws), command.payload.bytes);
+        return ok(command.type);
       case "terminal.detach":
         terminals().detach(command.payload.terminalId, terminalSink(ws));
         return ok(command.type);

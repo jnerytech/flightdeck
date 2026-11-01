@@ -736,6 +736,8 @@ export const TerminalAttachResult = z.object({
   cols: z.number().int(),
   rows: z.number().int(),
   exitCode: z.number().int().nullable(),
+  /** The host holds output back until it is acknowledged (`terminal.ack`); absent on older hosts. */
+  flow: z.boolean().optional(),
 });
 export type TerminalAttachResult = z.infer<typeof TerminalAttachResult>;
 
@@ -2678,8 +2680,14 @@ export const Command = z.discriminatedUnion("type", [
     "terminal.resize",
     z.object({ terminalId: TerminalId, cols: TerminalCols, rows: TerminalRows }),
   ),
-  /** Returns the scrollback and starts `terminal.data` frames for this connection. */
-  cmd("terminal.attach", z.object({ terminalId: TerminalId })),
+  /**
+   * Returns the scrollback and starts `terminal.data` frames for this connection. With `flow` the
+   * host stops sending once too much output is unacknowledged (see `terminal.ack`); the result's
+   * `flow` says whether it did.
+   */
+  cmd("terminal.attach", z.object({ terminalId: TerminalId, flow: z.boolean().optional() })),
+  /** Flow control: `bytes` of output the app has drawn since its last ack. */
+  cmd("terminal.ack", z.object({ terminalId: TerminalId, bytes: z.number().int().positive() })),
   cmd("terminal.detach", z.object({ terminalId: TerminalId })),
   /** `kill` ends the process; without it the terminal is only detached (and a dead one removed). */
   cmd("terminal.close", z.object({ terminalId: TerminalId, kill: z.boolean() })),
@@ -3384,6 +3392,7 @@ export interface CommandResults {
   "terminal.write": undefined;
   "terminal.resize": undefined;
   "terminal.attach": TerminalAttachResult;
+  "terminal.ack": undefined;
   "terminal.detach": undefined;
   "terminal.close": undefined;
   "terminal.list": { terminals: TerminalInfo[] };

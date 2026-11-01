@@ -1295,7 +1295,8 @@ export class AppStore {
     ): Promise<CommandResults[T]> => this.dispatch(hostId, type, payload);
     return {
       open: async (cwd, cols, rows) => request("terminal.open", { cwd, cols, rows }),
-      attach: (terminalId) => request("terminal.attach", { terminalId }),
+      attach: (terminalId) => request("terminal.attach", { terminalId, flow: true }),
+      ack: (terminalId, bytes) => request("terminal.ack", { terminalId, bytes }),
       write: (terminalId, data) => request("terminal.write", { terminalId, data }),
       resize: (terminalId, cols, rows) => request("terminal.resize", { terminalId, cols, rows }),
       close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),

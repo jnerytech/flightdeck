@@ -3,6 +3,7 @@ import type { TerminalAttachResult } from "@flightdeck/protocol";
 /** The host's side of one terminal, as the app drives it. */
 export interface TerminalHost {
   attach(terminalId: string): Promise<TerminalAttachResult>;
+  ack(terminalId: string, bytes: number): Promise<unknown>;
   write(terminalId: string, data: string): Promise<unknown>;
   resize(terminalId: string, cols: number, rows: number): Promise<unknown>;
   close(terminalId: string, kill: boolean): Promise<unknown>;
@@ -10,7 +11,8 @@ export interface TerminalHost {
 
 /** What draws the output (xterm in the app). */
 export interface TerminalScreen {
-  write(bytes: Uint8Array): void;
+  /** `done` runs once xterm has drawn the bytes. */
+  write(bytes: Uint8Array, done?: () => void): void;
   reset(): void;
 }
 
@@ -25,6 +27,9 @@ export interface TerminalSessionOptions {
   onState(state: TerminalState, exitCode: number | null): void;
   schedule?: Schedule;
 }
+
+/** Drawn output is acknowledged to the host in steps of at least this many bytes. */
+export const ACK_BYTES = 64 * 1024;
 
 /** The debounce of `terminal.resize` while a tab is being resized. */
 export const RESIZE_DEBOUNCE_MS = 100;

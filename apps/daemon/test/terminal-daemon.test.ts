@@ -161,6 +161,7 @@ describe("terminal-daemon", () => {
       cols: 80,
       rows: 24,
       exitCode: null,
+      flow: false,
     });
     manager.write(terminalId, "oi\r\n");
     expect(pty?.written).toEqual(["oi\r\n"]);
@@ -580,6 +581,7 @@ describe("terminal-daemon", () => {
       cols: 90,
       rows: 20,
       exitCode: null,
+      flow: false,
     });
     expect(await first.data("terminal.write", { terminalId, data: "oi\r\n" })).toBeUndefined();
     expect(

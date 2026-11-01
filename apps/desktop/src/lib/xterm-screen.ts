@@ -8,7 +8,7 @@ export interface XtermTerminal {
   unicode: { activeVersion: string };
   loadAddon(addon: unknown): void;
   open(parent: HTMLElement): void;
-  write(data: Uint8Array): void;
+  write(data: Uint8Array, callback?: () => void): void;
   reset(): void;
   focus(): void;
   paste(text: string): void;
@@ -50,7 +50,7 @@ export interface XtermScreenOptions {
 }
 
 export interface XtermScreen {
-  write(bytes: Uint8Array): void;
+  write(bytes: Uint8Array, done?: () => void): void;
   reset(): void;
   open(parent: HTMLElement): void;
   fit(): void;
@@ -111,7 +111,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
   });
 
   return {
-    write: (bytes) => terminal.write(bytes),
+    write: (bytes, done) => terminal.write(bytes, done),
     reset: () => terminal.reset(),
     open: (parent) => {
       terminal.open(parent);

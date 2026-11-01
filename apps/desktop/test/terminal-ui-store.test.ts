@@ -50,6 +50,32 @@ describe("terminal-ui: the store follows a host's terminal", () => {
     stop();
   });
 
+  test("terminalHost attaches asking for flow control, and an ack lets the held output through", async () => {
+    const { store, hostId, project, ptys } = await setup();
+    const host = store.terminalHost(hostId);
+    const { terminalId } = await host.open(project, 80, 24);
+    let received = 0;
+    const stop = store.followTerminal(hostId, terminalId, {
+      data: (base64) => {
+        received += atob(base64).length;
+      },
+      exited: () => {},
+      resync: () => {},
+      offline: () => {},
+    });
+    expect((await host.attach(terminalId)).flow).toBe(true);
+    const burst = "x".repeat(100 * 1024);
+    for (let i = 0; i < 8; i++) ptys.spawned[0]?.emit(burst);
+    await waitFor(() => received >= 480 * 1024);
+    await Bun.sleep(100);
+    const held = received;
+    expect(held).toBeLessThanOrEqual(512 * 1024 + 16 * 1024);
+    await host.ack(terminalId, held);
+    await waitFor(() => received === 8 * burst.length);
+    expect(received).toBe(8 * burst.length);
+    stop();
+  });
+
   test("a stopped follower hears nothing more; losing the host tells the live ones", async () => {
     const { store, hostId, project, server, ptys } = await setup();
     const host = store.terminalHost(hostId);

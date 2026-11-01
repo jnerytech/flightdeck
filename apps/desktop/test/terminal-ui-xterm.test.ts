@@ -18,6 +18,7 @@ function setup(selection = "", clipboardFails = false) {
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
   const addons: unknown[] = [];
+  const callbacks: Array<() => void> = [];
   const links: Array<(uri: string) => void> = [];
   const linked: string[] = [];
   let constructed: Record<string, unknown> = {};
@@ -28,7 +29,10 @@ function setup(selection = "", clipboardFails = false) {
     unicode: { activeVersion: "6" },
     loadAddon: (addon) => void addons.push(addon),
     open: () => void log.push("open"),
-    write: (bytes) => void log.push(`write:${Buffer.from(bytes).toString()}`),
+    write: (bytes, callback) => {
+      log.push(`write:${Buffer.from(bytes).toString()}`);
+      if (callback) callbacks.push(callback);
+    },
     reset: () => void log.push("reset"),
     focus: () => void log.push("focus"),
     paste: (text) => void log.push(`paste:${text}`),
@@ -109,6 +113,9 @@ function setup(selection = "", clipboardFails = false) {
     resizes,
     addons,
     terminal,
+    drawAll: () => {
+      for (const callback of callbacks.splice(0)) callback();
+    },
     press,
     constructed: () => constructed,
     searches: () => searches,
@@ -138,6 +145,15 @@ describe("terminal-ui: the xterm screen", () => {
     s.screen.open({} as HTMLElement);
     s.screen.focus();
     expect(s.log).toEqual(["write:hi", "reset", "open", "fit", "focus"]);
+  });
+
+  test("a write is reported as drawn when xterm's own callback runs, not before", () => {
+    const s = setup();
+    let drawn = 0;
+    s.screen.write(new TextEncoder().encode("hi"), () => void drawn++);
+    expect(drawn).toBe(0);
+    s.drawAll();
+    expect(drawn).toBe(1);
   });
 
   test("keys typed and sizes changed are reported", () => {
