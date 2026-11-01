@@ -2,7 +2,6 @@ import {
   ArrowLeftRight,
   BookOpen,
   Bot,
-  Layers,
   type LucideIcon,
   MessageSquare,
   Pin,
@@ -10,10 +9,10 @@ import {
   Plus,
   SquareKanban,
   SquareTerminal,
-  Wallet,
   X,
 } from "lucide-react";
 import { type ReactNode, useRef, useSyncExternalStore } from "react";
+import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -28,9 +27,9 @@ const ICONS: Record<TabKind, LucideIcon> = {
   card: SquareKanban,
   terminal: SquareTerminal,
   reader: BookOpen,
-  costs: Wallet,
   agent: Bot,
-  screen: Layers,
+  screen: NAV_ICONS.sessions,
+  ...NAV_ICONS,
 };
 
 /** What a terminal tab says about the ssh destino it was opened from, if it was. */

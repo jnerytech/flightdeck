@@ -1,3 +1,4 @@
+import type { NavKey } from "@/components/nav-icons";
 import { type AppState, needsYou, sessionKey } from "./app-store.ts";
 import type { Route } from "./router.ts";
 
@@ -17,7 +18,7 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
 }
 
 /** The kind of screen a tab shows, for its icon. */
-export type TabKind = "session" | "card" | "terminal" | "reader" | "costs" | "agent" | "screen";
+export type TabKind = NavKey | "session" | "card" | "terminal" | "reader" | "agent" | "screen";
 
 const KINDS: Partial<Record<Route["name"], TabKind>> = {
   session: "session",
@@ -27,9 +28,19 @@ const KINDS: Partial<Record<Route["name"], TabKind>> = {
   board: "card",
   terminal: "terminal",
   reader: "reader",
-  history: "reader",
-  costs: "costs",
   agent: "agent",
+  hub: "sessions",
+  "needs-you": "needs-you",
+  workflows: "workflows",
+  history: "history",
+  costs: "costs",
+  conversations: "conversations",
+  teams: "teams",
+  personas: "personas",
+  snippets: "snippets",
+  connections: "connections",
+  vault: "vault",
+  settings: "settings",
 };
 
 /** The card's diff lives in the card, so a card tab is also the diff's. */

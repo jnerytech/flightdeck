@@ -1,26 +1,16 @@
 import {
   ChevronDown,
   CircleAlert,
-  Coins,
-  Columns3,
-  Drama,
-  History,
-  KeyRound,
-  Layers,
-  MessagesSquare,
+  type LucideProps,
   MoreHorizontal,
-  Network,
   Plane,
   Plus,
   Search,
-  Settings as SettingsIcon,
-  SquareCode,
   SunMoon,
   TriangleAlert,
-  UsersRound,
-  Workflow,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +33,12 @@ import { rowRoute } from "./Screens.tsx";
 
 const ITEM =
   "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+/** The icon of one of the screens the bar lists, the same one its tab wears. */
+function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
+  const Icon = NAV_ICONS[name];
+  return <Icon {...props} />;
+}
 
 /** One line of the bar: an icon, its label (hidden in the rail, which keeps it as a tooltip) and a tail. */
 function NavButton(props: {
@@ -138,14 +134,14 @@ export function Sidebar(props: {
       <nav className="flex flex-col gap-0.5">
         <NavButton
           collapsed={collapsed}
-          icon={<Layers aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
           label={t("sidebar.sessions")}
           name={t("sidebar.openSessions")}
           onClick={() => go({ name: "hub" })}
         />
         <NavButton
           collapsed={collapsed}
-          icon={<CircleAlert aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
           label={t("sidebar.needsYou")}
           onClick={() => go({ name: "needs-you" })}
           tail={
@@ -158,14 +154,14 @@ export function Sidebar(props: {
         />
         <NavButton
           collapsed={collapsed}
-          icon={<Columns3 aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
           label={t("sidebar.board")}
           disabled={!navHost}
           onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
         />
         <NavButton
           collapsed={collapsed}
-          icon={<Workflow aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="workflows" aria-hidden="true" className={icon} />}
           label={t("sidebar.workflows")}
           disabled={!navHost}
           onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
@@ -174,7 +170,7 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<Coins aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="costs" aria-hidden="true" className={icon} />}
             label={t("sidebar.costs")}
             onClick={() => go({ name: "costs" })}
           />
@@ -183,7 +179,7 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<MessagesSquare aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
             label={t("sidebar.conversations")}
             onClick={() => go({ name: "conversations" })}
           />
@@ -191,7 +187,7 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<UsersRound aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
             label={t("sidebar.teams")}
             onClick={() => go({ name: "teams" })}
           />
@@ -200,7 +196,7 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "personas", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<Drama aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
             label={t("sidebar.personas")}
             onClick={() => go({ name: "personas" })}
           />
@@ -209,7 +205,7 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "snippets", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<SquareCode aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
             label={t("sidebar.snippets")}
             onClick={() => go({ name: "snippets" })}
           />
@@ -218,20 +214,20 @@ export function Sidebar(props: {
         {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "ssh", false)) && (
           <NavButton
             collapsed={collapsed}
-            icon={<Network aria-hidden="true" className={icon} />}
+            icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
             label={t("sidebar.connections")}
             onClick={() => go({ name: "connections" })}
           />
         )}
         <NavButton
           collapsed={collapsed}
-          icon={<KeyRound aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
           label={t("sidebar.vault")}
           onClick={() => go({ name: "vault" })}
         />
         <NavButton
           collapsed={collapsed}
-          icon={<History aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
           label={t("sidebar.history")}
           disabled={!navHost}
           onClick={needHost((host) => ({ name: "history", host }))}
@@ -399,7 +395,7 @@ export function Sidebar(props: {
         />
         <NavButton
           collapsed={collapsed}
-          icon={<SettingsIcon aria-hidden="true" className={icon} />}
+          icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
           label={t("sidebar.settings")}
           onClick={() => go({ name: "settings" })}
         />
