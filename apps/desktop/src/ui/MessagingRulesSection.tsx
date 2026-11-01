@@ -180,6 +180,7 @@ export function MessagingRulesSection(props: {
           <FormActions
             submit={t("messagingRulesUi.add")}
             disabled={fromValue.trim() === "" || toValue.trim() === ""}
+            disabledReason={t("messagingRulesUi.addNeeds")}
           />
         </Form>
         <Form variant="inline" onSubmit={() => void save({ retentionDays: Number(retention) })}>

@@ -1,5 +1,6 @@
 import type { SshImportEntry } from "@flightdeck/protocol";
 import { useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 
@@ -47,14 +48,15 @@ export function ImportPanel(props: {
         </ul>
       )}
       <div className="flex gap-2">
-        <Button
+        <ActionButton
           disabled={picked.size === 0}
+          disabledReason={t("connections.import.pickOne")}
           onClick={() =>
             props.onApply(props.entries.filter((e) => picked.has(e.alias)).map((e) => e.alias))
           }
         >
           {t("connections.import.apply")}
-        </Button>
+        </ActionButton>
         <Button variant="ghost" onClick={props.onClose}>
           {t("common.cancel")}
         </Button>

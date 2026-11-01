@@ -1,5 +1,6 @@
 import type { SnippetHistoryCandidate } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -141,9 +142,13 @@ export function HistoryImport(props: { store: AppStore; hostId: string; onImport
             <option value="global">{t("snippets.globals")}</option>
           </select>
         </div>
-        <Button disabled={picked.size === 0} onClick={() => void importPicked()}>
+        <ActionButton
+          disabled={picked.size === 0}
+          disabledReason={t("snippets.history.pickOne")}
+          onClick={() => importPicked()}
+        >
           {t("snippets.history.import")}
-        </Button>
+        </ActionButton>
         {!reveal && (
           <Button variant="outline" onClick={() => setReveal(true)}>
             {t("snippets.history.reveal")}

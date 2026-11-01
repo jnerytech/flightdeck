@@ -1,6 +1,7 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -102,9 +103,13 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
         />,
       )}
       <div className="flex gap-2">
-        <Button disabled={!goal.trim()} onClick={() => void create()}>
+        <ActionButton
+          disabled={!goal.trim()}
+          disabledReason={t("teamsUi.goalNeeded")}
+          onClick={() => create()}
+        >
           {t("teamsUi.create")}
-        </Button>
+        </ActionButton>
         <Button variant="ghost" onClick={props.onCancel}>
           {t("teamsUi.cancel")}
         </Button>
