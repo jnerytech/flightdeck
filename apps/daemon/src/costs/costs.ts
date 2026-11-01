@@ -5,6 +5,7 @@ import type {
   CostsSession,
   CostsStatus,
   CostsSummary,
+  TelemetryDivergence,
   UnpricedModel,
   UsageOrigin,
 } from "@flightdeck/protocol";
@@ -24,6 +25,13 @@ export interface CostsOptions {
 /** Above both, the computed cost and the SDK's disagree enough to doubt the price table. */
 const DIVERGENCE_RATIO = 0.1;
 const DIVERGENCE_USD = 0.05;
+/** A message is stamped a little before the API request that paid for it ends. */
+const TELEMETRY_SLACK_MS = 60_000;
+
+const farApart = (computed: number, reported: number) => {
+  const gap = Math.abs(computed - reported);
+  return gap > DIVERGENCE_USD && gap > reported * DIVERGENCE_RATIO;
+};
 
 interface TokenRow {
   message_id: string;
@@ -351,7 +359,7 @@ export class Costs {
       pricingDate: PRICING_DATE,
       unpriced,
       divergences,
-      telemetryDivergences: [],
+      telemetryDivergences: initialLoad.state === "done" ? this.telemetryDivergences() : [],
     };
   }
 
@@ -375,8 +383,7 @@ export class Costs {
     for (const { id, computed, payload } of rows) {
       const sdk = payload ? (JSON.parse(payload).costUsd as number | undefined) : undefined;
       if (sdk === undefined) continue;
-      const gap = Math.abs(computed - sdk);
-      if (gap <= DIVERGENCE_USD || gap <= sdk * DIVERGENCE_RATIO) continue;
+      if (!farApart(computed, sdk)) continue;
       const { model } = this.db
         .query<{ model: string }, [string]>(
           `SELECT model FROM usage_entries WHERE claude_session_id = ?
@@ -384,6 +391,32 @@ export class Costs {
         )
         .get(id) as { model: string };
       divergences.push({ claudeSessionId: id, model, computedUsd: computed, sdkUsd: sdk });
+    }
+    return divergences;
+  }
+
+  /**
+   * Sessions whose cost in the OTLP telemetry is far from the transcripts' for the stretch the
+   * exporter was on (the transcripts before its first request are not compared).
+   */
+  private telemetryDivergences(): TelemetryDivergence[] {
+    const sessions = this.db
+      .query<{ id: string; telemetry: number; first: number }, []>(
+        `SELECT claude_session_id AS id, TOTAL(cost_usd) AS telemetry, MIN(at) AS first
+         FROM telemetry_events WHERE name = 'api_request' AND cost_usd IS NOT NULL
+         GROUP BY claude_session_id ORDER BY claude_session_id`,
+      )
+      .all();
+    const computedFrom = this.db.query<{ computed: number }, [string, string]>(
+      "SELECT TOTAL(cost_usd) AS computed FROM usage_entries WHERE claude_session_id = ? AND at >= ?",
+    );
+    const divergences: TelemetryDivergence[] = [];
+    for (const { id, telemetry, first } of sessions) {
+      const since = new Date(first - TELEMETRY_SLACK_MS).toISOString();
+      const computed = (computedFrom.get(id, since) as { computed: number }).computed;
+      if (farApart(computed, telemetry)) {
+        divergences.push({ claudeSessionId: id, computedUsd: computed, telemetryUsd: telemetry });
+      }
     }
     return divergences;
   }
