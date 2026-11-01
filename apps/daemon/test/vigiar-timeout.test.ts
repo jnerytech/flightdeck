@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { WatchSettings } from "@flightdeck/protocol";
 import { killTree, runCommand } from "../src/board/command.ts";
@@ -24,7 +25,7 @@ const alive = (pid: number) => {
 /** A script that starts a child that never ends, says its pid, and never ends itself. */
 function hangingScript(): string {
   const file = join(tempDir("fd-hang-"), "hang.js");
-  Bun.write(
+  writeFileSync(
     file,
     `const child = Bun.spawn([process.execPath, "-e", "setInterval(() => {}, 1000)"]);
 console.log(child.pid);
@@ -37,9 +38,10 @@ setInterval(() => {}, 1000);
 describe("check-timeout: a command that runs out of time is killed with everything it started", () => {
   test("a hung command and its child are killed at the limit, and the result says it timed out", async () => {
     const file = hangingScript();
-    await Bun.sleep(50);
     const started = Date.now();
-    const result = await runCommand([process.execPath, file], tempDir("fd-cwd-"), undefined, 600);
+    // The limit has to outlast a slow start of the script on a loaded machine: it can only
+    // name its child once it runs, and a kill before that leaves nothing to look for.
+    const result = await runCommand([process.execPath, file], tempDir("fd-cwd-"), undefined, 3000);
     expect(Date.now() - started).toBeLessThan(10_000);
     expect(result.timedOut).toBe(true);
     expect(result.code).not.toBe(0);
