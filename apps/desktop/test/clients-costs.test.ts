@@ -116,15 +116,15 @@ describe("clients-costs: several hosts as one", () => {
     ),
   };
 
-  test("totals add up, and the same project on two hosts is one row", () => {
+  test("totals add up, and the same project on two hosts is one row, the costliest first and then by key", () => {
     const { summary: merged } = mergeSummaries([a, b], DAY.from, DAY.to);
     expect(merged.totals.costUsd).toBe(7);
     expect(merged.totals.tokens.input).toBe(7000);
     expect(merged.totals.cacheSavingsUsd).toBeCloseTo(0.7);
     expect(merged.totals.messages).toBe(4);
     expect(merged.byProject.map((p) => [p.projectKey, p.costUsd])).toEqual([
-      [BETA, 3],
       [ACME, 3],
+      [BETA, 3],
       [OTHER, 1],
     ]);
   });
