@@ -3,6 +3,7 @@ import { Network } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ImportPanel } from "@/components/connections/import-panel";
 import { TargetForm } from "@/components/connections/target-form";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import {
@@ -24,7 +25,6 @@ import { savePayload } from "../lib/ssh.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
-const SELECT = "h-9 rounded-md border bg-transparent px-2";
 /** The "via" filter's value for a destino that this host opens itself. */
 const LOCAL = "-";
 
@@ -230,37 +230,40 @@ export function ConnectionsPage(props: {
         />
       )}
       <div className="mb-4 flex flex-wrap gap-3">
-        <div className="flex flex-col gap-1 text-sm">
-          <label htmlFor="connections-search">{t("connections.search")}</label>
-          <Input
-            id="connections-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-        <label className="flex flex-col gap-1 text-sm">
-          {t("connections.tag")}
-          <select className={SELECT} value={tag} onChange={(event) => setTag(event.target.value)}>
-            <option value="">{t("connections.all")}</option>
-            {tags.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t("connections.via")}
-          <select className={SELECT} value={via} onChange={(event) => setVia(event.target.value)}>
-            <option value="">{t("connections.all")}</option>
-            <option value={LOCAL}>{t("connections.thisHost")}</option>
-            {vias.map((id) => (
-              <option key={id} value={id}>
-                {viaName(id)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Field label={t("connections.search")}>
+          {(control) => (
+            <Input
+              {...control}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label={t("connections.tag")}>
+          {(control) => (
+            <NativeSelect {...control} value={tag} onChange={(event) => setTag(event.target.value)}>
+              <option value="">{t("connections.all")}</option>
+              {tags.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+        <Field label={t("connections.via")}>
+          {(control) => (
+            <NativeSelect {...control} value={via} onChange={(event) => setVia(event.target.value)}>
+              <option value="">{t("connections.all")}</option>
+              <option value={LOCAL}>{t("connections.thisHost")}</option>
+              {vias.map((id) => (
+                <option key={id} value={id}>
+                  {viaName(id)}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
       </div>
       {targets.length === 0 ? (
         <EmptyState

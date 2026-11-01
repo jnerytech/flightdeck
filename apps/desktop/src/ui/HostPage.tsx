@@ -1,6 +1,7 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,6 @@ export function HostPage(props: {
   const t = useT();
   const { host } = props;
   const [name, setName] = useState(host.name);
-  const nameId = useId();
   const info = host.hostInfo;
   const { store } = props;
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
@@ -156,10 +156,11 @@ export function HostPage(props: {
           />
         )}
         <Panel title={t("hostPage.host")}>
-          <label className="flex flex-col gap-1 text-sm" htmlFor={nameId}>
-            {t("hostPage.nameLabel")}
-            <Input id={nameId} value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
+          <Field label={t("hostPage.nameLabel")}>
+            {(control) => (
+              <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />
+            )}
+          </Field>
           <Button
             variant="outline"
             className="self-start"

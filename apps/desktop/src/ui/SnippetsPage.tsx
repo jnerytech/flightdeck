@@ -1,6 +1,7 @@
 import type { SnippetFileInfo } from "@flightdeck/protocol";
 import { SquareCode, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { FileImport } from "@/components/snippets/file-import";
@@ -15,8 +16,6 @@ import type { Route } from "../lib/router.ts";
 import { actionSeedFromCommand } from "../lib/snippets.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-
-const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
 /** Where a snippet lives, as the row says it. */
 const originOf = (snippet: AppSnippet) => (snippet.source === "file" ? "file" : snippet.scope);
@@ -160,34 +159,37 @@ export function SnippetsPage(props: { store: AppStore; state: AppState; go(route
         />
       )}
       <div className="mb-4 flex flex-wrap gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          {t("snippets.project")}
-          <select className={SELECT} value={project} onChange={(e) => setProject(e.target.value)}>
-            <option value="">{t("snippets.hostOnly")}</option>
-            <option value={GLOBAL}>{t("snippets.globals")}</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.path}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex flex-col gap-1 text-sm">
-          <label htmlFor="snippets-search">{t("snippets.search")}</label>
-          <Input id="snippets-search" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-        <label className="flex flex-col gap-1 text-sm">
-          {t("snippets.type")}
-          <select
-            className={SELECT}
-            value={type}
-            onChange={(e) => setType(e.target.value as "" | "command" | "prompt")}
-          >
-            <option value="">{t("snippets.all")}</option>
-            <option value="command">{t("snippets.kind.command")}</option>
-            <option value="prompt">{t("snippets.kind.prompt")}</option>
-          </select>
-        </label>
+        <Field label={t("snippets.project")}>
+          {(control) => (
+            <NativeSelect {...control} value={project} onChange={(e) => setProject(e.target.value)}>
+              <option value="">{t("snippets.hostOnly")}</option>
+              <option value={GLOBAL}>{t("snippets.globals")}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.path}>
+                  {p.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+        <Field label={t("snippets.search")}>
+          {(control) => (
+            <Input {...control} value={query} onChange={(e) => setQuery(e.target.value)} />
+          )}
+        </Field>
+        <Field label={t("snippets.type")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={type}
+              onChange={(e) => setType(e.target.value as "" | "command" | "prompt")}
+            >
+              <option value="">{t("snippets.all")}</option>
+              <option value="command">{t("snippets.kind.command")}</option>
+              <option value="prompt">{t("snippets.kind.prompt")}</option>
+            </NativeSelect>
+          )}
+        </Field>
       </div>
       {file && (
         <div className="mb-4 flex flex-col gap-2 rounded-lg border p-3 text-sm">

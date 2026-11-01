@@ -1,5 +1,6 @@
 import { Drama } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { PersonaEditor } from "@/components/personas/persona-editor";
@@ -10,7 +11,6 @@ import type { AppPersona } from "../lib/global-personas.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
-const SELECT = "h-9 rounded-md border bg-transparent px-2";
 /** The "Projeto" choice that shows the app's own personas instead of the host's. */
 const APP = "@app";
 
@@ -119,18 +119,19 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
         />
       )}
       <div className="mb-4 flex flex-wrap gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          {t("personas.project")}
-          <select className={SELECT} value={project} onChange={(e) => setProject(e.target.value)}>
-            <option value="">{t("personas.hostOnly")}</option>
-            <option value={APP}>{t("personas.globals")}</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.path}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Field label={t("personas.project")}>
+          {(control) => (
+            <NativeSelect {...control} value={project} onChange={(e) => setProject(e.target.value)}>
+              <option value="">{t("personas.hostOnly")}</option>
+              <option value={APP}>{t("personas.globals")}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.path}>
+                  {p.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
       </div>
       {message && (
         <p role="status" className="mb-4 text-sm">

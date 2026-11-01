@@ -1,7 +1,7 @@
 import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
-import { useId, useState } from "react";
-import { Form, FormActions } from "@/components/layout/form";
+import { useState } from "react";
+import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,6 @@ import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { ActionSeed } from "../lib/snippets.ts";
 
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 type Approval = ActionInfo["approval"];
 const APPROVALS: Approval[] = ["first-per-session", "always", "never"];
 const SECRET_REF = /^\{\{secret\.([^}]+)\}\}$/;
@@ -129,17 +127,17 @@ export function ActionForm(props: {
     else setError(refusalText(result.code, result.message, t));
   };
 
-  const ids = useId();
   const field = (key: Key, value: string, onChange: (value: string) => void, disabled = false) => (
-    <label className="flex flex-col gap-1 text-sm" htmlFor={`${ids}-${key}`}>
-      {t(key)}
-      <Input
-        id={`${ids}-${key}`}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
+    <Field label={t(key)}>
+      {(control) => (
+        <Input
+          {...control}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </Field>
   );
 
   return (
@@ -156,34 +154,35 @@ export function ActionForm(props: {
             {field("actionsUi.form.description", draft.description, (description) =>
               set({ description }),
             )}
-            <label className="flex flex-col gap-1 text-sm" htmlFor={`${ids}-run`}>
-              {t("actionsUi.form.run")}
-              <Textarea
-                id={`${ids}-run`}
-                value={draft.run}
-                onChange={(e) => set({ run: e.target.value })}
-                className="font-mono"
-              />
-            </label>
+            <Field label={t("actionsUi.form.run")}>
+              {(control) => (
+                <Textarea
+                  {...control}
+                  value={draft.run}
+                  onChange={(e) => set({ run: e.target.value })}
+                  className="font-mono"
+                />
+              )}
+            </Field>
             {field("actionsUi.form.ssh", draft.ssh, (ssh) => set({ ssh }))}
             {field("actionsUi.form.cwd", draft.cwd, (cwd) => set({ cwd }))}
             {field("actionsUi.form.timeout", draft.timeoutS, (timeoutS) => set({ timeoutS }))}
-            <label className="flex flex-col gap-1 text-sm">
-              {t("actionsUi.form.approval")}
-              <select
-                aria-label={t("actionsUi.form.approval")}
-                className={SELECT}
-                value={draft.approval}
-                onChange={(e) => set({ approval: e.target.value as Draft["approval"] })}
-              >
-                <option value="">{t("actionsUi.form.approvalDefault")}</option>
-                {APPROVALS.map((a) => (
-                  <option key={a} value={a}>
-                    {t(`actionsUi.approval.${a}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Field label={t("actionsUi.form.approval")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={draft.approval}
+                  onChange={(e) => set({ approval: e.target.value as Draft["approval"] })}
+                >
+                  <option value="">{t("actionsUi.form.approvalDefault")}</option>
+                  {APPROVALS.map((a) => (
+                    <option key={a} value={a}>
+                      {t(`actionsUi.approval.${a}`)}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
 
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm">{t("actionsUi.form.envTitle")}</legend>
