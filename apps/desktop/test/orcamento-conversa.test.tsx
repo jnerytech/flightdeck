@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
 import { registerDom } from "./dom.ts";
 
 registerDom();
@@ -9,7 +9,16 @@ function CountedMarkdown(props: { text: string }) {
   drawn.markdown++;
   return <p>{props.text}</p>;
 }
+const realMarkdown = { ...(await import("../src/ui/Markdown.tsx")) };
 mock.module("../src/ui/Markdown.tsx", () => ({ Markdown: CountedMarkdown }));
+
+// A module mock outlives its file in Bun: later files (the agent files preview) would draw this
+// file's stand-in instead of the real renderer, and fail only in a full run.
+afterAll(async () => {
+  const { Markdown } = await import("../src/ui/Markdown.tsx");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  expect(renderToStaticMarkup(<Markdown text={"# Título"} />)).toContain("<h1>");
+});
 
 const { act, cleanup, render } = await import("@testing-library/react");
 const { SessionView } = await import("../src/ui/SessionView.tsx");
