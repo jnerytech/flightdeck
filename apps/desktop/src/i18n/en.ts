@@ -1813,6 +1813,7 @@ export const en: Dictionary = {
     dropConfirm: "Remove",
     marketplaceRemoved: "Marketplace removed.",
     folder: "Folder of a local plugin",
+    folderHint: "Browse shows the folders this host allows. Type the path to use any other folder.",
     folderPreview: "Preview the folder",
     install: "Install {name}",
     installShort: "Install",

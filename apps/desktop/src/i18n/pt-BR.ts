@@ -1816,6 +1816,8 @@ export const ptBR = {
     dropConfirm: "Remover",
     marketplaceRemoved: "Marketplace removido.",
     folder: "Pasta de um plugin local",
+    folderHint:
+      "Procurar mostra as pastas que este host permite. Digite o caminho para usar outra pasta.",
     folderPreview: "Prévia da pasta",
     install: "Instalar {name}",
     installShort: "Instalar",

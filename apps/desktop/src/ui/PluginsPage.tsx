@@ -18,6 +18,7 @@ import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { FolderPicker } from "./FolderPicker.tsx";
 
 /**
  * Phase 26: the Claude Code plugins of the first online host that keeps them. A plugin runs code
@@ -35,6 +36,9 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
   const [looking, setLooking] = useState<InstalledPlugin | null>(null);
   const [installing, setInstalling] = useState<InstallSource | null>(null);
   const [folder, setFolder] = useState("");
+  const [browsing, setBrowsing] = useState(false);
+  /** The host answers `fs.dirs`: an older daemon does not, and there the folder is only typed. */
+  const canBrowse = hasFeature(host?.hostInfo?.features, "fs.dirs", false);
   const [updating, setUpdating] = useState<InstalledPlugin | null>(null);
   const [asking, setAsking] = useState<
     | { kind: "remove"; plugin: InstalledPlugin }
@@ -119,7 +123,10 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
                 variant="inline"
                 onSubmit={() => folder.trim() !== "" && setInstalling({ dir: folder.trim() })}
               >
-                <Field label={t("pluginsUi.folder")}>
+                <Field
+                  label={t("pluginsUi.folder")}
+                  help={canBrowse ? t("pluginsUi.folderHint") : undefined}
+                >
                   {(control) => (
                     <Inline gap={2}>
                       <Input
@@ -128,6 +135,11 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
                         value={folder}
                         onChange={(e) => setFolder(e.target.value)}
                       />
+                      {canBrowse && (
+                        <Button type="button" variant="outline" onClick={() => setBrowsing(true)}>
+                          {t("folderPicker.browse")}
+                        </Button>
+                      )}
                       <Button type="submit" variant="outline" disabled={folder.trim() === ""}>
                         {t("pluginsUi.folderPreview")}
                       </Button>
@@ -304,6 +316,17 @@ export function PluginsPage(props: { store: AppStore; state: AppState }) {
             </Stack>
           </TabsContent>
         </Tabs>
+      )}
+      {browsing && host && canBrowse && (
+        <FolderPicker
+          store={store}
+          host={host}
+          onPick={(path) => {
+            setBrowsing(false);
+            setFolder(path);
+          }}
+          onClose={() => setBrowsing(false)}
+        />
       )}
       {installing && hostId && (
         <InstallDialog
