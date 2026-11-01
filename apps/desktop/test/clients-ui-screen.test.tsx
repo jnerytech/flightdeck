@@ -130,4 +130,17 @@ describe("clients-ui: the Clients screen", () => {
     expect(names()).toEqual(["Beta"]);
     expect(store.clients.overrides()).toEqual({});
   });
+
+  test("cancelling a rename or a delete leaves the client as it was", async () => {
+    const { store } = await open(stored("Acme"));
+    await click("Renomear Acme");
+    await typeName("Outro");
+    await click("Cancelar");
+    expect((screen.queryByLabelText("Nome do cliente") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByRole("button", { name: "Salvar nome" })).toBeNull();
+    await click("Excluir Acme");
+    await click("Cancelar");
+    expect(screen.queryByText(/Excluir o cliente Acme\?/)).toBeNull();
+    expect(store.clients.list().map((c) => c.name)).toEqual(["Acme"]);
+  });
 });
