@@ -1,6 +1,6 @@
 import type { SshAuth, SshTarget } from "@flightdeck/protocol";
-import { useId, useState } from "react";
-import { Form, FormActions } from "@/components/layout/form";
+import { useState } from "react";
+import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,6 @@ import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
-const SELECT = "h-9 rounded-md border bg-transparent px-2";
 const AUTHS: SshAuth[] = ["agent", "key-file", "vault-key", "password"];
 /** The dictionary key of each authentication the form offers. */
 const AUTH_KEY = {
@@ -38,7 +37,6 @@ export function TargetForm(props: {
   onClose(): void;
 }) {
   const t = useT();
-  const id = useId();
   const { store, state, hostId, target } = props;
   const [name, setName] = useState(target?.name ?? "");
   const [host, setHost] = useState(target?.host ?? "");
@@ -122,13 +120,6 @@ export function TargetForm(props: {
     if (result) setTestResult(result.ok ? t("connections.form.testOk") : (result.error ?? ""));
   };
 
-  const field = (key: string, label: string, control: (fieldId: string) => React.ReactNode) => (
-    <div className="flex flex-col gap-1 text-sm">
-      <label htmlFor={`${id}-${key}`}>{label}</label>
-      {control(`${id}-${key}`)}
-    </div>
-  );
-
   return (
     <Form
       variant="panel"
@@ -137,41 +128,67 @@ export function TargetForm(props: {
         if (ready) void save();
       }}
     >
-      {field("name", t("connections.form.name"), (fid) => (
-        <Input id={fid} value={name} onChange={(event) => setName(event.target.value)} />
-      ))}
-      {field("host", t("connections.form.host"), (fid) => (
-        <Input id={fid} value={host} onChange={(event) => setHost(event.target.value)} />
-      ))}
-      {field("port", t("connections.form.port"), (fid) => (
-        <Input
-          id={fid}
-          value={port}
-          inputMode="numeric"
-          onChange={(event) => setPort(event.target.value)}
-        />
-      ))}
-      {field("user", t("connections.form.user"), (fid) => (
-        <Input id={fid} value={user} onChange={(event) => setUser(event.target.value)} />
-      ))}
-      {field("auth", t("connections.form.auth"), (fid) => (
-        <select
-          id={fid}
-          className={SELECT}
-          value={auth}
-          onChange={(event) => setAuth(event.target.value as SshAuth)}
-        >
-          {AUTHS.map((option) => (
-            <option key={option} value={option}>
-              {t(`connections.form.authOption.${AUTH_KEY[option as keyof typeof AUTH_KEY]}`)}
-            </option>
-          ))}
-        </select>
-      ))}
-      {auth === "key-file" &&
-        field("key", t("connections.form.keyFile"), (fid) => (
-          <Input id={fid} value={keyFile} onChange={(event) => setKeyFile(event.target.value)} />
-        ))}
+      {
+        <Field label={t("connections.form.name")}>
+          {(control) => (
+            <Input {...control} value={name} onChange={(event) => setName(event.target.value)} />
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.host")}>
+          {(control) => (
+            <Input {...control} value={host} onChange={(event) => setHost(event.target.value)} />
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.port")}>
+          {(control) => (
+            <Input
+              {...control}
+              value={port}
+              inputMode="numeric"
+              onChange={(event) => setPort(event.target.value)}
+            />
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.user")}>
+          {(control) => (
+            <Input {...control} value={user} onChange={(event) => setUser(event.target.value)} />
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.auth")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={auth}
+              onChange={(event) => setAuth(event.target.value as SshAuth)}
+            >
+              {AUTHS.map((option) => (
+                <option key={option} value={option}>
+                  {t(`connections.form.authOption.${AUTH_KEY[option as keyof typeof AUTH_KEY]}`)}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      }
+      {auth === "key-file" && (
+        <Field label={t("connections.form.keyFile")}>
+          {(control) => (
+            <Input
+              {...control}
+              value={keyFile}
+              onChange={(event) => setKeyFile(event.target.value)}
+            />
+          )}
+        </Field>
+      )}
       {auth === "vault-key" && (
         <SecretPicker
           label={t("connections.form.vaultKey")}
@@ -190,47 +207,57 @@ export function TargetForm(props: {
           onChange={setSecretId}
         />
       )}
-      {field("via", t("connections.form.via"), (fid) => (
-        <select
-          id={fid}
-          className={SELECT}
-          value={via}
-          onChange={(event) => setVia(event.target.value)}
-        >
-          <option value="">{t("connections.thisHost")}</option>
-          {state.hosts.map((h) => (
-            <option key={h.id} value={h.id}>
-              {h.name}
-            </option>
-          ))}
-        </select>
-      ))}
-      {field("jump", t("connections.form.jump"), (fid) => (
-        <select
-          id={fid}
-          className={SELECT}
-          value={jump}
-          onChange={(event) => setJump(event.target.value)}
-        >
-          <option value="">{t("connections.form.noJump")}</option>
-          {props.others.map((other) => (
-            <option key={other.id} value={other.id}>
-              {other.name}
-            </option>
-          ))}
-        </select>
-      ))}
-      {field("tags", t("connections.form.tags"), (fid) => (
-        <Input id={fid} value={tags} onChange={(event) => setTags(event.target.value)} />
-      ))}
-      {field("alive", t("connections.form.alive"), (fid) => (
-        <Input
-          id={fid}
-          value={alive}
-          inputMode="numeric"
-          onChange={(event) => setAlive(event.target.value)}
-        />
-      ))}
+      {
+        <Field label={t("connections.form.via")}>
+          {(control) => (
+            <NativeSelect {...control} value={via} onChange={(event) => setVia(event.target.value)}>
+              <option value="">{t("connections.thisHost")}</option>
+              {state.hosts.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.jump")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={jump}
+              onChange={(event) => setJump(event.target.value)}
+            >
+              <option value="">{t("connections.form.noJump")}</option>
+              {props.others.map((other) => (
+                <option key={other.id} value={other.id}>
+                  {other.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.tags")}>
+          {(control) => (
+            <Input {...control} value={tags} onChange={(event) => setTags(event.target.value)} />
+          )}
+        </Field>
+      }
+      {
+        <Field label={t("connections.form.alive")}>
+          {(control) => (
+            <Input
+              {...control}
+              value={alive}
+              inputMode="numeric"
+              onChange={(event) => setAlive(event.target.value)}
+            />
+          )}
+        </Field>
+      }
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -239,9 +266,17 @@ export function TargetForm(props: {
         />
         {t("connections.form.compression")}
       </label>
-      {field("forwards", t("connections.form.forwards"), (fid) => (
-        <Textarea id={fid} value={forwards} onChange={(event) => setForwards(event.target.value)} />
-      ))}
+      {
+        <Field label={t("connections.form.forwards")}>
+          {(control) => (
+            <Textarea
+              {...control}
+              value={forwards}
+              onChange={(event) => setForwards(event.target.value)}
+            />
+          )}
+        </Field>
+      }
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
