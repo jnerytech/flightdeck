@@ -390,7 +390,9 @@ export class PrFixer {
     if (pushed.code !== 0) {
       return this.failed(cardId, end, `git push failed: ${pushed.stderr.trim()}`, spent);
     }
-    end("pushed", `pushed ${Number(ahead.stdout.trim())} commit(s) to ${branch}`, spent);
+    const passed =
+      settings.checks.length > 0 ? `; checks passed: ${settings.checks.join(", ")}` : "";
+    end("pushed", `pushed ${Number(ahead.stdout.trim())} commit(s) to ${branch}${passed}`, spent);
   }
 
   /** The tail of the logs of the builds that failed, 16 KB in all. */
