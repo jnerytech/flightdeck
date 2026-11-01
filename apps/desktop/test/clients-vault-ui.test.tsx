@@ -86,7 +86,9 @@ describe("clients-vault: the vault's list for a selected client", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Novo segredo" }) as HTMLElement);
     });
-    const tags = screen.queryByLabelText("Etiquetas (separadas por vírgula)") as HTMLInputElement | null;
+    const tags = screen.queryByLabelText(
+      "Etiquetas (separadas por vírgula)",
+    ) as HTMLInputElement | null;
     expect(tags?.value).toBe("client:acme");
   });
 
@@ -95,7 +97,9 @@ describe("clients-vault: the vault's list for a selected client", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Novo segredo" }) as HTMLElement);
     });
-    const tags = screen.queryByLabelText("Etiquetas (separadas por vírgula)") as HTMLInputElement | null;
+    const tags = screen.queryByLabelText(
+      "Etiquetas (separadas por vírgula)",
+    ) as HTMLInputElement | null;
     expect(tags?.value).toBe("");
   });
 });
