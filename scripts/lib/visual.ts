@@ -82,58 +82,64 @@ const sizeOf = (png: Buffer) => {
   return `${width}x${height}`;
 };
 
+/** Compares one print with its baseline: whether there was a baseline, and what is wrong. */
+function compareShot(check: VisualCheck, rel: string): { compared: boolean; problem?: string } {
+  const { io, shotsDir, baselineDir, diffDir } = check;
+  const current = io.read(`${shotsDir}/${rel}`);
+  const path = `${baselineDir}/${rel}`;
+  if (!io.exists(path)) {
+    return {
+      compared: false,
+      problem: `${rel}: no baseline (record in CI, review, then commit it)`,
+    };
+  }
+  const baseline = io.read(path);
+  const result = comparePng(baseline, current, check.options);
+  if (result.status === "size") {
+    return {
+      compared: true,
+      problem: `${rel}: the size changed (${sizeOf(baseline)} to ${sizeOf(current)})`,
+    };
+  }
+  if (result.status !== "different") return { compared: true };
+  const total = PNG.sync.read(current);
+  const share = ((result.diffPixels / (total.width * total.height)) * 100).toFixed(4);
+  const stem = rel.replace(/\.png$/, "");
+  io.write(`${diffDir}/${rel}`, result.diff as Buffer);
+  io.write(`${diffDir}/${stem}.actual.png`, current);
+  io.write(`${diffDir}/${stem}.expected.png`, baseline);
+  return { compared: true, problem: `${rel}: ${result.diffPixels} pixels differ (${share}%)` };
+}
+
 /** Runs the mode over the prints just taken; the problems fail the job. */
 export function checkShots(check: VisualCheck): {
   problems: string[];
   compared: number;
   updated: number;
 } {
-  const { io, shotsDir, baselineDir, diffDir } = check;
+  const { io, shotsDir, baselineDir } = check;
   const shots = io.list(shotsDir).filter((rel) => !isDiff(rel));
   const problems: string[] = [];
-  let compared = 0;
-  let updated = 0;
   if (check.mode === "update") {
-    for (const rel of shots) {
-      io.write(`${baselineDir}/${rel}`, io.read(`${shotsDir}/${rel}`));
-      updated++;
-    }
-    return { problems, compared, updated };
+    for (const rel of shots) io.write(`${baselineDir}/${rel}`, io.read(`${shotsDir}/${rel}`));
+    return { problems, compared: 0, updated: shots.length };
   }
-  if (check.mode !== "compare") return { problems, compared, updated };
+  if (check.mode !== "compare") return { problems, compared: 0, updated: 0 };
+  let compared = 0;
   for (const rel of shots) {
-    const current = io.read(`${shotsDir}/${rel}`);
-    const path = `${baselineDir}/${rel}`;
-    if (!io.exists(path)) {
-      problems.push(`${rel}: no baseline (record in CI, review, then commit it)`);
-      continue;
-    }
-    const baseline = io.read(path);
-    compared++;
-    const result = comparePng(baseline, current, check.options);
-    if (result.status === "size") {
-      problems.push(`${rel}: the size changed (${sizeOf(baseline)} to ${sizeOf(current)})`);
-    } else if (result.status === "different") {
-      const total = PNG.sync.read(current);
-      const share = ((result.diffPixels / (total.width * total.height)) * 100).toFixed(4);
-      problems.push(`${rel}: ${result.diffPixels} pixels differ (${share}%)`);
-      const stem = rel.replace(/\.png$/, "");
-      io.write(`${diffDir}/${rel}`, result.diff as Buffer);
-      io.write(`${diffDir}/${stem}.actual.png`, current);
-      io.write(`${diffDir}/${stem}.expected.png`, baseline);
-    }
+    const one = compareShot(check, rel);
+    if (one.compared) compared++;
+    if (one.problem) problems.push(one.problem);
   }
   if (check.complete) {
     const printed = new Set(shots);
-    for (const rel of io.list(baselineDir)) {
-      if (!printed.has(rel)) {
-        problems.push(
-          `${rel}: a baseline with no print (a screen that went away? run with --update)`,
-        );
-      }
+    for (const rel of io.list(baselineDir).filter((r) => !printed.has(r))) {
+      problems.push(
+        `${rel}: a baseline with no print (a screen that went away? run with --update)`,
+      );
     }
   }
-  return { problems, compared, updated };
+  return { problems, compared, updated: 0 };
 }
 
 /** What the demo shows that changes from run to run, as [pattern, what it becomes]. */
