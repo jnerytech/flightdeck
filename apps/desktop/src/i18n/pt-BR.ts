@@ -661,6 +661,27 @@ export const ptBR = {
     unknown:
       "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
   },
+  workflowIssue: {
+    yaml_invalid: "O arquivo não é um YAML válido: {detail}",
+    unknown_field: "Esse campo não existe: {field}.",
+    required: "Esse campo é obrigatório.",
+    not_object: "Isso precisa ser um bloco de campos.",
+    invalid_type: "Isso tem o tipo errado.",
+    invalid_value: "Esse valor não é válido.",
+    not_empty: "Isso não pode ficar vazio.",
+    positive: "Isso precisa ser maior que zero.",
+    positive_int: "Isso precisa ser um número inteiro maior que zero.",
+    parallel_empty: "parallel precisa de ao menos um item.",
+    input_name_invalid: "Um nome de input usa letras, números, hífens e sublinhados.",
+    persona_invalid: "O id da persona não é válido.",
+    step_one_action:
+      "Uma etapa precisa de exatamente uma ação: agent, check, gate, loop, parallel ou pr.",
+    step_id_duplicate: "Outra etapa tem esse id.",
+    inner_one_action: "{where} precisa de exatamente uma ação: agent ou check.",
+    continue_unknown: "continue aponta para uma etapa que não existe: {step}.",
+    persona_with_continue: "persona não vale com continue: a sessão dessa etapa já existe.",
+    reference_unknown: "Referência desconhecida: {ref}.",
+  },
   actionIssue: {
     not_object: "A ação precisa ser um bloco de campos.",
     unknown_field: "Esse campo não existe: {field}.",
@@ -853,6 +874,16 @@ export const ptBR = {
     automation_not_found: "A automação {id} não existe.",
     automation_remove_confirm: "Remover uma automação pede a sua confirmação.",
     automation_enable_confirm: "Ligar uma automação pede a sua confirmação.",
+    workflow_changed_review:
+      "O workflow {name} mudou. Revise os comandos de novo antes de confiar.",
+    workflow_invalid: "O workflow {name} tem erros. Corrija antes de usar.",
+    workflow_not_trusted:
+      "O workflow {name} não é confiado. Confie nele na tela de Workflows antes.",
+    workflow_input_required: "O workflow precisa do input {input}.",
+    workflow_input_unknown: "O workflow não tem o input {input}.",
+    workflow_gate_closed: "O gate {step} (tentativa {attempt}) não está aberto.",
+    workflow_run_not_found: "A execução {id} não existe.",
+    workflow_not_on_branch: "O workflow {name} não está na branch {branch}.",
     action_invalid: "A ação tem problemas. Corrija e salve de novo.",
     action_ssh_env_value:
       "A variável {name} tem quebra de linha ou NUL, que uma ação ssh não envia.",

@@ -157,11 +157,20 @@ export class WorkflowEngine {
     if (source.hash !== hash) {
       throw new FlightdeckError(
         "invalid_state",
-        `o workflow ${name} mudou; revise os comandos de novo antes de confiar`,
+        `workflow ${name} changed; review the commands again before trusting it`,
+        "workflow_changed_review",
+        { name },
       );
     }
-    if (parseWorkflow(source.source).errors.length > 0) {
-      throw new FlightdeckError("invalid_state", `workflow ${name} tem erros de validação`);
+    const { issues } = parseWorkflow(source.source);
+    if (issues.length > 0) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `workflow ${name} has validation errors`,
+        "workflow_invalid",
+        { name },
+        issues,
+      );
     }
     this.db
       .query(
@@ -184,23 +193,40 @@ export class WorkflowEngine {
     inputs: Record<string, string>,
   ): Promise<void> {
     const source = await this.source(project, name);
-    const { workflow, errors } = parseWorkflow(source.source);
+    const { workflow, errors, issues } = parseWorkflow(source.source);
     if (!workflow) {
       throw new FlightdeckError(
         "invalid_state",
-        `workflow ${name} tem erros de validação: ${errors.join("; ")}`,
+        `workflow ${name} has validation errors: ${errors.join("; ")}`,
+        "workflow_invalid",
+        { name },
+        issues,
       );
     }
     if (!this.trusted(project.id, name, source.hash)) {
       throw new FlightdeckError(
         "invalid_state",
-        `workflow ${name} não confiado; confie nele na tela de workflows`,
+        `workflow ${name} is not trusted; trust it on the workflows screen`,
+        "workflow_not_trusted",
+        { name },
       );
     }
     const missing = workflow.inputs.find((input) => !inputs[input]?.trim());
-    if (missing) throw new FlightdeckError("invalid_state", `input obrigatório: ${missing}`);
+    if (missing)
+      throw new FlightdeckError(
+        "invalid_state",
+        `required input: ${missing}`,
+        "workflow_input_required",
+        { input: missing },
+      );
     const unknown = Object.keys(inputs).find((input) => !workflow.inputs.includes(input));
-    if (unknown) throw new FlightdeckError("invalid_state", `input desconhecido: ${unknown}`);
+    if (unknown)
+      throw new FlightdeckError(
+        "invalid_state",
+        `unknown input: ${unknown}`,
+        "workflow_input_unknown",
+        { input: unknown },
+      );
     this.db
       .query(
         `INSERT INTO workflow_runs (id, card_id, workflow_name, workflow_hash, definition, status,
@@ -311,7 +337,9 @@ export class WorkflowEngine {
     if (step?.type !== "gate" || step.status !== "waiting") {
       throw new FlightdeckError(
         "invalid_state",
-        `gate ${stepId} (tentativa ${attempt}) não está aberto`,
+        `gate ${stepId} (attempt ${attempt}) is not open`,
+        "workflow_gate_closed",
+        { step: stepId, attempt },
       );
     }
     const status = decision === "approve" ? "approved" : "rejected";
@@ -793,7 +821,10 @@ export class WorkflowEngine {
 
   private row(id: string): RunRow {
     const row = this.db.query<RunRow, [string]>("SELECT * FROM workflow_runs WHERE id = ?").get(id);
-    if (!row) throw new FlightdeckError("not_found", `execução ${id} não existe`);
+    if (!row)
+      throw new FlightdeckError("not_found", `run ${id} does not exist`, "workflow_run_not_found", {
+        id,
+      });
     return row;
   }
 
@@ -889,7 +920,9 @@ export class WorkflowEngine {
     if (!source) {
       throw new FlightdeckError(
         "not_found",
-        `workflow ${name} não existe na branch ${project.baseBranch}`,
+        `workflow ${name} does not exist on the branch ${project.baseBranch}`,
+        "workflow_not_on_branch",
+        { name, branch: project.baseBranch },
       );
     }
     return source;
@@ -904,13 +937,14 @@ export class WorkflowEngine {
   }
 
   private info(projectId: string, source: WorkflowSource): WorkflowInfo {
-    const { workflow, errors } = parseWorkflow(source.source);
+    const { workflow, errors, issues } = parseWorkflow(source.source);
     return {
       name: source.name,
       hash: source.hash,
       trusted: this.trusted(projectId, source.name, source.hash),
       checks: workflow ? checkCommands(workflow) : [],
       errors,
+      issues,
       inputs: workflow?.inputs ?? [],
     };
   }

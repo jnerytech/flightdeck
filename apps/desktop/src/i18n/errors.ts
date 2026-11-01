@@ -48,6 +48,15 @@ export function refusalText(
   return detail ? `${title} ${detail}` : title;
 }
 
+/** One thing wrong in a workflow file, with the step it belongs to. */
+export function workflowIssueText(issue: RuleIssue, t: T): string {
+  const text =
+    issue.code in ptBR.workflowIssue
+      ? t(`workflowIssue.${issue.code}` as Key, issue.params)
+      : issue.code;
+  return issue.path ? `${issue.path}: ${text}` : text;
+}
+
 /** One thing wrong in an action file or definition, with the action it belongs to. */
 export function actionIssueText(issue: RuleIssue, t: T): string {
   const text =

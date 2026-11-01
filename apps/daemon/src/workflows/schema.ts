@@ -1,4 +1,4 @@
-import { PermissionMode } from "@flightdeck/protocol";
+import { PermissionMode, type RuleIssue } from "@flightdeck/protocol";
 import { type core, z } from "zod";
 
 export interface AgentAction {
@@ -37,8 +37,47 @@ export interface Workflow {
 
 export interface ParsedWorkflow {
   workflow: Workflow | null;
+  /** The English text of each problem. */
   errors: string[];
+  /** The same problems as codes with params, for the app to translate. */
+  issues: RuleIssue[];
 }
+
+/** The English text of each kind of issue, for logs and the CLI. */
+const ENGLISH: Record<string, (params: Record<string, string>) => string> = {
+  yaml_invalid: (p) => `invalid YAML: ${p.detail}`,
+  unknown_field: (p) => `unknown field: ${p.field}`,
+  required: () => "required",
+  not_object: () => "must be an object",
+  invalid_type: () => "invalid type",
+  invalid_value: () => "invalid value",
+  not_empty: () => "cannot be empty",
+  positive: () => "must be greater than zero",
+  positive_int: () => "must be a whole number greater than zero",
+  parallel_empty: () => "needs at least one item",
+  input_name_invalid: () => "invalid input name",
+  persona_invalid: () => "invalid persona id",
+  step_one_action: () =>
+    "the step needs exactly one action (agent, check, gate, loop, parallel or pr)",
+  step_id_duplicate: () => "repeated id",
+  inner_one_action: (p) => `${p.where}: needs exactly one action (agent or check)`,
+  continue_unknown: (p) => `continue points to a step that does not exist: ${p.step}`,
+  persona_with_continue: () => "persona does not apply with continue: that step's session exists",
+  reference_unknown: (p) => `unknown reference: ${p.ref}`,
+};
+
+const issue = (path: string, code: string, params?: Record<string, string>): RuleIssue => ({
+  path,
+  code,
+  ...(params ? { params } : {}),
+});
+
+const describeIssue = (item: RuleIssue) => {
+  const text = (ENGLISH[item.code] ?? (() => item.code))(
+    (item.params ?? {}) as Record<string, string>,
+  );
+  return item.path ? `${item.path}: ${text}` : text;
+};
 
 /** `{{ expression }}` inside prompts and gate texts. */
 export const REFERENCE = /\{\{\s*(.*?)\s*\}\}/g;
@@ -46,14 +85,14 @@ export const REFERENCE = /\{\{\s*(.*?)\s*\}\}/g;
 const ACTIONS = ["agent", "check", "gate", "loop", "parallel", "pr"] as const;
 const INNER_ACTIONS = ["agent", "check"] as const;
 
-const text = z.string().min(1, "não pode ser vazio");
-const positive = z.number().positive("precisa ser maior que zero");
+const text = z.string().min(1, "not_empty");
+const positive = z.number().positive("positive");
 
 const AgentSchema = z.strictObject({
   prompt: text,
   persona: z
     .string()
-    .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+    .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "persona_invalid")
     .optional(),
   continue: text.optional(),
   permissionMode: PermissionMode.optional(),
@@ -66,23 +105,20 @@ const StepSchema = z.strictObject({
   gate: z.strictObject({ message: text, show: z.string().optional() }).optional(),
   loop: z
     .strictObject({
-      max: z
-        .number()
-        .int("precisa ser um inteiro maior que zero")
-        .min(1, "precisa ser um inteiro maior que zero"),
+      max: z.number().int("positive_int").min(1, "positive_int"),
       until: z.strictObject({ check: text }),
       do: InnerSchema,
     })
     .optional(),
-  parallel: z.array(InnerSchema).min(1, "precisa de ao menos um item").optional(),
+  parallel: z.array(InnerSchema).min(1, "parallel_empty").optional(),
   pr: z.strictObject({}).optional(),
 });
 const WorkflowSchema = z.strictObject({
   name: text.optional(),
-  inputs: z.array(z.string().regex(/^[\w-]+$/, "nome de input inválido")).default([]),
+  inputs: z.array(z.string().regex(/^[\w-]+$/, "input_name_invalid")).default([]),
   budget: z
     .strictObject({
-      maxTurns: positive.int("precisa ser um inteiro").optional(),
+      maxTurns: positive.int("positive_int").optional(),
       maxMinutes: positive.optional(),
       maxCostUsd: positive.optional(),
     })
@@ -93,18 +129,16 @@ const WorkflowSchema = z.strictObject({
 type RawStep = z.infer<typeof StepSchema>;
 type RawInner = z.infer<typeof InnerSchema>;
 
-/** Messages for what the schemas above leave to zod's defaults. */
-function message(issue: core.$ZodRawIssue): string {
-  if (issue.code === "unrecognized_keys") return `campo desconhecido: ${issue.keys.join(", ")}`;
-  if (issue.input === undefined) return "obrigatório";
-  if (issue.code === "invalid_type") {
-    return issue.expected === "object" ? "precisa ser um objeto" : "tipo inválido";
-  }
-  return "valor inválido";
+/** The code of what the schemas above leave to zod's defaults (`unknown_field:<keys>` carries its param). */
+function message(raw: core.$ZodRawIssue): string {
+  if (raw.code === "unrecognized_keys") return `unknown_field:${raw.keys.join(", ")}`;
+  if (raw.input === undefined) return "required";
+  if (raw.code === "invalid_type") return raw.expected === "object" ? "not_object" : "invalid_type";
+  return "invalid_value";
 }
 
 const where = (path: readonly PropertyKey[]) =>
-  path.length === 0 ? "(raiz)" : path.map(String).join(".");
+  path.length === 0 ? "(root)" : path.map(String).join(".");
 
 /** Loads a workflow file and validates it; `workflow` is `null` whenever there is an error. */
 export function parseWorkflow(source: string): ParsedWorkflow {
@@ -112,49 +146,55 @@ export function parseWorkflow(source: string): ParsedWorkflow {
   try {
     raw = Bun.YAML.parse(source);
   } catch (error) {
-    return { workflow: null, errors: [`YAML inválido: ${(error as Error).message}`] };
+    const issues = [issue("", "yaml_invalid", { detail: (error as Error).message })];
+    return { workflow: null, errors: issues.map(describeIssue), issues };
   }
   const parsed = WorkflowSchema.safeParse(raw, { error: message });
   if (!parsed.success) {
-    const errors = parsed.error.issues.map((i) => `${where(i.path)}: ${i.message}`);
-    return { workflow: null, errors };
+    const issues = parsed.error.issues.map((i) => {
+      const [code = "invalid_value", detail] = i.message.split(/:(.*)/s);
+      return issue(where(i.path), code, detail === undefined ? undefined : { field: detail });
+    });
+    return { workflow: null, errors: issues.map(describeIssue), issues };
   }
   const workflow = parsed.data as Workflow;
-  const errors = validate(workflow.inputs, parsed.data.steps);
-  return errors.length > 0 ? { workflow: null, errors } : { workflow, errors };
+  const issues = validate(workflow.inputs, parsed.data.steps);
+  const errors = issues.map(describeIssue);
+  return issues.length > 0 ? { workflow: null, errors, issues } : { workflow, errors, issues };
 }
 
 const actionsOf = (step: RawStep | RawInner, keys: readonly string[]) =>
   keys.filter((key) => (step as Record<string, unknown>)[key] !== undefined);
 
 /** What the schema cannot see: one action per step, ids, `continue` and `{{…}}` references. */
-function validate(inputs: string[], steps: RawStep[]): string[] {
-  const errors: string[] = [];
+function validate(inputs: string[], steps: RawStep[]): RuleIssue[] {
+  const issues: RuleIssue[] = [];
   /** Earlier steps: id → action. */
   const earlier = new Map<string, string | undefined>();
   steps.forEach((step, i) => {
-    const fail = (problem: string) => errors.push(`steps.${i} (${step.id}): ${problem}`);
+    const fail = (code: string, params?: Record<string, string>) =>
+      issues.push(issue(`steps.${i} (${step.id})`, code, params));
     const actions = actionsOf(step, ACTIONS);
     if (actions.length !== 1) {
-      fail("a etapa precisa de exatamente uma ação (agent, check, gate, loop, parallel ou pr)");
+      fail("step_one_action");
     }
-    if (earlier.has(step.id)) fail("id repetido");
+    if (earlier.has(step.id)) fail("step_id_duplicate");
     const inner: Array<[string, RawInner]> = [
       ...(step.loop ? ([["loop.do", step.loop.do]] as Array<[string, RawInner]>) : []),
       ...(step.parallel ?? []).map((item, j): [string, RawInner] => [`parallel.${j}`, item]),
     ];
     for (const [path, item] of inner) {
       if (actionsOf(item, INNER_ACTIONS).length !== 1) {
-        fail(`${path}: precisa de exatamente uma ação (agent ou check)`);
+        fail("inner_one_action", { where: path });
       }
     }
     const agents = [step.agent, ...inner.map(([, item]) => item.agent)];
     for (const agent of agents) {
       if (agent?.continue && earlier.get(agent.continue) !== "agent") {
-        fail(`continue para etapa inexistente: ${agent.continue}`);
+        fail("continue_unknown", { step: agent.continue });
       }
       if (agent?.continue && agent.persona) {
-        fail("persona não vale com continue: a sessão dessa etapa já existe");
+        fail("persona_with_continue");
       }
     }
     const templates: Array<[string, boolean]> = [
@@ -170,13 +210,13 @@ function validate(inputs: string[], steps: RawStep[]): string[] {
     for (const [template, inLoop] of templates) {
       for (const [raw, expression] of template.matchAll(REFERENCE)) {
         if (!known(expression ?? "", { inputs, earlier, inLoop })) {
-          fail(`referência desconhecida: ${raw}`);
+          fail("reference_unknown", { ref: raw });
         }
       }
     }
     earlier.set(step.id, actions.length === 1 ? actions[0] : undefined);
   });
-  return errors;
+  return issues;
 }
 
 function known(

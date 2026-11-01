@@ -5,6 +5,7 @@ import { Page } from "@/components/layout/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { workflowIssueText } from "@/i18n/errors";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -69,7 +70,10 @@ export function WorkflowsPage(props: {
                 aria-label={t("workflowsUi.errors", { name: workflow.name })}
                 className="flex flex-col gap-1"
               >
-                {workflow.errors.map((error) => (
+                {(workflow.issues
+                  ? workflow.issues.map((issue) => workflowIssueText(issue, t))
+                  : workflow.errors
+                ).map((error) => (
                   <li key={error}>
                     <InlineNotice tone="error">{error}</InlineNotice>
                   </li>

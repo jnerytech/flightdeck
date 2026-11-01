@@ -666,6 +666,27 @@ export const en: Dictionary = {
     unknown:
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
+  workflowIssue: {
+    yaml_invalid: "The file is not valid YAML: {detail}",
+    unknown_field: "This field does not exist: {field}.",
+    required: "This field is required.",
+    not_object: "This must be a block of fields.",
+    invalid_type: "This has the wrong type.",
+    invalid_value: "This value is not valid.",
+    not_empty: "This cannot be empty.",
+    positive: "This must be greater than zero.",
+    positive_int: "This must be a whole number greater than zero.",
+    parallel_empty: "parallel needs at least one item.",
+    input_name_invalid: "An input name takes letters, digits, hyphens and underscores.",
+    persona_invalid: "The persona id is not valid.",
+    step_one_action: "A step needs exactly one action: agent, check, gate, loop, parallel or pr.",
+    step_id_duplicate: "Another step has this id.",
+    inner_one_action: "{where} needs exactly one action: agent or check.",
+    continue_unknown: "continue points to a step that does not exist: {step}.",
+    persona_with_continue:
+      "persona does not apply with continue: that step's session already exists.",
+    reference_unknown: "Unknown reference: {ref}.",
+  },
   actionIssue: {
     not_object: "The action must be a block of fields.",
     unknown_field: "This field does not exist: {field}.",
@@ -855,6 +876,16 @@ export const en: Dictionary = {
     automation_not_found: "The automation {id} does not exist.",
     automation_remove_confirm: "Removing an automation needs your confirmation.",
     automation_enable_confirm: "Turning an automation on needs your confirmation.",
+    workflow_changed_review:
+      "The workflow {name} changed. Review its commands again before trusting it.",
+    workflow_invalid: "The workflow {name} has errors. Fix them before using it.",
+    workflow_not_trusted:
+      "The workflow {name} is not trusted. Trust it on the Workflows screen first.",
+    workflow_input_required: "The workflow needs the input {input}.",
+    workflow_input_unknown: "The workflow has no input {input}.",
+    workflow_gate_closed: "The gate {step} (attempt {attempt}) is not open.",
+    workflow_run_not_found: "The run {id} does not exist.",
+    workflow_not_on_branch: "The workflow {name} is not on the branch {branch}.",
     action_invalid: "The action has problems. Fix them and save again.",
     action_ssh_env_value:
       "The variable {name} has a line break or NUL, which an ssh action does not send.",

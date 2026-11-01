@@ -1091,6 +1091,16 @@ export const WorkflowInfo = z.object({
   checks: z.array(z.string()),
   /** Validation errors; a workflow with any can neither be trusted nor run. */
   errors: z.array(z.string()),
+  /** The same problems as codes with params, for the app to translate. */
+  issues: z
+    .array(
+      z.object({
+        path: z.string(),
+        code: z.string(),
+        params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+      }),
+    )
+    .optional(),
   inputs: z.array(z.string()),
 });
 export type WorkflowInfo = z.infer<typeof WorkflowInfo>;

@@ -102,6 +102,14 @@ export const DAEMON_REASONS = [
   "automation_not_found",
   "automation_remove_confirm",
   "automation_enable_confirm",
+  "workflow_changed_review",
+  "workflow_invalid",
+  "workflow_not_trusted",
+  "workflow_input_required",
+  "workflow_input_unknown",
+  "workflow_gate_closed",
+  "workflow_run_not_found",
+  "workflow_not_on_branch",
   "action_param_unknown",
   "action_param_missing",
   "action_param_pattern",
@@ -220,6 +228,28 @@ export const ACTION_ISSUE_CODES = [
   "name_duplicate",
   "yaml_invalid",
   "file_not_list",
+] as const;
+
+/** Every kind of issue a workflow file can have: the app has a text for each, in both languages. */
+export const WORKFLOW_ISSUE_CODES = [
+  "yaml_invalid",
+  "unknown_field",
+  "required",
+  "not_object",
+  "invalid_type",
+  "invalid_value",
+  "not_empty",
+  "positive",
+  "positive_int",
+  "parallel_empty",
+  "input_name_invalid",
+  "persona_invalid",
+  "step_one_action",
+  "step_id_duplicate",
+  "inner_one_action",
+  "continue_unknown",
+  "persona_with_continue",
+  "reference_unknown",
 ] as const;
 
 /** Every kind of issue the rules validation reports: the app has a text for each, in both languages. */
