@@ -27,6 +27,11 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     sessions: [] as unknown[],
     send: { id: "m-sent", status: "queued", reason: null } as unknown,
   };
+  /** Phase 23: what `telemetry.session` and `telemetry.summary` answer. */
+  const telemetry = {
+    session: { prompts: [] as unknown[] },
+    summary: { projects: [] as unknown[] },
+  };
   /** Phase 22: what `watch.get`, `watch.set` and `watch.describe` answer, for a test to set. */
   const watch = {
     info: { cardId: "", enabled: false, status: "watching", reason: null, rounds: [] } as {
@@ -146,6 +151,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         // Phase 19: the approval of a request that asked, before its delivery.
         if (type === "vault.approve") return ack();
         if (type === "vault.rules.preview") return ack(preview.verdict);
+        if (type === "telemetry.session") return ack(telemetry.session);
+        if (type === "telemetry.summary") return ack(telemetry.summary);
         if (type === "messages.list") return ack({ messages: messaging.messages });
         if (type === "messages.sessions") return ack({ sessions: messaging.sessions });
         if (type === "messaging.rules.get") {
@@ -221,6 +228,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     streams,
     watch,
     messaging,
+    telemetry,
     /** Sends a frame to every connected client, as the daemon does on its own. */
     push: (frame: unknown) => {
       for (const ws of sockets) ws.send(JSON.stringify(frame));

@@ -43,6 +43,7 @@ import { SecretScanner } from "../../daemon/src/snippets/model.ts";
 import { Snippets } from "../../daemon/src/snippets/store.ts";
 import { SnippetUse } from "../../daemon/src/snippets/use.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
+import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
@@ -82,6 +83,8 @@ export function daemon(
     terminal?: { flightdeckdPath: string | null; wslDistro: string | null };
     /** Estimated costs (phase 8) over this daemon's own usage entries. */
     costs?: boolean;
+    /** The OTLP telemetry of terminal sessions (phase 23), kept in this daemon's database. */
+    telemetry?: boolean;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
@@ -241,6 +244,7 @@ export function daemon(
         backup: { enabled: true, keep: 7 },
       })
     : undefined;
+  const telemetry = options.telemetry ? new TelemetryStore(store.db) : undefined;
   const costs = options.costs ? new Costs({ db: store.db, pricing: DEFAULT_PRICING }) : undefined;
   const budgets = options.budgets?.(store.db);
   const issues = options.issues || options.automations ? new Issues({ board }) : undefined;
@@ -318,6 +322,7 @@ export function daemon(
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
+      ...(telemetry ? { telemetry } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
@@ -365,6 +370,7 @@ export function daemon(
     quota,
     usage,
     costs,
+    telemetry,
     budgets,
     manager,
     project,
