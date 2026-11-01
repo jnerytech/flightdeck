@@ -247,6 +247,26 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // A finished terminal session's Rastro tab: the tree with a subagent, bars and highlights.
+      name: "rastro",
+      route: { name: "external", host: ALFA, claudeSessionId: ids.traceSession },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Rastro|Trace)$/ }).click();
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "rastro-replay",
+      route: { name: "external", host: ALFA, claudeSessionId: ids.traceSession },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Rastro|Trace)$/ }).click();
+        await page.getByRole("button", { name: "Replay" }).click();
+        await page.getByRole("button", { name: /^(Próximo|Next)$/ }).click();
+        await page.getByRole("button", { name: /^(Próximo|Next)$/ }).click();
+        await page.waitForTimeout(500);
+      },
+    },
+    {
       name: "host-telemetria",
       route: { name: "host", host: ALFA },
       prepare: showSection(/^(Telemetria|Telemetry)$/),

@@ -99,6 +99,7 @@ sessions from one place, without opening each machine.
   approvable from the app.
 - Tray menu to approve requests without opening the window, and a `Ctrl+K` palette.
 - Signed auto-update for the app and for the daemons.
+- A trace of any session: the tree of its turns, tool calls and subagents with time, cost and tokens, the costliest and slowest marked, a step-by-step replay and an export for a bug report.
 - Time and cost of the sessions opened in a terminal, from Claude Code's own telemetry (OTLP, received on this machine only): a slow tool, the time spent waiting for your permissions, API errors.
 - Light on resources: long lists, live text and terminal output are capped and batched, heavy pieces load on demand, and `bun run perf:baseline` prints the numbers.
 - Light and dark themes; English and Portuguese.

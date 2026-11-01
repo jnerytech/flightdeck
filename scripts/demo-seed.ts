@@ -9,7 +9,7 @@
  * long transcript; the plan quota; costs from usage in the transcripts; a very long title.
  */
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
@@ -93,6 +93,8 @@ export interface DemoIds {
   rewindSession: string;
   /** The Claude session id of `idleSession`, whose Tempo tab has a timeline (phase 23). */
   telemetrySession: string;
+  /** A finished terminal session whose transcript has tools and subagents: the Rastro tab (phase 25). */
+  traceSession: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -213,6 +215,34 @@ const assistantLine = (uuid: string, text: string, cwd: string, ts: string) =>
     message: { role: "assistant", content: [{ type: "text", text }] },
   });
 
+/** The session of the trace fixture, written into the demo's history. */
+const TRACE_SESSION = "bbbbbbbb-0000-4000-8000-000000000025";
+
+/**
+ * The trace fixture (two turns, tools, a thought, three subagents, one inside another) as a
+ * finished session of the demo: its folder, and today's date so the costs have numbers.
+ */
+function writeTraceSession(dir: string, cwd: string): void {
+  const source = join(FIXTURES, "../trace");
+  const today = new Date().toISOString().slice(0, 10);
+  const adapt = (text: string) =>
+    text
+      .replaceAll("2026-11-01", today)
+      .replaceAll('"sessionId"', `"cwd":${JSON.stringify(cwd)},"sessionId"`);
+  writeFileSync(
+    join(dir, `${TRACE_SESSION}.jsonl`),
+    adapt(readFileSync(join(source, "main.jsonl"), "utf8")),
+  );
+  const subagents = join(dir, TRACE_SESSION, "subagents");
+  mkdirSync(subagents, { recursive: true });
+  for (const name of readdirSync(join(source, "subagents"))) {
+    writeFileSync(
+      join(subagents, name),
+      adapt(readFileSync(join(source, "subagents", name), "utf8")),
+    );
+  }
+}
+
 /** Transcripts of finished terminal sessions: many short ones, a long one and two with usage. */
 function writeHistory(history: string, cwd: string): void {
   const dir = join(history, "-demo");
@@ -245,6 +275,7 @@ function writeHistory(history: string, cwd: string): void {
     .replaceAll("__CWD__", JSON.stringify(cwd).slice(1, -1))
     .replace(/"timestamp":"[^"]+"/g, `"timestamp":"${now}"`);
   writeFileSync(join(dir, "aaaaaaaa-0000-4000-8000-000000000001.jsonl"), usage);
+  writeTraceSession(dir, cwd);
   writeCostsHistory(dir, cwd);
 }
 
@@ -844,6 +875,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       projectName: "flightdeck-web",
       rewindSession: rewind.sessionId,
       telemetrySession,
+      traceSession: TRACE_SESSION,
     },
     stop: async () => {
       gh.restore();

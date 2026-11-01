@@ -81,6 +81,10 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | Tempo por projeto | Time per project | The panel of Costs with the permission wait and the slowest tools of each project |
 | telemetria | telemetry | The OpenTelemetry (OTLP) Claude Code exports; the daemon receives it locally and keeps timings, never text |
 | espera por permissão | permission wait | How long Claude waited for you to answer a permission: the gap before your answer, an estimate |
+| Rastro | Trace | A session's tab with the tree of its turns, tool calls and subagents, with time, cost and tokens |
+| Replay | Replay | The trace walked one node at a time, with play, pause and a speed |
+| mais caro | costliest | The turn or subagent of a trace that cost most |
+| mais lento | slowest | The tool call or subagent of a trace that took longest |
 
 ## Estados de uma sessão
 
