@@ -195,6 +195,25 @@ describe("board", () => {
     expect(existsSync(worktree)).toBe(false);
   });
 
+  test("discarding a card first ends what runs in its worktree, and removes the worktree only after that has ended", async () => {
+    const { idle, state, release } = gatedIdle();
+    const { board, card, worktree } = await idleCard(async () => {});
+    const ended: Array<{ id: string; worktreeThere: boolean }> = [];
+    board.addEnd(async (id) => {
+      ended.push({ id, worktreeThere: existsSync(worktree) });
+      await idle();
+    });
+    const discarding = board.discardCard(card.id, true);
+    const asked = await poll(() => state.waited > 0 || null, 3000);
+    expect(asked).toBe(true);
+    await Bun.sleep(200);
+    expect(existsSync(worktree)).toBe(true);
+    release();
+    expect(await discarding).toMatchObject({ discarded: true, worktreePath: null });
+    expect(ended).toEqual([{ id: card.id, worktreeThere: true }]);
+    expect(existsSync(worktree)).toBe(false);
+  });
+
   test("a card still starting when the daemon stops leaves no unhandled error and writes nothing after", async () => {
     // In a process of its own: an unhandled rejection there is output and an exit code to check.
     const script = `

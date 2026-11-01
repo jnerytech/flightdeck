@@ -227,6 +227,7 @@ export class Board {
   private readonly db: Database;
   /** Card id → stops following the session of its active run. */
   private readonly waits: Array<() => Promise<unknown>> = [];
+  private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   private readonly follows = new Map<string, () => void>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
   private readonly running = new Set<string>();
@@ -862,6 +863,11 @@ export class Board {
   /** Another thing to wait for before a worktree is removed, besides `idle` (the run environment's trees). */
   addIdle(wait: () => Promise<unknown>): void {
     this.waits.push(wait);
+  }
+
+  /** Something that ends what runs in a card's worktree, asked before a discarded card's worktree goes. */
+  addEnd(end: (cardId: string) => Promise<unknown>): void {
+    this.ends.push(end);
   }
 
   /** Everything a worktree must wait for before it is removed. */

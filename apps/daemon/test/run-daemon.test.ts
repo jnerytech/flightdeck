@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
@@ -138,5 +138,17 @@ describe("run-daemon: o daemon liga tudo", () => {
     expect(ptys.spawned[1]?.killed).toBe(false);
     const c = await card("C");
     expect((await client.data<WireRun>("runenv.start", { cardId: c.id }))?.ports.web).toBe(52000);
+  });
+
+  test("a discarded card stops what it ran, before its worktree goes, and gives its ports back", async () => {
+    const { client, ptys, projectId, card } = await daemon();
+    await client.data("runenv.trust", { projectId, hash: sha256(YAML) });
+    const a = await card("A");
+    expect((await client.data<WireRun>("runenv.start", { cardId: a.id }))?.ports.web).toBe(52000);
+    await client.data("card.discard", { cardId: a.id, confirm: true });
+    expect(ptys.spawned[0]?.killed).toBe(true);
+    expect(existsSync(a.worktree)).toBe(false);
+    const b = await card("B");
+    expect((await client.data<WireRun>("runenv.start", { cardId: b.id }))?.ports.web).toBe(52000);
   });
 });
