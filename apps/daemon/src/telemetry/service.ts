@@ -20,6 +20,8 @@ export interface TelemetryService {
   stop(): Promise<void>;
 }
 
+const HOUR_MS = 3_600_000;
+
 /** The token as the config file has it right now, so a rotation takes effect without a restart. */
 function currentToken(configFile: string): string | undefined {
   try {
@@ -39,7 +41,8 @@ function currentToken(configFile: string): string | undefined {
 export function startTelemetry(opts: TelemetryOptions): TelemetryService {
   const { config, configFile } = opts;
   const off: TelemetryService = { url: null, stop: async () => {} };
-  if (!config.telemetry.enabled) return off;
+  // Like the hooks receptor, it listens only once the hooks are set up: a daemon without them opens no extra port.
+  if (!config.telemetry.enabled || !config.hooks.token) return off;
   if (!config.telemetry.token) {
     updateConfigFile(configFile, (raw) => ({
       ...raw,
@@ -56,9 +59,14 @@ export function startTelemetry(opts: TelemetryOptions): TelemetryService {
     mkdirSync(config.dataDir, { recursive: true });
     const file = join(config.dataDir, TELEMETRY_FILE);
     writeFileSync(file, JSON.stringify({ url: receiver.url }));
+    // The retention runs only while the receiver does, so an idle daemon keeps no timer for it.
+    opts.purge?.();
+    const timer = opts.purge ? setInterval(opts.purge, opts.purgeEveryMs ?? HOUR_MS) : null;
+    timer?.unref();
     return {
       url: receiver.url,
       stop: async () => {
+        if (timer) clearInterval(timer);
         rmSync(file, { force: true });
         await receiver.stop();
       },

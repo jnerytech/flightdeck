@@ -112,6 +112,8 @@ import {
   telemetryStatus,
   uninstallTelemetry,
 } from "./telemetry/otlp-env.ts";
+import { startTelemetry } from "./telemetry/service.ts";
+import { TelemetryStore } from "./telemetry/store.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -710,6 +712,19 @@ export async function startDaemon(
     claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
     log: (message) => logger.log(message),
   });
+  // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
+  const telemetryStore = new TelemetryStore(store.db);
+  const telemetry = startTelemetry({
+    config,
+    configFile,
+    log: { error: (message) => logger.error(message) },
+    onEvents: (events) => {
+      telemetryStore.add(events);
+    },
+    purge: () => {
+      telemetryStore.prune(config.telemetry.retentionDays, Date.now());
+    },
+  });
   const central = new Central({
     risk,
     autoApprove,
@@ -1088,6 +1103,7 @@ export async function startDaemon(
         board.stop();
         terminals.stop();
         await central.stop();
+        await telemetry.stop();
         maintenance.stop();
         updates?.stop();
         await manager.shutdown();
