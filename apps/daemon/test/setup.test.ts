@@ -257,7 +257,12 @@ describe("prompt", () => {
 describe("setup command", () => {
   function cliHarness(
     stdin?: (dir: string) => string,
-    options: { selfCommand?: (dir: string) => string[]; installed?: boolean } = {},
+    options: {
+      selfCommand?: (dir: string) => string[];
+      installed?: boolean;
+      /** The platform the service context fakes; the wizard keeps the host's own paths. */
+      platform?: "linux" | "win32";
+    } = {},
   ) {
     const out: string[] = [];
     const exits: number[] = [];
@@ -276,12 +281,12 @@ describe("setup command", () => {
       ...(options.selfCommand ? { selfCommand: options.selfCommand(dir) } : {}),
       serviceHealthTimeoutMs: 2_000,
       serviceContext: (dryRun) => ({
-        platform: "linux",
+        platform: options.platform ?? "linux",
         home: dir,
         user: "dev",
         command: ["/home/dev/.local/bin/flightdeckd"],
-        systemRoot: "",
-        tempDir: "/tmp",
+        systemRoot: "C:\\Windows",
+        tempDir: options.platform === "win32" ? "C:\\Temp" : "/tmp",
         dryRun,
         exec: async (cmd) => {
           calls.push(cmd);
@@ -322,6 +327,19 @@ describe("setup command", () => {
     expect(h.written.has(`${h.dir}/.config/systemd/user/flightdeckd.service`)).toBe(true);
     expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
     expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
+  });
+
+  test("a Windows service context on another host's paths: the wizard keeps reading the host's real folders, and the service is the scheduled task", async () => {
+    const h = cliHarness(undefined, { platform: "win32" });
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.exits).toEqual([0]);
+    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect(h.written.has("C:\\Temp\\flightdeckd-task.xml")).toBe(true);
+    const schtasks = h.calls.filter((c) => c[0] === "schtasks").map((c) => c[1]);
+    expect(schtasks).toEqual(["/Query", "/Create", "/Run"]);
   });
 
   test("a compiled binary is copied to ~/.flightdeck/bin and the service runs that copy", async () => {
