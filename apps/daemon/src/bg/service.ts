@@ -12,6 +12,8 @@ export interface BgServiceOptions {
   channel?: (claudeSessionId: string, text: string) => boolean;
   /** What starting a session needs: this daemon's command line, its config and the folders it may use. */
   start?: { self: string[]; configFile: string; allowedRoots: readonly string[] };
+  /** The folder, prompt and name a card starts a session with; `null` when there is no such card. */
+  card?: (cardId: string) => { cwd: string; prompt: string; name: string } | null;
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -144,10 +146,11 @@ export class BgService {
 
   /** Starts a background session through `flightdeckd claude --bg`: controllable, with the persona. */
   async start(input: {
-    cwd: string;
-    prompt: string;
-    name?: string;
-    persona?: string;
+    cwd?: string | undefined;
+    prompt?: string | undefined;
+    cardId?: string | undefined;
+    name?: string | undefined;
+    persona?: string | undefined;
   }): Promise<{ id: string }> {
     const { start } = this.opts;
     if (!start) {
@@ -155,7 +158,7 @@ export class BgService {
         feature: "bg",
       });
     }
-    const cwd = resolveAllowedCwd(input.cwd, start.allowedRoots);
+    const cwd = resolveAllowedCwd(input.cwd ?? "", start.allowedRoots);
     const result = await runCommand(
       [
         ...start.self,
@@ -164,7 +167,7 @@ export class BgService {
         ...(input.persona ? ["--persona", input.persona] : []),
         ...(input.name ? ["--name", input.name] : []),
         "--",
-        input.prompt,
+        input.prompt ?? "",
       ],
       cwd,
       undefined,

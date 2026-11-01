@@ -143,6 +143,39 @@ process.exit(${code});
     expect(run.config).toBe(h.configFile);
   });
 
+  test("a card starts a session in its project's folder, named and prompted by the card", async () => {
+    const { self, called } = stub();
+    const h = host();
+    const bg = new BgService({
+      db: new EventStore(":memory:").db,
+      claude: () => "claude",
+      start: { self, configFile: h.configFile, allowedRoots: [h.work] },
+      card: (id) =>
+        id === "c1"
+          ? { cwd: h.work, prompt: "Corrija a soma.\n\nO total erra.", name: "Somar" }
+          : null,
+    });
+    expect(await bg.start({ cardId: "c1", persona: "revisor" })).toEqual({ id: "stub01" });
+    const run = called();
+    expect(run.argv).toEqual([
+      "claude",
+      "--bg",
+      "--persona",
+      "revisor",
+      "--name",
+      "Somar",
+      "--",
+      "Corrija a soma.\n\nO total erra.",
+    ]);
+    expect(realpathSync(run.cwd)).toBe(realpathSync(h.work));
+    const missing = (await bg.start({ cardId: "nope" }).catch((e) => e)) as FlightdeckError;
+    expect(missing.code).toBe("not_found");
+    const noCard = service(self).bg;
+    expect(((await noCard.start({ cardId: "c1" }).catch((e) => e)) as FlightdeckError).code).toBe(
+      "not_found",
+    );
+  });
+
   test("a host set up without a way to start one says the feature is off", async () => {
     const bg = new BgService({ db: new EventStore(":memory:").db, claude: () => "claude" });
     const error = (await bg.start({ cwd: "/x", prompt: "x" }).catch((e) => e)) as FlightdeckError;

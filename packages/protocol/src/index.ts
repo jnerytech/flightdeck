@@ -2819,15 +2819,21 @@ export const Command = z.discriminatedUnion("type", [
   cmd("bg.message", z.object({ id: BgId, text: z.string().min(1).max(32_000) })),
   cmd(
     "bg.start",
-    z.object({
-      cwd: z.string().min(1),
-      prompt: z.string().min(1).max(32_000),
-      name: z.string().min(1).max(120).optional(),
-      persona: z
-        .string()
-        .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
-        .optional(),
-    }),
+    z
+      .object({
+        /** A folder and a prompt, or a card (its project's folder and its text). */
+        cwd: z.string().min(1).optional(),
+        prompt: z.string().min(1).max(32_000).optional(),
+        cardId: z.string().min(1).optional(),
+        name: z.string().min(1).max(120).optional(),
+        persona: z
+          .string()
+          .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+          .optional(),
+      })
+      .refine((p) => p.cardId !== undefined || (p.cwd !== undefined && p.prompt !== undefined), {
+        message: "bg.start pede cwd e prompt, ou um card",
+      }),
   ),
   cmd("telemetry.status", z.object({}).strict()),
   // Phase 25: the trace of a session, built from its transcript and its subagents'.
