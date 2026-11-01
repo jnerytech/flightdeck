@@ -231,6 +231,9 @@ function writeTraceSession(dir: string, cwd: string): void {
   const adapt = (text: string) =>
     text
       .replaceAll("2026-11-01", today)
+      // The usage counts a message id once, for the first file read (readdir order differs between
+      // machines): the trace session keeps its own ids, apart from the usage transcript's.
+      .replaceAll(/"id": ?"msg_/g, '"id": "msg_trace-')
       .replaceAll('"sessionId"', `"cwd":${JSON.stringify(cwd)},"sessionId"`);
   writeFileSync(
     join(dir, `${TRACE_SESSION}.jsonl`),
