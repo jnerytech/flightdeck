@@ -142,6 +142,19 @@ describe("snippets-uso: the palette", () => {
     expect(store.globalSnippets.list()[0]?.uses).toBe(1);
   });
 
+  test("Rodar numa aba nova is disabled until a folder is given, and says why", async () => {
+    await open(false);
+    await palette("deploy");
+    await choose("Snippet: deploy");
+    const run = screen.queryByRole("button", {
+      name: "Rodar numa aba nova",
+    }) as HTMLButtonElement | null;
+    expect(run?.disabled).toBe(true);
+    const reason = screen.queryByText("Informe a pasta onde rodar.");
+    expect(reason).not.toBeNull();
+    expect(run?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
   test("Rodar numa aba nova opens a terminal in the folder given and runs the command there", async () => {
     const { d, store, hostId } = await open(false);
     await palette("deploy");

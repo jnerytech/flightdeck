@@ -252,6 +252,28 @@ describe("linha-do-tempo-ui", () => {
     expect(text(join(repo, "README.md"))).toBe("# repo\n");
   });
 
+  test("voltar arquivos até um turno que não muda nada fica desligado e diz por quê", async () => {
+    await setup();
+    await openTimeline();
+    await click("Voltar arquivos até aqui (turno 4)");
+    await settle(
+      () => screen.queryByRole("dialog", { name: "Voltar arquivos até o turno 4" }) !== null,
+    );
+    await settle(() => screen.queryByRole("status", { name: "Calculando o que muda…" }) === null);
+    const dialog = within(
+      screen.queryByRole("dialog", { name: "Voltar arquivos até o turno 4" }) as HTMLElement,
+    );
+    const confirm = dialog.queryByRole("button", {
+      name: "Voltar arquivos",
+    }) as HTMLButtonElement | null;
+    expect(confirm?.disabled).toBe(true);
+    const reason = dialog.queryByText(
+      "Nada a voltar: os arquivos já estão como estavam neste turno.",
+    );
+    expect(reason).not.toBeNull();
+    expect(confirm?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
   test("um turno sem a mensagem achada no transcript não bifurca, e diz por quê", async () => {
     await setup();
     await openTimeline();
