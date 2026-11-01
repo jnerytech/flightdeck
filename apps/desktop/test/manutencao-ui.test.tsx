@@ -64,6 +64,10 @@ async function openMaintenance() {
 }
 
 const section = () => screen.getByLabelText("Manutenção");
+/** What the section says next to a label: the description that follows its term. */
+const fact = (label: string) =>
+  [...section().querySelectorAll("dt")].find((dt) => dt.textContent === label)?.nextElementSibling
+    ?.textContent;
 const click = async (name: string) => {
   await act(async () => {
     fireEvent.click(within(section()).getByRole("button", { name }));
@@ -98,19 +102,21 @@ describe("manutencao-ui", () => {
   test("seção Manutenção mostra o banco, o último backup e a última limpeza", async () => {
     await setup();
     await openMaintenance();
-    await waitFor(() => expect(within(section()).queryByText(/^banco: \d/)).not.toBeNull());
-    expect(section().textContent).toContain("último backup: nenhum ainda");
-    expect(section().textContent).toContain("última limpeza: nenhuma ainda");
-    expect(section().textContent).toMatch(/sessões: \d+ · eventos: \d+ · sessões externas: \d+/);
+    await waitFor(() => expect(fact("Banco")).toMatch(/^\d/));
+    expect(fact("Último backup")).toBe("nenhum ainda");
+    expect(fact("Última limpeza")).toBe("nenhuma ainda");
+    for (const label of ["Sessões", "Eventos", "Sessões externas"]) {
+      expect(fact(label)).toMatch(/^\d+$/);
+    }
   });
 
   test("Fazer backup agora cria o arquivo e atualiza o último backup", async () => {
     const d = await setup();
     await openMaintenance();
-    await waitFor(() => expect(section().textContent).toContain("último backup: nenhum ainda"));
+    await waitFor(() => expect(fact("Último backup")).toBe("nenhum ainda"));
     await click("Fazer backup agora");
-    await waitFor(() => expect(section().textContent).not.toContain("último backup: nenhum ainda"));
-    expect(section().textContent).toMatch(/último backup: .+ \(\d+(\.\d)? (B|KB|MB)\)/);
+    await waitFor(() => expect(fact("Último backup")).not.toBe("nenhum ainda"));
+    expect(fact("Último backup")).toMatch(/.+ \(\d+(\.\d)? (B|KB|MB)\)$/);
     const backups = join(d.root, "data", "backups");
     expect(existsSync(backups) ? readdirSync(backups) : []).toHaveLength(1);
   });
@@ -121,7 +127,7 @@ describe("manutencao-ui", () => {
     const before = eventCount(d, sessionId);
     expect(before).toBeGreaterThan(0);
     await openMaintenance();
-    await waitFor(() => expect(section().textContent).toContain("última limpeza: nenhuma ainda"));
+    await waitFor(() => expect(fact("Última limpeza")).toBe("nenhuma ainda"));
     await click("Simular");
     await waitFor(() =>
       expect(section().textContent).toContain(`seriam apagados: eventos ${before}`),
