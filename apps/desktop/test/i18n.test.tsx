@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { PendingPermission } from "@flightdeck/protocol";
+import { ErrorCode, type PendingPermission } from "@flightdeck/protocol";
 import { visibleLiterals } from "../../../scripts/lib/i18n-sweep.ts";
 import { en } from "../src/i18n/en.ts";
-import { translateError } from "../src/i18n/errors.ts";
+import { refusalText, translateError } from "../src/i18n/errors.ts";
 import {
   formatAgo,
   formatDateTime,
@@ -147,10 +147,39 @@ describe("i18n", () => {
         "The host is offline: check that the daemon runs there (flightdeckd start) and that the network reaches its address.",
       detail: "host desconhecido",
     });
+  });
+
+  test("an unknown code gets a generic text and keeps the daemon's message as the detail, never only the raw message", () => {
     expect(translateError("quota_exceeded", "cota estourada", enT)).toEqual({
-      title: "cota estourada",
-      detail: "",
+      title:
+        "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
+      detail: "cota estourada",
     });
+    expect(translateError("quota_exceeded", "cota estourada", ptT)).toEqual({
+      title:
+        "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon.",
+      detail: "cota estourada",
+    });
+  });
+
+  test("every code of the protocol has a text of its own in both languages", () => {
+    for (const code of ErrorCode.options) {
+      for (const t of [ptT, enT]) {
+        const { title } = translateError(code, "mensagem", t);
+        expect(title).not.toBe("mensagem");
+        expect(title).not.toBe(translateError("not_a_code", "mensagem", t).title);
+      }
+    }
+  });
+
+  test("refusalText joins the translated text and the daemon's message, and drops an empty message", () => {
+    expect(refusalText("invalid_state", "em uso", enT)).toBe(
+      "That can't be done right now. em uso",
+    );
+    expect(refusalText("invalid_state", "", enT)).toBe("That can't be done right now.");
+    expect(refusalText("quota_exceeded", "cota", ptT)).toBe(
+      "O host informou um erro que o app não conhece. Tente de novo; se repetir, confira o log do daemon. cota",
+    );
   });
 
   test("bandeja e notificações saem do mesmo dicionário", () => {
