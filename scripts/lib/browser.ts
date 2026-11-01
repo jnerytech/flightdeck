@@ -45,19 +45,36 @@ export const RUNNER_BROWSER_NAMES = [
   "chromium-browser",
 ];
 
+/**
+ * The browser the e2e runner (`@playwright/test`, under Node) starts: the first system Chrome or
+ * Chromium found, else the installed Chrome by channel (Windows). A channel cannot be probed
+ * without launching, so no Edge fallback here. No browser is ever downloaded.
+ */
 export function browserLaunch(
   which: (name: string) => string | null,
 ): { executablePath: string } | { channel: "chrome" } {
-  void which;
+  for (const name of RUNNER_BROWSER_NAMES) {
+    const executablePath = which(name);
+    if (executablePath) return { executablePath };
+  }
   return { channel: "chrome" };
 }
 
+/** `which` for Node, which has no `Bun.which`: scans the PATH (and PATHEXT on Windows). */
 export function whichOnNodePath(
   name: string,
   env: Record<string, string | undefined>,
   platform: string,
   isFile: (path: string) => boolean,
 ): string | null {
-  void [name, env, platform, isFile];
-  return "";
+  const windows = platform === "win32";
+  const sep = windows ? ";" : ":";
+  const extensions = windows ? ["", ...(env.PATHEXT ?? ".EXE;.CMD").toLowerCase().split(";")] : [""];
+  for (const dir of (env.PATH ?? "").split(sep).filter(Boolean)) {
+    for (const ext of extensions) {
+      const candidate = `${dir}${windows ? "\\" : "/"}${name}${ext}`;
+      if (isFile(candidate)) return candidate;
+    }
+  }
+  return null;
 }
