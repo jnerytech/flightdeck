@@ -11,6 +11,8 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | sessão do terminal | terminal session | Uma sessão aberta fora do Flightdeck, no terminal, vista pelos hooks |
 | sessão do Flightdeck | Flightdeck session | Uma sessão que o próprio app criou e controla |
 | card | card | O item do board, com a sua worktree e as suas execuções |
+| Vigiar e consertar | Watch and fix | O interruptor do card com PR aberto: o daemon vigia o PR e conserta o que piorou |
+| rodada | round | Uma tentativa de conserto de um PR: a sessão corrige, os checks locais passam e o push acontece |
 | board | board | O quadro de cards de um projeto |
 | workflow | workflow | Uma sequência de etapas (agente, check, gate) de um card |
 | gate | gate | A etapa de um workflow que espera a aprovação de uma pessoa |

@@ -64,6 +64,7 @@ are written in Portuguese.
 - [Risk-graded approval](#risk-graded-approval)
 - [Actions: Claude uses a secret without seeing it](#actions-claude-uses-a-secret-without-seeing-it)
 - [Memory, context and plugins](#memory-context-and-plugins)
+- [Watching and fixing a PR](#watching-and-fixing-a-pr)
 - [Teams and messages between sessions](#teams-and-messages-between-sessions)
   - [Standard session names](#standard-session-names)
   - [Who may message whom](#who-may-message-whom)
@@ -1370,6 +1371,46 @@ skills, agents, commands and MCP servers, and a hash of the whole content. Hooks
   you saw, the plugin is uninstalled at once and the decision is recorded in
   `plugin-decisions.jsonl`.
 - **Marketplaces** adds and removes (each after a confirmation) and updates.
+
+## Watching and fixing a PR
+
+A card with an open PR has **Watch and fix**. It is off by default: turn it on in the card, or make
+it the default of a project in **Settings**. Hosts that offer it (`watch` in the host page) watch
+the PR at every `board.prPollIntervalMs`:
+
+- the **builds** and the **policy evaluations** (Azure DevOps, through `az devops invoke`; GitHub,
+  through `gh pr checks`), the **conflicts** with the target branch and the **new comments** of
+  people you trust (the card's identity, or owners, members and collaborators);
+- only what **got worse** starts a round: a build that fails, a new conflict, a new comment. The
+  first look counts everything as new.
+
+A **round** opens the card's session as the `revisor` persona, with the names of the failed checks,
+the end of the build log (16 KB), the conflict and the comments. The log and the comments reach it
+as quoted data, never as instructions. The session fixes and commits, the **local checks** of the
+project run in the card's worktree, and only if they all pass does the host push, to the card's own
+branch, never forced and never to the base. Merging stays with you. The card shows **Watching the
+PR**, each round with its result (**Round 2 · failed**) and why it asks for you.
+
+A round stops, and the card goes to **Needs you** with the summary, when a limit is reached: 3
+rounds per PR, US$ 5 per PR, 30 turns, US$ 20 per day and project, two failed rounds in a row, or
+the quota queue. It also stops by itself when the PR is merged or closed, or when you turn the
+watch off. **Watch again** puts it back.
+
+**Settings** has **Watch and fix PRs · <host>**, one block per project: watch by default, rounds per
+PR, cost limit per PR and per day (empty is no limit), the time limit per check (1 to 60 minutes,
+10 by default) and the **local checks**, one per line. A check is a command with its arguments, with
+no quotes, pipes, `;`, `&`, `$` or redirections: anything else is refused. A check that runs out of
+time is killed with everything it started, and the round says so. A pushed round lists the checks
+that passed.
+
+Two more things come with it:
+
+- **Open PR** on a card first shows the **PR description**, made from the card's sessions, to edit.
+  Lines that look like a secret are taken out and counted. Nothing is opened until you click **Open
+  the PR with this text**.
+- **Ctrl+K**: paste a PR link (Azure DevOps or GitHub) and choose **Open the PR from the link**. The
+  hosts are asked: the card opens if the PR is from one; otherwise the transcript of the first
+  session the history knows for it; otherwise a message says nothing has it.
 
 ## Teams and messages between sessions
 

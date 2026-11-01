@@ -70,6 +70,10 @@ sessões num lugar só, sem abrir cada máquina.
 - Personas: papéis de engenharia que o Claude assume numa sessão (um pacote de dez, mais as suas
   por host, projeto ou app), escolhidas ao iniciar uma sessão, um card ou uma variante da arena,
   aplicadas a uma sessão aberta ou oferecidas ao Claude como subagentes.
+- Vigiar e consertar o PR de um card: quando um build, uma política, um conflito ou um comentário de
+  confiança piora, a sessão do card conserta dentro de limites de rodadas, custo e tempo, roda os
+  seus checks locais e faz push só da branch do próprio card. Cole o link de um PR no Ctrl+K para
+  achar o card ou as sessões.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.

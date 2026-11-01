@@ -66,6 +66,9 @@ sessions from one place, without opening each machine.
 - Personas: engineering roles Claude takes in a session (a pack of ten, plus your own per host,
   project or app), chosen when a session, card or arena variant starts, applied to an open session,
   or offered to Claude as subagents.
+- Watch and fix a card's PR: when a build, a policy, a conflict or a trusted comment gets worse,
+  the card's session fixes it within round, cost and time limits, runs your local checks and pushes
+  only the card's own branch. Paste a PR link in Ctrl+K to find its card or sessions.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
