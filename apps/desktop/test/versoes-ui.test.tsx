@@ -170,4 +170,29 @@ describe("versoes-ui", () => {
     expect(screen.queryByLabelText("Hooks do Claude Code")).not.toBeNull();
     expect(await sidebar.hostMenuItems("pc")).toContain("Projetos");
   });
+
+  describe("idioma: the host page in English", () => {
+    test("an incompatible host says how to update, with no Portuguese left on the page", async () => {
+      const daemon = fakeDaemon({ incompatible: true });
+      const { store } = await connect(daemon.url, "incompatível: atualize o daemon");
+      await openHost();
+      await act(async () => store.i18n.setLang("en"));
+      await waitFor(() =>
+        expect(text()).toContain(`On the host, with this app version's binary (${APP_VERSION}):`),
+      );
+      expect(text()).toContain("flightdeckd update --from <new binary>");
+      expect(text()).not.toContain("binário");
+    });
+
+    test("the hooks status and the API-key notice are in English too", async () => {
+      const daemon = fakeDaemon({ info: { apiKeySanitized: false } });
+      const { store } = await connect(daemon.url, "online");
+      await openHost();
+      await act(async () => store.i18n.setLang("en"));
+      await waitFor(() => expect(text()).toContain("This host's usage may be going to API credit"));
+      expect(text()).toContain("absent");
+      expect(text()).not.toContain("ausentes");
+      expect(text()).not.toContain("crédito de API");
+    });
+  });
 });
