@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { runCli } from "../../daemon/src/main.ts";
 import { FrameClient } from "../../daemon/test/history-helpers.ts";
@@ -67,6 +68,10 @@ async function daemonWithProject(hostName: string) {
       allowedRoots: [dir],
     }),
   );
+  // The app asks this daemon for its background sessions (`claude agents`): a fake answers, the
+  // real `claude` on PATH never runs.
+  const claude = installFakeCli("claude", [{ args: ["agents"], stdout: "[]" }]);
+  cleanups.push(() => claude.restore());
   const daemon = await runCli(["--config", file, "--runtime", "fake"], {
     env: {},
     log: { log: () => {}, error: () => {} },
