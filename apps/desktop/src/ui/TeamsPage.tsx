@@ -1,7 +1,8 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,6 @@ const SELECT =
 function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; onCancel(): void }) {
   const { store, hostId } = props;
   const { t } = store.i18n;
-  const id = useId();
   const projects = store.getState().projects[hostId] ?? [];
   const [goal, setGoal] = useState("");
   const [name, setName] = useState("");
@@ -44,64 +44,55 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
     });
     if (team) props.onCreated();
   };
-  const field = (key: string, label: string, control: React.ReactNode) => (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={`${id}-${key}`}>{label}</label>
-      {control}
-    </div>
-  );
   return (
     <div className="mb-4 flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm">
-      {field(
-        "goal",
-        t("teamsUi.goal"),
-        <Textarea id={`${id}-goal`} value={goal} onChange={(e) => setGoal(e.target.value)} />,
-      )}
-      {field(
-        "name",
-        t("teamsUi.name"),
-        <Input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} />,
-      )}
-      {field(
-        "project",
-        t("teamsUi.project"),
-        <select
-          id={`${id}-project`}
-          className={SELECT}
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>,
-      )}
-      {field(
-        "workers",
-        t("teamsUi.workers"),
-        <Input
-          id={`${id}-workers`}
-          type="number"
-          value={workers}
-          onChange={(e) => setWorkers(e.target.value)}
-        />,
-      )}
-      {field(
-        "persona",
-        t("teamsUi.coordinatorPersona"),
-        <Input id={`${id}-persona`} value={persona} onChange={(e) => setPersona(e.target.value)} />,
-      )}
-      {field(
-        "worker-personas",
-        t("teamsUi.workerPersonas"),
-        <Input
-          id={`${id}-worker-personas`}
-          value={workerPersonas}
-          onChange={(e) => setWorkerPersonas(e.target.value)}
-        />,
-      )}
+      <Field label={t("teamsUi.goal")}>
+        {(control) => (
+          <Textarea {...control} value={goal} onChange={(e) => setGoal(e.target.value)} />
+        )}
+      </Field>
+      <Field label={t("teamsUi.name")}>
+        {(control) => <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />}
+      </Field>
+      <Field label={t("teamsUi.project")}>
+        {(control) => (
+          <NativeSelect
+            {...control}
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </NativeSelect>
+        )}
+      </Field>
+      <Field label={t("teamsUi.workers")}>
+        {(control) => (
+          <Input
+            {...control}
+            type="number"
+            value={workers}
+            onChange={(e) => setWorkers(e.target.value)}
+          />
+        )}
+      </Field>
+      <Field label={t("teamsUi.coordinatorPersona")}>
+        {(control) => (
+          <Input {...control} value={persona} onChange={(e) => setPersona(e.target.value)} />
+        )}
+      </Field>
+      <Field label={t("teamsUi.workerPersonas")}>
+        {(control) => (
+          <Input
+            {...control}
+            value={workerPersonas}
+            onChange={(e) => setWorkerPersonas(e.target.value)}
+          />
+        )}
+      </Field>
       <div className="flex gap-2">
         <ActionButton
           disabled={!goal.trim()}

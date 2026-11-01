@@ -1,12 +1,10 @@
 import type { MessageInfo, MessagingSession, SendResult } from "@flightdeck/protocol";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AppStore } from "../lib/app-store.ts";
-
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * Phase 21: a session's messages, sent and received, and a message from it to another session
@@ -15,7 +13,6 @@ const SELECT =
 export function SessionMessages(props: { store: AppStore; hostId: string; sessionId: string }) {
   const { store, hostId, sessionId } = props;
   const { t } = store.i18n;
-  const id = useId();
   const [messages, setMessages] = useState<MessageInfo[]>([]);
   const [writing, setWriting] = useState(false);
   const [targets, setTargets] = useState<MessagingSession[]>([]);
@@ -56,21 +53,22 @@ export function SessionMessages(props: { store: AppStore; hostId: string; sessio
     <section className="flex flex-col gap-3 text-sm">
       {writing ? (
         <div className="flex flex-col gap-2 rounded-lg border p-3">
-          <label htmlFor={`${id}-to`}>{t("sessionMessages.to")}</label>
-          <select
-            id={`${id}-to`}
-            className={SELECT}
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          >
-            {targets.map((s) => (
-              <option key={s.address} value={s.address}>
-                {s.name ?? s.address}
-              </option>
-            ))}
-          </select>
-          <label htmlFor={`${id}-text`}>{t("sessionMessages.text")}</label>
-          <Textarea id={`${id}-text`} value={text} onChange={(e) => setText(e.target.value)} />
+          <Field label={t("sessionMessages.to")}>
+            {(control) => (
+              <NativeSelect {...control} value={to} onChange={(e) => setTo(e.target.value)}>
+                {targets.map((s) => (
+                  <option key={s.address} value={s.address}>
+                    {s.name ?? s.address}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </Field>
+          <Field label={t("sessionMessages.text")}>
+            {(control) => (
+              <Textarea {...control} value={text} onChange={(e) => setText(e.target.value)} />
+            )}
+          </Field>
           <div className="flex gap-2">
             <Button disabled={!to || !text.trim()} onClick={() => void send()}>
               {t("sessionMessages.send")}

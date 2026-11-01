@@ -1,6 +1,6 @@
 import type { CommandPayload, PermissionMode } from "@flightdeck/protocol";
 import { useState } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
+import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,8 +68,6 @@ export function NewSessionForm(props: {
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
-  const select =
-    "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   const submit = () => {
     if (!root || !prompt.trim() || creating) return;
     const done = props.onCreate({
@@ -89,18 +87,13 @@ export function NewSessionForm(props: {
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
       <Field label={t("newSession.folder")}>
         {(control) => (
-          <select
-            {...control}
-            className={select}
-            value={root}
-            onChange={(e) => setRoot(e.target.value)}
-          >
+          <NativeSelect {...control} value={root} onChange={(e) => setRoot(e.target.value)}>
             {folders.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         )}
       </Field>
       <Field label={t("newSession.subfolder")}>
@@ -144,9 +137,8 @@ export function NewSessionForm(props: {
       <Field label={t("newSession.mode")}>
         {(control) => (
           <>
-            <select
+            <NativeSelect
               {...control}
-              className={select}
               value={mode}
               onChange={(e) => setMode(e.target.value as PermissionMode)}
             >
@@ -158,7 +150,7 @@ export function NewSessionForm(props: {
                   })}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             {mode === "bypassPermissions" && (
               <p role="alert" className="text-status-error text-xs">
                 {t("modes.bypassWarning")}
