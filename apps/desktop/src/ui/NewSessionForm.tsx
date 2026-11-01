@@ -1,6 +1,6 @@
 import type { CommandPayload, PermissionMode } from "@flightdeck/protocol";
-import { useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
+import { useState } from "react";
+import { Field, Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +38,6 @@ export function NewSessionForm(props: {
   extra?: React.ReactNode;
 }) {
   const t = useT();
-  const id = useId();
   const roots = props.host.info?.allowedRoots ?? [];
   // The folder picked, else the host's first: its folders may arrive after the form opened.
   const [picked, setRoot] = useState<string | null>(null);
@@ -69,48 +68,51 @@ export function NewSessionForm(props: {
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
-  const field = "flex flex-col gap-1 text-sm";
   const select =
     "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const submit = () => {
+    if (!root || !prompt.trim() || creating) return;
+    const done = props.onCreate({
+      cwd: joinPath(root, sub),
+      prompt: prompt.trim(),
+      permissionMode: mode,
+      ...(name.trim() ? { name: name.trim() } : {}),
+    });
+    if (typeof (done as PromiseLike<unknown> | undefined)?.then === "function") {
+      setCreating(true);
+      const finished = () => setCreating(false);
+      (done as PromiseLike<unknown>).then(finished, finished);
+    }
+  };
   return (
-    <form
-      className="mx-auto flex max-w-xl flex-col gap-4 p-6"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!root || !prompt.trim() || creating) return;
-        const done = props.onCreate({
-          cwd: joinPath(root, sub),
-          prompt: prompt.trim(),
-          permissionMode: mode,
-          ...(name.trim() ? { name: name.trim() } : {}),
-        });
-        if (typeof (done as PromiseLike<unknown> | undefined)?.then === "function") {
-          setCreating(true);
-          const finished = () => setCreating(false);
-          (done as PromiseLike<unknown>).then(finished, finished);
-        }
-      }}
-    >
+    <Form onSubmit={submit} className="mx-auto p-6">
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
-      <label className={field}>
-        {t("newSession.folder")}
-        <select className={select} value={root} onChange={(e) => setRoot(e.target.value)}>
-          {folders.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={field} htmlFor={`${id}-sub`}>
-        {t("newSession.subfolder")}
-        <Input
-          id={`${id}-sub`}
-          value={sub}
-          onChange={(e) => setSub(e.target.value)}
-          placeholder={t("newSession.optional")}
-        />
-      </label>
+      <Field label={t("newSession.folder")}>
+        {(control) => (
+          <select
+            {...control}
+            className={select}
+            value={root}
+            onChange={(e) => setRoot(e.target.value)}
+          >
+            {folders.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
+      <Field label={t("newSession.subfolder")}>
+        {(control) => (
+          <Input
+            {...control}
+            value={sub}
+            onChange={(e) => setSub(e.target.value)}
+            placeholder={t("newSession.optional")}
+          />
+        )}
+      </Field>
       {canBrowse && (
         <Button
           type="button"
@@ -129,56 +131,59 @@ export function NewSessionForm(props: {
           onClose={() => setBrowsing(false)}
         />
       )}
-      <label className={field} htmlFor={`${id}-name`}>
-        {t("newSession.name")}
-        <Input
-          id={`${id}-name`}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t("newSession.optional")}
-        />
-      </label>
-      <label className={field}>
-        {t("newSession.mode")}
-        <select
-          className={select}
-          value={mode}
-          onChange={(e) => setMode(e.target.value as PermissionMode)}
-        >
-          {MODES.map((m) => (
-            <option key={m} value={m}>
-              {t("modes.option", {
-                name: t(`modes.${m}.name` as Key),
-                description: t(`modes.${m}.description` as Key),
-              })}
-            </option>
-          ))}
-        </select>
-        {mode === "bypassPermissions" && (
-          <p role="alert" className="text-status-error text-xs">
-            {t("modes.bypassWarning")}
-          </p>
+      <Field label={t("newSession.name")}>
+        {(control) => (
+          <Input
+            {...control}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("newSession.optional")}
+          />
         )}
-      </label>
-      <label className={field} htmlFor={`${id}-prompt`}>
-        {t("newSession.prompt")}
-        <Textarea
-          id={`${id}-prompt`}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          className="min-h-28"
-        />
-      </label>
+      </Field>
+      <Field label={t("newSession.mode")}>
+        {(control) => (
+          <>
+            <select
+              {...control}
+              className={select}
+              value={mode}
+              onChange={(e) => setMode(e.target.value as PermissionMode)}
+            >
+              {MODES.map((m) => (
+                <option key={m} value={m}>
+                  {t("modes.option", {
+                    name: t(`modes.${m}.name` as Key),
+                    description: t(`modes.${m}.description` as Key),
+                  })}
+                </option>
+              ))}
+            </select>
+            {mode === "bypassPermissions" && (
+              <p role="alert" className="text-status-error text-xs">
+                {t("modes.bypassWarning")}
+              </p>
+            )}
+          </>
+        )}
+      </Field>
+      <Field label={t("newSession.prompt")}>
+        {(control) => (
+          <Textarea
+            {...control}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="min-h-28"
+          />
+        )}
+      </Field>
       {props.extra}
-      <ActionButton
-        type="submit"
-        className="self-start"
-        pending={creating}
+      <FormActions
+        submit={t("newSession.create")}
+        busy={creating}
         disabled={!root || !prompt.trim()}
         disabledReason={t(root ? "newSession.needPrompt" : "newSession.needFolder")}
-      >
-        {t("newSession.create")}
-      </ActionButton>
-    </form>
+      />
+    </Form>
   );
 }

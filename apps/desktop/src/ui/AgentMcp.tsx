@@ -7,10 +7,10 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   commandLine,

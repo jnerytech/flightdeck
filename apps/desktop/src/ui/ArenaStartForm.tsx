@@ -3,9 +3,9 @@ import { type ReactNode, useState } from "react";
 import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";

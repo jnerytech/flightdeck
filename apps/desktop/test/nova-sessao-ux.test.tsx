@@ -178,8 +178,9 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     expect(fields.length).toBeGreaterThan(4);
     const narrow = fields.filter((el) => !/\bw-full\b/.test(el.className));
     expect(narrow.map((el) => el.tagName)).toEqual([]);
-    const button = container.querySelector("button[type='submit']");
-    expect(button?.className ?? "").toContain("self-start");
+    const actions = container.querySelector("form[data-variant='page'] [data-actions]");
+    expect(actions?.querySelector("button[type='submit']")).not.toBeNull();
+    expect(actions?.className ?? "").toContain("justify-start");
   });
 
   test("a host whose folders arrive after the form opened is not left with no folder", async () => {
