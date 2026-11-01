@@ -72,7 +72,19 @@ function showSection(title: RegExp): (page: Page) => Promise<void> {
     await page
       .getByText(title)
       .first()
-      .evaluate((el) => el.scrollIntoView({ block: "start" }));
+      .evaluate((el) => {
+        // The whole card, not just its title, goes to the top of the scrolling box; a small gap
+        // keeps its border from being cut.
+        const card = el.closest("section, [role=region], .rounded-lg") ?? el;
+        card.scrollIntoView({ block: "start" });
+        for (let box = card.parentElement; box; box = box.parentElement) {
+          const { overflowY } = getComputedStyle(box);
+          if ((overflowY === "auto" || overflowY === "scroll") && box.scrollTop > 0) {
+            box.scrollTop -= 12;
+            break;
+          }
+        }
+      });
     await page.waitForTimeout(400);
   };
 }
