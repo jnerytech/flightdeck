@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { Profiler } from "react";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -7,6 +8,7 @@ registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { useStoreSlice } = await import("../src/lib/use-store.ts");
 
 setDefaultTimeout(60_000);
 const cleanups: Array<() => unknown> = [];
@@ -64,5 +66,36 @@ describe("state-selectors: a quiet app does not refetch or redraw what did not c
     expect(second.meta).toBe(first.meta);
     expect(second.externals).toBe(first.externals);
     expect(second.names).toBe(first.names);
+  });
+});
+
+/** Reads two parts of the state and shows what it read. */
+const SEARCH_AND_NOTICES = ["searchOpen", "notices"] as const;
+function Slice(props: { store: InstanceType<typeof AppStore> }) {
+  const slice = useStoreSlice(props.store, SEARCH_AND_NOTICES);
+  return <p>{`${slice.searchOpen}/${slice.notices.length}`}</p>;
+}
+
+describe("state-selectors: a screen that reads some parts of the state renders for those only", () => {
+  test("useStoreSlice renders when a part it reads is replaced, and for no other change", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    let commits = 0;
+    const view = render(
+      <Profiler id="slice" onRender={() => commits++}>
+        <Slice store={store} />
+      </Profiler>,
+    );
+    expect(view.container.textContent).toBe("false/0");
+    const mounted = commits;
+    await act(async () => store.select("nowhere", null)); // `selected` is not read
+    await act(async () => store.chooseSnippet(null)); // neither is `snippetChoice`
+    expect(commits).toBe(mounted);
+    await act(async () => store.openSearch()); // `searchOpen` is
+    expect(view.container.textContent).toBe("true/0");
+    expect(commits).toBe(mounted + 1);
+    await act(async () => store.success("hello"));
+    expect(view.container.textContent).toBe("true/1");
+    expect(commits).toBe(mounted + 2);
   });
 });

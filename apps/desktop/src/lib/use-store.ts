@@ -36,3 +36,15 @@ const NO_SESSION: SessionState = {
 export function useSessionState(store: AppStore, key: string): SessionState {
   return useSyncExternalStore(store.subscribe, () => store.getState().sessions[key] ?? NO_SESSION);
 }
+
+/**
+ * Some parts of the app's state, for a screen that reads only those: it renders when one of them
+ * is replaced and not for any other change. `keys` must be the same list on every render (a
+ * constant at module level).
+ */
+export function useStoreSlice<K extends keyof AppState>(
+  store: AppStore,
+  _keys: readonly K[],
+): Pick<AppState, K> {
+  return store.getState();
+}
