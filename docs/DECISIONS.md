@@ -2467,3 +2467,22 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
+
+# Phase 28 decisions: performance and stack best practices
+
+## Baseline
+
+- **How the numbers are taken.** `bun run perf:baseline [--out <dir>]` prints a Markdown table tagged with the machine (`Pi`, `ci-windows`, `local-<os>`), the CPU, the load average and the date, and writes `perf-baseline.md` and `perf-baseline.json` into `<dir>`. The Windows leg of CI runs it after `build:desktop` as a step that never fails the job and uploads the folder as the `perf-baseline-windows` artifact. A measure that cannot run says why in its row. The questions the script does not measure (2 to 8 need the packaged app, WebView2, several hosts or a day of uptime) are rows that say so, to be filled by hand.
+- **The Pi is a second column, not the baseline.** The spec asks for a CI runner or the maintainer's machine, because the Pi is shared (load about 10 while these numbers were taken). The Pi numbers below only show the order of magnitude and that the script works. The `windows-latest` numbers come from the CI artifact; the maintainer's machine only confirms them.
+- **Not measured yet:** which packages make the big chunks (question 1; the chunk names do not say), and everything from questions 2 to 8.
+
+| Question | Measure | Pi (2026-11-01, load 10) | windows-latest |
+| --- | --- | --- | --- |
+| 1 | entry chunk `index-*.js`, raw / gzip | 1,723,232 / 516,263 bytes | |
+| 1 | `xterm-deps-*.js`, raw / gzip | 391,734 / 102,389 bytes | |
+| 9 | events/s, `synchronous=FULL` | 2,435 | |
+| 9 | events/s, `synchronous=NORMAL` | 12,217 | |
+| 9 | commit p50 / p95, `FULL` | 0.3 / 0.8 ms | |
+| 9 | commit p50 / p95, `NORMAL` | 0.1 / 0.1 ms | |
+
+Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, one transaction per event, 1,000 events per mode, in a fresh store (the real `EventStore`, `message.user` events of about 200 characters).
