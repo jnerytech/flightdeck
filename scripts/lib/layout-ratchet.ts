@@ -38,3 +38,11 @@ export function tightened(counts: LayoutBaseline, baseline: LayoutBaseline): Lay
   }
   return next;
 }
+
+/** The baseline `--init` writes: the current counts, and null (refused) once the baseline has entries. */
+export function initialised(
+  counts: LayoutBaseline,
+  _baseline: LayoutBaseline,
+): LayoutBaseline | null {
+  return counts;
+}
