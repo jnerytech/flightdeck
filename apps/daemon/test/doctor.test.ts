@@ -125,7 +125,10 @@ describe("doctor command", () => {
         which: () => null,
       }),
     };
-    await runCli(["doctor", "--config", "/nonexistent-dir/none.json"], cliDeps);
+    // A config below a regular file cannot be read or created, on any platform.
+    const blocker = join(tempDir("fd-doctor-"), "file");
+    writeFileSync(blocker, "x");
+    await runCli(["doctor", "--config", join(blocker, "config.json")], cliDeps);
     expect(exits).toEqual([1]);
     expect(out.join("\n")).toMatch(/FAIL\s+config/);
   });

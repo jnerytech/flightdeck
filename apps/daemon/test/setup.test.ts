@@ -9,6 +9,11 @@ import { tempDir } from "./helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
 
+/** The `allowedRoots` as written in the file: `loadConfig` resolves them to native paths. */
+const storedRoots = (file: string) =>
+  (JSON.parse(readFileSync(file, "utf8")) as { allowedRoots: string[] }).allowedRoots;
+const forward = (path: string) => path.replaceAll("\\", "/");
+
 function harness(
   options: {
     answers?: string[];
@@ -16,9 +21,12 @@ function harness(
     tailscale?: string | null;
     config?: object;
     serviceError?: string;
+    /** The platform the wizard thinks it runs on, with a home of that platform. */
+    platform?: NodeJS.Platform;
+    home?: string;
   } = {},
 ) {
-  const home = tempDir("fd-setup-home-");
+  const home = options.home ?? tempDir("fd-setup-home-");
   const configFile = join(tempDir("fd-setup-"), "config.json");
   if (options.config) writeFileSync(configFile, JSON.stringify(options.config));
   const defaults = new Map<string, boolean>();
@@ -41,7 +49,9 @@ function harness(
     log: { log: (m) => out.push(m), error: (m) => out.push(m) },
     configFile,
     home,
-    isDirectory: (path) => path.startsWith(home) && !path.endsWith("missing"),
+    platform: options.platform ?? process.platform,
+    isDirectory: (path) =>
+      path.toLowerCase().startsWith(home.toLowerCase()) && !path.endsWith("missing"),
     tailscaleIp: async () => options.tailscale ?? null,
     installBinary: () => {
       calls.push("binary");
@@ -96,7 +106,8 @@ describe("setup", () => {
     const answers = ["~/code", ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual(["/srv/old", join(h.home, "code")]);
+    // What the file keeps is what the user wrote, plus the new folder with forward slashes.
+    expect(storedRoots(h.configFile)).toEqual(["/srv/old", forward(join(h.home, "code"))]);
     expect(h.out.join("\n")).toContain("/srv/old");
   });
 
@@ -159,6 +170,38 @@ describe("setup", () => {
     expect(h.out.join("\n")).toContain("Running from source");
   });
 
+  test("on Windows a folder is stored with forward slashes, like the manual's example, and the ones already there stay as written", async () => {
+    const h = harness({
+      platform: "win32",
+      home: "C:\\Users\\dev",
+      config: { token: "t".repeat(32), allowedRoots: ["D:/old/Projects"] },
+      answers: ["C:\\Users\\dev\\code", "~\\work", "d:\\OLD\\projects", ""],
+    });
+    await runSetup(h.deps);
+    // The third answer is the folder already there, in other letters: no duplicate.
+    expect(storedRoots(h.configFile)).toEqual([
+      "D:/old/Projects",
+      "C:/Users/dev/code",
+      "C:/Users/dev/work",
+    ]);
+  });
+
+  test("on Windows --yes takes folders typed with either slash", async () => {
+    const h = harness({ platform: "win32", home: "C:\\Users\\dev" });
+    await runSetup(h.deps, { yes: true, folders: ["C:/Users/dev/a", "C:\\Users\\dev\\b"] });
+    expect(storedRoots(h.configFile)).toEqual(["C:/Users/dev/a", "C:/Users/dev/b"]);
+  });
+
+  test("on Linux a folder keeps its path as it is", async () => {
+    const h = harness({
+      platform: "linux",
+      home: "/home/dev",
+      answers: ["~/code", "/home/dev/lib", ""],
+    });
+    await runSetup(h.deps);
+    expect(storedRoots(h.configFile)).toEqual(["/home/dev/code", "/home/dev/lib"]);
+  });
+
   test("--yes takes the folders from the command line and asks nothing", async () => {
     const h = harness({ tailscale: "100.64.0.9" });
     const a = h.dir("a");
@@ -183,7 +226,7 @@ describe("setup", () => {
   test("--yes keeps the folders already in the config when none is given", async () => {
     const h = harness({ config: { token: "t".repeat(32), allowedRoots: ["/srv/old"] } });
     await runSetup(h.deps, { yes: true, folders: [] });
-    expect(loadConfig(h.configFile).allowedRoots).toEqual(["/srv/old"]);
+    expect(storedRoots(h.configFile)).toEqual(["/srv/old"]);
   });
 });
 
@@ -295,7 +338,8 @@ describe("setup command", () => {
     expect(h.exits).toEqual([0]);
     expect(readFileSync(stable, "utf8")).toBe("binary");
     const unit = h.written.get(`${h.dir}/.config/systemd/user/flightdeckd.service`) ?? "";
-    expect(unit).toContain(`ExecStart=${stable} `);
+    // systemd quotes a path with backslashes (a Windows host faking Linux) and doubles them.
+    expect(unit.replaceAll("\\\\", "\\")).toContain(stable);
   });
 
   test("a stable binary that is already installed is kept, and the wizard says so", async () => {
@@ -385,6 +429,7 @@ describe("stable binary", () => {
     writeFileSync(other, "downloaded");
     expect(installStableBinary([other], stable, platform)).toBe("copied");
     expect(readFileSync(stable, "utf8")).toBe("downloaded");
-    expect(statSync(stable).mode & 0o111).not.toBe(0);
+    // Windows has no executable bit: the file runs because of its .exe name.
+    if (process.platform !== "win32") expect(statSync(stable).mode & 0o111).not.toBe(0);
   });
 });
