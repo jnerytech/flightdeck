@@ -60,6 +60,20 @@ describe("form-layout: Form", () => {
     expect(formOf(dialog.container)?.className).not.toContain("max-w-xl");
   });
 
+  test("an inline form sits inside a panel: it fills the panel, with no border or padding of its own", () => {
+    const { container } = render(
+      <Form onSubmit={() => {}} variant="inline">
+        <FormActions submit="Ok" />
+      </Form>,
+    );
+    const form = formOf(container);
+    expect(form?.getAttribute("data-variant")).toBe("inline");
+    expect(form?.className).toContain("w-full");
+    expect(form?.className).not.toContain("border");
+    expect(form?.className).not.toContain("max-w");
+    expect(container.querySelector("[data-actions]")?.className).toContain("justify-start");
+  });
+
   test("the buttons sit at the end of a dialog and at the left edge of the fields on a page, primary last in both", () => {
     const row = (variant: "page" | "dialog" | "panel") => {
       const { container } = render(

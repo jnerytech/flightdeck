@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /** What a form is laid out for: a page, a dialog's body, or a bordered panel inside a screen. */
-export type FormVariant = "page" | "dialog" | "panel";
+export type FormVariant = "page" | "dialog" | "panel" | "inline";
 
 /** The ids and ARIA a control of a `Field` takes. */
 export interface FieldControl {
@@ -19,6 +19,7 @@ const WIDTH: Record<FormVariant, string> = {
   page: "w-full max-w-xl",
   dialog: "w-full",
   panel: "w-full max-w-2xl rounded-lg border bg-card p-4",
+  inline: "",
 };
 
 const VariantContext = createContext<FormVariant>("page");
