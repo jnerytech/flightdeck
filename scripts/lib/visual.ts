@@ -146,6 +146,9 @@ export const VOLATILE_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b\d{4}-\d{2}-\d{2}\b/g, "0000-00-00"],
   [/\b\d+ (s|min|h|d)( ago)\b/g, "N $1$2"],
   [/(há) \d+ (s|min|h|d)\b/g, "$1 N $2"],
+  // The reset times (epoch seconds) the fake runtime echoes, and how long a turn took.
+  [/@\d{10}\b/g, "@0000000000"],
+  [/(finished|concluído) · \d+(?:[.,]\d+)? s\b/g, "$1 · N s"],
 ];
 
 /** Text with the volatile parts written the same, so two runs print the same pixels. */
