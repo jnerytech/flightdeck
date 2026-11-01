@@ -169,7 +169,7 @@ describe("desktop: interface", () => {
     // The error is a toast, titled by its code (phase 10); Fechar closes it.
     await waitFor(() =>
       expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
-        "A pasta está fora das pastas permitidas do host.",
+        "A pasta /fora está fora das pastas permitidas do host.",
       ),
     );
     const toast = screen.queryByRole("alert") as HTMLElement;
