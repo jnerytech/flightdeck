@@ -3,8 +3,8 @@ import { PNG } from "pngjs";
 import {
   checkShots,
   comparePng,
-  type VisualCheck,
   normalizeVolatile,
+  type VisualCheck,
   type VisualIO,
   visualMode,
 } from "../lib/visual.ts";
