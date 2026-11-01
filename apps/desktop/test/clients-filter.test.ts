@@ -163,6 +163,37 @@ describe("clients-filter: folders of the known projects", () => {
   });
 });
 
+describe("clients-filter: two hosts with one daemon name", () => {
+  const hosts = [
+    { id: "h1", names: ["Laptop", "ubuntu"] },
+    { id: "h2", names: ["Desk", "ubuntu"] },
+  ];
+
+  test("a folder key named after both is not guessed for a host-scoped rule, and the name is reported", () => {
+    const scoped = client("acme", "Acme", folder("/work/acme", "h1"));
+    const scope = new ClientScope({ clients: [scoped], overrides: {} }, [], hosts);
+    expect(scope.clientOf("host:ubuntu:/work/acme/web")).toBe(UNASSIGNED);
+    expect(scope.ambiguousNames).toEqual(["ubuntu"]);
+  });
+
+  test("a rule for any host still claims it, since the folder is the same on both", () => {
+    const anyHost = client("acme", "Acme", folder("/work/acme"));
+    const scope = new ClientScope({ clients: [anyHost], overrides: {} }, [], hosts);
+    expect(scope.clientOf("host:ubuntu:/work/acme/web")).toBe("acme");
+  });
+
+  test("a name that one host answers to twice is not ambiguous, and a unique name still maps", () => {
+    const one = [
+      { id: "h1", names: ["ubuntu", "ubuntu"] },
+      { id: "h2", names: ["Desk"] },
+    ];
+    const scoped = client("acme", "Acme", folder("/work/acme", "h1"));
+    const scope = new ClientScope({ clients: [scoped], overrides: {} }, [], one);
+    expect(scope.ambiguousNames).toEqual([]);
+    expect(scope.clientOf("host:ubuntu:/work/acme/web")).toBe("acme");
+  });
+});
+
 describe("clients-filter: things that touch several projects", () => {
   const scope = new ClientScope({ clients: [acme, beta], overrides: {} }, []);
   const a = "github.com/acme/api";
