@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { expandHome, loadConfig, updateConfigFile } from "../src/config.ts";
 import { runCli } from "../src/main.ts";
-import type { OtlpEvent } from "../src/telemetry/otlp.ts";
+import { type OtlpEvent, startOtlpReceiver } from "../src/telemetry/otlp.ts";
 import {
   installTelemetry,
   MANAGED_KEYS,
@@ -189,6 +189,43 @@ describe("otlp-ligar: the wrapper", () => {
   test("claude opened by the wrapper gets the variables, with the config's telemetry token and the published URL", async () => {
     const env = await launch(["-c"], config({ token: TARGET.token, url: TARGET.url }));
     expect(telemetryKeys(env)).toEqual(EXPECTED_ENV);
+  });
+
+  test("what claude is given reaches the receiver: the fake exporter sends with it and the events are kept", async () => {
+    const got: OtlpEvent[][] = [];
+    const file = config({ token: TARGET.token });
+    const receiver = startOtlpReceiver({
+      port: 0,
+      token: () => TARGET.token,
+      onEvents: (events) => got.push(events),
+    });
+    cleanups.push(() => receiver.stop());
+    writeFileSync(
+      join(loadConfig(file).dataDir, "telemetry.json"),
+      JSON.stringify({ url: receiver.url }),
+    );
+    const fake = installFakeClaude([
+      { do: "session-start", sessionId: "fake-session-1" },
+      {
+        do: "otlp",
+        events: [
+          { name: "tool_result", afterMs: 0, attrs: { tool_name: "Bash", duration_ms: 12.5 } },
+        ],
+      },
+      { do: "exit", code: 0 },
+    ]);
+    cleanups.push(fake.restore);
+    await runCli(["claude", "-c"], {
+      env: { ...process.env, FLIGHTDECK_CONFIG: file },
+      log: { log: () => {}, error: () => {} },
+      exit: () => {},
+      onSignal: () => {},
+      selfCommand: ["C:\\fd\\flightdeckd.exe"],
+    });
+    expect(fake.events().find((e) => e.type === "otlp")).toMatchObject({ status: 200 });
+    expect(
+      got.flat().map((e) => [e.sessionId, e.name, e.attrs.tool_name, e.attrs.duration_ms]),
+    ).toEqual([["fake-session-1", "tool_result", "Bash", 12.5]]);
   });
 
   test("print mode, a daemon that published no receiver or no token: plain claude, no exporter", async () => {

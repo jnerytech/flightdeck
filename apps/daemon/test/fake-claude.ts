@@ -20,6 +20,14 @@ export type FakeClaudeStep =
   | { do: "write"; path: string; text: string }
   /** Waits for a file the test creates (smoke:checkpoints: once the turn's snapshot is taken). */
   | { do: "wait-file"; path: string; timeoutMs?: number }
+  /**
+   * Phase 23: sends OTLP logs the way Claude Code's exporter would, to the endpoint and with the
+   * headers of its own environment (what the wrapper injected), for the session of `session-start`.
+   */
+  | {
+      do: "otlp";
+      events: Array<{ name: string; afterMs: number; attrs: Record<string, string | number> }>;
+    }
   | { do: "exit"; code: number };
 
 export interface FakeClaudeEvent {

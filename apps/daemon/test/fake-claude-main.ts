@@ -174,6 +174,52 @@ for (const step of steps) {
         ok: await until(() => existsSync(step.path), step.timeoutMs ?? 10_000),
       });
       break;
+    case "otlp": {
+      const value = (v: string | number) =>
+        typeof v === "number"
+          ? Number.isInteger(v)
+            ? { intValue: String(v) }
+            : { doubleValue: v }
+          : { stringValue: v };
+      const base = Date.now();
+      const body = {
+        resourceLogs: [
+          {
+            resource: { attributes: [] },
+            scopeLogs: [
+              {
+                logRecords: step.events.map((e) => ({
+                  timeUnixNano: String(BigInt(base + e.afterMs) * 1_000_000n),
+                  body: { stringValue: `claude_code.${e.name}` },
+                  attributes: Object.entries({
+                    "event.name": `claude_code.${e.name}`,
+                    "session.id": sessionId,
+                    ...e.attrs,
+                  }).map(([key, v]) => ({ key, value: value(v) })),
+                })),
+              },
+            ],
+          },
+        ],
+      };
+      const headers = Object.fromEntries(
+        (process.env.OTEL_EXPORTER_OTLP_HEADERS ?? "")
+          .split(",")
+          .map((pair) => pair.split(/=(.*)/s).slice(0, 2) as [string, string]),
+      );
+      const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+      let status = 0;
+      if (endpoint) {
+        const res = await fetch(`${endpoint}/v1/logs`, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...headers },
+          body: JSON.stringify(body),
+        }).catch(() => null);
+        status = res?.status ?? -1;
+      }
+      log({ type: "otlp", status });
+      break;
+    }
     case "exit":
       code = step.code;
       break;
