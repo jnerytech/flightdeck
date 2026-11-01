@@ -61,6 +61,7 @@ export function TargetForm(props: {
   const [forwards, setForwards] = useState((target?.options.localForward ?? []).join("\n"));
   const [forwardAgent, setForwardAgent] = useState(target?.options.forwardAgent ?? false);
   const [askingAgent, setAskingAgent] = useState(false);
+  const [forgetting, setForgetting] = useState(false);
   const [hostKey, setHostKey] = useState(target?.hostKey ?? null);
   const [testResult, setTestResult] = useState<string | null>(null);
 
@@ -256,7 +257,7 @@ export function TargetForm(props: {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span>{t("connections.form.hostKey")}</span>
           <code className="break-all">{hostKey}</code>
-          <Button type="button" variant="outline" size="sm" onClick={() => void forget()}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setForgetting(true)}>
             {t("connections.form.forget")}
           </Button>
         </div>
@@ -275,6 +276,18 @@ export function TargetForm(props: {
           </>
         }
       />
+      {forgetting && (
+        <ConfirmDialog
+          message={t("connections.form.forgetMessage")}
+          confirmLabel={t("connections.form.forgetConfirm")}
+          destructive
+          onConfirm={() => {
+            setForgetting(false);
+            void forget();
+          }}
+          onCancel={() => setForgetting(false)}
+        />
+      )}
       {askingAgent && (
         <ConfirmDialog
           message={t("connections.form.forwardAgentMessage")}

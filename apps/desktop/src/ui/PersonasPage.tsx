@@ -29,6 +29,7 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
   const [project, setProject] = useState("");
   const [personas, setPersonas] = useState<AppPersona[]>([]);
   const [removing, setRemoving] = useState<AppPersona | null>(null);
+  const [resetting, setResetting] = useState<AppPersona | null>(null);
   const [publishing, setPublishing] = useState<AppPersona | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [editing, setEditing] = useState<AppPersona | "new" | null>(null);
@@ -180,7 +181,7 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
                     size="sm"
                     variant="outline"
                     aria-label={t("personas.resetFor", { name: p.name })}
-                    onClick={() => void reset(p)}
+                    onClick={() => setResetting(p)}
                   >
                     {t("personas.reset")}
                   </Button>
@@ -217,6 +218,18 @@ export function PersonasPage(props: { store: AppStore; state: AppState }) {
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
+        />
+      )}
+      {resetting && (
+        <ConfirmDialog
+          message={t("personas.resetMessage", { name: resetting.name })}
+          confirmLabel={t("personas.reset")}
+          destructive
+          onConfirm={() => {
+            setResetting(null);
+            void reset(resetting);
+          }}
+          onCancel={() => setResetting(null)}
         />
       )}
       {publishing && (

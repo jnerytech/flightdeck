@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { budgetLabel, budgetLine } from "../lib/budgets.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 interface Draft {
   id?: string;
@@ -34,6 +35,7 @@ export function BudgetsSection(props: {
   const t = useT();
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [removing, setRemoving] = useState<Budget | null>(null);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const save = async () => {
     const input: BudgetInput = {
@@ -77,7 +79,7 @@ export function BudgetsSection(props: {
                 variant="ghost"
                 size="sm"
                 aria-label={t("budgetsUi.remove", { label: budgetLabel(budget, t) })}
-                onClick={() => void store.removeBudget(hostId, budget)}
+                onClick={() => setRemoving(budget)}
               >
                 {t("budgetsUi.removeShort")}
               </Button>
@@ -132,6 +134,18 @@ export function BudgetsSection(props: {
           </Button>
         </div>
       </Panel>
+      {removing && (
+        <ConfirmDialog
+          message={t("budgetsUi.removeMessage", { label: budgetLabel(removing, t) })}
+          confirmLabel={t("budgetsUi.removeConfirm")}
+          destructive
+          onConfirm={() => {
+            void store.removeBudget(hostId, removing);
+            setRemoving(null);
+          }}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
     </section>
   );
 }
