@@ -120,7 +120,9 @@ export function decisionLog(path: string): (decision: MemoryDecision) => void {
 }
 
 /** Where the organization's CLAUDE.md lives on this platform. */
-export function managedClaudeMdPath(_platform: NodeJS.Platform = process.platform): string {
+export function managedClaudeMdPath(platform: NodeJS.Platform = process.platform): string {
+  if (platform === "win32") return "C:\\Program Files\\ClaudeCode\\CLAUDE.md";
+  if (platform === "darwin") return "/Library/Application Support/ClaudeCode/CLAUDE.md";
   return "/etc/claude-code/CLAUDE.md";
 }
 
