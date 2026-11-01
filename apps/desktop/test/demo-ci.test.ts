@@ -52,6 +52,16 @@ describe("demo-prints: axe e CI", () => {
     expect(job).toContain("apps/desktop/screenshots");
   });
 
+  test("a failed e2e journey leaves its print in the artifact: E2E_FAILURES points inside the prints folder", () => {
+    const ci = read(".github/workflows/ci.yml");
+    const step = ci.slice(
+      ci.indexOf("- name: Jornadas e2e"),
+      ci.indexOf("- name: Publicar os prints"),
+    );
+    expect(step).toContain("bun run e2e");
+    expect(step).toContain("E2E_FAILURES: apps/desktop/screenshots/e2e-failures");
+  });
+
   test("o package.json tem os comandos e2e e demo, com o axe fixado", () => {
     const pkg = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>;
