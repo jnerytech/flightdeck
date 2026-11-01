@@ -40,7 +40,7 @@ const OWN = { id: "mine", match: { purpose: "ssh" }, decision: "ask" };
 
 interface Sent {
   secretId: string;
-  rules: Array<{ id: string; decision?: string; match?: { project?: string; requester?: string } }>;
+  rules: Array<{ id: string; decision?: string; match?: Record<string, string> }>;
 }
 
 /** A host with the actions feature and one session in Acme's project; Acme keeps secrets tagged client:acme. */
@@ -65,13 +65,20 @@ async function open(scoped: boolean) {
     tags: ["client:acme"],
     allowedHosts: [hostId],
   });
+  // The toasts leave the list as soon as the App shows them: what was said is kept here.
+  const said: string[] = [];
+  const success = store.success.bind(store);
+  store.success = (text: string) => {
+    said.push(text);
+    success(text);
+  };
   const sent = () =>
     daemon.commands.filter((c) => c.type === "vault.rules.set").map((c) => c.payload as Sent);
   const lastFor = (id: string) =>
     sent()
       .filter((s) => s.secretId === id)
       .at(-1);
-  return { store, platform, daemon, hostId, acme: acme?.id ?? "", secret, sent, lastFor };
+  return { store, platform, daemon, hostId, acme: acme?.id ?? "", secret, sent, lastFor, said };
 }
 
 const ids = (rules: Sent["rules"] | undefined) => (rules ?? []).map((r) => r.id);
@@ -159,7 +166,7 @@ describe("clients-vault: turning scope on and off", () => {
 
 describe("clients-vault: when the client's projects change", () => {
   test("the rules are generated again and a notice says so", async () => {
-    const { store, daemon, hostId, secret, lastFor } = await open(true);
+    const { store, daemon, secret, lastFor, said } = await open(true);
     await store.setVaultRules(secret.id, [OWN]);
     const before = ids(lastFor(secret.id)?.rules);
     daemon.hub.managed = [
@@ -169,17 +176,14 @@ describe("clients-vault: when the client's projects change", () => {
     await act(() => store.refreshHub());
     await settle(() => ids(lastFor(secret.id)?.rules).length > before.length);
     expect(ids(lastFor(secret.id)?.rules).length).toBe(before.length + 1);
-    await settle(() => store.getState().notices.some((n) => n.kind === "success"));
-    expect(store.getState().notices.map((n) => n.text)).toContain(
-      "As regras de segredos do cliente Acme mudaram com os projetos dele.",
-    );
-    expect(hostId).toBeTruthy();
+    await settle(() => said.length > 0);
+    expect(said).toEqual(["As regras de segredos do cliente Acme mudaram com os projetos dele."]);
   });
 
   test("a change that is only the person's own rules makes no notice", async () => {
-    const { store, secret } = await open(true);
+    const { store, secret, said } = await open(true);
     await store.setVaultRules(secret.id, [OWN]);
     await act(() => Bun.sleep(400));
-    expect(store.getState().notices).toEqual([]);
+    expect(said).toEqual([]);
   });
 });
