@@ -170,6 +170,25 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(600);
       },
     },
+    // Phase 26: the Memória and Contexto tabs of the Agente screen, and the Plugins page.
+    {
+      name: "agente-memoria",
+      route: agentRoute(ids),
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: /^(Memória|Memory)$/ }).click();
+        await page.getByRole("button", { name: /^(Abrir|Open) MEMORY\.md$/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
+    {
+      name: "agente-contexto",
+      route: agentRoute(ids),
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: /^(Contexto|Context)$/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
+    { name: "plugins", route: { name: "plugins" } },
     // Phase 20: the persona library (the pack in the app's language) and the editor's preview.
     { name: "personas", route: { name: "personas" } },
     {

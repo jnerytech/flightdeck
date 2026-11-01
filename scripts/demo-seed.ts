@@ -379,6 +379,57 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     { args: ["issue", "view", "7"], stdout: JSON.stringify(issue) },
   ]);
 
+  // A `claude` for the Plugins page (phase 26), before any daemon: one installed plugin whose hook
+  // listens on PreToolUse, and one the marketplace offers. The real CLI is never run.
+  const plugin = join(work, "plugins", "deploy-tools");
+  mkdirSync(join(plugin, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(plugin, "hooks"), { recursive: true });
+  mkdirSync(join(plugin, "skills", "deploy"), { recursive: true });
+  writeFileSync(
+    join(plugin, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name: "deploy-tools", version: "1.2.0", description: "Publica o app" }),
+  );
+  writeFileSync(
+    join(plugin, "hooks", "hooks.json"),
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "guard.sh" }] }],
+      },
+    }),
+  );
+  writeFileSync(join(plugin, "skills", "deploy", "SKILL.md"), SKILL_MD);
+  const claude = installFakeCli("claude", [
+    {
+      args: ["marketplace", "list"],
+      stdout: JSON.stringify([
+        { name: "acme", source: "github", repo: "acme/plugins", installLocation: plugin },
+      ]),
+    },
+    {
+      args: ["list", "--json"],
+      stdout: JSON.stringify({
+        installed: [
+          {
+            id: "deploy-tools@acme",
+            version: "1.2.0",
+            scope: "user",
+            enabled: true,
+            installPath: plugin,
+          },
+        ],
+        available: [
+          {
+            pluginId: "lint-rules@acme",
+            name: "lint-rules",
+            marketplaceName: "acme",
+            description: "Regras de lint para o time",
+            version: "0.4.0",
+          },
+        ],
+      }),
+    },
+  ]);
+
   const alfa = await host(work, "alfa");
   const beta = await host(work, "beta");
   log(`alfa em ${alfa.url}, beta em ${beta.url}`);
@@ -422,6 +473,29 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await client.call("card.move", { cardId: waiting.id, column: "waiting" });
   const done = await card("Atualizar dependências", "Atualize e rode os testes.");
   await client.call("card.move", { cardId: done.id, column: "done" });
+
+  // The project's auto memory (phase 26): an index, two topic files and one the index leaves out.
+  const remember = (name: string, content: string) =>
+    client.call("memory.write", {
+      projectId: project.id,
+      name,
+      content,
+      expectedHash: null,
+      confirm: true,
+    });
+  await remember(
+    "MEMORY.md",
+    "- [Perfil](user_role.md) — quem usa o projeto\n- [Testes](feedback_testes.md) — rodar a suíte inteira antes do commit\n",
+  );
+  await remember(
+    "user_role.md",
+    "---\nname: perfil\ndescription: quem usa o projeto\ntype: user\n---\n\nA equipe de plataforma mantém o app.\n",
+  );
+  await remember(
+    "feedback_testes.md",
+    "---\nname: testes\ndescription: rodar a suíte inteira\ntype: feedback\n---\n\nRode a suíte inteira antes do commit.\n",
+  );
+  await remember("solta.md", "Uma nota que o índice não cita.\n");
 
   // A change in the working tree, for the Mudanças tab of the sessions working in this folder.
   writeFileSync(join(web, "app.ts"), "export const versao = 2;\n");
@@ -619,6 +693,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     },
     stop: async () => {
       gh.restore();
+      claude.restore();
       old.stop(true);
       slow.stop(true);
       await alfa.stop();
