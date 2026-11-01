@@ -2,6 +2,7 @@ import type { Arena, ArenaVariant, StepRun, WorkflowInfo } from "@flightdeck/pro
 import { useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Badge } from "@/components/ui/badge";
@@ -186,8 +187,6 @@ export function CardDetail(props: {
     if (step.sessionId) store.select(hostId, step.sessionId);
   };
 
-  const SELECT =
-    "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
     <Page
       title={card.title}
@@ -250,9 +249,9 @@ export function CardDetail(props: {
           </ActionButton>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <NativeSelect
+            inline
             aria-label={t("cardUi.workflow")}
-            className={SELECT}
             value={workflow}
             onChange={(e) => {
               setWorkflow(e.target.value);
@@ -265,7 +264,7 @@ export function CardDetail(props: {
                 {w.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           {chosen?.inputs.map((name) => (
             <Input
               key={name}

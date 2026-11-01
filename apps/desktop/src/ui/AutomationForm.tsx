@@ -5,7 +5,7 @@ import type {
   WorkflowInfo,
 } from "@flightdeck/protocol";
 import { useState } from "react";
-import { Form, FormActions } from "@/components/layout/form";
+import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,6 @@ import {
   type TriggerType,
 } from "../lib/automations.ts";
 
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const STEPS = ["trigger", "action", "limit"] as const;
 
 interface Draft {
@@ -136,9 +134,8 @@ export function AutomationForm(props: {
           </p>
           {step === 0 && (
             <div className="flex flex-col gap-3">
-              <select
+              <NativeSelect
                 aria-label={t("automationsUi.form.trigger")}
-                className={SELECT}
                 value={draft.trigger}
                 onChange={(e) => pickTrigger(e.target.value as TriggerType)}
               >
@@ -147,7 +144,7 @@ export function AutomationForm(props: {
                     {t(`automationsUi.form.triggerTypes.${type}` as Key)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {draft.trigger === "cron" && (
                 <>
                   <Input
@@ -174,9 +171,8 @@ export function AutomationForm(props: {
           )}
           {step === 1 && (
             <div className="flex flex-col gap-3">
-              <select
+              <NativeSelect
                 aria-label={t("automationsUi.form.action")}
-                className={SELECT}
                 value={draft.action}
                 onChange={(e) => set({ action: e.target.value as ActionType })}
               >
@@ -185,16 +181,15 @@ export function AutomationForm(props: {
                     {t(`automationsUi.form.actionTypes.${type}` as Key)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {draft.action === "start_workflow" &&
                 (usable.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
                     {t("automationsUi.form.noWorkflows")}
                   </p>
                 ) : (
-                  <select
+                  <NativeSelect
                     aria-label={t("automationsUi.form.workflow")}
-                    className={SELECT}
                     value={workflow}
                     onChange={(e) => set({ workflow: e.target.value })}
                   >
@@ -203,7 +198,7 @@ export function AutomationForm(props: {
                         {w.trusted ? w.name : t("automationsUi.form.untrusted", { name: w.name })}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 ))}
             </div>
           )}

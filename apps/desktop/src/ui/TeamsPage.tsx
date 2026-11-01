@@ -13,9 +13,6 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; onCancel(): void }) {
   const { store, hostId } = props;
@@ -375,9 +372,9 @@ export function TeamsPage(props: { store: AppStore; state: AppState }) {
       actions={
         <div className="flex gap-2">
           {hosts.length > 1 && (
-            <select
+            <NativeSelect
+              inline
               aria-label={t("teamsUi.host")}
-              className={SELECT}
               value={current}
               onChange={(e) => setHostId(e.target.value)}
             >
@@ -386,7 +383,7 @@ export function TeamsPage(props: { store: AppStore; state: AppState }) {
                   {h.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           )}
           {!creating && <Button onClick={() => setCreating(true)}>{t("teamsUi.new")}</Button>}
         </div>

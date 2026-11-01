@@ -1,14 +1,12 @@
 import type { EffortLevel } from "@flightdeck/protocol";
 import { type ReactNode, useState } from "react";
-import { Form, FormActions } from "@/components/layout/form";
+import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 const MIN = 2;
 const MAX = 4;
@@ -70,9 +68,9 @@ export function ArenaStartForm(props: {
                     value={draft.model}
                     onChange={(e) => edit(i, { model: e.target.value })}
                   />
-                  <select
+                  <NativeSelect
+                    inline
                     aria-label={t("arenaUi.effort", { n })}
-                    className={SELECT}
                     value={draft.effort}
                     onChange={(e) => edit(i, { effort: e.target.value })}
                   >
@@ -82,7 +80,7 @@ export function ArenaStartForm(props: {
                         {effort}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                   {props.persona?.(n, draft.persona, (persona) => edit(i, { persona }))}
                   {n === drafts.length && n > MIN && (
                     <Button

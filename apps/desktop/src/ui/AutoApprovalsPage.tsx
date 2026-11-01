@@ -1,6 +1,7 @@
 import type { AutoApprovalRecord, AutoApproveSuspension } from "@flightdeck/protocol";
 import { ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -11,9 +12,6 @@ import { useMinLoading } from "@/hooks/use-min-loading";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-
-const SELECT =
-  "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * What the automatic approval decided on a host (newest first, filtered by project and text) and
@@ -70,9 +68,10 @@ export function AutoApprovalsPage(props: { store: AppStore; hostId: string }) {
       subtitle={t("autoApprovalsUi.openHint")}
       toolbar={
         <Toolbar label={t("autoApprovalsUi.list")}>
-          <select
+          <NativeSelect
+            inline
+            compact
             aria-label={t("autoApprovalsUi.project")}
-            className={SELECT}
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
           >
@@ -82,7 +81,7 @@ export function AutoApprovalsPage(props: { store: AppStore; hostId: string }) {
                 {p.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           <Input
             aria-label={t("autoApprovalsUi.filter")}
             placeholder={t("autoApprovalsUi.filterPlaceholder")}

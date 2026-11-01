@@ -2,6 +2,7 @@ import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
+import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import type { StateTone } from "@/components/status/status-dot";
@@ -42,8 +43,6 @@ const TONES: Record<HubState, StateTone> = {
 };
 
 /** Native selects: the filters stay light, and keyboard and screen readers work as they are. */
-const SELECT_CLASS =
-  "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * The main screen: every session of every online host (managed, opened in the terminal, or from
@@ -159,9 +158,9 @@ export function SessionsHub(props: {
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="flex w-64 flex-col gap-2">
-          <select
+          <NativeSelect
+            compact
             aria-label={t("hub.host")}
-            className={SELECT_CLASS}
             value={filter.host}
             onChange={(e) => set({ host: e.target.value })}
           >
@@ -173,10 +172,10 @@ export function SessionsHub(props: {
                   {h.name}
                 </option>
               ))}
-          </select>
-          <select
+          </NativeSelect>
+          <NativeSelect
+            compact
             aria-label={t("hub.origin")}
-            className={SELECT_CLASS}
             value={filter.origin}
             onChange={(e) => set({ origin: e.target.value as HubFilter["origin"] })}
           >
@@ -184,10 +183,10 @@ export function SessionsHub(props: {
             <option value="flightdeck">{t("hub.origins.flightdeck")}</option>
             <option value="terminal">{t("hub.origins.terminal")}</option>
             <option value="history">{t("hub.origins.history")}</option>
-          </select>
-          <select
+          </NativeSelect>
+          <NativeSelect
+            compact
             aria-label={t("hub.state")}
-            className={SELECT_CLASS}
             value={filter.state}
             onChange={(e) => set({ state: e.target.value as HubFilter["state"] })}
           >
@@ -196,11 +195,11 @@ export function SessionsHub(props: {
             <option value="needs_you">{t("hub.states.needs_you")}</option>
             <option value="idle">{t("hub.states.idle")}</option>
             <option value="ended">{t("hub.states.ended")}</option>
-          </select>
+          </NativeSelect>
           {personas.length > 0 && (
-            <select
+            <NativeSelect
+              compact
               aria-label={t("hub.persona")}
-              className={SELECT_CLASS}
               value={filter.persona}
               onChange={(e) => set({ persona: e.target.value })}
             >
@@ -210,7 +209,7 @@ export function SessionsHub(props: {
                   {p.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           )}
           <Button
             variant="outline"

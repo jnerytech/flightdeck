@@ -2,7 +2,7 @@ import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Form, FormActions } from "@/components/layout/form";
+import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,6 @@ import {
 } from "../lib/mcp-form.ts";
 import { isInside } from "../lib/paths.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** The protocol's names, which the screen shows as they are. */
 /** Sessions of a managed run that can still answer `mcp.status`. */
@@ -298,9 +295,8 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
               placeholder={t("agent.mcp.name")}
               {...field("name")}
             />
-            <select
+            <NativeSelect
               aria-label={t("agent.mcp.transport")}
-              className={SELECT}
               value={draft?.transport ?? "stdio"}
               onChange={(e) =>
                 setDraft((d) =>
@@ -313,7 +309,7 @@ export function AgentMcp(props: { store: AppStore; hostId: string; projectId: st
                   {transport}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             {draft?.transport === "stdio" ? (
               <>
                 <Input aria-label={t("agent.mcp.command")} {...field("command")} />

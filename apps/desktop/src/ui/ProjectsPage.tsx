@@ -2,6 +2,7 @@ import type { BoardColumn, Project, ProjectListResult, PrProviderKind } from "@f
 import { FolderGit2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -165,8 +166,6 @@ export function ProjectsPage(props: {
     );
   }
 
-  const SELECT =
-    "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
     <Page title={t("projectsUi.title", { host: props.hostName })}>
       <div className="flex max-w-3xl flex-col gap-6">
@@ -267,15 +266,11 @@ export function ProjectsPage(props: {
             placeholder={t("projectsUi.baseBranch")}
             {...field("baseBranch")}
           />
-          <select
-            aria-label={t("projectsUi.prProvider")}
-            className={SELECT}
-            {...field("prProvider")}
-          >
+          <NativeSelect aria-label={t("projectsUi.prProvider")} {...field("prProvider")}>
             <option value="none">{t("projectsUi.noPr")}</option>
             <option value="github">GitHub (gh)</option>
             <option value="azure-devops">Azure DevOps (az)</option>
-          </select>
+          </NativeSelect>
           <Input
             aria-label={t("projectsUi.setup")}
             placeholder={t("projectsUi.setupPlaceholder")}

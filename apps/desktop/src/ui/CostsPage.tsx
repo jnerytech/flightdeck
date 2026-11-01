@@ -2,6 +2,7 @@ import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@fligh
 import { Coins } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Toolbar } from "@/components/layout/stack";
@@ -117,17 +118,16 @@ export function CostsPage(props: {
 
   const loading = useMinLoading(hostId !== "" && summary === null);
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
-  const select =
-    "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
     <Page
       title={t("costsUi.title")}
       subtitle={t("costsUi.subtitle")}
       toolbar={
         <Toolbar label={t("costsUi.filters")}>
-          <select
+          <NativeSelect
+            inline
+            compact
             aria-label={t("costsUi.host")}
-            className={select}
             value={hostId}
             onChange={(e) => setChosen(e.target.value)}
           >
@@ -136,7 +136,7 @@ export function CostsPage(props: {
                 {h.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           {PERIODS.map((p) => (
             <Button
               key={p}
@@ -167,9 +167,10 @@ export function CostsPage(props: {
               />
             </>
           )}
-          <select
+          <NativeSelect
+            inline
+            compact
             aria-label={t("costsUi.project")}
-            className={select}
             value={filters.projectKey ?? ""}
             onChange={(e) => setFilter("projectKey", e.target.value)}
           >
@@ -179,10 +180,11 @@ export function CostsPage(props: {
                 {projectLabel(p.projectKey)}
               </option>
             ))}
-          </select>
-          <select
+          </NativeSelect>
+          <NativeSelect
+            inline
+            compact
             aria-label={t("costsUi.model")}
-            className={select}
             value={filters.model ?? ""}
             onChange={(e) => setFilter("model", e.target.value)}
           >
@@ -192,10 +194,11 @@ export function CostsPage(props: {
                 {m.model}
               </option>
             ))}
-          </select>
-          <select
+          </NativeSelect>
+          <NativeSelect
+            inline
+            compact
             aria-label={t("costsUi.origin")}
-            className={select}
             value={filters.origin ?? ""}
             onChange={(e) => setFilter("origin", e.target.value)}
           >
@@ -205,7 +208,7 @@ export function CostsPage(props: {
                 {o}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
             {t("costsUi.export")}
           </Button>

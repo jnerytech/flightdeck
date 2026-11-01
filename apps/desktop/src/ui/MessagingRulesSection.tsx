@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Field, Form, FormActions } from "@/components/layout/form";
+import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
@@ -93,22 +93,15 @@ export function MessagingRulesSection(props: {
       setBoth(false);
     }
   };
-  const select =
-    "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
   const title = t("messagingRulesUi.title", { host: props.hostName });
   const kindSelect = (id: string, value: Kind, onChange: (kind: Kind) => void) => (
-    <select
-      id={id}
-      className={select}
-      value={value}
-      onChange={(e) => onChange(e.target.value as Kind)}
-    >
+    <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value as Kind)}>
       {KINDS.map((k) => (
         <option key={k} value={k}>
           {t(`messagingRulesUi.kinds.${k}`)}
         </option>
       ))}
-    </select>
+    </NativeSelect>
   );
   const ids = {
     both: `mr-both-${hostId}`,

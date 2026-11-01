@@ -1,6 +1,7 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
+import { NativeSelect } from "@/components/layout/form";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +12,6 @@ import type { Density } from "../lib/density.ts";
 import { basename } from "../lib/paths.ts";
 
 /** Native selects, as in the hub. */
-const SELECT_CLASS =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 interface Draft {
   cwd: string;
@@ -79,11 +78,11 @@ export function HistoryList(props: {
           />
           <Input aria-label={t("historyUi.from")} type="date" className="w-36" {...field("from")} />
           <Input aria-label={t("historyUi.to")} type="date" className="w-36" {...field("to")} />
-          <select aria-label={t("historyUi.origin")} className={SELECT_CLASS} {...field("origin")}>
+          <NativeSelect inline aria-label={t("historyUi.origin")} {...field("origin")}>
             <option value="">{t("historyUi.allOrigins")}</option>
             <option value="flightdeck">{t("historyUi.flightdeck")}</option>
             <option value="external">{t("historyUi.external")}</option>
-          </select>
+          </NativeSelect>
           <Button variant="outline" onClick={() => setFilter(toFilter(draft))}>
             {t("historyUi.filter")}
           </Button>

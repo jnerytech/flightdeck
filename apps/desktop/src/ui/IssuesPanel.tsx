@@ -2,6 +2,7 @@ import type { Card, Issue, IssuesConfig, Project } from "@flightdeck/protocol";
 import { ExternalLink, RefreshCw, Settings } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { NativeSelect } from "@/components/layout/form";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +19,6 @@ import { Switch } from "@/components/ui/switch";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
 import { filterIssues, issueLabel, issueNumber } from "../lib/issues.ts";
-
-const SELECT =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** The external-author seal: third-party content, so no automatic approval on the card. */
 export function ExternalSeal({ t }: { t: AppStore["i18n"]["t"] }) {
@@ -49,15 +47,14 @@ function ConfigForm(props: {
   return (
     <div className="flex flex-col gap-3">
       {!props.current && <p className="text-sm">{t("issuesUi.connect")}</p>}
-      <select
+      <NativeSelect
         aria-label={t("issuesUi.provider")}
-        className={SELECT}
         value={provider}
         onChange={(e) => setProvider(e.target.value as IssuesConfig["provider"])}
       >
         <option value="github">{t("issuesUi.github")}</option>
         <option value="azure">{t("issuesUi.azure")}</option>
-      </select>
+      </NativeSelect>
       <Input
         aria-label={t("issuesUi.query")}
         placeholder={t("issuesUi.queryHint")}

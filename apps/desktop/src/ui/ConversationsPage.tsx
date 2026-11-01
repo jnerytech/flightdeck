@@ -1,6 +1,7 @@
 import type { MessageInfo, MessageStatus } from "@flightdeck/protocol";
 import { MessagesSquare } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
@@ -11,8 +12,6 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 
-const SELECT =
-  "h-8 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {
   delivered: "text-status-idle",
@@ -106,9 +105,10 @@ export function ConversationsPage(props: {
             onChange={(e) => setText(e.target.value)}
             className="h-8 w-56"
           />
-          <select
+          <NativeSelect
+            inline
+            compact
             aria-label={t("conversationsUi.status")}
-            className={SELECT}
             value={status}
             onChange={(e) => setStatus(e.target.value as "" | MessageStatus)}
           >
@@ -118,7 +118,7 @@ export function ConversationsPage(props: {
                 {t(`conversationsUi.statuses.${s}`)}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </Toolbar>
       }
     >
