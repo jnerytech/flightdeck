@@ -62,8 +62,10 @@ async function setup(options: { native?: (root: string) => string; remote?: bool
 const dialog = () => screen.queryByRole("dialog", { name: "Escolher pasta" });
 const button = (name: string | RegExp) =>
   within(dialog() as HTMLElement).queryByRole("button", { name });
+/** Whether the dialog has that button; a plain boolean, because a failed `expect` on an element dumps the whole DOM and starves the socket. */
+const shown = (name: string | RegExp) => button(name) !== null;
 const press = async (name: string | RegExp) => {
-  await waitFor(() => expect(button(name)).not.toBeNull());
+  await waitFor(() => expect(shown(name)).toBe(true));
   await act(async () => {
     fireEvent.click(button(name) as HTMLElement);
   });
@@ -81,29 +83,29 @@ describe("pasta: escolher uma pasta do host", () => {
     const { root } = await setup();
     const rootName = root.split("/").at(-1) as string;
     await press(new RegExp(`^${rootName}`));
-    await waitFor(() => expect(button("alfa")).not.toBeNull());
-    expect(button("beta")).not.toBeNull();
-    expect(button("arquivo.txt")).toBeNull();
-    expect(button(".oculta")).toBeNull();
+    await waitFor(() => expect(shown("alfa")).toBe(true));
+    expect(shown("beta")).toBe(true);
+    expect(shown("arquivo.txt")).toBe(false);
+    expect(shown(".oculta")).toBe(false);
     await press("alfa");
-    await waitFor(() => expect(button("interna")).not.toBeNull());
+    await waitFor(() => expect(shown("interna")).toBe(true));
     // The breadcrumb names every step; the one above goes back.
     await press(rootName);
-    await waitFor(() => expect(button("beta")).not.toBeNull());
+    await waitFor(() => expect(shown("beta")).toBe(true));
     await press("Pastas do host");
-    await waitFor(() => expect(button("beta")).toBeNull());
-    expect(button(new RegExp(`^${rootName}`))).not.toBeNull();
+    await waitFor(() => expect(shown("beta")).toBe(false));
+    expect(shown(new RegExp(`^${rootName}`))).toBe(true);
   });
 
   test("Escolher esta pasta hands over the real path; at the list of roots it is disabled and says why", async () => {
     const { root, picked } = await setup();
     const rootName = root.split("/").at(-1) as string;
-    await waitFor(() => expect(button("Escolher esta pasta")).not.toBeNull());
+    await waitFor(() => expect(shown("Escolher esta pasta")).toBe(true));
     expect((button("Escolher esta pasta") as HTMLButtonElement).disabled).toBe(true);
     expect(within(dialog() as HTMLElement).queryByText("Abra uma pasta primeiro")).not.toBeNull();
     await press(new RegExp(`^${rootName}`));
     await press("alfa");
-    await waitFor(() => expect(button("interna")).not.toBeNull());
+    await waitFor(() => expect(shown("interna")).toBe(true));
     await press("Escolher esta pasta");
     expect(picked).toEqual([join(root, "alfa")]);
   });
@@ -111,7 +113,7 @@ describe("pasta: escolher uma pasta do host", () => {
   test("hidden folders show when asked", async () => {
     const { root } = await setup();
     await press(new RegExp(`^${root.split("/").at(-1)}`));
-    await waitFor(() => expect(button("alfa")).not.toBeNull());
+    await waitFor(() => expect(shown("alfa")).toBe(true));
     const toggle = within(dialog() as HTMLElement).queryByRole("checkbox", {
       name: "Mostrar pastas ocultas",
     });
@@ -119,14 +121,14 @@ describe("pasta: escolher uma pasta do host", () => {
     await act(async () => {
       fireEvent.click(toggle as HTMLElement);
     });
-    await waitFor(() => expect(button(".oculta")).not.toBeNull());
+    await waitFor(() => expect(shown(".oculta")).toBe(true));
   });
 
   test("the arrow keys walk the list, Enter opens a folder and Backspace goes up", async () => {
     const { root } = await setup();
     await press(new RegExp(`^${root.split("/").at(-1)}`));
-    await waitFor(() => expect(button("alfa")).not.toBeNull());
-    const list = within(dialog() as HTMLElement).queryByRole("listbox", { name: "Pastas" });
+    await waitFor(() => expect(shown("alfa")).toBe(true));
+    const list = within(dialog() as HTMLElement).queryByRole("list", { name: "Pastas" });
     expect(list).not.toBeNull();
     await act(async () => {
       fireEvent.keyDown(list as HTMLElement, { key: "ArrowDown" });
@@ -140,11 +142,11 @@ describe("pasta: escolher uma pasta do host", () => {
       fireEvent.keyDown(list as HTMLElement, { key: "ArrowUp" });
       fireEvent.keyDown(list as HTMLElement, { key: "Enter" });
     });
-    await waitFor(() => expect(button("interna")).not.toBeNull());
+    await waitFor(() => expect(shown("interna")).toBe(true));
     await act(async () => {
       fireEvent.keyDown(list as HTMLElement, { key: "Backspace" });
     });
-    await waitFor(() => expect(button("beta")).not.toBeNull());
+    await waitFor(() => expect(shown("beta")).toBe(true));
   });
 
   test("a folder the host refuses says so, with the folders it allows", async () => {
@@ -166,8 +168,8 @@ describe("pasta: escolher uma pasta do host", () => {
 
   test("a remote host has no system dialog (it would pick a folder of this machine)", async () => {
     await setup({ native: () => "/x", remote: true });
-    await waitFor(() => expect(button("Escolher esta pasta")).not.toBeNull());
-    expect(button("Escolher no sistema")).toBeNull();
+    await waitFor(() => expect(shown("Escolher esta pasta")).toBe(true));
+    expect(shown("Escolher no sistema")).toBe(false);
   });
 
   test("Cancelar and Esc close it", async () => {
