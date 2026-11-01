@@ -144,6 +144,10 @@ async function until(check: () => boolean, ms: number): Promise<boolean> {
 
 // `claude --bg` starts the session under the supervisor and returns at once.
 if (args.includes("--bg") || args.includes("--background")) {
+  if (existsSync(join(stateDir, "fail"))) {
+    console.error("cannot start in the background");
+    process.exit(1);
+  }
   console.log("backgrounded · fake0001 · bg");
   process.exit(0);
 }

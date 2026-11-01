@@ -6,6 +6,8 @@ export interface BgServiceOptions {
   db: Database;
   /** The `claude` to ask; `null` when none is installed. */
   claude: () => string | null;
+  /** Delivers a message through the channel of a session opened with `flightdeckd claude`; false when it has none. */
+  channel?: (claudeSessionId: string, text: string) => boolean;
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -73,5 +75,17 @@ export class BgService {
       });
     }
     return { supported: true, sessions };
+  }
+
+  async stop(_id: string): Promise<BgList> {
+    return this.list();
+  }
+
+  async respawn(_id: string): Promise<BgList> {
+    return this.list();
+  }
+
+  async message(_id: string, _text: string): Promise<BgList> {
+    return this.list();
   }
 }

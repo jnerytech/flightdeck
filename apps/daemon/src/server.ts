@@ -1423,6 +1423,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
       case "bg.list":
         return ok(command.type, await bg().list());
+      case "bg.stop":
+        return ok(command.type, await bg().stop(command.payload.id));
+      case "bg.respawn":
+        return ok(command.type, await bg().respawn(command.payload.id));
+      case "bg.message":
+        return ok(command.type, await bg().message(command.payload.id, command.payload.text));
       case "trace.get":
         return ok(command.type, trace().get(command.payload.claudeSessionId));
       case "trace.export": {
