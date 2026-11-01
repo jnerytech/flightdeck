@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
-import { CLIENTS_KEY } from "../src/lib/clients.ts";
+import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -131,7 +131,7 @@ describe("clients-ui: the client switcher", () => {
 
   test("it names the selected client, and lists all clients, each client, Unassigned and Manage", async () => {
     await setup(TWO, false);
-    expect(trigger("Cliente: todos os clientes")).not.toBeNull();
+    expect(trigger("Cliente: Todos os clientes")).not.toBeNull();
     await openMenu();
     const names = choices();
     expect(names).toHaveLength(5);
@@ -152,6 +152,12 @@ describe("clients-ui: the client switcher", () => {
     expect(trigger("Cliente: Beta")).not.toBeNull();
   });
 
+  test("Unassigned is named on the button when it is the selection", async () => {
+    const { store } = await setup(TWO, false);
+    await act(async () => store.setClientSelection(UNASSIGNED));
+    expect(trigger("Cliente: Sem cliente")).not.toBeNull();
+  });
+
   test("each client shows how many sessions are busy, and Unassigned how many projects it holds", async () => {
     await setup();
     await openMenu();
@@ -166,7 +172,7 @@ describe("clients-ui: the client switcher", () => {
     expect(screen.queryByRole("img", { name: /em outros clientes/ })).toBeNull();
     await act(async () => store.setClientSelection("acme"));
     expect(
-      screen.queryByRole("img", { name: "1 pedido em outros clientes espera por você" }),
+      screen.queryByRole("img", { name: "Esperando por você em outros clientes: 1" }),
     ).not.toBeNull();
     await act(async () => store.setClientSelection("beta"));
     expect(screen.queryByRole("img", { name: /em outros clientes/ })).toBeNull();
