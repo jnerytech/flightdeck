@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   acquire,
+  DEFAULT_MAX_AGE_MS,
   describeHolder,
   POLL_MS,
   parseArgs,
@@ -85,26 +86,90 @@ describe("slot: arguments", () => {
     expect(parseArgs(["--", "bun", "run", "test"])).toEqual({
       kind: "run",
       nice: false,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
       command: ["bun", "run", "test"],
     });
     expect(parseArgs(["--nice", "bun", "test"])).toEqual({
       kind: "run",
       nice: true,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
       command: ["bun", "test"],
     });
     expect(parseArgs(["--", "--nice", "--", "bun"])).toEqual({
       kind: "run",
       nice: true,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
       command: ["--", "bun"],
     });
   });
 
   test("--status alone is the status; nothing to run is the usage", () => {
-    expect(parseArgs(["--status"])).toEqual({ kind: "status" });
-    expect(parseArgs(["--", "--status"])).toEqual({ kind: "status" });
+    expect(parseArgs(["--status"])).toEqual({ kind: "status", maxAgeMs: DEFAULT_MAX_AGE_MS });
+    expect(parseArgs(["--", "--status"])).toEqual({ kind: "status", maxAgeMs: DEFAULT_MAX_AGE_MS });
+    expect(parseArgs(["--status", "bun"])).toEqual({ kind: "usage" });
     expect(parseArgs([])).toEqual({ kind: "usage" });
     expect(parseArgs(["--"])).toEqual({ kind: "usage" });
     expect(parseArgs(["--nice"])).toEqual({ kind: "usage" });
+  });
+});
+
+describe("slot: the max age", () => {
+  test("--max-age takes minutes, before the command or with --status, in any order with --nice", () => {
+    expect(parseArgs(["--max-age", "30", "--nice", "bun", "test"])).toEqual({
+      kind: "run",
+      nice: true,
+      maxAgeMs: 30 * 60_000,
+      command: ["bun", "test"],
+    });
+    expect(parseArgs(["--nice", "--max-age", "5", "bun"])).toMatchObject({ maxAgeMs: 300_000 });
+    expect(parseArgs(["--status", "--max-age", "10"])).toEqual({
+      kind: "status",
+      maxAgeMs: 600_000,
+    });
+  });
+
+  test("a missing, zero, negative or non-numeric age is the usage", () => {
+    for (const bad of ["0", "-5", "soon", "1.5x", ""]) {
+      expect(parseArgs(["--max-age", bad, "bun"])).toEqual({ kind: "usage" });
+    }
+    expect(parseArgs(["--max-age"])).toEqual({ kind: "usage" });
+  });
+
+  const OLD = 1000 + 91 * 60_000;
+
+  test("--status warns about a live holder older than the max age, and still names it", () => {
+    const f = fake({ files: { [PATH]: held(theirs) } });
+    f.env.now = () => OLD;
+    expect(status(f.env)).toBe(
+      "held by kiwi: bun run e2e (pid 20, 1h 31m); WARNING: older than 90m, check if it is stuck",
+    );
+    expect(status(f.env, 120 * 60_000)).toBe("held by kiwi: bun run e2e (pid 20, 1h 31m)");
+  });
+
+  test("a dead holder is stale, not old", () => {
+    const f = fake({ files: { [PATH]: held(theirs) }, dead: [20] });
+    f.env.now = () => OLD;
+    expect(status(f.env)).toBe("free (stale lock of pid 20)");
+  });
+
+  test("a waiter warns once about an old holder and keeps waiting without taking the slot", async () => {
+    const f = fake({ files: { [PATH]: held(theirs) } });
+    f.env.now = () => OLD;
+    let stop = 0;
+    expect(await acquire(f.env, "x", () => stop++ >= 3)).toBe(false);
+    expect(f.logs).toEqual([
+      "slot busy: kiwi: bun run e2e (pid 20, 1h 31m); waiting",
+      "slot warning: kiwi (pid 20) has held the slot for over 90m: check if it is stuck; not taking it over",
+    ]);
+    expect(f.files.get(PATH)).toBe(held(theirs));
+  });
+
+  test("a waiter uses its own max age", async () => {
+    const f = fake({ files: { [PATH]: held(theirs) } });
+    f.env.now = () => 1000 + 120_000;
+    let stop = 0;
+    expect(await acquire(f.env, "x", () => stop++ >= 1, 60_000)).toBe(false);
+    expect(f.logs[1]).toContain("over 1m");
   });
 });
 

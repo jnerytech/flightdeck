@@ -39,21 +39,23 @@ export interface SlotEnv {
 }
 
 export type SlotArgs =
-  | { kind: "status" }
-  | { kind: "run"; nice: boolean; command: string[] }
+  | { kind: "status"; maxAgeMs: number }
+  | { kind: "run"; nice: boolean; maxAgeMs: number; command: string[] }
   | { kind: "usage" };
 
 export type Attempt = { acquired: boolean; holder: SlotHolder | null };
 
 export const POLL_MS = 2000;
+/** A holder older than this is reported as suspicious (never taken over). */
+export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE = "usage: bun run slot -- [--nice] <command...> | bun run slot -- --status";
 
 export function parseArgs(argv: string[]): SlotArgs {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
-  if (args.length === 1 && args[0] === "--status") return { kind: "status" };
+  if (args.length === 1 && args[0] === "--status") return { kind: "status", maxAgeMs: 0 };
   const nice = args[0] === "--nice";
   const command = nice ? args.slice(1) : args;
-  return command.length > 0 ? { kind: "run", nice, command } : { kind: "usage" };
+  return command.length > 0 ? { kind: "run", nice, maxAgeMs: 0, command } : { kind: "usage" };
 }
 
 export function parseHolder(text: string | null): SlotHolder | null {
@@ -108,6 +110,7 @@ export async function acquire(
   env: SlotEnv,
   command: string,
   stopped: () => boolean,
+  _maxAgeMs = DEFAULT_MAX_AGE_MS,
 ): Promise<boolean> {
   let named = "";
   while (!stopped()) {
@@ -128,7 +131,7 @@ export function release(env: SlotEnv): void {
   if (parseHolder(env.fs.read(env.path))?.pid === env.pid) env.fs.remove(env.path);
 }
 
-export function status(env: SlotEnv): string {
+export function status(env: SlotEnv, _maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   const text = env.fs.read(env.path);
   if (text === null) return "free";
   const holder = parseHolder(text);
