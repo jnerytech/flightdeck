@@ -17,6 +17,7 @@ import { useStoreState } from "../lib/use-store.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
+import { preloadMarkdown } from "./Markdown.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
@@ -132,6 +133,9 @@ export function App({ store }: { store: AppStore }) {
     void store.init();
     return () => store.dispose();
   }, [store]);
+
+  // The Markdown renderer is a separate chunk: fetch it now so a conversation never opens as plain text.
+  useEffect(preloadMarkdown, []);
 
   // Links come from anywhere: a pairing link only prefills the form (saving needs the user's
   // click); a request link (a notification click) shows the request.
