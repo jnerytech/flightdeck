@@ -86,7 +86,8 @@ describe("clients-filter: the Board picker", () => {
   test("a client with no project on the host says so, and does not offer to add one", async () => {
     const { store } = await setup();
     await act(async () => store.setClientSelection(UNASSIGNED));
-    await settle(() => shown().length === 0);
+    await settle(() => screen.queryByText("Nenhum projeto deste cliente neste host.") !== null);
+    expect(shown()).toEqual([]);
     expect(screen.queryByText("Nenhum projeto deste cliente neste host.")).not.toBeNull();
     expect(screen.queryByText("Nenhum projeto cadastrado.")).toBeNull();
   });
