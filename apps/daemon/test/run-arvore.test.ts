@@ -111,4 +111,43 @@ describe("run-arvore: whoever kills a tree and then uses its files or ports wait
     expect(killedAt).toHaveLength(2);
     expect(ms).toBeGreaterThanOrEqual(70);
   });
+
+  test("idle settles only when every card being stopped has its trees gone", async () => {
+    const fake = fakeRunHost();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const host = {
+      ...fake.host,
+      kill: async (terminalId: string) => {
+        fake.host.kill(terminalId);
+        await gate;
+      },
+    };
+    const store = new EventStore(":memory:");
+    const manager = new RunManager({
+      db: store.db,
+      configs: { resolve: async () => runConfig({ setup: null }) },
+      ports: new CardPorts({ db: store.db, isFree: async () => true }),
+      host,
+      card: (cardId) => ({ id: cardId, projectId: "proj", worktreePath: `/work/${cardId}` }),
+      project: (id) => ({ id, path: "/repo", baseBranch: "main" }),
+    });
+    await manager.idle();
+    await manager.start("card-a");
+    const deadline = Date.now() + 1000;
+    while (fake.spawned.length < 2 && Date.now() < deadline) await Bun.sleep(5);
+    const stopping = manager.stop("card-a");
+    let idle = false;
+    const idling = manager.idle().then(() => {
+      idle = true;
+    });
+    await Bun.sleep(60);
+    expect(idle).toBe(false);
+    release();
+    await stopping;
+    await idling;
+    expect(idle).toBe(true);
+  });
 });

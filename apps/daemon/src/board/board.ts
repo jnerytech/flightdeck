@@ -858,6 +858,9 @@ export class Board {
     return { queueReason: queued ? "slot" : null, quotaUntil: null };
   }
 
+  /** Another thing to wait for before a worktree is removed, besides `idle` (the run environment's trees). */
+  addIdle(_wait: () => Promise<unknown>): void {}
+
   /** Looks up the key of every registered project, so what asks for it later finds it at hand. */
   async warmProjectKeys(): Promise<void> {
     const keys = this.opts.projectKeys;

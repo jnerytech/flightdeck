@@ -165,6 +165,23 @@ describe("board", () => {
     expect(existsSync(worktree)).toBe(false);
   });
 
+  test("a local merge removes the worktree only after what was added with addIdle settles", async () => {
+    const { idle, state, release } = gatedIdle();
+    const { board, card, worktree } = await idleCard(async () => {});
+    board.addIdle(idle);
+    writeFileSync(join(worktree, "feito.txt"), "feito\n");
+    git(worktree, "add", "feito.txt");
+    git(worktree, "commit", "-q", "-m", "feito");
+    const merging = board.mergeLocal(card.id, "merge", true);
+    const asked = await poll(() => state.waited > 0 || null, 3000);
+    expect(asked).toBe(true);
+    await Bun.sleep(200);
+    expect(existsSync(worktree)).toBe(true);
+    release();
+    expect(await merging).toMatchObject({ column: "done", worktreePath: null, notice: null });
+    expect(existsSync(worktree)).toBe(false);
+  });
+
   test("discarding a card removes its worktree only after the injected idle() settles", async () => {
     const { idle, state, release } = gatedIdle();
     const { board, card, worktree } = await idleCard(idle);

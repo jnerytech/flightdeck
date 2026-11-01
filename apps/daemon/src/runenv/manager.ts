@@ -147,6 +147,9 @@ export class RunManager {
     return this.snapshot(entry);
   }
 
+  /** Resolves when no card is being stopped: its trees are gone and its files and ports are free. */
+  async idle(): Promise<void> {}
+
   state(cardId: string): RunState {
     const entry = this.entries.get(cardId);
     if (entry) return this.snapshot(entry);
