@@ -63,7 +63,7 @@ describe("configuracoes", () => {
     setup();
     await openSettings();
     for (const label of ["Tema", "Densidade da lista", "Tamanho da fonte do terminal", "Idioma"]) {
-      const control = screen.getByLabelText(label) as HTMLElement;
+      const control = screen.getByLabelText(label) as HTMLInputElement;
       expect(control.labels?.length).toBe(1);
     }
   });
