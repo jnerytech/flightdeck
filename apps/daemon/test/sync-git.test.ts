@@ -164,6 +164,28 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(again.calls()).toEqual([]);
   });
 
+  test("board.budgetBlocked reads the cached key of a project added through the board and asks git nothing", async () => {
+    const keys = new ProjectKeys("h");
+    const asked: string[] = [];
+    const { board, repo } = newBoard({
+      projectKeys: keys,
+      budgets: {
+        blocked: (key) => {
+          asked.push(key);
+          return false;
+        },
+        watch: () => () => {},
+      },
+    });
+    const { id } = await board.addProject({ path: repo });
+    const sleeping = installSleepingGit(300);
+    cleanups.push(() => sleeping.restore());
+    const blocked = (board as unknown as { budgetBlocked(id: string): boolean }).budgetBlocked(id);
+    expect(blocked).toBe(false);
+    expect(asked).toEqual([keys.keyFor(repo)]);
+    expect(sleeping.calls()).toEqual([]);
+  });
+
   test("the usage indexer looks up the project of a transcript's folder without holding the event loop, and then keyFor asks git nothing", async () => {
     const { repo } = gitRepo();
     const root = join(tempDir("fd-usage-"), "projects");
