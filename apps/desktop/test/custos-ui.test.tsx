@@ -291,7 +291,8 @@ describe("custos-ui", () => {
   test("o painel de uso do host passa a ler os custos quando o host anuncia costs", async () => {
     await online();
     await click("Abrir host alfa");
-    await settle(() => region("Uso dos últimos 7 dias")?.querySelector("tbody tr") !== null);
+    // `!= null`: the region is still absent (undefined) while the host screen loads.
+    await settle(() => region("Uso dos últimos 7 dias")?.querySelector("tbody tr") != null);
     expect(
       [...(region("Uso dos últimos 7 dias")?.querySelectorAll("tbody tr") ?? [])].map(
         (r) => r.textContent,
