@@ -99,15 +99,17 @@ describe("entrega-lacuna: the app does not draw a conversation with holes", () =
     expect(store.getState().sessions[key]?.lastSeq).toBe(4);
   });
 
-  test("an app that is online again after a gap goes on from its last seq like any reconnect", async () => {
+  test("each hole is asked for once: a second hole, later, is asked for again", async () => {
     const { store, daemon, key, asked } = await follow();
+    daemon.streams.s1?.push(said(5), said(6));
     daemon.push(frame(6, said(6).event));
-    await settle(() => asked().length === 2);
-    daemon.streams.s1?.push(said(5), said(6), said(7));
-    daemon.push(frame(7, said(7).event));
-    await settle(() => store.getState().sessions[key]?.lastSeq === 7);
+    await settle(() => store.getState().sessions[key]?.lastSeq === 6);
+    daemon.streams.s1?.push(said(7), said(8));
+    daemon.push(frame(8, said(8).event));
+    await settle(() => store.getState().sessions[key]?.lastSeq === 8);
     expect(store.getState().sessions[key]?.items.map((item) => item.seq)).toEqual([
-      1, 2, 3, 4, 5, 6, 7,
+      1, 2, 3, 4, 5, 6, 7, 8,
     ]);
+    expect(asked()).toEqual([0, 4, 6]);
   });
 });
