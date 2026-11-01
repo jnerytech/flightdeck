@@ -58,6 +58,15 @@ describe("vigiar-checks: local checks are a command and its arguments, never a s
     expect(f.gitCalls.some((args) => args[0] === "push")).toBe(false);
   });
 
+  test("a pushed round says which checks passed before the push, so they are visible", async () => {
+    const f = await fixture({ settings: { checks: ["bun test", "bun run lint"] } });
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect(round?.status).toBe("pushed");
+    expect(round?.summary).toContain("checks passed: bun test, bun run lint");
+  });
+
   test("what a failed check printed is kept without the lines that look like a secret", async () => {
     const token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
     const f = await fixture({
