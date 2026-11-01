@@ -76,29 +76,65 @@ const POLICY_KEYS = new Set([
   "retentionDays",
 ]);
 
-/** The policy that is valid, or why it is not. */
-export function validatePolicy(raw: unknown): { policy: Policy; errors: string[] } {
-  if (raw === undefined) return { policy: DEFAULT_POLICY, errors: [] };
-  if (!isRecord(raw)) return { policy: DEFAULT_POLICY, errors: ["a política é um objeto"] };
-  const errors: string[] = [];
-  for (const key of Object.keys(raw))
-    if (!POLICY_KEYS.has(key)) errors.push(`campo desconhecido: ${key}`);
+const NUMBER_KEYS = [
+  "perPairPerHour",
+  "perSessionPerHour",
+  "loopMessages",
+  "loopMinutes",
+  "retentionDays",
+] as const;
+
+/** The limits given, each a positive integer; what is wrong goes to `errors`. */
+function validateNumbers(
+  raw: Record<string, unknown>,
+  errors: string[],
+): Partial<Record<keyof Policy, number>> {
   const numbers: Partial<Record<keyof Policy, number>> = {};
-  for (const key of [
-    "perPairPerHour",
-    "perSessionPerHour",
-    "loopMessages",
-    "loopMinutes",
-    "retentionDays",
-  ] as const) {
+  for (const key of NUMBER_KEYS) {
     const value = raw[key];
     if (value === undefined) continue;
     if (typeof value === "number" && Number.isInteger(value) && value > 0) numbers[key] = value;
     else errors.push(`${key} é um inteiro positivo`);
   }
-  const exceptions: Exception[] = [];
-  const given = raw.exceptions;
+  return numbers;
+}
+
+/** One side of an exception: an object whose keys are selector keys with a non-empty text. */
+function validateSelector(
+  selector: unknown,
+  label: string,
+  side: "from" | "to",
+  errors: string[],
+): void {
+  if (!isRecord(selector)) {
+    errors.push(`${label}: ${side} é um seletor (session, project, team, host)`);
+    return;
+  }
+  for (const [key, value] of Object.entries(selector)) {
+    if (!(SELECTOR_KEYS as readonly string[]).includes(key)) {
+      errors.push(`${label}: ${side}.${key} não existe`);
+    } else if (typeof value !== "string" || value === "") {
+      errors.push(`${label}: ${side}.${key} é um texto`);
+    }
+  }
+}
+
+/** The id of an exception: required, and not one already seen. */
+function validateId(
+  item: Record<string, unknown>,
+  label: string,
+  ids: Set<string>,
+  errors: string[],
+) {
+  if (typeof item.id !== "string" || item.id === "") errors.push(`${label}: id é obrigatório`);
+  else if (ids.has(item.id)) errors.push(`${label}: id repetido`);
+  else ids.add(item.id);
+}
+
+/** The exceptions given; each one with a problem goes to `errors` and is left out. */
+function validateExceptions(given: unknown, errors: string[]): Exception[] {
   if (given !== undefined && !Array.isArray(given)) errors.push("exceptions é uma lista");
+  const exceptions: Exception[] = [];
   const ids = new Set<string>();
   for (const [index, item] of (Array.isArray(given) ? given : []).entries()) {
     const label = `exceção #${index + 1}`;
@@ -107,28 +143,26 @@ export function validatePolicy(raw: unknown): { policy: Policy; errors: string[]
       continue;
     }
     const before = errors.length;
-    if (typeof item.id !== "string" || item.id === "") errors.push(`${label}: id é obrigatório`);
-    else if (ids.has(item.id)) errors.push(`${label}: id repetido`);
-    else ids.add(item.id);
-    for (const side of ["from", "to"] as const) {
-      const selector = item[side];
-      if (!isRecord(selector)) {
-        errors.push(`${label}: ${side} é um seletor (session, project, team, host)`);
-        continue;
-      }
-      for (const [key, value] of Object.entries(selector)) {
-        if (!(SELECTOR_KEYS as readonly string[]).includes(key)) {
-          errors.push(`${label}: ${side}.${key} não existe`);
-        } else if (typeof value !== "string" || value === "") {
-          errors.push(`${label}: ${side}.${key} é um texto`);
-        }
-      }
-    }
+    validateId(item, label, ids, errors);
+    validateSelector(item.from, label, "from", errors);
+    validateSelector(item.to, label, "to", errors);
     if (item.bothWays !== undefined && typeof item.bothWays !== "boolean") {
       errors.push(`${label}: bothWays é verdadeiro ou falso`);
     }
     if (errors.length === before) exceptions.push(item as unknown as Exception);
   }
+  return exceptions;
+}
+
+/** The policy that is valid, or why it is not. */
+export function validatePolicy(raw: unknown): { policy: Policy; errors: string[] } {
+  if (raw === undefined) return { policy: DEFAULT_POLICY, errors: [] };
+  if (!isRecord(raw)) return { policy: DEFAULT_POLICY, errors: ["a política é um objeto"] };
+  const errors = Object.keys(raw)
+    .filter((key) => !POLICY_KEYS.has(key))
+    .map((key) => `campo desconhecido: ${key}`);
+  const numbers = validateNumbers(raw, errors);
+  const exceptions = validateExceptions(raw.exceptions, errors);
   if (errors.length > 0) return { policy: DEFAULT_POLICY, errors };
   return { policy: { ...DEFAULT_POLICY, ...numbers, exceptions }, errors };
 }
