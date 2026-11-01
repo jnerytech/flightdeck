@@ -59,9 +59,9 @@ describe("acoes-schema", () => {
   });
 
   test("um arquivo vazio não tem ações; o que não é uma lista, ou não é YAML, é erro", () => {
-    expect(parseActions("")).toEqual({ actions: [], errors: [] });
+    expect(parseActions("")).toEqual({ actions: [], errors: [], issues: [] });
     expect(parseActions("# só um comentário\n").actions).toEqual([]);
-    expect(parseActions("name: solto\n").errors.join()).toContain("lista");
+    expect(parseActions("name: solto\n").errors.join()).toContain("list");
     expect(parseActions("- name: [sem fechar\n").errors.join()).toContain("YAML");
   });
 
@@ -74,9 +74,9 @@ describe("acoes-schema", () => {
 
   test("segredo em argumento é erro (aparece na lista de processos); em env e no arquivo temporário não", () => {
     expect(errorsOf(action({ run: ["./fazer.sh", "{{secret.token}}"] })).join()).toContain(
-      "argumento",
+      "argument",
     );
-    expect(errorsOf(action({ run: ["{{secret.token}}"] })).join()).toContain("argumento");
+    expect(errorsOf(action({ run: ["{{secret.token}}"] })).join()).toContain("argument");
     expect(errorsOf(action({ run: ["./fazer.sh", "--token={{secret.token}}"] })).length).toBe(1);
     expect(errorsOf(action({ cwd: "/srv/{{secret.token}}" })).join()).toContain("cwd");
     expect(errorsOf(action({ env: { TOKEN: "{{secret.token}}" } }))).toEqual([]);
@@ -136,13 +136,13 @@ describe("acoes-schema", () => {
       ["eval", "{{param.x}}"],
       ["bash", "-c", "{{param.x}}"],
     ]) {
-      expect([run, code(run).includes("código")]).toEqual([run, true]);
+      expect([run, code(run).includes("code position")]).toEqual([run, true]);
     }
     // After the code: the idiom that passes a value as $1.
     expect(code(["sh", "-c", 'echo "$1"', "_", "{{param.x}}"])).toBe("");
     expect(code(["./fazer.sh", "{{param.x}}"])).toBe("");
     // The program itself is not a parameter either.
-    expect(code(["{{param.x}}", "--ok"]).includes("executável")).toBe(true);
+    expect(code(["{{param.x}}", "--ok"]).includes("executable")).toBe(true);
   });
 
   test("nome inválido ou repetido, campo desconhecido e timeout fora dos limites são erros", () => {
@@ -159,12 +159,52 @@ describe("acoes-schema", () => {
     const twice = parseActions(
       `- { name: a, description: d, run: [x] }\n- { name: a, description: d, run: [y] }\n`,
     );
-    expect(twice.errors.join()).toContain("repetid");
+    expect(twice.errors.join()).toContain("duplicate");
     // Valid ones still come back; the invalid one does not.
     const mixed = parseActions(
       `- { name: a, description: d, run: [x] }\n- { name: b, description: d, run: x }\n`,
     );
     expect(mixed.actions.map((a) => a.name)).toEqual(["a"]);
     expect(mixed.errors).toHaveLength(1);
+  });
+});
+
+describe("acoes-schema: the issues, for the app to translate", () => {
+  const issuesOf = (raw: unknown) =>
+    validateAction(raw, { secretIds: new Set(["token"]) }).issues.map((issue) => [
+      issue.path,
+      issue.code,
+      issue.params,
+    ]);
+
+  test("each problem is a code with its params, under the action's name", () => {
+    expect(issuesOf(action({ segredos: ["a"] }))).toEqual([
+      ["acao", "unknown_field", { field: "segredos" }],
+    ]);
+    expect(issuesOf(action({ timeoutS: 0 }))).toEqual([["acao", "timeout_range", { max: 3600 }]]);
+    expect(issuesOf(action({ run: ["./x.sh", "{{secret.token}}"] }))).toEqual([
+      ["acao", "secret_in_arg", { arg: "{{secret.token}}" }],
+    ]);
+    expect(issuesOf(action({ env: { K: "{{secret.nada}}" } }))).toEqual([
+      ["acao", "secret_unknown", { secret: "nada" }],
+    ]);
+    expect(issuesOf(action({ run: ["./x.sh", "{{param.y}}"] }))).toEqual([
+      ["acao", "param_undeclared", { param: "y" }],
+    ]);
+    expect(issuesOf(action({ name: "Com Espaço" }))[0]).toEqual([
+      "Com Espaço",
+      "name_format",
+      undefined,
+    ]);
+    expect(issuesOf(null)).toEqual([["", "not_object", undefined]]);
+  });
+
+  test("a file: its YAML, its shape and a repeated name each have a code", () => {
+    expect(parseActions("name: solto\n").issues).toEqual([{ path: "", code: "file_not_list" }]);
+    expect(parseActions("- name: [sem fechar\n").issues[0]?.code).toBe("yaml_invalid");
+    const twice = parseActions(
+      "- name: a\n  description: d\n  run: [echo]\n- name: a\n  description: d\n  run: [echo]\n",
+    );
+    expect(twice.issues).toEqual([{ path: "a", code: "name_duplicate" }]);
   });
 });

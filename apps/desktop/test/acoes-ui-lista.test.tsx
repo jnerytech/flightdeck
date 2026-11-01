@@ -150,7 +150,9 @@ describe("acoes-ui-lista: as ações de um projeto", () => {
     await settle(() => row("testes") !== null);
     expect((row("testes") as HTMLElement).textContent).toContain("Versionada");
     const problems = screen.queryByRole("list", { name: "Problemas no arquivo de ações" });
-    expect(problems?.textContent).toContain("quebrada");
+    expect(problems?.textContent).toContain(
+      "quebrada: run é uma lista: o programa e depois os argumentos",
+    );
   });
 
   test("a tela diz o limite: o segredo fica longe do Claude, não de outro processo do mesmo usuário", async () => {

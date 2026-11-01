@@ -97,6 +97,7 @@ const REASONS = [
   "ssh_test_hostkey",
   "ssh_test_exit",
   "ssh_test_no_password",
+  "action_invalid",
   "action_param_unknown",
   "action_param_missing",
   "action_param_pattern",

@@ -197,7 +197,7 @@ describe("acoes-servico: ações do app", () => {
       }),
     );
     expect(arg).toContain("bad_request");
-    expect(arg).toContain("argumento");
+    expect(arg).toContain("argument");
     const unknown = await failure(
       actions.save({ projectId: "p1", definition: echoDef(), secretIds: ["outro"] }),
     );

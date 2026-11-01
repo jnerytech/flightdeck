@@ -108,7 +108,10 @@ describe("acoes-ui-form: criar, editar e remover uma ação do app", () => {
     await change("Padrão do parâmetro 1", "[");
     await click("Salvar", dialog());
     await settle(() => within(dialog() as HTMLElement).queryByRole("alert") !== null);
-    expect(within(dialog() as HTMLElement).queryByRole("alert")?.textContent).toContain("pattern");
+    expect(within(dialog() as HTMLElement).queryByRole("alert")?.textContent).toContain(
+      "A ação tem problemas",
+    );
+    expect(dialog()?.textContent).toContain("não é uma regex válida");
     expect((await listed(d))?.actions).toEqual([]);
   });
 
