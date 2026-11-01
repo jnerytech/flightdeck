@@ -979,6 +979,12 @@ export async function startDaemon(
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
+      // `getCard` refuses a card that does not exist, with the not_found the app knows.
+      card: (cardId) => {
+        const card = board.getCard(cardId);
+        const prompt = [card.title, card.description].filter(Boolean).join("\n\n");
+        return { cwd: board.getProject(card.projectId).path, prompt, name: card.title };
+      },
       start: {
         self: daemonCommand(process.execPath, Bun.main),
         configFile,

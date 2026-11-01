@@ -12,8 +12,8 @@ export interface BgServiceOptions {
   channel?: (claudeSessionId: string, text: string) => boolean;
   /** What starting a session needs: this daemon's command line, its config and the folders it may use. */
   start?: { self: string[]; configFile: string; allowedRoots: readonly string[] };
-  /** The folder, prompt and name a card starts a session with; `null` when there is no such card. */
-  card?: (cardId: string) => { cwd: string; prompt: string; name: string } | null;
+  /** The folder, prompt and name a card starts a session with; refuses (not_found) one that does not exist. */
+  card?: (cardId: string) => { cwd: string; prompt: string; name: string };
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -158,18 +158,27 @@ export class BgService {
         feature: "bg",
       });
     }
-    const cwd = resolveAllowedCwd(input.cwd ?? "", start.allowedRoots);
+    let { cwd, prompt, name } = input;
+    if (input.cardId !== undefined) {
+      const card = this.opts.card?.(input.cardId);
+      if (!card) {
+        throw new FlightdeckError("not_found", `card ${input.cardId} does not exist`);
+      }
+      ({ cwd, prompt } = card);
+      name ??= card.name;
+    }
+    const folder = resolveAllowedCwd(cwd ?? "", start.allowedRoots);
     const result = await runCommand(
       [
         ...start.self,
         "claude",
         "--bg",
         ...(input.persona ? ["--persona", input.persona] : []),
-        ...(input.name ? ["--name", input.name] : []),
+        ...(name ? ["--name", name] : []),
         "--",
-        input.prompt ?? "",
+        prompt ?? "",
       ],
-      cwd,
+      folder,
       undefined,
       CLI_TIMEOUT_MS,
       undefined,

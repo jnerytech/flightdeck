@@ -150,10 +150,10 @@ process.exit(${code});
       db: new EventStore(":memory:").db,
       claude: () => "claude",
       start: { self, configFile: h.configFile, allowedRoots: [h.work] },
-      card: (id) =>
-        id === "c1"
-          ? { cwd: h.work, prompt: "Corrija a soma.\n\nO total erra.", name: "Somar" }
-          : null,
+      card: (id) => {
+        if (id !== "c1") throw new FlightdeckError("not_found", `card ${id} does not exist`);
+        return { cwd: h.work, prompt: "Corrija a soma.\n\nO total erra.", name: "Somar" };
+      },
     });
     expect(await bg.start({ cardId: "c1", persona: "revisor" })).toEqual({ id: "stub01" });
     const run = called();
