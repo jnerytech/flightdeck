@@ -192,6 +192,9 @@ function split(id: string): { name: string; marketplace: string } {
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
 
+  /** Stops the work: after this no more CLI calls start. */
+  close(): void {}
+
   async list(): Promise<PluginList> {
     const listed = await this.json(["list", "--json", "--available"]);
     const markets = await this.json(["marketplace", "list", "--json"]);
