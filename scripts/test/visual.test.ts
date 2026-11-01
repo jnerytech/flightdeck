@@ -154,7 +154,7 @@ describe("visual: the prints of a run", () => {
     const io = memory({ "shots/light-en/hub.png": OTHER, "base/light-en/hub.png": GRAY });
     const result = checkShots(check(io, {}));
     expect(result.compared).toBe(1);
-    expect(result.problems).toEqual(["light-en/hub.png: 1 pixels differ (0.0156%)"]);
+    expect(result.problems).toEqual(["light-en/hub.png: 1 pixels differ (1.5625%)"]);
     expect(io.files.has("shots/visual-diff/light-en/hub.png")).toBe(true);
     expect(io.files.has("shots/visual-diff/light-en/hub.actual.png")).toBe(true);
     expect(io.files.has("shots/visual-diff/light-en/hub.expected.png")).toBe(true);
