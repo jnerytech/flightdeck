@@ -107,9 +107,13 @@ import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
-/** How often the daemon pings each authenticated client; two unanswered pings close it. */
+/**
+ * How often the daemon pings each authenticated client. A client is closed after
+ * `MAX_MISSED_PINGS` unanswered pings AND that many intervals without any frame from it: a page
+ * starved of CPU may be late with its pongs, but anything it sends shows it is there.
+ */
 export const PING_INTERVAL_MS = 15_000;
-const MAX_MISSED_PINGS = 2;
+const MAX_MISSED_PINGS = 4;
 
 export interface ServerOptions {
   manager: SessionManager;
@@ -256,6 +260,8 @@ interface Connection {
   dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
+  /** When the last frame of any kind arrived from this client (`performance.now()`). */
+  lastFrameAt: number;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;
   /** Stops the `history.watch` stream, when active. */
@@ -412,9 +418,14 @@ export function startServer(opts: ServerOptions): RunningServer {
   ];
   let pingSeq = 0;
 
+  const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
   const heartbeat = setInterval(() => {
     for (const ws of authed) {
-      if (ws.data.pendingPings.size >= MAX_MISSED_PINGS) {
+      const silentMs = performance.now() - ws.data.lastFrameAt;
+      if (
+        ws.data.pendingPings.size >= MAX_MISSED_PINGS &&
+        silentMs >= MAX_MISSED_PINGS * pingEveryMs
+      ) {
         ws.close(CLOSE_HEARTBEAT, "heartbeat timeout");
         continue;
       }
@@ -423,7 +434,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       const { lastRttMs } = ws.data;
       send(ws, { type: "ping", id, ...(lastRttMs !== undefined ? { lastRttMs } : {}) });
     }
-  }, opts.pingIntervalMs ?? PING_INTERVAL_MS);
+  }, pingEveryMs);
 
   /** The daemon measures the round trip: the app cannot time a ping it did not send. */
   function onPong(ws: Socket, frame: unknown): void {
@@ -1849,6 +1860,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             subscriptions: new Map(),
             coalescers: new Set(),
             pendingPings: new Map(),
+            lastFrameAt: performance.now(),
             changeWatchers: new Map(),
           },
         });
@@ -1861,6 +1873,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     websocket: {
       drain: drainAll,
       message(ws, raw) {
+        ws.data.lastFrameAt = performance.now();
         let frame: unknown;
         try {
           frame = decode(raw);
