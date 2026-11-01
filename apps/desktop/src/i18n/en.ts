@@ -1467,6 +1467,8 @@ export const en: Dictionary = {
     checks: "Local checks (one command per line)",
     save: "Save",
     saved: "PR settings saved",
+    timeout: "Time limit per check (min)",
+    badTimeout: "Time limit per check: from 1 to 60 minutes",
     badRounds: "Rounds per PR: from 1 to 10",
     badCheck:
       "Local checks: a command and its arguments, with no quotes, pipes, ; & $ or redirections",

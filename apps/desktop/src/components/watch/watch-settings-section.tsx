@@ -90,6 +90,16 @@ function ProjectWatchSettings(props: { store: AppStore; hostId: string; project:
           )}
         </Field>
       </Grid>
+      <Field label={t("watchSettingsUi.timeout")}>
+        {(id) => (
+          <Input
+            id={id}
+            type="number"
+            value={draft.checkTimeoutMin}
+            onChange={(e) => set({ checkTimeoutMin: e.target.value })}
+          />
+        )}
+      </Field>
       <Field label={t("watchSettingsUi.checks")}>
         {(id) => (
           <textarea

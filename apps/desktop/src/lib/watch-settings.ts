@@ -11,6 +11,8 @@ export interface WatchDraft {
   dailyUsd: string;
   /** One command per line. */
   checks: string;
+  /** Minutes each check gets. */
+  checkTimeoutMin: string;
 }
 
 export function watchDraftOf(settings: WatchSettings | null): WatchDraft {
@@ -20,6 +22,7 @@ export function watchDraftOf(settings: WatchSettings | null): WatchDraft {
     budgetUsd: settings?.budgetUsd == null ? "" : String(settings.budgetUsd),
     dailyUsd: settings?.dailyUsd == null ? "" : String(settings.dailyUsd),
     checks: settings?.checks.join("\n") ?? "",
+    checkTimeoutMin: settings ? String(settings.checkTimeoutMin) : "",
   };
 }
 
@@ -41,6 +44,10 @@ export function validateWatchDraft(draft: WatchDraft, t: T): string | null {
   if (!Number.isInteger(rounds) || rounds < 1 || rounds > 10) {
     return t("watchSettingsUi.badRounds");
   }
+  const minutes = Number(draft.checkTimeoutMin);
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
+    return t("watchSettingsUi.badTimeout");
+  }
   for (const [text, label] of [
     [draft.budgetUsd, t("watchSettingsUi.budget")],
     [draft.dailyUsd, t("watchSettingsUi.daily")],
@@ -60,5 +67,6 @@ export function watchPatchOf(draft: WatchDraft): Partial<WatchSettings> {
     budgetUsd: limit(draft.budgetUsd),
     dailyUsd: limit(draft.dailyUsd),
     checks: checkLines(draft.checks),
+    checkTimeoutMin: Number(draft.checkTimeoutMin),
   };
 }

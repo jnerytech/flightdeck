@@ -1467,6 +1467,8 @@ export const ptBR = {
     checks: "Checks locais (um comando por linha)",
     save: "Salvar",
     saved: "Configuração do PR salva",
+    timeout: "Tempo limite por check (min)",
+    badTimeout: "Tempo limite por check: de 1 a 60 minutos",
     badRounds: "Rodadas por PR: de 1 a 10",
     badCheck:
       "Checks locais: um comando e seus argumentos, sem aspas, pipes, ; & $ nem redirecionamentos",
