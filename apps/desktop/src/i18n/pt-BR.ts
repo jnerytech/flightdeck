@@ -689,6 +689,7 @@ export const ptBR = {
     updater: "a atualização do daemon",
     shutdown: "desligar o daemon",
     telemetry: "o tempo das sessões",
+    trace: "o rastro da sessão",
   },
   daemonRefusal: {
     budget_needs_project: "Um orçamento de projeto precisa de um projeto: escolha um.",

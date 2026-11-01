@@ -73,5 +73,6 @@ export const DAEMON_FEATURES = [
   "updater",
   "shutdown",
   "telemetry",
+  "trace",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

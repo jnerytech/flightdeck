@@ -694,6 +694,7 @@ export const en: Dictionary = {
     updater: "updating the daemon",
     shutdown: "shutting the daemon down",
     telemetry: "session timing",
+    trace: "the session trace",
   },
   daemonRefusal: {
     budget_needs_project: "A project budget needs a project: choose one.",

@@ -97,6 +97,7 @@ import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
+import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
@@ -187,6 +188,8 @@ export interface ServerOptions {
   telemetry?: TelemetryStore;
   /** The settings.json opt-in for a plain `claude` (phase 23). */
   telemetryOptIn?: TelemetryOptIn;
+  /** Phase 25: the trace of a session, built from its transcript and its subagents'. */
+  trace?: TraceService;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
   /** The quota's samples behind `quota.history` (phase 8). */
@@ -376,6 +379,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.board ? ["rules"] : []),
     ...(opts.costs ? ["costs"] : []),
     ...(opts.telemetry ? ["telemetry"] : []),
+    ...(opts.trace ? ["trace"] : []),
     ...(opts.changes ? ["review"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
@@ -617,6 +621,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function telemetry(): TelemetryStore {
     if (!opts.telemetry) throw featureOff("telemetry");
     return opts.telemetry;
+  }
+
+  function trace(): TraceService {
+    if (!opts.trace) throw featureOff("trace");
+    return opts.trace;
   }
 
   function optIn(): TelemetryOptIn {
@@ -1403,6 +1412,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
         return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
+      case "trace.get":
+        return ok(command.type, trace().get(command.payload.claudeSessionId));
+      case "trace.export": {
+        const { claudeSessionId, includeContent } = command.payload;
+        return ok(command.type, trace().export(claudeSessionId, includeContent === true));
+      }
       case "telemetry.status":
         return ok(command.type, optIn().status());
       case "telemetry.install":
