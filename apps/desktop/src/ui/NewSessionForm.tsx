@@ -35,7 +35,9 @@ export function NewSessionForm(props: {
   const t = useT();
   const id = useId();
   const roots = props.host.info?.allowedRoots ?? [];
-  const [root, setRoot] = useState(roots[0] ?? "");
+  // The folder picked, else the host's first: its folders may arrive after the form opened.
+  const [picked, setRoot] = useState<string | null>(null);
+  const root = picked ?? roots[0] ?? "";
   const [sub, setSub] = useState("");
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
