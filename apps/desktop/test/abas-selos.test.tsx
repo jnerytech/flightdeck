@@ -102,7 +102,8 @@ describe("abas: selos e botão de aba nova", () => {
     expect(tabKind({ name: "connections" })).toBe("connections");
     expect(tabKind({ name: "vault" })).toBe("vault");
     expect(tabKind({ name: "settings" })).toBe("settings");
-    expect(tabKind({ name: "host", host: "h" })).toBe("screen");
+    expect(tabKind({ name: "host", host: "h" })).toBe("host");
+    expect(tabKind({ name: "add-host" })).toBe("screen");
   });
 
   test("a tab wears the icon of its sidebar entry, not a shared one", async () => {
@@ -135,5 +136,16 @@ describe("abas: selos e botão de aba nova", () => {
     });
     const tab = screen.queryAllByRole("tab")[1];
     expect(tab?.querySelector("[data-icon]")?.getAttribute("data-icon")).toBe("costs");
+  });
+
+  test("a host's tab wears the server icon, not the one of Sessões", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "host", host: "h" });
+    });
+    const icon = screen.queryAllByRole("tab").at(-1)?.querySelector("[data-icon]");
+    expect(icon?.getAttribute("data-icon")).toBe("host");
+    expect(icon?.getAttribute("class")).toContain("lucide-server");
   });
 });
