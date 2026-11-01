@@ -182,6 +182,7 @@ function ForkDialog(
                 <label key={where} className="flex items-center gap-2">
                   <input
                     type="radio"
+                    className="hit-control"
                     name="fork-open"
                     checked={open === where}
                     onChange={() => setOpen(where)}
@@ -193,6 +194,7 @@ function ForkDialog(
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                className="hit-control"
                 checked={withFiles}
                 disabled={props.busy}
                 onChange={(e) => setWithFiles(e.target.checked)}
