@@ -139,6 +139,7 @@ export const CostsPage = memo(function CostsPage(props: {
     void askCosts(store, ids, asked, selection).then((loaded) => {
       if (!live) return;
       setSummary(loaded.summary);
+      if (Object.keys(asked).length === 2) setAll(loaded.summary);
       setSessionHost(loaded.sessionHost);
       setFailed(loaded.failed);
     });
@@ -146,7 +147,10 @@ export const CostsPage = memo(function CostsPage(props: {
       live = false;
     };
   }, [store, key, selection]);
-  const daysKey = JSON.stringify([hostIds, days, selection, placed]);
+  // The filters offer every project and model of the period: with no filter set, that is the
+  // summary itself, and it is not asked for twice.
+  const unfiltered = Object.keys(filters).length === 0;
+  const daysKey = JSON.stringify([unfiltered ? [] : hostIds, days, selection, placed]);
   useEffect(() => {
     const [ids, asked] = JSON.parse(daysKey) as [string[], CostsFilter];
     if (ids.length === 0) return;
