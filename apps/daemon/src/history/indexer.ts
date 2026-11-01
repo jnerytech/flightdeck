@@ -161,6 +161,11 @@ const entries = (dir: string) => {
   }
 };
 
+/** How much of a file a background pass reads before it gives the event loop back (about 25 ms). */
+const SLICE_BYTES = 1 << 20;
+
+const zeroTimer = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
 /** Default wait between a file event and the pass that publishes `history.changed`. */
 export const WATCH_DEBOUNCE_MS = 250;
 
@@ -177,6 +182,10 @@ export class HistoryIndexer {
   private timer: ReturnType<typeof setInterval> | null = null;
   private boot: ReturnType<typeof setTimeout> | null = null;
   private pending: ReturnType<typeof setTimeout> | null = null;
+  private running: Promise<void> | null = null;
+  private again = false;
+  /** `stop` was called: no pass starts, and the one running is the last. */
+  private stopped = false;
   /** Full-text search through FTS5; `LIKE` otherwise. */
   readonly fts: boolean;
 
@@ -322,6 +331,7 @@ export class HistoryIndexer {
   /** Boot pass, then file watching with a periodic full pass as the fallback. */
   start(): void {
     if (this.timer) return;
+    this.stopped = false;
     this.boot = this.timers.setTimeout(() => this.safeScan(), 0);
     this.timer = this.timers.setInterval(() => this.safeScan(), this.opts.scanIntervalMs ?? 10_000);
     const watchRoot =
@@ -336,6 +346,7 @@ export class HistoryIndexer {
   }
 
   stop(): void {
+    this.stopped = true;
     if (this.timer) this.timers.clearInterval(this.timer);
     if (this.boot) this.timers.clearTimeout(this.boot);
     if (this.pending) this.timers.clearTimeout(this.pending);
@@ -356,11 +367,7 @@ export class HistoryIndexer {
   }
 
   private safeScan(): void {
-    try {
-      this.scan();
-    } catch (error) {
-      this.opts.log?.(`histórico: falha na varredura (${describe(error)})`);
-    }
+    this.request();
   }
 
   private toSession(row: SessionRow): HistorySession {
@@ -450,36 +457,83 @@ export class HistoryIndexer {
     };
   }
 
-  /** A pass that gives the event loop back between files and between slices of a big file. */
+  /**
+   * A pass that gives the event loop back after every slice of every file: the first pass over a
+   * large history is minutes of parsing that must not hold the protocol. It indexes exactly what
+   * `scan` does, and reports each file once, with its slices added up.
+   */
   async scanAsync(): Promise<IndexResult[]> {
-    return [];
+    this.claimManaged();
+    const pause = this.opts.pause ?? zeroTimer;
+    const sliceBytes = this.opts.sliceBytes ?? SLICE_BYTES;
+    const results: IndexResult[] = [];
+    for (const path of this.files()) {
+      let merged = null as IndexResult | null;
+      for (;;) {
+        const { result, more } = this.indexSlice(path, sliceBytes);
+        if (result) {
+          merged = merged
+            ? { ...merged, added: merged.added + result.added, reset: merged.reset || result.reset }
+            : result;
+        }
+        await pause();
+        if (!more) break;
+      }
+      if (merged) {
+        results.push(merged);
+        this.notify(merged.claudeSessionId);
+      }
+    }
+    return results;
   }
 
   /** Another background pass after the one running; requests made meanwhile become one. */
-  request(): void {}
+  request(): void {
+    if (this.running) {
+      this.again = true;
+      return;
+    }
+    this.running = (async () => {
+      do {
+        this.again = false;
+        try {
+          await this.scanAsync();
+        } catch (error) {
+          this.opts.log?.(`histórico: falha na varredura (${describe(error)})`);
+        }
+      } while (this.again && !this.stopped);
+      this.running = null;
+    })();
+  }
 
   /** Resolves when no background pass is running. */
-  async idle(): Promise<void> {}
+  async idle(): Promise<void> {
+    await this.running;
+  }
 
   /** One pass over every root; returns the files that gained records. */
   scan(): IndexResult[] {
-    // A managed session may get its claudeSessionId after its transcript was indexed.
-    this.db.run(
-      `UPDATE history_sessions SET origin = 'flightdeck' WHERE origin = 'external'
-         AND claude_session_id IN (SELECT claude_session_id FROM sessions)`,
-    );
+    this.claimManaged();
     const results: IndexResult[] = [];
     for (const path of this.files()) {
       const result = this.indexFile(path);
       if (result) results.push(result);
     }
-    for (const { claudeSessionId } of results) {
-      const { cwd, lastTs, maybeActive } = this.session(claudeSessionId) as HistorySession;
-      for (const listener of this.listeners) {
-        listener({ claudeSessionId, cwd, lastTs, maybeActive });
-      }
-    }
+    for (const { claudeSessionId } of results) this.notify(claudeSessionId);
     return results;
+  }
+
+  /** A managed session may get its claudeSessionId after its transcript was indexed. */
+  private claimManaged(): void {
+    this.db.run(
+      `UPDATE history_sessions SET origin = 'flightdeck' WHERE origin = 'external'
+         AND claude_session_id IN (SELECT claude_session_id FROM sessions)`,
+    );
+  }
+
+  private notify(claudeSessionId: string): void {
+    const { cwd, lastTs, maybeActive } = this.session(claudeSessionId) as HistorySession;
+    for (const listener of this.listeners) listener({ claudeSessionId, cwd, lastTs, maybeActive });
   }
 
   private files(): string[] {
@@ -498,6 +552,17 @@ export class HistoryIndexer {
   }
 
   private indexFile(path: string): IndexResult | null {
+    return this.indexSlice(path, Number.POSITIVE_INFINITY).result;
+  }
+
+  /**
+   * Reads and stores the next `maxBytes` of a file, up to its last whole line (a line bigger than
+   * that is read whole); `more` says there is still unread text after it.
+   */
+  private indexSlice(
+    path: string,
+    maxBytes: number,
+  ): { result: IndexResult | null; more: boolean } {
     const stat = statSync(path);
     const claudeSessionId = basename(path, ".jsonl");
     const row = this.db
@@ -510,18 +575,24 @@ export class HistoryIndexer {
     // Smaller than what was already read: truncated or swapped, so start over.
     const reset = stat.size < (row?.offset ?? 0);
     const offset = reset ? 0 : (row?.offset ?? 0);
-    if (!reset && stat.size === offset) return null;
+    if (!reset && stat.size === offset) return { result: null, more: false };
 
-    const chunk = Buffer.alloc(stat.size - offset);
-    const fd = openSync(path, "r");
-    try {
-      readSync(fd, chunk, 0, chunk.length, offset);
-    } finally {
-      closeSync(fd);
+    let chunk = Buffer.alloc(Math.min(stat.size - offset, maxBytes));
+    let end = 0;
+    for (;;) {
+      const fd = openSync(path, "r");
+      try {
+        readSync(fd, chunk, 0, chunk.length, offset);
+      } finally {
+        closeSync(fd);
+      }
+      // Only complete lines: a last line without its newline is left for the next pass.
+      end = chunk.lastIndexOf(0x0a) + 1;
+      if (end > 0 || chunk.length >= stat.size - offset) break;
+      // No end of line in the slice: the line is bigger than it, so read on until it ends.
+      chunk = Buffer.alloc(Math.min(stat.size - offset, chunk.length * 2));
     }
-    // Only complete lines: a last line without its newline is left for the next pass.
-    const end = chunk.lastIndexOf(0x0a) + 1;
-    if (end === 0 && !reset) return null;
+    if (end === 0 && !reset) return { result: null, more: false };
     const { records, errors } = parseLines(chunk.subarray(0, end).toString("utf8"));
 
     // An excluded file keeps its row with a null session id, so later passes skip it unread.
@@ -569,7 +640,10 @@ export class HistoryIndexer {
         });
       if (!excluded) this.updateSession(claudeSessionId, path, cwd, records);
     })();
-    return excluded ? null : { claudeSessionId, path, added: records.length, reset };
+    return {
+      result: excluded ? null : { claudeSessionId, path, added: records.length, reset },
+      more: offset + end < stat.size && end > 0,
+    };
   }
 
   /** Drops everything indexed for a session (its file row is rewritten by the caller). */
