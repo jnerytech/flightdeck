@@ -10,6 +10,7 @@
     "typecheck": "bun run --filter '*' typecheck && tsc -p scripts/tsconfig.json",
     "lint": "biome check .",
     "format": "biome check --write .",
+    "layout:ratchet": "bun run scripts/layout-ratchet.ts",
     "test": "bun test && bun run scripts/check-coverage.ts",
     "coverage": "bun test && bun run scripts/check-coverage.ts",
     "smoke": "bun run scripts/smoke.ts",
