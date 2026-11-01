@@ -62,6 +62,15 @@ describe("clients-model: clients", () => {
     expect(clients.add("Beta")?.color).toBe(CLIENT_COLORS[1]);
   });
 
+  test("without an id generator of its own a client gets a distinct id", () => {
+    const { storage } = setup();
+    const clients = new Clients({ storage });
+    const first = clients.add("Acme");
+    const second = clients.add("Beta");
+    expect(first?.id).toBeTruthy();
+    expect(first?.id).not.toBe(second?.id);
+  });
+
   test("a blank or repeated name (in any case) is refused", () => {
     const { clients } = setup();
     clients.add("Acme");
