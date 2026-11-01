@@ -6,6 +6,7 @@ import {
   ClientScope,
   loadSelection,
   saveSelection,
+  sessionProjectKeys,
 } from "../src/lib/client-scope.ts";
 import { type Client, type ClientRule, UNASSIGNED } from "../src/lib/clients.ts";
 
@@ -159,5 +160,47 @@ describe("clients-filter: folders of the known projects", () => {
     expect(scope.clientOf("host:alfa:/work/acme/web")).toBe("acme");
     expect(scope.clientOf("host:alfa:/work/other")).toBe(UNASSIGNED);
     expect(scope.clientOf("host:beta:/work/acme/web")).toBe(UNASSIGNED);
+  });
+});
+
+describe("clients-filter: things that touch several projects", () => {
+  const scope = new ClientScope({ clients: [acme, beta], overrides: {} }, []);
+  const a = "github.com/acme/api";
+  const b = "github.com/beta/app";
+  const other = "github.com/other/x";
+
+  test("all shows everything, even what touches no known project", () => {
+    expect(scope.includesAny(ALL_CLIENTS, [])).toBe(true);
+    expect(scope.includesAny(ALL_CLIENTS, [null, null])).toBe(true);
+  });
+
+  test("a client shows what touches one of its projects at either end", () => {
+    expect(scope.includesAny("acme", [a, b])).toBe(true);
+    expect(scope.includesAny("beta", [a, b])).toBe(true);
+    expect(scope.includesAny("acme", [b, other])).toBe(false);
+    expect(scope.includesAny("acme", [null, a])).toBe(true);
+    expect(scope.includesAny("acme", [null, null])).toBe(false);
+  });
+
+  test("Unassigned shows what touches a project no client claims, or one the app cannot place", () => {
+    expect(scope.includesAny(UNASSIGNED, [a, other])).toBe(true);
+    expect(scope.includesAny(UNASSIGNED, [a, null])).toBe(true);
+    expect(scope.includesAny(UNASSIGNED, [a, b])).toBe(false);
+  });
+});
+
+describe("clients-filter: the project of a session", () => {
+  test("a session is found by its managed id and by Claude's, each row once", () => {
+    const keys = sessionProjectKeys([
+      { sessionId: "m1", claudeSessionId: "c1", projectKey: "github.com/acme/api" },
+      { sessionId: null, claudeSessionId: "c2", projectKey: "github.com/beta/app" },
+      { sessionId: "m3", claudeSessionId: null, projectKey: "host:alfa:/x" },
+    ]);
+    expect([...keys.entries()]).toEqual([
+      ["m1", "github.com/acme/api"],
+      ["c1", "github.com/acme/api"],
+      ["c2", "github.com/beta/app"],
+      ["m3", "host:alfa:/x"],
+    ]);
   });
 });
