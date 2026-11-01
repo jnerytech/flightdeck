@@ -517,8 +517,9 @@ export async function startDaemon(
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
-  const keys = new ProjectKeys(config.hostName);
-  const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.keyFor(cwd) });
+  const keys = new ProjectKeys(config.hostName, undefined, options.projectGit);
+  // The turn is counted when git has answered: a slow git must not stop the daemon meanwhile.
+  const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
   const snapshots = new Snapshots({ db: store.db });
   // Phase 13: one classifier for managed and terminal sessions, with the config's extra rules.
@@ -824,6 +825,7 @@ export async function startDaemon(
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   const server = startServer({
     manager,
+    warmProjectKey: (cwd) => keys.resolve(cwd),
     fsDirs: true,
     messaging,
     names,

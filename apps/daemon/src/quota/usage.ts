@@ -56,6 +56,22 @@ export class UsageLedger {
       .get(sessionId);
     const previous = last ? ((JSON.parse(last.payload).costUsd as number | undefined) ?? 0) : 0;
     const cost = Math.max(0, (turn.costUsd ?? previous) - previous);
+    const day = this.day(this.now());
+    const key = this.opts.projectKey(cwd);
+    if (typeof key === "string") {
+      this.add(day, key, cost, turn);
+      return;
+    }
+    // The turn is counted when the key arrives; a ledger closed by then has nothing to add to.
+    void key.then((late) => this.add(day, late, cost, turn)).catch(() => {});
+  }
+
+  private add(
+    day: string,
+    projectKey: string,
+    cost: number,
+    turn: SessionEventOf<"turn.result">,
+  ): void {
     this.db
       .query(
         `INSERT INTO usage_daily (day, project_key, cost_usd, input_tokens, output_tokens, turns)
@@ -66,13 +82,7 @@ export class UsageLedger {
            output_tokens = output_tokens + excluded.output_tokens,
            turns = turns + 1`,
       )
-      .run(
-        this.day(this.now()),
-        String(this.opts.projectKey(cwd)),
-        cost,
-        turn.usage?.inputTokens ?? 0,
-        turn.usage?.outputTokens ?? 0,
-      );
+      .run(day, projectKey, cost, turn.usage?.inputTokens ?? 0, turn.usage?.outputTokens ?? 0);
   }
 
   /** The last `days` days (today included), newest first, then by project. */

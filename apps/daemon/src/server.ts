@@ -66,6 +66,7 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
+import { resolveAllowedCwd } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
@@ -696,8 +697,15 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, {
           sessions: manager.list().map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
-      case "session.create":
+      case "session.create": {
+        // Looked up in git before the session exists, so what names and lists it finds the
+        // project already known; the wait is this request's own, the others are served meanwhile.
+        if (opts.warmProjectKey) {
+          const cwd = resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
+          await opts.warmProjectKey(cwd);
+        }
         return ok(command.type, manager.create(command.payload));
+      }
       case "session.send":
         return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
       case "session.interrupt":
