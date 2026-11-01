@@ -1,6 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -24,6 +24,8 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import type { Density } from "../lib/density.ts";
 import {
+  capGroups,
+  HUB_ROW_CAP,
   type HubFilter,
   type HubRow,
   type HubState,
@@ -69,8 +71,16 @@ export function SessionsHub(props: {
     if (signature) void store.refreshHub();
   }, [store, signature]);
 
-  const rows = hubRows(state);
-  const groups = hubGroups(rows, filter);
+  // Only what the rows are made of recomputes them (a typing indicator or an error does not).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
+  const rows = useMemo(
+    () => hubRows(state),
+    [state.hosts, state.hub, state.meta, state.externals, state.names],
+  );
+  const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
+  /** How many rows are drawn: the cap, and one more cap for each "show more". */
+  const [limit, setLimit] = useState(HUB_ROW_CAP);
+  const { groups, hidden } = useMemo(() => capGroups(allGroups, limit), [allGroups, limit]);
   // The personas the sessions run in: the Persona filter offers only those.
   const personas = [
     ...new Map(
@@ -418,6 +428,15 @@ export function SessionsHub(props: {
             </section>
           );
         })}
+        {hidden > 0 && (
+          <Button
+            variant="outline"
+            className="self-center"
+            onClick={() => setLimit(limit + HUB_ROW_CAP)}
+          >
+            {t("hub.showMore", { n: Math.min(hidden, HUB_ROW_CAP) })}
+          </Button>
+        )}
       </div>
     </Page>
   );

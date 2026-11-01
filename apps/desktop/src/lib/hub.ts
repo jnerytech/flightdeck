@@ -260,7 +260,9 @@ const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   const byKey = new Map<string, HubRow[]>();
   for (const row of rows.filter((r) => matches(r, filter))) {
-    byKey.set(row.projectKey, [...(byKey.get(row.projectKey) ?? []), row]);
+    const list = byKey.get(row.projectKey);
+    if (list) list.push(row);
+    else byKey.set(row.projectKey, [row]);
   }
   const order = (a: HubRow, b: HubRow) =>
     Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
@@ -321,4 +323,23 @@ export function sharedMeta(rows: HubRow[]): {
     hostName: rows.every((r) => r.hostName === first.hostName) ? first.hostName : null,
     origin: rows.every((r) => r.origin === first.origin) ? first.origin : null,
   };
+}
+
+/** How many rows the hub draws before "show more": the DOM of 9,000 sessions is not worth drawing. */
+export const HUB_ROW_CAP = 200;
+
+/** The groups cut to their first `limit` rows in display order, and how many rows were left out. */
+export function capGroups(
+  groups: HubGroup[],
+  limit: number,
+): { groups: HubGroup[]; hidden: number } {
+  let left = limit;
+  const kept: HubGroup[] = [];
+  for (const group of groups) {
+    if (left <= 0) break;
+    kept.push(group.rows.length <= left ? group : { ...group, rows: group.rows.slice(0, left) });
+    left -= group.rows.length;
+  }
+  const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
+  return { groups: kept, hidden: Math.max(0, total - limit) };
 }

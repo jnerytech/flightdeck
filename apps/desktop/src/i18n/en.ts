@@ -465,6 +465,7 @@ export const en: Dictionary = {
     resize: "Resize the list",
     back: "Back to the list",
     filterLabel: "Filter sessions",
+    showMore: "Show {n} more",
     filterPlaceholder: "Filter",
     filters: "Filters",
     host: "Host",

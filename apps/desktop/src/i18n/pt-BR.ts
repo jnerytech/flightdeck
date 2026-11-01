@@ -462,6 +462,7 @@ export const ptBR = {
     resize: "Redimensionar a lista",
     back: "Voltar à lista",
     filterLabel: "Filtrar sessões",
+    showMore: "Mostrar mais {n}",
     filterPlaceholder: "Filtrar",
     filters: "Filtros",
     host: "Host",
