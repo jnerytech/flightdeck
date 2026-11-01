@@ -99,6 +99,7 @@ sessions from one place, without opening each machine.
   approvable from the app.
 - Tray menu to approve requests without opening the window, and a `Ctrl+K` palette.
 - Signed auto-update for the app and for the daemons.
+- Light on resources: long lists, live text and terminal output are capped and batched, heavy pieces load on demand, and `bun run perf:baseline` prints the numbers.
 - Light and dark themes; English and Portuguese.
 
 ## Screenshots

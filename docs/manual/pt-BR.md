@@ -96,6 +96,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [Interface](#interface)
   - [Desenho e navegação](#desenho-e-navegação)
   - [Modo demonstração, prints e testes de ponta a ponta](#modo-demonstração-prints-e-testes-de-ponta-a-ponta)
+  - [Desempenho](#desempenho)
 - [Operação do host](#operação-do-host)
   - [Versões e compatibilidade](#versões-e-compatibilidade)
   - [Atualizar com flightdeckd update](#atualizar-com-flightdeckd-update)
@@ -1894,6 +1895,35 @@ bun run e2e          # as cinco jornadas num navegador de verdade, nos 2 idiomas
 
 Nada sai da máquina e nenhum dado real é usado. Os scripts usam o Chrome instalado (ou o Edge)
 pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os prints.
+
+### Desempenho
+
+O que mantém o app e o daemon leves, e os números que você mesmo pode ler.
+
+- **Listas longas.** O hub mostra as primeiras 200 sessões de um host; **Mostrar mais N**
+  acrescenta o resto. Um host que reconecta, ou o resumo de outro host que muda, não redesenha as
+  telas que não o mostram.
+- **Texto ao vivo.** O daemon agrupa as palavras transmitidas de uma resposta em um quadro a cada
+  25 ms, em vez de um quadro por palavra, para que um celular em um link lento acompanhe. A
+  ordem e o conteúdo são os mesmos; um cliente atrasado é ressincronizado, não deixado para
+  trás.
+- **Terminal.** O daemon para de ler a saída de um terminal enquanto o app está muito atrasado
+  (um `yes` ou um `cat` de um arquivo grande) e volta quando o app alcança. Um terminal cujo app
+  nunca alcança é ressincronizado a partir da saída guardada. As teclas digitadas continuam
+  respondendo.
+- **Sob demanda.** O editor, o renderizador de Markdown e a biblioteca age carregam quando você
+  abre pela primeira vez algo que precisa deles, e o app inicia mais rápido. Um daemon sem nada a
+  fazer não mantém timers para recursos desligados (automações, orçamentos, vigia de PR).
+- **Medidas de depuração.** Para medir as cinco ações mais usadas (abrir uma sessão, um quadro,
+  um card; enviar; aprovar), rode `localStorage.setItem("flightdeck.debug.measures", "1")` no
+  console de uma build de depuração e recarregue. As entradas `fd:open-session`,
+  `fd:open-board`, `fd:open-card`, `fd:send` e `fd:approve` aparecem no painel Performance do
+  navegador (ou em `performance.getEntriesByType("measure")`). Nada vai para o log nem para o
+  console, e com a flag desligada nada é medido. `send` e `approve` terminam quando o daemon
+  respondeu.
+- **Números para quem desenvolve.** `bun run perf:baseline` imprime a linha de base,
+  `bun run bundle:budget` o tamanho de cada pedaço (a build falha acima do orçamento) e
+  `bun run smoke:perf` roda o daemon contra uma enxurrada de saída.
 
 ## Operação do host
 

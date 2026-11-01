@@ -97,6 +97,7 @@ are written in Portuguese.
 - [Interface](#interface)
   - [Design and navigation](#design-and-navigation)
   - [Demo mode, screenshots and end-to-end tests](#demo-mode-screenshots-and-end-to-end-tests)
+  - [Performance](#performance)
 - [Host operations](#host-operations)
   - [Versions and compatibility](#versions-and-compatibility)
   - [Updating with flightdeckd update](#updating-with-flightdeckd-update)
@@ -1926,6 +1927,32 @@ bun run e2e          # the five journeys in a real browser, in 2 languages, and 
 Nothing leaves the machine and no real data is used. The scripts use the installed Chrome (or
 Edge) through `playwright-core`; in CI, the `screenshots` job runs all three and publishes the
 screenshots.
+
+### Performance
+
+What keeps the app and the daemon light, and the numbers you can read yourself.
+
+- **Long lists.** The hub shows the first 200 sessions of a host; **Show N more** adds the rest.
+  A host reconnecting, or another host's summary changing, does not redraw the screens that do
+  not show it.
+- **Live text.** The daemon groups the streamed words of a reply into one frame every 25 ms
+  instead of one frame per word, so a phone over a slow link keeps up. The order and content are
+  the same; a client that is behind is resynced, not left to fall further.
+- **Terminal.** The daemon stops reading a terminal's output while the app is far behind (a
+  `yes` or a `cat` of a big file), and resumes when the app catches up. A terminal whose app
+  never catches up is resynced from its saved output. The keys you type stay responsive.
+- **On demand.** The editor, the Markdown renderer and the age library load when you first open
+  something that needs them, so the app starts faster. A daemon with nothing to do keeps no
+  running timers for features that are off (automations, budgets, PR watch).
+- **Debug measures.** To time the five most used actions (open a session, a board, a card; send;
+  approve), run `localStorage.setItem("flightdeck.debug.measures", "1")` in the console of a
+  debug build and reload. The entries `fd:open-session`, `fd:open-board`, `fd:open-card`,
+  `fd:send` and `fd:approve` then show in the browser's Performance panel (or
+  `performance.getEntriesByType("measure")`). Nothing is written to the log or the console, and
+  with the flag off nothing is measured. `send` and `approve` end when the daemon has answered.
+- **Numbers for developers.** `bun run perf:baseline` prints the baseline,
+  `bun run bundle:budget` the size of each chunk (the build fails above the budget) and
+  `bun run smoke:perf` runs the daemon against a flood of output.
 
 ## Host operations
 

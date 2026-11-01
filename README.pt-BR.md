@@ -104,6 +104,7 @@ sessões num lugar só, sem abrir cada máquina.
   app.
 - Menu da bandeja para aprovar pedidos sem abrir a janela e paleta `Ctrl+K`.
 - Atualização automática assinada, do app e dos daemons.
+- Leve em recursos: listas longas, texto ao vivo e saída de terminal são limitados e agrupados, as partes pesadas carregam sob demanda, e `bun run perf:baseline` imprime os números.
 - Temas claro e escuro; português e inglês.
 
 ## Prints
