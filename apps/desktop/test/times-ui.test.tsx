@@ -154,6 +154,16 @@ describe("times-ui: the teams of a host", () => {
     expect(screen.queryByLabelText("Objetivo")).not.toBeNull();
   });
 
+  test("Criar time is disabled without a goal, and says why", async () => {
+    await open();
+    await click("Novo time");
+    const button = screen.queryByRole("button", { name: "Criar time" }) as HTMLButtonElement | null;
+    expect(button?.disabled).toBe(true);
+    const reason = screen.queryByText("Escreva o objetivo do time.");
+    expect(reason).not.toBeNull();
+    expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
   test("Novo time creates a team with its goal, project and workers; it is listed with its coordinator and workers", async () => {
     const { teams } = await open();
     await click("Novo time");

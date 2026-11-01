@@ -84,6 +84,17 @@ describe("conexoes-ui: import from the SSH config", () => {
     expect(screen.queryByRole("list", { name: "Destinos" })?.textContent).toContain("web");
   });
 
+  test("Importar selecionados says why it is closed when nothing is ticked", async () => {
+    await open([entry("vps", true)]);
+    await click("Importar do SSH config");
+    const button = screen.queryByRole("button", {
+      name: "Importar selecionados",
+    }) as HTMLButtonElement | null;
+    const reason = screen.queryByText("Marque ao menos um destino.");
+    expect(reason).not.toBeNull();
+    expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
   test("Importar selecionados stays closed when nothing is ticked", async () => {
     await open([entry("vps", true)]);
     await click("Importar do SSH config");

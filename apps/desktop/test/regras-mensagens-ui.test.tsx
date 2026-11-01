@@ -104,6 +104,17 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     expect(screen.queryByText("entre projeto p1 e time t1")).not.toBeNull();
   });
 
+  test("Adicionar exceção is disabled until both sides are filled, and says why", async () => {
+    await open();
+    const button = screen.queryByRole("button", {
+      name: "Adicionar exceção",
+    }) as HTMLButtonElement | null;
+    expect(button?.disabled).toBe(true);
+    const reason = screen.queryByText("Preencha a origem e o destino da exceção.");
+    expect(reason).not.toBeNull();
+    expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
   test("removing an exception and saving the retention keep every other field", async () => {
     const { lastSet } = await open();
     await click("Remover a exceção de host pc para projeto app");

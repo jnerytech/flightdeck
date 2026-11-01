@@ -99,6 +99,17 @@ describe("snippets-ui: import from the shell history", () => {
     expect(document.body.innerHTML).not.toContain(VAULT_VALUE);
   });
 
+  test("Importar selecionados is disabled with nothing ticked, and says why", async () => {
+    await open();
+    const button = screen.queryByRole("button", {
+      name: "Importar selecionados",
+    }) as HTMLButtonElement | null;
+    expect(button?.disabled).toBe(true);
+    const reason = screen.queryByText("Marque ao menos uma linha.");
+    expect(reason).not.toBeNull();
+    expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
   test("the ticked lines go to the host's snippets, tagged histórico", async () => {
     const { store, hostId } = await open();
     await act(async () => {
