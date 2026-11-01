@@ -1738,7 +1738,7 @@ export const ptBR = {
     budgetLimitOnly: "Limite do mês: {limit}",
     defaultsOf: "Padrões de {name}",
     vaultGroupClient: "Segredos de {name}",
-    vaultGroupNone: "Segredos sem cliente",
+    vaultGroupNone: "Sem vínculo com cliente",
     vaultGroupOthers: "Segredos de outros clientes",
     scopeChanged: "As regras de segredos do cliente {name} mudaram com os projetos dele.",
     scopeRefused:

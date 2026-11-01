@@ -1735,7 +1735,7 @@ export const en: Dictionary = {
     budgetLimitOnly: "Limit for the month: {limit}",
     defaultsOf: "Defaults of {name}",
     vaultGroupClient: "Secrets of {name}",
-    vaultGroupNone: "Secrets with no client",
+    vaultGroupNone: "Not tied to a client",
     vaultGroupOthers: "Secrets of other clients",
     scopeChanged: "The secret rules of the client {name} changed with its projects.",
     scopeRefused:
