@@ -15,10 +15,19 @@ export function EmptyState(props: { title: string; icon?: LucideIcon; action?: R
   );
 }
 
+/** The shape of the placeholder: text rows, board columns or a strip of summary tiles. */
+export type LoadingShape = "rows" | "columns" | "tiles";
+
 /** A list or panel still loading. */
-export function LoadingState(props: { label: string }) {
+export function LoadingState(props: { label: string; shape?: LoadingShape }) {
   return (
-    <div role="status" aria-busy="true" aria-label={props.label} className="flex flex-col gap-2">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label={props.label}
+      data-shape="rows"
+      className="flex flex-col gap-2"
+    >
       <Skeleton className="h-5 w-2/3" />
       <Skeleton className="h-5 w-1/2" />
       <Skeleton className="h-5 w-3/4" />
