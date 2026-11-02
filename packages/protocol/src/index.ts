@@ -618,6 +618,12 @@ export const Card = z.object({
   sessionStatus: SessionStatus.nullable(),
   /** Last problem worth showing on the card (failed setup, worktree kept on completion). */
   notice: z.string().nullable(),
+  /** Why, when the notice came from a refusal: the app translates it, the notice is the fallback. */
+  noticeReason: z.string().nullable().optional(),
+  noticeParams: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .nullable()
+    .optional(),
   /** Set only on the last update of a discarded card, which leaves the board. */
   discarded: z.boolean(),
   runs: z.array(CardRun),
@@ -1228,6 +1234,12 @@ export const WorkflowRun = z.object({
   workflowHash: z.string(),
   status: RunStatus,
   statusReason: z.string().nullable(),
+  /** Why, when the run ended on a refusal: the app translates it, `statusReason` is the fallback. */
+  reasonKey: z.string().nullable().optional(),
+  reasonParams: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .nullable()
+    .optional(),
   budget: RunBudget,
   usage: RunUsage,
   inputs: z.record(z.string(), z.string()),

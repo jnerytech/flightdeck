@@ -61,10 +61,30 @@ describe("preparacao", () => {
     expect(failed?.column).toBe("waiting");
     expect(failed?.notice ?? "").toContain("setup script failed (exit 3)");
     expect(failed?.notice ?? "").toContain("deu ruim");
+    // The app translates the refusal from its reason; the English detail is for an older app.
+    expect(failed?.noticeReason).toBe("setup_failed");
+    expect(failed?.noticeParams).toMatchObject({ code: 3 });
+    expect(String(failed?.noticeParams?.output)).toContain("deu ruim");
+    // The run that ended on it says the same, for the run's own screen.
+    const run = board.workflows.getRun(failed?.runs[0]?.id as string);
+    expect(run.reasonKey).toBe("setup_failed");
     expect(failed?.sessionId).toBeNull();
     expect(failed?.runs[0]?.endedAt).not.toBeNull();
     expect(manager.list()).toEqual([]);
     expect(prepared).toEqual([]);
+  });
+
+  test("a notice that is replaced or cleared takes its reason with it", async () => {
+    const { board, project, store } = await setup("exit 3");
+    const card = board.createCard(project.id, { title: "Preparo quebrado", description: "d" });
+    await board.startCard(card.id);
+    await cardWhen(board, card.id, (c) => c.noticeReason === "setup_failed");
+    store.db.query("UPDATE cards SET notice = 'outro aviso' WHERE id = ?").run(card.id);
+    expect(board.getCard(card.id)).toMatchObject({
+      notice: "outro aviso",
+      noticeReason: null,
+      noticeParams: null,
+    });
   });
 
   test("falha ao criar a worktree também vai para Esperando você com o erro do git", async () => {
