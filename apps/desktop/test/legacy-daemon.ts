@@ -7,6 +7,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const asked: string[] = [];
   /** Every command with its payload, in order. */
   const commands: Array<{ type: string; payload: unknown }> = [];
+  /** A command's ack held back by this many milliseconds, to test what happens meanwhile. */
+  const ackDelay = new Map<string, number>();
   const sockets = new Set<{ send(data: string): unknown }>();
   /** Commands the test makes this daemon refuse, with the message it answers. */
   const refuse = new Map<string, string>();
@@ -107,7 +109,10 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
         asked.push(type);
         commands.push({ type, payload });
         const ack = (data?: unknown) => {
-          ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
+          const send = () => ws.send(JSON.stringify({ type: "ack", id, ok: true, data }));
+          const wait = ackDelay.get(type);
+          if (wait) setTimeout(send, wait);
+          else send();
         };
         const refusedWith = refuseWith.get(type);
         if (refusedWith !== undefined) {
@@ -286,6 +291,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     url: `ws://127.0.0.1:${server.port}/`,
     asked,
     commands,
+    ackDelay,
     hub,
     refuse,
     refuseWith,

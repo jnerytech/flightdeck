@@ -150,6 +150,26 @@ describe("clients-vault: the vault tag and the scope on the Clients screen", () 
         .at(-1)?.rules,
     ).toEqual([]);
   });
+
+  test("turning it off while the first send is still unanswered sends the own rules back", async () => {
+    const { store, daemon, sent, acme, secret } = await open({ tag: "client:acme" });
+    daemon.ackDelay.set("vault.rules.set", 600);
+    await click(scopeBox());
+    await click(await waitButton("Ligar"));
+    // The host has the scoped rules, and has not answered yet: this is when it is turned off.
+    await settle(() => sent().some((s) => s.secretId === secret.id));
+    await click(scopeBox());
+    await settle(
+      () => store.clients.list().find((c) => c.id === acme)?.defaults.vaultScope === false,
+    );
+    await settle(
+      () =>
+        (sent()
+          .filter((s) => s.secretId === secret.id)
+          .at(-1)?.rules.length ?? 9) === 0,
+    );
+    expect(sent().filter((s) => s.secretId === secret.id)).toHaveLength(2);
+  });
 });
 
 async function waitButton(name: string): Promise<HTMLElement | null> {
