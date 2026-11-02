@@ -332,6 +332,7 @@ export function App({ store }: { store: AppStore }) {
               collapsed={collapsed}
               t={t}
               go={goPreview}
+              route={route}
               onOpenProjectScreen={openProjectScreen}
               onNewSession={(hostId) => {
                 store.select(hostId, null);

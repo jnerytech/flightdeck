@@ -27,6 +27,7 @@ import { type AppState, type AppStore, type HostView, needsYou } from "../lib/ap
 import { budgetAlerts } from "../lib/budgets.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
+import { activeNav } from "../lib/nav-active.ts";
 import type { Route } from "../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
@@ -34,7 +35,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
 
 const ITEM =
-  "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** The icon of one of the screens the bar lists, the same one its tab wears. */
 function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
@@ -52,11 +53,21 @@ function NavButton(props: {
   onClick(): void;
   disabled?: boolean;
   tail?: ReactNode;
+  /** The screen the user is on: full contrast and marked as the current page. */
+  active?: boolean;
+  /** Something waits here: full contrast even when it is not the open screen. */
+  strong?: boolean;
 }) {
   return (
     <button
       type="button"
-      className={cn(ITEM, props.collapsed && "justify-center px-0")}
+      aria-current={props.active ? "page" : undefined}
+      className={cn(
+        ITEM,
+        props.collapsed && "justify-center px-0",
+        (props.active || props.strong) && "text-sidebar-foreground",
+        props.active && "bg-sidebar-accent",
+      )}
       aria-label={props.name ?? (props.collapsed ? props.label : undefined)}
       title={props.collapsed ? props.label : undefined}
       disabled={props.disabled ?? false}
@@ -102,6 +113,8 @@ export function Sidebar(props: {
   collapsed: boolean;
   t: T;
   go(route: Route): void;
+  /** Where the user is, to mark the sidebar item of that screen. */
+  route?: Route;
   /** Board or Workflows of a host: its only project opens directly, several ask which. */
   onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
   onNewSession(hostId: string): void;
@@ -112,6 +125,7 @@ export function Sidebar(props: {
   onToggleTheme(): void;
 }) {
   const { state, t, collapsed, go } = props;
+  const here = props.route ? activeNav(props.route) : null;
   /** The host the screens that need one open on: the selected one, else the first online. */
   const navHost =
     (state.selected && state.hosts.find((h) => h.id === state.selected?.hostId)) ||
@@ -154,6 +168,7 @@ export function Sidebar(props: {
         <NavButton
           collapsed={collapsed}
           icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
+          active={here === "sessions"}
           label={t("sidebar.sessions")}
           name={t("sidebar.openSessions")}
           onClick={() => go({ name: "hub" })}
@@ -161,6 +176,8 @@ export function Sidebar(props: {
         <NavButton
           collapsed={collapsed}
           icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
+          active={here === "needs-you"}
+          strong={pending > 0}
           label={t("sidebar.needsYou")}
           onClick={() => go({ name: "needs-you" })}
           tail={
@@ -174,6 +191,7 @@ export function Sidebar(props: {
         <NavButton
           collapsed={collapsed}
           icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
+          active={here === "board"}
           label={t("sidebar.board")}
           disabled={!navHost}
           onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
@@ -181,6 +199,7 @@ export function Sidebar(props: {
         <NavButton
           collapsed={collapsed}
           icon={<NavIcon name="workflows" aria-hidden="true" className={icon} />}
+          active={here === "workflows"}
           label={t("sidebar.workflows")}
           disabled={!navHost}
           onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
@@ -190,6 +209,7 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="costs" aria-hidden="true" className={icon} />}
+            active={here === "costs"}
             label={t("sidebar.costs")}
             onClick={() => go({ name: "costs" })}
           />
@@ -199,6 +219,7 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
+            active={here === "conversations"}
             label={t("sidebar.conversations")}
             onClick={() => go({ name: "conversations" })}
           />
@@ -207,6 +228,7 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
+            active={here === "teams"}
             label={t("sidebar.teams")}
             onClick={() => go({ name: "teams" })}
           />
