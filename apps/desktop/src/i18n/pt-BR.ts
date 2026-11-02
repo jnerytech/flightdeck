@@ -2080,6 +2080,8 @@ export const ptBR = {
     more: "e mais {count}",
     dismiss: "Dispensar aviso",
     unblockedNotice: "Todos os bloqueios acabaram: o card pode iniciar.",
+    notifyTitle: "Card desbloqueado",
+    notifyBody: "{title}: todos os bloqueios acabaram.",
     satisfied: "pronto",
   },
   kanban: {

@@ -2076,6 +2076,8 @@ export const en: Dictionary = {
     more: "and {count} more",
     dismiss: "Dismiss notice",
     unblockedNotice: "Every blocker is done: the card can start.",
+    notifyTitle: "Card unblocked",
+    notifyBody: "{title}: every blocker is done.",
     satisfied: "done",
   },
   kanban: {

@@ -3195,7 +3195,14 @@ export class AppStore {
   }
 
   private onCard(hostId: string, card: Card): void {
-    const { [sessionKey(hostId, card.id)]: _previous, ...others } = this.state.cards;
+    const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
+    // Phase 31: a card the app already knew has just lost its last blocker.
+    if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
+      void this.platform.notify({
+        title: this.i18n.t("deps.notifyTitle"),
+        body: this.i18n.t("deps.notifyBody", { title: card.title }),
+      });
+    }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });
   }
