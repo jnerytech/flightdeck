@@ -100,7 +100,7 @@ describe("ask-question-ui", () => {
       if (other) fireEvent.change(other, { target: { value: "DuckDB" } });
     });
     await click(screen.queryByRole("button", { name: "Send answers" }));
-    expect((calls[0]?.[3] as { answers: unknown }).answers).toEqual({
+    expect(((calls[0]?.[3] ?? {}) as { answers?: unknown }).answers).toEqual({
       "Which database?": "DuckDB",
     });
   });
