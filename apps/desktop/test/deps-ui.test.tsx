@@ -36,6 +36,8 @@ const click = async (name: string | RegExp) => {
 };
 
 const type = async (label: string, value: string) => {
+  // The first screen of a run is loaded on demand.
+  await settle(() => screen.queryByLabelText(label) !== null);
   const field = screen.queryByLabelText(label) as HTMLInputElement | null;
   expect(field).not.toBeNull();
   await act(async () => {
@@ -148,6 +150,8 @@ const optionValue = (select: HTMLElement, text: string) => {
 
 /** Adds `blocker` to the open card's blockers, from its detail. */
 async function addBlocker(blocker: string) {
+  // The section is there once the host has announced deps.
+  await settle(() => screen.queryByLabelText("Adicionar bloqueio") !== null);
   const select = screen.queryByLabelText("Adicionar bloqueio");
   expect(select).not.toBeNull();
   await act(async () => {
