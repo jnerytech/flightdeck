@@ -18,7 +18,15 @@ export const ptBR = {
     down: { one: "{n} host offline", other: "{n} hosts offline" },
     reconnecting: { one: "{n} host reconectando", other: "{n} hosts reconectando" },
   },
-  toast: { copied: "Copiado", details: "Detalhes", close: "Fechar" },
+  toast: {
+    copied: "Copiado",
+    details: "Detalhes",
+    close: "Fechar",
+    allowRoot: "Adicionar às pastas permitidas",
+    allowRootMessage:
+      "Deixar as sessões de {host} usarem {folder}? Elas poderão ler e alterar os arquivos dela.",
+    rootAdded: "{folder} agora é uma pasta permitida de {host}.",
+  },
   personas: {
     title: "Personas",
     subtitle:

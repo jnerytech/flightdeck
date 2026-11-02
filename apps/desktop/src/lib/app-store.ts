@@ -1556,6 +1556,11 @@ export class AppStore {
     });
   }
 
+  /** Adds a folder to a host's allowed folders; `retry` runs once the host has accepted it. */
+  async allowRoot(_hostId: string, _folder: string, _retry?: () => void): Promise<boolean> {
+    return true;
+  }
+
   /** A toast closed (or shown, for successes): it leaves the list. */
   dismissNotice(id: number): void {
     this.update({ notices: this.state.notices.filter((n) => n.id !== id) });

@@ -16,7 +16,15 @@ export const en: Dictionary = {
     down: { one: "{n} host offline", other: "{n} hosts offline" },
     reconnecting: { one: "{n} host reconnecting", other: "{n} hosts reconnecting" },
   },
-  toast: { copied: "Copied", details: "Details", close: "Close" },
+  toast: {
+    copied: "Copied",
+    details: "Details",
+    close: "Close",
+    allowRoot: "Add to allowed folders",
+    allowRootMessage:
+      "Let sessions on {host} use {folder}? They will be able to read and change its files.",
+    rootAdded: "{folder} is now an allowed folder of {host}.",
+  },
   personas: {
     title: "Personas",
     subtitle:
