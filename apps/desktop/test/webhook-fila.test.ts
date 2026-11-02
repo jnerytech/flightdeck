@@ -177,7 +177,7 @@ describe("webhook-fila", () => {
       "budget_alert",
       "pr_watch",
     ] as const;
-    kinds.forEach((kind, i) => queue.enqueue("a", event(String(i), { kind })));
+    for (const [i, kind] of kinds.entries()) queue.enqueue("a", event(String(i), { kind }));
     await queue.idle();
     expect(queue.stats().dropped).toBe(1);
     expect(sent.map((s) => s.event.id)).toEqual(["0", "2", "3", "4"]);
