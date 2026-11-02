@@ -234,4 +234,32 @@ describe("webhook-ui", () => {
       store.getState().hosts[0]?.id as string,
     );
   });
+
+  test("a generic webhook asks for a signing secret, an event can be unchecked and Cancel leaves the edit", async () => {
+    const { store } = await open("en");
+    expect(screen.queryByLabelText("Signing secret")).toBeNull();
+    await fill("Name", "Hook");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "generic" } });
+    });
+    await fill("Signing secret", "s3cret");
+    await fill("Webhook URL", "https://example.com/in");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Budget alert" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Budget alert" }));
+    });
+    await click("Save webhook");
+    await settle(() => store.webhooks.targets.list().length === 1);
+    const [target] = store.webhooks.targets.list();
+    expect(target).toMatchObject({ type: "generic", kinds: ["needs_you"] });
+    expect(await store.webhooks.targets.secrets(target?.id as string)).toEqual({
+      url: "https://example.com/in",
+      signingSecret: "s3cret",
+    });
+    await click("Edit Hook");
+    await click("Cancel");
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+  });
 });
