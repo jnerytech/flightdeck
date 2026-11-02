@@ -299,7 +299,8 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     const host = await terminalHost(personas, root);
     const fake = installFakeClaude([{ do: "exit", code: 2 }]);
     cleanups.push(fake.restore);
-    expect(await run(["--persona", "qa"], host, project)).toBe(2);
+    // Print mode: the agents travel in a file, which a Windows claude.cmd shim can take.
+    expect(await run(["--persona", "qa", "-p", "oi"], host, project)).toBe(2);
     const [start] = startsOf(fake);
     expect(start?.args).toContain("--agents");
     expect(start?.args).toContain("--append-system-prompt-file");

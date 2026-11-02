@@ -6,3 +6,8 @@
 export function defaultTestTimeoutMs(platform: NodeJS.Platform): number {
   return platform === "win32" ? 15_000 : 5_000;
 }
+
+/** The `bun` arguments of the full suite. */
+export function testArgs(_platform: NodeJS.Platform, _extra: string[]): string[] {
+  return [];
+}
