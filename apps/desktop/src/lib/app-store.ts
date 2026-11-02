@@ -332,6 +332,7 @@ export type HostCommandType = Extract<
   | `pr.${string}`
   | "files.sessions"
   | "fs.dirs"
+  | "fs.files"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`

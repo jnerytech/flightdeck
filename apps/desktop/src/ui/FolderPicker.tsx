@@ -1,5 +1,5 @@
-import type { FsDirsResult } from "@flightdeck/protocol";
-import { ArrowUp, ChevronRight, Folder } from "lucide-react";
+import type { FsDirsResult, FsFilesResult } from "@flightdeck/protocol";
+import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ export function FolderPicker(props: {
   /** The folder just clicked, current from the click until its listing arrives (`undefined` is the roots). */
   const [target, setTarget] = useState<{ path?: string } | null>(null);
   const [hidden, setHidden] = useState(false);
+  /** The files of the folder shown, when the picker takes files too. */
+  const [files, setFiles] = useState<FsFilesResult["files"]>([]);
   const allowed = host.info?.allowedRoots ?? [];
 
   /** The folder being shown, kept apart from `listing` so a reload does not restart the effect. */
@@ -63,6 +65,14 @@ export function FolderPicker(props: {
     setError(null);
     shown.current = result.data.path ?? undefined;
     setListing(result.data);
+    if (props.files && result.data.path) {
+      const found = await store.hostRequest(host.id, "fs.files", {
+        path: result.data.path,
+        ...(hiddenNow.current ? { hidden: true } : {}),
+      });
+      if (ticket === opening.current)
+        setFiles(found.ok && found.data ? (found.data as FsFilesResult).files : []);
+    } else setFiles([]);
     if (path === undefined) setRoots(result.data.dirs.map((dir) => dir.path));
   };
   const openRef = useRef(open);
@@ -168,6 +178,20 @@ export function FolderPicker(props: {
                   >
                     <Folder aria-hidden />
                     {dir.name}
+                  </Button>
+                </li>
+              ))}
+              {files.map((file) => (
+                <li key={file.path}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => props.onPick(file.path)}
+                  >
+                    <File aria-hidden />
+                    {file.name}
                   </Button>
                 </li>
               ))}
