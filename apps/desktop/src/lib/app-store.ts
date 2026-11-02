@@ -52,7 +52,14 @@ import type {
 import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
-import type { AppUpdate, Platform, TrayAction, TrayStatus } from "../platform/types.ts";
+import type {
+  AppUpdate,
+  Platform,
+  TrayAction,
+  TrayStatus,
+  WebhookRequest,
+  WebhookResponse,
+} from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
 import {
@@ -319,6 +326,7 @@ export type HostCommandType = Extract<
   | "messages.peers"
   | "vault.report"
   | "session.summary"
+  | "webhook.send"
   | "vault.decisions"
   | `pr.${string}`
   | "files.sessions"
@@ -661,6 +669,7 @@ export class AppStore {
     this.clientBudgetsSeen = JSON.stringify(this.clients.budgets());
     this.webhooks = new Webhooks({
       platform,
+      send: (request) => this.relayWebhook(request),
       summaryFor: (hostId, claudeSessionId, extra) =>
         this.sessionRecap(hostId, claudeSessionId, extra),
     });
@@ -2630,6 +2639,26 @@ export class AppStore {
   private readonly resyncing = new Map<string, "asked" | "answered">();
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
+
+  /**
+   * Phase 30: posts a webhook through an online host that can (the URL goes there for this one use,
+   * over the vault's transport). A request the host refuses counts as a permanent 400.
+   */
+  private async relayWebhook(request: WebhookRequest): Promise<WebhookResponse> {
+    const host = this.state.hosts.find(
+      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),
+    );
+    if (!host) return { status: null, retryAfterMs: null };
+    try {
+      const result = await this.dispatch(host.id, "webhook.send", request);
+      return {
+        status: result.refused === null ? result.status : 400,
+        retryAfterMs: result.retryAfterMs,
+      };
+    } catch {
+      return { status: null, retryAfterMs: null };
+    }
+  }
 
   /** Phase 30: the summary of a session of a host; null when the host cannot give one. */
   async sessionRecap(

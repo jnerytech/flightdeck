@@ -113,11 +113,6 @@ export interface Platform {
     removeFile(path: string): Promise<void>;
   };
   notify(notification: Notification): Promise<void>;
-  /**
-   * Phase 30: posts one webhook for the app (the desktop build only). The URL is checked again on
-   * this side: https, or http to this machine; no redirects; no private addresses.
-   */
-  webhookSend?(request: WebhookRequest): Promise<WebhookResponse>;
   isFocused(): boolean;
   openExternal(url: string): Promise<void>;
   /** Delivers `flightdeck://` links, including the one the app was opened with. */

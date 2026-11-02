@@ -23,7 +23,7 @@ export interface WebhookSource {
 }
 
 export interface WebhooksOptions {
-  platform: Pick<Platform, "storage" | "vault" | "webhookSend">;
+  platform: Pick<Platform, "storage" | "vault">;
   /** Posts one webhook through a host; the app gives it, tests give a fake. */
   send?: (request: WebhookRequest) => Promise<WebhookResponse>;
   summaryFor?: (
@@ -65,12 +65,12 @@ export class Webhooks {
 
   /** Whether this build can send at all (the web build cannot). */
   supported(): boolean {
-    return this.options.platform.webhookSend !== undefined;
+    return this.options.send !== undefined;
   }
 
   /** One post of an event to one target; `status: null` when it could not be made. */
   private async post(targetId: string, event: NotifyEvent): Promise<SendResult> {
-    const send = this.options.platform.webhookSend;
+    const send = this.options.send;
     const target = this.targets.list().find((t) => t.id === targetId);
     const secrets = await this.targets.secrets(targetId);
     if (!send || !target || !secrets) return { status: null };
