@@ -47,11 +47,7 @@ describe("sessao-barra: the composer toolbar", () => {
 
   test("without snippets there is no snippet button, and without a picker no mention button", () => {
     render(
-      <SessionView
-        title="s"
-        session={{ ...emptySession(), status: "idle" }}
-        actions={actions}
-      />,
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={actions} />,
     );
     expect(screen.queryByRole("button", { name: "Inserir um snippet" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Mencionar uma pasta" })).toBeNull();

@@ -1,8 +1,9 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { ArrowDown, Square } from "lucide-react";
+import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
+import { IconActionButton } from "@/components/feedback/icon-action-button";
 import {
   Composer,
   Message,
@@ -206,6 +207,7 @@ export function SessionView(props: {
   const { session, actions } = props;
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
+  const [picking, setPicking] = useState(false);
   const working = isBusy(session.status);
   const closed = session.status === "ended" || session.status === "error";
 
@@ -335,6 +337,22 @@ export function SessionView(props: {
         onFill={setText}
       />
       <Composer>
+        {props.prompts && (
+          <IconActionButton
+            label={t("session.insertSnippet")}
+            onClick={() => {
+              setText("/");
+              box.current?.focus();
+            }}
+          >
+            <BookText aria-hidden="true" />
+          </IconActionButton>
+        )}
+        {props.pickPath && (
+          <IconActionButton label={t("session.mentionFolder")} onClick={() => setPicking(true)}>
+            <AtSign aria-hidden="true" />
+          </IconActionButton>
+        )}
         <Textarea
           ref={box}
           aria-label={t("session.message")}
@@ -365,6 +383,12 @@ export function SessionView(props: {
           <ActionButton onClick={submit}>{t("session.send")}</ActionButton>
         )}
       </Composer>
+      {picking &&
+        props.pickPath?.((path) => {
+          setPicking(false);
+          if (path) setText((before) => `${before}@${path} `);
+          box.current?.focus();
+        })}
     </SessionPane>
   );
 }

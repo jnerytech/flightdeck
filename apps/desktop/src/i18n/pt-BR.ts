@@ -1109,6 +1109,8 @@ export const ptBR = {
     close: "Fechar",
   },
   session: {
+    insertSnippet: "Inserir um snippet",
+    mentionFolder: "Mencionar uma pasta",
     jumpLatest: "Ir para a última",
     cost: "custo estimado:",
     costLabel: "Custo da sessão",

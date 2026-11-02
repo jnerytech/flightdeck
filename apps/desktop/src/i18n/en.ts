@@ -1110,6 +1110,8 @@ export const en: Dictionary = {
     close: "Close",
   },
   session: {
+    insertSnippet: "Insert a snippet",
+    mentionFolder: "Mention a folder",
     jumpLatest: "Jump to latest",
     cost: "estimated cost:",
     costLabel: "Session cost",

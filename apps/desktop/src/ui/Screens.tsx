@@ -28,6 +28,7 @@ import { CheckpointsButton } from "./Checkpoints.tsx";
 import type { TopSession } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
+import { FolderPicker } from "./FolderPicker.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { NeedsYou } from "./NeedsYou.tsx";
@@ -161,6 +162,18 @@ function ManagedSession(props: {
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         session={session}
         actions={store}
+        {...(host
+          ? {
+              pickPath: (done: (path: string | null) => void) => (
+                <FolderPicker
+                  store={store}
+                  host={host}
+                  onPick={(path) => done(path)}
+                  onClose={() => done(null)}
+                />
+              ),
+            }
+          : {})}
         focusRequestId={props.focus}
         recap={
           claudeId && (
