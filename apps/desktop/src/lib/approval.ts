@@ -20,6 +20,11 @@ function relative(path: string, cwd: string | null): string {
   return path.startsWith(base) && /^[\\/]/.test(rest) ? rest.slice(1) : path;
 }
 
+/** A value as text; an object (inside a list) is JSON, never "[object Object]". */
+function show(value: unknown): string {
+  return value !== null && typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+
 /** Nested values flattened to `key.sub`, lists joined, long strings cut. */
 export function fields(input: Record<string, unknown>, prefix = ""): Array<[string, string]> {
   return Object.entries(input).flatMap(([key, value]): Array<[string, string]> => {
@@ -27,7 +32,7 @@ export function fields(input: Record<string, unknown>, prefix = ""): Array<[stri
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       return fields(value as Record<string, unknown>, `${name}.`);
     }
-    const shown = Array.isArray(value) ? value.map(String).join(", ") : String(value);
+    const shown = Array.isArray(value) ? value.map(show).join(", ") : show(value);
     return [[name, shown.length > MAX_VALUE ? `${shown.slice(0, MAX_VALUE)}…` : shown]];
   });
 }
