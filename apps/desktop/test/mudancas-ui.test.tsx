@@ -343,10 +343,12 @@ describe("mudancas-ui", () => {
     await click("Salvar");
     await settle(() => readFileSync(join(ctx.repo, "novo.txt"), "utf8") === "um\nDOIS\n");
     expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\nDOIS\n");
+    // The editor is a modal dialog: the page behind it is aria-hidden, so the diff is looked up
+    // as hidden. The save must have refreshed it.
     await settle(() =>
-      (screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "").includes(
-        "+DOIS",
-      ),
+      (
+        screen.queryByRole("region", { name: "Diff unificado", hidden: true })?.textContent ?? ""
+      ).includes("+DOIS"),
     );
 
     // Someone else wrote the file meanwhile: Salvar shows the conflict and writes nothing.
