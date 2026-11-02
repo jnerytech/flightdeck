@@ -656,6 +656,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.bg;
   }
 
+  function webhook(): WebhookSender {
+    if (!opts.webhook) throw featureOff("webhook");
+    return opts.webhook;
+  }
   function summary(): SummaryService {
     if (!opts.summary) throw featureOff("summary");
     return opts.summary;
@@ -1464,7 +1468,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "bg.message":
         return ok(command.type, await bg().message(command.payload.id, command.payload.text));
       case "webhook.send":
-        return ok(command.type, { status: 0, retryAfterMs: 0, refused: "" });
+        return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
         return ok(command.type, summary().get(claudeSessionId, { question, state }));

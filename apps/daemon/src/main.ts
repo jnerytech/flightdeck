@@ -131,6 +131,7 @@ import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
 import { Traces } from "./watch/trace.ts";
 import { PrWatcher } from "./watch/watch.ts";
+import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
@@ -994,6 +995,7 @@ export async function startDaemon(
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
+    webhook: new WebhookSender({ log: (m) => logger.log(m) }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),
     budgets,
     quotaHistory,
