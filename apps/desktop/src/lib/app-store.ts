@@ -35,6 +35,7 @@ import type {
   SessionEventOf,
   SessionMeta,
   SessionNameInfo,
+  SessionRecap,
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
@@ -120,6 +121,7 @@ import {
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
+import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
 /** How long a prod or high-risk approval is held, as the approval card measures it. */
@@ -655,6 +657,11 @@ export class AppStore {
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
     this.clientBudgetsSeen = JSON.stringify(this.clients.budgets());
+    this.webhooks = new Webhooks({
+      platform,
+      summaryFor: (hostId, claudeSessionId, extra) =>
+        this.sessionRecap(hostId, claudeSessionId, extra),
+    });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
@@ -2288,6 +2295,8 @@ export class AppStore {
   readonly globalPersonas: GlobalPersonas;
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
+  /** Phase 30: the webhook targets and the sending. */
+  readonly webhooks: Webhooks;
   private scopeMemo: { state: AppState; scope: ClientScope } | null = null;
 
   /** A client was changed: the screens read the new list, and a selection that is gone is all. */
@@ -2594,6 +2603,15 @@ export class AppStore {
   private readonly resyncing = new Map<string, "asked" | "answered">();
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
+
+  /** Phase 30: the summary of a session of a host; null when the host cannot give one. */
+  async sessionRecap(
+    _hostId: string,
+    _claudeSessionId: string,
+    _extra: { question?: string } = {},
+  ): Promise<SessionRecap | null> {
+    return null;
+  }
 
   /** Phase 22: keeps a card's watch; a card that starts to need you is told to the OS. */
   private keepWatch(hostId: string, watch: WatchInfo): void {

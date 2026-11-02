@@ -44,6 +44,7 @@ import { SecretScanner } from "../../daemon/src/snippets/model.ts";
 import { Snippets } from "../../daemon/src/snippets/store.ts";
 import { SnippetUse } from "../../daemon/src/snippets/use.ts";
 import { EventStore } from "../../daemon/src/store/event-store.ts";
+import { SummaryService } from "../../daemon/src/summary/service.ts";
 import { TelemetryOptIn } from "../../daemon/src/telemetry/optin.ts";
 import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
@@ -123,6 +124,8 @@ export function daemon(
     actions?: boolean;
     /** The snippets (phase 18) in this daemon's database; `history` names fixture shell histories. */
     snippets?: boolean | { history?: HistorySources };
+    /** The short summary of a session (phase 30), over this daemon's history. */
+    summary?: boolean;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
     personas?: boolean;
   } = {},
@@ -343,6 +346,9 @@ export function daemon(
       ...(terminals ? { terminals } : {}),
       ...(runManager ? { runenv: { configs: runConfigs, manager: runManager } } : {}),
       ...(actions ? { actions } : {}),
+      ...(options.summary
+        ? { summary: new SummaryService({ db: store.db, scanner: new SecretScanner() }) }
+        : {}),
       ...(snippets
         ? {
             snippets,
