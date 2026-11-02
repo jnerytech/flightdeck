@@ -960,6 +960,9 @@ export async function startDaemon(
   const server = startServer({
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
+    // `roots.add` pushes into this same array, so every service sees the new folder at once.
+    persistRoots: (roots) =>
+      updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
     messaging,
     names,
