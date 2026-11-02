@@ -411,6 +411,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.plugins ? ["plugins"] : []),
     // Phase 13: the arena is the board's; issues and automations are services of their own.
     ...(opts.board ? ["arena"] : []),
+    // Phase 31: card dependencies are the board's.
+    ...(opts.board ? ["deps"] : []),
     ...(opts.issues ? ["issues"] : []),
     ...(opts.automations ? ["automation"] : []),
     ...(opts.autoApprove ? ["autoapprove"] : []),
@@ -1411,13 +1413,15 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       }
       case "card.create": {
-        const { projectId, title, description } = command.payload;
-        return ok(command.type, board().createCard(projectId, { title, description }));
+        const { projectId, ...input } = command.payload;
+        return ok(command.type, board().createCard(projectId, input));
       }
       case "card.update": {
         const { cardId, ...patch } = command.payload;
         return ok(command.type, board().updateCard(cardId, patch));
       }
+      case "card.dismissUnblocked":
+        return ok(command.type, board().dismissUnblocked(command.payload.cardId));
       case "card.move": {
         const { cardId, column, position } = command.payload;
         return ok(command.type, board().moveCard(cardId, column, position));
