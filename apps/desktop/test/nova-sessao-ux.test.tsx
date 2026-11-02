@@ -63,8 +63,10 @@ describe("nova-sessao-ux: the persona chosen is the persona the session is in", 
     await poll(() => d.manager.list().length === 1);
     expect(d.manager.list()[0]?.persona).toMatchObject({ id: "arquiteto", name: "Architect" });
     // The session's own screen shows the persona it runs in, and offers to leave it.
-    await settle(() => screen.queryByLabelText("Active persona") !== null);
-    expect(screen.queryByLabelText("Active persona")?.textContent ?? "").toContain("Architect");
+    await settle(() => screen.queryByRole("button", { name: "Persona: Architect" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Persona: Architect" }) as HTMLElement);
+    });
     expect(screen.queryByRole("button", { name: "Back to normal" })).not.toBeNull();
   });
 
@@ -73,8 +75,12 @@ describe("nova-sessao-ux: the persona chosen is the persona the session is in", 
     await fill("First prompt", "oi");
     await press("Create session");
     await poll(() => d.manager.list().length === 1);
+    await settle(() => screen.queryByRole("button", { name: "Persona" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Persona" }) as HTMLElement);
+    });
     await settle(() => screen.queryByRole("button", { name: "Apply" }) !== null);
-    expect(screen.queryByLabelText("Active persona")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Persona: / })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to normal" })).toBeNull();
   });
 });

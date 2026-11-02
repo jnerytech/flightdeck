@@ -27,7 +27,7 @@ describe("abas-previa", () => {
     await act(async () => void fireEvent.click(item(/^Settings/)));
     expect(names()).toEqual(["settings"]);
     // Working in the screen turns the preview into a regular tab.
-    const main = screen.queryByRole("heading", { level: 1 }) as HTMLElement;
+    const main = screen.queryByLabelText("Area 1") as HTMLElement;
     await act(async () => void fireEvent.pointerDown(main));
     expect(store.tabs.active.preview).toBe(false);
     await act(async () => void fireEvent.click(item(/^Vault/)));
@@ -55,7 +55,7 @@ describe("abas-previa", () => {
     await act(async () => void fireEvent.click(item(/^Vault/)));
     const tab = screen.queryByRole("tab", { name: /Vault/ }) as HTMLElement;
     expect(tab.querySelector(".italic")).not.toBeNull();
-    expect(tab.textContent).toContain("(preview)");
+    expect(tab.getAttribute("aria-description")).toBe("preview");
     store.dispose();
   });
 
