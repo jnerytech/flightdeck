@@ -458,6 +458,12 @@ export class Board {
         .get(id)?.n as number,
       issueRef: row.issue_ref,
       issueExternal: row.issue_external === 1,
+      blockedBy: [],
+      blocking: [],
+      waitingOn: [],
+      unblockWhen: "done",
+      autoStart: null,
+      unblockedAt: null,
       ...this.queueState(
         active !== undefined && active.started_at === null && active.ended_at === null,
         row.project_id,

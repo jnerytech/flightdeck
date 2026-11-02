@@ -580,6 +580,20 @@ export const CardRun = z.object({
 });
 export type CardRun = z.infer<typeof CardRun>;
 
+/** Phase 31: what satisfies a blocker. */
+export const UnblockWhen = z.enum(["done", "merged"]);
+export type UnblockWhen = z.infer<typeof UnblockWhen>;
+
+/** Phase 31: the fields of a card that say what it waits for. */
+const CardDeps = {
+  blockedBy: z
+    .array(z.string())
+    .refine((ids) => new Set(ids).size === ids.length)
+    .optional(),
+  unblockWhen: UnblockWhen.optional(),
+  autoStart: z.object({ workflow: z.string().nullable() }).nullable().optional(),
+};
+
 export const Card = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -630,6 +644,18 @@ export const Card = z.object({
   issueRef: z.string().nullable().default(null),
   /** Phase 13: the issue's author is third party, so the card's content is untrusted. */
   issueExternal: z.boolean().default(false),
+  /** Phase 31: the cards that must be done first, in the order the person set them. */
+  blockedBy: z.array(z.string()).default([]),
+  /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
+  blocking: z.array(z.string()).default([]),
+  /** Phase 31: the blockers not satisfied yet; empty once the card has started. */
+  waitingOn: z.array(z.string()).default([]),
+  /** Phase 31: what satisfies a blocker: its card in Done, or its PR merged. */
+  unblockWhen: UnblockWhen.default("done"),
+  /** Phase 31: start by itself when the last blocker is satisfied (with this workflow, if any). */
+  autoStart: z.object({ workflow: z.string().nullable() }).nullable().default(null),
+  /** Phase 31: when the last blocker was satisfied and the card did not start by itself. */
+  unblockedAt: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -2295,7 +2321,12 @@ export const Command = z.discriminatedUnion("type", [
   cmd("board.watch", z.object({}).strict()),
   cmd(
     "card.create",
-    z.object({ projectId: z.string(), title: z.string().min(1), description: z.string() }),
+    z.object({
+      projectId: z.string(),
+      title: z.string().min(1),
+      description: z.string(),
+      ...CardDeps,
+    }),
   ),
   cmd(
     "card.update",
@@ -2303,6 +2334,7 @@ export const Command = z.discriminatedUnion("type", [
       cardId: z.string(),
       title: z.string().min(1).optional(),
       description: z.string().optional(),
+      ...CardDeps,
     }),
   ),
   cmd(
@@ -2321,6 +2353,7 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
+  cmd("card.dismissUnblocked", CardIdPayload),
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
   /** Only for sessions opened with `flightdeckd claude` (`controllable`). */
@@ -3553,6 +3586,7 @@ export interface CommandResults {
   "card.pr.create": Card;
   "card.complete": Card;
   "card.discard": Card;
+  "card.dismissUnblocked": Card;
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;
   "external.message": undefined;
