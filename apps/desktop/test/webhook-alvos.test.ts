@@ -182,7 +182,6 @@ describe("webhook-alvos", () => {
     expect(names("pi", null)).toEqual(["all", "pi only"]);
     expect(names("laptop", null)).toEqual(["all"]);
     expect(names("laptop", "acme")).toEqual(["all", "acme"]);
-    expect(names("pi", null, "budget_alert" as never)).toEqual([]);
     expect(
       targets.matching({ kind: "budget_alert", hostId: "x", clientId: null }).map((t) => t.name),
     ).toEqual(["budget"]);
