@@ -1117,6 +1117,7 @@ export const en: Dictionary = {
     costLabel: "Session cost",
     resume: "Resume",
     interrupt: "Stop",
+    stopTurn: "Stop the turn",
     working: "Working…",
     end: "End",
     endMessage: "End this session? Claude Code stops; you can resume it later.",

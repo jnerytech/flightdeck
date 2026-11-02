@@ -374,7 +374,11 @@ export function SessionView(props: {
             <output aria-live="polite" aria-label={t("session.working")} className="sr-only">
               {t("session.working")}
             </output>
-            <ActionButton variant="destructive" onClick={() => actions.interrupt()}>
+            <ActionButton
+              variant="destructive"
+              aria-label={t("session.stopTurn")}
+              onClick={() => actions.interrupt()}
+            >
               <Square aria-hidden="true" />
               {t("session.interrupt")}
             </ActionButton>

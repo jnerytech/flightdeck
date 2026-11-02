@@ -1116,6 +1116,7 @@ export const ptBR = {
     costLabel: "Custo da sessão",
     resume: "Retomar",
     interrupt: "Parar",
+    stopTurn: "Parar o turno",
     working: "Trabalhando…",
     end: "Encerrar",
     endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
