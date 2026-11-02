@@ -1,4 +1,5 @@
 import type { PersonaSwitchResult, SessionPersona } from "@flightdeck/protocol";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -19,6 +20,7 @@ export function PersonaSwitch(props: {
   const t = useT();
   const { store, hostId, target } = props;
   const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
   // What an apply or a clear answered (a terminal session has no events to follow); else the
   // persona the session is known to be in.
   const [answered, setAnswered] = useState<{
@@ -41,34 +43,43 @@ export function PersonaSwitch(props: {
   };
   return (
     <div className="flex flex-col gap-1 text-sm">
-      {current && (
-        <p role="note" aria-label={t("personas.apply.active")} className="font-medium">
-          {current.name}
-        </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="toggle-start"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+        {current ? `${t("personas.apply.label")}: ${current.name}` : t("personas.apply.label")}
+      </Button>
+      {open && (
+        <>
+          <div className="flex flex-wrap items-end gap-2">
+            <PersonaPicker
+              store={store}
+              hostId={hostId}
+              label={t("personas.apply.label")}
+              value={value}
+              onChange={setValue}
+            />
+            <Button size="sm" variant="outline" disabled={!value} onClick={() => void apply()}>
+              {t("personas.apply.apply")}
+            </Button>
+            {current && (
+              <Button size="sm" variant="outline" onClick={() => void clear()}>
+                {t("personas.apply.clear")}
+              </Button>
+            )}
+          </div>
+          <p className="text-muted-foreground text-xs">{t("personas.apply.note")}</p>
+        </>
       )}
-      <div className="flex flex-wrap items-end gap-2">
-        <PersonaPicker
-          store={store}
-          hostId={hostId}
-          label={t("personas.apply.label")}
-          value={value}
-          onChange={setValue}
-        />
-        <Button size="sm" variant="outline" disabled={!value} onClick={() => void apply()}>
-          {t("personas.apply.apply")}
-        </Button>
-        {current && (
-          <Button size="sm" variant="outline" onClick={() => void clear()}>
-            {t("personas.apply.clear")}
-          </Button>
-        )}
-      </div>
       {answered?.delivery && (
         <p role="status" className="text-xs">
           {t(`personas.apply.delivery.${answered.delivery}`)}
         </p>
       )}
-      <p className="text-muted-foreground text-xs">{t("personas.apply.note")}</p>
     </div>
   );
 }
