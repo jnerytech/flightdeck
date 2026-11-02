@@ -2688,3 +2688,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - This replaces the old rule "helpers that throw a timeout count as an error": a wait that times
   out is a failure of the wait, with its own message.
 
+## Project key of a folder that becomes a repository
+
+- **A folder key is dropped when the folder gains a `.git`; a parent that becomes a repository is not noticed.** `ProjectKeys` records, for a folder git found no repository in, whether its own `.git` existed at that moment, and asks git again when it exists now and did not then. The check looks only at the cached folder itself: a sub-folder cached with a folder key keeps it, after a parent folder becomes a repository, until the daemon restarts.
