@@ -1,4 +1,4 @@
-import type { SessionPersona } from "@flightdeck/protocol";
+import type { PersonaSwitchResult, SessionPersona } from "@flightdeck/protocol";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -21,20 +21,23 @@ export function PersonaSwitch(props: {
   const [value, setValue] = useState("");
   // What an apply or a clear answered (a terminal session has no events to follow); else the
   // persona the session is known to be in.
-  const [answered, setAnswered] = useState<{ persona: SessionPersona | null } | null>(null);
+  const [answered, setAnswered] = useState<{
+    persona: SessionPersona | null;
+    delivery?: PersonaSwitchResult["delivery"];
+  } | null>(null);
   const current = answered ? answered.persona : props.current;
   const apply = async () => {
     const persona = store.personaRef(value);
     if (!persona) return;
     const done = await store.hostCommand(hostId, "session.applyPersona", { ...target, persona });
-    if (done) setAnswered({ persona: done.persona });
+    if (done) setAnswered({ persona: done.persona, delivery: done.delivery });
   };
   const clear = async () => {
     const done = await store.hostCommand(hostId, "session.clearPersona", {
       ...target,
       language: store.i18n.lang,
     });
-    if (done) setAnswered({ persona: null });
+    if (done) setAnswered({ persona: null, delivery: done.delivery });
   };
   return (
     <div className="flex flex-col gap-1 text-sm">
@@ -60,6 +63,11 @@ export function PersonaSwitch(props: {
           </Button>
         )}
       </div>
+      {answered?.delivery && (
+        <p role="status" className="text-xs">
+          {t(`personas.apply.delivery.${answered.delivery}`)}
+        </p>
+      )}
       <p className="text-muted-foreground text-xs">{t("personas.apply.note")}</p>
     </div>
   );

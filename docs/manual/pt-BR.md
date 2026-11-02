@@ -1539,7 +1539,11 @@ Para usar:
   projeto e do pacote; as do app não têm id no host).
 - Numa sessão aberta (gerenciada, ou do terminal que você controla), **Aplicar persona** manda o
   papel como mensagem, e **Voltar ao normal** encerra. O app avisa: numa sessão aberta, a persona
-  vale como instrução da conversa, não do sistema.
+  vale como instrução da conversa, não do sistema. Depois de cada clique ele também diz como a
+  instrução foi: **enviada** a uma sessão ociosa, **na fila** atrás do passo atual ou de um pedido
+  de permissão pendente (segue assim que for respondido) ou **enviada à sessão do terminal** (ela
+  aparece na conversa quando o Claude a receber, depois de qualquer pedido pendente). O **Claude
+  aqui** com persona é diferente: abre uma nova sessão de terminal com a persona no prompt do sistema.
 - **Personas como subagentes**, na tela de agente do projeto: **Todas** (do pacote, do host e do
   projeto), **Só as do projeto** ou **Nenhuma**. Elas chegam às sessões como agentes
   `persona-<id>`, para o Claude delegar.

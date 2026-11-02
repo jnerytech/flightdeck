@@ -27,6 +27,13 @@ export const en: Dictionary = {
       apply: "Apply",
       clear: "Back to normal",
       note: "In an open session, the persona works as an instruction in the conversation, not in the system prompt.",
+      delivery: {
+        sent: "Instruction sent to the session.",
+        queued:
+          "Queued: the instruction is sent when the session finishes its current step or the pending request is answered.",
+        terminal:
+          "Sent to the terminal session. It shows in the conversation when Claude takes it, after any pending request.",
+      },
     },
     subagents: {
       label: "Personas as subagents",

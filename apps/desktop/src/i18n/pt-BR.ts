@@ -29,6 +29,13 @@ export const ptBR = {
       apply: "Aplicar",
       clear: "Voltar ao normal",
       note: "Numa sessão aberta, a persona vale como instrução da conversa, não do sistema.",
+      delivery: {
+        sent: "Instrução enviada à sessão.",
+        queued:
+          "Na fila: a instrução segue quando a sessão terminar o passo atual ou o pedido pendente for respondido.",
+        terminal:
+          "Enviada à sessão do terminal. Ela aparece na conversa quando o Claude a receber, depois de qualquer pedido pendente.",
+      },
     },
     subagents: {
       label: "Personas como subagentes",

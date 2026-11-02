@@ -1560,7 +1560,11 @@ Using one:
   project's and the pack's; the app's own have no id on the host).
 - On an open session (managed, or a terminal session you can control), **Apply persona** sends the
   role as a message, and **Back to normal** ends it. The app says so: in an open session the persona
-  is an instruction of the conversation, not of the system.
+  is an instruction of the conversation, not of the system. After each press it also says how the
+  instruction went: **sent** to an idle session, **queued** behind the current step or a pending
+  permission request (it is sent once that is answered), or **sent to the terminal session** (it
+  shows in the conversation when Claude takes it, after any pending request). **Claude here** with
+  a persona is different: it starts a new terminal session with the persona in the system prompt.
 - **Personas as subagents** on the project's agent screen: **All** (the pack's, the host's and the
   project's), **Only the project's** or **None**. They reach the sessions as `persona-<id>` agents,
   for Claude to delegate to.

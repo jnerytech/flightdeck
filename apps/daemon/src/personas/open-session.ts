@@ -63,9 +63,9 @@ export class OpenSessionPersonas {
       icon: resolved.persona.icon,
     };
     const text = roleMessage(badge.name, resolved.persona.body, language);
-    this.deliver(target, text);
+    const delivery = this.deliver(target, text);
     this.mark(target, badge);
-    return { persona: badge, text };
+    return { persona: badge, text, delivery };
   }
 
   async clear(request: SwitchTarget & { language?: Language }): Promise<PersonaSwitchResult> {
@@ -79,9 +79,9 @@ export class OpenSessionPersonas {
     if (!applied)
       throw new FlightdeckError("invalid_state", "nenhuma persona foi aplicada a esta sessão");
     const text = leaveMessage(applied.name, request.language ?? "pt-BR");
-    this.deliver(target, text);
+    const delivery = this.deliver(target, text);
     this.mark(target, null);
-    return { persona: applied, text };
+    return { persona: applied, text, delivery };
   }
 
   private target(request: SwitchTarget): { managed: boolean; id: string } {
@@ -99,15 +99,21 @@ export class OpenSessionPersonas {
     return this.opts.central;
   }
 
-  private deliver(target: { managed: boolean; id: string }, text: string): void {
+  /** Sends the message; says whether it went at once, waits behind a turn, or went to a terminal. */
+  private deliver(
+    target: { managed: boolean; id: string },
+    text: string,
+  ): NonNullable<PersonaSwitchResult["delivery"]> {
     if (target.managed) {
-      this.opts.manager.send(target.id, text);
-    } else if (!messageExternal(this.external(), target.id, text)) {
+      return this.opts.manager.send(target.id, text).queued ? "queued" : "sent";
+    }
+    if (!messageExternal(this.external(), target.id, text)) {
       throw new FlightdeckError(
         "invalid_state",
         "sessão sem canal: só sessões abertas com flightdeckd claude recebem mensagens",
       );
     }
+    return "terminal";
   }
 
   private mark(target: { managed: boolean; id: string }, badge: SessionPersona | null): void {
