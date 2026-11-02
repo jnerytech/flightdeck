@@ -24,7 +24,7 @@ const SESSION = "eeeeeeee-0000-4000-8000-000000000030";
 
 const line = (value: unknown) => JSON.stringify(value);
 
-async function online(language: string, options: { legacy?: boolean } = {}) {
+async function online(language: string, options: { legacy?: boolean; plain?: boolean } = {}) {
   const mem = memoryPlatform(false, language);
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   store.i18n.start();
@@ -50,8 +50,12 @@ async function online(language: string, options: { legacy?: boolean } = {}) {
           role: "assistant",
           content: [
             { type: "text", text: "Retry added with backoff." },
-            { type: "tool_use", name: "Edit", input: { file_path: "/r/queue.ts" } },
-            { type: "tool_use", name: "Write", input: { file_path: "/r/queue.test.ts" } },
+            ...(options.plain
+              ? []
+              : [
+                  { type: "tool_use", name: "Edit", input: { file_path: "/r/queue.ts" } },
+                  { type: "tool_use", name: "Write", input: { file_path: "/r/queue.test.ts" } },
+                ]),
           ],
         },
       }),
@@ -148,5 +152,14 @@ describe("resumo-ui", () => {
     await show(store);
     await act(() => Bun.sleep(50));
     expect(screen.queryByRole("region")).toBeNull();
+  });
+
+  test("a session that changed no file has no files row", async () => {
+    const { store } = await online("en", { plain: true });
+    await show(store);
+    await settle(() => screen.queryByText("Add a retry to the queue") !== null);
+    expect(screen.getByRole("region", { name: "Session summary" }).textContent).not.toContain(
+      "Files",
+    );
   });
 });
