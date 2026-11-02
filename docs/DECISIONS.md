@@ -2701,6 +2701,14 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   caller passes. Sidechain entries are ignored. Fields are cut at 280/480/280 characters on a
   character boundary, and a field the secret scanner flags is replaced by `[secret hidden]`. A
   model-written summary stays out; `source: "transcript"` leaves room for one.
+- **Proof of concept: skipped as a separate run, covered by fixtures.** The spec asked to check, on
+  the repo's transcript fixtures, that the first prompt, Claude's last text and the tool-use paths
+  can be extracted. No separate probe was run: the rules above were written against the shapes of
+  `apps/daemon/test/fixtures/trace` and the transcript reader of phase 8, and `resumo-extrair`
+  pins them (wrappers, sidechain, tool-result turns, odd content, corrupt lines). A check against
+  real transcripts of a real Claude session was not done and belongs to the user's tests at the end.
+- **Version.** The branch does not bump it, as every phase branch (CLAUDE.md): the maintainer sets
+  it at release with the `test(versao)` cycle.
 - **The type is `SessionRecap`.** `SessionSummary` already names the managed-session list line, so
   the new schema has another name. The command is `session.summary` and is not the event frame of
   the same name (commands and frames are different namespaces).
