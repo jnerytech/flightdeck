@@ -260,9 +260,16 @@ export function TerminalPage(props: {
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
 export function TerminalCloseDialog(props: { onClose(kill: boolean | null): void }) {
   const t = useT();
+  const detach = useRef<HTMLButtonElement>(null);
   return (
     <AlertDialog open onOpenChange={(open) => !open && props.onClose(null)}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onOpenAutoFocus={(event) => {
+          // Radix focuses Cancel; the safe answer here is Detach, never End.
+          event.preventDefault();
+          detach.current?.focus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{t("terminalUi.close")}</AlertDialogTitle>
           <AlertDialogDescription>{t("terminalUi.closeMessage")}</AlertDialogDescription>
@@ -272,7 +279,7 @@ export function TerminalCloseDialog(props: { onClose(kill: boolean | null): void
           <AlertDialogAction variant="destructive" onClick={() => props.onClose(true)}>
             {t("terminalUi.end")}
           </AlertDialogAction>
-          <AlertDialogAction onClick={() => props.onClose(false)}>
+          <AlertDialogAction ref={detach} onClick={() => props.onClose(false)}>
             {t("terminalUi.detach")}
           </AlertDialogAction>
         </AlertDialogFooter>
