@@ -357,6 +357,49 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await switcher(name).waitFor({ timeout: WAIT });
     await waitFor(async () => (await sessions.count()) < before, "só as sessões do cliente");
   },
+
+  // 14. Dependencias: a card is blocked by another, its start is refused with the title, and the
+  // blocker in Done unblocks it.
+  dependencias: async (c) => {
+    // The demo keeps its cards between runs and languages: titles of their own.
+    const stamp = `${c.lang}-${Date.now()}`;
+    const first = `Base ${stamp}`;
+    const second = `Depende ${stamp}`;
+    const tile = (title: string) =>
+      c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    for (const title of [first, second]) {
+      await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+      await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+      await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+      await tile(title).waitFor({ timeout: WAIT });
+    }
+    await tile(second).getByRole("button", { name: second, exact: true }).click();
+    await c.page.getByLabel(c.t("deps.addLabel"), { exact: true }).selectOption({ label: first });
+    await c.page.getByRole("button", { name: c.t("deps.add"), exact: true }).click();
+    await c.page
+      .getByRole("button", { name: c.t("deps.remove", { title: first }), exact: true })
+      .waitFor({ timeout: WAIT });
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await tile(second)
+      .getByText(c.t("deps.blocked", { count: 1 }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    const actions = (title: string) =>
+      tile(title).getByRole("button", { name: c.t("board.cardActions", { title }), exact: true });
+    await actions(second).click();
+    await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    await c.page
+      .getByText(c.t("daemonRefusal.card_blocked", { blockers: first }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await actions(first).click();
+    await c.page
+      .getByRole("menuitem", {
+        name: c.t("board.moveTo", { column: c.t("kanban.columns.done") }),
+        exact: true,
+      })
+      .click();
+    await tile(second).getByText(c.t("deps.unblocked"), { exact: true }).waitFor({ timeout: WAIT });
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
