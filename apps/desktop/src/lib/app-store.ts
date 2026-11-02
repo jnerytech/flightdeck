@@ -24,6 +24,7 @@ import type {
   MessageInfo,
   MessagingAlertFrame,
   PendingPermission,
+  PermissionMode,
   PermissionUpdate,
   PersonaRef,
   Project,
@@ -1630,6 +1631,18 @@ export class AppStore {
 
   interrupt(): Promise<void> {
     return this.onSelected((conn, sessionId) => conn.request("session.interrupt", { sessionId }));
+  }
+
+  setMode(permissionMode: PermissionMode): Promise<void> {
+    return this.onSelected((conn, sessionId) =>
+      conn.request("session.setMode", { sessionId, permissionMode }),
+    );
+  }
+
+  setModel(model: string | null): Promise<void> {
+    return this.onSelected((conn, sessionId) =>
+      conn.request("session.setModel", { sessionId, model }),
+    );
   }
 
   close(): Promise<void> {

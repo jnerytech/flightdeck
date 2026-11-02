@@ -1110,6 +1110,9 @@ export const en: Dictionary = {
     close: "Close",
   },
   session: {
+    modeLabel: "Permission mode",
+    modelLabel: "Model",
+    modelDefault: "Default model",
     insertSnippet: "Insert a snippet",
     mentionFolder: "Mention a file or folder",
     jumpLatest: "Jump to latest",

@@ -1109,6 +1109,9 @@ export const ptBR = {
     close: "Fechar",
   },
   session: {
+    modeLabel: "Modo de permissão",
+    modelLabel: "Modelo",
+    modelDefault: "Modelo padrão",
     insertSnippet: "Inserir um snippet",
     mentionFolder: "Mencionar arquivo ou pasta",
     jumpLatest: "Ir para a última",

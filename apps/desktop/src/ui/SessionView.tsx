@@ -1,9 +1,10 @@
 import type { PermissionMode, PermissionUpdate } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
-import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
+import { NativeSelect } from "@/components/layout/form";
 import {
   Composer,
   Message,
@@ -24,6 +25,10 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
+
+/** The permission modes a live session can switch between, and the model aliases it takes. */
+const MODES = ["default", "acceptEdits", "plan"] as const;
+const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
@@ -213,6 +218,24 @@ export function SessionView(props: {
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [mode, setMode] = useState<PermissionMode>(session.permissionMode ?? "default");
+  const [model, setModel] = useState("");
+  const slash = session.slashCommands;
+  // Typing `/` offers the snippets and the commands of the session together.
+  const offered: PromptSnippets | undefined = useMemo(
+    () =>
+      props.prompts || slash
+        ? {
+            list: async () => [
+              ...((await props.prompts?.list()) ?? []),
+              ...(slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
+            ],
+            fill: async (key) =>
+              key.startsWith("slash:") ? `/${key.slice(6)} ` : (props.prompts?.fill(key) ?? ""),
+          }
+        : undefined,
+    [props.prompts, slash],
+  );
   const working = isBusy(session.status);
   const closed = session.status === "ended" || session.status === "error";
 
@@ -335,12 +358,7 @@ export function SessionView(props: {
           </Button>
         )}
       </div>
-      <PromptMenu
-        prompts={props.prompts}
-        text={text}
-        label={t("session.snippets")}
-        onFill={setText}
-      />
+      <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
       <Composer>
         {props.prompts && (
           <IconActionButton
@@ -357,6 +375,44 @@ export function SessionView(props: {
           <IconActionButton label={t("session.mentionFolder")} onClick={() => setPicking(true)}>
             <AtSign aria-hidden="true" />
           </IconActionButton>
+        )}
+        {props.settings && actions.setMode && (
+          <NativeSelect
+            compact
+            inline
+            aria-label={t("session.modeLabel")}
+            value={mode}
+            onChange={(e) => {
+              const next = e.target.value as PermissionMode;
+              setMode(next);
+              void actions.setMode?.(next);
+            }}
+          >
+            {MODES.map((value) => (
+              <option key={value} value={value}>
+                {t(`modes.${value}.name`)}
+              </option>
+            ))}
+          </NativeSelect>
+        )}
+        {props.settings && actions.setModel && (
+          <NativeSelect
+            compact
+            inline
+            aria-label={t("session.modelLabel")}
+            value={model}
+            onChange={(e) => {
+              setModel(e.target.value);
+              void actions.setModel?.(e.target.value || null);
+            }}
+          >
+            <option value="">{t("session.modelDefault")}</option>
+            {MODELS.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </NativeSelect>
         )}
         <Textarea
           ref={box}

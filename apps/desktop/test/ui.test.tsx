@@ -147,6 +147,20 @@ describe("desktop: interface", () => {
     expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toMatch(/^@\/.* $/);
   });
 
+  test("o modo e o modelo de uma sessão viva mudam pela barra e chegam ao runtime", async () => {
+    const { server, runtime } = setup();
+    await addHost(server.url);
+    await newSession("olá");
+    await waitFor(() => expect(screen.getAllByText("ociosa").length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByLabelText("Modelo")).toBeTruthy());
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Modo de permissão"), { target: { value: "plan" } });
+      fireEvent.change(screen.getByLabelText("Modelo"), { target: { value: "opus" } });
+    });
+    await waitFor(() => expect(runtime.modes).toEqual(["plan"]));
+    await waitFor(() => expect(runtime.models).toEqual(["opus"]));
+  });
+
   test("card de aprovação com diff: permitir e negar com motivo", async () => {
     const { server } = setup();
     await addHost(server.url);

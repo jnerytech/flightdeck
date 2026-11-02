@@ -101,11 +101,21 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
     case "session.summary":
       return state;
     case "session.created":
-      return { ...next, cwd: event.cwd, ...(event.persona ? { persona: event.persona } : {}) };
+      return {
+        ...next,
+        cwd: event.cwd,
+        permissionMode: event.permissionMode,
+        ...(event.persona ? { persona: event.persona } : {}),
+      };
     case "session.status":
       return { ...next, status: event.status, statusReason: event.reason };
     case "session.init":
-      return { ...next, model: event.model, claudeSessionId: event.claudeSessionId };
+      return {
+        ...next,
+        model: event.model,
+        claudeSessionId: event.claudeSessionId,
+        ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
+      };
     case "message.user":
       return push({ kind: "user", seq, text: event.text });
     case "message.assistant":

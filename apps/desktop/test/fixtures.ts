@@ -328,6 +328,7 @@ export function daemon(
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
       rootsPlatform: testRootsPlatform(),
+      sessionSettings: true,
       manager,
       history,
       board,
