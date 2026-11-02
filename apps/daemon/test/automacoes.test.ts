@@ -13,9 +13,13 @@ import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
 // Real git, worktrees and fake CLIs: more than the default 5 s.
-setDefaultTimeout(20_000);
-/** How long a test lets the scheduler work before it calls it hung. */
+/**
+ * How long a test lets the scheduler and the fake CLIs work before it calls them hung. Every test
+ * here runs real processes, which take as long as the machine lets them: a busy full suite made
+ * the 20 s default too short for several, so the limit is a net against a hang, not a budget.
+ */
 const NET = 60_000;
+setDefaultTimeout(NET * 2);
 
 const TOKEN = "automacoes-token-0123456789a";
 const WF = "steps:\n  - id: work\n    agent: { prompt: 'faça' }\n";
