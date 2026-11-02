@@ -718,4 +718,20 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX telemetry_events_session ON telemetry_events (claude_session_id, at);
   CREATE INDEX telemetry_events_at ON telemetry_events (at);
   `,
+  // Phase 31: card dependencies. One row per link, in the order the person set them; a card that
+  // goes away takes its links with it (the board tells the cards it was holding up).
+  `
+  CREATE TABLE card_blockers (
+    card_id    TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    blocker_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    position   INTEGER NOT NULL,
+    PRIMARY KEY (card_id, blocker_id)
+  );
+
+  CREATE INDEX card_blockers_blocker ON card_blockers (blocker_id);
+
+  ALTER TABLE cards ADD COLUMN unblock_when TEXT NOT NULL DEFAULT 'done';
+  ALTER TABLE cards ADD COLUMN auto_start TEXT;
+  ALTER TABLE cards ADD COLUMN unblocked_at TEXT;
+  `,
 ];

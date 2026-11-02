@@ -15,6 +15,7 @@ import {
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
   type SessionEvent,
   type SessionStatus,
+  type UnblockWhen,
   type WorkflowInfo,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
@@ -29,6 +30,7 @@ import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
+import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { cardDiff } from "./diff.ts";
 import {
   aheadBehind,
@@ -169,6 +171,10 @@ function mergePersonas(
   return merged;
 }
 
+/** The auto-start as the cards table keeps it. */
+const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
+  autoStart ? JSON.stringify(autoStart) : null;
+
 interface CardRow {
   id: string;
   project_id: string;
@@ -188,6 +194,9 @@ interface CardRow {
   issue_external: number;
   arena_of: string | null;
   variant: string | null;
+  unblock_when: UnblockWhen;
+  auto_start: string | null;
+  unblocked_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -458,12 +467,12 @@ export class Board {
         .get(id)?.n as number,
       issueRef: row.issue_ref,
       issueExternal: row.issue_external === 1,
-      blockedBy: [],
-      blocking: [],
-      waitingOn: [],
-      unblockWhen: "done",
-      autoStart: null,
-      unblockedAt: null,
+      blockedBy: this.blockersOf(id),
+      blocking: this.blockingOf(id),
+      waitingOn: this.blockersOf(id),
+      unblockWhen: row.unblock_when,
+      autoStart: row.auto_start ? JSON.parse(row.auto_start) : null,
+      unblockedAt: row.unblocked_at,
       ...this.queueState(
         active !== undefined && active.started_at === null && active.ended_at === null,
         row.project_id,
@@ -481,6 +490,10 @@ export class Board {
       description: string;
       issueRef?: string;
       issueExternal?: boolean;
+      /** Phase 31: what the card waits for. */
+      blockedBy?: string[];
+      unblockWhen?: UnblockWhen;
+      autoStart?: { workflow: string | null } | null;
       /** An arena variant: the arena's card, and what makes it different. */
       arenaOf?: string;
       variant?: {
@@ -493,6 +506,8 @@ export class Board {
     },
   ): Card {
     this.getProject(projectId);
+    const blockedBy = input.blockedBy ?? [];
+    this.checkBlockers(null, projectId, blockedBy);
     const { last } = this.db
       .query<{ last: number | null }, [string]>(
         "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = 'backlog'",
@@ -503,8 +518,8 @@ export class Board {
     this.db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
-           issue_external, arena_of, variant, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?, ?)`,
+           issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -516,9 +531,13 @@ export class Board {
         input.issueExternal ? 1 : 0,
         input.arenaOf ?? null,
         input.variant ? JSON.stringify(input.variant) : null,
+        input.unblockWhen ?? "done",
+        autoStartOf(input.autoStart),
         at,
         at,
       );
+    this.storeBlockers(id, blockedBy);
+    for (const blocker of blockedBy) this.changed(blocker);
     return this.changed(id);
   }
 
@@ -705,13 +724,103 @@ export class Board {
   /** Edits the title or the description. */
   updateCard(
     id: string,
-    patch: { title?: string | undefined; description?: string | undefined },
+    patch: {
+      title?: string | undefined;
+      description?: string | undefined;
+      blockedBy?: string[] | undefined;
+      unblockWhen?: UnblockWhen | undefined;
+      autoStart?: { workflow: string | null } | null | undefined;
+    },
   ): Card {
     const card = this.getCard(id);
+    if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     this.db
-      .query("UPDATE cards SET title = ?, description = ?, updated_at = ? WHERE id = ?")
-      .run(patch.title ?? card.title, patch.description ?? card.description, now(), id);
+      .query(
+        `UPDATE cards SET title = ?, description = ?, unblock_when = ?, auto_start = ?, updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(
+        patch.title ?? card.title,
+        patch.description ?? card.description,
+        patch.unblockWhen ?? card.unblockWhen,
+        autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
+        now(),
+        id,
+      );
+    if (patch.blockedBy) {
+      const changed = new Set([...card.blockedBy, ...patch.blockedBy]);
+      this.storeBlockers(id, patch.blockedBy);
+      for (const blocker of changed) this.changed(blocker);
+    }
     return this.changed(id);
+  }
+
+  /** The cards that must be done before `id`, in the order the person set them. */
+  private blockersOf(id: string): string[] {
+    return this.db
+      .query<{ blocker_id: string }, [string]>(
+        "SELECT blocker_id FROM card_blockers WHERE card_id = ? ORDER BY position",
+      )
+      .all(id)
+      .map((row) => row.blocker_id);
+  }
+
+  /** The cards `id` holds up. */
+  private blockingOf(id: string): string[] {
+    return this.db
+      .query<{ card_id: string }, [string]>(
+        "SELECT card_id FROM card_blockers WHERE blocker_id = ? ORDER BY rowid",
+      )
+      .all(id)
+      .map((row) => row.card_id);
+  }
+
+  /**
+   * Refuses a set of blockers before anything is written: a card that is not there, one of
+   * another project, too many, or a cycle (`id` is `null` for a card not made yet, which cannot
+   * be in one).
+   */
+  private checkBlockers(id: string | null, projectId: string, blockers: readonly string[]): void {
+    if (blockers.length > MAX_BLOCKERS) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `a card has at most ${MAX_BLOCKERS} blockers`,
+        "blocker_limit",
+        { max: MAX_BLOCKERS },
+      );
+    }
+    for (const blocker of blockers) {
+      if (this.getCard(blocker).projectId !== projectId) {
+        throw new FlightdeckError(
+          "invalid_state",
+          `card ${blocker} is in another project`,
+          "blocker_other_project",
+        );
+      }
+    }
+    if (id === null) return;
+    // The stored links, except the ones this card is about to replace.
+    const stored = (of: string) => (of === id ? [] : this.blockersOf(of));
+    for (const blocker of blockers) {
+      const path = cyclePath(id, blocker, stored);
+      if (path) {
+        const cycle = path.map((card) => this.getCard(card).title).join(" → ");
+        throw new FlightdeckError("invalid_state", `a cycle: ${cycle}`, "blocker_cycle", {
+          cycle,
+        });
+      }
+    }
+  }
+
+  /** Replaces the blockers of `id` with `blockers`, in that order. */
+  private storeBlockers(id: string, blockers: readonly string[]): void {
+    this.db.transaction(() => {
+      this.db.query("DELETE FROM card_blockers WHERE card_id = ?").run(id);
+      const insert = this.db.query(
+        "INSERT INTO card_blockers (card_id, blocker_id, position) VALUES (?, ?, ?)",
+      );
+      for (const [position, blocker] of blockers.entries()) insert.run(id, blocker, position);
+    })();
   }
 
   /** The project with its five columns, each with its cards by position. */
@@ -1348,10 +1457,19 @@ export class Board {
     if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
     const last = this.getCard(id);
     this.workflows.forget(id);
+    const holdingUp = this.blockingOf(id);
+    const heldBy = this.blockersOf(id);
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
     const discarded = { ...last, worktreePath: null, branch: null, discarded: true };
     this.emit(discarded);
+    // A card that is gone can never be done: the cards it held up are free of it.
+    const notice = `Blocker "${last.title}" was discarded and no longer blocks this card.`;
+    for (const dependent of holdingUp) {
+      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, dependent);
+      this.changed(dependent);
+    }
+    for (const blocker of heldBy) this.changed(blocker);
     return discarded;
   }
 
