@@ -51,11 +51,15 @@ async function openSession(language = "pt-BR") {
 describe("personas-ui: applying a persona to an open session", () => {
   test("the screen says how the instruction went: sent, queued behind a pending request, or sent to the terminal", async () => {
     const { store, sessionId } = await openSession();
-    await settle(() => options("Aplicar persona").length > 1);
+    await click("Persona");
+    await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
     await act(async () => {
-      fireEvent.change(screen.queryByLabelText("Aplicar persona") as HTMLElement, {
-        target: { value: "host:qa" },
-      });
+      fireEvent.change(
+        screen.queryByLabelText("Aplicar nesta sessão (como instrução)") as HTMLElement,
+        {
+          target: { value: "host:qa" },
+        },
+      );
     });
     await click("Aplicar");
     await settle(() => screen.queryByText("Instrução enviada à sessão.") !== null);
@@ -84,11 +88,15 @@ describe("personas-ui: applying a persona to an open session", () => {
 
   test("the same notes in English", async () => {
     const { store } = await openSession("en");
-    await settle(() => options("Apply persona").length > 1);
+    await click("Persona");
+    await settle(() => options("Apply to this session (as an instruction)").length > 1);
     await act(async () => {
-      fireEvent.change(screen.queryByLabelText("Apply persona") as HTMLElement, {
-        target: { value: "host:qa" },
-      });
+      fireEvent.change(
+        screen.queryByLabelText("Apply to this session (as an instruction)") as HTMLElement,
+        {
+          target: { value: "host:qa" },
+        },
+      );
     });
     for (const [delivery, text] of [
       ["sent", "Instruction sent to the session."],
