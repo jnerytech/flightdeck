@@ -42,6 +42,19 @@ describe("persistencia-abas", () => {
     expect(back.tabs.router.current).toEqual(ws.tabs.router.current);
   });
 
+  test("which tab is a preview is kept; a stored tab without the mark is a regular one", () => {
+    const ws = new Workspace();
+    ws.tabs.commit(ws.tabs.activeId);
+    ws.tabs.openPreview(costs);
+    const back = through(ws);
+    expect(back.tabs.tabs.map((tab) => tab.preview)).toEqual([false, true]);
+    const old = Workspace.restore({
+      v: 1,
+      areas: [{ tabs: [{ route: hub, pinned: false }], active: 0 }],
+    });
+    expect(old.tabs.tabs.map((tab) => tab.preview)).toEqual([false]);
+  });
+
   test("only the screen of a tab is kept, not its history", () => {
     const ws = new Workspace();
     ws.router.push(hub);

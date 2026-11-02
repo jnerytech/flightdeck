@@ -229,8 +229,8 @@ describe("abas", () => {
       tabs.pin("t2", true);
       expect(tabs.tabs.find((tab) => tab.id === "t2")?.preview).toBe(false);
       tabs.openPreview(hub);
-      expect(ids()).toEqual(["t2", "t1", "t3"]);
-      expect(routes()).toEqual(["settings", "home", "hub"]);
+      expect(ids()).toEqual(["t2", "t3", "t1"]);
+      expect(routes()).toEqual(["settings", "hub", "home"]);
     });
 
     test("a ctrl/middle click (open next in a new tab) makes a regular tab, not a preview", () => {
