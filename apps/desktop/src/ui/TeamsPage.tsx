@@ -5,11 +5,14 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { PersonaMultiPicker } from "@/components/personas/persona-multi-picker";
+import { PersonaPicker } from "@/components/personas/persona-picker";
+import { AddProject } from "@/components/projects/add-project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useStoreSlice } from "@/lib/use-store";
+import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -18,26 +21,30 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; onCancel(): void }) {
   const { store, hostId } = props;
   const { t } = store.i18n;
-  const projects = store.getState().projects[hostId] ?? [];
+  const state = useStoreState(store);
+  const projects = state.projects[hostId] ?? [];
+  // The host's projects are asked for when the form opens: "none" is only said once it answered.
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    void store.loadProjects(hostId).finally(() => setAsked(true));
+  }, [store, hostId]);
   const [goal, setGoal] = useState("");
   const [name, setName] = useState("");
-  const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
+  const [picked, setProjectId] = useState("");
+  // The first project until another is chosen; a project just added is chosen at once.
+  const projectId = projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
   const [workers, setWorkers] = useState("2");
   const [persona, setPersona] = useState("");
-  /** The workers' personas, comma-separated, in the workers' order. */
-  const [workerPersonas, setWorkerPersonas] = useState("");
+  /** The workers' personas, in the workers' order. */
+  const [personas, setWorkerPersonas] = useState<string[]>([]);
   const create = async () => {
-    const personas = workerPersonas
-      .split(",")
-      .map((p) => p.trim())
-      .filter(Boolean);
     const count = Number.parseInt(workers, 10);
     const team = await store.hostCommand(hostId, "teams.create", {
-      projectId: projectId || (projects[0]?.id ?? ""),
+      projectId,
       goal,
       ...(name.trim() ? { name: name.trim() } : {}),
       workers: Number.isInteger(count) && count > 0 ? count : 1,
-      ...(persona.trim() ? { coordinatorPersona: persona.trim() } : {}),
+      ...(persona ? { coordinatorPersona: persona } : {}),
       ...(personas.length > 0 ? { workerPersonas: personas } : {}),
     });
     if (team) props.onCreated();
@@ -52,21 +59,28 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
       <Field label={t("teamsUi.name")}>
         {(control) => <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />}
       </Field>
-      <Field label={t("teamsUi.project")}>
-        {(control) => (
-          <NativeSelect
-            {...control}
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </NativeSelect>
-        )}
-      </Field>
+      {projects.length === 0 && !asked ? null : projects.length === 0 ? (
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-muted-foreground">{t("teamsUi.noProjects")}</p>
+          <AddProject store={store} hostId={hostId} onAdded={(added) => setProjectId(added.id)} />
+        </div>
+      ) : (
+        <Field label={t("teamsUi.project")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       <Field label={t("teamsUi.workers")}>
         {(control) => (
           <Input
@@ -77,24 +91,25 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
           />
         )}
       </Field>
-      <Field label={t("teamsUi.coordinatorPersona")}>
-        {(control) => (
-          <Input {...control} value={persona} onChange={(e) => setPersona(e.target.value)} />
-        )}
-      </Field>
-      <Field label={t("teamsUi.workerPersonas")}>
-        {(control) => (
-          <Input
-            {...control}
-            value={workerPersonas}
-            onChange={(e) => setWorkerPersonas(e.target.value)}
-          />
-        )}
-      </Field>
+      <PersonaPicker
+        store={store}
+        hostId={hostId}
+        label={t("teamsUi.coordinatorPersona")}
+        value={persona}
+        onChange={setPersona}
+        idsOnly
+      />
+      <PersonaMultiPicker
+        store={store}
+        hostId={hostId}
+        label={t("teamsUi.workerPersonas")}
+        value={personas}
+        onChange={setWorkerPersonas}
+      />
       <div className="flex gap-2">
         <ActionButton
-          disabled={!goal.trim()}
-          disabledReason={t("teamsUi.goalNeeded")}
+          disabled={!goal.trim() || !projectId}
+          disabledReason={t(goal.trim() ? "teamsUi.projectNeeded" : "teamsUi.goalNeeded")}
           onClick={() => create()}
         >
           {t("teamsUi.create")}
@@ -110,6 +125,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
 /** One member: its role, persona, state, card and last report, and the persona to switch to. */
 function Member(props: {
   store: AppStore;
+  hostId: string;
   member: TeamMember;
   report: { text: string; at: string } | null;
   open: boolean;
@@ -141,11 +157,13 @@ function Member(props: {
       )}
       {props.open && (
         <div className="flex flex-wrap items-center gap-1">
-          <Input
-            aria-label={t("teamsUi.persona", { name: member.name })}
+          <PersonaPicker
+            store={store}
+            hostId={props.hostId}
+            label={t("teamsUi.persona", { name: member.name })}
             value={persona}
-            onChange={(e) => setPersona(e.target.value)}
-            className="h-7 w-40"
+            onChange={setPersona}
+            idsOnly
           />
           <Button
             variant="ghost"
@@ -211,6 +229,7 @@ function Team(props: {
           <Member
             key={member.name}
             store={store}
+            hostId={hostId}
             member={member}
             report={reportOf(member.name)}
             open={open}
