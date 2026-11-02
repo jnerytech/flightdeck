@@ -126,7 +126,7 @@ describe("custos-ui", () => {
     const rows = [...(region("Por projeto")?.querySelectorAll("tbody tr") ?? [])].map(
       (r) => r.textContent,
     );
-    expect(rows).toEqual(["docs-siteUS$ 2.00", "docs-siteUS$ 1.00"]);
+    expect(rows).toEqual(["b/docs-siteUS$ 2.00", "a/docs-siteUS$ 1.00"]);
     expect(errors.filter((line) => line.includes("same key"))).toEqual([]);
   });
 

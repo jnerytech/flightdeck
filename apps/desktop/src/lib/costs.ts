@@ -43,3 +43,11 @@ export function projectLabel(key: string): string {
   const folder = /^host:[^:]+:(.+)$/.exec(key)?.[1];
   return folder ? basename(folder) : key;
 }
+
+/**
+ * The label of each project key, told apart when two read the same: the host when the hosts
+ * differ (`docs-site · alfa`), else the parent folder (`b/docs-site`), both when neither is enough.
+ */
+export function projectLabels(keys: string[]): Map<string, string> {
+  return new Map(keys.map((key) => [key, projectLabel(key)]));
+}
