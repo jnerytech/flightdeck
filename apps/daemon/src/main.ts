@@ -105,6 +105,7 @@ import { SshImporter } from "./ssh/import.ts";
 import { chooseDelivery, processOps } from "./ssh/key-delivery.ts";
 import { SshTargets } from "./ssh/targets.ts";
 import { EventStore } from "./store/event-store.ts";
+import { SummaryService } from "./summary/service.ts";
 import { Teams } from "./teams/teams.ts";
 import { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStatus } from "./telemetry/otlp-env.ts";
@@ -992,6 +993,7 @@ export async function startDaemon(
       },
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
+    summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),
     budgets,
     quotaHistory,
