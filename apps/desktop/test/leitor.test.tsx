@@ -99,12 +99,13 @@ describe("leitor", () => {
     expect(screen.queryByText("alfa · p")).not.toBeNull();
   });
 
-  test("transcript que não existe mais, ou host sem conexão, vira erro no banner sem quebrar", async () => {
+  test("transcript ainda não indexado não vira erro; host sem conexão vira erro no banner, sem quebrar", async () => {
     const { store } = await setup();
     const hostId = store.getState().hosts[0]?.id ?? "";
     const missing = await store.historyGet(hostId, "sumiu").catch(() => "rejeitou");
     expect(missing).toBeNull();
-    expect(store.getState().error ?? "").toContain("not_found");
+    // Not indexed yet is a normal state (the indexer catches up), not a toast.
+    expect(store.getState().error).toBeNull();
     const unknown = await store.historyGet("host-removido", "x").catch(() => "rejeitou");
     expect(unknown).toBeNull();
     expect(store.getState().error ?? "").toContain("offline");

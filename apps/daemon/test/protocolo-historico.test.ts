@@ -211,7 +211,12 @@ describe("protocolo-historico", () => {
     expect([page3?.prevCursor, page3?.nextCursor]).toEqual(["2", null]);
 
     const missing = await client.request("history.get", { claudeSessionId: "nada" });
-    expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
+    expect(missing).toMatchObject({
+      ok: false,
+      error: { code: "not_found", reason: "transcript_not_indexed", params: { id: "nada" } },
+    });
+    // The detail is for logs and is not in Portuguese; the app says it in its own language.
+    expect(JSON.stringify(missing)).not.toContain("não");
   });
 
   test("history.search pela rede: acerto traz o cursor que abre o leitor nele", async () => {
