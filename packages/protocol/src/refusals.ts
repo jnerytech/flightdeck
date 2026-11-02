@@ -5,6 +5,10 @@
 export const DAEMON_REASONS = [
   "cwd_missing",
   "cwd_outside_roots",
+  "request_invalid",
+  "project_not_found",
+  "persona_unknown",
+  "team_not_found",
   "root_confirm",
   "root_missing",
   "root_system",

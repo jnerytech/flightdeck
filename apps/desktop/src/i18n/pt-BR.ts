@@ -964,6 +964,10 @@ export const ptBR = {
     period_inverted: "O período está invertido: {from} é depois de {to}.",
     feature_off: "Este host não oferece {feature}: atualize o daemon ou confira as configurações.",
     cwd_missing: "A pasta {cwd} não existe neste host.",
+    request_invalid: "O pedido tem um {field} errado ({command}): confira o que foi preenchido.",
+    project_not_found: "O projeto {id} não está neste host: adicione-o antes.",
+    persona_unknown: "A persona {persona} não existe neste host.",
+    team_not_found: "O time {id} não existe neste host.",
     root_confirm: "Adicionar uma pasta permitida precisa da sua confirmação.",
     root_missing: "A pasta {path} não existe neste host.",
     root_system:

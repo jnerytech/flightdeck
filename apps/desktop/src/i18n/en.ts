@@ -966,6 +966,10 @@ export const en: Dictionary = {
     period_inverted: "The period is backwards: {from} is after {to}.",
     feature_off: "This host does not offer {feature}: update the daemon, or check its settings.",
     cwd_missing: "The folder {cwd} does not exist on this host.",
+    request_invalid: "The request has a wrong {field} ({command}): check what was filled in.",
+    project_not_found: "The project {id} is not on this host: add it first.",
+    persona_unknown: "The persona {persona} does not exist on this host.",
+    team_not_found: "The team {id} does not exist on this host.",
     root_confirm: "Adding an allowed folder needs your confirmation.",
     root_missing: "The folder {path} does not exist on this host.",
     root_system:
