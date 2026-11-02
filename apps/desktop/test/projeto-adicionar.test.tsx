@@ -13,6 +13,7 @@ const { TContext } = await import("../src/i18n/context.tsx");
 const { AddProject } = await import("../src/components/projects/add-project.tsx");
 const { ProjectsPage } = await import("../src/ui/ProjectsPage.tsx");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
@@ -124,6 +125,41 @@ describe("projeto-adicionar: one add-project flow", () => {
     await click(within(dialog).getByRole("button", { name: "Add" }));
     await settle(() => added.length === 1);
   });
+
+  test("Browse… fills the folder from the picker, and closing the picker keeps what was typed", async () => {
+    const { d, store, hostId } = await online();
+    render(withT(store, <AddProject store={store} hostId={hostId} onAdded={() => {}} />));
+    await click(screen.getByRole("button", { name: "Add project" }));
+    await settle(() => screen.queryByRole("button", { name: "Browse…" }) !== null);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Project folder"), { target: { value: "typed" } });
+    });
+    await click(screen.getByRole("button", { name: "Browse…" }));
+    const picker = () => screen.queryByRole("dialog", { name: "Choose folder" });
+    await settle(() => picker() !== null);
+    await act(async () => {
+      fireEvent.keyDown(picker() as HTMLElement, { key: "Escape" });
+    });
+    await settle(() => picker() === null);
+    expect((screen.getByLabelText("Project folder") as HTMLInputElement).value).toBe("typed");
+    await click(screen.getByRole("button", { name: "Browse…" }));
+    await settle(() => picker() !== null);
+    const root = new RegExp(`^${d.root.split("/").pop()}`);
+    const inPicker = (name: string | RegExp) =>
+      within(picker() as HTMLElement).queryByRole("button", { name });
+    await settle(() => inPicker(root) !== null);
+    await click(inPicker(root));
+    await settle(
+      () =>
+        within(picker() as HTMLElement).queryByRole("button", { name: "Choose this folder" }) !==
+        null,
+    );
+    await click(
+      within(picker() as HTMLElement).getByRole("button", { name: "Choose this folder" }),
+    );
+    await settle(() => picker() === null);
+    expect((screen.getByLabelText("Project folder") as HTMLInputElement).value).toBe(d.root);
+  });
 });
 
 describe("projeto-adicionar: where it is offered", () => {
@@ -198,5 +234,71 @@ describe("projeto-adicionar: where it is offered", () => {
       ),
     );
     await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
+  });
+
+  /** Adds a typed folder through the Add project dialog. */
+  async function addTyped(folder: string) {
+    await click(screen.getByRole("button", { name: "Add project" }));
+    const dialog = screen.getByRole("dialog");
+    await act(async () => {
+      fireEvent.change(within(dialog).getByLabelText("Project folder"), {
+        target: { value: folder },
+      });
+    });
+    await click(within(dialog).getByRole("button", { name: "Add" }));
+  }
+
+  const projectsPage = (store: InstanceType<typeof AppStore>, hostId: string) =>
+    withT(
+      store,
+      <ProjectsPage
+        store={store}
+        hostId={hostId}
+        hostName="alfa"
+        focus="board"
+        onOpenBoard={() => {}}
+        onOpenWorkflows={() => {}}
+        automations={false}
+        onOpenAutomations={() => {}}
+        actions={false}
+        onOpenActions={() => {}}
+        rules={false}
+        agent={false}
+        onOpenAgent={() => {}}
+      />,
+    );
+
+  test("a project added from the empty picker, or beside the others, shows up in its list", async () => {
+    const { d, store, hostId, repo } = await online();
+    render(projectsPage(store, hostId));
+    await settle(() => screen.queryByText("No projects yet.") !== null);
+    await addTyped(repo);
+    await settle(() => screen.queryByRole("button", { name: /Open the board of/ }) !== null);
+    const second = `${d.root}/second`;
+    git(d.root, "init", "-q", "-b", "main", "second");
+    git(second, "config", "commit.gpgsign", "false");
+    git(second, "commit", "-q", "--allow-empty", "-m", "first");
+    await addTyped(second);
+    await settle(() => screen.queryAllByRole("button", { name: /Open the board of/ }).length === 2);
+  });
+
+  test("a project added from a board opens its board", async () => {
+    const { d, store, hostId, repo } = await online();
+    render(<App store={store} />);
+    let projectId = "";
+    await act(async () => {
+      projectId = (await store.hostCommand(hostId, "project.add", { path: repo }))?.id ?? "";
+    });
+    const second = `${d.root}/second`;
+    git(d.root, "init", "-q", "-b", "main", "second");
+    git(second, "config", "commit.gpgsign", "false");
+    git(second, "commit", "-q", "--allow-empty", "-m", "first");
+    await act(async () => store.router.push({ name: "board", host: hostId, projectId }));
+    await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
+    await addTyped(second);
+    await settle(() => {
+      const route = store.router.current;
+      return route.name === "board" && route.projectId !== projectId;
+    });
   });
 });

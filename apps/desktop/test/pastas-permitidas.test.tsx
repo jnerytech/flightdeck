@@ -91,4 +91,17 @@ describe("pastas-permitidas: the allowed folders in the host's settings", () => 
         .map((li) => li.textContent),
     ).toEqual([d.root]);
   });
+
+  test("cancelling the confirmation keeps the folder typed and adds nothing", async () => {
+    const { d, store } = await hostPage();
+    const vault = realTempDir("fd-vault-");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Folder to allow"), { target: { value: vault } });
+    });
+    await click(screen.getByRole("button", { name: "Add to allowed folders" }));
+    await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    expect((screen.getByLabelText("Folder to allow") as HTMLInputElement).value).toBe(vault);
+    expect(store.getState().hosts[0]?.info?.allowedRoots).toEqual([d.root]);
+  });
 });

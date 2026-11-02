@@ -369,6 +369,9 @@ describe("times-ui: the teams of a host", () => {
         group.querySelector(`input[value="${id}"]`)?.closest("label")?.textContent ?? "",
       )?.[1];
     expect([position("revisor"), position("qa")]).toEqual(["1", "2"]);
+    // Unchecking the first one moves the second up.
+    await pickWorkerPersonas("revisor");
+    expect([position("revisor"), position("qa")]).toEqual([undefined, "1"]);
   });
 
   test("a member's persona is switched with a picker of the host's personas", async () => {

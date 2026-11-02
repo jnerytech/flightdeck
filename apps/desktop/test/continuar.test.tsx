@@ -135,4 +135,11 @@ describe("continuar", () => {
     expect(runtime.starts).toEqual([]);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
   });
+
+  test("continuing on a host the app does not know gives no session and tells the person", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    expect(await store.resumeHistory("nenhum", ID, false)).toBeNull();
+    expect(store.getState().notices).toHaveLength(1);
+  });
 });
