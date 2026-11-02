@@ -65,9 +65,6 @@ describe("preparacao", () => {
     expect(failed?.noticeReason).toBe("setup_failed");
     expect(failed?.noticeParams).toMatchObject({ code: 3 });
     expect(String(failed?.noticeParams?.output)).toContain("deu ruim");
-    // The run that ended on it says the same, for the run's own screen.
-    const run = board.workflows.getRun(failed?.runs[0]?.id as string);
-    expect(run.reasonKey).toBe("setup_failed");
     expect(failed?.sessionId).toBeNull();
     expect(failed?.runs[0]?.endedAt).not.toBeNull();
     expect(manager.list()).toEqual([]);

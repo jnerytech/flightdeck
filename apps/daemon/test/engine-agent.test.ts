@@ -126,6 +126,9 @@ describe("engine-agent", () => {
     await start({ task: "x" });
     const run = await runWhen((r) => r.status === "failed");
     expect(run?.statusReason ?? "").toStartWith("setup script failed (exit 3)");
+    // The run's screen tells it in the app's language from the reason.
+    expect(run?.reasonKey).toBe("setup_failed");
+    expect(run?.reasonParams).toMatchObject({ code: 3 });
     expect(manager.list()).toEqual([]);
     expect(board.getCard(card.id).column).toBe("waiting");
   });
