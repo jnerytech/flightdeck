@@ -37,6 +37,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Ciclo do card](#ciclo-do-card)
   - [Provedores de PR](#provedores-de-pr)
   - [Limite de execuções paralelas](#limite-de-execuções-paralelas)
+  - [Dependências entre cards](#dependências-entre-cards)
 - [Revisão de mudanças](#revisão-de-mudanças)
   - [`.worktreeinclude`](#worktreeinclude)
   - [Statusline do Claude Code](#statusline-do-claude-code)
@@ -608,6 +609,42 @@ interrompida ou fica ociosa.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+### Dependências entre cards
+
+Um card pode ser **bloqueado por** outros cards do mesmo projeto, e a ordem que você guardava de
+cabeça fica no board. Abra o card e vá em **Bloqueado por**:
+
+- **Adicionar bloqueio** escolhe entre os cards do projeto; um card que fecharia um ciclo (já espera,
+  direta ou indiretamente, por este) não é oferecido, e o daemon também recusa. Um card tem no
+  máximo 20 bloqueios.
+- Um bloqueio está satisfeito quando o card dele está em **Concluído** (um PR mesclado o leva para
+  lá, e o Concluir também) ou, se você escolher "com o PR mesclado", quando o PR dele foi mesclado.
+  A escolha é de cada card bloqueado.
+- O board mostra **Bloqueado · N** num card que ainda espera (passe o mouse para ver os títulos),
+  **Bloqueando N** num card que segura outros e **Desbloqueado** num card cujo último bloqueio
+  acabou de terminar. O botão **Bloqueados** nos filtros do board deixa só os cards que esperam. O
+  detalhe lista os bloqueios com a coluna e o estado do PR, e a cadeia atrás deles até três níveis
+  ("e mais 2").
+- **Iniciar** num card bloqueado é recusado com uma frase que nomeia os bloqueios. Nada inicia um
+  card bloqueado: nem Iniciar, nem a arena, nem a ferramenta do `flightdeckd mcp` do Claude. Mover
+  o card à mão não é bloqueado: move um marcador e não inicia nada, e é o jeito de passar por cima
+  do plano. A execução de ajuste de um PR (fase 22) nunca é segurada, porque o PR já existe.
+- Com **Iniciar sozinho quando liberar**, o card inicia quando o último bloqueio fica satisfeito,
+  pela fila normal (vagas, cota e orçamentos continuam valendo), com o workflow escolhido ali, se
+  houver. Sem isso o card ganha a marca **Desbloqueado** e o desktop avisa; a marca some quando
+  você inicia o card ou a dispensa. Um card inicia sozinho uma vez só, também depois de reiniciar o
+  daemon.
+- Um bloqueio **descartado** sai da lista na hora, com um aviso no card, e o card fica liberado:
+  nunca fica preso a um card que não existe mais.
+- Um card que esperou por bloqueios parte da branch base **como ela está depois que eles foram
+  mesclados**: o daemon roda `git fetch origin <base>` e cria a worktree a partir de `origin/<base>`
+  quando a base local está atrás dela (um PR mesclado no remoto), e a partir da base local nos
+  outros casos (um merge local já a moveu). Ele nunca mexe na sua branch base local. Se o fetch
+  falhar, o card avisa e a execução parte da base local.
+
+As dependências ficam dentro de um projeto: entre projetos o vínculo seria um lembrete, não uma
+ordem de construção, porque a sessão parte da branch mesclada do bloqueio.
 
 ## Revisão de mudanças
 

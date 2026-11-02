@@ -81,11 +81,14 @@ sessões num lugar só, sem abrir cada máquina.
   seletor que filtra sessões, board, custos, orçamentos, conversas e o cofre, a soma de custos e do
   limite mensal por cliente e padrões (persona, snippets, tag do cofre) que nunca escondem uma
   aprovação.
-- Resumo da sessão e webhooks: um resumo curto de uma sessão de terminal (o que foi pedido e feito,
+- Resumo da sessão e webhooks: um resumo curto de uma sessão (o que foi pedido e feito,
   os arquivos, o custo, a pergunta em aberto), montado do transcript sem chamar modelo, e alvos de
   webhook (Slack, Discord ou um endereço JSON assinado) avisados quando uma sessão precisa de você,
   termina ou falha, um limiar de orçamento é cruzado ou a vigia de um PR precisa de você. Os
   endereços ficam no cofre.
+- Dependências entre cards: um card pode ser bloqueado por outros cards do projeto; um card
+  bloqueado não inicia (e diz por quê) e pode iniciar sozinho quando os bloqueios terminam ou são
+  mesclados.
 - Busca no histórico de todos os hosts, inclusive de sessões que não nasceram no Flightdeck.
 - Revisão do que uma sessão ou um card mudou: comente linhas do diff e envie a revisão ao agente,
   reverta ou edite arquivos, leve os comentários do PR ao agente e faça o merge local do card.

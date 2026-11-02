@@ -86,8 +86,6 @@ One check in the board's start path (`startCard`, and so `startArena`, `card.sta
 automation action and a workflow step that starts a card). It throws `invalid_state` with `reason: "card_blocked"` and
 `params: { blockers: "<titles>" }`. Nothing else starts a card, so nothing can skip it. The app translates the reason
 (`daemonRefusal.card_blocked`, both languages) and the Start button shows the sentence, not only a disabled state.
-An automation or workflow that hits it records a skipped start in its own log with the same sentence; it does not retry
-and does not fail the whole run.
 
 `card.move` is not gated: moving a blocked card to *In progress* by hand moves a pin, it starts nothing. Moving a card to
 Done by hand does satisfy the cards it blocks.
@@ -118,8 +116,9 @@ Done by hand does satisfy the cards it blocks.
 
 ### What the other features do
 
-- **Automations** (Phase 23) and **workflows** (Phase 6): see "Where the gate is". Neither can start a blocked card, and
-  neither needs to know about dependencies.
+- **Automations** (Phase 23), **teams** and **workflows** (Phase 6): see "Where the gate is". They only start a card
+  they made, which has no blockers, so none of them needs to know about dependencies (a test lists every caller of
+  `startCard` so a new one is checked).
 - **Queue and budgets:** a blocked card is not queued (it has no run). `queueReason` stays slot, quota or budget, for
   cards that are not blocked.
 - **Arena** (Phase 13): variants have no blockers of their own; the arena's parent card is gated.
@@ -135,7 +134,6 @@ Done by hand does satisfy the cards it blocks.
 | `deps-autostart` | the last blocker satisfied starts the card once through the queue (slots, quota and budget respected); a card with auto-start off gets `unblockedAt` and a notification; a restart evaluates cards whose blocker finished while down, once; dismissing clears the mark |
 | `deps-base` | a card with blockers fetches `origin/<base>` and starts from it when the local base is behind (PR merged on the remote), so the blocker's file is in the new worktree; from the local base after a local merge; a failed fetch is a notice and the run still starts; a card with no blockers does not fetch; the local base branch is never moved (real git, a bare `origin` in the test) |
 | `deps-protocol` | the new `Card` fields default and an older daemon's card still parses; `card.create`/`card.update` carry them; `deps` in `HostInfo.features` |
-| `deps-automations` | an automation that starts a blocked card is skipped with the sentence in its log, not failed and not retried; a workflow run that cannot start its card says why |
 | `deps-ui` | the badge, the chip, the unblocked mark, the detail section (add, remove, picker without cycle choices, `done`/`merged`, auto-start with workflow), the refusal sentence on Start, the Blocked filter, an old host without `deps`; both languages, both themes; axe clean |
 
 A smoke, `smoke:deps` (printing `SMOKE DEPS OK`): a real daemon over WebSocket with the fake claude creates two cards,

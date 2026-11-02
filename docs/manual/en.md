@@ -37,6 +37,7 @@ are written in Portuguese.
   - [Card lifecycle](#card-lifecycle)
   - [PR providers](#pr-providers)
   - [Parallel run limit](#parallel-run-limit)
+  - [Card dependencies](#card-dependencies)
 - [Reviewing changes](#reviewing-changes)
   - [`.worktreeinclude`](#worktreeinclude)
   - [Claude Code statusline](#claude-code-statusline)
@@ -627,6 +628,40 @@ interrupted or goes idle.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+### Card dependencies
+
+A card can be **blocked by** other cards of the same project, so an order you keep in your head is
+on the board. Open the card, then **Blocked by**:
+
+- **Add a blocker** picks from the project's cards; a card that would close a cycle (it already
+  waits, directly or down the chain, for this one) is not offered, and the daemon refuses it too.
+  A card has at most 20 blockers.
+- A blocker is satisfied when its card is in **Done** (a merged PR moves it there, so does
+  Complete), or, if you choose "merged", when its PR is merged. The choice is per blocked card.
+- The board shows **Blocked · N** on a card that still waits (hover for the titles), **Blocking N**
+  on a card that holds others up, and **Unblocked** on a card whose last blocker just finished.
+  The **Blocked** toggle in the board's filters keeps only the cards that wait. The detail lists the
+  blockers with their column and PR state, and the chain behind them to three levels ("and 2 more").
+- **Start** on a blocked card is refused with a sentence that names the blockers. Nothing starts a
+  blocked card: not Start, not the arena, not Claude's `flightdeckd mcp` tool. Moving a card by hand
+  is not blocked: it moves a pin and starts nothing, and it is how you override the plan. A PR fix run
+  (phase 22) is never held back, since its PR exists already.
+- With **Start by itself when unblocked**, the card starts when its last blocker is satisfied,
+  through the normal queue (slots, quota and budgets still apply), with the workflow you chose
+  there, if any. Without it the card gets the **Unblocked** mark and the desktop notifies you; the
+  mark goes when you start the card or dismiss it. A card starts by itself once, also after a
+  daemon restart.
+- A blocker that is **discarded** leaves the list at once, with a notice on the card, and the card
+  is unblocked: it is never held by a card that is gone.
+- A card that waited for blockers starts from the base branch **as it is after they merged**: the
+  daemon runs `git fetch origin <base>` and starts the worktree from `origin/<base>` when the local
+  base is behind it (a PR merged on the remote), and from the local base otherwise (a local merge
+  already moved it). It never moves your local base branch. If the fetch fails, the card says so and
+  the run starts from the local base.
+
+Dependencies are inside one project: across projects the link would be a reminder, not a build order,
+because a session builds on the merged branch of its blocker.
 
 ## Reviewing changes
 
