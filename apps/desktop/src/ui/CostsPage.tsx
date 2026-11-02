@@ -45,14 +45,18 @@ const tokensOf = (t: CostsSummary["totals"]["tokens"]) =>
   t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
 
 /** A breakdown as a two-column table. */
-function Breakdown(props: { name: string; rows: Array<{ label: string; costUsd: number }> }) {
+function Breakdown(props: {
+  name: string;
+  /** `id` tells rows apart when two share a label (two projects in folders of the same name). */
+  rows: Array<{ id?: string; label: string; costUsd: number }>;
+}) {
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>
         <table className="w-full text-left text-sm tabular-nums">
           <tbody>
             {props.rows.map((row) => (
-              <tr key={row.label} className="border-t first:border-t-0">
+              <tr key={row.id ?? row.label} className="border-t first:border-t-0">
                 <td className="py-1">{row.label}</td>
                 <td className="py-1 text-right">{usd(row.costUsd)}</td>
               </tr>
@@ -401,6 +405,7 @@ export const CostsPage = memo(function CostsPage(props: {
               <Breakdown
                 name={t("costsUi.byProject")}
                 rows={summary.byProject.map((p) => ({
+                  id: p.projectKey,
                   label: projectLabel(p.projectKey),
                   costUsd: p.costUsd,
                 }))}
