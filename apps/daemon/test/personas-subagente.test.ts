@@ -201,9 +201,15 @@ async function terminalHost(personas: Personas | null, root: string) {
 }
 
 describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
-  async function run(args: string[], host: { file: string }, cwd?: string) {
+  async function run(
+    args: string[],
+    host: { file: string },
+    cwd?: string,
+    platform?: NodeJS.Platform,
+  ) {
     const exit = { code: null as number | null };
     await runCli(["claude", ...args], {
+      ...(platform ? { platform } : {}),
       env: { ...process.env, FLIGHTDECK_CONFIG: host.file },
       log: { log: () => {}, error: () => {} },
       exit: (c) => {
@@ -237,6 +243,32 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     expect(start?.agentsInline).toBe(true);
     expect(Object.keys(start?.agents ?? {})).toContain("persona-revisor");
     expect(start?.agents?.["persona-revisor"]?.description).toMatch(/Revisa legibilidade/);
+  });
+
+  test("on Windows the inline JSON holds no character that cmd.exe would run (a claude.cmd shim reads %*), and says the same", async () => {
+    const { root, project, personas } = setup();
+    const body = "Run a & b | c > d < e ^ f (g) 100% done!";
+    personas.save({ scope: "host", persona: { ...SECURITY, id: "shell", body } });
+    const host = await terminalHost(personas, root);
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    expect(await run([], host, project, "win32")).toBe(0);
+    const [start] = startsOf(fake);
+    const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
+    expect(value).not.toMatch(/[&|<>^()%!]/);
+    expect(start?.agents?.["persona-shell"]?.prompt).toContain(body);
+  });
+
+  test("elsewhere the inline JSON is left as it is", async () => {
+    const { root, project, personas } = setup();
+    personas.save({ scope: "host", persona: { ...SECURITY, id: "shell", body: "a & b" } });
+    const host = await terminalHost(personas, root);
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    expect(await run([], host, project, "linux")).toBe(0);
+    const [start] = startsOf(fake);
+    const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
+    expect(value).toContain("a & b");
   });
 
   test("print mode keeps the file, which exists while claude runs and is gone after", async () => {
