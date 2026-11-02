@@ -277,6 +277,7 @@ export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
   | `runenv.${string}`
+  | "roots.add"
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
@@ -443,6 +444,8 @@ export interface Notice {
   params?: Record<string, string | number>;
   /** The host the refusal came from, when it came from one. */
   hostId?: string;
+  /** Runs the refused action again (after the person fixed what it needed). */
+  retry?: () => void;
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
@@ -1251,7 +1254,7 @@ export class AppStore {
     try {
       return await this.dispatch(hostId, type, payload);
     } catch (error) {
-      this.fail(error);
+      this.fail(error, undefined, () => void this.hostCommand(hostId, type, payload));
       return null;
     }
   }
@@ -1557,7 +1560,17 @@ export class AppStore {
   }
 
   /** Adds a folder to a host's allowed folders; `retry` runs once the host has accepted it. */
-  async allowRoot(_hostId: string, _folder: string, _retry?: () => void): Promise<boolean> {
+  async allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
+    const result = await this.hostCommand(hostId, "roots.add", { path: folder, confirm: true });
+    if (!result) return false;
+    const conn = this.connections.get(hostId);
+    if (conn?.info) conn.info = { ...conn.info, allowedRoots: result.allowedRoots };
+    this.updateHost(hostId, (h) =>
+      h.info ? { ...h, info: { ...h.info, allowedRoots: result.allowedRoots } } : h,
+    );
+    const host = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+    this.success(this.i18n.t("toast.rootAdded", { folder, host }));
+    retry?.();
     return true;
   }
 
@@ -1570,7 +1583,7 @@ export class AppStore {
    * A host's error: a toast titled by its code, with the daemon's message as the detail. `text`
    * replaces the old one-line form kept in `error` (and the detail of a codeless one).
    */
-  private fail(error: unknown, text?: string): void {
+  private fail(error: unknown, text?: string, retry?: () => void): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
@@ -1578,6 +1591,8 @@ export class AppStore {
       notice.reason = error.reason;
       notice.params = error.params ?? {};
     }
+    if (error instanceof RequestError && error.hostId) notice.hostId = error.hostId;
+    if (retry) notice.retry = retry;
     this.update({
       error: text ?? describeError(error),
       notices: [...this.state.notices, notice],
@@ -1601,7 +1616,7 @@ export class AppStore {
       this.router.push({ name: "session", host: hostId, id: sessionId });
       return sessionId;
     } catch (error) {
-      this.fail(error);
+      this.fail(error, undefined, () => void this.createSession(hostId, payload));
       return null;
     }
   }
@@ -1760,6 +1775,7 @@ export class AppStore {
       url: config.url,
       token,
       clientName: "flightdeck-desktop",
+      hostId: config.id,
       ...(this.options.baseDelayMs !== undefined ? { baseDelayMs: this.options.baseDelayMs } : {}),
       ...(this.options.maxDelayMs !== undefined ? { maxDelayMs: this.options.maxDelayMs } : {}),
       lastSeqFor: (sessionId) =>

@@ -7,11 +7,16 @@ export const ERROR_TOAST_MS = 10_000;
 /** What a toast offers beside Close, when its refusal has a way out in the app. */
 export type NoticeAction = { type: "allow-root"; hostId: string; folder: string };
 
-export function noticeAction(_notice: Notice): NoticeAction | null {
-  return null;
+export function noticeAction(notice: Notice): NoticeAction | null {
+  const folder = notice.params?.cwd;
+  if (notice.reason !== "cwd_outside_roots" || !notice.hostId || typeof folder !== "string") {
+    return null;
+  }
+  return { type: "allow-root", hostId: notice.hostId, folder };
 }
 
 /** Milliseconds until a toast closes itself; `Infinity` for one that waits to be acted on. */
-export function noticeLifetime(_notice: Notice): number {
-  return 1;
+export function noticeLifetime(notice: Notice): number {
+  if (notice.kind === "success") return SUCCESS_TOAST_MS;
+  return noticeAction(notice) ? Number.POSITIVE_INFINITY : ERROR_TOAST_MS;
 }

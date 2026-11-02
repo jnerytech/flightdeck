@@ -134,6 +134,8 @@ export function daemon(
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
+  // One list for every service, as in the daemon: `roots.add` grows it for all of them.
+  const roots = [root];
   const project = join(root, "p");
   mkdirSync(project);
   const store = new EventStore(":memory:");
@@ -141,7 +143,7 @@ export function daemon(
   const terminals = options.terminals
     ? new TerminalManager({
         pty: ptys.factory,
-        allowedRoots: [root],
+        allowedRoots: roots,
         platform: "linux",
         enabled: options.terminals !== "off",
         claude: { self: ["flightdeckd"], configFile: join(root, "config.json") },
@@ -164,7 +166,7 @@ export function daemon(
   const personaStore = options.personas
     ? new Personas({
         db: store.db,
-        allowedRoots: [root],
+        allowedRoots: roots,
         scanner: new SecretScanner(),
         pack: packPersonas,
         // Published personas go through phase 12's agent editor, as main.ts wires it.
@@ -189,7 +191,7 @@ export function daemon(
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
     runtime,
-    allowedRoots: [root],
+    allowedRoots: roots,
     defaultPermissionMode: "default",
     allowApiKey: options.allowApiKey ?? false,
     baseEnv: options.baseEnv ?? {},
@@ -213,7 +215,7 @@ export function daemon(
   const plugins = options.plugins
     ? new Plugins({ cli: claudeCli(), pins: filePins(join(root, "plugin-pins.json")) })
     : undefined;
-  const board = new Board({ db: store.db, manager, allowedRoots: [root], quota });
+  const board = new Board({ db: store.db, manager, allowedRoots: roots, quota });
   cleanups.push(() => board.stop());
   const runHost = options.runenv ? fakeRunHost() : undefined;
   const runConfigs = new RunConfigs({ db: store.db });
@@ -286,7 +288,7 @@ export function daemon(
   if (actions) cleanups.push(() => actions.stop());
   const snippetScanner = new SecretScanner();
   const snippets = options.snippets
-    ? new Snippets({ db: store.db, allowedRoots: [root], scanner: snippetScanner })
+    ? new Snippets({ db: store.db, allowedRoots: roots, scanner: snippetScanner })
     : undefined;
   const snippetHistory =
     snippets && typeof options.snippets === "object" && options.snippets.history
@@ -314,7 +316,7 @@ export function daemon(
         changes,
         review: new ReviewComments({ db: store.db, changes, manager, board, central }),
         sessionFiles: new SessionFiles({ db: store.db }),
-        files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: [root] }),
+        files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: roots }),
       }
     : undefined;
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
@@ -362,7 +364,7 @@ export function daemon(
               manager,
               central,
               exec: spawnExec,
-              allowedRoots: [root],
+              allowedRoots: roots,
             }),
           }
         : {}),
@@ -377,7 +379,7 @@ export function daemon(
       bind: "127.0.0.1",
       port,
       token: TOKEN,
-      allowedRoots: [root],
+      allowedRoots: roots,
     });
     cleanups.push(() => server.stop());
     return server;

@@ -68,6 +68,8 @@ export class RequestError extends Error {
     readonly params?: Record<string, string | number>,
     /** What is wrong in a list the person typed (a vault rule), one item per problem. */
     readonly items?: readonly RuleIssue[],
+    /** The host that refused, when the connection knows its id. */
+    readonly hostId?: string,
   ) {
     super(message);
     this.name = "RequestError";
@@ -78,6 +80,8 @@ export interface HostConnectionOptions {
   url: string;
   token: string;
   clientName: string;
+  /** The id of the host this connection belongs to: its refusals carry it. */
+  hostId?: string;
   /** Called for every session event received (live or replayed). */
   onEvent(envelope: EventEnvelope): void;
   onStatus(status: ConnectionStatus): void;
@@ -261,7 +265,7 @@ export class HostConnection {
       if (message.ok) pending?.resolve(message.data);
       else {
         const { code, message: text, reason, params, items } = message.error;
-        pending?.reject(new RequestError(code, text, reason, params, items));
+        pending?.reject(new RequestError(code, text, reason, params, items, this.opts.hostId));
       }
     });
     ws.addEventListener("close", (event) => this.onClose(ws, event.code));
