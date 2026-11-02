@@ -93,7 +93,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
-import { createPrompt, installStableBinary, runSetup } from "./setup.ts";
+import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { Snippets } from "./snippets/store.ts";
@@ -116,6 +116,7 @@ import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
 import {
+  binaryVersion,
   requestShutdown,
   runUpdate,
   type StopDeps,
@@ -1243,11 +1244,39 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
         const placed = installStableBinary(self, stable, base.platform);
         if (placed === "source") return false;
         command = [stable];
-        deps.log.log(
-          placed === "kept"
-            ? `${stable} already exists and stays (update replaces it)`
-            : `flightdeckd at ${stable}`,
-        );
+        let running = DAEMON_VERSION;
+        if (placed === "kept") {
+          const probe = deps.binaryVersion ?? ((bin: string) => binaryVersion(bin, 10_000));
+          const result = await reconcileStableBinary({
+            self: self[0] as string,
+            stable,
+            selfVersion: DAEMON_VERSION,
+            stableVersion: () => probe(stable),
+            stopService: async () => {
+              if ((await stopInstalledDaemon(install(), ctxOf(false), deps)) === false) {
+                throw new Error(
+                  `the daemon of the service still runs ${stable}: stop it and run setup again`,
+                );
+              }
+            },
+          });
+          const was = result.stableVersion ?? "unknown version";
+          if (result.outcome === "replaced") {
+            deps.log.log(
+              `replaced ${stable} (${was}) with ${DAEMON_VERSION}; the old one is at ${stable}.old`,
+            );
+          } else if (result.outcome === "same") {
+            deps.log.log(`${stable} is already version ${DAEMON_VERSION} and stays`);
+          } else {
+            running = result.stableVersion as string;
+            deps.log.log(
+              `${stable} is version ${running}, newer than this download (${DAEMON_VERSION}), and stays`,
+            );
+          }
+        } else if (placed === "copied") {
+          deps.log.log(`flightdeckd ${DAEMON_VERSION} copied to ${stable}`);
+        }
+        deps.log.log(`The service will run ${stable} (flightdeckd ${running})`);
         return true;
       },
       addToPath: async () => {

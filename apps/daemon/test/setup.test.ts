@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
+import { acquireLock } from "../src/lock.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
 import { DAEMON_VERSION } from "../src/server.ts";
 import {
@@ -392,12 +393,19 @@ describe("setup command", () => {
   });
 
   /** A download and a stable binary already installed, with the version each one answers. */
-  async function upgrade(stableVersion: string | null, installed = false) {
+  async function upgrade(
+    stableVersion: string | null | "real",
+    installed = false,
+    holdLock = false,
+  ) {
     const h = cliHarness(undefined, {
       installed,
       selfCommand: (dir) => [join(dir, "download", "flightdeckd")],
     });
-    h.deps.binaryVersion = async () => stableVersion;
+    // "real" leaves the probe alone: it runs the stable file, which is not a flightdeckd.
+    if (stableVersion !== "real") h.deps.binaryVersion = async () => stableVersion;
+    if (holdLock) h.deps.serviceStopTimeoutMs = 50;
+    const lock = holdLock ? acquireLock(h.dir) : null;
     mkdirSync(join(h.dir, "download"));
     writeFileSync(join(h.dir, "download", "flightdeckd"), "new");
     mkdirSync(join(h.dir, ".flightdeck", "bin"), { recursive: true });
@@ -407,6 +415,7 @@ describe("setup command", () => {
     mkdirSync(project);
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
+    lock?.release();
     return { ...h, stable, text: h.out.join("\n") };
   }
 
@@ -423,6 +432,18 @@ describe("setup command", () => {
     const h = await upgrade(null);
     expect(readFileSync(h.stable, "utf8")).toBe("new");
     expect(h.text).toContain("unknown version");
+  });
+
+  test("the real probe runs the stable file: one that is not a flightdeckd is replaced", async () => {
+    const h = await upgrade("real");
+    expect(readFileSync(h.stable, "utf8")).toBe("new");
+  });
+
+  test("a daemon that will not stop leaves the stable binary alone and fails with the way out", async () => {
+    const h = await upgrade("0.1.0", true, true);
+    expect(h.exits).toEqual([1]);
+    expect(readFileSync(h.stable, "utf8")).toBe("installed");
+    expect(h.text).toContain("stop it and run setup again");
   });
 
   test("the same version stays and the wizard says so", async () => {

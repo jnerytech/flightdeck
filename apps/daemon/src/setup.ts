@@ -1,6 +1,7 @@
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, posix, resolve, win32 } from "node:path";
 import { loadConfig, updateConfigFile } from "./config.ts";
+import { compareVersions, swapBinary } from "./update.ts";
 
 export interface SetupDeps {
   /** Free-text question; an empty answer means "nothing". */
@@ -217,7 +218,15 @@ export interface ReconcileOptions {
  * is replaced, keeping it as `.old`; the same version or a newer one stays.
  */
 export async function reconcileStableBinary(
-  _options: ReconcileOptions,
+  options: ReconcileOptions,
 ): Promise<{ outcome: "replaced" | "same" | "newer"; stableVersion: string | null }> {
-  return { outcome: "same", stableVersion: null };
+  const stableVersion = await options.stableVersion();
+  if (stableVersion !== null) {
+    const order = compareVersions(stableVersion, options.selfVersion);
+    if (order === 0) return { outcome: "same", stableVersion };
+    if (order > 0) return { outcome: "newer", stableVersion };
+  }
+  await options.stopService();
+  swapBinary(options.self, options.stable);
+  return { outcome: "replaced", stableVersion };
 }
