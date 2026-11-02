@@ -113,6 +113,9 @@ describe("personas-ui: applying a persona to an open session", () => {
 
   test("Aplicar persona sends the role message, says it is a conversation instruction, and Voltar ao normal leaves it", async () => {
     const { d, sessionId } = await openSession();
+    // One control in the header; the picker and its buttons open from it.
+    expect(screen.queryByLabelText("Aplicar persona")).toBeNull();
+    await click("Aplicar persona");
     await settle(() => options("Aplicar persona").length > 1);
     expect(options("Aplicar persona")).toContain("QA / testes");
     // An open session keeps its system prompt: the app says so before anything is sent.
@@ -179,10 +182,11 @@ describe("personas-ui: applying a persona to an open session", () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-2" });
     });
     await act(() => Bun.sleep(150));
-    expect(screen.queryByLabelText("Aplicar persona")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Aplicar persona" })).toBeNull();
     await act(async () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-1" });
     });
+    await click("Aplicar persona");
     await settle(() => options("Aplicar persona").length > 1);
     expect(options("Aplicar persona")).toContain("QA / testes");
     await act(async () => {
