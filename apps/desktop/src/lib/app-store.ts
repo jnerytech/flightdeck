@@ -1205,7 +1205,10 @@ export class AppStore {
         ...(cursor ? { cursor } : {}),
       });
     } catch (error) {
-      this.fail(error);
+      // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
+      if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
+        this.fail(error);
+      }
       return null;
     }
   }

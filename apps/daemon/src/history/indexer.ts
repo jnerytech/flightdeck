@@ -260,7 +260,12 @@ export class HistoryIndexer {
   } {
     const session = this.session(claudeSessionId);
     if (!session) {
-      throw new FlightdeckError("not_found", `transcript ${claudeSessionId} não indexado`);
+      throw new FlightdeckError(
+        "not_found",
+        `transcript ${claudeSessionId} not indexed`,
+        "transcript_not_indexed",
+        { id: claudeSessionId },
+      );
     }
     const offset = offsetOf(cursor);
     const rows = this.db
