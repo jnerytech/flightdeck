@@ -27,6 +27,7 @@ const line = (value: unknown) => JSON.stringify(value);
 async function online(language: string, options: { legacy?: boolean } = {}) {
   const mem = memoryPlatform(false, language);
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+  store.i18n.start();
   if (options.legacy) {
     const legacy = legacyDaemon(cleanups);
     await act(async () => {

@@ -15,6 +15,7 @@ import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
 import { MessagingRulesSection } from "./MessagingRulesSection.tsx";
+import { WebhooksSection } from "./WebhooksSection.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
 function SettingRow(props: { label: string; children: (id: string) => ReactNode }) {
@@ -237,6 +238,7 @@ export const Settings = memo(function Settings(props: {
               hostName={h.name}
             />
           ))}
+        <WebhooksSection store={props.store} />
       </div>
     </Page>
   );
