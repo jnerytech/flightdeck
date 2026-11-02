@@ -97,7 +97,7 @@ describe("historico: the runs nobody typed", () => {
 });
 
 describe("historico: a session in a folder the host does not allow", () => {
-  async function reader(ctx: Awaited<ReturnType<typeof online>>) {
+  async function reader() {
     // The list hides temp folders: open the session from the search, as a person would.
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
@@ -116,7 +116,7 @@ describe("historico: a session in a folder the host does not allow", () => {
 
   test("both ways to continue are off, with the reason, and the folder can be allowed right there", async () => {
     const vault = realTempDir("fd-vault-");
-    const ctx = await online((d) => transcript(d, 1, vault));
+    await online((d) => transcript(d, 1, vault));
     await reader();
     const cont = screen.getByRole("button", {
       name: "Continue in Flightdeck",
@@ -140,7 +140,7 @@ describe("historico: a session in a folder the host does not allow", () => {
 
   test("a folder that is gone says so, and offers nothing to add", async () => {
     const vault = realTempDir("fd-vault-");
-    const ctx = await online((d) => transcript(d, 1, `${vault}/gone`));
+    await online((d) => transcript(d, 1, `${vault}/gone`));
     await reader();
     expect(
       (screen.getByRole("button", { name: "Continue in Flightdeck" }) as HTMLButtonElement)
@@ -151,7 +151,7 @@ describe("historico: a session in a folder the host does not allow", () => {
   });
 
   test("a folder inside the allowed ones keeps the buttons on", async () => {
-    const ctx = await online((d) => transcript(d, 1, d.project));
+    await online((d) => transcript(d, 1, d.project));
     await reader();
     expect(
       (screen.getByRole("button", { name: "Continue in Flightdeck" }) as HTMLButtonElement)
