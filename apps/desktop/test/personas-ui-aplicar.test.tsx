@@ -114,17 +114,17 @@ describe("personas-ui: applying a persona to an open session", () => {
   test("Aplicar persona sends the role message, says it is a conversation instruction, and Voltar ao normal leaves it", async () => {
     const { d, sessionId } = await openSession();
     // One control in the header; the picker and its buttons open from it.
-    expect(screen.queryByLabelText("Aplicar persona")).toBeNull();
+    expect(screen.queryByLabelText("Aplicar nesta sessão (como instrução)")).toBeNull();
     await click("Persona");
-    await settle(() => options("Aplicar persona").length > 1);
-    expect(options("Aplicar persona")).toContain("QA / testes");
+    await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
+    expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     // An open session keeps its system prompt: the app says so before anything is sent.
     expect(
       screen.queryByText(
         "Numa sessão aberta, a persona vale como instrução da conversa, não do sistema.",
       ),
     ).not.toBeNull();
-    const field = screen.queryByLabelText("Aplicar persona") as HTMLElement;
+    const field = screen.queryByLabelText("Aplicar nesta sessão (como instrução)") as HTMLElement;
     await act(async () => {
       fireEvent.change(field, { target: { value: "host:qa" } });
     });
@@ -187,10 +187,10 @@ describe("personas-ui: applying a persona to an open session", () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-1" });
     });
     await click("Persona");
-    await settle(() => options("Aplicar persona").length > 1);
-    expect(options("Aplicar persona")).toContain("QA / testes");
+    await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
+    expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     await act(async () => {
-      fireEvent.change(screen.queryByLabelText("Aplicar persona") as HTMLElement, {
+      fireEvent.change(screen.queryByLabelText("Aplicar nesta sessão (como instrução)") as HTMLElement, {
         target: { value: "host:qa" },
       });
     });
