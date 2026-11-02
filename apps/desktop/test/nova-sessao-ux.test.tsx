@@ -82,7 +82,8 @@ describe("nova-sessao-ux: the persona chosen is the persona the session is in", 
     await settle(() => screen.queryByRole("button", { name: "Apply" }) !== null);
     expect(screen.queryByRole("button", { name: /^Persona: / })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to normal" })).toBeNull();
-  });
+    // Creating a session and opening its screen chains several waits: the limit guards a hang.
+  }, 15_000);
 });
 
 describe("nova-sessao-ux: the form says what it needs", () => {

@@ -353,8 +353,12 @@ describe("times-ui: the teams of a host", () => {
   test("the workers' personas are a multiple choice of the host's personas, in the order picked", async () => {
     await open();
     await click("Novo time");
+    // The group shows before the host's personas load: wait for its choices, not for the group.
     await settle(
-      () => screen.queryByRole("group", { name: "Personas das executoras (opcional)" }) !== null,
+      () =>
+        (screen
+          .queryByRole("group", { name: "Personas das executoras (opcional)" })
+          ?.querySelectorAll('input[type="checkbox"]').length ?? 0) > 5,
     );
     const group = screen.getByRole("group", { name: "Personas das executoras (opcional)" });
     expect(group.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(5);
