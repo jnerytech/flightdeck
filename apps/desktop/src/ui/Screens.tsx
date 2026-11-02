@@ -32,6 +32,7 @@ import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
+import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
@@ -160,6 +161,11 @@ function ManagedSession(props: {
         session={session}
         actions={store}
         focusRequestId={props.focus}
+        recap={
+          claudeId && (
+            <RecapPanel store={store} hostId={hostId} claudeSessionId={claudeId} stamp={status} />
+          )
+        }
         alwaysAllow={hasFeature(host?.hostInfo?.features, "rules", false)}
         terminal={
           // Only once Claude Code named the session: there is nothing to resume before that.

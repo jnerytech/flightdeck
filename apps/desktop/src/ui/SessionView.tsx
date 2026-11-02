@@ -165,6 +165,8 @@ export function SessionView(props: {
   timeline?: ReactNode;
   /** "Aplicar persona" (phase 20), when the host keeps personas. */
   persona?: ReactNode;
+  /** The session's summary (phase 30), once Claude Code named the session. */
+  recap?: ReactNode;
   /** Estimated cost of the session and its subagents (phase 8); `null` when unknown. */
   costUsd?: number | null;
   /** The app's translator and clock (phase 10); pt-BR and the real clock when absent. */
@@ -262,6 +264,7 @@ export function SessionView(props: {
         }
         extra={props.persona}
       />
+      {props.recap}
       <Timeline ref={timeline}>
         {session.pruned && session.items.length === 0 && (
           <p className="text-muted-foreground text-sm">{t("session.pruned")}</p>
