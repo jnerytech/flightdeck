@@ -181,8 +181,8 @@ describe("projeto-adicionar: where it is offered", () => {
         />,
       ),
     );
-    await settle(() => screen.queryByRole("button", { name: /Open board of/ }) !== null);
-    expect(screen.queryByRole("button", { name: "Add project" })).not.toBeNull();
+    await settle(() => screen.queryByRole("button", { name: /Open the board of/ }) !== null);
+    await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
   });
 
   test("a board with projects has a visible Add project button", async () => {

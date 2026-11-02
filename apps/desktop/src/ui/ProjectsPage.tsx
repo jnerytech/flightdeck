@@ -7,6 +7,7 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
+import { AddProject } from "@/components/projects/add-project";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -150,7 +151,21 @@ export function ProjectsPage(props: {
       <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>
         {loading && <LoadingState label={t("states.loadingProjects")} />}
         {!loading && list?.projects.length === 0 && (
-          <EmptyState title={t("states.emptyProjects")} />
+          <EmptyState
+            icon={FolderGit2}
+            title={t("states.emptyProjects")}
+            action={<AddProject store={store} hostId={hostId} onAdded={() => void reload()} />}
+          />
+        )}
+        {!loading && (list?.projects.length ?? 0) > 0 && (
+          <div>
+            <AddProject
+              store={store}
+              hostId={hostId}
+              variant="outline"
+              onAdded={() => void reload()}
+            />
+          </div>
         )}
         {!loading && hidden && <EmptyState title={t("clients.noneHere")} />}
         <ul aria-label={t("projectsUi.list")} className="flex flex-col">

@@ -637,6 +637,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           onOpenCard={(cardId) =>
             go({ name: "card", host: route.host, projectId: route.projectId, cardId })
           }
+          onOpenProject={(projectId) => go({ name: "board", host: route.host, projectId })}
         />
       );
     case "card":

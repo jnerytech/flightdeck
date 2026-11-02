@@ -6,6 +6,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { AddProject } from "@/components/projects/add-project";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,8 @@ export const BoardView = memo(function BoardView(props: {
   hostId: string;
   projectId: string;
   onOpenCard(cardId: string): void;
+  /** A project was added from here: its board opens. */
+  onOpenProject?(projectId: string): void;
 }) {
   const { store, hostId, projectId } = props;
   const state = useStoreSlice(store, BOARDVIEW_KEYS);
@@ -300,6 +303,12 @@ export const BoardView = memo(function BoardView(props: {
               {t("issuesUi.button")}
             </Button>
           )}
+          <AddProject
+            store={store}
+            hostId={hostId}
+            variant="outline"
+            onAdded={(added) => props.onOpenProject?.(added.id)}
+          />
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />
             {t("kanban.newCard")}
