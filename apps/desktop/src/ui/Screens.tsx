@@ -163,14 +163,14 @@ function ManagedSession(props: {
         session={session}
         actions={store}
         pickPath={(done) =>
-          host ? (
+          host && (
             <FolderPicker
               store={store}
               host={host}
               onPick={(path) => done(path)}
               onClose={() => done(null)}
             />
-          ) : null
+          )
         }
         focusRequestId={props.focus}
         recap={
