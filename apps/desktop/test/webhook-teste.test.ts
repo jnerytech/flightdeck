@@ -102,6 +102,34 @@ describe("webhook-teste", () => {
     expect(requests).toHaveLength(3);
   });
 
+  test("editing the address of a target that stopped on a permanent error lets it try again", async () => {
+    const { webhooks, requests } = setup([
+      { status: 404, retryAfterMs: null },
+      { status: 200, retryAfterMs: null },
+    ]);
+    const target = await add(webhooks);
+    const source = {
+      id: "e1",
+      kind: "needs_you" as const,
+      hostId: "h",
+      hostName: "H",
+      clientId: null,
+      project: null,
+      title: "t",
+      detail: null,
+    };
+    await webhooks.emit(source);
+    await webhooks.idle();
+    await webhooks.edit(target.id, { url: "https://hooks.slack.com/services/NEW" });
+    expect(webhooks.targets.list()[0]).toMatchObject({ status: "new", urlHost: "hooks.slack.com" });
+    await webhooks.emit({ ...source, id: "e2" });
+    await webhooks.idle();
+    expect(requests.map((r) => r.url)).toEqual([
+      "https://hooks.slack.com/services/SECRET",
+      "https://hooks.slack.com/services/NEW",
+    ]);
+  });
+
   test("the sample uses the target's own format and the generic one is signed", async () => {
     const { webhooks, requests } = setup([]);
     const slack = await add(webhooks, "slack");

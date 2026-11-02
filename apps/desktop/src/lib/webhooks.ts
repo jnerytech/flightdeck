@@ -6,7 +6,7 @@ import type { SessionRecap } from "@flightdeck/protocol";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { formatWebhook, type NotifyEvent, type WebhookKind } from "./webhook-format.ts";
 import { type SendResult, WebhookQueue } from "./webhook-queue.ts";
-import { WebhookTargets } from "./webhook-targets.ts";
+import { type WebhookTarget, WebhookTargets } from "./webhook-targets.ts";
 
 /** What the app knows when something happens; the id is the event's identity, so a replay is dropped. */
 export interface WebhookSource {
@@ -138,6 +138,11 @@ export class Webhooks {
     this.targets.record(targetId, { ok, httpStatus: status });
     if (ok) this.queue.unblock(targetId);
     return { ok, httpStatus: status, at };
+  }
+
+  /** Changes a target; a new address or an enable gives a stopped target a fresh start. */
+  async edit(_id: string, _patch: Parameters<WebhookTargets["update"]>[1]): Promise<WebhookTarget> {
+    return {} as WebhookTarget;
   }
 
   async idle(): Promise<void> {
