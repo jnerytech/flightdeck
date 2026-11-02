@@ -39,15 +39,20 @@ export function CardReview(props: {
   const ahead = changes.position?.ahead ?? 0;
   const behind = changes.position?.behind ?? 0;
 
-  const refused = (code: string, message: string) => {
-    const { title, detail } = translateError(code, message, t);
+  const refused = (result: {
+    code: string;
+    message: string;
+    reason?: string;
+    params?: Record<string, string | number>;
+  }) => {
+    const { title, detail } = translateError(result.code, result.message, t, result);
     setRefusal(detail ? `${title} ${detail}` : title);
   };
 
   const update = async () => {
     setRefusal(null);
     const result = await store.hostRequest(hostId, "card.updateFromBase", { cardId: card.id });
-    if (!result.ok) return refused(result.code, result.message);
+    if (!result.ok) return refused(result);
     store.success(t("cardReview.updated"));
     await props.refresh();
   };
@@ -60,7 +65,7 @@ export function CardReview(props: {
       mode,
       confirm: true,
     });
-    if (!result.ok) return refused(result.code, result.message);
+    if (!result.ok) return refused(result);
     store.success(t("cardReview.merged", { base }));
     await props.refresh();
   };
