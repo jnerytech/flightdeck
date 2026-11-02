@@ -2475,6 +2475,11 @@ export const ptBR = {
     installMessage:
       "Gravar os hooks do Flightdeck em {path}? As outras chaves e hooks continuam, e uma cópia vai para settings.json.flightdeck-backup.",
     uninstallMessage: "Remover os hooks do Flightdeck de {path}? As outras entradas continuam.",
+    rootsTitle: "Pastas permitidas",
+    rootsList: "Pastas permitidas deste host",
+    rootsInput: "Pasta a permitir",
+    rootsNeeded: "Digite a pasta a permitir.",
+    rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",
     nameLabel: "Nome do host",
     saveName: "Salvar nome",

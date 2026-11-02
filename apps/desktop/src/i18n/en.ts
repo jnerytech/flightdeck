@@ -2469,6 +2469,11 @@ export const en: Dictionary = {
     installMessage:
       "Write the Flightdeck hooks to {path}? The other keys and hooks stay, and a copy goes to settings.json.flightdeck-backup.",
     uninstallMessage: "Remove the Flightdeck hooks from {path}? The other entries stay.",
+    rootsTitle: "Allowed folders",
+    rootsList: "Allowed folders of this host",
+    rootsInput: "Folder to allow",
+    rootsNeeded: "Type the folder to allow.",
+    rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",
     nameLabel: "Host name",
     saveName: "Save name",
