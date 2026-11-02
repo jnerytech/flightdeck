@@ -128,6 +128,14 @@ interface SessionRow {
   automated: number;
 }
 
+const isDirectory = (path: string): boolean => {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 const trimSlashes = (path: string) => path.replace(/[\\/]+$/, "");
 const offsetOf = (cursor?: string) => Math.max(0, Number.parseInt(cursor ?? "0", 10) || 0);
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -300,7 +308,7 @@ export class HistoryIndexer {
       .all(claudeSessionId, limit + 1, offset) as HistoryMessage[];
     return {
       session,
-      cwdExists: true,
+      cwdExists: isDirectory(session.cwd),
       messages: rows.slice(0, limit),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
       prevCursor: offset > 0 ? String(Math.max(0, offset - limit)) : null,
