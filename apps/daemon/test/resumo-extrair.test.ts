@@ -89,6 +89,11 @@ describe("resumo-extrair", () => {
     expect(summary.files).toEqual(["/r/main.ts"]);
   });
 
+  test("a user turn whose content is neither text nor a list is not a prompt", () => {
+    const summary = run([user(42), user({ odd: true }), user(null), user("the real one")]);
+    expect(summary.asked).toBe("the real one");
+  });
+
   test("a tool result turn is not a prompt", () => {
     const summary = run([
       user([{ type: "tool_result", tool_use_id: "x", content: "ok" }]),
