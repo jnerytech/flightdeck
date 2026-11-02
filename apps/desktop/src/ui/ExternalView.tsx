@@ -42,7 +42,9 @@ export function ExternalView(props: {
   const { store, state, hostId, claudeSessionId: id } = props;
   const key = sessionKey(hostId, id);
   const session = state.externals[key];
-  const title = state.meta[key]?.name ?? basename(session?.cwd ?? id);
+  // Never the raw id: a session just opened has no name and no folder until its first events.
+  const title =
+    state.meta[key]?.name ?? (session?.cwd ? basename(session.cwd) : t("external.untitled"));
   const requests = Object.entries(state.externalRequests)
     .filter(([k, request]) => k.startsWith(`${hostId}/`) && request.claudeSessionId === id)
     .map(([, request]) => request);

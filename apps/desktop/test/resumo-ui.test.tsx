@@ -266,8 +266,10 @@ describe("resumo-ui", () => {
         />
       </TContext.Provider>,
     );
-    const heading = screen.getByRole("heading", { level: 2 });
-    expect(heading.textContent).toBe("New session");
+    // The page header and the transcript reader's own one.
+    for (const heading of screen.getAllByRole("heading", { level: 2 })) {
+      expect(heading.textContent).toBe("New session");
+    }
     expect(document.body.textContent).not.toContain(raw);
   });
 });

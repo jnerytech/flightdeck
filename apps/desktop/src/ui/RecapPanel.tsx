@@ -11,6 +11,8 @@ import { usd } from "../lib/costs.ts";
 import { hasFeature } from "../lib/version.ts";
 
 const HOSTS = ["hosts"] as const;
+/** How long to wait before asking again while the host has no summary for the session. */
+const RETRY_MS = 8000;
 
 /** The rows of a summary as label and text, in the order a person reads them. */
 function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[string, string]> {
@@ -50,22 +52,28 @@ export function RecapPanel(props: {
   retryMs?: number;
 }) {
   const t = useT();
-  const { store, hostId, claudeSessionId, question, stamp } = props;
+  const { store, hostId, claudeSessionId, question, stamp, retryMs = RETRY_MS } = props;
   const host = useStoreSlice(store, HOSTS).hosts.find((h) => h.id === hostId);
   const supported = hasFeature(host?.hostInfo?.features, "summary", false);
   // `undefined` while it loads, `null` when the host has none.
   const [recap, setRecap] = useState<SessionRecap | null | undefined>(undefined);
+  // Bumped to ask again while the host has none yet (its indexer catches up after the first turn).
+  const [attempt, setAttempt] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `stamp` is how a session asks to be read again
   useEffect(() => {
     if (!supported) return;
     let current = true;
-    void store
-      .sessionRecap(hostId, claudeSessionId, question ? { question } : {})
-      .then((got) => current && setRecap(got));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void store.sessionRecap(hostId, claudeSessionId, question ? { question } : {}).then((got) => {
+      if (!current) return;
+      setRecap(got);
+      if (got === null) timer = setTimeout(() => setAttempt((n) => n + 1), retryMs);
+    });
     return () => {
       current = false;
+      clearTimeout(timer);
     };
-  }, [store, hostId, claudeSessionId, question, supported, stamp]);
+  }, [store, hostId, claudeSessionId, question, supported, stamp, attempt, retryMs]);
 
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];

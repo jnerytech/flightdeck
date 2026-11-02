@@ -1199,6 +1199,7 @@ export const ptBR = {
     copy: "Copiar {command}",
   },
   external: {
+    untitled: "Nova sessão",
     line: "{host} · terminal · {state}",
     controllable: "controlável",
     message: "Mensagem para a sessão",
@@ -1616,7 +1617,7 @@ export const ptBR = {
     question: "Pergunta em aberto",
     state: "Estado",
     copy: "Copiar resumo",
-    empty: "Ainda sem resumo.",
+    empty: "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
   },
   webhooks: {
     title: "Webhooks",

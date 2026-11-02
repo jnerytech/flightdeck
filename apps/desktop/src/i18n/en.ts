@@ -1200,6 +1200,7 @@ export const en: Dictionary = {
     copy: "Copy {command}",
   },
   external: {
+    untitled: "New session",
     line: "{host} · terminal · {state}",
     controllable: "controllable",
     message: "Message to the session",
@@ -1617,7 +1618,7 @@ export const en: Dictionary = {
     question: "Open question",
     state: "State",
     copy: "Copy summary",
-    empty: "No summary yet.",
+    empty: "The summary appears after the session's first turn and refreshes by itself.",
   },
   webhooks: {
     title: "Webhooks",

@@ -107,7 +107,7 @@ export function TranscriptReader(props: {
   return (
     <SessionPane>
       <SessionHeader
-        title={session?.title ?? target.claudeSessionId}
+        title={session?.title ?? t("external.untitled")}
         {...(session ? { subtitle: `${props.hostName} · ${basename(session.cwd)}` } : {})}
         {...(session
           ? {
