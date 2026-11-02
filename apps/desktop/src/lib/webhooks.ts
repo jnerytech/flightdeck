@@ -141,8 +141,10 @@ export class Webhooks {
   }
 
   /** Changes a target; a new address or an enable gives a stopped target a fresh start. */
-  async edit(_id: string, _patch: Parameters<WebhookTargets["update"]>[1]): Promise<WebhookTarget> {
-    return {} as WebhookTarget;
+  async edit(id: string, patch: Parameters<WebhookTargets["update"]>[1]): Promise<WebhookTarget> {
+    const target = await this.targets.update(id, patch);
+    if (patch.url !== undefined || patch.enabled === true) this.queue.unblock(id);
+    return target;
   }
 
   async idle(): Promise<void> {
