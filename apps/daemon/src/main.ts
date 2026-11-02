@@ -968,6 +968,7 @@ export async function startDaemon(
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
+    sessionSettings: true,
     messaging,
     names,
     idle,

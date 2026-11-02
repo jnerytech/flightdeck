@@ -92,6 +92,7 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
       port: 0,
       token: TOKEN,
       allowedRoots: [],
+      sessionSettings: true,
     });
     cleanups.push(() => server.stop());
     const client = new FrameClient(server.url);

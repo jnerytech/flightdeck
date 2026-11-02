@@ -133,6 +133,8 @@ export interface ServerOptions {
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
+  /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
+  sessionSettings?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
@@ -394,6 +396,8 @@ export function startServer(opts: ServerOptions): RunningServer {
   const features = [
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
+    // A live managed session takes a new permission mode and model, and announces its slash commands.
+    ...(opts.sessionSettings ? ["session.settings"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -833,6 +837,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
       case "session.interrupt":
         await manager.interrupt(command.payload.sessionId);
+        return ok(command.type);
+      case "session.setMode":
+        await manager.setPermissionMode(command.payload.sessionId, command.payload.permissionMode);
+        return ok(command.type);
+      case "session.setModel":
+        await manager.setModel(command.payload.sessionId, command.payload.model);
         return ok(command.type);
       case "session.close":
         await manager.close(command.payload.sessionId);

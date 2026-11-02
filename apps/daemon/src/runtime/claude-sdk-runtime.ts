@@ -118,6 +118,7 @@ export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
           claudeSessionId: message.session_id,
           model: message.model,
           tools: message.tools,
+          ...(message.slash_commands ? { slashCommands: message.slash_commands } : {}),
         },
       ];
     case "stream_event": {
@@ -316,6 +317,9 @@ export class ClaudeSdkRuntime implements AgentRuntime {
           ...(uuid ? { uuid: uuid as SDKUserMessage["uuid"] } : {}),
         });
       },
+      setPermissionMode: (mode) =>
+        (handle.setPermissionMode as NonNullable<QueryHandle["setPermissionMode"]>)(mode),
+      setModel: (model) => (handle.setModel as NonNullable<QueryHandle["setModel"]>)(model),
       toggleMcpServer: (name, enabled) =>
         (handle.toggleMcpServer as NonNullable<QueryHandle["toggleMcpServer"]>)(name, enabled),
       // Only what the screen shows: the SDK adds server info and configuration.

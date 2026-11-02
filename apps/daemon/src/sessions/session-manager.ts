@@ -600,11 +600,31 @@ export class SessionManager {
     await run.toggleMcpServer(name, enabled);
   }
 
-  /** Changes the permission mode of a live managed session (stub). */
-  async setPermissionMode(_sessionId: string, _mode: PermissionMode): Promise<void> {}
+  /** Changes the permission mode of a live managed session, for its next tool requests. */
+  async setPermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
+    const run = this.live.get(sessionId)?.run;
+    if (!run?.setPermissionMode) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the session is not alive to change its permission mode",
+        "mode_set_not_live",
+      );
+    }
+    await run.setPermissionMode(mode);
+  }
 
-  /** Changes the model of a live managed session (stub). */
-  async setModel(_sessionId: string, _model: string | null): Promise<void> {}
+  /** Changes the model of a live managed session, for its next turn; null is the default. */
+  async setModel(sessionId: string, model: string | null): Promise<void> {
+    const run = this.live.get(sessionId)?.run;
+    if (!run?.setModel) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the session is not alive to change its model",
+        "model_set_not_live",
+      );
+    }
+    await run.setModel(model ?? undefined);
+  }
 
   /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
   async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {

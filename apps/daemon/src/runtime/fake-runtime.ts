@@ -49,11 +49,13 @@ export class FakeRuntime implements AgentRuntime {
     this.delayMs = options.delayMs ?? 10;
     this.rewind = options.rewind;
     this.mcpServers = options.mcpServers ?? [];
+    this.slashCommands = options.slashCommands;
     this.judge = options.judge;
   }
 
   private readonly rewind: FakeRuntimeOptions["rewind"];
   private readonly mcpServers: string[];
+  private readonly slashCommands: string[] | undefined;
   private readonly judge: FakeRuntimeOptions["judge"];
 
   /** MCP servers turned on or off in live runs (phase 12). */
@@ -96,6 +98,9 @@ export class FakeRuntime implements AgentRuntime {
       this.rewind,
       this.mcpToggles,
       this.mcpServers,
+      this.modes,
+      this.models,
+      this.slashCommands,
     );
   }
 }
@@ -116,8 +121,19 @@ class FakeRun implements AgentRun {
     private readonly rewind?: FakeRuntimeOptions["rewind"],
     private readonly toggles: Array<{ name: string; enabled: boolean }> = [],
     private readonly mcpServers: string[] = [],
+    private readonly modes: string[] = [],
+    private readonly models: Array<string | undefined> = [],
+    private readonly slashCommands?: string[],
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
+  }
+
+  async setPermissionMode(mode: string): Promise<void> {
+    this.modes.push(mode);
+  }
+
+  async setModel(model: string | undefined): Promise<void> {
+    this.models.push(model);
   }
 
   async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
@@ -201,6 +217,7 @@ class FakeRun implements AgentRun {
         claudeSessionId: this.claudeSessionId,
         model: this.opts.model ?? "fake-model",
         tools: ["Read", "Write", "Bash"],
+        ...(this.slashCommands ? { slashCommands: this.slashCommands } : {}),
       });
     }
     const windows = [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(
