@@ -1,4 +1,5 @@
 import type { SessionRecap } from "@flightdeck/protocol";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
@@ -13,6 +14,9 @@ import { hasFeature } from "../lib/version.ts";
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
 const RETRY_MS = 8000;
+
+/** The sessions whose summary was shown: it opens the first time and starts collapsed after. */
+const SEEN = new Set<string>();
 
 /** The rows of a summary as label and text, in the order a person reads them. */
 function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[string, string]> {
@@ -75,14 +79,29 @@ export function RecapPanel(props: {
     };
   }, [store, hostId, claudeSessionId, question, supported, stamp, attempt, retryMs]);
 
+  const seenKey = `${hostId}/${claudeSessionId}`;
+  const [open, setOpen] = useState(() => !SEEN.has(seenKey));
+  useEffect(() => {
+    SEEN.add(seenKey);
+  }, [seenKey]);
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
   return (
-    <Panel size="sm" label={t("recap.region")}>
-      {lines.length === 0 ? (
+    <Panel size="sm" label={t("recap.region")} className="shrink-0">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="toggle-start"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+        {t("recap.region")}
+      </Button>
+      {!open ? null : lines.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("recap.empty")}</p>
       ) : (
-        <Stack gap={1}>
+        <Stack gap={1} className="rows-scroll">
           {lines.map(([label, text]) => (
             <p key={label} className="break-words text-sm">
               <span className="text-muted-foreground">{label}</span> {text}
@@ -90,7 +109,7 @@ export function RecapPanel(props: {
           ))}
         </Stack>
       )}
-      {lines.length > 0 && (
+      {open && lines.length > 0 && (
         <div>
           <Button
             variant="outline"

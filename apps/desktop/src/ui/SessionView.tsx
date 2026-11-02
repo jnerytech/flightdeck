@@ -1,5 +1,6 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { memo, type ReactNode, useEffect, useRef, useState } from "react";
+import { ArrowDown } from "lucide-react";
+import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import {
@@ -10,6 +11,7 @@ import {
   Timeline,
 } from "@/components/session/parts";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,9 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
+
+/** How far from the end still counts as being at the end, in pixels. */
+const END_SLACK = 24;
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
@@ -181,6 +186,15 @@ export function SessionView(props: {
   const { focusRequestId } = props;
   const timeline = useRef<HTMLDivElement>(null);
   const cards = props.session.items.length;
+  // Whether the reader is at the end: only then does a new message pull the view down.
+  const following = useRef(!focusRequestId);
+  const [away, setAway] = useState(false);
+  const streaming = props.session.streaming;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new message or token is when the end moves
+  useLayoutEffect(() => {
+    const box = timeline.current;
+    if (box && following.current) box.scrollTop = box.scrollHeight;
+  }, [cards, streaming]);
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
     const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
@@ -266,28 +280,53 @@ export function SessionView(props: {
         extra={props.persona}
       />
       {props.recap}
-      <Timeline ref={timeline}>
-        {session.pruned && session.items.length === 0 && (
-          <p className="text-muted-foreground text-sm">{t("session.pruned")}</p>
+      <div className="pane-fill">
+        <Timeline
+          ref={timeline}
+          onScroll={(e) => {
+            const box = e.currentTarget;
+            const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
+            following.current = atEnd;
+            setAway(!atEnd);
+          }}
+        >
+          {session.pruned && session.items.length === 0 && (
+            <p className="text-muted-foreground text-sm">{t("session.pruned")}</p>
+          )}
+          {session.items.map((item) => (
+            <TimelineItem
+              key={item.seq}
+              item={item}
+              toolResults={session.toolResults}
+              cwd={session.cwd ?? null}
+              actions={actions}
+              alwaysAllow={props.alwaysAllow === true}
+              t={t}
+              nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
+            />
+          ))}
+          {session.streaming && (
+            <Message from="assistant" className="opacity-80">
+              {session.streaming}
+            </Message>
+          )}
+        </Timeline>
+        {away && (
+          <Button
+            size="sm"
+            className="float-end shadow-md"
+            onClick={() => {
+              const box = timeline.current;
+              if (box) box.scrollTop = box.scrollHeight;
+              following.current = true;
+              setAway(false);
+            }}
+          >
+            <ArrowDown aria-hidden="true" />
+            {t("session.jumpLatest")}
+          </Button>
         )}
-        {session.items.map((item) => (
-          <TimelineItem
-            key={item.seq}
-            item={item}
-            toolResults={session.toolResults}
-            cwd={session.cwd ?? null}
-            actions={actions}
-            alwaysAllow={props.alwaysAllow === true}
-            t={t}
-            nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
-          />
-        ))}
-        {session.streaming && (
-          <Message from="assistant" className="opacity-80">
-            {session.streaming}
-          </Message>
-        )}
-      </Timeline>
+      </div>
       <PromptMenu
         prompts={props.prompts}
         text={text}

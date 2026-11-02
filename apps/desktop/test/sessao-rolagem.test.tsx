@@ -61,10 +61,10 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
     rerender(view(4));
     await act(async () => {});
     expect(s.size.top).toBe(1100);
-    expect(screen.queryByRole("button", { name: "Jump to latest" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ir para a última" })).toBeNull();
   });
 
-  test("a new message leaves you where you were reading, and offers Jump to latest", async () => {
+  test("a new message leaves you where you were reading, and offers Ir para a última", async () => {
     const { rerender } = render(view(3));
     const s = scroller({ scroll: 1000, client: 400, top: 100 });
     await act(async () => void fireEvent.scroll(s.el));
@@ -72,11 +72,11 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
     rerender(view(4));
     await act(async () => {});
     expect(s.size.top).toBe(100);
-    const jump = screen.queryByRole("button", { name: "Jump to latest" });
+    const jump = screen.queryByRole("button", { name: "Ir para a última" });
     expect(jump).not.toBeNull();
     await act(async () => void fireEvent.click(jump as HTMLElement));
     expect(s.size.top).toBe(1100);
-    expect(screen.queryByRole("button", { name: "Jump to latest" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ir para a última" })).toBeNull();
   });
 });
 
@@ -88,7 +88,14 @@ describe("sessao-rolagem: the summary does not push the conversation away", () =
       getState: () => state,
       sessionRecap: async () => {
         calls.push("recap");
-        return { asked: "a thing", done: "it", files: [], filesMore: 0, costUsd: null, question: null };
+        return {
+          asked: "a thing",
+          done: "it",
+          files: [],
+          filesMore: 0,
+          costUsd: null,
+          question: null,
+        };
       },
       copyText: async () => {},
     }) as never;
@@ -104,7 +111,7 @@ describe("sessao-rolagem: the summary does not push the conversation away", () =
     mount();
     await act(async () => {});
     expect(screen.queryByText("a thing")).toBeNull();
-    const toggle = screen.queryByRole("button", { name: /Session summary/ });
+    const toggle = screen.queryByRole("button", { name: /Resumo da sessão/ });
     expect(toggle?.getAttribute("aria-expanded")).toBe("false");
     await act(async () => void fireEvent.click(toggle as HTMLElement));
     expect(screen.queryByText("a thing")).not.toBeNull();

@@ -10,7 +10,7 @@ export function SessionHeader(props: {
   extra?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+    <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
       <div className="min-w-0">
         <h2 className="truncate font-semibold text-base">{props.title}</h2>
         {props.subtitle && (
@@ -41,7 +41,11 @@ export const Timeline = forwardRef<
       ref={ref}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls takes focus, so the keyboard reaches it
       tabIndex={0}
-      className={cn("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4", className)}
+      className={cn(
+        // The items never shrink: in a column that scrolls they would squash into each other.
+        "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 [&>*]:shrink-0",
+        className,
+      )}
       {...rest}
     >
       {children}
@@ -76,7 +80,7 @@ export function Message(props: {
 
 /** A line under the conversation: the message box and its button. */
 export function Composer(props: { children: ReactNode }) {
-  return <div className="flex items-end gap-2 border-t p-3">{props.children}</div>;
+  return <div className="flex shrink-0 items-end gap-2 border-t p-3">{props.children}</div>;
 }
 
 /** A session pane: header, timeline and composer stacked, filling its column. */

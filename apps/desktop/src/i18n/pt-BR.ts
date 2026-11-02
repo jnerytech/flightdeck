@@ -1108,6 +1108,7 @@ export const ptBR = {
     close: "Fechar",
   },
   session: {
+    jumpLatest: "Ir para a última",
     cost: "custo estimado:",
     costLabel: "Custo da sessão",
     resume: "Retomar",

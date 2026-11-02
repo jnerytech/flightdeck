@@ -196,6 +196,33 @@
   box-shadow: none;
 }
 
+/* The area of a screen that fills what is left and holds a scroller (and what floats over it). */
+@utility pane-fill {
+  position: relative;
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* A button that floats over the bottom end of a scroller. */
+@utility float-end {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.75rem;
+}
+
+/* A short list that scrolls inside its panel instead of pushing the screen. */
+@utility rows-scroll {
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+/* A toggle that sits at the start of a column, not stretched across it. */
+@utility toggle-start {
+  align-self: flex-start;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -1109,6 +1109,7 @@ export const en: Dictionary = {
     close: "Close",
   },
   session: {
+    jumpLatest: "Jump to latest",
     cost: "estimated cost:",
     costLabel: "Session cost",
     resume: "Resume",
