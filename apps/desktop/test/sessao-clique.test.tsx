@@ -59,13 +59,13 @@ describe("sessao-clique: the session screen answers a click", () => {
         actions={counted}
       />,
     );
-    await press("Parar");
-    expect(busy(/Parar/)).toBe("true");
-    await press(/Parar/);
+    await press("Parar o turno");
+    expect(busy(/Parar o turno/)).toBe("true");
+    await press(/Parar o turno/);
     expect(interrupts).toBe(1);
     work.open();
     await act(() => Bun.sleep(10));
-    expect(busy(/Parar/)).toBeNull();
+    expect(busy(/Parar o turno/)).toBeNull();
   });
 
   test("Retomar is busy while the session resumes", async () => {
@@ -152,7 +152,7 @@ describe("sessao-clique: the session screen answers a click", () => {
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
     );
     expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Parar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Parar o turno" })).toBeNull();
     rerender(
       <SessionView
         title="s"
@@ -168,7 +168,7 @@ describe("sessao-clique: the session screen answers a click", () => {
       fireEvent.keyDown(screen.queryByLabelText("Mensagem") as HTMLElement, { key: "Escape" });
     });
     expect(a.calls).toEqual(["interrupt"]);
-    await press("Parar");
+    await press("Parar o turno");
     expect(a.calls).toEqual(["interrupt", "interrupt"]);
     expect(document.querySelector("[data-slot='session-controls']")?.textContent).not.toContain(
       "Parar",

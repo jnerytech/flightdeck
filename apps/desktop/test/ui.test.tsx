@@ -142,7 +142,7 @@ describe("desktop: interface", () => {
     await newSession("[tool]");
     await waitFor(() => expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull());
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Parar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Parar o turno" }));
     });
     await waitFor(() => expect(screen.getByText("cancelado")).toBeTruthy());
     await act(async () => {
