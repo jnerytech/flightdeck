@@ -1,7 +1,8 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NativeSelect } from "@/components/layout/form";
+import { CheckField, NativeSelect } from "@/components/layout/form";
+import { Inline } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,15 +93,10 @@ export function HistoryList(props: {
             {t("historyUi.filter")}
           </Button>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={hideAutomated}
-              onChange={(e) => setHideAutomated(e.target.checked)}
-            />
+        <Inline gap={3} className="text-sm">
+          <CheckField checked={hideAutomated} onChange={setHideAutomated}>
             {t("historyUi.hideAutomated")}
-          </label>
+          </CheckField>
           {hideAutomated && automatedCount > 0 && (
             <>
               <span className="text-muted-foreground text-xs">
@@ -111,7 +107,7 @@ export function HistoryList(props: {
               </Button>
             </>
           )}
-        </div>
+        </Inline>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {loading && <LoadingState label={t("states.loadingSessions")} />}

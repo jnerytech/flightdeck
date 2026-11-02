@@ -2,6 +2,7 @@ import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol
 import { Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
+import { Note } from "@/components/layout/note";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
@@ -173,14 +174,14 @@ export function TranscriptReader(props: {
           : {})}
       />
       {session && blocked && (
-        <div role="note" className="m-3 flex flex-wrap items-center gap-3 text-sm">
+        <Note>
           <p className="text-status-needs-you">{why}</p>
           {!gone && (
             <Button size="sm" variant="outline" onClick={() => setAllowing(true)}>
               {t("toast.allowRoot")}
             </Button>
           )}
-        </div>
+        </Note>
       )}
       {allowing && session && (
         <ConfirmDialog

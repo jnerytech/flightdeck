@@ -172,3 +172,21 @@ export function FormActions(props: {
     </div>
   );
 }
+
+/** A checkbox with its label beside it, for a switch in a toolbar. */
+export function CheckField(props: {
+  checked: boolean;
+  onChange(checked: boolean): void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="flex items-center gap-1.5">
+      <input
+        type="checkbox"
+        checked={props.checked}
+        onChange={(e) => props.onChange(e.target.checked)}
+      />
+      {props.children}
+    </label>
+  );
+}
