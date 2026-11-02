@@ -356,18 +356,39 @@ async function run(work: string): Promise<void> {
     }
     if (!start?.appended?.includes("engenheiro de QA sênior"))
       throw new Error("o claude devia ver o corpo da persona no arquivo");
-    const agentNames = Object.keys(start.agents ?? {});
+    // A Windows runner finds the fake as claude.cmd, a shim that gets no inline --agents.
+    if (process.platform === "win32") {
+      if (argv.includes("--agents") || !done.stderr.includes("--agents")) {
+        throw new Error(
+          `um claude.cmd não devia receber --agents, e o aviso devia sair: ${done.stderr}`,
+        );
+      }
+    } else {
+      const inline = Object.keys(start.agents ?? {});
+      if (!inline.includes("persona-revisor") || !inline.includes("persona-do-projeto")) {
+        throw new Error(`faltaram agentes: ${inline.join(",")}`);
+      }
+    }
+    if (existsSync(start.appendedPath ?? "")) {
+      throw new Error("o arquivo temporário do corpo devia ter sumido");
+    }
+    // Print mode takes the subagents from a file, on every platform.
+    const printed = await wrapper("--persona", "qa", "-p", "oi");
+    if (printed.code !== 0)
+      throw new Error(`o wrapper -p devia sair com 0: ${printed.code} ${printed.stderr}`);
+    const print = starts()[1];
+    const agentNames = Object.keys(print?.agents ?? {});
     if (!agentNames.includes("persona-revisor") || !agentNames.includes("persona-do-projeto")) {
       throw new Error(`faltaram agentes: ${agentNames.join(",")}`);
     }
-    if (existsSync(start.appendedPath ?? "") || existsSync(start.agentsPath ?? "")) {
+    if (existsSync(print?.appendedPath ?? "") || existsSync(print?.agentsPath ?? "")) {
       throw new Error("os arquivos temporários deviam ter sumido");
     }
     log(
-      "o claude do terminal recebeu o corpo, o modelo e os subagentes por arquivos, e eles sumiram no fim",
+      "o claude do terminal recebeu o corpo, o modelo e os subagentes (inline ou por arquivo), e os arquivos sumiram no fim",
     );
     const missing = await wrapper("--persona", "nao-existe");
-    if (missing.code !== 1 || starts().length !== 1) {
+    if (missing.code !== 1 || starts().length !== 2) {
       throw new Error(
         `uma persona inexistente não devia abrir o claude: ${missing.code} ${missing.stderr}`,
       );
