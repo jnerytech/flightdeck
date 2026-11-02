@@ -1,4 +1,4 @@
-import type { PermissionMode, PermissionUpdate } from "@flightdeck/protocol";
+import type { PermissionMode, PermissionUpdate, SettableMode } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
@@ -27,7 +27,7 @@ import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
 /** The permission modes a live session can switch between, and the model aliases it takes. */
-const MODES = ["default", "acceptEdits", "plan"] as const;
+const MODES = ["plan", "default", "acceptEdits"] as const;
 const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** How far from the end still counts as being at the end, in pixels. */
@@ -38,7 +38,7 @@ export interface SessionActions {
   copyText?(text: string): Promise<boolean>;
   send(text: string): Promise<void>;
   /** Changes the permission mode / the model (null: the default) of the open session. */
-  setMode?(mode: PermissionMode): Promise<void>;
+  setMode?(mode: SettableMode): Promise<void>;
   setModel?(model: string | null): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
@@ -218,7 +218,11 @@ export function SessionView(props: {
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [mode, setMode] = useState<PermissionMode>(session.permissionMode ?? "default");
+  const start = session.permissionMode ?? "default";
+  const [mode, setMode] = useState<PermissionMode>(start);
+  // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
+  const at = MODES.indexOf(start as (typeof MODES)[number]);
+  const limit = at < 0 ? MODES.length : at + 1;
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
   // Typing `/` offers the snippets and the commands of the session together.
@@ -383,12 +387,12 @@ export function SessionView(props: {
             aria-label={t("session.modeLabel")}
             value={mode}
             onChange={(e) => {
-              const next = e.target.value as PermissionMode;
+              const next = e.target.value as SettableMode;
               setMode(next);
               void actions.setMode?.(next);
             }}
           >
-            {MODES.map((value) => (
+            {MODES.slice(0, limit).map((value) => (
               <option key={value} value={value}>
                 {t(`modes.${value}.name`)}
               </option>

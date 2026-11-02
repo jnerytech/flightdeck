@@ -610,6 +610,13 @@ export class SessionManager {
         "mode_set_not_live",
       );
     }
+    // Never looser than the mode the session started with (which a persona may have narrowed).
+    if (clampPermissionMode(mode, this.get(sessionId).permissionMode) !== mode) {
+      throw new FlightdeckError(
+        "invalid_permission_update",
+        "a session cannot be made more permissive than the mode it started with",
+      );
+    }
     await run.setPermissionMode(mode);
   }
 

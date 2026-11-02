@@ -35,6 +35,9 @@ export const PermissionMode = z.enum([
   "auto",
 ]);
 export type PermissionMode = z.infer<typeof PermissionMode>;
+/** The modes a live session can be switched to (never one that skips the questions). */
+export const SettableMode = z.enum(["default", "acceptEdits", "plan"]);
+export type SettableMode = z.infer<typeof SettableMode>;
 
 const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
 
@@ -2337,7 +2340,12 @@ export const Command = z.discriminatedUnion("type", [
   /** Changes the permission mode of a live managed session for its next tool requests. */
   cmd(
     "session.setMode",
-    z.object({ sessionId: z.string(), permissionMode: PermissionMode }).strict(),
+    z
+      .object({
+        sessionId: z.string(),
+        permissionMode: SettableMode,
+      })
+      .strict(),
   ),
   /** Changes the model of a live managed session for its next turn; null is the default. */
   cmd(

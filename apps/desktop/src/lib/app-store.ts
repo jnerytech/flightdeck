@@ -24,7 +24,6 @@ import type {
   MessageInfo,
   MessagingAlertFrame,
   PendingPermission,
-  PermissionMode,
   PermissionUpdate,
   PersonaRef,
   Project,
@@ -40,6 +39,7 @@ import type {
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
+  SettableMode,
   Snippet,
   SshTarget,
   TeamsUpdatedFrame,
@@ -1633,7 +1633,7 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.interrupt", { sessionId }));
   }
 
-  setMode(permissionMode: PermissionMode): Promise<void> {
+  setMode(permissionMode: SettableMode): Promise<void> {
     return this.onSelected((conn, sessionId) =>
       conn.request("session.setMode", { sessionId, permissionMode }),
     );
