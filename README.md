@@ -112,7 +112,7 @@ sessions from one place, without opening each machine.
 
 | Approval, with Always allow | Light theme |
 | --- | --- |
-| ![Approving a tool request](docs/images/approval-dark.png) | ![The hub in the light theme](docs/images/hub-light.png) |
+| ![Approving a tool request](docs/images/approval-dark-en.png) | ![The hub in the light theme](docs/images/hub-light-en.png) |
 
 | Board | Costs |
 | --- | --- |
