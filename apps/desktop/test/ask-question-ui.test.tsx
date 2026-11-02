@@ -90,6 +90,18 @@ describe("ask-question-ui", () => {
     ]);
   });
 
+  test("a checked option can be unchecked, which takes it out of the answer", async () => {
+    card("AskUserQuestion", { questions: [QUESTIONS.questions[1]] });
+    const auth = () => screen.queryByRole("checkbox", { name: /Auth/ }) as HTMLInputElement;
+    await click(auth());
+    expect(auth().checked).toBe(true);
+    await click(auth());
+    expect(auth().checked).toBe(false);
+    expect(
+      (screen.queryByRole("button", { name: "Send answers" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
   test("the Other text answers a question on its own", async () => {
     const calls = card("AskUserQuestion", {
       questions: [QUESTIONS.questions[0]],
