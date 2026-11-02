@@ -256,6 +256,15 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   }
 }
 
+/** The `--agents` of an interactive claude: its arguments and, when they are left out, why. */
+export function interactiveAgents(_opts: {
+  json: string;
+  claude: string;
+  platform: NodeJS.Platform;
+}): { args: string[]; notice: string | null } {
+  return { args: [], notice: null };
+}
+
 /**
  * A `.cmd` or `.bat` file on Windows (the npm install of claude is one). Windows runs it through
  * cmd.exe, which re-parses the command line and mangles a JSON argument; a native `claude.exe`
