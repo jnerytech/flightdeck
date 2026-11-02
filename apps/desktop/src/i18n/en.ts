@@ -2215,6 +2215,7 @@ export const en: Dictionary = {
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
+    addCard: "Add card",
     boardOf: "Board of {project}",
     filter: "Filter cards",
     titleLabel: "Card title",
