@@ -120,6 +120,11 @@ describe("ao-vivo: o leitor", () => {
     };
     await settle(() => store.getState().hosts[0]?.status === "online");
     await sidebar.hostAction("Histórico");
+    // The fixture's project lives in a temp folder, which the list hides as an automated run.
+    await settle(() => screen.queryByLabelText("Ocultar execuções automáticas") !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Ocultar execuções automáticas"));
+    });
     const firstRow = () =>
       screen.queryByRole("list", { name: "Sessões do histórico" })?.querySelector("button") ?? null;
     await settle(() => firstRow() !== null);
