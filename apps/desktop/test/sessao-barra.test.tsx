@@ -50,10 +50,10 @@ describe("sessao-barra: the composer toolbar", () => {
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={actions} />,
     );
     expect(screen.queryByRole("button", { name: "Inserir um snippet" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Mencionar uma pasta" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mencionar arquivo ou pasta" })).toBeNull();
   });
 
-  test("Mencionar uma pasta opens the picker and puts the chosen folder in the message as @path", async () => {
+  test("Mencionar arquivo ou pasta opens the picker and puts the chosen folder in the message as @path", async () => {
     render(
       <SessionView
         title="s"
@@ -72,12 +72,12 @@ describe("sessao-barra: the composer toolbar", () => {
       />,
     );
     await act(async () => void fireEvent.change(box(), { target: { value: "olhe " } }));
-    await press("Mencionar uma pasta");
+    await press("Mencionar arquivo ou pasta");
     expect(screen.queryByRole("dialog", { name: "picker" })).not.toBeNull();
     await press("pick");
     expect(screen.queryByRole("dialog", { name: "picker" })).toBeNull();
     expect(box().value).toBe("olhe @/repo/src ");
-    await press("Mencionar uma pasta");
+    await press("Mencionar arquivo ou pasta");
     await press("cancel");
     expect(box().value).toBe("olhe @/repo/src ");
   });

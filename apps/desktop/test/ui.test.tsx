@@ -108,14 +108,14 @@ describe("desktop: interface", () => {
     expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
   });
 
-  test("Mencionar uma pasta abre o seletor do host e põe @pasta na mensagem; cancelar não muda nada", async () => {
+  test("Mencionar arquivo ou pasta abre o seletor do host e põe @pasta na mensagem; cancelar não muda nada", async () => {
     const { server } = setup();
     await addHost(server.url);
     await newSession("olá");
     await waitFor(() => expect(screen.getAllByText("ociosa").length).toBeGreaterThan(0));
     const open = async () => {
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Mencionar uma pasta" }));
+        fireEvent.click(screen.getByRole("button", { name: "Mencionar arquivo ou pasta" }));
       });
       await waitFor(() =>
         expect(screen.getByRole("dialog", { name: "Escolher pasta" })).toBeTruthy(),
