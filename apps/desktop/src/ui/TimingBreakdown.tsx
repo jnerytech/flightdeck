@@ -12,7 +12,12 @@ import { formatMs } from "../lib/timing.ts";
  * In Custos: per project, the time people kept Claude waiting for a permission and the slowest
  * tools, from the telemetry of terminal sessions (`telemetry.summary`). Nothing while there is none.
  */
-export function TimingBreakdown(props: { store: AppStore; hostId: string }) {
+export function TimingBreakdown(props: {
+  store: AppStore;
+  hostId: string;
+  /** How a project is named on screen; the Costs screen's set, so a project reads the same. */
+  label?: (projectKey: string) => string;
+}) {
   const t = useT();
   const { store, hostId } = props;
   const [summary, setSummary] = useState<TelemetrySummary | null>(null);
