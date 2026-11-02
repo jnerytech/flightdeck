@@ -206,6 +206,15 @@
   html:is(.dark) {
     color-scheme: dark;
   }
+  /* WebView2 on Windows paints a select's popup light in the dark theme even with color-scheme. */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+  select option:disabled {
+    color: var(--muted-foreground);
+  }
   /* Tailwind's reset leaves the arrow on every control: clickable things show the pointer. */
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
