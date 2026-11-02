@@ -125,6 +125,8 @@ export interface RunClaudeOptions {
   self: string[];
   log: { error(message: string): void };
   timeoutMs: number;
+  /** The platform claude runs on; the process's when absent. Injected in tests. */
+  platform?: NodeJS.Platform;
 }
 
 /**
@@ -205,7 +207,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       // Only print mode reads --agents from a file.
       added.push("--agents", write(`${launchId}-agents.json`, json));
     } else if (json.length <= INLINE_AGENTS_MAX) {
-      added.push("--agents", json);
+      added.push("--agents", cmdSafeJson(json, opts.platform ?? process.platform));
     } else {
       opts.log.error(
         `flightdeckd: the persona subagents (${json.length} characters) do not fit on the command line of an interactive claude; opening without --agents`,
@@ -248,6 +250,17 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       for (const file of files) rmSync(file, { force: true });
     }
   }
+}
+
+/**
+ * The same JSON without the characters cmd.exe runs. On Windows `claude` is often a `claude.cmd`
+ * shim that forwards `%*`, and cmd.exe reads `( ) & | < > ^ % !` as syntax once the quotes stop
+ * pairing up (a `\"` inside a string does that). JSON writes each of them as a `\u00XX` escape
+ * with the same meaning, so the text claude parses does not change.
+ */
+export function cmdSafeJson(json: string, platform: NodeJS.Platform): string {
+  if (platform !== "win32") return json;
+  return json.replace(/[()&|<>^%!]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
 /**

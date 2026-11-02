@@ -1642,6 +1642,8 @@ export interface CliDeps {
   mcpTransport?: Transport;
   /** The folder `flightdeckd mcp` runs in; the process's when absent. */
   cwd?: string;
+  /** The platform `flightdeckd claude` launches claude on; the process's when absent. Injected in tests. */
+  platform?: NodeJS.Platform;
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
@@ -1694,6 +1696,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
         self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
         log: deps.log,
         timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
+        ...(deps.platform ? { platform: deps.platform } : {}),
       });
       deps.exit(code);
       return null;
