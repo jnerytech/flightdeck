@@ -40,5 +40,5 @@ export function positionBefore(cards: Card[], targetId: string): number {
 
 /** The board's title: "Board of <name>", or the plain "Board" until the project's name is known. */
 export function boardTitle(t: T, name: string | undefined): string {
-  return t("kanban.boardOf", { project: name ?? "" });
+  return name ? t("kanban.boardOf", { project: name }) : t("sidebar.board");
 }

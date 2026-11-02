@@ -26,7 +26,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import { COLUMNS, boardTitle, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -281,7 +281,7 @@ export const BoardView = memo(function BoardView(props: {
 
   return (
     <Page
-      title={t("kanban.boardOf", { project: project?.name ?? "" })}
+      title={boardTitle(t, project?.name)}
       toolbar={
         <Toolbar label={t("hub.filters")}>
           <Input
