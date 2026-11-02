@@ -2845,7 +2845,11 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   ^ % !` as `\u00XX` was not enough: the quotes themselves break). The wrapper (`isWindowsShim`)
   opens such a claude without subagents and says why on stderr; a native `claude.exe` (the default
   install) has no cmd.exe in between and gets the JSON. A proper `.cmd` escaping (cross-spawn's
-  algorithm) can bring subagents back to the shim later.
+  algorithm) can bring subagents back to the shim later. The decision is the pure
+  `interactiveAgents(json, claude, platform)`, tested without spawning anything.
+- **The test timeout is 15 s on Windows, 5 s elsewhere.** The Windows runners of CI are slow enough that
+  tests passing in about 1 s on Linux hit bun's 5 s default (an 8.3 path, plugins, a file picker).
+  The preload sets it in one place (`scripts/test/timeout.ts`); it guards hangs, it is not a budget.
 - **Closing a terminal tab detaches by default.** The close-tab dialog already offered Detach (the
   process keeps running on the host; reattach from the host's terminal list or the session's
   "Claude aqui" terminal) and End process. The dialog now opens with Detach focused (Radix focused

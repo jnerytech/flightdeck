@@ -206,16 +206,14 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     if (print) {
       // Only print mode reads --agents from a file.
       added.push("--agents", write(`${launchId}-agents.json`, json));
-    } else if (isWindowsShim(claude, opts.platform ?? process.platform)) {
-      opts.log.error(
-        "flightdeckd: a claude.cmd or claude.bat shim cannot take the persona subagents on its command line (cmd.exe mangles the JSON); opening without --agents (a native claude.exe can)",
-      );
-    } else if (json.length <= INLINE_AGENTS_MAX) {
-      added.push("--agents", json);
     } else {
-      opts.log.error(
-        `flightdeckd: the persona subagents (${json.length} characters) do not fit on the command line of an interactive claude; opening without --agents`,
-      );
+      const launch = interactiveAgents({
+        json,
+        claude,
+        platform: opts.platform ?? process.platform,
+      });
+      added.push(...launch.args);
+      if (launch.notice) opts.log.error(launch.notice);
     }
   }
   try {
@@ -256,13 +254,29 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   }
 }
 
-/** The `--agents` of an interactive claude: its arguments and, when they are left out, why. */
-export function interactiveAgents(_opts: {
+/**
+ * The `--agents` of an interactive claude: its arguments and, when they are left out, why. Left
+ * out for a Windows shim (cmd.exe mangles the JSON) and for a JSON too long for the command line.
+ */
+export function interactiveAgents(opts: {
   json: string;
   claude: string;
   platform: NodeJS.Platform;
 }): { args: string[]; notice: string | null } {
-  return { args: [], notice: null };
+  if (isWindowsShim(opts.claude, opts.platform)) {
+    return {
+      args: [],
+      notice:
+        "flightdeckd: a claude.cmd or claude.bat shim cannot take the persona subagents on its command line (cmd.exe mangles the JSON); opening without --agents (a native claude.exe can)",
+    };
+  }
+  if (opts.json.length > INLINE_AGENTS_MAX) {
+    return {
+      args: [],
+      notice: `flightdeckd: the persona subagents (${opts.json.length} characters) do not fit on the command line of an interactive claude; opening without --agents`,
+    };
+  }
+  return { args: ["--agents", opts.json], notice: null };
 }
 
 /**
