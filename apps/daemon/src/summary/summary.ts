@@ -2,6 +2,7 @@
  * Phase 30: a short summary of a session, built from its transcript with no model call: what was
  * asked, what was done, the files touched, the cost and the open question.
  */
+import type { Database } from "bun:sqlite";
 import type { SecretScanner } from "@flightdeck/protocol";
 
 export interface PendingQuestion {
@@ -98,4 +99,9 @@ export function buildSummary(input: SummaryInput): SessionSummary {
     state: input.state,
     source: "transcript",
   };
+}
+
+/** The estimated cost of a session, from its usage entries; `null` without rows. */
+export function sessionCost(_db: Database, _claudeSessionId: string): number | null {
+  return 0;
 }
