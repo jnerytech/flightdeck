@@ -1,5 +1,5 @@
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, Square } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
+import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
@@ -203,6 +204,7 @@ export function SessionView(props: {
   const { session, actions } = props;
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
+  const working = isBusy(session.status);
   const closed = session.status === "ended" || session.status === "error";
 
   const box = useRef<HTMLTextAreaElement>(null);
@@ -249,9 +251,6 @@ export function SessionView(props: {
               </ActionButton>
             ) : (
               <>
-                <ActionButton variant="outline" size="sm" onClick={() => actions.interrupt()}>
-                  {t("session.interrupt")}
-                </ActionButton>
                 <ActionButton
                   variant="outline"
                   size="sm"
@@ -343,13 +342,26 @@ export function SessionView(props: {
           rows={1}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
+            if (e.key === "Escape" && working) void actions.interrupt();
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
               void submit();
             }
           }}
         />
-        <ActionButton onClick={submit}>{t("session.send")}</ActionButton>
+        {working ? (
+          <>
+            <output aria-live="polite" aria-label={t("session.working")} className="sr-only">
+              {t("session.working")}
+            </output>
+            <ActionButton variant="destructive" onClick={() => actions.interrupt()}>
+              <Square aria-hidden="true" />
+              {t("session.interrupt")}
+            </ActionButton>
+          </>
+        ) : (
+          <ActionButton onClick={submit}>{t("session.send")}</ActionButton>
+        )}
       </Composer>
     </SessionPane>
   );

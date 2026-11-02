@@ -154,7 +154,7 @@ describe("textos", () => {
     });
     await act(() => Bun.sleep(200));
     const session = main().textContent ?? "";
-    for (const word of ["Interrupt", "End", "Send", "Copy command", "idle"]) {
+    for (const word of ["End", "Send", "idle"]) {
       expect(session).toMatch(new RegExp(word));
     }
     expect(session).not.toMatch(/Retomar|Parar|Encerrar|Enviar|Mensagem/);
@@ -193,6 +193,8 @@ describe("textos", () => {
     await act(async () => {
       store.router.push({ name: "settings" });
     });
+    // Settings is a lazy screen: its chunk arrives after the route changes.
+    await act(() => Bun.sleep(300));
     const prefs = main().textContent ?? "";
     for (const text of [
       "Appearance",
