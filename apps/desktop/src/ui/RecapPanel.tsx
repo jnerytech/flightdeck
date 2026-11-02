@@ -46,6 +46,8 @@ export function RecapPanel(props: {
   question?: string;
   /** Changes when the session moves on, so the summary is read again. */
   stamp?: string;
+  /** How long to wait before asking again while the host has no summary yet. */
+  retryMs?: number;
 }) {
   const t = useT();
   const { store, hostId, claudeSessionId, question, stamp } = props;

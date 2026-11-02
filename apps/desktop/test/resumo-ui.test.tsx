@@ -10,6 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { RecapPanel } = await import("../src/ui/RecapPanel.tsx");
+const { ExternalView } = await import("../src/ui/ExternalView.tsx");
 const { App } = await import("../src/ui/App.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
@@ -24,6 +25,8 @@ const settle = waiter(4000);
 const SESSION = "eeeeeeee-0000-4000-8000-000000000030";
 
 const line = (value: unknown) => JSON.stringify(value);
+/** The daemons the test started, newest last. */
+const daemons: Array<ReturnType<typeof makeDaemon>> = [];
 
 async function online(language: string, options: { legacy?: boolean; plain?: boolean } = {}) {
   const mem = memoryPlatform(false, language);
@@ -38,6 +41,7 @@ async function online(language: string, options: { legacy?: boolean; plain?: boo
     return { store, mem };
   }
   const d = makeDaemon(cleanups, { summary: true });
+  daemons.push(d);
   const server = d.listen();
   mkdirSync(d.historyRoot, { recursive: true });
   const file = join(d.historyRoot, `${SESSION}.jsonl`);
@@ -145,7 +149,55 @@ describe("resumo-ui", () => {
         <RecapPanel store={store} hostId={hostId} claudeSessionId="unknown" />
       </TContext.Provider>,
     );
-    await settle(() => screen.queryByText("No summary yet.") !== null);
+    await settle(
+      () =>
+        screen.queryByText(
+          "The summary appears after the session's first turn and refreshes by itself.",
+        ) !== null,
+    );
+    // Not indexed yet is a normal state: no toast.
+    expect(store.getState().error).toBeNull();
+  });
+
+  test("the same empty state in Portuguese", async () => {
+    const { store } = await online("pt-BR");
+    const hostId = store.getState().hosts[0]?.id as string;
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <RecapPanel store={store} hostId={hostId} claudeSessionId="unknown" />
+      </TContext.Provider>,
+    );
+    await settle(
+      () =>
+        screen.queryByText(
+          "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
+        ) !== null,
+    );
+  });
+
+  test("it asks again until the host has indexed the transcript, then shows the summary", async () => {
+    const { store } = await online("en");
+    const hostId = store.getState().hosts[0]?.id as string;
+    const later = "eeeeeeee-0000-4000-8000-000000000031";
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <RecapPanel store={store} hostId={hostId} claudeSessionId={later} retryMs={30} />
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByText(/appears after the session's first turn/) !== null);
+    const d = daemons.at(-1) as ReturnType<typeof makeDaemon>;
+    const file = join(d.historyRoot, `${later}.jsonl`);
+    writeFileSync(
+      file,
+      `${line({ type: "user", message: { role: "user", content: "Late prompt" } })}\n`,
+    );
+    d.eventStore.db
+      .query(
+        `INSERT INTO history_sessions (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path)
+         VALUES (?, '/work/app', 't', '2026-11-01T12:00:00.000Z', '2026-11-01T12:01:30.000Z', 1, 'external', ?)`,
+      )
+      .run(later, file);
+    await settle(() => screen.queryByText("Late prompt") !== null);
   });
 
   test("a host without the feature shows nothing at all", async () => {
@@ -196,5 +248,26 @@ describe("resumo-ui", () => {
     });
     await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
     await settle(() => screen.queryByText("Managed prompt") !== null);
+  });
+
+  test("a terminal session with no name and no folder yet is titled New session, never its id", async () => {
+    const { store } = await online("en");
+    const hostId = store.getState().hosts[0]?.id as string;
+    const raw = "8a99bd9b-6700-49a0-a0d2-9ac93ce2044b";
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <ExternalView
+          store={store}
+          state={store.getState()}
+          hostId={hostId}
+          hostName="alfa"
+          claudeSessionId={raw}
+          onResumed={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.textContent).toBe("New session");
+    expect(document.body.textContent).not.toContain(raw);
   });
 });
