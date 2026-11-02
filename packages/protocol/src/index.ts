@@ -1405,6 +1405,21 @@ export const SessionTrace = z.object({
 });
 export type SessionTrace = z.infer<typeof SessionTrace>;
 
+/** Phase 30: a short summary of a session, built from its transcript with no model call. */
+export const SessionRecap = z.object({
+  asked: z.string().nullable(),
+  done: z.string().nullable(),
+  files: z.array(z.string()),
+  /** Files touched beyond the ones listed. */
+  filesMore: z.number().int().nonnegative(),
+  costUsd: z.number().nullable(),
+  /** The pending permission or question, when the caller says there is one. */
+  question: z.string().nullable(),
+  state: z.string(),
+  source: z.literal("transcript"),
+});
+export type SessionRecap = z.infer<typeof SessionRecap>;
+
 /** The trace as a file to attach to a bug: structure and numbers, content only when asked. */
 export const TraceExport = z.object({
   filename: z.string(),
@@ -2880,6 +2895,17 @@ export const Command = z.discriminatedUnion("type", [
   cmd("telemetry.status", z.object({}).strict()),
   // Phase 25: the trace of a session, built from its transcript and its subagents'.
   cmd("trace.get", z.object({ claudeSessionId: z.string().min(1) })),
+  /** Phase 30: `question` and `state` are what the caller knows (the pending request, the session state). */
+  cmd(
+    "session.summary",
+    z
+      .object({
+        claudeSessionId: z.string().min(1),
+        question: z.string().optional(),
+        state: z.string().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "trace.export",
     z.object({ claudeSessionId: z.string().min(1), includeContent: z.boolean().optional() }),
@@ -3629,6 +3655,7 @@ export interface CommandResults {
   "telemetry.session": TelemetrySession;
   "telemetry.summary": TelemetrySummary;
   "trace.get": SessionTrace;
+  "session.summary": SessionRecap;
   "trace.export": TraceExport;
   "bg.list": BgList;
   "bg.stop": BgList;

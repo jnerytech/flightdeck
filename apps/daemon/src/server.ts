@@ -93,6 +93,7 @@ import type { SshConnector } from "./ssh/connect.ts";
 import type { HostKeys } from "./ssh/hostkey.ts";
 import type { SshImporter } from "./ssh/import.ts";
 import type { SshTargets } from "./ssh/targets.ts";
+import type { SummaryService } from "./summary/service.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
@@ -195,6 +196,8 @@ export interface ServerOptions {
   telemetryOptIn?: TelemetryOptIn;
   /** Phase 25: the trace of a session, built from its transcript and its subagents'. */
   trace?: TraceService;
+  /** Phase 30: the short summary of a session. */
+  summary?: SummaryService;
   /** Phase 27: Claude Code's background sessions, through its own CLI. */
   bg?: BgService;
   /** Budgets behind the `budget.*` commands (phase 8). */
@@ -394,6 +397,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.costs ? ["costs"] : []),
     ...(opts.telemetry ? ["telemetry"] : []),
     ...(opts.trace ? ["trace"] : []),
+    ...(opts.summary ? ["summary"] : []),
     ...(opts.bg ? ["bg"] : []),
     ...(opts.changes ? ["review"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
@@ -648,6 +652,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.bg;
   }
 
+  function summary(): SummaryService {
+    if (!opts.summary) throw featureOff("summary");
+    return opts.summary;
+  }
   function trace(): TraceService {
     if (!opts.trace) throw featureOff("trace");
     return opts.trace;
@@ -1451,6 +1459,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await bg().respawn(command.payload.id));
       case "bg.message":
         return ok(command.type, await bg().message(command.payload.id, command.payload.text));
+      case "session.summary": {
+        const { claudeSessionId, question, state } = command.payload;
+        return ok(command.type, summary().get(claudeSessionId, { question, state }));
+      }
       case "trace.get":
         return ok(command.type, trace().get(command.payload.claudeSessionId));
       case "trace.export": {

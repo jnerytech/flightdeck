@@ -3,22 +3,11 @@
  * asked, what was done, the files touched, the cost and the open question.
  */
 import type { Database } from "bun:sqlite";
-import type { SecretScanner } from "@flightdeck/protocol";
+import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
 
 export interface PendingQuestion {
   kind: "permission" | "question";
   text: string;
-}
-
-export interface SessionSummary {
-  asked: string | null;
-  done: string | null;
-  files: string[];
-  filesMore: number;
-  costUsd: number | null;
-  question: string | null;
-  state: string;
-  source: "transcript";
 }
 
 export interface SummaryInput {
@@ -79,7 +68,7 @@ function fit(
   return chars.length > limit ? `${chars.slice(0, limit - 1).join("")}…` : flat;
 }
 
-export function buildSummary(input: SummaryInput): SessionSummary {
+export function buildSummary(input: SummaryInput): SessionRecap {
   let asked: string | null = null;
   let done: string | null = null;
   const touched = new Set<string>();

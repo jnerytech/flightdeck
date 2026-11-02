@@ -298,6 +298,7 @@ const validCommands: Record<CommandType, unknown> = {
   "bg.message": { id: "7c5dcf5d", text: "oi" },
   "bg.start": { cwd: "/w", prompt: "oi" },
   "trace.get": { claudeSessionId: "c-1" },
+  "session.summary": { claudeSessionId: "c-1" },
   "trace.export": { claudeSessionId: "c-1" },
   "telemetry.status": {},
   "telemetry.install": { confirm: true },
