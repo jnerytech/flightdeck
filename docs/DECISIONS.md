@@ -2832,3 +2832,16 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Known leftover: about 60 `FlightdeckError` details in the daemon are still Portuguese and have
   no `reason` (board, review, checkpoints, personas, names, memory and others). They show in the
   app as the refusal's detail. Giving each a reason and a dictionary text is a separate change.
+## Fixes after the real Windows test of v0.31.0
+
+- **Interactive `claude` takes `--agents` as inline JSON.** A file path is only read with `--print`, so
+  the wrapper (`flightdeckd claude`, the one place that builds the flag) passes the persona subagents
+  inline when interactive and keeps the file in print mode. A Windows command line holds about 32 K
+  characters and quoting grows the JSON, so past `INLINE_AGENTS_MAX` (20 000 characters; the built-in
+  pack alone is about 13 K) the agents are dropped and the wrapper says so on stderr: the session
+  opens without subagents rather than not at all.
+- **Closing a terminal tab detaches by default.** The close-tab dialog already offered Detach (the
+  process keeps running on the host; reattach from the host's terminal list or the session's
+  "Claude aqui" terminal) and End process. The dialog now opens with Detach focused (Radix focused
+  Cancel), so a quick Enter never ends the session. A detached terminal with nobody attached is still
+  ended by the host's idle timeout (120 minutes by default).
