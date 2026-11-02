@@ -113,18 +113,18 @@ describe("clients-defaults: the persona of Claude here", () => {
         />
       </TContext.Provider>,
     );
-    await settle(() => options("Persona do Claude aqui").length > 1);
+    await settle(() => options("Nova sessão no terminal com persona").length > 1);
     return { store, ...h };
   }
 
   test("a host persona is chosen by its plain id", async () => {
     await open("host:qa");
-    expect(select("Persona do Claude aqui")?.value).toBe("qa");
+    expect(select("Nova sessão no terminal com persona")?.value).toBe("qa");
   });
 
   test("an app persona is not offered there, so none is chosen", async () => {
     await open("app:minha");
-    expect(select("Persona do Claude aqui")?.value).toBe("");
+    expect(select("Nova sessão no terminal com persona")?.value).toBe("");
   });
 });
 

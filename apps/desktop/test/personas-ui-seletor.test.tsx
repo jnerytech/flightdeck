@@ -149,9 +149,9 @@ describe("personas-ui: choosing a persona when a session opens", () => {
         />
       </TContext.Provider>,
     );
-    await settle(() => options("Persona do Claude aqui").length > 1);
-    expect(options("Persona do Claude aqui")).not.toContain("Minha persona");
-    await fill("Persona do Claude aqui", "qa");
+    await settle(() => options("Nova sessão no terminal com persona").length > 1);
+    expect(options("Nova sessão no terminal com persona")).not.toContain("Minha persona");
+    await fill("Nova sessão no terminal com persona", "qa");
     await click("Abrir Claude aqui (terminal)");
     await poll(() => d.ptys.spawned.length === 1);
     expect(d.ptys.spawned[0]?.argv.slice(-2)).toEqual(["--persona", "qa"]);
