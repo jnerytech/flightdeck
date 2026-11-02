@@ -98,6 +98,38 @@ const text = (label: string) => screen.queryByLabelText(label)?.textContent ?? "
 const region = (name: string) => screen.queryByRole("region", { name });
 
 describe("custos-ui", () => {
+  test("two projects with the same folder name each get a row of their own, and React sees no repeated key", async () => {
+    const d = makeDaemon(cleanups, { costs: true });
+    spend(d, { day: "2026-10-15", key: "host:alfa:/work/a/docs-site", cost: 1 });
+    spend(d, { day: "2026-10-15", key: "host:alfa:/work/b/docs-site", cost: 2 });
+    const server = d.listen(0);
+    const store = new AppStore(memoryPlatform(false).platform, {
+      baseDelayMs: 60_000,
+      now: () => START,
+      day: utcDay,
+    });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.hostInfo !== null);
+    const errors: string[] = [];
+    const real = console.error;
+    console.error = (...args: unknown[]) => void errors.push(args.map(String).join(" "));
+    try {
+      await click("Custos");
+      await settle(() => region("Por projeto") !== null);
+      await settle(() => (region("Por projeto")?.querySelectorAll("tbody tr").length ?? 0) > 1);
+    } finally {
+      console.error = real;
+    }
+    const rows = [...(region("Por projeto")?.querySelectorAll("tbody tr") ?? [])].map(
+      (r) => r.textContent,
+    );
+    expect(rows).toEqual(["docs-siteUS$ 2.00", "docs-siteUS$ 1.00"]);
+    expect(errors.filter((line) => line.includes("same key"))).toEqual([]);
+  });
+
   test("tela Custos: período, totais, economia do cache, gráfico por dia empilhado por projeto, quebras e o aviso de estimativa", async () => {
     await online();
     await click("Custos");
