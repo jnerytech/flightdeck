@@ -11,7 +11,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function serve() {
+async function serve(extra: object = {}) {
   const { manager, root } = newManager();
   const roots = [root];
   const saved: Array<readonly string[]> = [];
@@ -23,6 +23,7 @@ async function serve() {
     token: TOKEN,
     allowedRoots: roots,
     persistRoots: (list) => saved.push([...list]),
+    ...extra,
   });
   cleanups.push(() => server.stop());
   const client = new FrameClient(server.url);
@@ -87,6 +88,19 @@ describe("roots.add", () => {
     expect(refusal(await client.request("roots.add", { path: sys, confirm: true })).reason).toBe(
       "root_system",
     );
+  });
+
+  test("the system-folder rule reads the platform it was given: that home's secret folders are refused", async () => {
+    const home = realpathSync(tempDir("fd-home-"));
+    const secret = join(home, ".ssh");
+    mkdirSync(secret);
+    const plain = await serve();
+    expect((await plain.client.request("roots.add", { path: secret, confirm: true })).ok).toBe(
+      true,
+    );
+    const given = await serve({ rootsPlatform: { platform: process.platform, env: {}, home } });
+    const ack = await given.client.request("roots.add", { path: secret, confirm: true });
+    expect(refusal(ack).reason).toBe("root_system");
   });
 
   test("a folder that does not exist is refused as missing", async () => {
