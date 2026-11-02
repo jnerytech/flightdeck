@@ -62,6 +62,23 @@ function userText(content: unknown): string | null {
   return text.trim() === "" || WRAPPER.test(text) ? null : text.trim();
 }
 
+/** Hard limits, in characters. */
+const LIMITS = { asked: 280, done: 480, question: 280 } as const;
+const HIDDEN = "[secret hidden]";
+
+/** One line, cut on a character (not a UTF-16 unit) boundary, or a marker when it holds a secret. */
+function fit(
+  value: string | null,
+  limit: number,
+  scanner: Pick<SecretScanner, "scan">,
+): string | null {
+  if (value === null) return null;
+  const flat = value.replace(/\s+/g, " ").trim();
+  if (scanner.scan(flat).length > 0) return HIDDEN;
+  const chars = [...flat];
+  return chars.length > limit ? `${chars.slice(0, limit - 1).join("")}…` : flat;
+}
+
 export function buildSummary(input: SummaryInput): SessionSummary {
   let asked: string | null = null;
   let done: string | null = null;
@@ -90,18 +107,25 @@ export function buildSummary(input: SummaryInput): SessionSummary {
   }
   const files = [...touched];
   return {
-    asked,
-    done,
-    files: files.slice(0, MAX_FILES),
+    asked: fit(asked, LIMITS.asked, input.scanner),
+    done: fit(done, LIMITS.done, input.scanner),
+    files: files
+      .slice(0, MAX_FILES)
+      .map((path) => (input.scanner.scan(path).length > 0 ? HIDDEN : path)),
     filesMore: Math.max(0, files.length - MAX_FILES),
     costUsd: input.costUsd,
-    question: input.pending?.text ?? null,
+    question: fit(input.pending?.text ?? null, LIMITS.question, input.scanner),
     state: input.state,
     source: "transcript",
   };
 }
 
 /** The estimated cost of a session, from its usage entries; `null` without rows. */
-export function sessionCost(_db: Database, _claudeSessionId: string): number | null {
-  return 0;
+export function sessionCost(db: Database, claudeSessionId: string): number | null {
+  const row = db
+    .query<{ cost: number | null }, [string]>(
+      "SELECT SUM(cost_usd) AS cost FROM usage_entries WHERE claude_session_id = ?",
+    )
+    .get(claudeSessionId);
+  return row?.cost ?? null;
 }
