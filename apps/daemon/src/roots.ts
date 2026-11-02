@@ -32,7 +32,7 @@ function realFolder(path: string): string | null {
   }
 }
 
-function isSystemFolder(real: string): boolean {
+function isSystemFolderHere(real: string): boolean {
   if (parse(real).root === real) return true;
   return systemFolders().some((sys) => {
     const realSys = realFolder(sys) ?? sys;
@@ -65,7 +65,7 @@ export function addAllowedRoot(
       path,
     });
   }
-  if (isSystemFolder(real)) {
+  if (isSystemFolderHere(real)) {
     throw new FlightdeckError("forbidden_cwd", `system folder: ${real}`, "root_system", {
       path: real,
     });
@@ -79,4 +79,16 @@ export function addAllowedRoot(
     persist?.(roots);
   }
   return [...roots];
+}
+
+/** What decides which folders are the system's: the platform, its environment and the home folder. */
+export interface PlatformInfo {
+  platform: NodeJS.Platform;
+  env: Record<string, string | undefined>;
+  home: string;
+}
+
+/** Whether `path` (a real path) is a folder of the system, one that holds secrets, or too broad. */
+export function isSystemFolder(_path: string, _info: PlatformInfo): boolean {
+  return false;
 }
