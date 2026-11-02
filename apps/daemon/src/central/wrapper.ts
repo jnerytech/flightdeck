@@ -206,8 +206,12 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     if (print) {
       // Only print mode reads --agents from a file.
       added.push("--agents", write(`${launchId}-agents.json`, json));
+    } else if (isWindowsShim(claude, opts.platform ?? process.platform)) {
+      opts.log.error(
+        "flightdeckd: a claude.cmd or claude.bat shim cannot take the persona subagents on its command line (cmd.exe mangles the JSON); opening without --agents (a native claude.exe can)",
+      );
     } else if (json.length <= INLINE_AGENTS_MAX) {
-      added.push("--agents", cmdSafeJson(json, opts.platform ?? process.platform));
+      added.push("--agents", json);
     } else {
       opts.log.error(
         `flightdeckd: the persona subagents (${json.length} characters) do not fit on the command line of an interactive claude; opening without --agents`,
@@ -253,14 +257,12 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
 }
 
 /**
- * The same JSON without the characters cmd.exe runs. On Windows `claude` is often a `claude.cmd`
- * shim that forwards `%*`, and cmd.exe reads `( ) & | < > ^ % !` as syntax once the quotes stop
- * pairing up (a `\"` inside a string does that). JSON writes each of them as a `\u00XX` escape
- * with the same meaning, so the text claude parses does not change.
+ * A `.cmd` or `.bat` file on Windows (the npm install of claude is one). Windows runs it through
+ * cmd.exe, which re-parses the command line and mangles a JSON argument; a native `claude.exe`
+ * gets the line as it is.
  */
-export function cmdSafeJson(json: string, platform: NodeJS.Platform): string {
-  if (platform !== "win32") return json;
-  return json.replace(/[()&|<>^%!]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+export function isWindowsShim(path: string, platform: NodeJS.Platform): boolean {
+  return platform === "win32" && /\.(cmd|bat)$/i.test(path);
 }
 
 /**

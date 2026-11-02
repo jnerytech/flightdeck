@@ -2840,6 +2840,12 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   characters and quoting grows the JSON, so past `INLINE_AGENTS_MAX` (20 000 characters; the built-in
   pack alone is about 13 K) the agents are dropped and the wrapper says so on stderr: the session
   opens without subagents rather than not at all.
+- **A Windows `.cmd` or `.bat` shim gets no `--agents`.** The npm install of claude is a `claude.cmd`
+  that forwards `%*`, so cmd.exe re-parses the line and mangles a JSON argument (escaping `( ) & | < >
+  ^ % !` as `\u00XX` was not enough: the quotes themselves break). The wrapper (`isWindowsShim`)
+  opens such a claude without subagents and says why on stderr; a native `claude.exe` (the default
+  install) has no cmd.exe in between and gets the JSON. A proper `.cmd` escaping (cross-spawn's
+  algorithm) can bring subagents back to the shim later.
 - **Closing a terminal tab detaches by default.** The close-tab dialog already offered Detach (the
   process keeps running on the host; reattach from the host's terminal list or the session's
   "Claude aqui" terminal) and End process. The dialog now opens with Detach focused (Radix focused
