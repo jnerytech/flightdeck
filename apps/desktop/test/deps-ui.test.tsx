@@ -141,7 +141,6 @@ async function cardMenu(title: string, entry: string) {
 
 const dialog = () => screen.queryByRole("alertdialog");
 
-
 const optionValue = (select: HTMLElement, text: string) => {
   const option = [...select.querySelectorAll("option")].find((o) => o.textContent === text);
   expect(option).toBeDefined();
@@ -160,7 +159,9 @@ async function addBlocker(blocker: string) {
     });
   });
   await click("Adicionar");
-  await settle(() => screen.queryByRole("button", { name: `Remover bloqueio ${blocker}` }) !== null);
+  await settle(
+    () => screen.queryByRole("button", { name: `Remover bloqueio ${blocker}` }) !== null,
+  );
 }
 
 const back = () => click("Voltar ao board");
@@ -248,8 +249,7 @@ describe("deps-ui: the card's detail", () => {
     await act(async () => {
       fireEvent.click(auto as HTMLElement);
     });
-    const kept = () =>
-      Object.values(store.getState().cards).find((card) => card.title === "B");
+    const kept = () => Object.values(store.getState().cards).find((card) => card.title === "B");
     await settle(() => kept()?.unblockWhen === "merged" && kept()?.autoStart !== null);
     expect(kept()?.unblockWhen).toBe("merged");
     expect(kept()?.autoStart).toEqual({ workflow: null });
