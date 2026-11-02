@@ -1644,6 +1644,9 @@ export const en: Dictionary = {
     disabled: "disabled",
     status: { new: "not used yet", ok: "working", failing: "failing" },
     last: "last answer: HTTP {status}",
+    removeMessage: "Remove {name}? Its URL is deleted from the vault.",
+    removeConfirm: "Remove",
+    needs: "Give it a name, a URL and at least one event.",
     sendsTo: "sends to {host}",
     errors: {
       invalid_url: "That is not a valid URL.",

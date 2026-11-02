@@ -1644,6 +1644,9 @@ export const ptBR = {
     disabled: "desativado",
     status: { new: "ainda não usado", ok: "funcionando", failing: "falhando" },
     last: "última resposta: HTTP {status}",
+    removeMessage: "Remover {name}? A URL dele é apagada do cofre.",
+    removeConfirm: "Remover",
+    needs: "Dê um nome, uma URL e pelo menos um evento.",
     sendsTo: "envia para {host}",
     errors: {
       invalid_url: "Essa URL não é válida.",
