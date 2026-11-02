@@ -121,6 +121,7 @@ import {
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
+import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
@@ -317,6 +318,7 @@ export type HostCommandType = Extract<
   | "messages.directory"
   | "messages.peers"
   | "vault.report"
+  | "session.summary"
   | "vault.decisions"
   | `pr.${string}`
   | "files.sessions"
@@ -661,6 +663,10 @@ export class AppStore {
       platform,
       summaryFor: (hostId, claudeSessionId, extra) =>
         this.sessionRecap(hostId, claudeSessionId, extra),
+    });
+    this.webhookFeed = new WebhookFeed(this.webhooks, (hostId, cwd) => {
+      const clientId = cwd ? this.clientScope().clientOfFolder(hostId, cwd) : UNASSIGNED;
+      return clientId === UNASSIGNED ? null : clientId;
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
@@ -1982,6 +1988,7 @@ export class AppStore {
     if (replied && !this.shownSessions().has(key)) {
       this.update({ unread: { ...this.state.unread, [key]: true } });
     }
+    this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
     const label = `${host.name} · ${next.name ?? basename(next.cwd)}`;
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
@@ -2014,6 +2021,14 @@ export class AppStore {
   private onExternal(hostId: string, frame: ExternalUpdated | ExternalPermissionFrame): void {
     if (frame.type === "external.updated") {
       const key = sessionKey(hostId, frame.session.claudeSessionId);
+      const known = this.state.hosts.find((h) => h.id === hostId);
+      if (known) {
+        this.webhookFeed.externalSession(
+          { id: hostId, name: known.name },
+          this.state.externals[key],
+          frame.session,
+        );
+      }
       this.update({
         externals: { ...this.state.externals, [key]: frame.session },
         // The name and pin of a terminal session ride on its frames (phase 10).
@@ -2029,6 +2044,11 @@ export class AppStore {
     }
     this.update({ externalRequests: { ...open, [key]: frame } });
     const host = this.state.hosts.find((h) => h.id === hostId);
+    this.webhookFeed.externalPermission(
+      { id: hostId, name: host?.name ?? hostId },
+      frame,
+      this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
+    );
     if (!this.platform.isFocused()) {
       void this.platform.notify({
         title: this.i18n.t("notify.externalTitle"),
@@ -2297,6 +2317,7 @@ export class AppStore {
   readonly clients: Clients;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
+  private readonly webhookFeed: WebhookFeed;
   private scopeMemo: { state: AppState; scope: ClientScope } | null = null;
 
   /** A client was changed: the screens read the new list, and a selection that is gone is all. */
@@ -2407,6 +2428,12 @@ export class AppStore {
     this.update({ clientBudgets: evaluation.states });
     for (const { clientId, threshold } of evaluation.news) {
       const state = evaluation.states.find((s) => s.clientId === clientId);
+      this.webhookFeed.clientBudget(
+        this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
+        clientId,
+        Math.round(threshold * 100),
+        usd(state?.limitUsd ?? 0),
+      );
       void this.platform.notify({
         title: this.i18n.t("messages.budgetTitle"),
         body: this.i18n.t("clients.budgetAlert", {
@@ -2606,11 +2633,17 @@ export class AppStore {
 
   /** Phase 30: the summary of a session of a host; null when the host cannot give one. */
   async sessionRecap(
-    _hostId: string,
-    _claudeSessionId: string,
-    _extra: { question?: string } = {},
+    hostId: string,
+    claudeSessionId: string,
+    extra: { question?: string } = {},
   ): Promise<SessionRecap | null> {
-    return null;
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!hasFeature(host?.hostInfo?.features, "summary", false)) return null;
+    try {
+      return await this.dispatch(hostId, "session.summary", { claudeSessionId, ...extra });
+    } catch {
+      return null;
+    }
   }
 
   /** Phase 22: keeps a card's watch; a card that starts to need you is told to the OS. */
@@ -2618,6 +2651,13 @@ export class AppStore {
     const key = sessionKey(hostId, watch.cardId);
     const before = this.state.watches[key];
     this.update({ watches: { ...this.state.watches, [key]: watch } });
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    this.webhookFeed.watch(
+      { id: hostId, name: host?.name ?? hostId },
+      this.state.cards[key]?.title ?? watch.cardId,
+      before,
+      watch,
+    );
     if (watch.status === "needs_you" && before?.status !== "needs_you") {
       const title = this.state.cards[key]?.title ?? watch.cardId;
       void this.platform.notify({
@@ -3096,6 +3136,12 @@ export class AppStore {
     this.keepBudget(hostId, update.budget, update.removed);
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (update.threshold === null || !host) return;
+    this.webhookFeed.budget(
+      { id: hostId, name: host.name },
+      budgetLabel(update.budget, this.i18n.t),
+      Math.round(update.threshold * 100),
+      usd(update.budget.limitUsd),
+    );
     void this.platform.notify({
       title: this.i18n.t("messages.budgetTitle"),
       body: this.i18n.t("messages.budgetBody", {
