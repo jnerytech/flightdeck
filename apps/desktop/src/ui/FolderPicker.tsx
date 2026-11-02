@@ -24,6 +24,8 @@ import { isLocalUrl } from "../lib/terminal.ts";
 export function FolderPicker(props: {
   store: AppStore;
   host: HostView;
+  /** Also list the files of the open folder, and let one be picked. */
+  files?: boolean;
   onPick(path: string): void;
   onClose(): void;
 }) {
