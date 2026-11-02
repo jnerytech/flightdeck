@@ -186,4 +186,13 @@ describe("webhook-alvos", () => {
       targets.matching({ kind: "budget_alert", hostId: "x", clientId: null }).map((t) => t.name),
     ).toEqual(["budget"]);
   });
+
+  test("without an id source each target gets its own id", async () => {
+    const { platform } = setup();
+    const targets = new WebhookTargets(platform);
+    const a = await targets.add(input());
+    const b = await targets.add(input({ name: "other" }));
+    expect(a.id).not.toBe(b.id);
+    expect(a.id.length).toBeGreaterThan(8);
+  });
 });
