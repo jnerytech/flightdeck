@@ -29,14 +29,72 @@ export interface SummaryInput {
   scanner: Pick<SecretScanner, "scan">;
 }
 
+type Json = Record<string, unknown>;
+
+const obj = (value: unknown): Json =>
+  value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Json) : {};
+
+/** The most files a summary lists; the rest is only counted. */
+const MAX_FILES = 12;
+
+/** Tools that change a file, and the input field that names it. */
+const FILE_TOOLS: Record<string, string> = {
+  Edit: "file_path",
+  Write: "file_path",
+  NotebookEdit: "notebook_path",
+};
+
+/** Text the harness puts in a user turn: commands and reminders are not something the person asked. */
+const WRAPPER = /^\s*<(?:command-|local-command|system-reminder)/;
+
+function userText(content: unknown): string | null {
+  const text =
+    typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content
+            .map((block) => obj(block))
+            .filter((block) => block.type === "text" && typeof block.text === "string")
+            .map((block) => block.text as string)
+            .join("\n")
+        : "";
+  return text.trim() === "" || WRAPPER.test(text) ? null : text.trim();
+}
+
 export function buildSummary(input: SummaryInput): SessionSummary {
+  let asked: string | null = null;
+  let done: string | null = null;
+  const touched = new Set<string>();
+  for (const raw of input.main.split("\n")) {
+    let entry: Json;
+    try {
+      entry = obj(JSON.parse(raw));
+    } catch {
+      continue;
+    }
+    if (entry.isSidechain === true) continue;
+    const message = obj(entry.message);
+    if (entry.type === "user") {
+      asked ??= userText(message.content);
+    } else if (entry.type === "assistant" && Array.isArray(message.content)) {
+      const text: string[] = [];
+      for (const block of message.content.map((item) => obj(item))) {
+        if (block.type === "text" && typeof block.text === "string") text.push(block.text);
+        const field = block.type === "tool_use" ? FILE_TOOLS[String(block.name)] : undefined;
+        const path = field ? obj(block.input)[field] : undefined;
+        if (typeof path === "string") touched.add(path);
+      }
+      if (text.length > 0) done = text.join("\n").trim();
+    }
+  }
+  const files = [...touched];
   return {
-    asked: "",
-    done: "",
-    files: [],
-    filesMore: 0,
+    asked,
+    done,
+    files: files.slice(0, MAX_FILES),
+    filesMore: Math.max(0, files.length - MAX_FILES),
     costUsd: input.costUsd,
-    question: "",
+    question: input.pending?.text ?? null,
     state: input.state,
     source: "transcript",
   };
