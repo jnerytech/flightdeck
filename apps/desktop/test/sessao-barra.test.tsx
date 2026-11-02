@@ -128,4 +128,25 @@ describe("sessao-barra: the composer toolbar", () => {
     await act(async () => void fireEvent.click(screen.getByRole("option", { name: "/compact" })));
     expect(box().value).toBe("/compact ");
   });
+
+  test("the mode select offers only modes as strict as the one the session started with", () => {
+    const options = (permissionMode: "plan" | "default" | "acceptEdits") => {
+      const view = render(
+        <SessionView
+          title="s"
+          session={{ ...emptySession(), status: "idle", permissionMode }}
+          actions={{ ...actions, setMode: async () => {} }}
+          settings
+        />,
+      );
+      const names = [
+        ...(screen.queryByLabelText("Modo de permissão") as HTMLSelectElement).options,
+      ].map((o) => o.value);
+      view.unmount();
+      return names;
+    };
+    expect(options("plan")).toEqual(["plan"]);
+    expect(options("default")).toEqual(["plan", "default"]);
+    expect(options("acceptEdits")).toEqual(["plan", "default", "acceptEdits"]);
+  });
 });
