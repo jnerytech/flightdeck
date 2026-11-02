@@ -69,28 +69,32 @@ describe("estados-avisos", () => {
     await act(async () => {
       await store.createSession(hostId, { cwd: "/", prompt: "oi" });
       await store.hostCommand(hostId, "card.get", { cardId: "nao-existe" });
+      await store.hostCommand(hostId, "file.read", {
+        target: "session:x",
+        path: "a.txt",
+      });
     });
-    await settle(() => alerts().length === 2);
+    await settle(() => alerts().length === 3);
     expect(alertTexts().join(" | ")).toContain("está fora das pastas permitidas do host.");
     expect(alertTexts().join(" | ")).toContain("flightdeckd setup");
-    expect(alertTexts().join(" | ")).toContain("Não encontrado no host.");
+    expect(alertTexts().join(" | ")).toContain("O card nao-existe não existe.");
     const notFound = alerts().find((a) => (a.textContent ?? "").includes("Não encontrado"));
     // The daemon's own message is behind "Detalhes".
-    expect(notFound?.textContent ?? "").not.toContain("nao-existe");
+    expect(notFound?.textContent ?? "").not.toContain("sessão x");
     const details = notFound ? within(notFound).queryByRole("button", { name: "Detalhes" }) : null;
     expect(details).not.toBeNull();
     await act(async () => {
       fireEvent.click(details as HTMLElement);
     });
-    expect(notFound?.textContent ?? "").toContain("nao-existe");
+    expect(notFound?.textContent ?? "").toContain("sessão x");
     const close = notFound ? within(notFound).queryByRole("button", { name: "Fechar" }) : null;
     expect(close).not.toBeNull();
     await act(async () => {
       fireEvent.click(close as HTMLElement);
       await Bun.sleep(400);
     });
-    await settle(() => alerts().length === 1);
-    expect(alertTexts()).toEqual([expect.stringContaining("está fora das pastas permitidas")]);
+    await settle(() => alerts().length === 2);
+    expect(alertTexts().join(" | ")).toContain("está fora das pastas permitidas");
   });
 
   test("código desconhecido mostra a mensagem do daemon; em inglês, os títulos também", async () => {
@@ -101,7 +105,7 @@ describe("estados-avisos", () => {
     });
     await settle(() => alerts().length === 2);
     expect(alertTexts().join(" | ")).toContain("Link de pareamento recusado: porta inválida");
-    expect(alertTexts().join(" | ")).toContain("Not found on the host.");
+    expect(alertTexts().join(" | ")).toContain("The card x does not exist.");
   });
 
   test("sucesso em toast curto: copiar o comando e iniciar um card", async () => {
@@ -172,6 +176,11 @@ describe("estados-avisos", () => {
     observer.observe(document.body, { childList: true, subtree: true });
     cleanups.push(() => observer.disconnect());
     await act(async () => store.router.push({ name: "history", host: hostId }));
+    // The fixture lives under a temp folder, which the list hides as automated until asked.
+    await settle(() => screen.queryByLabelText("Ocultar execuções automáticas") !== null);
+    await act(async () => {
+      fireEvent.click(screen.queryByLabelText("Ocultar execuções automáticas") as HTMLElement);
+    });
     await settle(() => screen.queryByRole("list", { name: "Sessões do histórico" }) !== null);
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).not.toBeNull();
     expect(shown.at).not.toBeNull();
