@@ -81,4 +81,51 @@ describe("sessao-barra: the composer toolbar", () => {
     await press("cancel");
     expect(box().value).toBe("olhe @/repo/src ");
   });
+
+  test("a managed session on a host that announces settings has a mode and a model select", async () => {
+    const calls: string[] = [];
+    const a = {
+      ...actions,
+      setMode: async (mode: string) => void calls.push(`mode:${mode}`),
+      setModel: async (model: string | null) => void calls.push(`model:${model}`),
+    };
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "idle", permissionMode: "default" }}
+        actions={a}
+        settings
+      />,
+    );
+    const mode = screen.queryByLabelText("Modo de permissão") as HTMLSelectElement;
+    expect(mode.value).toBe("default");
+    await act(async () => void fireEvent.change(mode, { target: { value: "plan" } }));
+    const model = screen.queryByLabelText("Modelo") as HTMLSelectElement;
+    await act(async () => void fireEvent.change(model, { target: { value: "opus" } }));
+    await act(async () => void fireEvent.change(model, { target: { value: "" } }));
+    expect(calls).toEqual(["mode:plan", "model:opus", "model:null"]);
+  });
+
+  test("without settings (an older host, a terminal session) there are no selects", () => {
+    render(
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={actions} />,
+    );
+    expect(screen.queryByLabelText("Modo de permissão")).toBeNull();
+    expect(screen.queryByLabelText("Modelo")).toBeNull();
+  });
+
+  test("typing / also offers the slash commands of the session, and one fills the box", async () => {
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "idle", slashCommands: ["compact", "review"] }}
+        actions={actions}
+      />,
+    );
+    await act(async () => void fireEvent.change(box(), { target: { value: "/co" } }));
+    await act(async () => {});
+    expect(screen.queryByRole("option", { name: "/review" })).toBeNull();
+    await act(async () => void fireEvent.click(screen.getByRole("option", { name: "/compact" })));
+    expect(box().value).toBe("/compact ");
+  });
 });

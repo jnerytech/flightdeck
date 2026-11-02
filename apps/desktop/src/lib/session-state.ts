@@ -2,6 +2,7 @@ import type {
   AssistantBlock,
   AutoApproval,
   EventEnvelope,
+  PermissionMode,
   PermissionResolution,
   PermissionUpdate,
   RiskLevel,
@@ -49,6 +50,10 @@ export interface SessionState {
   statusReason?: string;
   cwd?: string;
   model?: string;
+  /** The permission mode the session opened with, from `session.created`. */
+  permissionMode?: PermissionMode;
+  /** The slash commands the session has, from `session.init`. */
+  slashCommands?: string[];
   /** The persona the session runs in (phase 20), from how it opened and from what was applied since. */
   persona?: SessionPersona;
   /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */

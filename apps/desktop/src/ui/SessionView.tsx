@@ -1,4 +1,4 @@
-import type { PermissionUpdate } from "@flightdeck/protocol";
+import type { PermissionMode, PermissionUpdate } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
@@ -32,6 +32,9 @@ export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
   copyText?(text: string): Promise<boolean>;
   send(text: string): Promise<void>;
+  /** Changes the permission mode / the model (null: the default) of the open session. */
+  setMode?(mode: PermissionMode): Promise<void>;
+  setModel?(model: string | null): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
@@ -182,6 +185,8 @@ export function SessionView(props: {
   nowMs?: number;
   /** Phase 18: the prompt snippets `/` offers in the message box, and the text of the chosen one. */
   prompts?: PromptSnippets;
+  /** The host announces `session.settings` and the session is a managed one. */
+  settings?: boolean;
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }) {
