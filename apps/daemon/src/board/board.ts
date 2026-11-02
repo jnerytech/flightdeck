@@ -197,6 +197,7 @@ interface CardRow {
   unblock_when: UnblockWhen;
   auto_start: string | null;
   unblocked_at: string | null;
+  waiting: number;
   created_at: string;
   updated_at: string;
 }
@@ -301,6 +302,12 @@ export class Board {
     }
     // Workflow runs take their slots back before the queue moves.
     this.workflows.recover();
+    // A blocker that finished while the daemon was down ends its dependents' wait now.
+    for (const { id } of this.db
+      .query<{ id: string }, []>("SELECT id FROM cards WHERE waiting = 1")
+      .all()) {
+      this.afterBlockerChange(id);
+    }
     this.pump();
   }
 
@@ -537,6 +544,7 @@ export class Board {
         at,
       );
     this.storeBlockers(id, blockedBy);
+    this.noteWaiting(id);
     for (const blocker of blockedBy) this.changed(blocker);
     return this.changed(id);
   }
@@ -751,6 +759,7 @@ export class Board {
     if (patch.blockedBy) {
       const changed = new Set([...card.blockedBy, ...patch.blockedBy]);
       this.storeBlockers(id, patch.blockedBy);
+      this.noteWaiting(id);
       for (const blocker of changed) this.changed(blocker);
     }
     return this.changed(id);
@@ -789,6 +798,57 @@ export class Board {
       "card_blocked",
       { blockers },
     );
+  }
+
+  /** Phase 31: the person dismisses the "unblocked" mark. */
+  dismissUnblocked(id: string): Card {
+    this.getCard(id);
+    this.db.query("UPDATE cards SET unblocked_at = NULL WHERE id = ?").run(id);
+    return this.changed(id);
+  }
+
+  /**
+   * What the end of a card's wait does, once: the last blocker was satisfied (or went away). With
+   * auto-start the card starts like any other start, through the queue; without it the card gets
+   * the mark. `waiting` is what tells the end of a wait from a card that was never blocked.
+   */
+  private afterBlockerChange(id: string): void {
+    const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
+    if (!row) return;
+    const hasRun = this.db.query("SELECT 1 FROM card_runs WHERE card_id = ?").get(id) !== null;
+    const waiting = !hasRun && this.unsatisfied(id, row.unblock_when).length > 0;
+    if (waiting) {
+      if (row.waiting === 0) this.db.query("UPDATE cards SET waiting = 1 WHERE id = ?").run(id);
+      return;
+    }
+    if (row.waiting === 0) return;
+    this.db.query("UPDATE cards SET waiting = 0 WHERE id = ?").run(id);
+    if (hasRun) return;
+    const auto = row.auto_start
+      ? (JSON.parse(row.auto_start) as { workflow: string | null })
+      : null;
+    if (!auto) {
+      this.db.query("UPDATE cards SET unblocked_at = ? WHERE id = ?").run(now(), id);
+      return;
+    }
+    void this.startCard(id, auto.workflow ? { workflow: auto.workflow } : {}).catch(
+      (error: unknown) => {
+        if (this.stopped) return;
+        const why = error instanceof Error ? error.message : String(error);
+        this.db
+          .query("UPDATE cards SET notice = ?, unblocked_at = ? WHERE id = ?")
+          .run(`Auto-start failed: ${why}`, now(), id);
+        this.changed(id);
+      },
+    );
+  }
+
+  /** A change the person made to the links: the wait is noted, and nothing starts or is marked. */
+  private noteWaiting(id: string): void {
+    const row = this.getCard(id);
+    this.db
+      .query("UPDATE cards SET waiting = ? WHERE id = ?")
+      .run(row.waitingOn.length > 0 ? 1 : 0, id);
   }
 
   /** The cards `id` holds up. */
@@ -966,7 +1026,7 @@ export class Board {
         "INSERT INTO card_runs (id, card_id, queued_at, persona, fix_prompt) VALUES (?, ?, ?, ?, ?)",
       )
       .run(runId, id, now(), persona ? JSON.stringify(persona) : null, options.fix?.prompt ?? null);
-    this.db.query("UPDATE cards SET notice = NULL WHERE id = ?").run(id);
+    this.db.query("UPDATE cards SET notice = NULL, unblocked_at = NULL WHERE id = ?").run(id);
     this.place(id, { type: "started" });
     this.pump();
     return this.changed(id);
@@ -1495,6 +1555,7 @@ export class Board {
     const notice = `Blocker "${last.title}" was discarded and no longer blocks this card.`;
     for (const dependent of holdingUp) {
       this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, dependent);
+      this.afterBlockerChange(dependent);
       this.changed(dependent);
     }
     for (const blocker of heldBy) this.changed(blocker);
@@ -1627,7 +1688,10 @@ export class Board {
     const card = this.getCard(id);
     this.emit(card);
     // What a card waits for follows its blockers' columns: the cards it holds up are news too.
-    for (const dependent of this.blockingOf(id)) this.emit(this.getCard(dependent));
+    for (const dependent of this.blockingOf(id)) {
+      this.afterBlockerChange(dependent);
+      this.emit(this.getCard(dependent));
+    }
     return card;
   }
 

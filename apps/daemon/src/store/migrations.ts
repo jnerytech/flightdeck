@@ -733,5 +733,7 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN unblock_when TEXT NOT NULL DEFAULT 'done';
   ALTER TABLE cards ADD COLUMN auto_start TEXT;
   ALTER TABLE cards ADD COLUMN unblocked_at TEXT;
+  -- 1 while the card waits for a blocker: the end of the wait is what unblocks it, once.
+  ALTER TABLE cards ADD COLUMN waiting INTEGER NOT NULL DEFAULT 0;
   `,
 ];
