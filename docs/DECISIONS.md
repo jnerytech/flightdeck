@@ -2845,3 +2845,11 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   "Claude aqui" terminal) and End process. The dialog now opens with Detach focused (Radix focused
   Cancel), so a quick Enter never ends the session. A detached terminal with nobody attached is still
   ended by the host's idle timeout (120 minutes by default).
+- **AskUserQuestion and ExitPlanMode have their own approval cards.** The card shows each question
+  with its header, options (radio for one choice, checkboxes for several) and an "Other" text, and
+  answers by allowing the tool with `updatedInput = {...input, answers}` (question text to the chosen
+  labels, joined by ", " for several, or the Other text), the Agent SDK contract. Managed sessions
+  pass it through `canUseTool`; terminal sessions through the PermissionRequest hook's
+  `updatedInput`, so both can answer in the app. ExitPlanMode's `plan` renders as markdown with
+  "Approve plan" and "Keep planning". No tool input renders as `[object Object]`: objects inside
+  lists are JSON.
