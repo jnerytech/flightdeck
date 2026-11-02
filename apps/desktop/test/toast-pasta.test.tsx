@@ -58,6 +58,33 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
     await settle(() => store.getState().selected?.sessionId != null);
   });
 
+  test("a command other than a new session also runs again once the folder is allowed", async () => {
+    const { store, hostId } = await online("en-US");
+    const vault = realTempDir("fd-vault-");
+    await act(async () => {
+      await store.hostCommand(hostId, "project.add", { path: vault });
+    });
+    await settle(() => screen.queryAllByRole("alert").length === 1);
+    const toast = screen.getAllByRole("alert")[0] as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(toast).getByRole("button", { name: "Add to allowed folders" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", {
+          name: "Add to allowed folders",
+        }),
+      );
+    });
+    await settle(() => store.getState().hosts[0]?.info?.allowedRoots.includes(vault) === true);
+    // The retry reached the host again: now it refuses for another reason (not a git repository).
+    await settle(() =>
+      screen
+        .queryAllByRole("alert")
+        .some((a) => (a.textContent ?? "").includes("is not a git repository")),
+    );
+  });
+
   test("cancelling the confirmation changes nothing; in Portuguese the button is translated", async () => {
     const { d, store, hostId } = await online("pt-BR");
     const vault = realTempDir("fd-vault-");

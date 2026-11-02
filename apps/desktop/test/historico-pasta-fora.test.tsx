@@ -150,6 +150,17 @@ describe("historico: a session in a folder the host does not allow", () => {
     expect(screen.queryByRole("button", { name: "Add to allowed folders" })).toBeNull();
   });
 
+  test("cancelling the confirmation leaves the buttons off", async () => {
+    const vault = realTempDir("fd-vault-");
+    await online((d) => transcript(d, 1, vault));
+    await reader();
+    await click(screen.getByRole("button", { name: "Add to allowed folders" }));
+    await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    const cont = screen.getByRole("button", { name: "Continue in Flightdeck" });
+    expect((cont as HTMLButtonElement).disabled).toBe(true);
+  });
+
   test("a folder inside the allowed ones keeps the buttons on", async () => {
     await online((d) => transcript(d, 1, d.project));
     await reader();

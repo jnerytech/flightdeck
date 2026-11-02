@@ -236,6 +236,20 @@ describe("projeto-adicionar: where it is offered", () => {
     await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
   });
 
+  test("Cancel and Escape close the dialog without adding anything", async () => {
+    const { store, hostId } = await online();
+    render(withT(store, <AddProject store={store} hostId={hostId} onAdded={() => {}} />));
+    await click(screen.getByRole("button", { name: "Add project" }));
+    await click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    await settle(() => screen.queryByRole("dialog") === null);
+    await click(screen.getByRole("button", { name: "Add project" }));
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog") === null);
+    expect(store.getState().projects[hostId] ?? []).toEqual([]);
+  });
+
   /** Adds a typed folder through the Add project dialog. */
   async function addTyped(folder: string) {
     await click(screen.getByRole("button", { name: "Add project" }));
