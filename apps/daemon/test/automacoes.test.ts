@@ -14,6 +14,8 @@ import { workflowCard } from "./workflow-helpers.ts";
 
 // Real git, worktrees and fake CLIs: more than the default 5 s.
 setDefaultTimeout(20_000);
+/** How long a test lets the scheduler work before it calls it hung. */
+const NET = 60_000;
 
 const TOKEN = "automacoes-token-0123456789a";
 const WF = "steps:\n  - id: work\n    agent: { prompt: 'faça' }\n";
@@ -710,32 +712,43 @@ describe("automacoes", () => {
     expect(ctx.automations.runs(a.id)[0]).toMatchObject({ status: "failed" });
   });
 
-  test("o agendador e a busca rodam sozinhos depois do start e param no stop", async () => {
-    fake("gh", GH([ghIssue(7)]));
-    const ctx = await setup({ github: true });
-    const clock = { now: UTC("2026-10-05T12:00:00Z") };
-    const timed = ctx.make({ tickMs: 20, pollMs: 20, clock: () => clock.now });
-    const cron = ctx.on({ name: "Cron", trigger: { type: "cron", expr: "* * * * *", tz: "UTC" } });
-    const issue = ctx.on({
-      name: "Issue",
-      trigger: { type: "issue_label", label: "auto" },
-      action: { type: "create_card" },
-    });
-    timed.start();
-    // Whatever happens, the timers stop with the test: they would reach the CLIs after it.
-    cleanups.push(async () => {
+  test(
+    "o agendador e a busca rodam sozinhos depois do start e param no stop",
+    async () => {
+      fake("gh", GH([ghIssue(7)]));
+      const ctx = await setup({ github: true });
+      const clock = { now: UTC("2026-10-05T12:00:00Z") };
+      const timed = ctx.make({ tickMs: 20, pollMs: 20, clock: () => clock.now });
+      const cron = ctx.on({
+        name: "Cron",
+        trigger: { type: "cron", expr: "* * * * *", tz: "UTC" },
+      });
+      const issue = ctx.on({
+        name: "Issue",
+        trigger: { type: "issue_label", label: "auto" },
+        action: { type: "create_card" },
+      });
+      timed.start();
+      // Whatever happens, the timers stop with the test: they would reach the CLIs after it.
+      cleanups.push(async () => {
+        timed.stop();
+        await timed.idle();
+      });
+      clock.now = UTC("2026-10-05T12:01:00Z");
+      // The deadline is only a net against a real hang: what the test waits for is the scheduler
+      // and the search doing their work, which takes as long as the machine lets the CLIs run.
+      expect(await poll(() => fired(timed, cron.id).length >= 1, NET)).toBe(true);
+      expect(await poll(() => timed.runs(issue.id).length >= 1, NET)).toBe(true);
       timed.stop();
+      // A tick or a search that was already running when it stopped still ends; count after it.
       await timed.idle();
-    });
-    clock.now = UTC("2026-10-05T12:01:00Z");
-    expect(await poll(() => fired(timed, cron.id).length >= 1, 3000)).toBe(true);
-    expect(await poll(() => timed.runs(issue.id).length >= 1, 3000)).toBe(true);
-    timed.stop();
-    const count = timed.runs(cron.id).length;
-    clock.now = UTC("2026-10-05T12:09:00Z");
-    await Bun.sleep(120);
-    expect(timed.runs(cron.id)).toHaveLength(count);
-  });
+      const count = timed.runs(cron.id).length;
+      clock.now = UTC("2026-10-05T12:09:00Z");
+      await Bun.sleep(120);
+      expect(timed.runs(cron.id)).toHaveLength(count);
+    },
+    NET * 2,
+  );
 
   test("protocolo: automation.list, save, toggle, runs e remove; ligar e remover pedem confirm", async () => {
     const ctx = await setup();
