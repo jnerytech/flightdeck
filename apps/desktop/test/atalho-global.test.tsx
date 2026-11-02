@@ -143,7 +143,9 @@ describe("atalho-global", () => {
 
     // Another taken one keeps the warning and is not saved.
     await saveShortcut("Ctrl+Alt+G");
-    await settle(() => calls.length === 3);
+    // Nothing was registered before (F was taken), so there is nothing to unregister: two calls.
+    await settle(() => calls.length === 2);
+    expect(calls).toEqual(["register Ctrl+Alt+F", "register Ctrl+Alt+G"]);
     expect(screen.queryByText(warning.replace("Ctrl+Alt+F", "Ctrl+Alt+G"))).not.toBeNull();
     expect(items.get(SHORTCUT_KEY)).toBeUndefined();
 
