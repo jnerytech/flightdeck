@@ -109,6 +109,28 @@ describe("permitir-externo", () => {
     });
   });
 
+  test("the hook's decision carries updatedInput, so AskUserQuestion gets its answers", async () => {
+    const { receptor, client } = await setup();
+    const answer = ask(receptor);
+    const frame = await openFrame(client);
+    const updatedInput = {
+      questions: [{ question: "Which one?", header: "Pick", options: [], multiSelect: false }],
+      answers: { "Which one?": "A" },
+    };
+    const ack = await client.request("permission.respond", {
+      requestId: frame?.requestId,
+      decision: "allow",
+      updatedInput,
+    });
+    expect(ack.ok).toBe(true);
+    expect(JSON.parse(await answer)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PermissionRequest",
+        decision: { behavior: "allow", updatedInput },
+      },
+    });
+  });
+
   test("updatedPermissions inválido dá invalid_permission_update e o hook segue segurado", async () => {
     const { receptor, client, permissions } = await setup();
     const answer = ask(receptor);
