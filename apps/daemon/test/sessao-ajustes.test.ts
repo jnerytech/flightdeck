@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { SessionEvent } from "@flightdeck/protocol";
+import { Command, type SessionEvent } from "@flightdeck/protocol";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { startServer } from "../src/server.ts";
@@ -109,5 +109,45 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
     ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
     const info = await client.data<{ features: string[] }>("host.info", {});
     expect(info?.features).toContain("session.settings");
+  });
+
+  test("the command takes only default, acceptEdits and plan: never bypassPermissions, dontAsk or auto", () => {
+    const parse = (permissionMode: string) =>
+      Command.safeParse({
+        id: "1",
+        type: "session.setMode",
+        payload: { sessionId: "s", permissionMode },
+      }).success;
+    expect(["default", "acceptEdits", "plan"].map(parse)).toEqual([true, true, true]);
+    expect(["bypassPermissions", "dontAsk", "auto"].map(parse)).toEqual([false, false, false]);
+  });
+
+  test("a session never goes looser than the mode it started with", async () => {
+    const start = async (permissionMode: "default" | "acceptEdits" | "plan") => {
+      const { manager, project } = newManager({
+        runtime: new FakeRuntime({ delayMs: 1 }),
+      });
+      const { sessionId } = manager.create({ cwd: project, prompt: "hi", permissionMode });
+      await poll(() => manager.get(sessionId).status === "idle", 3000);
+      return { manager, sessionId };
+    };
+    const fromDefault = await start("default");
+    expect(
+      await code(fromDefault.manager.setPermissionMode(fromDefault.sessionId, "acceptEdits")),
+    ).toBe("invalid_permission_update");
+    expect(await code(fromDefault.manager.setPermissionMode(fromDefault.sessionId, "plan"))).toBe(
+      "ok",
+    );
+    const fromPlan = await start("plan");
+    expect(await code(fromPlan.manager.setPermissionMode(fromPlan.sessionId, "default"))).toBe(
+      "invalid_permission_update",
+    );
+    const fromAccept = await start("acceptEdits");
+    expect(await code(fromAccept.manager.setPermissionMode(fromAccept.sessionId, "default"))).toBe(
+      "ok",
+    );
+    expect(
+      await code(fromAccept.manager.setPermissionMode(fromAccept.sessionId, "acceptEdits")),
+    ).toBe("ok");
   });
 });
