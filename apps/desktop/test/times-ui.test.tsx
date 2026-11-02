@@ -42,7 +42,7 @@ const change = async (label: string, value: string) => {
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, stdio: "ignore" });
 
 /** A --runtime fake daemon named `hostName` with a project. */
-async function daemonWithProject(hostName: string) {
+async function daemonWithProject(hostName: string, options: { projects?: boolean } = {}) {
   const dir = realTempDir(`fd-times-ui-${hostName}-`);
   const repo = join(dir, "app");
   mkdirSync(repo);
@@ -80,7 +80,10 @@ async function daemonWithProject(hostName: string) {
   const client = new FrameClient(daemon?.url ?? "");
   cleanups.push(() => client.close());
   await client.request("hello", { token, client: "t" });
-  const project = await client.data<{ id: string }>("project.add", { path: repo });
+  const withProjects = options.projects !== false;
+  const project = withProjects
+    ? await client.data<{ id: string }>("project.add", { path: repo })
+    : null;
   // A second project, for the form's project choice.
   const lib = join(dir, "lib");
   mkdirSync(lib);
@@ -95,7 +98,9 @@ async function daemonWithProject(hostName: string) {
   writeFileSync(join(lib, "README.md"), "# lib\n");
   git(lib, "add", ".");
   git(lib, "commit", "-q", "-m", "inicial");
-  const second = await client.data<{ id: string }>("project.add", { path: lib });
+  const second = withProjects
+    ? await client.data<{ id: string }>("project.add", { path: lib })
+    : null;
   type Listed = {
     teams: Array<{
       id: string;
@@ -120,12 +125,12 @@ async function daemonWithProject(hostName: string) {
       await Bun.sleep(50);
     }
   });
-  return { url: daemon?.url ?? "", token, client, project, second, teams };
+  return { url: daemon?.url ?? "", token, client, project, second, teams, repo };
 }
 
 /** The app on a daemon with a project, on its Times screen. */
-async function open() {
-  const d = await daemonWithProject("pc");
+async function open(options: { projects?: boolean } = {}) {
+  const d = await daemonWithProject("pc", options);
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
@@ -144,6 +149,18 @@ async function create(name: string, workers = "1") {
   await change("Executoras", workers);
   await click("Criar time");
   await settle(() => row(name) !== null);
+}
+
+/** Checks the workers' personas in the form, in this order, by the persona's id. */
+async function pickWorkerPersonas(...ids: string[]) {
+  const group = screen.getByRole("group", { name: "Personas das executoras (opcional)" });
+  for (const id of ids) {
+    const box = group.querySelector(`input[type="checkbox"][value="${id}"]`);
+    expect(box).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(box as Element);
+    });
+  }
 }
 
 const row = (name: string) => screen.queryByRole("listitem", { name: `Time ${name}` });
@@ -195,7 +212,7 @@ describe("times-ui: the teams of a host", () => {
     await change("Objetivo", "com personas");
     await change("Nome do time", "tp");
     await change("Executoras", "2");
-    await change("Personas das executoras (opcional, separadas por vírgula)", "qa, revisor");
+    await pickWorkerPersonas("qa", "revisor");
     await click("Criar time");
     await settle(() => row("tp") !== null);
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
@@ -324,11 +341,89 @@ describe("times-ui: the teams of a host", () => {
     await change("Nome do time", "no-pi");
     await change("Projeto", other.second?.id ?? "");
     await change("Persona da coordenadora (opcional)", "revisor");
+    // A choice among the host's personas, never text typed.
+    expect(screen.queryByLabelText("Persona da coordenadora (opcional)")?.tagName).toBe("SELECT");
     await click("Criar time");
     await settle(() => row("no-pi") !== null);
     const made = await other.teams();
     expect(made.map((t) => t.name)).toEqual(["no-pi"]);
     expect(made[0]?.members[0]?.persona).toBe("revisor");
+  });
+
+  test("the workers' personas are a multiple choice of the host's personas, in the order picked", async () => {
+    await open();
+    await click("Novo time");
+    await settle(
+      () => screen.queryByRole("group", { name: "Personas das executoras (opcional)" }) !== null,
+    );
+    const group = screen.getByRole("group", { name: "Personas das executoras (opcional)" });
+    expect(group.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(5);
+    // No free text left for a persona name.
+    expect(
+      screen.queryByLabelText("Personas das executoras (opcional, separadas por vírgula)"),
+    ).toBeNull();
+    await pickWorkerPersonas("revisor", "qa");
+    const picked = [...group.querySelectorAll('input[type="checkbox"]:checked')].map(
+      (b) => (b as HTMLInputElement).value,
+    );
+    expect(picked).toEqual(["revisor", "qa"]);
+  });
+
+  test("a member's persona is switched with a picker of the host's personas", async () => {
+    await open();
+    await create("t5", "1");
+    await settle(
+      () =>
+        within(row("t5") as HTMLElement).queryByLabelText("Persona de t5 · executora 1")
+          ?.tagName === "SELECT",
+    );
+  });
+
+  test("a host with no project says so, adds one from the form, and Criar time waits for goal and project", async () => {
+    const { teams, repo } = await open({ projects: false });
+    await click("Novo time");
+    await settle(() => screen.queryByText("Este host ainda não tem projetos.") !== null);
+    const button = () => screen.getByRole("button", { name: "Criar time" }) as HTMLButtonElement;
+    expect(button().disabled).toBe(true);
+    await change("Objetivo", "com projeto novo");
+    // The goal is there; the project is what is missing, and the reason says so.
+    expect(button().disabled).toBe(true);
+    expect(screen.queryByText("Escolha um projeto.")).not.toBeNull();
+    const form = screen
+      .getByText("Este host ainda não tem projetos.")
+      .closest("div") as HTMLElement;
+    await click("Adicionar projeto", form.parentElement);
+    const dialog = screen.getByRole("dialog");
+    await act(async () => {
+      fireEvent.change(within(dialog).getByLabelText("Pasta do projeto"), {
+        target: { value: repo },
+      });
+    });
+    await click("Adicionar", dialog);
+    await settle(() => !button().disabled);
+    await change("Nome do time", "novo");
+    await click("Criar time");
+    await settle(() => row("novo") !== null);
+    expect((await teams()).map((t) => t.name)).toEqual(["novo"]);
+  });
+
+  test("a refusal of the host says why, in the app's language", async () => {
+    const { store } = await open();
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await act(async () => {
+      await store.hostCommand(hostId, "teams.create", {
+        projectId: "fantasma",
+        goal: "x",
+        workers: 1,
+      });
+    });
+    await settle(() =>
+      screen
+        .queryAllByRole("alert")
+        .map((a) => a.textContent ?? "")
+        .join("|")
+        .includes("O projeto fantasma não está neste host"),
+    );
   });
 
   test("without a host with teams, the screen says so", async () => {
