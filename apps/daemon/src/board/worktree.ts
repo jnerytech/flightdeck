@@ -187,6 +187,30 @@ export async function copyIncluded(
   return { copied, skipped };
 }
 
+/**
+ * Phase 31: where a card that waited for blockers starts from. The base as it is on `origin`
+ * after a fetch, when the local base is behind it (a PR merged on the remote); else the local
+ * base (a local merge already moved it, or the two diverged, or there is no `origin`). Never
+ * moves the local base branch, which may be checked out. A failed fetch is a notice, not a stop.
+ */
+export async function freshBase(
+  repo: string,
+  base: string,
+): Promise<{ ref: string; notice: string | null }> {
+  const remotes = (await git(repo, "remote")).stdout.split(/\s+/);
+  if (!remotes.includes("origin")) return { ref: base, notice: null };
+  const fetched = await git(repo, "fetch", "origin", base);
+  if (fetched.code !== 0) {
+    const why = fetched.stderr.trim().split("\n").at(-1) ?? "";
+    return { ref: base, notice: `Could not refresh ${base} from origin: ${why}` };
+  }
+  const remote = `origin/${base}`;
+  const behind = await git(repo, "merge-base", "--is-ancestor", base, remote);
+  const same =
+    (await git(repo, "rev-parse", base)).stdout === (await git(repo, "rev-parse", remote)).stdout;
+  return { ref: behind.code === 0 && !same ? remote : base, notice: null };
+}
+
 /** The tail of the line of worktrees being added, per repository. */
 const adding = new Map<string, Promise<unknown>>();
 

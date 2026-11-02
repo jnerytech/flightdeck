@@ -58,6 +58,7 @@ import {
   addWorktree,
   excludeLocalSettings,
   excludeLocalSettingsAsync,
+  freshBase,
   must,
   WORKTREE_INCLUDE,
   WORKTREE_INCLUDE_LIMIT,
@@ -1170,13 +1171,19 @@ export class Board {
     let worktree = card.worktreePath;
     if (!worktree) {
       const limit = this.opts.worktreeIncludeLimit ?? WORKTREE_INCLUDE_LIMIT;
-      const added = await addWorktree(project.path, card.title, project.baseBranch, limit);
+      // A card that waited for blockers starts from the base as it is after they merged.
+      const from =
+        card.blockedBy.length > 0
+          ? await freshBase(project.path, project.baseBranch)
+          : { ref: project.baseBranch, notice: null };
+      const added = await addWorktree(project.path, card.title, from.ref, limit);
       worktree = added.path;
       const left = added.skipped.length;
-      const notice =
+      const skipped =
         left === 0
           ? null
           : `${left === 1 ? "1 arquivo do .worktreeinclude não copiado" : `${left} arquivos do .worktreeinclude não copiados`}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
+      const notice = [from.notice, skipped].filter((part) => part !== null).join("; ") || null;
       this.db
         .query(
           "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, notice = ?, updated_at = ? WHERE id = ?",
