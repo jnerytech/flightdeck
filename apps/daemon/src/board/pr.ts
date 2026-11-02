@@ -148,7 +148,10 @@ export async function cli(
   input?: string,
 ): Promise<CommandResult> {
   const bin = whichOnPath(name);
-  if (!bin) throw new FlightdeckError("invalid_state", `${name} não encontrado no PATH`);
+  if (!bin)
+    throw new FlightdeckError("invalid_state", `${name} not found on the PATH`, "tool_missing", {
+      name,
+    });
   // The Azure CLI's free text is made safe for its .cmd shim (az-text.ts); the others keep theirs.
   const safe = name === "az" ? sanitizeAzArgs(args) : args;
   return runCommand([bin, ...safe], cwd, input).catch(mapSpawnError);
@@ -164,7 +167,12 @@ export async function cliOk(
   const result = await cli(name, args, cwd, input);
   if (result.code !== 0) {
     const what = [name, ...args.slice(0, name === "az" ? 3 : 2)].join(" ");
-    throw new FlightdeckError("invalid_state", `${what} falhou: ${result.stderr.trim()}`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `${what} failed: ${result.stderr.trim()}`,
+      "command_failed",
+      { what, output: result.stderr.trim() },
+    );
   }
   return result.stdout;
 }
@@ -180,7 +188,9 @@ function urlName(what: string, value: string): string {
   if (value === "" || value.startsWith("@") || control) {
     throw new FlightdeckError(
       "invalid_state",
-      `${what} inválido na URL do PR: ${JSON.stringify(value)}`,
+      `invalid ${what} in the PR URL: ${JSON.stringify(value)}`,
+      "pr_url_part_invalid",
+      { what, value },
     );
   }
   return value;
@@ -214,7 +224,11 @@ interface GhCheck {
 /** The parts of a GitHub PR URL, the names checked before they reach `gh`. */
 function ghParts(url: string): { owner: string; repo: string; number: string; prUrl: string } {
   const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
-  if (!match) throw new FlightdeckError("invalid_state", `URL de PR do GitHub inválida: ${url}`);
+  if (!match)
+    throw new FlightdeckError("invalid_state", `invalid GitHub PR URL: ${url}`, "pr_url_invalid", {
+      provider: "GitHub",
+      url,
+    });
   const [, rawOwner, rawRepo, number] = match as unknown as [string, string, string, string];
   const owner = urlName("dono", rawOwner);
   const repo = urlName("repositório", rawRepo);
@@ -366,7 +380,12 @@ export class GithubCli implements PrProvider {
     const { prUrl } = ghParts(url);
     const result = await cli("gh", ["pr", "checks", prUrl, "--json", "name,bucket,link"], cwd);
     if (!result.stdout.trim()) {
-      throw new FlightdeckError("invalid_state", `gh pr checks falhou: ${result.stderr.trim()}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `gh pr checks failed: ${result.stderr.trim()}`,
+        "command_failed",
+        { what: "gh pr checks", output: result.stderr.trim() },
+      );
     }
     const rows = JSON.parse(result.stdout) as Array<{ name: string; bucket: string; link: string }>;
     const { mergeable } = await cliJson<{ mergeable: string }>(
@@ -435,7 +454,11 @@ function azParts(url: string): { org: string; project: string; repo: string; id:
     /^(https:\/\/dev\.azure\.com\/[^/]+|https:\/\/[^/]+\.visualstudio\.com)\/([^/]+)\/_git\/([^/]+)\/pullrequest\/(\d+)/.exec(
       url,
     );
-  if (!match) throw new FlightdeckError("invalid_state", `URL de PR do Azure inválida: ${url}`);
+  if (!match)
+    throw new FlightdeckError("invalid_state", `invalid Azure PR URL: ${url}`, "pr_url_invalid", {
+      provider: "Azure",
+      url,
+    });
   const [, org, encodedProject, encodedRepo, id] = match as unknown as [
     string,
     string,

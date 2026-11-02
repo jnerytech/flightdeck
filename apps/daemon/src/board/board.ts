@@ -148,7 +148,11 @@ const PERSONA_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 function subagentsMode(mode: string): PersonaSubagentsMode {
   const parsed = PersonaSubagentsModeSchema.safeParse(mode);
   if (!parsed.success) {
-    throw new FlightdeckError("bad_request", "personaSubagents: all, project ou none");
+    throw new FlightdeckError(
+      "bad_request",
+      "personaSubagents must be all, project or none",
+      "persona_subagents_invalid",
+    );
   }
   return parsed.data;
 }
@@ -161,12 +165,14 @@ function mergePersonas(
   const merged: Record<string, string> = { ...current };
   for (const [column, id] of Object.entries(patch)) {
     if (!BoardColumnSchema.options.includes(column as BoardColumn)) {
-      throw new FlightdeckError("bad_request", `coluna desconhecida: ${column}`);
+      throw new FlightdeckError("bad_request", `unknown column: ${column}`, "column_unknown", {
+        column,
+      });
     }
     if (id === null) delete merged[column];
     else if (id === undefined) continue;
     else if (!PERSONA_ID.test(id))
-      throw new FlightdeckError("bad_request", "id de persona inválido");
+      throw new FlightdeckError("bad_request", "invalid persona id", "persona_id_invalid");
     else merged[column] = id;
   }
   return merged;
@@ -342,10 +348,21 @@ export class Board {
     const path = resolveAllowedCwd(input.path, this.opts.allowedRoots);
     const top = await git(path, "rev-parse", "--show-toplevel");
     if (top.code !== 0) {
-      throw new FlightdeckError("invalid_state", `não é um repositório git: ${input.path}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `not a git repository: ${input.path}`,
+        "repo_not_git",
+        { path: input.path },
+      );
     }
     const taken = this.db.query("SELECT 1 FROM projects WHERE path = ?").get(path);
-    if (taken) throw new FlightdeckError("invalid_state", `projeto já cadastrado: ${path}`);
+    if (taken)
+      throw new FlightdeckError(
+        "invalid_state",
+        `project already registered: ${path}`,
+        "project_exists",
+        { path },
+      );
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
     const project: Omit<Project, "worktreeInclude" | "personaByColumn" | "personaSubagents"> = {
       id: ulid(),
@@ -441,7 +458,8 @@ export class Board {
 
   getCard(id: string): Card {
     const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
-    if (!row) throw new FlightdeckError("not_found", `card ${id} não existe`);
+    if (!row)
+      throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", { id });
     const rows = this.db
       .query<RunRow, [string]>(
         "SELECT * FROM card_runs WHERE card_id = ? ORDER BY queued_at, rowid",
@@ -574,15 +592,20 @@ export class Board {
     const card = this.getCard(cardId);
     this.refuseIfBlocked(card);
     if (input.variants.length < 2 || input.variants.length > 4) {
-      throw new FlightdeckError("bad_request", "uma arena tem de 2 a 4 variantes");
+      throw new FlightdeckError("bad_request", "an arena has 2 to 4 variants", "arena_variants");
     }
     if (card.arenaOf || card.arenaVariants > 0) {
-      throw new FlightdeckError("invalid_state", "o card já está numa arena");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card is already in an arena",
+        "arena_in_arena",
+      );
     }
     if (card.queued || card.worktreePath || this.running.has(cardId)) {
       throw new FlightdeckError(
         "invalid_state",
-        "o card já foi iniciado: a arena parte de um card novo",
+        "the card was already started: an arena starts from a new card",
+        "card_started",
       );
     }
     const made: string[] = [];
@@ -679,13 +702,19 @@ export class Board {
     if (!confirm) {
       throw new FlightdeckError(
         "invalid_state",
-        "escolher a variante remove as outras: confirm: true",
+        "choosing a variant removes the others: confirm first",
+        "arena_choose_confirm",
       );
     }
     this.getCard(cardId);
     const ids = this.variantIds(cardId);
     if (!ids.includes(variantId)) {
-      throw new FlightdeckError("not_found", `a variante ${variantId} não é desta arena`);
+      throw new FlightdeckError(
+        "not_found",
+        `variant ${variantId} is not in this arena`,
+        "arena_variant_unknown",
+        { variant: variantId },
+      );
     }
     const chosen = this.getCard(variantId);
     const working =
@@ -693,7 +722,11 @@ export class Board {
       this.running.has(variantId) ||
       (chosen.workflowRunId !== null && this.workflows.active(chosen.workflowRunId));
     if (working) {
-      throw new FlightdeckError("invalid_state", "a variante ainda está rodando: espere terminar");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the variant is still running: wait for it to finish",
+        "arena_variant_running",
+      );
     }
     for (const id of ids) if (id !== variantId) await this.discardCard(id, true);
     this.follows.get(variantId)?.();
@@ -932,7 +965,12 @@ export class Board {
   /** "Pedir ajuste": a message to the session of the active run. */
   message(id: string, text: string): { queued: boolean } {
     const { sessionId } = this.getCard(id);
-    if (!sessionId) throw new FlightdeckError("invalid_state", "card sem sessão; inicie o card");
+    if (!sessionId)
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has no session: start the card",
+        "card_no_session",
+      );
     return this.opts.manager.send(sessionId, text);
   }
 
@@ -1008,12 +1046,18 @@ export class Board {
     // A fix run answers a PR that exists already: it is never held back by the card's blockers.
     if (!options.fix) this.refuseIfBlocked(card);
     if (card.queued || this.running.has(id)) {
-      throw new FlightdeckError("invalid_state", `card ${id} já está na fila ou em execução`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `card ${id} is already queued or running`,
+        "card_queued",
+        { id },
+      );
     }
     if (card.workflowRunId && this.workflows.active(card.workflowRunId)) {
       throw new FlightdeckError(
         "invalid_state",
-        "o card tem uma execução de workflow em andamento",
+        "the card has a workflow run in progress",
+        "card_workflow_running",
       );
     }
     const runId = ulid();
@@ -1305,7 +1349,11 @@ export class Board {
   /** Removes one rule of the project, keeping the rest of the file; only with `confirm`. */
   removeRule(projectId: string, rule: string, confirm: boolean): string[] {
     if (!confirm) {
-      throw new FlightdeckError("invalid_state", "confirme a remoção da regra com confirm: true");
+      throw new FlightdeckError(
+        "invalid_state",
+        "confirm removing the rule",
+        "rule_remove_confirm",
+      );
     }
     return removeRule(this.getProject(projectId).path, rule);
   }
@@ -1353,7 +1401,12 @@ export class Board {
   /** Commits since the base plus uncommitted changes, per file. */
   async diff(id: string): Promise<CardDiff> {
     const card = this.getCard(id);
-    if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    if (!card.worktreePath)
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has no worktree yet",
+        "card_no_worktree",
+      );
     return cardDiff(card.worktreePath, this.getProject(card.projectId).baseBranch);
   }
 
@@ -1367,14 +1420,26 @@ export class Board {
       throw new FlightdeckError(
         "bad_request",
         `the description looks like it has a secret (${found.join(", ")}): take it out before opening the PR`,
+        "pr_secret",
+        { found: found.join(", ") },
       );
     }
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
-    if (!provider) throw new FlightdeckError("invalid_state", "projeto sem provedor de PR");
+    if (!provider)
+      throw new FlightdeckError(
+        "invalid_state",
+        "the project has no PR provider",
+        "project_no_pr_provider",
+      );
     const { worktreePath: cwd, branch } = card;
-    if (!cwd || !branch) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    if (!cwd || !branch)
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has no worktree yet",
+        "card_no_worktree",
+      );
     must(await git(cwd, "push", "-u", "origin", branch), "git push");
     const url = await provider.create({
       cwd,
@@ -1403,7 +1468,8 @@ export class Board {
 
   /** The review comments of the card's PR, as last fetched (fetched now when there are none). */
   async prComments(id: string): Promise<PrComment[]> {
-    if (!this.getCard(id).prUrl) throw new FlightdeckError("invalid_state", "card sem PR");
+    if (!this.getCard(id).prUrl)
+      throw new FlightdeckError("invalid_state", "the card has no PR", "card_no_pr");
     return this.prCommentCache.get(id) ?? this.fetchPrComments(id);
   }
 
@@ -1412,7 +1478,12 @@ export class Board {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
-    if (!provider) throw new FlightdeckError("invalid_state", "projeto sem provedor de PR");
+    if (!provider)
+      throw new FlightdeckError(
+        "invalid_state",
+        "the project has no PR provider",
+        "project_no_pr_provider",
+      );
     const comments = await provider.comments({ cwd: project.path, url: card.prUrl as string });
     this.prCommentCache.set(id, comments);
     return comments;
@@ -1422,7 +1493,7 @@ export class Board {
   async sendPrComments(id: string, ids: readonly string[]): Promise<{ sent: number }> {
     const chosen = (await this.prComments(id)).filter((c) => ids.includes(c.id));
     if (chosen.length === 0)
-      throw new FlightdeckError("bad_request", "nenhum comentário escolhido");
+      throw new FlightdeckError("bad_request", "no comment was chosen", "pr_no_comment");
     this.message(id, prMessage(chosen));
     return { sent: chosen.length };
   }
@@ -1431,10 +1502,18 @@ export class Board {
   private idleWorktree(id: string): { card: Card; worktree: string; branch: string } {
     const card = this.getCard(id);
     if (!card.worktreePath || !card.branch) {
-      throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has no worktree yet",
+        "card_no_worktree",
+      );
     }
     if (card.queued || (card.sessionStatus !== null && BUSY.has(card.sessionStatus))) {
-      throw new FlightdeckError("invalid_state", "card em execução: espere o agente terminar");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card is running: wait for the agent to finish",
+        "card_running",
+      );
     }
     return { card, worktree: card.worktreePath, branch: card.branch };
   }
@@ -1451,23 +1530,32 @@ export class Board {
    * through a temporary worktree; then the card's worktree and branch go and it is Concluído.
    */
   async mergeLocal(id: string, mode: "merge" | "squash", confirm: boolean): Promise<Card> {
-    if (!confirm) throw new FlightdeckError("invalid_state", "confirme o merge com confirm: true");
+    if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
     const { card, worktree, branch } = this.idleWorktree(id);
     if (card.prUrl) {
-      throw new FlightdeckError("invalid_state", "card com PR: ele é concluído pelo PR");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has a PR: the PR completes it",
+        "card_has_pr",
+      );
     }
     const pending = await pendingFiles(worktree);
     if (pending.length > 0) {
       throw new FlightdeckError(
         "invalid_state",
-        `worktree do card com mudanças não commitadas: ${pending.join(", ")}`,
+        `the card's worktree has uncommitted changes: ${pending.join(", ")}`,
+        "worktree_dirty",
+        { files: pending.join(", ") },
       );
     }
     const project = this.getProject(card.projectId);
     const base = project.baseBranch;
     await assertLocalBranch(project.path, base);
     const { ahead } = await aheadBehind(worktree, base);
-    if (ahead === 0) throw new FlightdeckError("invalid_state", `nada à frente de ${base}`);
+    if (ahead === 0)
+      throw new FlightdeckError("invalid_state", `nothing ahead of ${base}`, "nothing_ahead", {
+        base,
+      });
     const message = mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`;
     await mergeIntoBase(project.path, base, branch, mode, message);
     // The merge is in the base now and cannot be undone: nothing below may leave the card out of
@@ -1524,7 +1612,7 @@ export class Board {
   /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */
   async completeCard(id: string, confirm: boolean): Promise<Card> {
     if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirme a conclusão com confirm: true");
+      throw new FlightdeckError("invalid_state", "confirm completing the card", "complete_confirm");
     this.place(id, { type: "moved", column: "done" });
     await this.finish(id);
     return this.getCard(id);
@@ -1536,7 +1624,7 @@ export class Board {
    */
   async discardCard(id: string, confirm: boolean): Promise<Card> {
     if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirme o descarte com confirm: true");
+      throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
     const card = this.getCard(id);
     // The variants of an arena go with its card.
     for (const variant of this.variantIds(id)) await this.discardCard(variant, true);

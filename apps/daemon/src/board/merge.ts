@@ -21,7 +21,12 @@ export async function aheadBehind(
 export async function assertLocalBranch(repo: string, base: string): Promise<void> {
   const local = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/${base}`);
   if (local.code !== 0) {
-    throw new FlightdeckError("invalid_state", `a base ${base} não é uma branch local`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `base ${base} is not a local branch`,
+      "base_not_local",
+      { base },
+    );
   }
 }
 
@@ -41,7 +46,12 @@ export async function rebaseOnto(worktree: string, base: string): Promise<void> 
   const conflicted = await git(worktree, "diff", "--name-only", "--diff-filter=U");
   await git(worktree, "rebase", "--abort");
   const files = conflicted.stdout.split("\n").filter(Boolean).join(", ");
-  throw new FlightdeckError("invalid_state", `conflito ao atualizar com ${base}: ${files}`);
+  throw new FlightdeckError(
+    "invalid_state",
+    `conflict updating with ${base}: ${files}`,
+    "rebase_conflict",
+    { base, files },
+  );
 }
 
 /** The worktree where `branch` is checked out, if any (`git worktree list --porcelain`). */
@@ -89,7 +99,12 @@ export async function mergeIntoBase(
   );
   if (check.code === 1) {
     const files = check.stdout.split("\n").slice(1).filter(Boolean).join(", ");
-    throw new FlightdeckError("invalid_state", `conflito com ${base}: ${files}`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `conflict merging with ${base}: ${files}`,
+      "merge_conflict",
+      { base, files },
+    );
   }
   must(check, "git merge-tree");
   const checkout = await checkedOutAt(repo, base);
@@ -98,7 +113,9 @@ export async function mergeIntoBase(
     if (pending.length > 0) {
       throw new FlightdeckError(
         "invalid_state",
-        `${base} está em checkout em ${checkout} com mudanças: ${pending.join(", ")}`,
+        `${base} is checked out at ${checkout} with changes: ${pending.join(", ")}`,
+        "base_checkout_dirty",
+        { base, checkout, files: pending.join(", ") },
       );
     }
     await mergeIn(checkout, branch, mode, message);

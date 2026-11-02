@@ -24,7 +24,12 @@ function read(repo: string): Settings {
     // Falls through to the refusal below.
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new FlightdeckError("invalid_state", `${LOCAL_SETTINGS} não é um objeto JSON válido`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `${LOCAL_SETTINGS} is not a valid JSON object`,
+      "settings_invalid",
+      { file: LOCAL_SETTINGS },
+    );
   }
   return value as Settings;
 }
@@ -58,7 +63,10 @@ export function addRules(repo: string, rules: string[]): void {
 export function removeRule(repo: string, rule: string): string[] {
   const settings = read(repo);
   const allow = allowOf(settings);
-  if (!allow.includes(rule)) throw new FlightdeckError("not_found", `regra ${rule} não existe`);
+  if (!allow.includes(rule))
+    throw new FlightdeckError("not_found", `rule ${rule} does not exist`, "rule_not_found", {
+      rule,
+    });
   const remaining = allow.filter((r) => r !== rule);
   write(repo, settings, remaining);
   return remaining;

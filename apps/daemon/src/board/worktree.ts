@@ -19,7 +19,12 @@ export const EXCLUDE_LINE = ".flightdeck/worktrees/";
 /** Throws with git's own message when a command fails. */
 export function must(result: CommandResult, what: string): CommandResult {
   if (result.code !== 0)
-    throw new FlightdeckError("invalid_state", `${what}: ${result.stderr.trim()}`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `${what}: ${result.stderr.trim()}`,
+      "command_failed",
+      { what, output: result.stderr.trim() },
+    );
   return result;
 }
 
@@ -60,7 +65,11 @@ const spawnOptions = (repo: string) =>
   ({ cwd: repo, env: process.env, stdout: "pipe", stderr: "pipe" }) as const;
 
 function excludeFileFrom(repo: string, code: number, out: string, err: string): string {
-  if (code !== 0) throw new FlightdeckError("invalid_state", `git rev-parse: ${err.trim()}`);
+  if (code !== 0)
+    throw new FlightdeckError("invalid_state", `git rev-parse: ${err.trim()}`, "command_failed", {
+      what: "git rev-parse",
+      output: err.trim(),
+    });
   const file = resolve(repo, out.trim());
   excludeFiles.set(repo, file);
   return file;

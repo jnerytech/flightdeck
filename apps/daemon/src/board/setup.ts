@@ -17,6 +17,8 @@ export async function runSetup(script: string, cwd: string): Promise<void> {
   const output = (result.stderr.trim() || result.stdout.trim()).slice(-2000);
   throw new FlightdeckError(
     "invalid_state",
-    `preparação falhou (código ${result.code}): ${output}`,
+    `setup script failed (exit ${result.code}): ${output}`,
+    "setup_failed",
+    { code: result.code, output },
   );
 }
