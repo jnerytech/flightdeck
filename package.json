@@ -40,6 +40,7 @@
     "smoke:personas": "bun run scripts/smoke-personas.ts",
     "smoke:watch": "bun run scripts/smoke-watch.ts",
     "smoke:otel": "bun run scripts/smoke-otel.ts",
+    "smoke:webhook": "bun run scripts/smoke-webhook.ts",
     "smoke:perf": "bun run scripts/smoke-perf.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "slot": "bun run scripts/slot.ts",
