@@ -51,7 +51,7 @@ export function PersonaSwitch(props: {
         onClick={() => setOpen(!open)}
       >
         {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-        {current ? `${t("personas.apply.label")}: ${current.name}` : t("personas.apply.label")}
+        {current ? `${t("personas.apply.trigger")}: ${current.name}` : t("personas.apply.trigger")}
       </Button>
       {open && (
         <>

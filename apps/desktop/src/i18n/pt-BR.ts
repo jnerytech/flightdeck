@@ -40,6 +40,7 @@ export const ptBR = {
     subtitle:
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
     apply: {
+      trigger: "Persona",
       active: "Persona ativa",
       label: "Aplicar persona",
       apply: "Aplicar",
@@ -64,8 +65,8 @@ export const ptBR = {
       label: "Persona",
       none: "Nenhuma",
       card: "Persona do card",
-      here: "Persona do Claude aqui",
-      hereNamed: "Persona do Claude aqui em {name}",
+      here: "Nova sessão no terminal com persona",
+      hereNamed: "Nova sessão no terminal com persona em {name}",
     },
     list: "Personas",
     empty: "Nenhuma persona.",

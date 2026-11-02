@@ -38,6 +38,7 @@ export const en: Dictionary = {
     subtitle:
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
     apply: {
+      trigger: "Persona",
       active: "Active persona",
       label: "Apply persona",
       apply: "Apply",
@@ -62,8 +63,8 @@ export const en: Dictionary = {
       label: "Persona",
       none: "None",
       card: "Card persona",
-      here: "Claude here persona",
-      hereNamed: "Claude here persona in {name}",
+      here: "New terminal session with persona",
+      hereNamed: "New terminal session with persona in {name}",
     },
     list: "Personas",
     empty: "No persona.",
