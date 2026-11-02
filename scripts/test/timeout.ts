@@ -8,6 +8,8 @@ export function defaultTestTimeoutMs(platform: NodeJS.Platform): number {
 }
 
 /** The `bun` arguments of the full suite. */
-export function testArgs(_platform: NodeJS.Platform, _extra: string[]): string[] {
-  return [];
+export function testArgs(platform: NodeJS.Platform, extra: string[]): string[] {
+  // A flag, not a setDefaultTimeout in the preload: bun keeps that one for the first file only.
+  // A file that calls setDefaultTimeout itself still wins.
+  return ["test", `--timeout=${defaultTestTimeoutMs(platform)}`, ...extra];
 }

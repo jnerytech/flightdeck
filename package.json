@@ -13,7 +13,7 @@
     "layout:ratchet": "bun run scripts/layout-ratchet.ts",
     "bundle:budget": "bun run scripts/bundle-budget.ts",
     "perf:baseline": "bun run scripts/perf-baseline.ts",
-    "test": "bun test && bun run scripts/check-coverage.ts",
+    "test": "bun run scripts/run-tests.ts",
     "coverage": "bun test && bun run scripts/check-coverage.ts",
     "smoke": "bun run scripts/smoke.ts",
     "smoke:real": "bun run scripts/smoke.ts --real",
