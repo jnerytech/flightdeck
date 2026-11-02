@@ -776,6 +776,8 @@ export const ptBR = {
     shutdown: "desligar o daemon",
     telemetry: "o tempo das sessões",
     trace: "o rastro da sessão",
+    summary: "o resumo da sessão",
+    webhook: "os webhooks",
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {

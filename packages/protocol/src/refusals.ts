@@ -190,6 +190,8 @@ export const DAEMON_FEATURES = [
   "telemetry",
   "trace",
   "bg",
+  "summary",
+  "webhook",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

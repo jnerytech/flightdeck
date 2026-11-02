@@ -780,6 +780,8 @@ export const en: Dictionary = {
     shutdown: "shutting the daemon down",
     telemetry: "session timing",
     trace: "the session trace",
+    summary: "the session summary",
+    webhook: "webhooks",
     bg: "background sessions",
   },
   daemonRefusal: {
