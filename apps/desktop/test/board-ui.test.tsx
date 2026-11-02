@@ -143,7 +143,7 @@ describe("board-ui", () => {
   test("Projetos: cadastra o repositório, edita o projeto e ajusta o limite do host", async () => {
     const { repo, board } = await setup();
     await sidebar.hostAction("Projetos", "alfa");
-    expect(screen.queryByRole("heading", { name: "Projetos de alfa" })).not.toBeNull();
+    await settle(() => screen.queryByRole("heading", { name: "Projetos de alfa" }) !== null);
     await type("Caminho do repositório", repo);
     await type("Nome", "Meu repo");
     await type("Branch base", "main");
@@ -371,6 +371,8 @@ describe("board-ui", () => {
     await settle(() => (screen.queryByRole("log")?.textContent ?? "").includes("mais um [commit]"));
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("mais um [commit]");
     await settle(() => board.getCard(id).sessionStatus === "idle");
+    // The composer's own "Parar" goes away once the screen shows the session idle; the card's stays.
+    await settle(() => screen.queryAllByRole("button", { name: "Parar" }).length === 1);
     await click("Parar");
 
     writeFileSync(
