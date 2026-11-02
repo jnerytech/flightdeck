@@ -157,7 +157,7 @@ describe("textos", () => {
     for (const word of ["Interrupt", "End", "Send", "Copy command", "idle"]) {
       expect(session).toMatch(new RegExp(word));
     }
-    expect(session).not.toMatch(/Retomar|Interromper|Encerrar|Enviar|Mensagem/);
+    expect(session).not.toMatch(/Retomar|Parar|Encerrar|Enviar|Mensagem/);
     // The turn's line has no internal "subtype": a word and the time.
     expect(session).not.toMatch(/success|subtype/);
   });

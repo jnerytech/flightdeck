@@ -89,7 +89,7 @@ async function setup(options: { checkpoints?: boolean; git?: boolean } = {}) {
   await act(async () => {
     store.router.push({ name: "session", host: hostId, id: sessionId });
   });
-  await settle(() => screen.queryByRole("button", { name: "Interromper" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "Parar" }) !== null);
   // The button needs the claudeSessionId, which comes with the replayed events after the subscribe.
   if (options.checkpoints !== false) {
     await settle(() => screen.queryByRole("button", { name: "Linha do tempo" }) !== null);
@@ -111,7 +111,7 @@ const turn = (prompt: string) => sheet().queryByText(prompt)?.closest("li") as H
 describe("linha-do-tempo-ui", () => {
   test("sem os checkpoints no daemon, a sessão não tem linha do tempo", async () => {
     await setup({ checkpoints: false });
-    expect(screen.queryByRole("button", { name: "Interromper" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Parar" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Linha do tempo" })).toBeNull();
   });
 
