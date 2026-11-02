@@ -81,3 +81,22 @@ describe("system folders elsewhere", () => {
     expect(isSystemFolder("/ETC", linux)).toBe(false);
   });
 });
+
+describe("the platform a test gives", () => {
+  const runnerTemp = "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\fd-vault-x";
+  const runner: PlatformInfo = {
+    platform: "win32",
+    home: "C:\\Users\\runneradmin",
+    env: { LOCALAPPDATA: "C:\\Users\\runneradmin\\AppData\\Local" },
+  };
+
+  test("a Windows runner's temp folder is inside AppData, which the real rule refuses", () => {
+    expect(isSystemFolder(runnerTemp, runner)).toBe(true);
+  });
+
+  test("with the neutral platform of the tests the same folder is allowed, but Windows itself is not", () => {
+    const neutral: PlatformInfo = { platform: "win32", env: {}, home: "Z:\\no-home" };
+    expect(isSystemFolder(runnerTemp, neutral)).toBe(false);
+    expect(isSystemFolder("C:\\Windows", neutral)).toBe(true);
+  });
+});
