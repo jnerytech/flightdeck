@@ -485,3 +485,6 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
   };
   return { platform, items, tokens, notifications, shown, win, deepLink, saved, save };
 }
+
+/** A folder every host refuses to allow, on whatever platform the tests run. */
+export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";

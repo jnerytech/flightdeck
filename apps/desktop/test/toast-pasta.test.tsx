@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { daemon as makeDaemon, memoryPlatform, SYSTEM_FOLDER, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -109,7 +109,7 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
   test("the host refusing the folder (a system folder) says why in a toast", async () => {
     const { store, hostId } = await online("en-US");
     await act(async () => {
-      expect(await store.allowRoot(hostId, "/etc")).toBe(false);
+      expect(await store.allowRoot(hostId, SYSTEM_FOLDER)).toBe(false);
     });
     await settle(() => screen.queryAllByRole("alert").length >= 1);
     expect(screen.getAllByRole("alert")[0]?.textContent ?? "").toContain("is a system folder");

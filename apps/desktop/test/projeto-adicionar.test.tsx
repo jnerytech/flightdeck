@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { suggestFolders } from "../src/lib/project-suggestions.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -65,7 +66,7 @@ async function online() {
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
   /** A git repository inside the host's allowed folder, with a session that ran in it. */
-  const repo = `${d.root}/work`;
+  const repo = join(d.root, "work");
   git(d.root, "init", "-q", "-b", "main", "work");
   git(repo, "config", "commit.gpgsign", "false");
   git(repo, "commit", "-q", "--allow-empty", "-m", "first");
@@ -288,7 +289,7 @@ describe("projeto-adicionar: where it is offered", () => {
     await settle(() => screen.queryByText("No projects yet.") !== null);
     await addTyped(repo);
     await settle(() => screen.queryByRole("button", { name: /Open the board of/ }) !== null);
-    const second = `${d.root}/second`;
+    const second = join(d.root, "second");
     git(d.root, "init", "-q", "-b", "main", "second");
     git(second, "config", "commit.gpgsign", "false");
     git(second, "commit", "-q", "--allow-empty", "-m", "first");
@@ -303,7 +304,7 @@ describe("projeto-adicionar: where it is offered", () => {
     await act(async () => {
       projectId = (await store.hostCommand(hostId, "project.add", { path: repo }))?.id ?? "";
     });
-    const second = `${d.root}/second`;
+    const second = join(d.root, "second");
     git(d.root, "init", "-q", "-b", "main", "second");
     git(second, "config", "commit.gpgsign", "false");
     git(second, "commit", "-q", "--allow-empty", "-m", "first");

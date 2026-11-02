@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { daemon as makeDaemon, memoryPlatform, SYSTEM_FOLDER, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -73,7 +73,9 @@ describe("pastas-permitidas: the allowed folders in the host's settings", () => 
   test("a refusal from the host (a system folder) is told in a toast and the list stays", async () => {
     const { d } = await hostPage();
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Folder to allow"), { target: { value: "/etc" } });
+      fireEvent.change(screen.getByLabelText("Folder to allow"), {
+        target: { value: SYSTEM_FOLDER },
+      });
     });
     await click(screen.getByRole("button", { name: "Add to allowed folders" }));
     await click(
