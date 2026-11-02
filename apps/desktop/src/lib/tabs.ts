@@ -4,6 +4,8 @@ export interface Tab {
   id: string;
   router: Router;
   pinned: boolean;
+  /** Shown in italics, and replaced by the next single click in the sidebar, until used. */
+  preview: boolean;
 }
 
 /** What the rest of the app uses of the navigation: always the active tab's. */
@@ -67,11 +69,11 @@ export class Tabs {
 
   /** Tabs as they were kept: the screens in order, which are pinned and which one is active. */
   static restore(
-    entries: { route: Route; pinned: boolean }[],
+    entries: { route: Route; pinned: boolean; preview?: boolean }[],
     active: number,
     newId?: () => string,
   ): Tabs {
-    const [first, ...rest] = entries as [{ route: Route; pinned: boolean }, ...typeof entries];
+    const [first, ...rest] = entries as [{ route: Route; pinned: boolean; preview?: boolean }, ...typeof entries];
     const tabs = new Tabs(first.route, newId);
     for (const entry of rest) tabs.open(entry.route);
     entries.forEach((entry, i) => {
@@ -105,6 +107,14 @@ export class Tabs {
     this.emit();
     return tab;
   }
+
+  /** Single click on a sidebar item. */
+  openPreview(route: Route): void {
+    this.router.push(route);
+  }
+
+  /** Turns a preview into a regular tab. */
+  commit(_id: string): void {}
 
   close(id: string): void {
     const index = this.tabs.findIndex((tab) => tab.id === id);
@@ -230,7 +240,7 @@ export class Tabs {
   }
 
   private add(route: Route, index: number, pinned: boolean): Tab {
-    const tab: Tab = { id: this.newId(), router: new Router(route), pinned };
+    const tab: Tab = { id: this.newId(), router: new Router(route), pinned, preview: false };
     this.insert(tab, index);
     return tab;
   }

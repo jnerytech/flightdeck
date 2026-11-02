@@ -197,4 +197,70 @@ describe("abas", () => {
     expect(ids().slice(0, 2).sort()).toEqual(["t2", back?.id as string].sort());
     expect(ids().at(-1)).toBe("t1");
   });
+
+  describe("preview tabs", () => {
+    test("the first tab is a preview; a single click replaces it, a tab you worked in is never replaced", () => {
+      const { tabs, ids, routes } = setup();
+      expect(tabs.active.preview).toBe(true);
+      tabs.openPreview(hub);
+      expect(ids()).toEqual(["t1"]);
+      expect(routes()).toEqual(["hub"]);
+      tabs.commit("t1");
+      expect(tabs.active.preview).toBe(false);
+      tabs.openPreview(costs);
+      expect(ids()).toEqual(["t1", "t2"]);
+      expect(routes()).toEqual(["hub", "costs"]);
+      expect(tabs.activeId).toBe("t2");
+      expect(tabs.active.preview).toBe(true);
+      tabs.openPreview(settings);
+      expect(ids()).toEqual(["t1", "t2"]);
+      expect(routes()).toEqual(["hub", "settings"]);
+    });
+
+    test("a preview elsewhere is reused and brought to the front; pinning or committing keeps it", () => {
+      const { tabs, ids, routes } = setup();
+      tabs.commit("t1");
+      tabs.openPreview(costs);
+      tabs.activate("t1");
+      tabs.openPreview(settings);
+      expect(ids()).toEqual(["t1", "t2"]);
+      expect(routes()).toEqual(["home", "settings"]);
+      expect(tabs.activeId).toBe("t2");
+      tabs.pin("t2", true);
+      expect(tabs.tabs.find((tab) => tab.id === "t2")?.preview).toBe(false);
+      tabs.openPreview(hub);
+      expect(ids()).toEqual(["t2", "t1", "t3"]);
+      expect(routes()).toEqual(["settings", "home", "hub"]);
+    });
+
+    test("a ctrl/middle click (open next in a new tab) makes a regular tab, not a preview", () => {
+      const { tabs, ids } = setup();
+      tabs.openNextInNewTab();
+      tabs.openPreview(hub);
+      expect(ids()).toEqual(["t1", "t2"]);
+      expect(tabs.active.preview).toBe(false);
+      expect(tabs.tabs[0]?.preview).toBe(true);
+    });
+
+    test("open() makes a regular tab and commit tells the listeners only when it changes something", () => {
+      const { tabs, seen } = setup();
+      expect(tabs.open(hub).preview).toBe(false);
+      const before = seen.length;
+      tabs.commit("t2");
+      expect(seen.length).toBe(before);
+      tabs.commit("t1");
+      expect(seen.length).toBe(before + 1);
+    });
+
+    test("restore keeps which tabs are previews", () => {
+      const restored = Tabs.restore(
+        [
+          { route: hub, pinned: false, preview: false },
+          { route: costs, pinned: false, preview: true },
+        ],
+        1,
+      );
+      expect(restored.tabs.map((tab) => tab.preview)).toEqual([false, true]);
+    });
+  });
 });
