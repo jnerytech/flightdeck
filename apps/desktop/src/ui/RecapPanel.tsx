@@ -1,6 +1,7 @@
 import type { SessionRecap } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
+import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
@@ -71,14 +72,13 @@ export function RecapPanel(props: {
       {lines.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("recap.empty")}</p>
       ) : (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <Stack gap={1}>
           {lines.map(([label, text]) => (
-            <div key={label} className="contents">
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className="break-words">{text}</dd>
-            </div>
+            <p key={label} className="break-words text-sm">
+              <span className="text-muted-foreground">{label}</span> {text}
+            </p>
           ))}
-        </dl>
+        </Stack>
       )}
       {lines.length > 0 && (
         <div>
