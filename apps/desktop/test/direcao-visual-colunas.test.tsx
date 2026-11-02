@@ -219,6 +219,7 @@ describe("direcao-visual: três colunas", () => {
   test("Histórico: a lista do host à esquerda e o leitor à direita", async () => {
     const { store } = await setup();
     await sidebar.hostAction("Histórico");
+    await sidebar.showAutomated();
     const list = () => screen.queryByRole("list", { name: "Sessões do histórico" });
     await settle(() => list()?.querySelector("button") != null);
     expect(

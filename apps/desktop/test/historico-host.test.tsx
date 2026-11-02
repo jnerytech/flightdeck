@@ -77,6 +77,7 @@ const rows = () =>
 
 async function openHistory() {
   await sidebar.hostAction("Histórico");
+  await sidebar.showAutomated();
   await settle(() => rows().length > 0);
 }
 
