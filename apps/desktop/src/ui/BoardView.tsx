@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
+import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
@@ -138,7 +139,11 @@ function CardTile(props: {
           <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
         )}
       </div>
-      {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
+      {card.notice && (
+        <InlineNotice>
+          {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
+        </InlineNotice>
+      )}
     </li>
   );
 }

@@ -742,4 +742,25 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE history_sessions ADD COLUMN entrypoint TEXT;
   UPDATE history_files SET offset = 0, parse_errors = 0 WHERE claude_session_id IS NOT NULL;
   `,
+  // A card notice or a run's end that came from a refusal keeps its reason and params, so the app
+  // tells it in its language (the text stays as the fallback for an older app). A new notice
+  // takes the old reason away; the writer that has a reason sets it right after the text.
+  `
+  ALTER TABLE cards ADD COLUMN notice_reason TEXT;
+  ALTER TABLE cards ADD COLUMN notice_params TEXT;
+  ALTER TABLE workflow_runs ADD COLUMN status_reason_key TEXT;
+  ALTER TABLE workflow_runs ADD COLUMN status_reason_params TEXT;
+
+  CREATE TRIGGER cards_notice_reason AFTER UPDATE OF notice ON cards
+  WHEN NEW.notice IS NOT OLD.notice
+  BEGIN
+    UPDATE cards SET notice_reason = NULL, notice_params = NULL WHERE id = NEW.id;
+  END;
+
+  CREATE TRIGGER runs_status_reason AFTER UPDATE OF status_reason ON workflow_runs
+  WHEN NEW.status_reason IS NOT OLD.status_reason
+  BEGIN
+    UPDATE workflow_runs SET status_reason_key = NULL, status_reason_params = NULL WHERE id = NEW.id;
+  END;
+  `,
 ];

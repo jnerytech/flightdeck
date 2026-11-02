@@ -63,6 +63,8 @@ interface RunRow {
   definition: string;
   status: RunStatus;
   status_reason: string | null;
+  status_reason_key: string | null;
+  status_reason_params: string | null;
   budget: string;
   usage: string;
   inputs: string;
@@ -274,8 +276,19 @@ export class WorkflowEngine {
   }
 
   /** Nothing reached an agent (worktree or setup failed); the board moves the card itself. */
-  fail(runId: string, why: string): void {
+  fail(
+    runId: string,
+    why: string,
+    refusal: { reason: string; params?: Record<string, string | number> } | null = null,
+  ): void {
     this.end(runId, "failed", why);
+    if (!refusal) return;
+    this.db
+      .query(
+        "UPDATE workflow_runs SET status_reason_key = ?, status_reason_params = ? WHERE id = ?",
+      )
+      .run(refusal.reason, JSON.stringify(refusal.params ?? {}), runId);
+    this.emit(runId);
   }
 
   /**
@@ -403,6 +416,8 @@ export class WorkflowEngine {
       workflowHash: row.workflow_hash,
       status: row.status,
       statusReason: row.status_reason,
+      reasonKey: row.status_reason_key,
+      reasonParams: row.status_reason_params ? JSON.parse(row.status_reason_params) : null,
       budget: JSON.parse(row.budget),
       usage: (({ turns, minutes, costUsd }: RunSpending) => ({ turns, minutes, costUsd }))(
         JSON.parse(row.usage),

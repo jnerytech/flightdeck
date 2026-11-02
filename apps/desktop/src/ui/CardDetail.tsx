@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
+import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -253,7 +254,11 @@ export const CardDetail = memo(function CardDetail(props: {
       }
     >
       <div className="flex max-w-4xl flex-col gap-5">
-        {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
+        {card.notice && (
+          <InlineNotice>
+            {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
+          </InlineNotice>
+        )}
         {withDeps && (
           <CardDeps
             store={store}

@@ -197,6 +197,8 @@ interface CardRow {
   pr_state: PrState | null;
   checks_state: ChecksState | null;
   notice: string | null;
+  notice_reason: string | null;
+  notice_params: string | null;
   issue_ref: string | null;
   issue_external: number;
   arena_of: string | null;
@@ -240,6 +242,14 @@ const script = (value: string | null | undefined) => value?.trim() || null;
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
  */
+/** The reason and params of a refusal; `null` for any other error. */
+export function refusalOf(
+  error: unknown,
+): { reason: string; params?: Record<string, string | number> } | null {
+  if (!(error instanceof FlightdeckError) || !error.reason) return null;
+  return error.params ? { reason: error.reason, params: error.params } : { reason: error.reason };
+}
+
 export class Board {
   private readonly db: Database;
   /** Card id → stops following the session of its active run. */
@@ -486,6 +496,8 @@ export class Board {
       sessionId,
       sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
       notice: row.notice,
+      noticeReason: row.notice_reason,
+      noticeParams: row.notice_params ? JSON.parse(row.notice_params) : null,
       discarded: false,
       runs,
       workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
@@ -875,6 +887,7 @@ export class Board {
         this.db
           .query("UPDATE cards SET notice = ?, unblocked_at = ? WHERE id = ?")
           .run(`Auto-start failed: ${why}`, now(), id);
+        this.setNoticeReason(id, error);
         this.changed(id);
       },
     );
@@ -1106,7 +1119,12 @@ export class Board {
       void this.launch(next.card_id, next.id).catch((error: unknown) => {
         // After stop() the failure is the shutdown's (a closed database): nothing to record.
         if (this.stopped) return;
-        this.failRun(next.card_id, next.id, error instanceof Error ? error.message : String(error));
+        this.failRun(
+          next.card_id,
+          next.id,
+          error instanceof Error ? error.message : String(error),
+          error,
+        );
       });
     }
   }
@@ -1201,11 +1219,25 @@ export class Board {
     if (this.running.delete(cardId)) this.pump();
   }
 
-  /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
-  private failRun(id: string, runId: string, notice: string): void {
-    this.settleFix(id, { isError: true, error: notice });
-    this.workflows.fail(runId, notice);
+  /** A card's notice; one that came from a refusal keeps its reason, which the app translates. */
+  private setNotice(id: string, notice: string, why?: unknown): void {
     this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+    this.setNoticeReason(id, why);
+  }
+
+  private setNoticeReason(id: string, why: unknown): void {
+    const refusal = refusalOf(why);
+    if (!refusal) return;
+    this.db
+      .query("UPDATE cards SET notice_reason = ?, notice_params = ? WHERE id = ?")
+      .run(refusal.reason, JSON.stringify(refusal.params ?? {}), id);
+  }
+
+  /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
+  private failRun(id: string, runId: string, notice: string, why?: unknown): void {
+    this.settleFix(id, { isError: true, error: notice });
+    this.workflows.fail(runId, notice, refusalOf(why));
+    this.setNotice(id, notice, why);
     this.place(id, { type: "failed" });
     this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
     this.changed(id);
@@ -1703,8 +1735,7 @@ export class Board {
       const failed = (id: string) => (error: unknown) => {
         // After stop() the failure is the shutdown's (a closed database): nothing to record.
         if (this.stopped) return;
-        const notice = error instanceof Error ? error.message : String(error);
-        this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
+        this.setNotice(id, error instanceof Error ? error.message : String(error), error);
         // The card may have been discarded while the provider was answering.
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };

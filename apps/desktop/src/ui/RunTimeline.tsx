@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
+import { reasonText } from "@/lib/notice-text";
 import type { Key } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import { budgetLines, stepDuration, stepUsage } from "../lib/runs.ts";
@@ -110,7 +111,11 @@ export function RunTimeline(props: {
           {t("runUi.waitingQuota", { time: props.formatTime(run.quotaUntil) })}
         </InlineNotice>
       ) : (
-        run.statusReason && <InlineNotice>{run.statusReason}</InlineNotice>
+        run.statusReason && (
+          <InlineNotice>
+            {reasonText(t, run.statusReason, run.reasonKey, run.reasonParams)}
+          </InlineNotice>
+        )
       )}
       <BudgetMeter run={run} />
       <ol aria-label={t("runUi.steps")} className="flex flex-col gap-1 text-sm">
