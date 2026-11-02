@@ -62,6 +62,21 @@ export interface AppUpdate {
   notes: string;
 }
 
+/** Phase 30: one webhook post. */
+export interface WebhookRequest {
+  url: string;
+  headers: Record<string, string>;
+  body: string;
+}
+
+/** Phase 30: what the receiver answered. The body is never returned. */
+export interface WebhookResponse {
+  /** `null` when the request did not get an answer. */
+  status: number | null;
+  /** The receiver's `Retry-After`, in milliseconds. */
+  retryAfterMs: number | null;
+}
+
 /** Phase 16: an ssh-keygen result; the private key is kept in the vault and the files are gone. */
 export interface GeneratedKey {
   privateKey: string;
@@ -98,6 +113,11 @@ export interface Platform {
     removeFile(path: string): Promise<void>;
   };
   notify(notification: Notification): Promise<void>;
+  /**
+   * Phase 30: posts one webhook for the app (the desktop build only). The URL is checked again on
+   * this side: https, or http to this machine; no redirects; no private addresses.
+   */
+  webhookSend?(request: WebhookRequest): Promise<WebhookResponse>;
   isFocused(): boolean;
   openExternal(url: string): Promise<void>;
   /** Delivers `flightdeck://` links, including the one the app was opened with. */
