@@ -2,9 +2,11 @@ import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol
 import { useEffect, useRef, useState } from "react";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
+import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
-import { basename } from "../lib/paths.ts";
+import { basename, isInside } from "../lib/paths.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 
 /** Which transcript to read, and where to open it (a search hit). */
@@ -46,6 +48,11 @@ export function TranscriptReader(props: {
   const focused = useRef(false);
   const log = useRef<HTMLDivElement>(null);
   const [confirming, setConfirming] = useState(false);
+  /** The session's folder is on the host; `null` until it answers. */
+  const [cwdExists, setCwdExists] = useState<boolean | null>(null);
+  const [allowing, setAllowing] = useState(false);
+  const host = useStoreState(store).hosts.find((h) => h.id === target.hostId);
+  const roots = host?.info?.allowedRoots ?? [];
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -53,6 +60,7 @@ export function TranscriptReader(props: {
     void store.historyGet(target.hostId, target.claudeSessionId, target.cursor).then((page) => {
       if (!live || !page) return;
       setSession(page.session);
+      setCwdExists(page.cwdExists ?? null);
       setMessages(page.messages);
       setNext(page.nextCursor);
       atEnd.current = page.nextCursor === null;
@@ -104,6 +112,11 @@ export function TranscriptReader(props: {
     if (sessionId) props.onResumed();
   };
 
+  // Continuing starts a session in the folder: one the host does not allow, or no longer has, cannot.
+  const gone = session !== null && cwdExists === false;
+  const outside = session !== null && !roots.some((root) => isInside(session.cwd, root));
+  const blocked = gone || outside;
+  const why = !session ? null : t(gone ? "reader.gone" : "reader.outside", { folder: session.cwd });
   return (
     <SessionPane>
       <SessionHeader
@@ -118,6 +131,7 @@ export function TranscriptReader(props: {
                   )}
                   <Button
                     size="sm"
+                    disabled={blocked}
                     // Two processes writing the same conversation corrupt it: ask first.
                     onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
                   >
@@ -141,6 +155,7 @@ export function TranscriptReader(props: {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={blocked}
                       onClick={() =>
                         void store.openClaudeHere(target.hostId, {
                           cwd: session.cwd,
@@ -156,6 +171,27 @@ export function TranscriptReader(props: {
             }
           : {})}
       />
+      {session && blocked && (
+        <div role="note" className="m-3 flex flex-wrap items-center gap-3 text-sm">
+          <p className="text-status-needs-you">{why}</p>
+          {!gone && (
+            <Button size="sm" variant="outline" onClick={() => setAllowing(true)}>
+              {t("toast.allowRoot")}
+            </Button>
+          )}
+        </div>
+      )}
+      {allowing && session && (
+        <ConfirmDialog
+          message={t("toast.allowRootMessage", { host: props.hostName, folder: session.cwd })}
+          confirmLabel={t("toast.allowRoot")}
+          onCancel={() => setAllowing(false)}
+          onConfirm={() => {
+            setAllowing(false);
+            void store.allowRoot(target.hostId, session.cwd);
+          }}
+        />
+      )}
       {confirming && (
         <div className="m-3 flex flex-col gap-3 rounded-lg border border-status-needs-you/40 p-4 text-sm">
           <p>{t("reader.confirm")}</p>

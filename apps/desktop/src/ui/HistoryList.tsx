@@ -43,6 +43,9 @@ export function HistoryList(props: {
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>({ cwd: "", from: "", to: "", origin: "" });
   const [filter, setFilter] = useState<HistoryFilter>({});
+  /** The runs nobody typed (print-mode, temp folders) stay out of the list unless asked for. */
+  const [hideAutomated, setHideAutomated] = useState(true);
+  const [automatedCount, setAutomatedCount] = useState(0);
   /** `null` until the host answers (the skeleton shows meanwhile). */
   const [sessions, setSessions] = useState<HistorySessionSummary[] | null>(null);
   const loading = useMinLoading(sessions === null);
@@ -50,13 +53,15 @@ export function HistoryList(props: {
 
   useEffect(() => {
     let live = true;
-    void store.historyList(hostId, filter).then((result) => {
-      if (live && result) setSessions(result.sessions);
+    void store.historyList(hostId, { ...filter, hideAutomated }).then((result) => {
+      if (!live || !result) return;
+      setSessions(result.sessions);
+      setAutomatedCount(result.automatedCount ?? 0);
     });
     return () => {
       live = false;
     };
-  }, [store, hostId, filter]);
+  }, [store, hostId, filter, hideAutomated]);
 
   const field = (key: keyof Draft) => ({
     value: draft[key],
@@ -86,6 +91,26 @@ export function HistoryList(props: {
           <Button variant="outline" onClick={() => setFilter(toFilter(draft))}>
             {t("historyUi.filter")}
           </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={hideAutomated}
+              onChange={(e) => setHideAutomated(e.target.checked)}
+            />
+            {t("historyUi.hideAutomated")}
+          </label>
+          {hideAutomated && automatedCount > 0 && (
+            <>
+              <span className="text-muted-foreground text-xs">
+                {t("historyUi.automatedHidden", { count: automatedCount })}
+              </span>
+              <Button variant="link" size="sm" onClick={() => setHideAutomated(false)}>
+                {t("historyUi.showAutomated")}
+              </Button>
+            </>
+          )}
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -129,6 +154,7 @@ export function HistoryList(props: {
                       basename(s.cwd),
                       store.formatDateTime(s.lastTs ?? ""),
                       t(`hub.originTags.${s.origin === "external" ? "terminal" : "flightdeck"}`),
+                      ...(s.automated ? [t("historyUi.automatedTag")] : []),
                     ].join(" · ")}
                   </span>
                   {s.maybeActive && (
