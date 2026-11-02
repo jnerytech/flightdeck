@@ -2824,3 +2824,11 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   (a daemon that will not stop aborts with the way out), keeping `.old` like `update`; the same
   version or a newer one stays and is named. A real Windows test found an old binary on the PATH
   that `setup` had kept as the service.
+- A transcript the host has not indexed yet is a normal state (the indexer catches up after a
+  session's first turn): `history.get` refuses with the reason `transcript_not_indexed` (the app
+  translates it) and the app raises no toast for it; the summary panel says the summary appears
+  after the first turn and asks again every 8 s while it has none. A session page with no name,
+  folder or indexed title is titled "New session", never its id.
+- Known leftover: about 60 `FlightdeckError` details in the daemon are still Portuguese and have
+  no `reason` (board, review, checkpoints, personas, names, memory and others). They show in the
+  app as the refusal's detail. Giving each a reason and a dictionary text is a separate change.
