@@ -11,6 +11,7 @@ import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BgPanel } from "./BgPanel.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
+import { RecapPanel } from "./RecapPanel.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
@@ -112,6 +113,12 @@ export function ExternalView(props: {
         }
       />
       <BgPanel store={store} hostId={hostId} claudeSessionId={id} />
+      <RecapPanel
+        store={store}
+        hostId={hostId}
+        claudeSessionId={id}
+        {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
+      />
       {requests.length > 0 && (
         <div className="flex flex-col gap-3 border-b p-3">
           {requests.map((request) => (
