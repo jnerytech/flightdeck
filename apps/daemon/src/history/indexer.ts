@@ -276,6 +276,7 @@ export class HistoryIndexer {
     limit = 100,
   ): {
     session: HistorySession;
+    cwdExists: boolean;
     messages: HistoryMessage[];
     nextCursor: string | null;
     prevCursor: string | null;
@@ -299,6 +300,7 @@ export class HistoryIndexer {
       .all(claudeSessionId, limit + 1, offset) as HistoryMessage[];
     return {
       session,
+      cwdExists: true,
       messages: rows.slice(0, limit),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
       prevCursor: offset > 0 ? String(Math.max(0, offset - limit)) : null,

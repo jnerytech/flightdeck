@@ -3505,6 +3505,8 @@ export type HistoryListResult = z.infer<typeof HistoryListResult>;
 
 export const HistoryGetResult = z.object({
   session: HistorySessionSummary,
+  /** The session's folder is still on the host (said only for a folder the history already shows). */
+  cwdExists: z.boolean().optional(),
   messages: z.array(HistoryMessage),
   nextCursor: z.string().nullable(),
   prevCursor: z.string().nullable(),

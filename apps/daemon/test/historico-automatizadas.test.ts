@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Command } from "@flightdeck/protocol";
 import { HistoryIndexer } from "../src/history/indexer.ts";
 import { EventStore } from "../src/store/event-store.ts";
+import { tempDir } from "./helpers.ts";
 import { assistantLine, projectsRoot, userLine, writeTranscript } from "./history-helpers.ts";
 
 const HOME_CWD = "/home/dev/app";
@@ -83,5 +84,17 @@ describe("historico-automatizadas: the runs nobody typed", () => {
       Command.safeParse({ id: "1", type: "history.list", payload: { hideAutomated: true } })
         .success,
     ).toBe(true);
+  });
+});
+
+describe("historico-automatizadas: the folder of a session", () => {
+  test("a transcript says whether its folder is still on the host", async () => {
+    const here = tempDir("fd-cwd-");
+    const index = await indexed((root) => {
+      session(root, 1, here, "cli");
+      session(root, 2, `${here}/gone`, "cli");
+    });
+    expect(index.get(ID(1)).cwdExists).toBe(true);
+    expect(index.get(ID(2)).cwdExists).toBe(false);
   });
 });
