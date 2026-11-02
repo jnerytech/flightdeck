@@ -125,6 +125,7 @@ import {
 } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
 import { UpdateChecker } from "./updates/check.ts";
+import { addToUserPath, binDir, removeFromUserPath } from "./user-path.ts";
 import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
 import { PrFixer } from "./watch/fix.ts";
@@ -1249,7 +1250,9 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
         );
         return true;
       },
-      addToPath: async () => {},
+      addToPath: async () => {
+        for (const line of await addToUserPath(base, binDir(base))) deps.log.log(line);
+      },
       installService: async () => {
         const ctx = ctxOf(false);
         if ((await serviceCommand(ctx)) !== null) await stopInstalledDaemon(install(), ctx, deps);
@@ -1329,7 +1332,13 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
     if (!ctx.dryRun && (await stopInstalledDaemon(args, ctx, deps)) === false) {
       deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
     }
-    return printResult(deps, await uninstallService(ctx));
+    printResult(deps, await uninstallService(ctx));
+    if (ctx.dryRun) {
+      if (ctx.platform === "win32") deps.log.log(`# ${binDir(ctx)} would leave the user Path`);
+      return;
+    }
+    for (const line of await removeFromUserPath(ctx, binDir(ctx))) deps.log.log(line);
+    return;
   }
   const file = configPath(args);
   const claude = resolveServiceClaude(ctx);

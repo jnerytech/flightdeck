@@ -142,9 +142,8 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
   const current = storedRoots(deps.configFile);
   // Checked before anything is installed: a bad answer on the command line changes nothing.
   const given = options.yes ? yesFolders(deps, current, options.folders ?? []) : null;
-  if (!deps.installBinary()) {
-    deps.log.log("Running from source: the binary stays where it is.");
-  }
+  if (deps.installBinary()) await deps.addToPath();
+  else deps.log.log("Running from source: the binary stays where it is.");
   const roots = given ?? (await askFolders(deps, current));
   const tailscale = options.yes ? null : await deps.tailscaleIp();
   const remote =

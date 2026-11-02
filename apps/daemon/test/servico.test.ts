@@ -233,6 +233,7 @@ describe("servico", () => {
     expect(win.calls).toEqual([
       ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd", "/XML"],
       ["schtasks", "/Delete", "/TN", "Flightdeck\\flightdeckd", "/F"],
+      ["reg", "query", "HKCU\\Environment", "/v", "Path"],
       ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd"],
       ["schtasks", "/Query", "/TN", "Flightdeck\\flightdeckd", "/XML"],
     ]);
@@ -276,7 +277,7 @@ describe("servico", () => {
     });
     await runCli(["service", "uninstall"], deps);
     expect(exits).toEqual([0]);
-    expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Delete"]);
+    expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Delete", "query"]);
     expect(acquireLock(dataDir)).not.toBeNull();
     expect(out.join("\n")).toContain("serviço removido");
   });
