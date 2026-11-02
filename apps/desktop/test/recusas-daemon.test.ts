@@ -13,6 +13,9 @@ const ptT = translator("pt-BR");
 const REASONS = [
   "cwd_missing",
   "cwd_outside_roots",
+  "root_confirm",
+  "root_missing",
+  "root_system",
   "session_not_found",
   "session_ended",
   "session_not_ended",

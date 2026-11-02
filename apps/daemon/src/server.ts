@@ -82,6 +82,7 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
+import { addAllowedRoot } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
@@ -126,6 +127,8 @@ export interface ServerOptions {
   port: number;
   token: string;
   allowedRoots: readonly string[];
+  /** Keeps the allowed folders in the config file after `roots.add`. */
+  persistRoots?: (roots: readonly string[]) => void;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
@@ -1401,6 +1404,18 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "board.get":
         return ok(command.type, board().getBoard(command.payload.projectId));
+      case "roots.add": {
+        requireVaultTransport(ws.data.origin, "roots.add", opts.log);
+        const { path, confirm } = command.payload;
+        return ok(command.type, {
+          allowedRoots: addAllowedRoot(
+            opts.allowedRoots as string[],
+            path,
+            confirm === true,
+            opts.persistRoots,
+          ),
+        });
+      }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
         if (maxParallelRuns !== undefined) board().setMaxParallelRuns(maxParallelRuns);

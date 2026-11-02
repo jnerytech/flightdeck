@@ -2324,6 +2324,12 @@ export const Command = z.discriminatedUnion("type", [
   cmd("project.list", z.object({}).strict()),
   cmd("project.add", ProjectAddPayload),
   cmd("project.update", ProjectUpdatePayload),
+  /**
+   * Adds a folder to the host's allowed folders (the config file too). The app asks the person
+   * first and sends `confirm: true`; the host refuses system folders and a connection outside
+   * loopback and Tailscale.
+   */
+  cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */
   cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
@@ -3516,6 +3522,10 @@ export type HistorySearchHit = z.infer<typeof HistorySearchHit>;
 export const HistorySearchResult = z.object({ hits: z.array(HistorySearchHit) });
 export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 
+/** The host's allowed folders after `roots.add`. */
+export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
+export type RootsResult = z.infer<typeof RootsResult>;
+
 export const BoardSettings = z.object({ maxParallelRuns: z.number().int().min(1) });
 export type BoardSettings = z.infer<typeof BoardSettings>;
 
@@ -3584,6 +3594,7 @@ export interface CommandResults {
   "project.update": Project;
   "board.get": BoardResult;
   "board.settings": BoardSettings;
+  "roots.add": RootsResult;
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;

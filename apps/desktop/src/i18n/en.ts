@@ -950,6 +950,10 @@ export const en: Dictionary = {
     period_inverted: "The period is backwards: {from} is after {to}.",
     feature_off: "This host does not offer {feature}: update the daemon, or check its settings.",
     cwd_missing: "The folder {cwd} does not exist on this host.",
+    root_confirm: "Adding an allowed folder needs your confirmation.",
+    root_missing: "The folder {path} does not exist on this host.",
+    root_system:
+      "The folder {path} is a system folder: it cannot be an allowed folder. Pick a project folder.",
     cwd_outside_roots:
       "The folder {cwd} is outside the host's allowed folders. Add it with flightdeckd setup, or in allowedRoots in ~/.flightdeck/config.json.",
     session_not_found: "Session {id} does not exist on this host.",

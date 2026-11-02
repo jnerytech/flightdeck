@@ -948,6 +948,10 @@ export const ptBR = {
     period_inverted: "O período está invertido: {from} é depois de {to}.",
     feature_off: "Este host não oferece {feature}: atualize o daemon ou confira as configurações.",
     cwd_missing: "A pasta {cwd} não existe neste host.",
+    root_confirm: "Adicionar uma pasta permitida precisa da sua confirmação.",
+    root_missing: "A pasta {path} não existe neste host.",
+    root_system:
+      "A pasta {path} é uma pasta do sistema: ela não pode ser uma pasta permitida. Escolha uma pasta de projeto.",
     cwd_outside_roots:
       "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     session_not_found: "A sessão {id} não existe neste host.",
