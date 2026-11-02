@@ -155,6 +155,17 @@ describe("deps-model: what is refused", () => {
     expect(ids).toHaveLength(3);
   });
 
+  test("two blockers that share a blocker of their own are no cycle", async () => {
+    const { board, project, ids } = await setup(["A", "B", "C", "D"]);
+    const [a, b, c, d] = ids as [string, string, string, string];
+    board.updateCard(b, { blockedBy: [a] });
+    board.updateCard(c, { blockedBy: [a] });
+    board.updateCard(d, { blockedBy: [b, c] });
+    const e = board.createCard(project.id, { title: "E", description: "" }).id;
+    board.updateCard(e, { blockedBy: [d] });
+    expect(board.getCard(e).blockedBy).toEqual([d]);
+  });
+
   test("twenty blockers are allowed and twenty-one are not", async () => {
     const { board, project, ids } = await setup(["A"]);
     const many = Array.from(
