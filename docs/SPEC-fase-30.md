@@ -22,7 +22,7 @@ Research (from the services' documented behavior; the real services are never ca
   `content` is at most 2000 characters, an embed description at most 4096. `429` answers JSON with `retry_after` (seconds) and
   a `Retry-After` header. `404` means the webhook was deleted.
 - **Generic JSON webhook:** `POST` of a JSON envelope with `X-Flightdeck-Event`, `X-Flightdeck-Delivery` (a ULID, the idempotency
-  key), `X-Flightdeck-Timestamp` (Unix seconds) and `X-Flightdeck-Signature: sha256=<hex>`, the HMAC-SHA256 of
+  key), `X-Flightdeck-Timestamp` (Unix seconds) and `X-Flightdeck-Signature: sha256=<hex>`, the HMAC-SHA256 (documented in both manuals, with a verification example) of
   `"<timestamp>.<body>"` with a per-target signing secret. The receiver rejects a timestamp older than 5 minutes (replay).
 - **The summary needs no model call.** Everything asked for is already in the transcript and the indexer: the first prompt of
   the session (what was asked), the last assistant text (what was done), the `Edit`/`Write`/`NotebookEdit` paths (files touched),
@@ -68,6 +68,9 @@ to one host or to all hosts ("global"); an event from a host is sent to the glob
   URL**: the URL (and the generic signing secret) is a vault secret, referenced by `secretRef`. Nothing secret goes to a log,
   an export, a screenshot or the config file; the target list shows only the host name of the URL (`hooks.slack.com`).
 - Only `https://` URLs are accepted (plain `http://` only for loopback, so a receiver can be tested). No redirects are followed.
+  After DNS resolution `webhook_send` also refuses private, link-local, unique-local and unspecified addresses (SSRF), loopback
+  over `http` excepted; the resolver is injected so tests need no network.
+- The Webhooks screen says, next to the list, that webhooks are sent only while the app is running.
 - **Rate limit and retry:** a queue per target, one send at a time, at most 1 message per second; bursts of the same kind for
   the same session are merged into one message ("3 sessions need you"). A failure is retried with exponential backoff
   (2 s, 8 s, 32 s, jittered, at most 4 tries), honoring `Retry-After`; a permanent `4xx` (not `429`, `408`) stops at once and
@@ -96,9 +99,9 @@ to one host or to all hosts ("global"); an event from a host is sent to the glob
 | `webhook-fila` | one send at a time per target, 1/s pacing, merging of bursts, backoff schedule with an injected clock and jitter, `Retry-After` honored, permanent `4xx` stops and marks "failing", `429`/`5xx`/network errors retry up to 4 times, bounded queue drops the oldest and counts, a disabled target sends nothing |
 | `webhook-eventos` | each of the five events reaches the matching targets exactly once (needs-you, ended, failed, budget threshold, PR-watch result); a host-scoped target ignores other hosts; a replayed `delivery` id is not sent twice |
 | `webhook-teste` | the Test button sends the sample event, shows status and time, never the body; a failing target recovers after a good test |
-| `webhook-rust` | the `webhook_send` command refuses a URL that is not `https://` (or loopback `http`), does not follow redirects, times out at 10 s, returns the status only (Rust unit tests; `cargo check` after `build:desktop`) |
+| `webhook-rust` | the `webhook_send` command refuses a URL that is not `https://` (or loopback `http`), refuses a name that resolves to a private, link-local, unique-local or unspecified address (injected resolver; a name with one public and one private answer is refused), does not follow redirects, times out at 10 s, returns the status only (Rust unit tests; `cargo check` after `build:desktop`) |
 | `resumo-ui` | summary in the detail, the row tooltip, Copy, empty state, in both languages and themes; axe clean |
-| `webhook-ui` | the Webhooks list and form, state badges, Test, validation messages, the vault step for the URL, hidden on the web build, in both languages and themes; axe clean |
+| `webhook-ui` | the Webhooks list and form, state badges, Test, validation messages, the vault step for the URL, the "only while the app runs" notice, hidden on the web build, in both languages and themes; axe clean |
 
 Smoke `smoke:webhook` (printing `SMOKE WEBHOOK OK`): a local HTTP server stands in for the three receivers; fake daemon events
 drive each kind; it checks the three payload shapes, the signature, a `429` then success (retry), and a permanent `404` that
