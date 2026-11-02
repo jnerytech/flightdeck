@@ -37,7 +37,7 @@ describe("recusas-snippets: the snippet store says why", () => {
   test("scope, missing, repeated and moved snippets", async () => {
     const { snippets, project } = setup();
     expect((await refused(() => snippets.save({ scope: "project", ...PROMPT }))).reason).toBe(
-      "scope_project_path",
+      "snippet_project_path",
     );
     expect((await refused(() => snippets.get("nada"))).reason).toBe("not_found");
     expect((await refused(() => snippets.find("nada"))).reason).toBe("not_found");
@@ -104,7 +104,12 @@ describe("recusas-snippets: using one says why", () => {
       manager,
       ...(terminals ? { terminals } : {}),
     } as never);
-    const prompt = ctx.snippets.save({ scope: "host", ...PROMPT });
+    const prompt = ctx.snippets.save({
+      scope: "host",
+      name: "plain",
+      type: "prompt",
+      text: "Revise tudo.",
+    });
     const command = ctx.snippets.save({ scope: "host", name: "rodar", type: "command", run: "ls" });
     return { ...ctx, use, prompt, command };
   }
@@ -122,15 +127,12 @@ describe("recusas-snippets: using one says why", () => {
   test("terminals and targets", async () => {
     const { use, prompt, command } = usage();
     expect(
-      (await refused(() => use.use({ id: command.id, action: "paste" } as never))).reason,
+      (await refused(() => use.use({ id: command.id, action: "paste", terminalId: "t" } as never)))
+        .reason,
     ).toBe("terminals_off");
-    expect(
-      (
-        await refused(() =>
-          use.use({ id: prompt.id, action: "send", values: { file: "a" } } as never),
-        )
-      ).reason,
-    ).toBe("session_target_needed");
+    expect((await refused(() => use.use({ id: prompt.id, action: "send" } as never))).reason).toBe(
+      "session_target_needed",
+    );
     expect(
       (
         await refused(() =>

@@ -173,7 +173,7 @@ describe("snippets-mcp", () => {
       text: expect.stringContaining("Revise {{file}}"),
       fields: [{ name: "file", special: true }],
     });
-    expect((await call("get_snippet", { name: "nao-existe" })).error).toMatch(/não encontrado/);
+    expect((await call("get_snippet", { name: "nao-existe" })).error).toMatch(/snippet not found/);
   });
 
   test("ler não é usar: nada é executado, colado nem contado, e a confiança do arquivo continua como estava", async () => {

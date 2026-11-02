@@ -266,7 +266,7 @@ describe("snippets-escopos: do projeto", () => {
     expect(listed.file?.errors).toHaveLength(4);
     expect(listed.file?.errors.join("|")).toMatch(/com-segredo.*secret/);
     expect(listed.file?.errors.join("|")).toMatch(/sem-run/);
-    expect(listed.file?.errors.join("|")).toMatch(/boa.*repetido/);
+    expect(listed.file?.errors.join("|")).toMatch(/boa.*repeated name/);
     writeFile("isto: [não é uma lista");
     const broken = snippets.list({ projectPath: project });
     expect(broken.snippets).toEqual([]);

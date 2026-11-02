@@ -86,7 +86,7 @@ describe("recusas-personas: the store and the open sessions say why", () => {
   test("the scope, the persona and the file", async () => {
     const { personas, project } = setup();
     expect((await refused(() => personas.save({ scope: "project", persona: GOOD }))).reason).toBe(
-      "scope_project_path",
+      "persona_project_path",
     );
     expect((await refused(() => personas.get("nada", ctx))).reason).toBe("persona_not_found");
     expect((await refused(() => personas.remove("host", "nada"))).reason).toBe("persona_not_found");
@@ -135,7 +135,7 @@ describe("recusas-personas: the store and the open sessions say why", () => {
   });
 
   test("an open session: the target, the service and the session", async () => {
-    const { manager } = newManager();
+    const { manager, project } = newManager();
     const open = new OpenSessionPersonas({ manager } as never);
     expect((await refused(() => open.apply({ persona: { id: "x" } }))).reason).toBe(
       "session_target_needed",
@@ -144,7 +144,7 @@ describe("recusas-personas: the store and the open sessions say why", () => {
       (await refused(() => open.apply({ claudeSessionId: "c", persona: { id: "x" } }))).reason,
     ).toBe("terminal_sessions_off");
     const plain = new OpenSessionPersonas({ manager, personas: undefined } as never);
-    const { sessionId } = manager.create({ cwd: workspace().project, prompt: "oi" });
+    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
     expect((await refused(() => plain.apply({ sessionId, persona: { id: "x" } }))).reason).toBe(
       "personas_off",
     );
