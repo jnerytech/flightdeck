@@ -1,5 +1,7 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
+import { Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
@@ -137,17 +139,16 @@ export function TranscriptReader(props: {
                   >
                     {t("reader.continue")}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <IconActionButton
+                    label={t("reader.copyCommand")}
                     onClick={() =>
                       void store
                         .copyText(`claude --resume ${target.claudeSessionId}`)
                         .then((ok) => setCopied(ok))
                     }
                   >
-                    {t("reader.copyCommand")}
-                  </Button>
+                    <Copy aria-hidden="true" />
+                  </IconActionButton>
                   {copied && (
                     <span className="text-muted-foreground text-xs">{t("reader.copied")}</span>
                   )}

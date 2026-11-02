@@ -2,6 +2,7 @@ import type { RewindPreview, SnapshotFiles, SnapshotInfo } from "@flightdeck/pro
 import { GitBranch, History, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -434,10 +435,9 @@ export function CheckpointsButton(props: Target & { busy: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <IconActionButton label={t("timeline.open")} onClick={() => setOpen(true)}>
         <History aria-hidden="true" />
-        {t("timeline.open")}
-      </Button>
+      </IconActionButton>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent showCloseButton={false} className="sm:max-w-lg">
           <SheetHeader>

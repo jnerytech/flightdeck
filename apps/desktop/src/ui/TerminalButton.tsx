@@ -1,5 +1,6 @@
+import { Copy, ExternalLink, SquareTerminal } from "lucide-react";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
+import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
@@ -52,22 +53,21 @@ export function TerminalButton(props: {
         />
       )}
       {embedded && (
-        <ActionButton
-          variant="outline"
-          size="sm"
+        <IconActionButton
+          label={here}
           onClick={() => store.openClaudeHere(hostId, target, persona || undefined)}
         >
-          {here}
-        </ActionButton>
+          <SquareTerminal aria-hidden="true" />
+        </IconActionButton>
       )}
       {launch && (
-        <ActionButton
-          variant="outline"
-          size="sm"
-          onClick={() => store.openInTerminal(hostId, target)}
-        >
-          {label}
-        </ActionButton>
+        <IconActionButton label={label} onClick={() => store.openInTerminal(hostId, target)}>
+          {launch.kind === "spawn" ? (
+            <ExternalLink aria-hidden="true" />
+          ) : (
+            <Copy aria-hidden="true" />
+          )}
+        </IconActionButton>
       )}
     </>
   );
