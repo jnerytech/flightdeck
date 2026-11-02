@@ -177,7 +177,9 @@ describe("merge-local", () => {
   test("recusas: sem confirmação, com PR, em execução, worktree suja, nada à frente e base que não é branch local", async () => {
     const plain = await ready();
     expect(await code(plain.board.mergeLocal(plain.cardId, "merge", false))).toBe("invalid_state");
-    expect(await message(plain.board.mergeLocal(plain.cardId, "merge", true))).toContain("nada");
+    expect(await message(plain.board.mergeLocal(plain.cardId, "merge", true))).toContain(
+      "nothing ahead",
+    );
     commit(plain.worktree, "feito.txt", "feito\n");
     writeFileSync(join(plain.worktree, "sujo.txt"), "x\n");
     expect(await message(plain.board.mergeLocal(plain.cardId, "merge", true))).toContain(
@@ -191,17 +193,19 @@ describe("merge-local", () => {
     const busy = await ready("Ocupado", "[tool] x");
     await cardWhen(busy.board, busy.cardId, (c) => c.sessionStatus === "awaiting_permission");
     commit(busy.worktree, "feito.txt", "feito\n");
-    expect(await message(busy.board.mergeLocal(busy.cardId, "merge", true))).toContain("execução");
-    expect(await message(busy.board.updateFromBase(busy.cardId))).toContain("execução");
+    expect(await message(busy.board.mergeLocal(busy.cardId, "merge", true))).toContain(
+      "card is running",
+    );
+    expect(await message(busy.board.updateFromBase(busy.cardId))).toContain("card is running");
     const gone = await ready("Sem base", "oi", "dev");
     commit(gone.worktree, "feito.txt", "feito\n");
     git(gone.repo, "branch", "-D", "dev");
     expect(await message(gone.board.mergeLocal(gone.cardId, "merge", true))).toContain(
-      "a base dev não é uma branch local",
+      "base dev is not a local branch",
     );
     // A card never started has nothing to merge.
     const idle = gone.board.createCard(gone.project.id, { title: "Parado", description: "x" });
-    expect(await message(gone.board.mergeLocal(idle.id, "merge", true))).toContain("sem worktree");
+    expect(await message(gone.board.mergeLocal(idle.id, "merge", true))).toContain("no worktree");
   });
 
   test("card.updateFromBase e card.mergeLocal pelo protocolo", async () => {

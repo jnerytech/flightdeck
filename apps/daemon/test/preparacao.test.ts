@@ -59,7 +59,7 @@ describe("preparacao", () => {
     const failed = await cardWhen(board, card.id, (c) => c.notice !== null);
     expect(failed).not.toBeNull();
     expect(failed?.column).toBe("waiting");
-    expect(failed?.notice ?? "").toContain("preparação falhou (código 3)");
+    expect(failed?.notice ?? "").toContain("setup script failed (exit 3)");
     expect(failed?.notice ?? "").toContain("deu ruim");
     expect(failed?.sessionId).toBeNull();
     expect(failed?.runs[0]?.endedAt).not.toBeNull();

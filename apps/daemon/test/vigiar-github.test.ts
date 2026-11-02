@@ -94,7 +94,7 @@ describe("vigiar-github: checks, conflicts and logs through gh", () => {
   test("gh failing with nothing to read is an error that says what failed", async () => {
     fakeGh([{ args: ["pr", "checks"], code: 1 }, mergeable("MERGEABLE")]);
     await expect(new GithubCli().health({ cwd: tempDir(), url: PR })).rejects.toThrow(
-      "gh pr checks falhou",
+      "gh pr checks failed",
     );
   });
 
@@ -112,11 +112,11 @@ describe("vigiar-github: checks, conflicts and logs through gh", () => {
     const gh = fakeGh([]);
     const bad = "https://example.com/acme/repo/pull/7";
     await expect(new GithubCli().health({ cwd: tempDir(), url: bad })).rejects.toThrow(
-      "URL de PR do GitHub inválida",
+      "invalid GitHub PR URL",
     );
     await expect(
       new GithubCli().buildLog({ cwd: tempDir(), url: bad, buildId: "1" }),
-    ).rejects.toThrow("URL de PR do GitHub inválida");
+    ).rejects.toThrow("invalid GitHub PR URL");
     expect(gh.calls()).toEqual([]);
   });
 });

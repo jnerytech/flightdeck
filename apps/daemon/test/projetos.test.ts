@@ -72,7 +72,7 @@ describe("projetos", () => {
       () => "aceitou",
       (error: { code?: string; message?: string }) => `${error.code}: ${error.message}`,
     );
-    expect(result).toBe(`invalid_state: não é um repositório git: ${plain}`);
+    expect(result).toBe(`invalid_state: not a git repository: ${plain}`);
     expect(board.listProjects()).toEqual([]);
   });
 

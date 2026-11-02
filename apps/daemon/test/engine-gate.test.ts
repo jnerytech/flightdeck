@@ -140,6 +140,6 @@ describe("engine-gate", () => {
       () => null,
       (error: { message?: string }) => error.message,
     );
-    expect(again).toBe("o card tem uma execução de workflow em andamento");
+    expect(again).toBe("the card has a workflow run in progress");
   });
 });

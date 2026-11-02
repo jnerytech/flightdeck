@@ -125,7 +125,7 @@ describe("engine-agent", () => {
     const { board, card, manager, start, runWhen } = await setup(PLAN, { setupScript: "exit 3" });
     await start({ task: "x" });
     const run = await runWhen((r) => r.status === "failed");
-    expect(run?.statusReason ?? "").toStartWith("preparação falhou (código 3)");
+    expect(run?.statusReason ?? "").toStartWith("setup script failed (exit 3)");
     expect(manager.list()).toEqual([]);
     expect(board.getCard(card.id).column).toBe("waiting");
   });

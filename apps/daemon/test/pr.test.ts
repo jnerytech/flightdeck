@@ -232,7 +232,7 @@ describe("pr: erros e configuração", () => {
     const { board, card } = await cardWithWork("github");
     await board.createPr(card.id);
     const warned = await cardWhen(board, card.id, (c) => c.notice !== null);
-    expect(warned?.notice ?? "").toContain("gh pr view falhou");
+    expect(warned?.notice ?? "").toContain("gh pr view failed");
     expect(warned?.prState).toBe("open");
   });
 
@@ -244,7 +244,7 @@ describe("pr: erros e configuração", () => {
         () => "rodou",
         (e: { message: string }) => e.message,
       );
-      expect(result).toBe("gh não encontrado no PATH");
+      expect(result).toBe("gh not found on the PATH");
     } finally {
       process.env.PATH = saved;
     }

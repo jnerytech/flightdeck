@@ -59,7 +59,7 @@ describe("engine-pr", () => {
     cleanups.push(() => ctx.board.stop());
     await ctx.start();
     const run = await ctx.runWhen((r) => r.status === "failed");
-    expect(run?.statusReason).toBe("etapa pr falhou: projeto sem provedor de PR");
+    expect(run?.statusReason).toBe("etapa pr falhou: the project has no PR provider");
     expect(run?.steps.map((s) => `${s.stepId} ${s.status}`)).toEqual([
       "work completed",
       "pr failed",
