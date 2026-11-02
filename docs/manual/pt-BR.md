@@ -1900,7 +1900,7 @@ A página de uma sessão de terminal mostra um **resumo** curto, e o app pode ma
   senha digitada na linha, um valor do cofre) é trocado por `[secret hidden]`, no app e em toda
   mensagem.
 - **Copiar resumo** põe as linhas na área de transferência. Um host sem o recurso não mostra o painel.
-- Vale para sessões de terminal. As sessões que o Flightdeck inicia ainda não mostram o painel.
+- Aparece nas sessões de terminal e nas que o Flightdeck inicia (depois que o Claude Code dá nome à sessão).
 
 ### Webhooks
 

@@ -82,7 +82,7 @@ to one host or to all hosts ("global"); an event from a host is sent to the glob
 
 ### Screens (both languages, both themes)
 
-- **Session summary** in the terminal session's page; "Copy summary". (No row tooltip; see DECISIONS.)
+- **Session summary** in the page of a terminal and of a managed session; "Copy summary". (No row tooltip; see DECISIONS.)
 - **Settings → Notifications → Webhooks:** the list of targets with state (ok, failing, disabled), add/edit (type, name, URL,
   scope, kinds), Test, enable/disable, delete (also deletes the vault secret).
 - The desktop notification body uses the summary question when there is one.

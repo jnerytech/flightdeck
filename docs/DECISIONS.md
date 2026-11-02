@@ -2706,8 +2706,8 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   the same name (commands and frames are different namespaces).
 - **No `session.summary.updated` frame.** The spec had one; the app reads the summary when a
   session's page opens or moves on (`stamp`), and when a webhook event is built, so a pushed update
-  would have no reader. The panel is on terminal sessions only: the sidebar entry of a managed
-  session does not carry Claude's session id. There is no tooltip on the Sessions rows (a request
+  would have no reader. The panel is on terminal sessions and on managed sessions (their page knows Claude's session id from
+  `session.init` or the Sessions list). There is no tooltip on the Sessions rows (a request
   per row would cost more than it tells); the desktop notification body is unchanged.
 - **The app sends the webhooks, through a host.** The vault is the app's: a daemon holds a secret
   for one use at most (phase 16). So targets live in the app (`flightdeck.webhooks`, no secret in
