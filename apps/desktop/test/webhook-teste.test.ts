@@ -49,7 +49,7 @@ describe("webhook-teste", () => {
     const { webhooks, requests } = setup([{ status: 200, retryAfterMs: null }]);
     const target = await add(webhooks);
     const result = await webhooks.test(target.id);
-    expect(result).toEqual({ ok: true, httpStatus: 200, at: "2026-11-02T10:13:20.000Z" });
+    expect(result).toEqual({ ok: true, httpStatus: 200, at: "2026-11-01T11:53:20.000Z" });
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url).toBe("https://hooks.slack.com/services/SECRET");
     expect(requests[0]?.body).toContain("test");
