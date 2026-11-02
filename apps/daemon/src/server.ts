@@ -59,7 +59,7 @@ import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
 import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
-import { listDirs } from "./fs-dirs.ts";
+import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -393,7 +393,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
   const features = [
     // The folder picker of the app browses the host's folders with `fs.dirs`.
-    ...(opts.fsDirs ? ["fs.dirs"] : []),
+    ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -1541,6 +1541,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(
           command.type,
           listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
+        );
+      }
+      case "fs.files": {
+        const { path, hidden } = command.payload;
+        return ok(
+          command.type,
+          listFiles(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
       case "session.files":

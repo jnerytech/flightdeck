@@ -1,5 +1,5 @@
 import { type Dirent, readdirSync, realpathSync, statSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 import { isInside, resolveAllowedCwd } from "./paths.ts";
 
 export interface DirEntry {
@@ -87,11 +87,41 @@ export interface FileListing {
   truncated: boolean;
 }
 
-/** The files of `path`, never outside the roots (stub). */
+const SKIPPED = new Set([".git", "node_modules"]);
+
+/**
+ * The files of `path` (a folder inside the allowed roots, resolved like `listDirs` does, so the
+ * same refusals), sorted like the folders. A link is listed only when it points at a file inside a
+ * root; hidden files only when asked; the inside of `.git` and `node_modules` never.
+ */
 export function listFiles(
-  _path: string,
-  _allowedRoots: readonly string[],
-  _options: ListDirsOptions = {},
+  path: string,
+  allowedRoots: readonly string[],
+  options: ListDirsOptions = {},
 ): FileListing {
-  return { path: "", files: [], truncated: false };
+  const roots = [
+    ...new Set(allowedRoots.map(realDir).filter((root): root is string => root !== null)),
+  ];
+  const real = resolveAllowedCwd(path, allowedRoots);
+  if (real.split(sep).some((part) => SKIPPED.has(part))) {
+    return { path: real, files: [], truncated: false };
+  }
+  const files: DirEntry[] = [];
+  for (const entry of readdirSync(real, { withFileTypes: true })) {
+    if (!options.hidden && entry.name.startsWith(".")) continue;
+    const child = join(real, entry.name);
+    let target: string | null = null;
+    try {
+      const resolved = entry.isSymbolicLink() ? realpathSync.native(child) : child;
+      target = statSync(resolved).isFile() ? resolved : null;
+    } catch {
+      target = null;
+    }
+    if (target !== null && roots.some((root) => isInside(root, target))) {
+      files.push({ name: entry.name, path: target });
+    }
+  }
+  files.sort(byName);
+  const cap = options.cap ?? DEFAULT_CAP;
+  return { path: real, files: files.slice(0, cap), truncated: files.length > cap };
 }
