@@ -75,6 +75,10 @@ sessions from one place, without opening each machine.
 - Clients: group projects across hosts by rules (a remote prefix or a folder), with a switcher that
   filters sessions, board, costs, budgets, conversations and the vault, a cost and month-limit
   roll-up per client, and defaults (persona, snippets, vault tag) that never hide an approval.
+- Session summary and webhooks: a short summary of a terminal session (what was asked and done, the
+  files, the cost, the open question) built from its transcript with no model call, and webhook
+  targets (Slack, Discord or a signed JSON endpoint) told when a session needs you, ends or fails,
+  a budget threshold is crossed or a PR watch needs you. Addresses live in the vault.
 - Search the history of every host, including sessions that were not started in Flightdeck.
 - Review what a session or a card changed: comment on diff lines and send the review to the agent,
   revert or edit files, bring the PR comments to the agent and merge the card locally.
