@@ -2798,4 +2798,9 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   ids, so a later flag needs no migration.
 - **Known reds not caused here:** `board-clique` (the "Criar card is off" test) fails on `main` at
   `54f4bee6` too, and the `i18n` language-switch test is intermittent under load.
-
+- **The New card dialog takes no blockers.** It never had a Start button (a new card lands in the Backlog),
+  so the spec's "not offered while blockers are chosen" has nothing to hide; the blockers are set from the
+  card's detail, where the picker already keeps cycles out. `card.create` takes `blockedBy` for any other
+  client (the MCP tool and the demo seed use the wire form).
+- **No separate version bump.** A phase branch does not bump the version (the maintainer does, with the
+  `test(versao)` cycle, at release); the spec does not list it among the acceptance criteria.

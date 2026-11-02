@@ -109,8 +109,8 @@ Done by hand does satisfy the cards it blocks.
   choice, the auto-start switch with the workflow picker, and a "Blocking" list. The indirect chain shows as an indented
   tree to depth 3 ("and 2 more").
 - **Start:** the Start button of a blocked card is enabled, and a click shows the refusal sentence with the blocker
-  titles; it never fails silently. The "Start" in the New card dialog is not offered while blockers are chosen
-  and unsatisfied; the card is created in the backlog.
+  titles; it never fails silently. The New card dialog has no Start button (a new card is always created in the Backlog); blockers are set from the
+  card's detail, or by `card.create` with `blockedBy` for other clients.
 - **Filter:** a "Blocked" toggle in the board filters, next to the existing ones.
 - Strings in `en.ts` and `pt-BR.ts`; the manual and the README mention it (both languages).
 

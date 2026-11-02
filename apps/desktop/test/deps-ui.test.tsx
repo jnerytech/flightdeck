@@ -2,7 +2,6 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
-import { must } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -44,12 +43,6 @@ const type = async (label: string, value: string) => {
     fireEvent.change(field as HTMLInputElement, { target: { value } });
   });
 };
-
-/** Titles of the cards in a column, top to bottom. */
-const column = (label: string) =>
-  [...(screen.queryByRole("region", { name: label })?.querySelectorAll("li[draggable]") ?? [])].map(
-    (li) => (li.getAttribute("aria-label") ?? "").replace(/^Card /, ""),
-  );
 
 const cardItem = (title: string) => screen.queryByLabelText(`Card ${title}`);
 
@@ -93,17 +86,6 @@ async function createCard(title: string, description = "faça") {
   await settle(() => cardItem(title) !== null);
 }
 
-async function drag(title: string, target: HTMLElement | null) {
-  const item = cardItem(title);
-  expect(item).not.toBeNull();
-  expect(target).not.toBeNull();
-  await act(async () => {
-    fireEvent.dragStart(item as HTMLElement);
-    fireEvent.dragOver(target as HTMLElement);
-    fireEvent.drop(target as HTMLElement);
-  });
-}
-
 async function openCard(title: string) {
   const open = cardItem(title)?.querySelector("button") ?? null;
   expect(open).not.toBeNull();
@@ -127,7 +109,6 @@ async function openCardMenu(title: string) {
   });
 }
 
-const menuEntries = () => screen.queryAllByRole("menuitem");
 const menuEntry = (name: string) => screen.queryByRole("menuitem", { name });
 
 async function cardMenu(title: string, entry: string) {
@@ -138,8 +119,6 @@ async function cardMenu(title: string, entry: string) {
     fireEvent.click(item as HTMLElement);
   });
 }
-
-const dialog = () => screen.queryByRole("alertdialog");
 
 const optionValue = (select: HTMLElement, text: string) => {
   const option = [...select.querySelectorAll("option")].find((o) => o.textContent === text);
@@ -227,6 +206,25 @@ describe("deps-ui: the card's detail", () => {
     await settle(() => screen.queryByRole("button", { name: "Remover bloqueio A" }) === null);
     await back();
     expect(cardItem("B")?.textContent).not.toContain("Bloqueado ·");
+  });
+
+  test("a host that does not announce deps shows no section and no filter", async () => {
+    const { store } = await blocked();
+    const hosts = store.getState().hosts;
+    const bare = hosts.map((h) =>
+      h.hostInfo
+        ? {
+            ...h,
+            hostInfo: { ...h.hostInfo, features: h.hostInfo.features?.filter((f) => f !== "deps") },
+          }
+        : h,
+    );
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({ hosts: bare });
+    });
+    expect(screen.queryByRole("button", { name: "Bloqueados" })).toBeNull();
+    await openCard("B");
+    expect(screen.queryByRole("region", { name: "Bloqueado por" })).toBeNull();
   });
 
   test("the card shows what it holds up", async () => {

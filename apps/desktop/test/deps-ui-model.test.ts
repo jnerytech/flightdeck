@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
+import { refusalText } from "../src/i18n/errors.ts";
+import { translator } from "../src/i18n/index.ts";
 import { chainOf, pickable } from "../src/lib/deps.ts";
 
 let n = 0;
@@ -74,5 +76,31 @@ describe("deps-ui: the chain under a card", () => {
 
   test("a card with no blockers has an empty chain", () => {
     expect(chainOf([a], a)).toEqual({ nodes: [], more: 0 });
+  });
+});
+
+describe("deps-ui: the refusals have a sentence in both languages", () => {
+  const refuse = (lang: "en" | "pt-BR", reason: string, params: Record<string, string | number>) =>
+    refusalText("invalid_state", "m", translator(lang), { reason, params });
+
+  test("a blocked start names the blockers", () => {
+    expect(refuse("en", "card_blocked", { blockers: "A, B" })).toBe(
+      "This card is blocked by: A, B.",
+    );
+    expect(refuse("pt-BR", "card_blocked", { blockers: "A, B" })).toBe(
+      "Este card está bloqueado por: A, B.",
+    );
+  });
+
+  test("a cycle shows its path, and the limit and the other project have their own", () => {
+    expect(refuse("en", "blocker_cycle", { cycle: "A → B → A" })).toBe(
+      "That would close a cycle: A → B → A.",
+    );
+    expect(refuse("pt-BR", "blocker_limit", { max: 20 })).toBe(
+      "Um card tem no máximo 20 bloqueios.",
+    );
+    expect(refuse("en", "blocker_other_project", {})).toBe(
+      "A blocker must be a card of the same project.",
+    );
   });
 });
