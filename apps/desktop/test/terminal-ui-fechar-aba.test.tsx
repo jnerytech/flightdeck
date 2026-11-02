@@ -60,6 +60,13 @@ describe("terminal-ui: fechar a aba de um terminal", () => {
     expect(store.tabs.tabs).toHaveLength(2);
   });
 
+  test("the dialog opens with Desanexar focused, so Enter keeps the process running", async () => {
+    await setup();
+    await click(screen.queryByLabelText("Fechar aba Terminal"));
+    await waitFor(() => expect(document.activeElement).toBe(inDialog("Desanexar")));
+    expect(document.activeElement).not.toBe(inDialog("Encerrar processo"));
+  });
+
   test("Desanexar closes the tab and keeps the terminal running on the host", async () => {
     const { store, hostId, ptys, terminalId } = await setup();
     await click(screen.queryByLabelText("Fechar aba Terminal"));
