@@ -1,4 +1,5 @@
 import type { BoardColumn, Card } from "@flightdeck/protocol";
+import type { T } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 
 export const COLUMNS: ReadonlyArray<{ id: BoardColumn }> = [
@@ -35,4 +36,9 @@ export function positionBefore(cards: Card[], targetId: string): number {
   const target = cards[index]?.position ?? 0;
   const previous = cards[index - 1];
   return previous ? (previous.position + target) / 2 : target - 1;
+}
+
+/** The board's title: "Board of <name>", or the plain "Board" until the project's name is known. */
+export function boardTitle(t: T, name: string | undefined): string {
+  return t("kanban.boardOf", { project: name ?? "" });
 }
