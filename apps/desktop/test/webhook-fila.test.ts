@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { NotifyEvent } from "../src/lib/webhook-format.ts";
-import { type SendResult, WebhookQueue } from "../src/lib/webhook-queue.ts";
+import { delay, type SendResult, WebhookQueue } from "../src/lib/webhook-queue.ts";
 
 const event = (id: string, over: Partial<NotifyEvent> = {}): NotifyEvent => ({
   id,
@@ -181,5 +181,11 @@ describe("webhook-fila", () => {
     await queue.idle();
     expect(queue.stats().dropped).toBe(1);
     expect(sent.map((s) => s.event.id)).toEqual(["0", "2", "3", "4"]);
+  });
+
+  test("delay waits for the time given", async () => {
+    const before = Date.now();
+    await delay(15);
+    expect(Date.now() - before).toBeGreaterThanOrEqual(10);
   });
 });
