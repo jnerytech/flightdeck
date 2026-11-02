@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, realpathSync } from "node:fs";
 import { join, parse } from "node:path";
 import { startServer } from "../src/server.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { newManager, tempDir, testRootsPlatform } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "roots-token-0123456789abcdef";
@@ -23,6 +23,7 @@ async function serve(extra: object = {}) {
     token: TOKEN,
     allowedRoots: roots,
     persistRoots: (list) => saved.push([...list]),
+    rootsPlatform: testRootsPlatform(),
     ...extra,
   });
   cleanups.push(() => server.stop());

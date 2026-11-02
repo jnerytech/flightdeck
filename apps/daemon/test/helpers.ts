@@ -88,3 +88,14 @@ export function must<T>(value: T | null | undefined, what: string): T {
   }
   return value;
 }
+
+/**
+ * What decides the system folders in a test: the real platform, but no AppData and a home that
+ * holds nothing. The folders tests make live in the OS temp dir, which on a Windows runner is
+ * inside the user's AppData, a folder the product refuses on purpose.
+ */
+export const testRootsPlatform = () => ({
+  platform: process.platform,
+  env: {},
+  home: process.platform === "win32" ? "Z:\\no-home" : "/no-home",
+});

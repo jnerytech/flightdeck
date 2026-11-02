@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startDaemon } from "../src/main.ts";
-import { tempDir } from "./helpers.ts";
+import { tempDir, testRootsPlatform } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "roots-config-token-0123456789abcdef";
@@ -23,6 +23,7 @@ describe("raizes-persistencia: roots.add on a running daemon", () => {
       { command: "start", config: file, runtime: "fake" },
       {},
       { log: () => {}, error: () => {} },
+      { rootsPlatform: testRootsPlatform() },
     );
     cleanups.push(() => daemon.stop());
     const client = new FrameClient(daemon.url);

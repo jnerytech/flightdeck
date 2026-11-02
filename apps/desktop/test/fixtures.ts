@@ -50,6 +50,7 @@ import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
+import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
@@ -326,6 +327,7 @@ export function daemon(
       ...(features ? { features } : {}),
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
+      rootsPlatform: testRootsPlatform(),
       manager,
       history,
       board,
