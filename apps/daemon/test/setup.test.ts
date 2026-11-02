@@ -31,6 +31,8 @@ function harness(
   if (options.config) writeFileSync(configFile, JSON.stringify(options.config));
   const defaults = new Map<string, boolean>();
   const calls: string[] = [];
+  /** What had already run when the PATH step ran, one entry per run. */
+  const pathAt: string[][] = [];
   const asked: string[] = [];
   const out: string[] = [];
   const deps: SetupDeps = {
@@ -57,6 +59,9 @@ function harness(
       calls.push("binary");
       return true;
     },
+    addToPath: async () => {
+      pathAt.push([...calls]);
+    },
     installService: async () => {
       calls.push("service");
       if (options.serviceError) throw new Error(options.serviceError);
@@ -77,7 +82,7 @@ function harness(
   };
   // Unless a test says otherwise, the user gives one folder and then finishes.
   const answers = [...(options.answers ?? [dir("code"), ""])];
-  return { deps, home, configFile, calls, asked, defaults, out, dir };
+  return { deps, home, configFile, calls, pathAt, asked, defaults, out, dir };
 }
 
 describe("setup", () => {
@@ -90,6 +95,16 @@ describe("setup", () => {
     await runSetup(h.deps);
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
     expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
+  });
+
+  test("the PATH step runs right after the binary is placed, and not when running from source", async () => {
+    const h = harness();
+    await runSetup(h.deps);
+    expect(h.pathAt).toEqual([["binary"]]);
+    const source = harness();
+    source.deps.installBinary = () => false;
+    await runSetup(source.deps);
+    expect(source.pathAt).toEqual([]);
   });
 
   test("a folder that does not exist is refused with the reason and asked again", async () => {
@@ -264,6 +279,8 @@ describe("setup command", () => {
       installed?: boolean;
       /** The platform the service context fakes; the wizard keeps the host's own paths. */
       platform?: "linux" | "win32";
+      /** What `reg query` answers for the user's Path, on a Windows context. */
+      userPath?: (dir: string) => string;
     } = {},
   ) {
     const out: string[] = [];
@@ -293,6 +310,11 @@ describe("setup command", () => {
         exec: async (cmd) => {
           calls.push(cmd);
           if (cmd[0] === "loginctl") return { code: 0, stdout: "Linger=yes\n" };
+          if (cmd[0] === "reg" && cmd[1] === "query") {
+            return options.userPath === undefined
+              ? { code: 1, stdout: "" }
+              : { code: 0, stdout: `    Path    REG_EXPAND_SZ    ${options.userPath(dir)}\r\n` };
+          }
           if (cmd.includes("cat") && options.installed) {
             return { code: 0, stdout: "ExecStart=/old/flightdeckd start\n" };
           }
@@ -378,6 +400,63 @@ describe("setup command", () => {
     expect(readFileSync(join(h.dir, ".flightdeck", "bin", "flightdeckd"), "utf8")).toBe(
       "installed",
     );
+  });
+
+  test("on Windows the binary's folder goes on the user Path and the wizard asks for a new terminal", async () => {
+    const h = cliHarness(undefined, {
+      platform: "win32",
+      selfCommand: (dir) => [join(dir, "download", "flightdeckd-windows-x64.exe")],
+    });
+    mkdirSync(join(h.dir, "download"));
+    writeFileSync(join(h.dir, "download", "flightdeckd-windows-x64.exe"), "binary");
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.exits).toEqual([0]);
+    expect(existsSync(join(h.dir, ".flightdeck", "bin", "flightdeckd.exe"))).toBe(true);
+    const add = h.calls.find((c) => c[0] === "reg" && c[1] === "add");
+    expect(add?.[add.indexOf("/d") + 1]).toContain(
+      `${join(".flightdeck", "bin").replaceAll("/", "\\")}`,
+    );
+    expect(h.out.join("\n")).toContain("new terminal");
+  });
+
+  test("on Linux the wizard prints the line to add and runs no registry command", async () => {
+    const h = cliHarness(undefined, {
+      selfCommand: (dir) => [join(dir, "download", "flightdeckd")],
+    });
+    mkdirSync(join(h.dir, "download"));
+    writeFileSync(join(h.dir, "download", "flightdeckd"), "binary");
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.out.join("\n")).toContain(`export PATH="${join(h.dir, ".flightdeck", "bin")}:$PATH"`);
+    expect(h.calls.some((c) => c[0] === "reg")).toBe(false);
+  });
+
+  test("running from source touches no Path", async () => {
+    const h = cliHarness(undefined, { platform: "win32" });
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(h.calls.some((c) => c[0] === "reg" || c[0] === "powershell")).toBe(false);
+  });
+
+  test("service uninstall takes the folder off the user Path; --dry-run only says so", async () => {
+    const entry = (dir: string) => join(dir, ".flightdeck", "bin").replaceAll("/", "\\");
+    const userPath = (dir: string) => `C:\\Tools;${entry(dir)}`;
+    const real = cliHarness(undefined, { platform: "win32", userPath });
+    await runCli(["service", "uninstall"], real.deps);
+    const add = real.calls.find((c) => c[0] === "reg" && c[1] === "add");
+    expect(add?.[add.indexOf("/d") + 1]).toBe("C:\\Tools");
+    const dry = cliHarness(undefined, { platform: "win32", userPath });
+    await runCli(["service", "uninstall", "--dry-run"], dry.deps);
+    expect(dry.calls.some((c) => c[0] === "reg")).toBe(false);
+    expect(dry.out.join("\n")).toContain("Path");
+    await Promise.all([real.stop(), dry.stop()]);
   });
 
   test("a service that is already installed is stopped before it is installed again", async () => {

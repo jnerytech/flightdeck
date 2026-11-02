@@ -16,6 +16,8 @@ export interface SetupDeps {
   tailscaleIp(): Promise<string | null>;
   /** Puts the running binary at its stable place; false when running from source. */
   installBinary(): boolean;
+  /** Puts the binary's folder on the user's PATH (or prints how); runs only after `installBinary`. */
+  addToPath(): Promise<void>;
   /** Installs the service, starts it now and waits for `/health`; throws when it never answers. */
   installService(): Promise<void>;
   installHooks(): void;

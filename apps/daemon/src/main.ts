@@ -1249,6 +1249,7 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
         );
         return true;
       },
+      addToPath: async () => {},
       installService: async () => {
         const ctx = ctxOf(false);
         if ((await serviceCommand(ctx)) !== null) await stopInstalledDaemon(install(), ctx, deps);
