@@ -2,7 +2,7 @@
   "apps/daemon/src/agentcfg/files.ts": 7,
   "apps/daemon/src/agentcfg/mcp.ts": 6,
   "apps/daemon/src/bg/service.ts": 1,
-  "apps/daemon/src/board/board.ts": 32,
+  "apps/daemon/src/board/board.ts": 31,
   "apps/daemon/src/board/merge.ts": 4,
   "apps/daemon/src/board/pr.ts": 6,
   "apps/daemon/src/board/project-rules.ts": 2,
@@ -37,7 +37,7 @@
   "apps/daemon/src/server.ts": 4,
   "apps/daemon/src/snippets/store.ts": 12,
   "apps/daemon/src/snippets/use.ts": 8,
-  "apps/daemon/src/teams/teams.ts": 8,
+  "apps/daemon/src/teams/teams.ts": 5,
   "apps/daemon/src/terminal/terminal-manager.ts": 6,
   "apps/daemon/src/updates/apply.ts": 6
 }
