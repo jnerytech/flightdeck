@@ -34,8 +34,8 @@ const options = (label: string) =>
     (o) => o.textContent ?? "",
   );
 
-async function openSession() {
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+async function openSession(language = "pt-BR") {
+  const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await personasHost(cleanups, store);
   const { sessionId } = h.d.manager.create({ cwd: h.repo, prompt: "oi" });
@@ -49,6 +49,68 @@ async function openSession() {
 }
 
 describe("personas-ui: applying a persona to an open session", () => {
+  test("the screen says how the instruction went: sent, queued behind a pending request, or sent to the terminal", async () => {
+    const { store, sessionId } = await openSession();
+    await settle(() => options("Aplicar persona").length > 1);
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Aplicar persona") as HTMLElement, {
+        target: { value: "host:qa" },
+      });
+    });
+    await click("Aplicar");
+    await settle(() => screen.queryByText("Instrução enviada à sessão.") !== null);
+    const answer = (delivery: string) =>
+      (async () => ({
+        persona: { id: "qa", name: "QA / testes", icon: null },
+        text: "x",
+        delivery,
+      })) as unknown as typeof store.hostCommand;
+    store.hostCommand = answer("queued");
+    await click("Aplicar");
+    expect(
+      screen.queryByText(
+        "Na fila: a instrução segue quando a sessão terminar o passo atual ou o pedido pendente for respondido.",
+      ),
+    ).not.toBeNull();
+    store.hostCommand = answer("terminal");
+    await click("Voltar ao normal");
+    expect(
+      screen.queryByText(
+        "Enviada à sessão do terminal. Ela aparece na conversa quando o Claude a receber, depois de qualquer pedido pendente.",
+      ),
+    ).not.toBeNull();
+    expect(sessionId).toBeTruthy();
+  });
+
+  test("the same notes in English", async () => {
+    const { store } = await openSession("en");
+    await settle(() => options("Apply persona").length > 1);
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Apply persona") as HTMLElement, {
+        target: { value: "host:qa" },
+      });
+    });
+    for (const [delivery, text] of [
+      ["sent", "Instruction sent to the session."],
+      [
+        "queued",
+        "Queued: the instruction is sent when the session finishes its current step or the pending request is answered.",
+      ],
+      [
+        "terminal",
+        "Sent to the terminal session. It shows in the conversation when Claude takes it, after any pending request.",
+      ],
+    ] as const) {
+      store.hostCommand = (async () => ({
+        persona: { id: "qa", name: "QA", icon: null },
+        text: "x",
+        delivery,
+      })) as unknown as typeof store.hostCommand;
+      await click("Apply");
+      expect(screen.queryByText(text)).not.toBeNull();
+    }
+  });
+
   test("Aplicar persona sends the role message, says it is a conversation instruction, and Voltar ao normal leaves it", async () => {
     const { d, sessionId } = await openSession();
     await settle(() => options("Aplicar persona").length > 1);

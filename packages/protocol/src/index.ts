@@ -1012,7 +1012,16 @@ export const PersonaSubagents = z.object({
 export type PersonaSubagents = z.infer<typeof PersonaSubagents>;
 
 /** What applying or leaving a persona answers: the persona and the message that was sent. */
-export const PersonaSwitchResult = z.object({ persona: SessionPersona, text: z.string() });
+export const PersonaSwitchResult = z.object({
+  persona: SessionPersona,
+  text: z.string(),
+  /**
+   * How the message went: `sent` to an idle managed session, `queued` behind a turn or a pending
+   * request, `terminal` to a terminal session's channel (it shows when Claude takes it). Absent
+   * from an older host.
+   */
+  delivery: z.enum(["sent", "queued", "terminal"]).optional(),
+});
 export type PersonaSwitchResult = z.infer<typeof PersonaSwitchResult>;
 
 /** A persona ready to use, with where it came from. */
