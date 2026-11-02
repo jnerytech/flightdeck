@@ -162,18 +162,16 @@ function ManagedSession(props: {
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         session={session}
         actions={store}
-        {...(host
-          ? {
-              pickPath: (done: (path: string | null) => void) => (
-                <FolderPicker
-                  store={store}
-                  host={host}
-                  onPick={(path) => done(path)}
-                  onClose={() => done(null)}
-                />
-              ),
-            }
-          : {})}
+        pickPath={(done) =>
+          host ? (
+            <FolderPicker
+              store={store}
+              host={host}
+              onPick={(path) => done(path)}
+              onClose={() => done(null)}
+            />
+          ) : null
+        }
         focusRequestId={props.focus}
         recap={
           claudeId && (
