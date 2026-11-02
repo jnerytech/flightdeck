@@ -20,6 +20,7 @@
     "smoke:multi": "bun run scripts/smoke-multi.ts",
     "smoke:history": "bun run scripts/smoke-history.ts",
     "smoke:board": "bun run scripts/smoke-board.ts",
+    "smoke:deps": "bun run scripts/smoke-deps.ts",
     "smoke:central": "bun run scripts/smoke-central.ts",
     "smoke:workflow": "bun run scripts/smoke-workflow.ts",
     "smoke:ops": "bun run scripts/smoke-ops.ts",

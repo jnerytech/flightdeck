@@ -91,6 +91,7 @@ jobs:
           bun run smoke:multi
           bun run smoke:history
           bun run smoke:board
+          bun run smoke:deps
           bun run smoke:central
           bun run smoke:workflow
           bun run smoke:ops
