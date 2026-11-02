@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { PersonaInput } from "@flightdeck/protocol";
@@ -169,7 +169,7 @@ describe("personas-subagente: sessão gerenciada", () => {
   });
 });
 
-async function terminalHost(personas: Personas | null, root: string) {
+async function terminalHost(personas: Personas | null, root: string, claude?: string) {
   const dir = tempDir();
   const dataDir = join(dir, "data");
   mkdirSync(dataDir, { recursive: true });
@@ -195,7 +195,13 @@ async function terminalHost(personas: Personas | null, root: string) {
   const file = join(dir, "config.json");
   writeFileSync(
     file,
-    JSON.stringify({ token: TOKEN, port: server.port, dataDir, hooks: { port: 0, token: HOOKS } }),
+    JSON.stringify({
+      token: TOKEN,
+      port: server.port,
+      dataDir,
+      hooks: { port: 0, token: HOOKS },
+      ...(claude ? { claude: { executablePath: claude } } : {}),
+    }),
   );
   return { file, dataDir };
 }
@@ -206,12 +212,13 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     host: { file: string },
     cwd?: string,
     platform?: NodeJS.Platform,
+    errors: string[] = [],
   ) {
     const exit = { code: null as number | null };
     await runCli(["claude", ...args], {
       ...(platform ? { platform } : {}),
       env: { ...process.env, FLIGHTDECK_CONFIG: host.file },
-      log: { log: () => {}, error: () => {} },
+      log: { log: () => {}, error: (m: string) => errors.push(m) },
       exit: (c) => {
         exit.code = c;
       },
@@ -237,6 +244,11 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     cleanups.push(fake.restore);
     expect(await run([], host, project)).toBe(0);
     const [start] = startsOf(fake);
+    // The Windows runner finds the fake as claude.cmd, a shim that gets no --agents at all.
+    if (process.platform === "win32") {
+      expect(start?.args).not.toContain("--agents");
+      return;
+    }
     expect(start?.args).toContain("--agents");
     const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
     expect(value.startsWith("{")).toBe(true);
@@ -245,30 +257,45 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     expect(start?.agents?.["persona-revisor"]?.description).toMatch(/Revisa legibilidade/);
   });
 
-  test("on Windows the inline JSON holds no character that cmd.exe would run (a claude.cmd shim reads %*), and says the same", async () => {
+  /** A copy of the fake claude under another name: runs the same on Linux, and names the shim kind. */
+  function renamedFake(fake: ReturnType<typeof installFakeClaude>, name: string) {
+    const path = join(fake.dir, name);
+    copyFileSync(join(fake.dir, "claude"), path);
+    chmodSync(path, 0o755);
+    return path;
+  }
+
+  test("on Windows a claude.cmd shim gets no --agents (cmd.exe would mangle the JSON), and the user is told", async () => {
     const { root, project, personas } = setup();
-    const body = "Run a & b | c > d < e ^ f (g) 100% done!";
-    personas.save({ scope: "host", persona: { ...SECURITY, id: "shell", body } });
-    const host = await terminalHost(personas, root);
     const fake = installFakeClaude([{ do: "exit", code: 0 }]);
     cleanups.push(fake.restore);
+    const host = await terminalHost(personas, root, renamedFake(fake, "claude.cmd"));
+    const errors: string[] = [];
+    expect(await run([], host, project, "win32", errors)).toBe(0);
+    expect(startsOf(fake)[0]?.args).not.toContain("--agents");
+    expect(errors.join("\n")).toMatch(/claude\.cmd.*--agents|--agents.*claude\.cmd/);
+  });
+
+  test("on Windows a claude.bat shim is the same, whatever the case of the extension", async () => {
+    const { root, project, personas } = setup();
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const host = await terminalHost(personas, root, renamedFake(fake, "CLAUDE.BAT"));
+    expect(await run([], host, project, "win32")).toBe(0);
+    expect(startsOf(fake)[0]?.args).not.toContain("--agents");
+  });
+
+  test("on Windows a native claude.exe gets the inline JSON untouched", async () => {
+    const { root, project, personas } = setup();
+    personas.save({ scope: "host", persona: { ...SECURITY, id: "shell", body: "a & b (c)" } });
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const host = await terminalHost(personas, root, renamedFake(fake, "claude.exe"));
     expect(await run([], host, project, "win32")).toBe(0);
     const [start] = startsOf(fake);
     const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
-    expect(value).not.toMatch(/[&|<>^()%!]/);
-    expect(start?.agents?.["persona-shell"]?.prompt).toContain(body);
-  });
-
-  test("elsewhere the inline JSON is left as it is", async () => {
-    const { root, project, personas } = setup();
-    personas.save({ scope: "host", persona: { ...SECURITY, id: "shell", body: "a & b" } });
-    const host = await terminalHost(personas, root);
-    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
-    cleanups.push(fake.restore);
-    expect(await run([], host, project, "linux")).toBe(0);
-    const [start] = startsOf(fake);
-    const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
-    expect(value).toContain("a & b");
+    expect(value).toContain("a & b (c)");
+    expect(start?.agentsInline).toBe(true);
   });
 
   test("print mode keeps the file, which exists while claude runs and is gone after", async () => {
