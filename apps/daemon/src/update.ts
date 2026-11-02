@@ -85,7 +85,7 @@ export async function waitHealthy(url: string, timeoutMs: number, intervalMs: nu
 const VERSION_LINE = /^flightdeckd (\d+\.\d+\.\d+)/;
 
 /** What `<bin> --version` says, or null when it does not answer like flightdeckd in time. */
-async function binaryVersion(bin: string, timeoutMs: number): Promise<string | null> {
+export async function binaryVersion(bin: string, timeoutMs: number): Promise<string | null> {
   try {
     const proc = Bun.spawn([bin, "--version"], {
       stdout: "pipe",
@@ -176,7 +176,7 @@ function updateHooks(deps: UpdateDeps, config: Config): void {
 }
 
 /** Puts `from` at `stableBin`, keeping the previous binary as `.old`. True when there was one. */
-function swapBinary(from: string, stableBin: string): boolean {
+export function swapBinary(from: string, stableBin: string): boolean {
   const old = `${stableBin}.old`;
   const incoming = `${stableBin}.new`;
   mkdirSync(join(stableBin, ".."), { recursive: true });

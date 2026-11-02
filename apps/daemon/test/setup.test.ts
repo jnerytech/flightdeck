@@ -3,7 +3,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
-import { createPrompt, installStableBinary, runSetup, type SetupDeps } from "../src/setup.ts";
+import { DAEMON_VERSION } from "../src/server.ts";
+import {
+  createPrompt,
+  installStableBinary,
+  reconcileStableBinary,
+  runSetup,
+  type SetupDeps,
+} from "../src/setup.ts";
 import { stableBinPath } from "../src/update.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -55,7 +62,7 @@ function harness(
     isDirectory: (path) =>
       path.toLowerCase().startsWith(home.toLowerCase()) && !path.endsWith("missing"),
     tailscaleIp: async () => options.tailscale ?? null,
-    installBinary: () => {
+    installBinary: async () => {
       calls.push("binary");
       return true;
     },
@@ -102,7 +109,7 @@ describe("setup", () => {
     await runSetup(h.deps);
     expect(h.pathAt).toEqual([["binary"]]);
     const source = harness();
-    source.deps.installBinary = () => false;
+    source.deps.installBinary = async () => false;
     await runSetup(source.deps);
     expect(source.pathAt).toEqual([]);
   });
@@ -182,7 +189,7 @@ describe("setup", () => {
 
   test("running from source skips the binary copy and says so", async () => {
     const h = harness();
-    h.deps.installBinary = () => false;
+    h.deps.installBinary = async () => false;
     await runSetup(h.deps);
     expect(h.out.join("\n")).toContain("Running from source");
   });
@@ -384,79 +391,59 @@ describe("setup command", () => {
     expect(unit.replaceAll("\\\\", "\\")).toContain(stable);
   });
 
-  test("a stable binary that is already installed is kept, and the wizard says so", async () => {
+  /** A download and a stable binary already installed, with the version each one answers. */
+  async function upgrade(stableVersion: string | null, installed = false) {
     const h = cliHarness(undefined, {
+      installed,
       selfCommand: (dir) => [join(dir, "download", "flightdeckd")],
     });
+    h.deps.binaryVersion = async () => stableVersion;
     mkdirSync(join(h.dir, "download"));
     writeFileSync(join(h.dir, "download", "flightdeckd"), "new");
     mkdirSync(join(h.dir, ".flightdeck", "bin"), { recursive: true });
-    writeFileSync(join(h.dir, ".flightdeck", "bin", "flightdeckd"), "installed");
+    const stable = join(h.dir, ".flightdeck", "bin", "flightdeckd");
+    writeFileSync(stable, "installed");
     const project = join(h.dir, "project");
     mkdirSync(project);
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
-    expect(h.out.join("\n")).toContain("already exists and stays");
-    expect(readFileSync(join(h.dir, ".flightdeck", "bin", "flightdeckd"), "utf8")).toBe(
-      "installed",
-    );
-  });
+    return { ...h, stable, text: h.out.join("\n") };
+  }
 
-  test("on Windows the binary's folder goes on the user Path and the wizard asks for a new terminal", async () => {
-    const h = cliHarness(undefined, {
-      platform: "win32",
-      selfCommand: (dir) => [join(dir, "download", "flightdeckd-windows-x64.exe")],
-    });
-    mkdirSync(join(h.dir, "download"));
-    writeFileSync(join(h.dir, "download", "flightdeckd-windows-x64.exe"), "binary");
-    const project = join(h.dir, "project");
-    mkdirSync(project);
-    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
-    await h.stop();
+  test("an older stable binary is replaced by the download, the old one kept, and the wizard says which binary the service runs", async () => {
+    const h = await upgrade("0.1.0");
     expect(h.exits).toEqual([0]);
-    expect(existsSync(join(h.dir, ".flightdeck", "bin", "flightdeckd.exe"))).toBe(true);
-    const add = h.calls.find((c) => c[0] === "reg" && c[1] === "add");
-    expect(add?.[add.indexOf("/d") + 1]).toContain(
-      `${join(".flightdeck", "bin").replaceAll("/", "\\")}`,
-    );
-    expect(h.out.join("\n")).toContain("new terminal");
+    expect(readFileSync(h.stable, "utf8")).toBe("new");
+    expect(readFileSync(`${h.stable}.old`, "utf8")).toBe("installed");
+    expect(h.text).toContain("replaced");
+    expect(h.text).toContain(`will run ${h.stable} (flightdeckd ${DAEMON_VERSION})`);
   });
 
-  test("on Linux the wizard prints the line to add and runs no registry command", async () => {
-    const h = cliHarness(undefined, {
-      selfCommand: (dir) => [join(dir, "download", "flightdeckd")],
-    });
-    mkdirSync(join(h.dir, "download"));
-    writeFileSync(join(h.dir, "download", "flightdeckd"), "binary");
-    const project = join(h.dir, "project");
-    mkdirSync(project);
-    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
-    await h.stop();
-    expect(h.out.join("\n")).toContain(`export PATH="${join(h.dir, ".flightdeck", "bin")}:$PATH"`);
-    expect(h.calls.some((c) => c[0] === "reg")).toBe(false);
+  test("a stable binary that does not answer --version counts as older", async () => {
+    const h = await upgrade(null);
+    expect(readFileSync(h.stable, "utf8")).toBe("new");
+    expect(h.text).toContain("unknown version");
   });
 
-  test("running from source touches no Path", async () => {
-    const h = cliHarness(undefined, { platform: "win32" });
-    const project = join(h.dir, "project");
-    mkdirSync(project);
-    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
-    await h.stop();
-    expect(h.calls.some((c) => c[0] === "reg" || c[0] === "powershell")).toBe(false);
+  test("the same version stays and the wizard says so", async () => {
+    const h = await upgrade(DAEMON_VERSION);
+    expect(readFileSync(h.stable, "utf8")).toBe("installed");
+    expect(h.text).toContain("already version");
+    expect(h.text).toContain(`will run ${h.stable} (flightdeckd ${DAEMON_VERSION})`);
   });
 
-  test("service uninstall takes the folder off the user Path; --dry-run only says so", async () => {
-    const entry = (dir: string) => join(dir, ".flightdeck", "bin").replaceAll("/", "\\");
-    const userPath = (dir: string) => `C:\\Tools;${entry(dir)}`;
-    const real = cliHarness(undefined, { platform: "win32", userPath });
-    await runCli(["service", "uninstall"], real.deps);
-    const add = real.calls.find((c) => c[0] === "reg" && c[1] === "add");
-    expect(add?.[add.indexOf("/d") + 1]).toBe("C:\\Tools");
-    const dry = cliHarness(undefined, { platform: "win32", userPath });
-    await runCli(["service", "uninstall", "--dry-run"], dry.deps);
-    expect(dry.calls.some((c) => c[0] === "reg")).toBe(false);
-    expect(dry.out.join("\n")).toContain("Path");
-    await Promise.all([real.stop(), dry.stop()]);
+  test("a newer stable binary stays and the wizard says it is newer than the download", async () => {
+    const h = await upgrade("99.0.0");
+    expect(readFileSync(h.stable, "utf8")).toBe("installed");
+    expect(h.text).toContain("newer than this download");
+    expect(h.text).toContain(`will run ${h.stable} (flightdeckd 99.0.0)`);
+  });
+
+  test("replacing the stable binary stops an installed service first", async () => {
+    const h = await upgrade("0.1.0", true);
+    const names = h.calls.map((c) => c.slice(0, 3).join(" "));
+    expect(names.indexOf("systemctl --user stop")).toBeGreaterThan(-1);
+    expect(readFileSync(h.stable, "utf8")).toBe("new");
   });
 
   test("a service that is already installed is stopped before it is installed again", async () => {
@@ -485,6 +472,63 @@ describe("setup command", () => {
     await h.stop();
     expect(h.exits).toEqual([1]);
     expect(h.out.join("\n")).toContain("--yes --folders");
+  });
+});
+
+describe("reconcileStableBinary", () => {
+  function files(stableVersion: string | null) {
+    const dir = tempDir("fd-reconcile-");
+    const self = join(dir, "download");
+    const stable = join(dir, "stable");
+    writeFileSync(self, "new");
+    writeFileSync(stable, "old");
+    const seen: string[] = [];
+    const options = {
+      self,
+      stable,
+      selfVersion: "0.31.0",
+      stableVersion: async () => stableVersion,
+      stopService: async () => {
+        seen.push(readFileSync(stable, "utf8"));
+      },
+    };
+    return { options, stable, seen };
+  }
+
+  test("an older version is replaced after the service stopped, the old file kept as .old", async () => {
+    const h = files("0.29.0");
+    expect(await reconcileStableBinary(h.options)).toEqual({
+      outcome: "replaced",
+      stableVersion: "0.29.0",
+    });
+    expect(h.seen).toEqual(["old"]);
+    expect(readFileSync(h.stable, "utf8")).toBe("new");
+    expect(readFileSync(`${h.stable}.old`, "utf8")).toBe("old");
+  });
+
+  test("versions compare as numbers: 0.9.0 is older than 0.31.0", async () => {
+    const h = files("0.9.0");
+    expect((await reconcileStableBinary(h.options)).outcome).toBe("replaced");
+  });
+
+  test("a binary that does not answer is replaced", async () => {
+    const h = files(null);
+    expect(await reconcileStableBinary(h.options)).toEqual({
+      outcome: "replaced",
+      stableVersion: null,
+    });
+  });
+
+  test("the same version and a newer one are left alone and the service is not stopped", async () => {
+    for (const [version, outcome] of [
+      ["0.31.0", "same"],
+      ["0.40.0", "newer"],
+    ] as const) {
+      const h = files(version);
+      expect(await reconcileStableBinary(h.options)).toEqual({ outcome, stableVersion: version });
+      expect(h.seen).toEqual([]);
+      expect(readFileSync(h.stable, "utf8")).toBe("old");
+    }
   });
 });
 

@@ -15,7 +15,7 @@ export interface SetupDeps {
   isDirectory(path: string): boolean;
   tailscaleIp(): Promise<string | null>;
   /** Puts the running binary at its stable place; false when running from source. */
-  installBinary(): boolean;
+  installBinary(): Promise<boolean>;
   /** Puts the binary's folder on the user's PATH (or prints how); runs only after `installBinary`. */
   addToPath(): Promise<void>;
   /** Installs the service, starts it now and waits for `/health`; throws when it never answers. */
@@ -142,7 +142,7 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
   const current = storedRoots(deps.configFile);
   // Checked before anything is installed: a bad answer on the command line changes nothing.
   const given = options.yes ? yesFolders(deps, current, options.folders ?? []) : null;
-  if (deps.installBinary()) await deps.addToPath();
+  if (await deps.installBinary()) await deps.addToPath();
   else deps.log.log("Running from source: the binary stays where it is.");
   const roots = given ?? (await askFolders(deps, current));
   const tailscale = options.yes ? null : await deps.tailscaleIp();
@@ -198,4 +198,26 @@ export function installStableBinary(
   copyFileSync(exe, stable);
   chmodSync(stable, 0o755);
   return "copied";
+}
+
+export interface ReconcileOptions {
+  /** The running binary and the stable one it found already there. */
+  self: string;
+  stable: string;
+  /** The version of the running binary. */
+  selfVersion: string;
+  /** What the stable binary says to `--version`, or null when it does not answer like flightdeckd. */
+  stableVersion(): Promise<string | null>;
+  /** Stops the installed service's daemon, so the file can be replaced. */
+  stopService(): Promise<void>;
+}
+
+/**
+ * A stable binary that was already there: an older one (or one that does not answer `--version`)
+ * is replaced, keeping it as `.old`; the same version or a newer one stays.
+ */
+export async function reconcileStableBinary(
+  _options: ReconcileOptions,
+): Promise<{ outcome: "replaced" | "same" | "newer"; stableVersion: string | null }> {
+  return { outcome: "same", stableVersion: null };
 }

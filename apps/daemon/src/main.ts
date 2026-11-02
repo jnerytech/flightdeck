@@ -1238,7 +1238,7 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
       platform: process.platform,
       isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
       tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
-      installBinary: () => {
+      installBinary: async () => {
         const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
         const placed = installStableBinary(self, stable, base.platform);
         if (placed === "source") return false;
@@ -1588,6 +1588,8 @@ export interface CliDeps {
   exec?: Exec;
   /** This daemon's own command line, as hooks call it back; derived from the process if absent. */
   selfCommand?: string[];
+  /** What `<bin> --version` says; the real one runs the binary. Injected in tests. */
+  binaryVersion?: (bin: string) => Promise<string | null>;
   /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
   stdin?: ReadableStream<Uint8Array>;
   /** How long `hook session-start` tries to reach the receptor. */
