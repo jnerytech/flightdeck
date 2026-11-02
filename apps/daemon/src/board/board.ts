@@ -469,7 +469,7 @@ export class Board {
       issueExternal: row.issue_external === 1,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
-      waitingOn: this.blockersOf(id),
+      waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
       unblockWhen: row.unblock_when,
       autoStart: row.auto_start ? JSON.parse(row.auto_start) : null,
       unblockedAt: row.unblocked_at,
@@ -763,6 +763,19 @@ export class Board {
       )
       .all(id)
       .map((row) => row.blocker_id);
+  }
+
+  /** The blockers of `id` that are not satisfied: not in Done, or, with merged, not merged. */
+  private unsatisfied(id: string, when: UnblockWhen): string[] {
+    return this.blockersOf(id).filter((blocker) => {
+      const row = this.db
+        .query<{ board_column: BoardColumn; pr_state: PrState | null }, [string]>(
+          "SELECT board_column, pr_state FROM cards WHERE id = ?",
+        )
+        .get(blocker);
+      if (row?.board_column !== "done") return true;
+      return when === "merged" && row?.pr_state !== "merged";
+    });
   }
 
   /** The cards `id` holds up. */
@@ -1598,6 +1611,8 @@ export class Board {
   private changed(id: string): Card {
     const card = this.getCard(id);
     this.emit(card);
+    // What a card waits for follows its blockers' columns: the cards it holds up are news too.
+    for (const dependent of this.blockingOf(id)) this.emit(this.getCard(dependent));
     return card;
   }
 
