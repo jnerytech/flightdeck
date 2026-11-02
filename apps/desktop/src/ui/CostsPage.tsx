@@ -375,7 +375,7 @@ export const CostsPage = memo(function CostsPage(props: {
             }
           />
         )}
-        {loading && <LoadingState label={t("costsUi.loading")} />}
+        {loading && <LoadingState label={t("costsUi.loading")} shape="tiles" />}
         {empty && (
           <EmptyState
             icon={Coins}

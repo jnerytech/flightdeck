@@ -26,7 +26,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { COLUMNS, boardTitle, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -322,7 +322,7 @@ export const BoardView = memo(function BoardView(props: {
       }
     >
       <div className="flex flex-col gap-4">
-        {loading && <LoadingState label={t("states.loadingBoard")} />}
+        {loading && <LoadingState label={t("states.loadingBoard")} shape="columns" />}
         {!loading && project && all.length === 0 && (
           <EmptyState
             icon={Columns3}
@@ -332,6 +332,7 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div
           ref={boardRef}
+          hidden={loading}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
