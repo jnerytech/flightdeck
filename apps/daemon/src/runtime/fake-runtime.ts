@@ -22,6 +22,8 @@ export interface FakeRuntimeOptions {
   rewind?: (userMessageId: string, dryRun: boolean) => RewindFilesResult;
   /** The MCP servers a live run reports (phase 12). */
   mcpServers?: string[];
+  /** The slash commands the fake session announces in its init. */
+  slashCommands?: string[];
   /** Phase 13: the fake AI of the automatic approval. */
   judge?: (opts: JudgeOptions) => JudgeResult | Promise<JudgeResult>;
 }
@@ -56,6 +58,10 @@ export class FakeRuntime implements AgentRuntime {
 
   /** MCP servers turned on or off in live runs (phase 12). */
   readonly mcpToggles: Array<{ name: string; enabled: boolean }> = [];
+
+  /** Permission modes and models set in live runs. */
+  readonly modes: string[] = [];
+  readonly models: Array<string | undefined> = [];
 
   /** Judge queries so far (phase 13). */
   readonly judgeCalls: JudgeOptions[] = [];

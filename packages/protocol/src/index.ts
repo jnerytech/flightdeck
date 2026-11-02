@@ -297,6 +297,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     claudeSessionId: z.string(),
     model: z.string(),
     tools: z.array(z.string()),
+    /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
+    slashCommands: z.array(z.string()).optional(),
   }),
   z.object({ type: z.literal("message.user"), text: z.string() }),
   /** A persona was applied to the session (it is conversation instruction, not system prompt). */
@@ -2332,6 +2334,16 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.create", SessionCreatePayload),
   cmd("session.send", SessionSendPayload),
   cmd("session.interrupt", SessionIdPayload),
+  /** Changes the permission mode of a live managed session for its next tool requests. */
+  cmd(
+    "session.setMode",
+    z.object({ sessionId: z.string(), permissionMode: PermissionMode }).strict(),
+  ),
+  /** Changes the model of a live managed session for its next turn; null is the default. */
+  cmd(
+    "session.setModel",
+    z.object({ sessionId: z.string(), model: z.string().nullable() }).strict(),
+  ),
   cmd("session.close", SessionIdPayload),
   cmd("session.resume", SessionIdPayload),
   cmd("session.subscribe", SessionSubscribePayload),
@@ -3608,6 +3620,8 @@ export interface CommandResults {
   "session.create": SessionCreateResult;
   "session.send": SessionSendResult;
   "session.interrupt": undefined;
+  "session.setMode": undefined;
+  "session.setModel": undefined;
   "session.close": undefined;
   "session.resume": undefined;
   "session.subscribe": SessionSubscribeResult;

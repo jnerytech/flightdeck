@@ -9,7 +9,7 @@ import {
   forkSession as sdkForkSession,
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { AssistantBlock } from "@flightdeck/protocol";
+import type { AssistantBlock, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
@@ -31,6 +31,8 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   rewindFiles?(userMessageId: string, opts?: { dryRun?: boolean }): Promise<RewindFilesResult>;
   toggleMcpServer?(name: string, enabled: boolean): Promise<void>;
   mcpServerStatus?(): Promise<McpServerStatus[]>;
+  setPermissionMode?(mode: PermissionMode): Promise<void>;
+  setModel?(model?: string): Promise<void>;
 }
 
 export type QueryFn = (params: {

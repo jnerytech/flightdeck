@@ -85,6 +85,10 @@ export interface AgentRun {
   toggleMcpServer?(name: string, enabled: boolean): Promise<void>;
   /** Phase 12: the live status of the session's MCP servers. */
   mcpServerStatus?(): Promise<McpLiveStatus[]>;
+  /** Changes the permission mode of the live run. */
+  setPermissionMode?(mode: PermissionMode): Promise<void>;
+  /** Changes the model of the live run; undefined is the default. */
+  setModel?(model: string | undefined): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
 }
