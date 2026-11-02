@@ -34,7 +34,9 @@ export function TimingBreakdown(props: {
           {summary.projects.map((project) => (
             <li key={project.projectKey}>
               <Stack gap={1}>
-                <h4 className="font-medium text-sm">{projectLabel(project.projectKey)}</h4>
+                <h4 className="font-medium text-sm">
+                  {(props.label ?? projectLabel)(project.projectKey)}
+                </h4>
                 {project.waitMs > 0 && (
                   <p className="text-muted-foreground text-xs">
                     {t("telemetry.waited", { wait: formatDuration(project.waitMs, t) })}

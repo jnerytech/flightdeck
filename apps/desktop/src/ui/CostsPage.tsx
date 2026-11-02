@@ -22,6 +22,7 @@ import {
   PERIODS,
   type Period,
   periodRange,
+  projectLabel,
   projectLabels,
   usd,
 } from "../lib/costs.ts";
@@ -195,7 +196,7 @@ export const CostsPage = memo(function CostsPage(props: {
       ...(summary?.topSessions ?? []).map((s) => s.projectKey),
     ]),
   ]);
-  const projectName = (key: string) => labels.get(key) ?? key;
+  const projectName = (key: string) => labels.get(key) ?? projectLabel(key);
   // The split by client is the whole spend of the period: it is not shown for one client.
   const scope = store.clientScope();
   const byClient =
@@ -454,7 +455,12 @@ export const CostsPage = memo(function CostsPage(props: {
             </div>
             {!acrossHosts && <QuotaCharts key={`quota-${hostId}`} store={store} hostId={hostId} />}
             {withTelemetry && (
-              <TimingBreakdown key={`timing-${hostId}`} store={store} hostId={hostId} />
+              <TimingBreakdown
+                key={`timing-${hostId}`}
+                store={store}
+                hostId={hostId}
+                label={projectName}
+              />
             )}
             <section aria-label={t("costsUi.top")}>
               <Panel title={t("costsUi.top")}>
