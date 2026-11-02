@@ -39,9 +39,9 @@ interface TargetState {
 
 const DEFAULTS = { minIntervalMs: 1000, backoffMs: [2000, 8000, 32000], maxQueue: 100 };
 
-/** A 4xx that will not get better by waiting. */
+/** A 3xx (never followed) or a 4xx that will not get better by waiting. */
 const permanent = (status: number | null): boolean =>
-  status !== null && status >= 400 && status < 500 && status !== 408 && status !== 429;
+  status !== null && status >= 300 && status < 500 && status !== 408 && status !== 429;
 
 /** Several events of one kind that waited together become one message. */
 function merged(events: NotifyEvent[]): NotifyEvent {
