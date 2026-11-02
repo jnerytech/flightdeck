@@ -10,6 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { RecapPanel } = await import("../src/ui/RecapPanel.tsx");
+const { App } = await import("../src/ui/App.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(20_000);
@@ -161,5 +162,39 @@ describe("resumo-ui", () => {
     expect(screen.getByRole("region", { name: "Session summary" }).textContent).not.toContain(
       "Files",
     );
+  });
+
+  test("a session Flightdeck started shows its summary on its own page", async () => {
+    const mem = memoryPlatform(false, "en");
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    store.i18n.start();
+    const d = makeDaemon(cleanups, { summary: true });
+    const server = d.listen();
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.hostInfo !== null);
+    const managed = d.manager.create({ cwd: d.project, prompt: "oi" });
+    await settle(() => d.manager.get(managed.sessionId).claudeSessionId !== null);
+    const claudeId = d.manager.get(managed.sessionId).claudeSessionId as string;
+    mkdirSync(d.historyRoot, { recursive: true });
+    const file = join(d.historyRoot, `${claudeId}.jsonl`);
+    writeFileSync(
+      file,
+      `${line({ type: "user", message: { role: "user", content: "Managed prompt" } })}\n`,
+    );
+    d.eventStore.db
+      .query(
+        `INSERT INTO history_sessions (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path)
+         VALUES (?, ?, 't', '2026-11-01T12:00:00.000Z', '2026-11-01T12:01:30.000Z', 1, 'managed', ?)`,
+      )
+      .run(claudeId, d.project, file);
+    const hostId = store.getState().hosts[0]?.id as string;
+    await act(async () => {
+      store.tabs.open({ name: "session", host: hostId, id: managed.sessionId });
+    });
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    await settle(() => screen.queryByText("Managed prompt") !== null);
   });
 });
