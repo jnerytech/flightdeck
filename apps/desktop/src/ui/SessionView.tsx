@@ -181,6 +181,8 @@ export function SessionView(props: {
   nowMs?: number;
   /** Phase 18: the prompt snippets `/` offers in the message box, and the text of the chosen one. */
   prompts?: PromptSnippets;
+  /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
+  pickPath?: (done: (path: string | null) => void) => ReactNode;
 }) {
   const ctx = useT();
   const t = props.t ?? ctx;
