@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function EmptyState(props: { title: string; icon?: LucideIcon; action?: ReactNode }) {
   const Icon = props.icon;
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/30 p-8 text-center">
       {Icon && <Icon aria-hidden="true" className="size-10 text-muted-foreground/40" />}
       <p className="text-muted-foreground">{props.title}</p>
       {props.action}

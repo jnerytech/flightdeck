@@ -30,6 +30,7 @@ import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
+import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
 function CardTile(props: {
@@ -381,6 +382,9 @@ export const BoardView = memo(function BoardView(props: {
                     />
                   ))}
               </ul>
+              {all.every((card) => card.column !== id) && (
+                <BoardColumnEmpty label={t("kanban.addCard")} onAdd={() => setCreating(true)} />
+              )}
             </section>
           ))}
         </div>

@@ -5,6 +5,7 @@ import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import {
@@ -355,6 +356,7 @@ export function Screen(props: ScreenProps) {
     return detail;
   }
   const opened = openedSession(route, state);
+  const firstHost = state.hosts.find((h) => h.status === "online");
   return (
     <SplitView
       list={
@@ -372,7 +374,22 @@ export function Screen(props: ScreenProps) {
       detail={detail}
       empty={
         <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-          <EmptyState icon={MessagesSquare} title={t("hub.pick")} />
+          <EmptyState
+            icon={MessagesSquare}
+            title={t("hub.pick")}
+            action={
+              firstHost && (
+                <Button
+                  onClick={() => {
+                    store.select(firstHost.id, null);
+                    go({ name: "new-session", host: firstHost.id });
+                  }}
+                >
+                  {t("sidebar.newSession")}
+                </Button>
+              )
+            }
+          />
           <QuotaPanel store={store} />
         </div>
       }
