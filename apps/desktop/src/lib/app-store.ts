@@ -2889,15 +2889,26 @@ export class AppStore {
   /** What was last sent of each secret to each host (`hostId/secretId`), as text. */
   private readonly vaultScopeSent = new Map<string, string>();
   private vaultScopeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The send going on, or the last one: the next look waits for it, so two never overlap. */
+  private vaultScopeRun: Promise<void> = Promise.resolve();
+  /** Sends not finished yet: what they carry is not in `vaultScopeSent` until the host answers. */
+  private vaultScopeBusy = 0;
 
   /** Looks again, soon, at what scoped secrets are sent: one look for a burst of changes. */
   private scheduleVaultScope(): void {
     const scoped = this.state.clientList.some((c) => c.defaults.vaultScope);
-    if (!scoped && this.vaultScopeSent.size === 0) return;
+    // Nothing was sent and none is going: scope off needs nothing. A send still unanswered is
+    // not nothing: turning the scope off meanwhile must still send the own rules back.
+    if (!scoped && this.vaultScopeSent.size === 0 && this.vaultScopeBusy === 0) return;
     if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
     this.vaultScopeTimer = setTimeout(() => {
       this.vaultScopeTimer = null;
-      void this.pushVaultScopes();
+      this.vaultScopeBusy++;
+      this.vaultScopeRun = this.vaultScopeRun
+        .then(() => this.pushVaultScopes())
+        .finally(() => {
+          this.vaultScopeBusy--;
+        });
     }, VAULT_SCOPE_DELAY_MS);
   }
 
