@@ -7,7 +7,12 @@ export interface ChainNode {
 }
 
 /** Whether `from` waits for `target`, directly or down its chain of blockers. */
-function waitsFor(byId: Map<string, Card>, from: Card, target: string, seen = new Set<string>()) {
+function waitsFor(
+  byId: Map<string, Card>,
+  from: Card,
+  target: string,
+  seen = new Set<string>(),
+): boolean {
   if (seen.has(from.id)) return false;
   seen.add(from.id);
   return from.blockedBy.some((id) => {

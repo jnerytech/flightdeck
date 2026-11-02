@@ -15,12 +15,14 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
+import { projectCards } from "../lib/board.ts";
 import { usd } from "../lib/costs.ts";
 import { issueLabel, issueUrl } from "../lib/issues.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ArenaStartForm, type ArenaVariantInput } from "./ArenaStartForm.tsx";
 import { ArenaView, variantBusy } from "./ArenaView.tsx";
+import { CardDeps } from "./CardDeps.tsx";
 import { CardReview } from "./CardReview.tsx";
 import { ChangesPanel } from "./ChangesPanel.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -66,6 +68,7 @@ export const CardDetail = memo(function CardDetail(props: {
   const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
   const withReview = hasFeature(host?.hostInfo?.features, "review", false);
   const withArena = hasFeature(host?.hostInfo?.features, "arena", false);
+  const withDeps = hasFeature(host?.hostInfo?.features, "deps", false);
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -251,6 +254,15 @@ export const CardDetail = memo(function CardDetail(props: {
     >
       <div className="flex max-w-4xl flex-col gap-5">
         {card.notice && <InlineNotice>{card.notice}</InlineNotice>}
+        {withDeps && (
+          <CardDeps
+            store={store}
+            hostId={hostId}
+            card={card}
+            cards={projectCards(state, hostId, card.projectId)}
+            workflows={workflows}
+          />
+        )}
         <div className="flex items-start gap-2">
           <Textarea
             aria-label={t("cardUi.description")}

@@ -1,5 +1,5 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
-import { Columns3, ListTodo, MoreHorizontal, Plus } from "lucide-react";
+import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -36,6 +36,8 @@ function CardTile(props: {
   workflow?: string;
   formatTime(iso: string): string;
   labels: { actions: string; start: string };
+  /** Phase 31: the titles of the cards it waits for and of those it holds up. */
+  deps: { waiting: string; holding: string };
   /** The ways to move the card without dragging it, in menu order. */
   moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
   onOpen(): void;
@@ -113,6 +115,21 @@ function CardTile(props: {
               : t("kanban.waitingQuota")}
           </Badge>
         )}
+        {card.waitingOn.length > 0 && (
+          <Badge
+            variant="outline"
+            className="text-status-needs-you"
+            title={t("deps.blockedTip", { titles: props.deps.waiting })}
+          >
+            {t("deps.blocked", { count: card.waitingOn.length })}
+          </Badge>
+        )}
+        {card.blocking.length > 0 && (
+          <Badge variant="outline" title={t("deps.blockingTip", { titles: props.deps.holding })}>
+            {t("deps.blocking", { count: card.blocking.length })}
+          </Badge>
+        )}
+        {card.unblockedAt && <Badge variant="outline">{t("deps.unblocked")}</Badge>}
         {card.issueRef && <Badge variant="outline">{issueNumber(card.issueRef)}</Badge>}
         {card.issueExternal && <ExternalSeal t={t} />}
         {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
@@ -138,6 +155,8 @@ export const BoardView = memo(function BoardView(props: {
   const state = useStoreSlice(store, BOARDVIEW_KEYS);
   const [project, setProject] = useState<Project | null>(null);
   const [filter, setFilter] = useState("");
+  /** Phase 31: only the cards that wait for a blocker. */
+  const [onlyBlocked, setOnlyBlocked] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   /**
@@ -150,6 +169,11 @@ export const BoardView = memo(function BoardView(props: {
   const [creating, setCreating] = useState(false);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
+  const withDeps = hasFeature(
+    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "deps",
+    false,
+  );
   const withIssues = hasFeature(
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "issues",
@@ -164,7 +188,11 @@ export const BoardView = memo(function BoardView(props: {
   }, [store, hostId, projectId]);
 
   const all = projectCards(state, hostId, projectId);
-  const shown = filterCards(all, filter);
+  const shown = filterCards(all, filter).filter(
+    (card) => !onlyBlocked || card.waitingOn.length > 0,
+  );
+  const titlesOf = (ids: string[]) =>
+    ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 
   /** The card to focus once a move has happened: where it was, to tell when it has moved. */
   const refocus = useRef<{ cardId: string; column: BoardColumn; index: number } | null>(null);
@@ -255,6 +283,17 @@ export const BoardView = memo(function BoardView(props: {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
+          {withDeps && (
+            <Button
+              size="sm"
+              variant="outline"
+              aria-pressed={onlyBlocked}
+              onClick={() => setOnlyBlocked(!onlyBlocked)}
+            >
+              <Lock aria-hidden="true" />
+              {t("deps.filter")}
+            </Button>
+          )}
           {withIssues && (
             <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
               <ListTodo aria-hidden="true" />
@@ -310,6 +349,10 @@ export const BoardView = memo(function BoardView(props: {
                       labels={{
                         actions: store.i18n.t("board.cardActions", { title: card.title }),
                         start: store.i18n.t("board.startCard"),
+                      }}
+                      deps={{
+                        waiting: titlesOf(card.waitingOn),
+                        holding: titlesOf(card.blocking),
                       }}
                       moves={movesOf(card)}
                       onOpen={() => props.onOpenCard(card.id)}
