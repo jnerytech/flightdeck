@@ -52,6 +52,7 @@ export interface HistoryListFilter {
   from?: string;
   to?: string;
   origin?: "flightdeck" | "external";
+  hideAutomated?: boolean;
   limit?: number;
   cursor?: string;
 }
@@ -206,7 +207,11 @@ export class HistoryIndexer {
   }
 
   /** Indexed sessions with at least one message, most recent first. */
-  list(filter: HistoryListFilter): { sessions: HistorySession[]; nextCursor: string | null } {
+  list(filter: HistoryListFilter): {
+    sessions: HistorySession[];
+    nextCursor: string | null;
+    automatedCount: number;
+  } {
     const where = ["s.message_count > 0"];
     const limit = filter.limit ?? 50;
     const offset = offsetOf(filter.cursor);
@@ -237,6 +242,7 @@ export class HistoryIndexer {
     return {
       sessions: rows.slice(0, limit).map((r) => this.toSession(r)),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
+      automatedCount: 0,
     };
   }
 
@@ -386,6 +392,7 @@ export class HistoryIndexer {
       messageCount: row.message_count,
       origin: row.origin,
       maybeActive: row.mtime !== null && now - Date.parse(row.mtime) < MAYBE_ACTIVE_MS,
+      automated: false,
     };
   }
 

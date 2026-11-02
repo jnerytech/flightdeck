@@ -417,6 +417,8 @@ export const HistoryListPayload = z.object({
   from: z.string().min(1).optional(),
   to: z.string().min(1).optional(),
   origin: HistoryOrigin.optional(),
+  /** Leaves out the runs nobody typed: print-mode (sdk) sessions and sessions in temp folders. */
+  hideAutomated: z.boolean().optional(),
   limit: z.number().int().min(1).max(200).optional(),
   cursor: Cursor.optional(),
 });
@@ -3478,6 +3480,8 @@ export const HistorySessionSummary = z.object({
   origin: HistoryOrigin,
   /** The file changed in the last 2 minutes: another process may still be writing it. */
   maybeActive: z.boolean(),
+  /** A print-mode (`claude -p`, sdk) run, or one in a temp folder: nobody typed it. */
+  automated: z.boolean().optional(),
   ...ListExtras,
 });
 export type HistorySessionSummary = z.infer<typeof HistorySessionSummary>;
@@ -3494,6 +3498,8 @@ export type HistoryMessage = z.infer<typeof HistoryMessage>;
 export const HistoryListResult = z.object({
   sessions: z.array(HistorySessionSummary),
   nextCursor: z.string().nullable(),
+  /** How many automated runs match the other filters (the ones left out, when `hideAutomated`). */
+  automatedCount: z.number().int().nonnegative().optional(),
 });
 export type HistoryListResult = z.infer<typeof HistoryListResult>;
 
