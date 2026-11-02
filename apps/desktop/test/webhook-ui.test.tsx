@@ -262,4 +262,22 @@ describe("webhook-ui", () => {
     expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("");
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
+
+  test("Cancel in the remove question keeps the webhook", async () => {
+    const { store } = await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Remove Team" }) !== null);
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    });
+    await settle(() => screen.queryByRole("alertdialog") === null);
+    expect(store.webhooks.targets.list()).toHaveLength(1);
+  });
 });
