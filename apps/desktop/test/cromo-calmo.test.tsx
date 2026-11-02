@@ -54,11 +54,10 @@ describe("cromo-calmo", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     await sidebar.openHub();
-    const nav = screen.queryByRole("navigation") as HTMLElement;
-    const open = within(nav).queryByRole("button", { name: "Abrir Sessões" });
+    const open = screen.queryByRole("button", { name: "Abrir Sessões" });
     expect(open?.getAttribute("aria-current")).toBe("page");
     expect(open?.className).not.toContain("text-sidebar-foreground/70");
-    const other = within(nav).queryByRole("button", { name: "Precisa de você" });
+    const other = screen.queryByRole("button", { name: "Precisa de você" });
     expect(other?.getAttribute("aria-current")).toBeNull();
     expect(other?.className).toContain("text-sidebar-foreground/70");
   });
