@@ -2819,3 +2819,8 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   fails is read as "no Path value yet" (the usual cause is that the value does not exist).
 - Linux and macOS: `setup` prints the `export PATH=...` line and edits no rc file.
 - `service uninstall` removes the entry (all spellings); `--dry-run` only says so.
+- `setup` no longer keeps any stable binary that is already there: it asks it for `--version`
+  (the same probe as `update`). Older, or no answer, is replaced after the service's daemon stops
+  (a daemon that will not stop aborts with the way out), keeping `.old` like `update`; the same
+  version or a newer one stays and is named. A real Windows test found an old binary on the PATH
+  that `setup` had kept as the service.

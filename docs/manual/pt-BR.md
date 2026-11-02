@@ -286,8 +286,11 @@ flightdeckd doctor                         # o que falta, com o comando que cons
 
 O `setup` faz, nesta ordem:
 
-1. copia o binário em execução para `~/.flightdeck/bin` (se já houver um lá, ele fica: quem
-   troca é o `update`) e coloca essa pasta no seu `PATH`. No Windows ela entra no `Path` do
+1. copia o binário em execução para `~/.flightdeck/bin`. Se já houver um lá, o `setup` pergunta
+   a versão dele: um **mais antigo** (ou que não responde a `--version`) é trocado, depois de
+   parar o daemon do serviço, e fica guardado como `flightdeckd.old`; a mesma versão ou uma
+   **mais nova** fica, e o `setup` avisa. Ele sempre imprime qual binário e versão o serviço
+   vai rodar. Depois coloca essa pasta no seu `PATH`. No Windows ela entra no `Path` do
    **usuário** (registro `HKCU\Environment`, sem duplicar e mantendo as outras entradas) e os
    programas abertos são avisados, então só terminais abertos depois a enxergam. No Linux e no
    macOS imprime a linha `export PATH="$HOME/.flightdeck/bin:$PATH"` para você pôr no perfil do

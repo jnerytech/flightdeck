@@ -297,8 +297,11 @@ flightdeckd doctor                         # what is missing, with the command t
 
 `setup` does, in this order:
 
-1. copies the running binary to `~/.flightdeck/bin` (when one is already there it stays: `update`
-   replaces it) and puts that folder on your `PATH`. On Windows it is added to your **user**
+1. copies the running binary to `~/.flightdeck/bin`. When one is already there, `setup` asks it
+   for its version: an **older** one (or one that does not answer `--version`) is replaced,
+   after the service's daemon is stopped, and kept as `flightdeckd.old`; the same version or a
+   **newer** one stays and `setup` says so. It always prints which binary and version the
+   service will run. It then puts that folder on your `PATH`. On Windows it is added to your **user**
    `Path` (registry `HKCU\Environment`, without duplicates, keeping the other entries) and
    open programs are told, so only terminals opened afterwards see it. On Linux and macOS it
    prints the `export PATH="$HOME/.flightdeck/bin:$PATH"` line to add to your shell profile and
