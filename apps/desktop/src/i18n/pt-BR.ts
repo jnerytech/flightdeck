@@ -1398,6 +1398,7 @@ export const ptBR = {
     splitVertical: "Dividir na vertical",
     area: "Área {n}",
     resize: "Redimensionar a divisão",
+    preview: "prévia",
     newTab: "Nova aba",
     badge: { "needs-you": "Precisa de você", running: "Rodando", unread: "Não lida" },
     list: "Abas",

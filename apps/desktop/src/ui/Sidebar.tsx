@@ -134,7 +134,11 @@ export function Sidebar(props: {
   };
 
   return (
-    <div className="flex h-full flex-col gap-1 p-2">
+    // biome-ignore lint/a11y/noStaticElementInteractions: the double click only repeats what a click on an item already did
+    <div
+      className="flex h-full flex-col gap-1 p-2"
+      onDoubleClick={() => props.store.tabs.commit(props.store.tabs.activeId)}
+    >
       <div className={cn("flex h-8 items-center gap-2 px-2", collapsed && "justify-center px-0")}>
         <Plane data-logo aria-hidden="true" className="size-5 shrink-0 text-brand" />
         {!collapsed && <span className="font-semibold text-sm">Flightdeck</span>}

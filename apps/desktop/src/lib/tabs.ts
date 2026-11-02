@@ -44,7 +44,9 @@ export class Tabs {
     initial: Route = { name: "home" },
     private readonly newId: () => string = randomId,
   ) {
-    this.activeId = this.add(initial, 0, false).id;
+    const first = this.add(initial, 0, false);
+    first.preview = true;
+    this.activeId = first.id;
     // The facade follows whichever tab is active, so `store.router` keeps meaning "where I am".
     const active = () => this.active.router;
     this.router = {
@@ -78,6 +80,7 @@ export class Tabs {
     for (const entry of rest) tabs.open(entry.route);
     entries.forEach((entry, i) => {
       if (entry.pinned) tabs.pin((tabs.tabs[i] as Tab).id, true);
+      (tabs.tabs[i] as Tab).preview = entry.preview === true && !entry.pinned;
     });
     tabs.activate((tabs.tabs[active] as Tab).id);
     return tabs;
@@ -108,13 +111,31 @@ export class Tabs {
     return tab;
   }
 
-  /** Single click on a sidebar item. */
+  /**
+   * A single click on a sidebar item: the screen opens in the preview tab, which the next single
+   * click replaces. With no preview tab it opens one; a tab that was used or pinned is never
+   * replaced. A ctrl or middle click (`openNextInNewTab`) opens a regular tab instead.
+   */
   openPreview(route: Route): void {
-    this.router.push(route);
+    if (this.newTab) {
+      this.open(route);
+      return;
+    }
+    const preview = this.tabs.find((tab) => tab.preview && !tab.pinned);
+    if (preview) {
+      this.activeId = preview.id;
+      preview.router.push(route);
+      this.emit();
+    } else this.open(route).preview = true;
   }
 
-  /** Turns a preview into a regular tab. */
-  commit(_id: string): void {}
+  /** Turns a preview into a regular tab: it was double-clicked, used or edited. */
+  commit(id: string): void {
+    const tab = this.tabs.find((other) => other.id === id);
+    if (!tab?.preview) return;
+    tab.preview = false;
+    this.emit();
+  }
 
   close(id: string): void {
     const index = this.tabs.findIndex((tab) => tab.id === id);
@@ -170,6 +191,7 @@ export class Tabs {
     const tab = this.tabs.find((other) => other.id === id);
     if (!tab) return;
     tab.pinned = pinned;
+    if (pinned) tab.preview = false;
     this.tabs = [...this.tabs.filter((t) => t.pinned), ...this.tabs.filter((t) => !t.pinned)];
     this.emit();
   }

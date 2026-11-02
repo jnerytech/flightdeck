@@ -4,7 +4,7 @@ import { type Navigation, type Tab, Tabs } from "./tabs.ts";
 /** What is kept of the window between starts: the tabs' screens, not their histories. */
 export interface WorkspaceSnapshot {
   v: 1;
-  areas: { tabs: { route: Route; pinned: boolean }[]; active: number }[];
+  areas: { tabs: { route: Route; pinned: boolean; preview?: boolean }[]; active: number }[];
   split: Orientation | null;
   focus: 0 | 1;
   fraction: number;
@@ -95,7 +95,11 @@ export class Workspace {
         .map((area) => {
           const kept = area.tabs.filter((tab) => !NOT_KEPT.has(tab.router.current.name));
           return {
-            tabs: kept.map((tab) => ({ route: tab.router.current, pinned: tab.pinned })),
+            tabs: kept.map((tab) => ({
+              route: tab.router.current,
+              pinned: tab.pinned,
+              preview: tab.preview,
+            })),
             active: Math.max(
               0,
               kept.findIndex((tab) => tab.id === area.activeId),
@@ -211,9 +215,10 @@ export class Workspace {
 function restoreArea(stored: unknown, newId?: () => string): Tabs | null {
   const area = (stored ?? {}) as { tabs?: unknown; active?: unknown };
   const entries = (Array.isArray(area.tabs) ? area.tabs : [])
-    .map((tab: { route?: { name?: unknown }; pinned?: unknown } | null) => ({
+    .map((tab: { route?: { name?: unknown }; pinned?: unknown; preview?: unknown } | null) => ({
       route: tab?.route as Route,
       pinned: tab?.pinned === true,
+      preview: tab?.preview === true,
     }))
     .filter(
       (tab) =>

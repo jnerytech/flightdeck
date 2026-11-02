@@ -27,7 +27,7 @@ describe("abas-previa", () => {
     await act(async () => void fireEvent.click(item(/^Settings/)));
     expect(names()).toEqual(["settings"]);
     // Working in the screen turns the preview into a regular tab.
-    const main = document.querySelector("main") as HTMLElement;
+    const main = screen.queryByRole("heading", { level: 1 }) as HTMLElement;
     await act(async () => void fireEvent.pointerDown(main));
     expect(store.tabs.active.preview).toBe(false);
     await act(async () => void fireEvent.click(item(/^Vault/)));
@@ -38,6 +38,7 @@ describe("abas-previa", () => {
 
   test("a double click on a sidebar item, or on the tab, keeps the tab", async () => {
     const { store, item, names } = await mount();
+    await act(async () => void fireEvent.click(item(/^Vault/)));
     await act(async () => void fireEvent.doubleClick(item(/^Vault/)));
     expect(store.tabs.active.preview).toBe(false);
     await act(async () => void fireEvent.click(item(/^Settings/)));

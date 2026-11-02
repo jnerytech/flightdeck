@@ -110,9 +110,11 @@ export function TabBar(props: {
                 type="button"
                 role="tab"
                 aria-selected={selected}
+                data-preview={tab.preview}
                 {...(tab.pinned ? { "aria-label": label } : { "aria-keyshortcuts": "Delete" })}
                 className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => tabs.activate(tab.id)}
+                onDoubleClick={() => tabs.commit(tab.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Delete") store.closeTab(tabs, tab.id);
                 }}
@@ -134,7 +136,10 @@ export function TabBar(props: {
                 }}
               >
                 <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
-                {!tab.pinned && <span className="truncate">{label}</span>}
+                {!tab.pinned && (
+                  <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
+                )}
+                {tab.preview && <span className="sr-only">({t("tabs.preview")})</span>}
                 {!tab.pinned &&
                   ssh?.tags.map((tag) => (
                     <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">

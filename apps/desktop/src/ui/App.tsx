@@ -135,6 +135,17 @@ export function App({ store }: { store: AppStore }) {
     [store, router],
   );
 
+  /** A single click on a sidebar item: the preview tab shows it (a regular one with ctrl or middle). */
+  const goPreview = useCallback(
+    (next: Route) => {
+      store.closeSearch();
+      store.tabs.openPreview(next);
+    },
+    [store],
+  );
+  /** Working in the screen (a click, a key, typing) turns the preview tab into a regular one. */
+  const commitActive = useCallback(() => store.tabs.commit(store.tabs.activeId), [store]);
+
   useEffect(() => {
     void store.init();
     return () => store.dispose();
@@ -320,7 +331,7 @@ export function App({ store }: { store: AppStore }) {
               state={state}
               collapsed={collapsed}
               t={t}
-              go={go}
+              go={goPreview}
               onOpenProjectScreen={openProjectScreen}
               onNewSession={(hostId) => {
                 store.select(hostId, null);
@@ -333,7 +344,11 @@ export function App({ store }: { store: AppStore }) {
             />
           )}
         >
-          <div className="flex h-full min-h-0 flex-col">
+          <div
+            className="flex h-full min-h-0 flex-col"
+            onPointerDownCapture={commitActive}
+            onKeyDownCapture={commitActive}
+          >
             <UpdateBanner store={store} />
             <Areas
               store={store}

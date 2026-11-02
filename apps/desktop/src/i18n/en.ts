@@ -1398,6 +1398,7 @@ export const en: Dictionary = {
     splitVertical: "Split vertically",
     area: "Area {n}",
     resize: "Resize the split",
+    preview: "preview",
     newTab: "New tab",
     badge: { "needs-you": "Needs you", running: "Running", unread: "Unread" },
     list: "Tabs",
