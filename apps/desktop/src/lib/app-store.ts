@@ -441,6 +441,8 @@ export interface Notice {
   /** Why, when the host sent a reason the app translates (see `refusalText`). */
   reason?: string;
   params?: Record<string, string | number>;
+  /** The host the refusal came from, when it came from one. */
+  hostId?: string;
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
