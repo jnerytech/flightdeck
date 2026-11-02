@@ -16,6 +16,14 @@ export const en: Dictionary = {
     down: { one: "{n} host offline", other: "{n} hosts offline" },
     reconnecting: { one: "{n} host reconnecting", other: "{n} hosts reconnecting" },
   },
+  addProject: {
+    title: "Add project",
+    description: "A project is a git repository of this host, inside its allowed folders.",
+    suggested: "Folders of recent sessions",
+    folder: "Project folder",
+    add: "Add",
+    folderNeeded: "Pick or type a folder.",
+  },
   toast: {
     copied: "Copied",
     details: "Details",

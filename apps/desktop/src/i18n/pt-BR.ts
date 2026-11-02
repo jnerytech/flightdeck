@@ -18,6 +18,14 @@ export const ptBR = {
     down: { one: "{n} host offline", other: "{n} hosts offline" },
     reconnecting: { one: "{n} host reconectando", other: "{n} hosts reconectando" },
   },
+  addProject: {
+    title: "Adicionar projeto",
+    description: "Um projeto é um repositório git deste host, dentro das pastas permitidas dele.",
+    suggested: "Pastas das sessões recentes",
+    folder: "Pasta do projeto",
+    add: "Adicionar",
+    folderNeeded: "Escolha ou digite uma pasta.",
+  },
   toast: {
     copied: "Copiado",
     details: "Detalhes",
