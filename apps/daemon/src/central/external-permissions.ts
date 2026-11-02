@@ -107,6 +107,7 @@ export class ExternalPermissions {
     decision: "allow" | "deny",
     message?: string,
     updatedPermissions: PermissionUpdate[] = [],
+    updatedInput?: Record<string, unknown>,
   ): boolean {
     const held = this.held.get(requestId);
     if (!held) return false;
@@ -116,8 +117,11 @@ export class ExternalPermissions {
       checkUpdates(updatedPermissions, { toolName, suggestions });
     }
     const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};
+    const input = updatedInput ? { updatedInput } : {};
     const answer =
-      decision === "allow" ? { behavior: "allow", ...updates } : { behavior: "deny", message };
+      decision === "allow"
+        ? { behavior: "allow", ...input, ...updates }
+        : { behavior: "deny", message };
     const body = JSON.stringify({
       hookSpecificOutput: { hookEventName: "PermissionRequest", decision: answer },
     });
