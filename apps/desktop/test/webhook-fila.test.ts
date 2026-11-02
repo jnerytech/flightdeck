@@ -152,6 +152,14 @@ describe("webhook-fila", () => {
     expect(sent).toHaveLength(2);
   });
 
+  test("a redirect is permanent too: it is never followed, so waiting does not help", async () => {
+    const { queue, sent, results } = setup([{ status: 302 }]);
+    queue.enqueue("a", event("1"));
+    await queue.idle();
+    expect(sent).toHaveLength(1);
+    expect(results).toEqual([{ target: "a", ok: false, status: 302 }]);
+  });
+
   test("408 and 429 are not permanent", async () => {
     const { queue, sent } = setup([{ status: 408 }, { status: 429 }, { status: 200 }]);
     queue.enqueue("a", event("1"));
