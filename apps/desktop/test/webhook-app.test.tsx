@@ -173,4 +173,57 @@ describe("webhook-app", () => {
     expect(await store.sessionRecap(hostId, SESSION)).toBeNull();
     expect(legacy.asked.includes("session.summary")).toBe(false);
   });
+
+  test("an event of a session carries the session summary the host builds", async () => {
+    const { d, store, sent } = await online({ summary: true });
+    mkdirSync(d.historyRoot, { recursive: true });
+    const file = join(d.historyRoot, `${SESSION}.jsonl`);
+    writeFileSync(
+      file,
+      `${JSON.stringify({ type: "user", message: { role: "user", content: "Add a retry" } })}\n`,
+    );
+    d.eventStore.db
+      .query(
+        `INSERT INTO history_sessions (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path)
+         VALUES (?, '/work/app', 't', '2026-11-01T12:00:00.000Z', '2026-11-01T12:01:30.000Z', 1, 'external', ?)`,
+      )
+      .run(SESSION, file);
+    await store.webhooks.targets.add({
+      name: "team",
+      type: "slack",
+      url: "https://hooks.slack.com/services/T/B/OK",
+      hostScope: null,
+      kinds: ["needs_you"],
+      clientId: null,
+    });
+    const hostId = store.getState().hosts[0]?.id as string;
+    await store.webhooks.emit({
+      id: "ext-1",
+      kind: "needs_you",
+      hostId,
+      hostName: "alfa",
+      clientId: null,
+      project: null,
+      title: "app",
+      detail: "Allow Bash?",
+      claudeSessionId: SESSION,
+    });
+    await store.webhooks.idle();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.body).toContain("Add a retry");
+  });
+
+  test("a request the host cannot take counts as no answer", async () => {
+    const { store, sent } = await online();
+    const target = await store.webhooks.targets.add({
+      name: "long",
+      type: "slack",
+      url: `https://hooks.slack.com/${"x".repeat(2100)}`,
+      hostScope: null,
+      kinds: ["needs_you"],
+      clientId: null,
+    });
+    expect(await store.webhooks.test(target.id)).toMatchObject({ ok: false, httpStatus: null });
+    expect(sent).toHaveLength(0);
+  });
 });
