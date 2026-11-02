@@ -127,14 +127,11 @@ describe("continuar", () => {
     );
   });
 
-  test("recusa do daemon (pasta fora de allowedRoots) aparece no banner e o leitor fica", async () => {
+  test("uma pasta fora de allowedRoots não deixa continuar: o botão fica desligado, com o motivo, e a conversa continua lida", async () => {
     const { runtime } = await setup({ stale: true, cwd: "/fora/dos/roots" });
-    await click("Continuar no Flightdeck");
-    await settle(() => screen.queryByRole("alert") !== null);
-    // A toast titled by the code (phase 10).
-    expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
-      "A pasta /fora/dos/roots está fora das pastas permitidas do host.",
-    );
+    const button = screen.queryByRole("button", { name: "Continuar no Flightdeck" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("note")?.textContent ?? "").toContain("/fora/dos/roots");
     expect(runtime.starts).toEqual([]);
     expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
   });
