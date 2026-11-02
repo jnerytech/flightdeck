@@ -1880,7 +1880,15 @@ export function startServer(opts: ServerOptions): RunningServer {
     const id = header.success ? header.data.id : "";
     const parsed = Command.safeParse(frame);
     if (!parsed.success) {
-      return ackError(ws, id, "bad_request", z.prettifyError(parsed.error));
+      const field = (parsed.error.issues[0]?.path ?? []).filter((p) => p !== "payload").join(".");
+      const command = header.success ? header.data.type : "";
+      return ackError(
+        ws,
+        id,
+        "bad_request",
+        z.prettifyError(parsed.error),
+        new FlightdeckError("bad_request", "", "request_invalid", { command, field }),
+      );
     }
     try {
       await dispatch(ws, parsed.data);

@@ -330,7 +330,10 @@ export class Board {
 
   getProject(id: string): Project {
     const row = this.db.query<ProjectRow, [string]>("SELECT * FROM projects WHERE id = ?").get(id);
-    if (!row) throw new FlightdeckError("not_found", `projeto ${id} não existe`);
+    if (!row)
+      throw new FlightdeckError("not_found", `projeto ${id} não existe`, "project_not_found", {
+        id,
+      });
     return toProject(row);
   }
 

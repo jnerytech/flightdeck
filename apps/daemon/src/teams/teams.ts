@@ -111,9 +111,11 @@ interface Row {
  */
 const label = (name: string): string => name.slice(0, 24).trimEnd();
 
-const bad = (message: string) => new FlightdeckError("bad_request", message);
+const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
 const invalid = (message: string) => new FlightdeckError("invalid_state", message);
-const notFound = (message: string) => new FlightdeckError("not_found", message);
+const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("not_found", message, reason, params);
 
 const STOP_USER =
   'STOP: o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume". Não despache, não integre e não comece nada novo.';
@@ -153,7 +155,7 @@ export class Teams {
 
   private row(id: string): Row {
     const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as Row | null;
-    if (!row) throw notFound(`time ${id} não existe`);
+    if (!row) throw notFound(`time ${id} não existe`, "team_not_found", { id });
     return row;
   }
 
@@ -252,7 +254,7 @@ export class Teams {
   private checkPersona(id: string | null | undefined): string | null {
     if (id === null || id === undefined) return null;
     const found = this.opts.personas?.resolve(id);
-    if (!found) throw bad(`a persona ${id} não existe`);
+    if (!found) throw bad(`a persona ${id} não existe`, "persona_unknown", { persona: id });
     return found.id;
   }
 
