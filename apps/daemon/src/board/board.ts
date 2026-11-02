@@ -560,6 +560,7 @@ export class Board {
     },
   ): Promise<Arena> {
     const card = this.getCard(cardId);
+    this.refuseIfBlocked(card);
     if (input.variants.length < 2 || input.variants.length > 4) {
       throw new FlightdeckError("bad_request", "uma arena tem de 2 a 4 variantes");
     }
@@ -778,6 +779,18 @@ export class Board {
     });
   }
 
+  /** The one gate of phase 31: a card with blockers not satisfied does not start. */
+  private refuseIfBlocked(card: Card): void {
+    if (card.waitingOn.length === 0) return;
+    const blockers = card.waitingOn.map((id) => this.getCard(id).title).join(", ");
+    throw new FlightdeckError(
+      "invalid_state",
+      `card ${card.id} is blocked by: ${blockers}`,
+      "card_blocked",
+      { blockers },
+    );
+  }
+
   /** The cards `id` holds up. */
   private blockingOf(id: string): string[] {
     return this.db
@@ -928,6 +941,8 @@ export class Board {
     } = {},
   ): Promise<Card> {
     const card = this.getCard(id);
+    // A fix run answers a PR that exists already: it is never held back by the card's blockers.
+    if (!options.fix) this.refuseIfBlocked(card);
     if (card.queued || this.running.has(id)) {
       throw new FlightdeckError("invalid_state", `card ${id} já está na fila ou em execução`);
     }
