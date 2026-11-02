@@ -74,13 +74,15 @@ export function isSystemFolder(
 /**
  * Adds `path` to the live list of allowed folders (the same array every service reads) and keeps
  * it with `persist`. A folder already covered by an allowed one changes nothing. Returns the list
- * after the call.
+ * after the call. `platform` is what decides the system folders (the process's own by default; a
+ * test gives its own, since a CI runner keeps its temp folders inside the user's AppData).
  */
 export function addAllowedRoot(
   roots: string[],
   path: string,
   confirm: boolean,
   persist?: (roots: readonly string[]) => void,
+  platform: PlatformInfo = { platform: process.platform, env: process.env, home: homedir() },
 ): string[] {
   if (!confirm) {
     throw new FlightdeckError(
@@ -95,13 +97,7 @@ export function addAllowedRoot(
       path,
     });
   }
-  if (
-    isSystemFolder(
-      real,
-      { platform: process.platform, env: process.env, home: homedir() },
-      (dir) => realFolder(dir) ?? dir,
-    )
-  ) {
+  if (isSystemFolder(real, platform, (dir) => realFolder(dir) ?? dir)) {
     throw new FlightdeckError("forbidden_cwd", `system folder: ${real}`, "root_system", {
       path: real,
     });

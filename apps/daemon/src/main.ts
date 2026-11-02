@@ -73,6 +73,7 @@ import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
 import { SessionFiles } from "./review/session-files.ts";
+import type { PlatformInfo } from "./roots.ts";
 import { RunConfigs } from "./runenv/config.ts";
 import { terminalRunHost } from "./runenv/host.ts";
 import { RunManager } from "./runenv/manager.ts";
@@ -526,6 +527,8 @@ export async function startDaemon(
   logger: Logger,
   options: {
     configWatchMs?: number;
+    /** What decides the system folders `roots.add` refuses (tests give their own). */
+    rootsPlatform?: PlatformInfo;
     wslCommand?: (item: WslItem) => string[];
     /** What `daemon.shutdown` triggers; the command is refused without it. */
     onShutdown?: () => void;
@@ -961,6 +964,7 @@ export async function startDaemon(
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
+    ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,

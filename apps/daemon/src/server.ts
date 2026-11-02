@@ -82,7 +82,7 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
-import { addAllowedRoot } from "./roots.ts";
+import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
@@ -129,6 +129,8 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void;
+  /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
+  rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
@@ -1413,6 +1415,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             path,
             confirm === true,
             opts.persistRoots,
+            opts.rootsPlatform,
           ),
         });
       }
