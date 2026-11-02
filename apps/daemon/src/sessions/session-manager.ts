@@ -615,6 +615,7 @@ export class SessionManager {
       throw new FlightdeckError(
         "invalid_permission_update",
         "a session cannot be made more permissive than the mode it started with",
+        "mode_looser_than_start",
       );
     }
     await run.setPermissionMode(mode);
