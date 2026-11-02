@@ -2804,3 +2804,18 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   client (the MCP tool and the demo seed use the wire form).
 - **No separate version bump.** A phase branch does not bump the version (the maintainer does, with the
   `test(versao)` cycle, at release); the spec does not list it among the acceptance criteria.
+
+## Fix: `setup` puts the stable binary's folder on the PATH
+
+- The stable binary was already named `flightdeckd.exe` / `flightdeckd`; the bug was that nothing
+  put `~/.flightdeck/bin` on the PATH, so `flightdeckd` was not found after the first run.
+- Windows: the user `Path` in `HKCU\Environment` is read and written with `reg.exe` through the
+  injected context, never `setx` (it cuts a value at 1024 characters) and never .NET's
+  `SetEnvironmentVariable` (it rewrites the value as `REG_SZ`, losing `%VARIABLES%`). The value's
+  type is kept (`REG_EXPAND_SZ` when the value is new). Entries are compared ignoring case, a
+  trailing slash, the slash's direction and `%USERPROFILE%`. A `WM_SETTINGCHANGE` broadcast
+  (PowerShell) tells open programs; terminals opened before it still need to be reopened.
+- A failed write or broadcast never aborts `setup`: it prints the manual step. A `reg query` that
+  fails is read as "no Path value yet" (the usual cause is that the value does not exist).
+- Linux and macOS: `setup` prints the `export PATH=...` line and edits no rc file.
+- `service uninstall` removes the entry (all spellings); `--dry-run` only says so.

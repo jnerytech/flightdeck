@@ -161,7 +161,9 @@ A release traz também as assinaturas (`.sig`) do instalador NSIS e dos daemons 
    outra coisa: veja [Atualização automática assinada](#atualização-automática-assinada).)
 3. **Daemon:** em cada host, com o Claude Code instalado e logado:
    - no Linux, `chmod +x` no binário antes de usar;
-   - rode `<binário> setup`: ele copia o binário para `~/.flightdeck/bin`, pergunta as pastas
+   - rode `<binário> setup` (no Windows, `.\flightdeckd-windows-x64.exe setup` na pasta do
+     download, depois do `Unblock-File` se o Windows bloquear; em seguida `flightdeckd` funciona
+     em um novo terminal): ele copia o binário para `~/.flightdeck/bin`, pergunta as pastas
      dos projetos, instala e **inicia** o serviço e imprime o link de pareamento (veja
      [Primeira execução: flightdeckd setup](#primeira-execução-flightdeckd-setup)).
 
@@ -264,6 +266,18 @@ e retoma cada sessão do último evento visto.
 
 ### Primeira execução: flightdeckd setup
 
+A primeiríssima execução é o próprio arquivo baixado, porque ainda não há nada no seu `PATH`.
+No Windows, abra o PowerShell na pasta do download:
+
+```powershell
+Unblock-File .\flightdeckd-windows-x64.exe   # só se o Windows bloquear o arquivo ("baixado da Internet")
+.\flightdeckd-windows-x64.exe setup
+```
+
+Quando o `setup` terminar, abra um **novo terminal** e digite `flightdeckd` em qualquer pasta: a
+cópia em `~/.flightdeck/bin` se chama `flightdeckd.exe` (`flightdeckd` nos outros sistemas) e
+essa pasta agora está no seu `PATH`. Depois disso:
+
 ```sh
 flightdeckd setup                          # pergunta, passo a passo
 flightdeckd setup --yes --folders ~/code   # sem perguntas, para scripts (pastas separadas por vírgula)
@@ -273,7 +287,11 @@ flightdeckd doctor                         # o que falta, com o comando que cons
 O `setup` faz, nesta ordem:
 
 1. copia o binário em execução para `~/.flightdeck/bin` (se já houver um lá, ele fica: quem
-   troca é o `update`);
+   troca é o `update`) e coloca essa pasta no seu `PATH`. No Windows ela entra no `Path` do
+   **usuário** (registro `HKCU\Environment`, sem duplicar e mantendo as outras entradas) e os
+   programas abertos são avisados, então só terminais abertos depois a enxergam. No Linux e no
+   macOS imprime a linha `export PATH="$HOME/.flightdeck/bin:$PATH"` para você pôr no perfil do
+   shell e não edita arquivo nenhum. O `service uninstall` tira a entrada do `Path` do Windows;
 2. pergunta as pastas dos projetos, uma por resposta, e recusa pasta que não existe: elas viram
    `allowedRoots` na config;
 3. com a Tailscale ativa, pergunta se você usa o Flightdeck de outros dispositivos (o padrão é

@@ -172,7 +172,9 @@ the `latest.json` and `daemon-latest.json` manifests used by the
    [Signed automatic update](#signed-automatic-update).)
 3. **Daemon:** on each host, with Claude Code installed and logged in:
    - on Linux, `chmod +x` the binary before using it;
-   - run `<binary> setup`: it copies the binary to `~/.flightdeck/bin`, asks for your project
+   - run `<binary> setup` (on Windows, `.\flightdeckd-windows-x64.exe setup` from the download
+     folder, after `Unblock-File` if Windows blocks it; afterwards `flightdeckd` works in a new
+     terminal): it copies the binary to `~/.flightdeck/bin`, asks for your project
      folders, installs and **starts** the service and prints the pairing link (see
      [First run: flightdeckd setup](#first-run-flightdeckd-setup)).
 
@@ -275,6 +277,18 @@ requests show up as inline cards with **Approve** and **Deny**. The app reconnec
 
 ### First run: flightdeckd setup
 
+The very first run is the downloaded file itself, because nothing is on your `PATH` yet. On
+Windows, open PowerShell in the download folder:
+
+```powershell
+Unblock-File .\flightdeckd-windows-x64.exe   # only if Windows blocks the file ("downloaded from the Internet")
+.\flightdeckd-windows-x64.exe setup
+```
+
+When `setup` ends, open a **new terminal** and type `flightdeckd` from any folder: the copy in
+`~/.flightdeck/bin` is called `flightdeckd.exe` (`flightdeckd` elsewhere), and that folder is now
+on your `PATH`. After that:
+
 ```sh
 flightdeckd setup                          # asks, step by step
 flightdeckd setup --yes --folders ~/code   # no questions, for scripts (folders separated by commas)
@@ -284,7 +298,11 @@ flightdeckd doctor                         # what is missing, with the command t
 `setup` does, in this order:
 
 1. copies the running binary to `~/.flightdeck/bin` (when one is already there it stays: `update`
-   replaces it);
+   replaces it) and puts that folder on your `PATH`. On Windows it is added to your **user**
+   `Path` (registry `HKCU\Environment`, without duplicates, keeping the other entries) and
+   open programs are told, so only terminals opened afterwards see it. On Linux and macOS it
+   prints the `export PATH="$HOME/.flightdeck/bin:$PATH"` line to add to your shell profile and
+   edits no file. `service uninstall` takes the entry off the Windows `Path` again;
 2. asks for the project folders, one per answer, and refuses a folder that does not exist: they
    become `allowedRoots` in the config;
 3. when Tailscale is up, asks whether you use Flightdeck from other devices (the default is
