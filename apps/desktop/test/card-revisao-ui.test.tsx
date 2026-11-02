@@ -232,7 +232,9 @@ describe("card-revisao-ui", () => {
     await settle(() => position().includes("1 atrás"));
     await click("Atualizar com a base");
     await settle(() => (screen.queryByRole("alert")?.textContent ?? "").includes("fake-1.txt"));
-    expect(screen.queryByRole("alert")?.textContent ?? "").toContain("conflito");
+    expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
+      "Atualizar com main dá conflito em: fake-1.txt.",
+    );
     expect(screen.queryByRole("alert")?.textContent ?? "").toContain("fake-1.txt");
     expect(position()).toBe("1 à frente, 1 atrás de main");
     expect(ctx.board.getCard(ctx.cardId).column).toBe("review");
