@@ -1110,7 +1110,7 @@ export const ptBR = {
   },
   session: {
     insertSnippet: "Inserir um snippet",
-    mentionFolder: "Mencionar uma pasta",
+    mentionFolder: "Mencionar arquivo ou pasta",
     jumpLatest: "Ir para a última",
     cost: "custo estimado:",
     costLabel: "Custo da sessão",

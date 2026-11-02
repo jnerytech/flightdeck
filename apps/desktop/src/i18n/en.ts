@@ -1111,7 +1111,7 @@ export const en: Dictionary = {
   },
   session: {
     insertSnippet: "Insert a snippet",
-    mentionFolder: "Mention a folder",
+    mentionFolder: "Mention a file or folder",
     jumpLatest: "Jump to latest",
     cost: "estimated cost:",
     costLabel: "Session cost",

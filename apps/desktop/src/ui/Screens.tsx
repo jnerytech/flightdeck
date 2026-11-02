@@ -167,6 +167,7 @@ function ManagedSession(props: {
             <FolderPicker
               store={store}
               host={host}
+              files={hasFeature(host.hostInfo?.features, "fs.files", false)}
               onPick={(path) => done(path)}
               onClose={() => done(null)}
             />
