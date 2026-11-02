@@ -19,12 +19,12 @@ function setup(answers: Array<WebhookResponse | "throw">) {
         set: async (id: string, v: string) => void vault.set(id, v),
         delete: async (id: string) => void vault.delete(id),
       } as never,
-      webhookSend: async (request) => {
-        requests.push(request);
-        const next = script.shift() ?? { status: 200, retryAfterMs: null };
-        if (next === "throw") throw new Error("boom");
-        return next;
-      },
+    },
+    send: async (request) => {
+      requests.push(request);
+      const next = script.shift() ?? { status: 200, retryAfterMs: null };
+      if (next === "throw") throw new Error("boom");
+      return next;
     },
     now: () => 1_793_534_000_000,
     newId: () => `t${++n}`,

@@ -49,6 +49,7 @@ import { TelemetryOptIn } from "../../daemon/src/telemetry/optin.ts";
 import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
+import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
@@ -126,6 +127,8 @@ export function daemon(
     snippets?: boolean | { history?: HistorySources };
     /** The short summary of a session (phase 30), over this daemon's history. */
     summary?: boolean;
+    /** The sender of the app's webhooks (phase 30). */
+    webhook?: WebhookSender;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
     personas?: boolean;
   } = {},
@@ -346,6 +349,7 @@ export function daemon(
       ...(terminals ? { terminals } : {}),
       ...(runManager ? { runenv: { configs: runConfigs, manager: runManager } } : {}),
       ...(actions ? { actions } : {}),
+      ...(options.webhook ? { webhook: options.webhook } : {}),
       ...(options.summary
         ? { summary: new SummaryService({ db: store.db, scanner: new SecretScanner() }) }
         : {}),

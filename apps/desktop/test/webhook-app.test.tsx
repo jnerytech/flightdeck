@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Budgets } from "../../daemon/src/costs/budgets.ts";
+import { WebhookSender } from "../../daemon/src/webhook/sender.ts";
 import { registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -26,7 +27,16 @@ const SESSION = "dddddddd-0000-4000-8000-000000000030";
 
 async function online(options: { summary?: boolean; budgets?: boolean } = {}) {
   let budgets: Budgets | null = null;
+  const sent: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
+  const sender = new WebhookSender({
+    resolve: async (host) => (host.startsWith("internal") ? ["10.0.0.1"] : ["93.184.216.34"]),
+    fetch: (async (url: string, init: RequestInit) => {
+      sent.push({ url, headers: init.headers as Record<string, string>, body: String(init.body) });
+      return new Response("", { status: 200 });
+    }) as never,
+  });
   const d = makeDaemon(cleanups, {
+    webhook: sender,
     ...(options.summary ? { summary: true } : {}),
     ...(options.budgets
       ? {
@@ -40,11 +50,6 @@ async function online(options: { summary?: boolean; budgets?: boolean } = {}) {
   });
   const server = d.listen();
   const mem = memoryPlatform(false);
-  const sent: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
-  mem.platform.webhookSend = async (request) => {
-    sent.push(request);
-    return { status: 200, retryAfterMs: null };
-  };
   const store = new AppStore(mem.platform, {
     baseDelayMs: 60_000,
     now: () => START,
@@ -83,6 +88,51 @@ describe("webhook-app", () => {
     const body = JSON.parse(sent[0]?.body ?? "{}") as { text: string };
     expect(body.text).toContain("budget alert");
     expect(JSON.stringify(body)).toContain("50% of US$ 10.00");
+  });
+
+  test("the sample goes through the host; a URL it refuses counts as a permanent 400", async () => {
+    const { store, sent } = await online();
+    const good = await store.webhooks.targets.add({
+      name: "good",
+      type: "slack",
+      url: "https://hooks.slack.com/services/T/B/OK",
+      hostScope: null,
+      kinds: ["needs_you"],
+      clientId: null,
+    });
+    expect(await store.webhooks.test(good.id)).toMatchObject({ ok: true, httpStatus: 200 });
+    expect(sent).toHaveLength(1);
+    const internal = await store.webhooks.targets.add({
+      name: "internal",
+      type: "slack",
+      url: "https://internal.example/hook",
+      hostScope: null,
+      kinds: ["needs_you"],
+      clientId: null,
+    });
+    expect(await store.webhooks.test(internal.id)).toMatchObject({ ok: false, httpStatus: 400 });
+    expect(sent).toHaveLength(1);
+  });
+
+  test("with no online host that can post, the test finds no answer", async () => {
+    const legacy = legacyDaemon(cleanups);
+    const mem = memoryPlatform(false);
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000, now: () => START });
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: legacy.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const target = await store.webhooks.targets.add({
+      name: "t",
+      type: "slack",
+      url: "https://hooks.slack.com/services/T/B/OK",
+      hostScope: null,
+      kinds: ["needs_you"],
+      clientId: null,
+    });
+    expect(await store.webhooks.test(target.id)).toMatchObject({ ok: false, httpStatus: null });
+    expect(store.webhooks.supported()).toBe(true);
+    expect(legacy.asked.includes("webhook.send")).toBe(false);
   });
 
   test("sessionRecap asks the host for the summary of a session it indexed", async () => {

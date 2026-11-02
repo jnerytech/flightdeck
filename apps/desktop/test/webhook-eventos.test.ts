@@ -44,15 +44,15 @@ function setup(options: { send?: boolean; summary?: "ok" | "fail" } = {}) {
         set: async (id: string, v: string) => void vault.set(id, v),
         delete: async (id: string) => void vault.delete(id),
       } as never,
-      ...(options.send === false
-        ? {}
-        : {
-            webhookSend: async (request: WebhookRequest) => {
-              requests.push(request);
-              return { status: 200, retryAfterMs: null };
-            },
-          }),
     },
+    ...(options.send === false
+      ? {}
+      : {
+          send: async (request: WebhookRequest) => {
+            requests.push(request);
+            return { status: 200, retryAfterMs: null };
+          },
+        }),
     summaryFor: async (hostId, id, extra) => {
       asked.push({ hostId, id, extra });
       if (options.summary === "fail") throw new Error("host offline");

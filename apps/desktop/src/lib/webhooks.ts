@@ -3,7 +3,7 @@
  * through the queue, formatted for each; a test sends a sample straight away.
  */
 import type { SessionRecap } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { formatWebhook, type NotifyEvent, type WebhookKind } from "./webhook-format.ts";
 import { type SendResult, WebhookQueue } from "./webhook-queue.ts";
 import { WebhookTargets } from "./webhook-targets.ts";
@@ -24,6 +24,8 @@ export interface WebhookSource {
 
 export interface WebhooksOptions {
   platform: Pick<Platform, "storage" | "vault" | "webhookSend">;
+  /** Posts one webhook through a host; the app gives it, tests give a fake. */
+  send?: (request: WebhookRequest) => Promise<WebhookResponse>;
   summaryFor?: (
     hostId: string,
     claudeSessionId: string,
