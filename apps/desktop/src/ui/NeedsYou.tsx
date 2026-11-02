@@ -297,7 +297,7 @@ export function NeedsYou(props: {
           t={t}
           nowMs={store.now()}
           onCopyPath={(text) => void store.copyText(text)}
-          onRespond={(decision, message) =>
+          onRespond={(decision, message, _updates, updatedInput) =>
             item.gate
               ? store.respondGate(
                   item.hostId,
@@ -305,7 +305,14 @@ export function NeedsYou(props: {
                   decision === "allow" ? "approve" : "reject",
                   message,
                 )
-              : store.respondTo(item.hostId, item.requestId, decision, undefined, message)
+              : store.respondTo(
+                  item.hostId,
+                  item.requestId,
+                  decision,
+                  undefined,
+                  message,
+                  updatedInput,
+                )
           }
           actions={
             // A request for a secret belongs to no session: the card is all there is to open.

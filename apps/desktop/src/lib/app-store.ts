@@ -1647,6 +1647,7 @@ export class AppStore {
     updatedPermissions?: PermissionUpdate[],
     /** Why it was denied (phase 10: the card's reason). */
     message?: string,
+    updatedInput?: Record<string, unknown>,
   ): Promise<void> {
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
@@ -1659,6 +1660,7 @@ export class AppStore {
           decision,
           ...(updatedPermissions ? { updatedPermissions } : {}),
           ...(message ? { message } : {}),
+          ...(updatedInput ? { updatedInput } : {}),
         });
       } catch (error) {
         this.fail(error);
@@ -1689,6 +1691,7 @@ export class AppStore {
     decision: "allow" | "deny",
     message?: string,
     updatedPermissions?: PermissionUpdate[],
+    updatedInput?: Record<string, unknown>,
   ): Promise<void> {
     return this.onSelected((conn) =>
       conn.request("permission.respond", {
@@ -1696,6 +1699,7 @@ export class AppStore {
         decision,
         ...(message ? { message } : {}),
         ...(updatedPermissions ? { updatedPermissions } : {}),
+        ...(updatedInput ? { updatedInput } : {}),
       }),
     );
   }

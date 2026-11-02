@@ -33,6 +33,7 @@ export interface SessionActions {
     decision: "allow" | "deny",
     message?: string,
     updatedPermissions?: PermissionUpdate[],
+    updatedInput?: Record<string, unknown>,
   ): Promise<void>;
 }
 
@@ -87,8 +88,8 @@ function PermissionItem(props: {
       {...(actions.copyText ? { onCopyPath: (path: string) => void actions.copyText?.(path) } : {})}
       alwaysAllow={props.alwaysAllow}
       {...(item.resolution ? { resolution: item.resolution } : {})}
-      onRespond={(decision, message, updates) =>
-        actions.respond(item.requestId, decision, message, updates)
+      onRespond={(decision, message, updates, updatedInput) =>
+        actions.respond(item.requestId, decision, message, updates, updatedInput)
       }
     />
   );

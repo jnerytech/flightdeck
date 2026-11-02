@@ -44,7 +44,9 @@ describe("ask-question-model", () => {
     expect(parseQuestions({ questions: "x" })).toBeNull();
     expect(parseQuestions({ questions: [] })).toBeNull();
     expect(parseQuestions({ questions: [{ header: "no question text" }] })).toBeNull();
-    expect(parseQuestions({ questions: [{ question: "q", options: [{ nolabel: 1 }] }] })).toBeNull();
+    expect(
+      parseQuestions({ questions: [{ question: "q", options: [{ nolabel: 1 }] }] }),
+    ).toBeNull();
   });
 
   test("answers: the label for a single choice, labels joined for several, the Other text over a label", () => {

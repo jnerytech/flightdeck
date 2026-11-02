@@ -397,6 +397,8 @@ export const en: Dictionary = {
     label: "Request for {tool}",
     title: "Permission for",
     approve: "Approve",
+    question: { send: "Send answers", other: "Other" },
+    plan: { approve: "Approve plan", keep: "Keep planning" },
     deny: "Deny",
     reason: "Reason (optional)",
     cancel: "Cancel",

@@ -3,9 +3,7 @@ import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, within, waitFor } = await import(
-  "@testing-library/react"
-);
+const { act, cleanup, fireEvent, render, within, waitFor } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
 
@@ -84,7 +82,10 @@ describe("ask-question-ui", () => {
         "allow",
         undefined,
         undefined,
-        { ...QUESTIONS, answers: { "Which database?": "Postgres", "Which extras?": "Auth, Cache" } },
+        {
+          ...QUESTIONS,
+          answers: { "Which database?": "Postgres", "Which extras?": "Auth, Cache" },
+        },
       ],
     ]);
   });
@@ -99,7 +100,9 @@ describe("ask-question-ui", () => {
       if (other) fireEvent.change(other, { target: { value: "DuckDB" } });
     });
     await click(screen.queryByRole("button", { name: "Send answers" }));
-    expect((calls[0]?.[3] as { answers: unknown }).answers).toEqual({ "Which database?": "DuckDB" });
+    expect((calls[0]?.[3] as { answers: unknown }).answers).toEqual({
+      "Which database?": "DuckDB",
+    });
   });
 
   test("ExitPlanMode shows the plan as markdown, with Approve plan and Keep planning", async () => {

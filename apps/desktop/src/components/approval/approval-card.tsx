@@ -13,9 +13,12 @@ import { useBusy } from "@/hooks/use-busy";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
+import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "@/lib/ask-question";
 import { cn } from "@/lib/utils";
 import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
+import { Markdown } from "../../ui/Markdown.tsx";
 import { HoldButton } from "./hold-button.tsx";
+import { QuestionForm } from "./question-form.tsx";
 
 /** One open (or answered) permission request, from any kind of session. */
 export interface ApprovalRequest {
@@ -157,6 +160,8 @@ export function ApprovalCard(props: {
     decision: "allow" | "deny",
     message?: string,
     updatedPermissions?: PermissionUpdate[],
+    /** The tool's input as the user changed it (the answers of AskUserQuestion). */
+    updatedInput?: Record<string, unknown>,
   ): unknown;
   /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
   actions?: ReactNode;
@@ -175,6 +180,13 @@ export function ApprovalCard(props: {
     if (denying) reasonRef.current?.focus();
   }, [denying]);
   const view = approvalView(request.toolName, request.input, request.cwd);
+  const questions = request.toolName === "AskUserQuestion" ? parseQuestions(request.input) : null;
+  const plan =
+    request.toolName === "ExitPlanMode" && typeof request.input.plan === "string"
+      ? request.input.plan
+      : null;
+  const [picks, setPicks] = useState<Record<string, AskPick>>({});
+  const answers = questions ? buildAnswers(questions, picks) : null;
   const high = request.risk === "high";
   const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
   const deny = () => {
@@ -188,7 +200,7 @@ export function ApprovalCard(props: {
     if (e.target !== e.currentTarget || resolution || pending) return;
     const key = e.key.toLowerCase();
     // A high-risk request is approved by holding the button, never by a key.
-    if (key === "a" && !high) respond("allow");
+    if (key === "a" && !high && !questions) respond("allow");
     else if (key === "n") setDenying(true);
     else if (e.key === "Escape") e.currentTarget.blur();
   };
@@ -217,7 +229,19 @@ export function ApprovalCard(props: {
       {high && request.riskReason && (
         <p className="text-sm text-status-error">{request.riskReason}</p>
       )}
-      <Body view={view} t={t} onCopyPath={props.onCopyPath} />
+      {questions ? (
+        <QuestionForm
+          questions={questions}
+          picks={picks}
+          t={t}
+          disabled={Boolean(resolution) || pending}
+          onChange={(question, pick) => setPicks((all) => ({ ...all, [question]: pick }))}
+        />
+      ) : plan !== null ? (
+        <Markdown text={plan} />
+      ) : (
+        <Body view={view} t={t} onCopyPath={props.onCopyPath} />
+      )}
       {resolution ? (
         <p className="text-muted-foreground text-sm">
           {resolution.decision === "deny" && resolution.message
@@ -248,7 +272,18 @@ export function ApprovalCard(props: {
               </>
             ) : (
               <>
-                {high ? (
+                {questions ? (
+                  <ActionButton
+                    pending={pending}
+                    disabled={!answers}
+                    onClick={() =>
+                      answers &&
+                      respond("allow", undefined, undefined, answeredInput(request.input, answers))
+                    }
+                  >
+                    {t("approval.question.send")}
+                  </ActionButton>
+                ) : high ? (
                   <HoldButton
                     label={t("approval.hold")}
                     hint={t("approval.holdHint")}
@@ -258,17 +293,17 @@ export function ApprovalCard(props: {
                   />
                 ) : (
                   <ActionButton pending={pending} onClick={() => respond("allow")}>
-                    {t("approval.approve")}
+                    {t(plan !== null ? "approval.plan.approve" : "approval.approve")}
                   </ActionButton>
                 )}
                 <Button variant="outline" disabled={pending} onClick={() => setDenying(true)}>
-                  {t("approval.deny")}
+                  {t(plan !== null ? "approval.plan.keep" : "approval.deny")}
                 </Button>
               </>
             )}
             {props.actions}
           </div>
-          {props.alwaysAllow && !high && (
+          {props.alwaysAllow && !high && !questions && plan === null && (
             <AlwaysAllow
               toolName={request.toolName}
               input={request.input}
