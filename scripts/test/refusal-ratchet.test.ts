@@ -22,6 +22,11 @@ describe("refusal-ratchet: the daemon's refusals that carry no reason only go do
     expect(reasonlessRefusals(source)).toBe(2);
   });
 
+  test("source cut off inside a call or a template still counts, and ends", () => {
+    expect(reasonlessRefusals('throw new FlightdeckError("bad_request", "x"')).toBe(1);
+    expect(reasonlessRefusals('throw new FlightdeckError("bad_request", `a ${ { b')).toBe(1);
+  });
+
   test("a local helper that builds the error without a reason counts at every call, not at its definition", () => {
     const source = `
       const bad = (message: string) => new FlightdeckError("bad_request", message);

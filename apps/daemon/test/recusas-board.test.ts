@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { AzureDevOpsCli } from "../src/board/pr.ts";
 import { removeRule } from "../src/board/project-rules.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { newBoard } from "./board-helpers.ts";
@@ -90,6 +91,28 @@ describe("recusas-board: the board's refusals say why", () => {
     expect((await refused(() => board.diff(card.id))).reason).toBe("card_no_worktree");
     expect((await refused(() => board.message(card.id, "oi"))).reason).toBe("card_no_session");
     expect((await refused(() => board.prComments(card.id))).reason).toBe("card_no_pr");
+  });
+
+  test("a PR needs the provider, a worktree and, for the comments, a PR", async () => {
+    const { board, store, card } = await withCard();
+    store.db.run("UPDATE cards SET pr_url = 'https://x/pr/1' WHERE id = ?", [card.id]);
+    expect((await refused(() => board.prComments(card.id))).reason).toBe("project_no_pr_provider");
+    const hosted = newBoard({ prProvider: () => ({}) as never });
+    const github = await hosted.board.addProject({
+      path: hosted.repo,
+      promptTemplate: "",
+      prProvider: "github",
+    });
+    const bare = hosted.board.createCard(github.id, { title: "t", description: "d" });
+    expect((await refused(() => hosted.board.createPr(bare.id))).reason).toBe("card_no_worktree");
+  });
+
+  test("an Azure PR link that is not one", async () => {
+    const health = new AzureDevOpsCli().health({ cwd: ".", url: "https://example.com/pr/1" });
+    expect(await refused(() => health)).toMatchObject({
+      reason: "pr_url_invalid",
+      params: { provider: "Azure", url: "https://example.com/pr/1" },
+    });
   });
 
   test("an arena needs two to four variants", async () => {
