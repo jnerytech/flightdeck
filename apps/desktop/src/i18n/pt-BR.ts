@@ -1038,6 +1038,9 @@ export const ptBR = {
     turnFailed: "turno com erro · {seconds} s",
   },
   reader: {
+    outside:
+      "A pasta {folder} está fora das pastas permitidas deste host: adicione-a para continuar aqui.",
+    gone: "A pasta {folder} não existe mais neste host.",
     maybeActive: "possivelmente em uso",
     continue: "Continuar no Flightdeck",
     copyCommand: "Copiar comando",
@@ -2409,6 +2412,10 @@ export const ptBR = {
     external: "Externa",
     externalTag: "externa",
     filter: "Filtrar",
+    hideAutomated: "Ocultar execuções automáticas",
+    automatedHidden: "{count} execuções automáticas ocultas",
+    showAutomated: "Mostrar",
+    automatedTag: "automática",
     list: "Sessões do histórico",
   },
   folderPicker: {

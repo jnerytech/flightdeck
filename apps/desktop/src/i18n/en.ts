@@ -1039,6 +1039,8 @@ export const en: Dictionary = {
     turnFailed: "turn failed · {seconds} s",
   },
   reader: {
+    outside: "The folder {folder} is outside this host's allowed folders: add it to continue here.",
+    gone: "The folder {folder} no longer exists on this host.",
     maybeActive: "possibly in use",
     continue: "Continue in Flightdeck",
     copyCommand: "Copy command",
@@ -2404,6 +2406,10 @@ export const en: Dictionary = {
     external: "External",
     externalTag: "external",
     filter: "Filter",
+    hideAutomated: "Hide automated runs",
+    automatedHidden: "{count} automated runs hidden",
+    showAutomated: "Show them",
+    automatedTag: "automated",
     list: "History sessions",
   },
   folderPicker: {
