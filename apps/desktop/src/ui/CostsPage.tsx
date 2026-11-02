@@ -17,7 +17,14 @@ import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
-import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "../lib/costs.ts";
+import {
+  daysBetween,
+  PERIODS,
+  type Period,
+  periodRange,
+  projectLabels,
+  usd,
+} from "../lib/costs.ts";
 import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -179,6 +186,16 @@ export const CostsPage = memo(function CostsPage(props: {
     if (file) await store.saveFile(file.filename, file.csv);
   };
   const byDay = summary?.byDay ?? [];
+  // One set of labels for the whole screen, so a project reads the same in the list, the chart
+  // and the table; two that share a folder name are told apart.
+  const labels = projectLabels([
+    ...new Set([
+      ...(all?.byProject ?? []).map((p) => p.projectKey),
+      ...(summary?.byProject ?? []).map((p) => p.projectKey),
+      ...(summary?.topSessions ?? []).map((s) => s.projectKey),
+    ]),
+  ]);
+  const projectName = (key: string) => labels.get(key) ?? key;
   // The split by client is the whole spend of the period: it is not shown for one client.
   const scope = store.clientScope();
   const byClient =
@@ -248,7 +265,7 @@ export const CostsPage = memo(function CostsPage(props: {
             <option value="">{t("costsUi.allProjects")}</option>
             {(all?.byProject ?? []).map((p) => (
               <option key={p.projectKey} value={p.projectKey}>
-                {projectLabel(p.projectKey)}
+                {projectName(p.projectKey)}
               </option>
             ))}
           </NativeSelect>
@@ -398,6 +415,7 @@ export const CostsPage = memo(function CostsPage(props: {
                   days={daysBetween(days.from, days.to)}
                   byDay={byDay}
                   projects={summary.byProject.map((p) => p.projectKey)}
+                  label={projectName}
                 />
               </Panel>
             </section>
@@ -406,7 +424,7 @@ export const CostsPage = memo(function CostsPage(props: {
                 name={t("costsUi.byProject")}
                 rows={summary.byProject.map((p) => ({
                   id: p.projectKey,
-                  label: projectLabel(p.projectKey),
+                  label: projectName(p.projectKey),
                   costUsd: p.costUsd,
                 }))}
               />
@@ -451,7 +469,7 @@ export const CostsPage = memo(function CostsPage(props: {
                           props.onOpenSession(sessionHost[s.claudeSessionId] ?? hostId, s)
                         }
                       >
-                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectLabel(s.projectKey)} · ${usd(s.costUsd)}`}
+                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectName(s.projectKey)} · ${usd(s.costUsd)}`}
                       </Button>
                     </li>
                   ))}

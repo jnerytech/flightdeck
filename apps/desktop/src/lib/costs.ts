@@ -49,5 +49,42 @@ export function projectLabel(key: string): string {
  * differ (`docs-site · alfa`), else the parent folder (`b/docs-site`), both when neither is enough.
  */
 export function projectLabels(keys: string[]): Map<string, string> {
-  return new Map(keys.map((key) => [key, projectLabel(key)]));
+  const byLabel = new Map<string, string[]>();
+  for (const key of keys)
+    byLabel.set(projectLabel(key), [...(byLabel.get(projectLabel(key)) ?? []), key]);
+  const labels = new Map<string, string>();
+  for (const [label, group] of byLabel) {
+    const told = group.length > 1 ? toldApart(label, group) : null;
+    for (const key of group) labels.set(key, told?.get(key) ?? label);
+  }
+  return new Map(keys.map((key) => [key, labels.get(key) ?? key]));
+}
+
+const HOST_KEY = /^host:([^:]+):(.+)$/;
+
+/** The first way of writing the keys of one clashing label that makes them all different. */
+function toldApart(label: string, group: string[]): Map<string, string> {
+  const parts = (key: string) => {
+    const match = HOST_KEY.exec(key);
+    const folder = match?.[2]?.split(/[\\/]/).filter(Boolean) ?? [];
+    const parent = folder.length > 1 ? folder.at(-2) : undefined;
+    return { host: match?.[1], parent };
+  };
+  const withHost = (key: string, base: string) => {
+    const { host } = parts(key);
+    return host ? `${base} · ${host}` : base;
+  };
+  const withParent = (key: string) => {
+    const { parent } = parts(key);
+    return parent ? `${parent}/${label}` : label;
+  };
+  const raw = (key: string) => key;
+  const ways = [
+    (key: string) => withHost(key, label),
+    withParent,
+    (key: string) => withHost(key, withParent(key)),
+    raw,
+  ];
+  const way = ways.find((write) => new Set(group.map(write)).size === group.length) ?? raw;
+  return new Map(group.map((key) => [key, way(key)]));
 }

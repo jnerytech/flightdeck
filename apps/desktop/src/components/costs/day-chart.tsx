@@ -2,7 +2,7 @@ import { Inline } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { formatDay } from "../../i18n/format.ts";
-import { projectLabel, usd } from "../../lib/costs.ts";
+import { usd } from "../../lib/costs.ts";
 
 /** A tint of the accent per project in a day's bar, so the stack reads. */
 const SEGMENTS = ["bg-brand", "bg-brand/70", "bg-brand/50", "bg-brand/35"];
@@ -21,9 +21,11 @@ export function DayChart(props: {
   byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
   /** The projects of the period, the biggest spender first. */
   projects: string[];
+  /** How a project is named on screen. */
+  label: (projectKey: string) => string;
 }) {
   const t = useT();
-  const { days, byDay, projects } = props;
+  const { days, byDay, projects, label: projectLabel } = props;
   const totals = new Map<string, number>();
   for (const row of byDay) totals.set(row.day, (totals.get(row.day) ?? 0) + row.costUsd);
   const highest = Math.max(0, ...totals.values());
