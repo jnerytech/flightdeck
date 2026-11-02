@@ -104,6 +104,7 @@ import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
+import type { WebhookSender } from "./webhook/sender.ts";
 import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -198,6 +199,8 @@ export interface ServerOptions {
   trace?: TraceService;
   /** Phase 30: the short summary of a session. */
   summary?: SummaryService;
+  /** Phase 30: posts the webhooks the app sends. */
+  webhook?: WebhookSender;
   /** Phase 27: Claude Code's background sessions, through its own CLI. */
   bg?: BgService;
   /** Budgets behind the `budget.*` commands (phase 8). */
@@ -398,6 +401,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.telemetry ? ["telemetry"] : []),
     ...(opts.trace ? ["trace"] : []),
     ...(opts.summary ? ["summary"] : []),
+    ...(opts.webhook ? ["webhook"] : []),
     ...(opts.bg ? ["bg"] : []),
     ...(opts.changes ? ["review"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
@@ -1459,6 +1463,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await bg().respawn(command.payload.id));
       case "bg.message":
         return ok(command.type, await bg().message(command.payload.id, command.payload.text));
+      case "webhook.send":
+        return ok(command.type, { status: 0, retryAfterMs: 0, refused: "" });
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
         return ok(command.type, summary().get(claudeSessionId, { question, state }));

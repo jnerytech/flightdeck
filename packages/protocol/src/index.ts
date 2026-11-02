@@ -1420,6 +1420,17 @@ export const SessionRecap = z.object({
 });
 export type SessionRecap = z.infer<typeof SessionRecap>;
 
+/** Phase 30: what a webhook post gave back. The answer's body is never returned. */
+export const WebhookSendResult = z.object({
+  /** `null` when the request got no answer (network error, timeout). */
+  status: z.number().int().nullable(),
+  /** The receiver's `Retry-After`, in milliseconds. */
+  retryAfterMs: z.number().nonnegative().nullable(),
+  /** Why the daemon would not post at all (private address, not https, ...). */
+  refused: z.string().nullable(),
+});
+export type WebhookSendResult = z.infer<typeof WebhookSendResult>;
+
 /** The trace as a file to attach to a bug: structure and numbers, content only when asked. */
 export const TraceExport = z.object({
   filename: z.string(),
@@ -2895,6 +2906,20 @@ export const Command = z.discriminatedUnion("type", [
   cmd("telemetry.status", z.object({}).strict()),
   // Phase 25: the trace of a session, built from its transcript and its subagents'.
   cmd("trace.get", z.object({ claudeSessionId: z.string().min(1) })),
+  /**
+   * Phase 30: posts a webhook for the app. The URL is a vault secret: it comes for this one use,
+   * only over the vault's transport, and is never stored or logged.
+   */
+  cmd(
+    "webhook.send",
+    z
+      .object({
+        url: z.string().min(1).max(2048),
+        headers: z.record(z.string(), z.string()),
+        body: z.string().max(100_000),
+      })
+      .strict(),
+  ),
   /** Phase 30: `question` and `state` are what the caller knows (the pending request, the session state). */
   cmd(
     "session.summary",
@@ -3655,6 +3680,7 @@ export interface CommandResults {
   "telemetry.session": TelemetrySession;
   "telemetry.summary": TelemetrySummary;
   "trace.get": SessionTrace;
+  "webhook.send": WebhookSendResult;
   "session.summary": SessionRecap;
   "trace.export": TraceExport;
   "bg.list": BgList;
