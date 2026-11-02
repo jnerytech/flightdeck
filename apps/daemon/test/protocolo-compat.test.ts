@@ -109,6 +109,7 @@ describe("protocolo-compat", () => {
       "workflows",
       "rules",
       "arena",
+      "deps",
     ]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());

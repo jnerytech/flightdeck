@@ -45,11 +45,12 @@ describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
     expect(await features({})).toEqual([]);
     expect(await features({ issues: true })).toEqual(["issues"]);
     expect(await features({ automations: true })).toEqual(["automation"]);
-    expect(await features({ board: true })).toEqual(["workflows", "rules", "arena"]);
+    expect(await features({ board: true })).toEqual(["workflows", "rules", "arena", "deps"]);
     expect(await features({ board: true, issues: true, automations: true })).toEqual([
       "workflows",
       "rules",
       "arena",
+      "deps",
       "issues",
       "automation",
     ]);
