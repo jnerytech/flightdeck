@@ -12,6 +12,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
+import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
@@ -528,6 +529,12 @@ export async function takeShots(
             await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
             throw error;
           });
+          // A skeleton or a busy region is a screen still loading: the print waits for the real one.
+          await page.waitForFunction(
+            (selector) => document.querySelector(selector) === null,
+            PENDING_SELECTOR,
+            { timeout: 15_000 },
+          );
           if (visual !== "off") await stabilize(page);
           await page.screenshot({
             path: join(dir, `${shot.name}.png`),
