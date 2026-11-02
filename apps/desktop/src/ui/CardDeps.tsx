@@ -141,14 +141,16 @@ export function CardDeps(props: {
               <option value="merged">{t("deps.when.merged")}</option>
             </NativeSelect>
             <label className="text-sm">
-              <input
-                type="checkbox"
-                checked={card.autoStart !== null}
-                onChange={(e) =>
-                  update({ autoStart: e.target.checked ? { workflow: null } : null })
-                }
-              />
-              {t("deps.autoStart")}
+              <Inline gap={2}>
+                <input
+                  type="checkbox"
+                  checked={card.autoStart !== null}
+                  onChange={(e) =>
+                    update({ autoStart: e.target.checked ? { workflow: null } : null })
+                  }
+                />
+                {t("deps.autoStart")}
+              </Inline>
             </label>
             {card.autoStart && props.workflows.length > 0 && (
               <NativeSelect

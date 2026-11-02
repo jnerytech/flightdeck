@@ -638,6 +638,21 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const review = await card("Revisar mensagens de erro", "Padronize os textos.");
   await client.call("card.move", { cardId: review.id, column: "review" });
   const waiting = await card("Aguardando o time de design", "Espere o layout.");
+  // Phase 31: a chain of three cards: the schema, the API that needs it, the screen that needs the API.
+  const schema = await card("Definir o esquema do carrinho", "Tabelas e índices.");
+  const api = await client.call<{ id: string }>("card.create", {
+    projectId: project.id,
+    title: "API do carrinho",
+    description: "Endpoints de leitura e escrita.",
+    blockedBy: [schema.id],
+  });
+  await client.call("card.create", {
+    projectId: project.id,
+    title: "Tela do carrinho",
+    description: "Liste os itens e some o total.",
+    blockedBy: [api.id],
+    autoStart: { workflow: null },
+  });
   await client.call("card.move", { cardId: waiting.id, column: "waiting" });
   const done = await card("Atualizar dependências", "Atualize e rode os testes.");
   await client.call("card.move", { cardId: done.id, column: "done" });

@@ -122,6 +122,28 @@ function shots(ids: DemoIds): Shot[] {
       name: "card",
       route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
     },
+    // Phase 31: the detail of the last card of a chain, and the refusal of its start.
+    {
+      // Opened from the board: a card in the Backlog is only known to the app once its board is.
+      name: "card-bloqueado",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: "Tela do carrinho", exact: true }).click();
+        await page.getByRole("region", { name: /^(Bloqueado por|Blocked by)$/ }).waitFor();
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "board-inicio-recusado",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /^(Ações de|Actions for) Tela do carrinho$/ })
+          .click();
+        await page.getByRole("menuitem", { name: /^(Iniciar card|Start card)$/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
     {
       // The card's Mudanças tab: files, numbered diff and the composer open on a line.
       name: "card-mudancas",
