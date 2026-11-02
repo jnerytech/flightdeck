@@ -35,7 +35,9 @@ export function sidebarNav({ act, fireEvent, screen }: Deps) {
     },
     /** The history list shows the automated runs too (the test folders live under a temp dir). */
     async showAutomated() {
-      const box = screen.queryByLabelText("Ocultar execuções automáticas") as HTMLInputElement | null;
+      const box = screen.queryByLabelText(
+        "Ocultar execuções automáticas",
+      ) as HTMLInputElement | null;
       expect(box).not.toBeNull();
       if (box?.checked) await click(box);
     },
