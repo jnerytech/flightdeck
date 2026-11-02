@@ -42,7 +42,8 @@ export interface UseRequest {
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 30;
 
-const badRequest = (message: string) => new FlightdeckError("bad_request", message);
+const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
 
 /**
  * Uses a snippet (phase 18): fills its fields and either types the command into a terminal, runs
@@ -66,27 +67,27 @@ export class SnippetUse {
     const snippet = this.opts.snippets.get(req.id);
     const isCommand = snippet.type === "command";
     if (isCommand !== (req.action !== "send")) {
-      throw badRequest(
-        isCommand
-          ? "um comando é colado ou rodado, não enviado"
-          : "um prompt é enviado, não colado nem rodado",
-      );
+      throw isCommand
+        ? badRequest("a command is pasted or run, not sent", "snippet_is_command")
+        : badRequest("a prompt is sent, not pasted or run", "snippet_is_prompt");
     }
     const runs = req.action === "run" || req.enter === true;
     if (runs && !snippet.runnable) {
       throw new FlightdeckError(
         "snippet_untrusted",
-        "este comando vem do .flightdeck/snippets.yaml do projeto: confie no arquivo para rodá-lo, ou cole sem Enter",
+        "this command comes from the project's .flightdeck/snippets.yaml: trust the file to run it, or paste without Enter",
+        "snippet_untrusted_run",
       );
     }
     const { text } = await this.fill(req);
     let terminal: TerminalInfo | null = null;
     if (req.action === "paste") {
-      if (!req.terminalId) throw badRequest("colar pede o terminalId");
+      if (!req.terminalId)
+        throw badRequest("pasting needs the terminalId", "snippet_terminal_needed");
       this.terminals().write(req.terminalId, req.enter ? `${text}\r` : text);
     } else if (req.action === "run") {
       const cwd = req.context?.cwd;
-      if (!cwd) throw badRequest("rodar pede o cwd");
+      if (!cwd) throw badRequest("running needs the cwd", "snippet_cwd_needed");
       terminal = this.terminals().open({
         cwd,
         cols: req.cols ?? DEFAULT_COLS,
@@ -102,13 +103,17 @@ export class SnippetUse {
   }
 
   private terminals(): Pick<TerminalManager, "write" | "open"> {
-    if (!this.opts.terminals) throw new FlightdeckError("invalid_state", "terminais indisponíveis");
+    if (!this.opts.terminals)
+      throw new FlightdeckError("invalid_state", "terminals are not available", "terminals_off");
     return this.opts.terminals;
   }
 
   private send(req: UseRequest, text: string): void {
     if ((req.sessionId === undefined) === (req.claudeSessionId === undefined)) {
-      throw badRequest("enviar pede sessionId ou claudeSessionId, um dos dois");
+      throw badRequest(
+        "sending needs sessionId or claudeSessionId, one of the two",
+        "session_target_needed",
+      );
     }
     if (req.sessionId !== undefined) {
       this.opts.manager.send(req.sessionId, text);
@@ -117,12 +122,18 @@ export class SnippetUse {
     const claudeSessionId = req.claudeSessionId as string;
     const central = this.opts.central;
     if (!central?.external.get(claudeSessionId)) {
-      throw new FlightdeckError("not_found", `sessão ${claudeSessionId} não existe`);
+      throw new FlightdeckError(
+        "not_found",
+        `session ${claudeSessionId} does not exist`,
+        "session_not_found",
+        { id: claudeSessionId },
+      );
     }
     if (!messageExternal(central, claudeSessionId, text)) {
       throw new FlightdeckError(
         "invalid_state",
-        "sessão sem canal: só sessões abertas com flightdeckd claude recebem mensagens",
+        "session without a channel: only sessions opened with flightdeckd claude receive messages",
+        "external_no_channel",
       );
     }
   }

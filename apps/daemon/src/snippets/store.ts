@@ -61,8 +61,9 @@ interface LoadedFile {
 }
 
 const FILE_PREFIX = "file:";
-const badRequest = (message: string) => new FlightdeckError("bad_request", message);
-const notFound = () => new FlightdeckError("not_found", "snippet não encontrado");
+const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const notFound = () => new FlightdeckError("not_found", "snippet not found", "not_found");
 
 /** The id of a snippet of the versioned file: it has no row of its own. */
 const fileId = (projectPath: string, name: string) => `${FILE_PREFIX}${projectPath}:${name}`;
@@ -121,7 +122,8 @@ export class Snippets {
   list(filter: SnippetFilter): { snippets: Snippet[]; file: SnippetFileInfo | null } {
     const scope = filter.scope ?? "all";
     const project = filter.projectPath ? this.project(filter.projectPath) : null;
-    if (scope === "project" && !project) throw badRequest("o escopo project pede projectPath");
+    if (scope === "project" && !project)
+      throw badRequest("the project scope needs projectPath", "scope_project_path");
     const views: Snippet[] = [];
     if (scope !== "project") views.push(...this.rows("host", null).map((row) => this.fromRow(row)));
     let file: SnippetFileInfo | null = null;
@@ -173,14 +175,19 @@ export class Snippets {
     const previous = id ? this.lookup(id) : null;
     if (id && !previous) throw notFound();
     if (previous && (previous.scope !== scope || previous.projectPath !== project)) {
-      throw badRequest("para mudar de escopo, crie outro snippet");
+      throw badRequest("to change scope, create another snippet", "snippet_scope_fixed");
     }
     const toFile = scope === "project" && target === "file";
     if (previous && (previous.source === "file") !== toFile) {
-      throw badRequest("para mudar de lugar, crie outro snippet");
+      throw badRequest("to move a snippet, create another one", "snippet_place_fixed");
     }
     if (this.nameTaken(scope, project, def.name, previous?.id ?? null)) {
-      throw new FlightdeckError("invalid_state", `já existe um snippet "${def.name}" neste escopo`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `a snippet named "${def.name}" already exists in this scope`,
+        "name_taken",
+        { name: def.name },
+      );
     }
     return toFile
       ? this.saveToFile(project as string, def, previous)
@@ -204,11 +211,16 @@ export class Snippets {
     const project = this.project(projectPath);
     const loaded = this.loadFile(project);
     if (!loaded)
-      throw new FlightdeckError("invalid_state", "o projeto não tem .flightdeck/snippets.yaml");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the project has no .flightdeck/snippets.yaml",
+        "snippet_file_missing",
+      );
     if (loaded.info.hash !== hash) {
       throw new FlightdeckError(
         "invalid_state",
-        "o arquivo mudou desde que foi mostrado: confira de novo",
+        "the file changed since it was shown: check again",
+        "snippet_file_changed",
       );
     }
     this.opts.db
@@ -248,7 +260,7 @@ export class Snippets {
   }
 
   private requireProject(path: string | undefined): string {
-    if (!path) throw badRequest("um snippet de projeto pede projectPath");
+    if (!path) throw badRequest("a project snippet needs projectPath", "snippet_project_path");
     return this.project(path);
   }
 
@@ -383,7 +395,8 @@ export class Snippets {
     if (loaded && loaded.info.errors.length > 0) {
       throw new FlightdeckError(
         "invalid_state",
-        "o .flightdeck/snippets.yaml tem erros: corrija antes de salvar",
+        "the .flightdeck/snippets.yaml has errors: fix them before saving",
+        "snippet_file_errors",
       );
     }
     const defs = (loaded?.defs ?? []).filter((d) => d.name !== previous?.name);
@@ -434,7 +447,8 @@ export class Snippets {
       }
       try {
         const def = normalizeSnippet(parsed.data, this.opts.scanner);
-        if (defs.some((d) => d.name === def.name)) throw badRequest("nome repetido");
+        if (defs.some((d) => d.name === def.name))
+          throw badRequest("repeated name", "name_taken", { name: def.name });
         defs.push(def);
       } catch (error) {
         errors.push(`${label}: ${(error as Error).message}`);

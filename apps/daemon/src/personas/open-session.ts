@@ -19,7 +19,8 @@ export interface SwitchTarget {
 
 type Language = "pt-BR" | "en";
 
-const badRequest = (message: string) => new FlightdeckError("bad_request", message);
+const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
 
 /** The message that makes the Claude take a role: the body of the persona, as a conversation instruction. */
 export function roleMessage(name: string, body: string, language: Language): string {
@@ -50,10 +51,19 @@ export class OpenSessionPersonas {
       ? this.opts.manager.get(target.id).cwd
       : (this.external().external.get(target.id)?.cwd ?? undefined);
     if (!target.managed && !this.external().external.get(target.id)) {
-      throw new FlightdeckError("not_found", `sessão ${target.id} não existe`);
+      throw new FlightdeckError(
+        "not_found",
+        `session ${target.id} does not exist`,
+        "session_not_found",
+        { id: target.id },
+      );
     }
     if (!this.opts.personas) {
-      throw new FlightdeckError("invalid_state", "personas indisponíveis neste host");
+      throw new FlightdeckError(
+        "invalid_state",
+        "personas are not available on this host",
+        "personas_off",
+      );
     }
     const language = request.persona.language ?? "pt-BR";
     const resolved = this.opts.personas.resolve(request.persona, { projectPath: cwd, language });
@@ -74,10 +84,19 @@ export class OpenSessionPersonas {
       ? this.opts.manager.appliedPersona(target.id)
       : this.external().external.appliedPersona(target.id);
     if (!target.managed && !this.external().external.get(target.id)) {
-      throw new FlightdeckError("not_found", `sessão ${target.id} não existe`);
+      throw new FlightdeckError(
+        "not_found",
+        `session ${target.id} does not exist`,
+        "session_not_found",
+        { id: target.id },
+      );
     }
     if (!applied)
-      throw new FlightdeckError("invalid_state", "nenhuma persona foi aplicada a esta sessão");
+      throw new FlightdeckError(
+        "invalid_state",
+        "no persona was applied to this session",
+        "persona_not_applied",
+      );
     const text = leaveMessage(applied.name, request.language ?? "pt-BR");
     const delivery = this.deliver(target, text);
     this.mark(target, null);
@@ -86,7 +105,10 @@ export class OpenSessionPersonas {
 
   private target(request: SwitchTarget): { managed: boolean; id: string } {
     if ((request.sessionId === undefined) === (request.claudeSessionId === undefined)) {
-      throw badRequest("informe sessionId ou claudeSessionId, um dos dois");
+      throw badRequest(
+        "give sessionId or claudeSessionId, one of the two",
+        "session_target_needed",
+      );
     }
     return request.sessionId !== undefined
       ? { managed: true, id: request.sessionId }
@@ -95,7 +117,11 @@ export class OpenSessionPersonas {
 
   private external(): Pick<Central, "external" | "receptor"> {
     if (!this.opts.central)
-      throw new FlightdeckError("invalid_state", "sessões de terminal indisponíveis");
+      throw new FlightdeckError(
+        "invalid_state",
+        "terminal sessions are not available",
+        "terminal_sessions_off",
+      );
     return this.opts.central;
   }
 
@@ -110,7 +136,8 @@ export class OpenSessionPersonas {
     if (!messageExternal(this.external(), target.id, text)) {
       throw new FlightdeckError(
         "invalid_state",
-        "sessão sem canal: só sessões abertas com flightdeckd claude recebem mensagens",
+        "session without a channel: only sessions opened with flightdeckd claude receive messages",
+        "external_no_channel",
       );
     }
     return "terminal";

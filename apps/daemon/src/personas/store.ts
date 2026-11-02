@@ -86,8 +86,9 @@ function agentOf(persona: PersonaDef): PersonaAgent {
 const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const MAX_FILE_BYTES = 64 * 1024;
 
-const badRequest = (message: string) => new FlightdeckError("bad_request", message);
-const notFound = () => new FlightdeckError("not_found", "persona não encontrada");
+const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const notFound = () => new FlightdeckError("not_found", "persona not found", "persona_not_found");
 
 /**
  * The personas of this host (phase 20): the host's own (in the daemon) and a project's, kept as
@@ -108,7 +109,8 @@ export class Personas {
   } {
     const scope = filter.scope ?? "all";
     const project = filter.projectPath ? this.project(filter.projectPath) : null;
-    if (scope === "project" && !project) throw badRequest("o escopo project pede projectPath");
+    if (scope === "project" && !project)
+      throw badRequest("the project scope needs projectPath", "scope_project_path");
     const personas: Persona[] = [];
     if (scope !== "project") personas.push(...this.hostViews(filter.language));
     let info: PersonaProjectInfo | null = null;
@@ -182,14 +184,16 @@ export class Personas {
     if (!request.confirm) {
       throw new FlightdeckError(
         "invalid_state",
-        "publicar como agente do projeto pede confirm: true",
+        "publishing as a project agent needs confirm: true",
+        "persona_publish_confirm",
       );
     }
     const publisher = this.opts.publisher;
     if (!publisher) {
       throw new FlightdeckError(
         "invalid_state",
-        "o editor de agentes do projeto não está disponível",
+        "the project's agent editor is not available",
+        "persona_publisher_off",
       );
     }
     const projectPath = this.project(request.projectPath);
@@ -207,7 +211,7 @@ export class Personas {
   /** Puts a pack persona back as it came: the host's edit goes away. */
   reset(id: string, ctx: PersonaContext): Persona {
     if (!this.pack(ctx.language).some((persona) => persona.id === id)) {
-      throw badRequest("só as personas do pacote voltam ao original");
+      throw badRequest("only the pack's personas go back to the original", "persona_pack_only");
     }
     this.opts.db.query("DELETE FROM personas WHERE id = ?").run(id);
     return this.hostViews(ctx.language).find((view) => view.id === id) as Persona;
@@ -236,7 +240,8 @@ export class Personas {
     if (current.hash !== hash) {
       throw new FlightdeckError(
         "invalid_state",
-        "a persona mudou desde que foi mostrada: confira de novo",
+        "the persona changed since it was shown: check again",
+        "persona_changed",
       );
     }
     this.trustHash(project, id, hash);
@@ -246,7 +251,10 @@ export class Personas {
   /** The persona to use: an id (the project's, else the host's) or a definition from the app. */
   resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona {
     if ((ref.id === undefined) === (ref.definition === undefined)) {
-      throw badRequest("informe a persona por id ou por definition, uma das duas");
+      throw badRequest(
+        "give the persona by id or by definition, one of the two",
+        "persona_ref_needed",
+      );
     }
     if (ref.definition !== undefined) {
       return {
@@ -262,7 +270,9 @@ export class Personas {
     if (!view.trusted) {
       throw new FlightdeckError(
         "persona_untrusted",
-        `a persona ${view.id} vem do projeto e muda o comportamento do agente: confie nela antes de usar`,
+        `the persona ${view.id} comes from the project and changes the agent's behavior: trust it before using it`,
+        "persona_untrusted_project",
+        { id: view.id },
       );
     }
     const { scope, hash, trusted, modified, ...persona } = view;
@@ -300,7 +310,7 @@ export class Personas {
   }
 
   private requireProject(path: string | undefined): string {
-    if (!path) throw badRequest("uma persona de projeto pede projectPath");
+    if (!path) throw badRequest("a project persona needs projectPath", "persona_project_path");
     return this.project(path);
   }
 
@@ -309,7 +319,7 @@ export class Personas {
   }
 
   private file(project: string, id: string): string {
-    if (!ID.test(id)) throw badRequest("id inválido");
+    if (!ID.test(id)) throw badRequest("invalid id", "persona_id_invalid");
     return join(this.dir(project), `${id}.md`);
   }
 
@@ -383,7 +393,8 @@ export class Personas {
       const id = name.slice(0, -3);
       const path = join(dir, name);
       try {
-        if (statSync(path).size > MAX_FILE_BYTES) throw badRequest("arquivo grande demais");
+        if (statSync(path).size > MAX_FILE_BYTES)
+          throw badRequest("file too big", "persona_file_big");
         const source = readFileSync(path, "utf8");
         const persona = normalizePersona(parsePersona(source, id), this.opts.scanner);
         const hash = personaHash(source);

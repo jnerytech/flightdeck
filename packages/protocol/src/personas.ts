@@ -37,19 +37,29 @@ export class PersonaModelError extends Error {
   constructor(
     readonly code: "bad_request" | "persona_secret",
     message: string,
+    /** Why, for the app to translate: a stable key and the values its text fills in. */
+    readonly reason: string,
+    readonly params?: Record<string, string | number>,
   ) {
     super(message);
   }
 }
 
-const badRequest = (message: string) => new PersonaModelError("bad_request", message);
+const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new PersonaModelError("bad_request", message, reason, params);
 
 function text(raw: Record<string, unknown>, key: string, max: number, multiline = false): string {
   const value = raw[key];
-  if (typeof value !== "string") throw badRequest(`${key} é obrigatório`);
+  if (typeof value !== "string") {
+    throw badRequest(`${key} is required`, "persona_field_required", { field: key });
+  }
   const trimmed = value.trim();
   if (trimmed === "" || trimmed.length > max || hasControl(trimmed, "")) {
-    throw badRequest(`${key}: de 1 a ${max} caracteres${multiline ? "" : ", numa linha só"}`);
+    throw badRequest(
+      `${key}: 1 to ${max} characters${multiline ? "" : ", on a single line"}`,
+      multiline ? "persona_field_length" : "persona_field_line",
+      { field: key, max },
+    );
   }
   return trimmed;
 }
@@ -57,44 +67,56 @@ function text(raw: Record<string, unknown>, key: string, max: number, multiline 
 function optional(raw: Record<string, unknown>, key: string, pattern: RegExp): string | null {
   const value = raw[key];
   if (value === undefined || value === null) return null;
-  if (typeof value !== "string" || !pattern.test(value)) throw badRequest(`${key} inválido`);
+  if (typeof value !== "string" || !pattern.test(value)) {
+    throw badRequest(`${key} is not valid`, "persona_field_invalid", { field: key });
+  }
   return value;
 }
 
 /** Checks a persona (from the form, a file or a workflow) and returns it in its normal form. */
 export function normalizePersona(raw: unknown, scanner: Pick<SecretScanner, "scan">): PersonaDef {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw badRequest("a persona precisa ser um objeto");
+    throw badRequest("a persona must be an object", "persona_not_object");
   }
   const fields = raw as Record<string, unknown>;
   const unknown = Object.keys(fields).find((key) => !KEYS.has(key));
-  if (unknown) throw badRequest(`campo desconhecido: ${unknown}`);
+  if (unknown)
+    throw badRequest(`unknown field: ${unknown}`, "persona_field_unknown", { field: unknown });
   const id = fields.id;
   if (typeof id !== "string" || !ID.test(id)) {
     throw badRequest(
-      "id: letras minúsculas, números e hífen, de 1 a 40 (vira nome de arquivo e de agente)",
+      "id: lowercase letters, digits and hyphens, 1 to 40 (it becomes a file and agent name)",
+      "persona_id_format",
     );
   }
   const name = text(fields, "name", 60);
   const description = text(fields, "description", 200);
   const effort = fields.effort ?? null;
   if (effort !== null && !(EFFORTS as readonly unknown[]).includes(effort)) {
-    throw badRequest(`effort: ${EFFORTS.join(", ")}`);
+    throw badRequest(`effort: ${EFFORTS.join(", ")}`, "persona_effort", {
+      values: EFFORTS.join(", "),
+    });
   }
   const mode = fields.permissionMode ?? null;
   if (mode !== null && !(MODES as readonly unknown[]).includes(mode)) {
-    throw badRequest(`permissionMode: ${MODES.join(", ")}`);
+    throw badRequest(`permissionMode: ${MODES.join(", ")}`, "persona_mode", {
+      values: MODES.join(", "),
+    });
   }
   const body = typeof fields.body === "string" ? fields.body.trim() : "";
-  if (body === "") throw badRequest("o corpo da persona não pode ser vazio");
+  if (body === "") throw badRequest("the persona's body cannot be empty", "persona_body_empty");
   if (new TextEncoder().encode(body).length > MAX_BODY_BYTES)
-    throw badRequest("o corpo passa de 8 KB");
-  if (hasControl(body, "\t\n\r")) throw badRequest("o corpo tem caracteres de controle");
+    throw badRequest("the body is over 8 KB", "persona_body_big");
+  if (hasControl(body, "\t\n\r")) {
+    throw badRequest("the body has control characters", "persona_body_control");
+  }
   const kinds = [...new Set([name, description, body].flatMap((part) => scanner.scan(part)))];
   if (kinds.length > 0) {
     throw new PersonaModelError(
       "persona_secret",
-      `a persona tem segredo (${kinds.join(", ")}): instruções não levam segredo`,
+      `the persona has a secret (${kinds.join(", ")}): instructions carry no secrets`,
+      "persona_has_secret",
+      { kinds: kinds.join(", ") },
     );
   }
   return {
@@ -113,12 +135,15 @@ export function normalizePersona(raw: unknown, scanner: Pick<SecretScanner, "sca
 function toolList(raw: unknown): string[] | null {
   if (raw === undefined || raw === null) return null;
   if (!Array.isArray(raw) || raw.length > MAX_TOOLS)
-    throw badRequest("tools: uma lista de até 50 nomes");
+    throw badRequest("tools: a list of up to 50 names", "persona_tools_list");
   if (
     raw.some((tool) => typeof tool !== "string" || !TOOL.test(tool)) ||
     new Set(raw).size !== raw.length
   ) {
-    throw badRequest("tools: nomes de ferramenta simples, sem repetir e sem regras de permissão");
+    throw badRequest(
+      "tools: plain tool names, with no repeats and no permission rules",
+      "persona_tools_names",
+    );
   }
   return raw as string[];
 }

@@ -16,9 +16,6 @@
   "apps/daemon/src/names/names.ts": 2,
   "apps/daemon/src/permissions/permission-broker.ts": 1,
   "apps/daemon/src/permissions/permission-updates.ts": 1,
-  "apps/daemon/src/personas/model.ts": 5,
-  "apps/daemon/src/personas/open-session.ts": 7,
-  "apps/daemon/src/personas/store.ts": 14,
   "apps/daemon/src/plugins/inventory.ts": 3,
   "apps/daemon/src/plugins/plugins.ts": 19,
   "apps/daemon/src/review/changes.ts": 5,
@@ -29,8 +26,6 @@
   "apps/daemon/src/runenv/manager.ts": 2,
   "apps/daemon/src/runenv/ports.ts": 1,
   "apps/daemon/src/server.ts": 4,
-  "apps/daemon/src/snippets/store.ts": 12,
-  "apps/daemon/src/snippets/use.ts": 8,
   "apps/daemon/src/teams/teams.ts": 5,
   "apps/daemon/src/terminal/terminal-manager.ts": 6,
   "apps/daemon/src/updates/apply.ts": 6

@@ -14,14 +14,17 @@ export {
   toolAllowed,
 } from "@flightdeck/protocol";
 
-const badRequest = (message: string) => new FlightdeckError("bad_request", message);
+const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("bad_request", message, reason, params);
 
 /** See the shared model; its refusals come out as protocol errors with the same codes. */
 export function normalizePersona(raw: unknown, scanner: Pick<SecretScanner, "scan">): PersonaDef {
   try {
     return normalize(raw, scanner);
   } catch (error) {
-    if (error instanceof PersonaModelError) throw new FlightdeckError(error.code, error.message);
+    if (error instanceof PersonaModelError) {
+      throw new FlightdeckError(error.code, error.message, error.reason, error.params);
+    }
     throw error;
   }
 }
@@ -51,20 +54,36 @@ export function parsePersona(source: string, fileId?: string): PersonaDef {
   const end = file.indexOf("\n---", 3);
   const closes = end >= 0 && (file[end + 4] === "\n" || end + 4 === file.length);
   if (!file.startsWith("---\n") || !closes) {
-    throw badRequest("a persona precisa começar com um frontmatter entre linhas ---");
+    throw badRequest(
+      "a persona starts with a frontmatter between --- lines",
+      "persona_frontmatter_missing",
+    );
   }
   let header: unknown;
   try {
     header = Bun.YAML.parse(file.slice(4, end));
   } catch (error) {
-    throw badRequest(`frontmatter inválido: ${(error as Error).message}`);
+    throw badRequest(
+      `invalid frontmatter: ${(error as Error).message}`,
+      "persona_frontmatter_invalid",
+      {
+        error: (error as Error).message,
+      },
+    );
   }
   if (typeof header !== "object" || header === null || Array.isArray(header)) {
-    throw badRequest("o frontmatter precisa ser um mapa");
+    throw badRequest("the frontmatter must be a map", "persona_frontmatter_map");
   }
   const persona = normalizePersona({ ...header, body: file.slice(end + 4) }, NO_SCAN);
   if (fileId !== undefined && persona.id !== fileId) {
-    throw badRequest(`o id (${persona.id}) precisa ser o nome do arquivo (${fileId})`);
+    throw badRequest(
+      `the id (${persona.id}) must be the file name (${fileId})`,
+      "persona_id_filename",
+      {
+        id: persona.id,
+        file: fileId,
+      },
+    );
   }
   return persona;
 }
