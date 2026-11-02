@@ -57,6 +57,11 @@ function merged(events: NotifyEvent[]): NotifyEvent {
   };
 }
 
+/** Waits `ms` milliseconds. */
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class WebhookQueue {
   private readonly targets = new Map<string, TargetState>();
   private readonly running = new Set<Promise<void>>();

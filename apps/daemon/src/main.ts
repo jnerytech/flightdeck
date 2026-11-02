@@ -995,7 +995,7 @@ export async function startDaemon(
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
-    webhook: new WebhookSender({ log: (m) => logger.log(m) }),
+    webhook: new WebhookSender({ log: logger.log.bind(logger) }),
     telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),
     budgets,
     quotaHistory,

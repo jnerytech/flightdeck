@@ -74,6 +74,11 @@ const isTarget = (value: unknown): value is WebhookTarget =>
   typeof (value as WebhookTarget).name === "string" &&
   Array.isArray((value as WebhookTarget).kinds);
 
+/** A new target id. */
+export function randomId(): string {
+  return crypto.randomUUID();
+}
+
 export class WebhookTargets {
   private readonly newId: () => string;
   private readonly clock: () => number;
@@ -82,7 +87,7 @@ export class WebhookTargets {
     private readonly platform: TargetPlatform,
     options: { newId?: () => string; clock?: () => number } = {},
   ) {
-    this.newId = options.newId ?? (() => crypto.randomUUID());
+    this.newId = options.newId ?? randomId;
     this.clock = options.clock ?? Date.now;
   }
 

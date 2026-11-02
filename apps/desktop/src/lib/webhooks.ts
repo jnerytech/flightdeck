@@ -6,8 +6,8 @@ import type { SessionRecap } from "@flightdeck/protocol";
 import { translator } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { formatWebhook, type NotifyEvent, type WebhookKind } from "./webhook-format.ts";
-import { type SendResult, WebhookQueue } from "./webhook-queue.ts";
-import { type WebhookTarget, WebhookTargets } from "./webhook-targets.ts";
+import { delay, type SendResult, WebhookQueue } from "./webhook-queue.ts";
+import { randomId, type WebhookTarget, WebhookTargets } from "./webhook-targets.ts";
 
 /** What the app knows when something happens; the id is the event's identity, so a replay is dropped. */
 export interface WebhookSource {
@@ -53,7 +53,7 @@ export class Webhooks {
 
   constructor(private readonly options: WebhooksOptions) {
     this.now = options.now ?? Date.now;
-    this.newId = options.newId ?? (() => crypto.randomUUID());
+    this.newId = options.newId ?? randomId;
     this.targets = new WebhookTargets(options.platform, {
       newId: this.newId,
       clock: this.now,
@@ -61,7 +61,7 @@ export class Webhooks {
     this.queue = new WebhookQueue({
       send: (targetId, event) => this.post(targetId, event),
       onResult: (targetId, result) => this.targets.record(targetId, result),
-      sleep: options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+      sleep: options.sleep ?? delay,
       now: this.now,
       ...(options.random ? { random: options.random } : {}),
     });
