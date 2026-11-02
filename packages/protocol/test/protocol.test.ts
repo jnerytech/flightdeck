@@ -333,6 +333,7 @@ const validCommands: Record<CommandType, unknown> = {
   "pr.comments.send": { cardId: "k", ids: ["1"] },
   "files.sessions": { path: "/work/a.ts" },
   "fs.dirs": { path: "/work", hidden: false },
+  "fs.files": { path: "/work", hidden: false },
   "session.files": { claudeSessionId: "s" },
   "statusline.get": { claudeSessionId: "s" },
   "terminal.open": { cwd: "/w", command: ["bash", "-l"], cols: 80, rows: 24 },

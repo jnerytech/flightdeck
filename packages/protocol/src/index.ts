@@ -1069,6 +1069,15 @@ export const FileSession = z.object({
 });
 export type FileSession = z.infer<typeof FileSession>;
 
+/** What `fs.files` answers: the files of a folder of the host (never outside the roots). */
+export interface FsFilesResult {
+  /** The folder listed (a real path). */
+  path: string;
+  files: Array<{ name: string; path: string }>;
+  /** More files than the daemon returns at once. */
+  truncated: boolean;
+}
+
 /** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
 export interface FsDirsResult {
   /** The folder listed (a real path); null for the list of the allowed roots. */
@@ -3318,6 +3327,8 @@ export const Command = z.discriminatedUnion("type", [
     "fs.dirs",
     z.object({ path: z.string().min(1).optional(), hidden: z.boolean().optional() }).strict(),
   ),
+  /** The files of a folder inside the allowed roots (not the subfolders: `fs.dirs` has those). */
+  cmd("fs.files", z.object({ path: z.string().min(1), hidden: z.boolean().optional() }).strict()),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
@@ -3829,6 +3840,7 @@ export interface CommandResults {
   };
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
+  "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };
   "card.updateFromBase": Card;

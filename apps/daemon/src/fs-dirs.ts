@@ -80,3 +80,18 @@ export function listDirs(
     roots.includes(real) || !roots.some((root) => isInside(root, above)) ? null : above;
   return { path: real, parent, dirs: dirs.slice(0, cap), truncated: dirs.length > cap };
 }
+
+export interface FileListing {
+  path: string;
+  files: DirEntry[];
+  truncated: boolean;
+}
+
+/** The files of `path`, never outside the roots (stub). */
+export function listFiles(
+  _path: string,
+  _allowedRoots: readonly string[],
+  _options: ListDirsOptions = {},
+): FileListing {
+  return { path: "", files: [], truncated: false };
+}
