@@ -24,6 +24,8 @@ function tree() {
   }
   writeFileSync(join(base, "secret.txt"), "s");
   symlinkSync(join(base, "secret.txt"), join(root, "code", "link.txt"));
+  // A link whose target is gone is skipped, not an error.
+  symlinkSync(join(base, "gone.txt"), join(root, "code", "gone.txt"));
   return { base, root };
 }
 
