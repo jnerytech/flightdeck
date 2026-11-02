@@ -125,7 +125,7 @@ export function WebhooksSection(props: { store: AppStore }) {
                       boxed
                       title={<span className="font-medium">{target.name}</span>}
                       meta={
-                        <span className="flex flex-wrap gap-x-2 text-muted-foreground">
+                        <Inline gap={2} className="text-muted-foreground">
                           {[
                             t(`webhooks.types.${target.type}` as Key),
                             t("webhooks.sendsTo", { host: target.urlHost }),
@@ -139,7 +139,7 @@ export function WebhooksSection(props: { store: AppStore }) {
                             .map((part) => (
                               <span key={part}>{part}</span>
                             ))}
-                        </span>
+                        </Inline>
                       }
                       trailing={
                         <Inline gap={1}>
@@ -275,24 +275,28 @@ export function WebhooksSection(props: { store: AppStore }) {
                 </NativeSelect>
               )}
             </Field>
-            <fieldset className="flex flex-col gap-1">
+            <fieldset>
               <legend className="font-medium text-sm">{t("webhooks.kinds")}</legend>
-              {KINDS.map((kind) => (
-                <label key={kind} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={draft.kinds.includes(kind)}
-                    onChange={(e) =>
-                      set({
-                        kinds: e.target.checked
-                          ? [...draft.kinds, kind]
-                          : draft.kinds.filter((k) => k !== kind),
-                      })
-                    }
-                  />
-                  {t(`webhooks.kind.${kind}` as Key)}
-                </label>
-              ))}
+              <Stack gap={1}>
+                {KINDS.map((kind) => (
+                  <label key={kind} className="text-sm">
+                    <Inline gap={2}>
+                      <input
+                        type="checkbox"
+                        checked={draft.kinds.includes(kind)}
+                        onChange={(e) =>
+                          set({
+                            kinds: e.target.checked
+                              ? [...draft.kinds, kind]
+                              : draft.kinds.filter((k) => k !== kind),
+                          })
+                        }
+                      />
+                      {t(`webhooks.kind.${kind}` as Key)}
+                    </Inline>
+                  </label>
+                ))}
+              </Stack>
             </fieldset>
             {error && <InlineNotice tone="error">{error}</InlineNotice>}
             <FormActions
