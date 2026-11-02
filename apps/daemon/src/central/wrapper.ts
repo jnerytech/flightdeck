@@ -177,7 +177,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
     );
   }
-  // The body and the subagents travel in files that only live while claude runs (nine bodies of
+  // The body and, in print mode, the subagents travel in files that only live while claude runs (nine bodies of
   // 8 KB do not fit on a Windows command line).
   const dir = join(opts.config.dataDir, "personas");
   const files: string[] = [];
@@ -200,7 +200,17 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     ? null
     : await fetchAgents(opts.config, opts.cwd ?? process.cwd());
   if (agents && Object.keys(agents).length > 0) {
-    added.push("--agents", write(`${launchId}-agents.json`, JSON.stringify(agents)));
+    const json = JSON.stringify(agents);
+    if (print) {
+      // Only print mode reads --agents from a file.
+      added.push("--agents", write(`${launchId}-agents.json`, json));
+    } else if (json.length <= INLINE_AGENTS_MAX) {
+      added.push("--agents", json);
+    } else {
+      opts.log.error(
+        `flightdeckd: the persona subagents (${json.length} characters) do not fit on the command line of an interactive claude; opening without --agents`,
+      );
+    }
   }
   try {
     const proc = Bun.spawn(
@@ -239,6 +249,12 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     }
   }
 }
+
+/**
+ * Interactive claude takes `--agents` as inline JSON only, and a Windows command line holds
+ * about 32 K characters (quotes get escaped, so the JSON can grow); past this the agents are dropped.
+ */
+export const INLINE_AGENTS_MAX = 20_000;
 
 /** The project's personas as agents, from the daemon of this host; `null` when it cannot be reached. */
 async function fetchAgents(
