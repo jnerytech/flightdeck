@@ -363,10 +363,12 @@ describe("times-ui: the teams of a host", () => {
       screen.queryByLabelText("Personas das executoras (opcional, separadas por vírgula)"),
     ).toBeNull();
     await pickWorkerPersonas("revisor", "qa");
-    const picked = [...group.querySelectorAll('input[type="checkbox"]:checked')].map(
-      (b) => (b as HTMLInputElement).value,
-    );
-    expect(picked).toEqual(["revisor", "qa"]);
+    // The order picked is shown, and it is the workers' order.
+    const position = (id: string) =>
+      /#(\d)/.exec(
+        group.querySelector(`input[value="${id}"]`)?.closest("label")?.textContent ?? "",
+      )?.[1];
+    expect([position("revisor"), position("qa")]).toEqual(["1", "2"]);
   });
 
   test("a member's persona is switched with a picker of the host's personas", async () => {
@@ -383,11 +385,12 @@ describe("times-ui: the teams of a host", () => {
     const { teams, repo } = await open({ projects: false });
     await click("Novo time");
     await settle(() => screen.queryByText("Este host ainda não tem projetos.") !== null);
-    const button = () => screen.getByRole("button", { name: "Criar time" }) as HTMLButtonElement;
-    expect(button().disabled).toBe(true);
+    const button = () =>
+      screen.queryByRole("button", { name: "Criar time" }) as HTMLButtonElement | null;
+    expect(button()?.disabled).toBe(true);
     await change("Objetivo", "com projeto novo");
     // The goal is there; the project is what is missing, and the reason says so.
-    expect(button().disabled).toBe(true);
+    expect(button()?.disabled).toBe(true);
     expect(screen.queryByText("Escolha um projeto.")).not.toBeNull();
     const form = screen
       .getByText("Este host ainda não tem projetos.")
@@ -400,7 +403,7 @@ describe("times-ui: the teams of a host", () => {
       });
     });
     await click("Adicionar", dialog);
-    await settle(() => !button().disabled);
+    await settle(() => button()?.disabled === false);
     await change("Nome do time", "novo");
     await click("Criar time");
     await settle(() => row("novo") !== null);
