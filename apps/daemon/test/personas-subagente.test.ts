@@ -221,9 +221,10 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
       args: string[];
       agents: Record<string, { description: string; prompt: string }> | null;
       agentsPath: string | null;
+      agentsInline: boolean;
     }>;
 
-  test("passa --agents com um arquivo JSON dos persona-<id>, que existe enquanto o claude roda e some depois", async () => {
+  test("interactive claude gets --agents as inline JSON, never a file path", async () => {
     const { root, project, personas } = setup();
     const host = await terminalHost(personas, root);
     const fake = installFakeClaude([{ do: "exit", code: 0 }]);
@@ -231,12 +232,49 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     expect(await run([], host, project)).toBe(0);
     const [start] = startsOf(fake);
     expect(start?.args).toContain("--agents");
+    const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
+    expect(value.startsWith("{")).toBe(true);
+    expect(start?.agentsInline).toBe(true);
     expect(Object.keys(start?.agents ?? {})).toContain("persona-revisor");
     expect(start?.agents?.["persona-revisor"]?.description).toMatch(/Revisa legibilidade/);
-    // A file, never the JSON on the command line (nine bodies do not fit on one in Windows).
-    expect(start?.args.some((arg) => arg.startsWith("{"))).toBe(false);
+  });
+
+  test("print mode keeps the file, which exists while claude runs and is gone after", async () => {
+    const { root, project, personas } = setup();
+    const host = await terminalHost(personas, root);
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    expect(await run(["-p", "oi"], host, project)).toBe(0);
+    const [start] = startsOf(fake);
+    expect(start?.agentsInline).toBe(false);
+    expect(Object.keys(start?.agents ?? {})).toContain("persona-revisor");
     const { existsSync } = await import("node:fs");
     expect(existsSync(start?.agentsPath as string)).toBe(false);
+  });
+
+  test("agents too long for a Windows command line are dropped, and the user is told", async () => {
+    const { root, project, personas } = setup();
+    for (const id of ["grande", "enorme"]) {
+      personas.save({ scope: "host", persona: { ...SECURITY, id, body: "x".repeat(7_000) } });
+    }
+    const host = await terminalHost(personas, root);
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const errors: string[] = [];
+    const exit = { code: null as number | null };
+    await runCli(["claude"], {
+      env: { ...process.env, FLIGHTDECK_CONFIG: host.file },
+      log: { log: () => {}, error: (m: string) => errors.push(m) },
+      exit: (c) => {
+        exit.code = c;
+      },
+      onSignal: () => {},
+      selfCommand: [process.execPath, "run", join(import.meta.dir, "..", "src", "bin.ts")],
+      cwd: project,
+    });
+    expect(exit.code).toBe(0);
+    expect(startsOf(fake)[0]?.args).not.toContain("--agents");
+    expect(errors.join("\n")).toMatch(/--agents/);
   });
 
   test("junto de --persona: os dois arquivos, apagados no fim", async () => {
@@ -248,8 +286,7 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     const [start] = startsOf(fake);
     expect(start?.args).toContain("--agents");
     expect(start?.args).toContain("--append-system-prompt-file");
-    const { existsSync, readdirSync } = await import("node:fs");
-    expect(existsSync(start?.agentsPath as string)).toBe(false);
+    const { readdirSync } = await import("node:fs");
     expect(readdirSync(join(host.dataDir, "personas"))).toEqual([]);
   });
 
