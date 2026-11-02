@@ -104,7 +104,16 @@ const READABLE = "'message', 'summary', 'system'";
 const CWD_CONDITION =
   "(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\\'))";
 
-const SESSION_SELECT = `SELECT s.*, f.mtime FROM history_sessions s
+/**
+ * A run nobody typed: print-mode (an sdk entrypoint), or in a temp folder (a folder called temp or
+ * tmp, or macOS's /var/folders), whatever the slash or case.
+ */
+const AUTOMATED = `(s.entrypoint LIKE 'sdk%' OR
+  '/' || replace(lower(s.cwd), char(92), '/') || '/' LIKE '%/temp/%' OR
+  '/' || replace(lower(s.cwd), char(92), '/') || '/' LIKE '%/tmp/%' OR
+  '/' || replace(lower(s.cwd), char(92), '/') || '/' LIKE '%/var/folders/%')`;
+
+const SESSION_SELECT = `SELECT s.*, f.mtime, ${AUTOMATED} AS automated FROM history_sessions s
   LEFT JOIN history_files f ON f.path = s.file_path`;
 
 interface SessionRow {
@@ -116,6 +125,7 @@ interface SessionRow {
   message_count: number;
   origin: "flightdeck" | "external";
   mtime: string | null;
+  automated: number;
 }
 
 const trimSlashes = (path: string) => path.replace(/[\\/]+$/, "");
@@ -233,6 +243,12 @@ export class HistoryIndexer {
       where.push("s.origin = $origin");
       params.origin = filter.origin;
     }
+    const { n: automatedCount } = this.db
+      .query(
+        `SELECT COUNT(*) AS n FROM history_sessions s WHERE ${where.join(" AND ")} AND ${AUTOMATED}`,
+      )
+      .get({ ...params, limit: 0, offset: 0 } as never) as { n: number };
+    if (filter.hideAutomated) where.push(`NOT ${AUTOMATED}`);
     const rows = this.db
       .query(
         `${SESSION_SELECT} WHERE ${where.join(" AND ")}
@@ -242,7 +258,7 @@ export class HistoryIndexer {
     return {
       sessions: rows.slice(0, limit).map((r) => this.toSession(r)),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
-      automatedCount: 0,
+      automatedCount,
     };
   }
 
@@ -392,7 +408,7 @@ export class HistoryIndexer {
       messageCount: row.message_count,
       origin: row.origin,
       maybeActive: row.mtime !== null && now - Date.parse(row.mtime) < MAYBE_ACTIVE_MS,
-      automated: false,
+      automated: row.automated === 1,
     };
   }
 
@@ -709,15 +725,16 @@ export class HistoryIndexer {
          FROM history_messages WHERE claude_session_id = ?`,
       )
       .get(claudeSessionId) as { first: string | null; last: string | null; count: number };
+    const entrypoint = records.find((r) => r.entrypoint)?.entrypoint ?? null;
     this.db
       .query(
         `INSERT INTO history_sessions
-           (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path)
-         VALUES ($id, $cwd, $title, $first, $last, $count, ${ORIGIN}, $path)
+           (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path, entrypoint)
+         VALUES ($id, $cwd, $title, $first, $last, $count, ${ORIGIN}, $path, $entrypoint)
          ON CONFLICT(claude_session_id) DO UPDATE SET cwd = $cwd, title = $title,
            first_ts = $first, last_ts = $last, message_count = $count, origin = ${ORIGIN},
-           file_path = $path`,
+           file_path = $path, entrypoint = COALESCE(history_sessions.entrypoint, $entrypoint)`,
       )
-      .run({ id: claudeSessionId, cwd, title, ...totals, path });
+      .run({ id: claudeSessionId, cwd, title, ...totals, path, entrypoint });
   }
 }

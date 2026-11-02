@@ -136,6 +136,7 @@ describe("protocolo-historico", () => {
     const first = await client.data<Listed>("history.list", { limit: 2 });
     expect(first?.sessions.map((s) => s.claudeSessionId)).toEqual(["s-new", "s-mid"]);
     expect(first?.sessions[0]).toEqual({
+      automated: false,
       claudeSessionId: "s-new",
       cwd: NEW,
       title: "Conversa nova",

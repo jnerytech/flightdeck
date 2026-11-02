@@ -736,4 +736,10 @@ export const MIGRATIONS: readonly string[] = [
   -- 1 while the card waits for a blocker: the end of the wait is what unblocks it, once.
   ALTER TABLE cards ADD COLUMN waiting INTEGER NOT NULL DEFAULT 0;
   `,
+  // Print-mode (`claude -p`) runs are told apart by the entrypoint Claude Code writes on every
+  // line. The files are read once more (the index ignores a line it already has) to fill it in.
+  `
+  ALTER TABLE history_sessions ADD COLUMN entrypoint TEXT;
+  UPDATE history_files SET offset = 0, parse_errors = 0 WHERE claude_session_id IS NOT NULL;
+  `,
 ];

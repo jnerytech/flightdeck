@@ -15,6 +15,8 @@ export interface HistoryRecord {
   /** Searchable text; for `raw` the untouched line. */
   text: string;
   cwd: string | null;
+  /** How Claude Code was started (`cli`, `sdk-cli` for `claude -p`…); old transcripts have none. */
+  entrypoint?: string;
 }
 
 export interface ParseResult {
@@ -65,6 +67,7 @@ function normalize(line: Line, raw: string): HistoryRecord {
     uuid: str(line.uuid) ?? `raw:${createHash("sha1").update(raw).digest("hex").slice(0, 16)}`,
     ts: str(line.timestamp),
     cwd: str(line.cwd),
+    ...(str(line.entrypoint) ? { entrypoint: str(line.entrypoint) as string } : {}),
   };
   const cut = (text: string) => truncateUtf8(text, MAX_TEXT_BYTES);
   const message = line.message as { content?: unknown } | undefined;
