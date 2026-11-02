@@ -75,7 +75,10 @@ export class Tabs {
     active: number,
     newId?: () => string,
   ): Tabs {
-    const [first, ...rest] = entries as [{ route: Route; pinned: boolean; preview?: boolean }, ...typeof entries];
+    const [first, ...rest] = entries as [
+      { route: Route; pinned: boolean; preview?: boolean },
+      ...typeof entries,
+    ];
     const tabs = new Tabs(first.route, newId);
     for (const entry of rest) tabs.open(entry.route);
     entries.forEach((entry, i) => {

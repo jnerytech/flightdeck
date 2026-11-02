@@ -37,7 +37,9 @@ function scroller(height: { scroll: number; client: number; top: number }) {
   Object.defineProperty(el, "clientHeight", { get: () => size.client, configurable: true });
   Object.defineProperty(el, "scrollTop", {
     get: () => size.top,
-    set: (v: number) => void (size.top = v),
+    set: (v: number) => {
+      size.top = v;
+    },
     configurable: true,
   });
   return { el, size };

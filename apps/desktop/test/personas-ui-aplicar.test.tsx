@@ -190,9 +190,12 @@ describe("personas-ui: applying a persona to an open session", () => {
     await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
     expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     await act(async () => {
-      fireEvent.change(screen.queryByLabelText("Aplicar nesta sessão (como instrução)") as HTMLElement, {
-        target: { value: "host:qa" },
-      });
+      fireEvent.change(
+        screen.queryByLabelText("Aplicar nesta sessão (como instrução)") as HTMLElement,
+        {
+          target: { value: "host:qa" },
+        },
+      );
     });
     await click("Aplicar");
     expect(asked.find((a) => a.type === "session.applyPersona")?.payload).toEqual({

@@ -42,7 +42,7 @@ export const ptBR = {
     apply: {
       trigger: "Persona",
       active: "Persona ativa",
-      label: "Aplicar persona",
+      label: "Aplicar nesta sessão (como instrução)",
       apply: "Aplicar",
       clear: "Voltar ao normal",
       note: "Numa sessão aberta, a persona vale como instrução da conversa, não do sistema.",

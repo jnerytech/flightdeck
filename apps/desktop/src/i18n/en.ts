@@ -40,7 +40,7 @@ export const en: Dictionary = {
     apply: {
       trigger: "Persona",
       active: "Active persona",
-      label: "Apply persona",
+      label: "Apply to this session (as an instruction)",
       apply: "Apply",
       clear: "Back to normal",
       note: "In an open session, the persona works as an instruction in the conversation, not in the system prompt.",
