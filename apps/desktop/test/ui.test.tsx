@@ -108,6 +108,45 @@ describe("desktop: interface", () => {
     expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
   });
 
+  test("Mencionar uma pasta abre o seletor do host e põe @pasta na mensagem; cancelar não muda nada", async () => {
+    const { server } = setup();
+    await addHost(server.url);
+    await newSession("olá");
+    await waitFor(() => expect(screen.getAllByText("ociosa").length).toBeGreaterThan(0));
+    const open = async () => {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Mencionar uma pasta" }));
+      });
+      await waitFor(() =>
+        expect(screen.getByRole("dialog", { name: "Escolher pasta" })).toBeTruthy(),
+      );
+    };
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    });
+    expect(screen.queryByRole("dialog", { name: "Escolher pasta" })).toBeNull();
+    expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
+    await open();
+    const dialog = within(screen.getByRole("dialog", { name: "Escolher pasta" }));
+    await waitFor(() => expect(dialog.getAllByRole("button").length).toBeGreaterThan(2));
+    const root = dialog
+      .getAllByRole("button")
+      .find((b) => (b.textContent ?? "").startsWith("/") || (b.textContent ?? "").includes("fd-"));
+    await act(async () => {
+      fireEvent.click(root as HTMLElement);
+    });
+    await waitFor(() =>
+      expect(
+        (dialog.getByRole("button", { name: "Escolher esta pasta" }) as HTMLButtonElement).disabled,
+      ).toBe(false),
+    );
+    await act(async () => {
+      fireEvent.click(dialog.getByRole("button", { name: "Escolher esta pasta" }));
+    });
+    expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toMatch(/^@\/.* $/);
+  });
+
   test("card de aprovação com diff: permitir e negar com motivo", async () => {
     const { server } = setup();
     await addHost(server.url);
