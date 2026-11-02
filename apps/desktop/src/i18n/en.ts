@@ -1597,6 +1597,12 @@ export const en: Dictionary = {
     exported: "Exported: {n} fields hidden because they held secrets.",
     structureNote: "Without the content, only the structure and the numbers leave.",
   },
+  webhookMsg: {
+    allow: "Allow {tool}?",
+    percentOf: "{percent}% of {limit}",
+    testTitle: "Flightdeck test",
+    testBody: "This is a test message.",
+  },
   recap: {
     region: "Session summary",
     asked: "Asked",

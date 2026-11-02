@@ -3,6 +3,7 @@
  * through the queue, formatted for each; a test sends a sample straight away.
  */
 import type { SessionRecap } from "@flightdeck/protocol";
+import { translator } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { formatWebhook, type NotifyEvent, type WebhookKind } from "./webhook-format.ts";
 import { type SendResult, WebhookQueue } from "./webhook-queue.ts";
@@ -36,6 +37,9 @@ export interface WebhooksOptions {
   sleep?: (ms: number) => Promise<void>;
   random?: () => number;
 }
+
+/** Messages that leave the app are in English, whatever the app's language. */
+const EN = translator("en");
 
 /** Ids of events already handled, kept so a replay (a reconnect, a repeated frame) sends nothing twice. */
 const SEEN_MAX = 500;
@@ -123,10 +127,10 @@ export class Webhooks {
       kind: "needs_you",
       host: "Flightdeck",
       project: null,
-      title: "Flightdeck test",
+      title: EN("webhookMsg.testTitle"),
       at,
       summary: null,
-      detail: "This is a test message.",
+      detail: EN("webhookMsg.testBody"),
     };
     let status: number | null = null;
     try {

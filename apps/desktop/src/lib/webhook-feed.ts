@@ -4,8 +4,12 @@
  * focus: a webhook is for when the person is away.
  */
 import type { ExternalPermissionFrame, ExternalSession, WatchInfo } from "@flightdeck/protocol";
+import { translator } from "../i18n/index.ts";
 import type { SidebarSession } from "./app-store.ts";
 import type { WebhookSource, Webhooks } from "./webhooks.ts";
+
+/** Messages that leave the app are in English, whatever the app's language. */
+const EN = translator("en");
 
 export interface FeedHost {
   id: string;
@@ -49,7 +53,7 @@ export class WebhookFeed {
         kind: "needs_you",
         clientId,
         title,
-        detail: `Allow ${request.toolName}?`,
+        detail: EN("webhookMsg.allow", { tool: request.toolName }),
       });
     }
     if (prev.status !== next.status && (next.status === "ended" || next.status === "error")) {
@@ -69,7 +73,7 @@ export class WebhookFeed {
       kind: "needs_you",
       clientId: this.clientOf(host.id, cwd),
       title: basename(cwd) ?? frame.claudeSessionId,
-      detail: `Allow ${frame.toolName}?`,
+      detail: EN("webhookMsg.allow", { tool: frame.toolName }),
       claudeSessionId: frame.claudeSessionId,
     });
   }
@@ -91,7 +95,7 @@ export class WebhookFeed {
       id: `${host.id}/budget/${this.now()}`,
       kind: "budget_alert",
       title: label,
-      detail: `${percent}% of ${limit}`,
+      detail: EN("webhookMsg.percentOf", { percent, limit }),
     });
   }
 
@@ -104,7 +108,7 @@ export class WebhookFeed {
       clientId,
       project: null,
       title: name,
-      detail: `${percent}% of ${limit}`,
+      detail: EN("webhookMsg.percentOf", { percent, limit }),
     });
   }
 

@@ -1596,6 +1596,12 @@ export const ptBR = {
     exported: "Exportado: {n} campos ocultados por conterem segredos.",
     structureNote: "Sem o conteúdo, só a estrutura e os números saem.",
   },
+  webhookMsg: {
+    allow: "Permitir {tool}?",
+    percentOf: "{percent}% de {limit}",
+    testTitle: "Teste do Flightdeck",
+    testBody: "Esta é uma mensagem de teste.",
+  },
   recap: {
     region: "Resumo da sessão",
     asked: "Pedido",
