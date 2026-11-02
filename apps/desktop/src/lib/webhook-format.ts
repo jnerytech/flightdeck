@@ -40,7 +40,7 @@ export interface FormatOptions {
   now?: () => number;
 }
 
-const LABEL: Record<WebhookKind, string> = {
+export const KIND_LABEL: Record<WebhookKind, string> = {
   needs_you: "needs you",
   session_ended: "session ended",
   session_failed: "session failed",
@@ -70,7 +70,7 @@ function summaryLines(event: NotifyEvent): string[] {
 }
 
 const headline = (event: NotifyEvent): string =>
-  `${LABEL[event.kind]}: ${event.title} (${event.host})`;
+  `${KIND_LABEL[event.kind]}: ${event.title} (${event.host})`;
 
 const slackEscape = (value: string): string =>
   value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -88,7 +88,7 @@ const discordSafe = (value: string): string => value.replaceAll("@", "@\u200b");
 
 function discord(event: NotifyEvent): FormattedWebhook {
   const body = {
-    content: cut(discordSafe(`${LABEL[event.kind]} (${event.host})`), 2000),
+    content: cut(discordSafe(`${KIND_LABEL[event.kind]} (${event.host})`), 2000),
     embeds: [
       {
         title: cut(discordSafe(event.title), 256),
