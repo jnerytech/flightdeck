@@ -56,8 +56,11 @@ silent disabled button, an explicit manual override (move the card), and cycle r
   with `ON DELETE CASCADE` on both ends.
 - **A blocker is satisfied** when its card is in the **Done** column (a merged PR moves it there; so does "Complete"),
   or, if the blocked card asked for `merged`, when its PR state is `merged`. The condition is a setting of the blocked
-  card: `unblockWhen: "done" | "merged"`, default `done`. A discarded blocker leaves the set (a notice on the blocked
-  card says which one left), because a card that is gone can never be done.
+  card: `unblockWhen: "done" | "merged"`, default `done`. A blocker that is
+  **discarded or deleted** (its card removed, with the project or by hand) leaves the set in the same step, because a card
+  that is gone can never be done: the dependent never stays blocked by a ghost. If that was its last unsatisfied blocker
+  the dependent is unblocked at once (the unblocked mark and notification, and the auto-start if it is on), and a notice
+  on the card says which blocker left.
 - A card is **blocked** while any blocker is not satisfied **and it has not started** (no run). Once a card has a run,
   its blockers are history: they stay listed, the card is not "blocked" any more, and `card.fix` runs (Phase 22) are never
   gated, since the PR already exists.
@@ -68,6 +71,12 @@ silent disabled button, an explicit manual override (move the card), and cycle r
   if any). The start goes through the normal queue, so slots, the plan quota and budgets still apply. With it off, the
   card gets an **unblocked mark** (`unblockedAt`) and a desktop notification, until the person starts it or dismisses the
   mark.
+- **The base the run starts from.** A card that has blockers creates its worktree from the base branch **as it is after
+  the blockers merged**, so it sees their code. Before `git worktree add`, the daemon runs `git fetch origin <base>` (when
+  the repository has an `origin`; a failed fetch is a notice on the card and the run goes on with the local base), then
+  starts from `origin/<base>` if the local base is an ancestor of it (the PR was merged on the remote and the local
+  branch is behind), else from the local base (a local merge, Phase 4, already moved it). It never moves the local base
+  branch, which may be checked out. Cards with no blockers keep the old path: no fetch, the local base.
 - **Daemon restart:** on boot the daemon re-evaluates every card that has `autoStart` and no run. A blocker that became
   done while the daemon was down starts its card once, never twice (the run row is the guard).
 
@@ -120,10 +129,11 @@ Done by hand does satisfy the cards it blocks.
 
 | Area | What must pass |
 | --- | --- |
-| `deps-model` | add, replace and remove blockers; the two ends agree; same project only; self link, two-card and long cycles refused with the cycle named; the 20 limit; a discarded blocker leaves the set with a notice; `ON DELETE CASCADE` |
+| `deps-model` | add, replace and remove blockers; the two ends agree; same project only; self link, two-card and long cycles refused with the cycle named; the 20 limit; a discarded or deleted blocker leaves the set with a notice, and a dependent whose last blocker left is unblocked (mark, notification, auto-start if set) and never stays blocked by a ghost; `ON DELETE CASCADE` |
 | `deps-state` | blocked while a blocker is unsatisfied and the card has no run; `done` versus `merged`; a card with a run is not blocked and a fix run is never gated; moving a blocker to Done by hand satisfies; reopening a blocker blocks again only cards that have not started |
 | `deps-gate` | `card.start`, `startArena`, the MCP tool, an automation action and a workflow step all get `invalid_state` with `reason: "card_blocked"` and the titles; a card with no blockers is untouched; `card.move` is not gated |
 | `deps-autostart` | the last blocker satisfied starts the card once through the queue (slots, quota and budget respected); a card with auto-start off gets `unblockedAt` and a notification; a restart evaluates cards whose blocker finished while down, once; dismissing clears the mark |
+| `deps-base` | a card with blockers fetches `origin/<base>` and starts from it when the local base is behind (PR merged on the remote), so the blocker's file is in the new worktree; from the local base after a local merge; a failed fetch is a notice and the run still starts; a card with no blockers does not fetch; the local base branch is never moved (real git, a bare `origin` in the test) |
 | `deps-protocol` | the new `Card` fields default and an older daemon's card still parses; `card.create`/`card.update` carry them; `deps` in `HostInfo.features` |
 | `deps-automations` | an automation that starts a blocked card is skipped with the sentence in its log, not failed and not retried; a workflow run that cannot start its card says why |
 | `deps-ui` | the badge, the chip, the unblocked mark, the detail section (add, remove, picker without cycle choices, `done`/`merged`, auto-start with workflow), the refusal sentence on Start, the Blocked filter, an old host without `deps`; both languages, both themes; axe clean |
@@ -135,7 +145,7 @@ demo board, sees the badge, sees the refusal on Start, moves the blocker to Done
 
 **Acceptance criteria:** the usual ones, and these: with no blockers defined every screen and print is pixel-identical to
 before; no path starts a blocked card (the gate test enumerates the start paths, so a new one fails it); a cycle can never
-be stored; a card that has a run is never blocked again; auto-start starts a card at most once.
+be stored; a card that has a run is never blocked again; auto-start starts a card at most once; a card never stays blocked by a discarded blocker; a card that waited on `merged` sees the blocker's code.
 
 ## Open choices (recommendation first)
 
@@ -151,7 +161,6 @@ be stored; a card that has a run is never blocked again; auto-start starts a car
    named in a sentence, not a silent disabled button.**
 4. **Auto-start default.** Off. Starting a session spends money and quota, so the person turns it on per card.
    **Recommend off,** with the unblocked mark and notification as the default way to notice.
-5. **A discarded blocker.** It leaves the set and the card says so, over keeping a dead link that blocks forever.
-   **Recommend leaving the set.**
+5. **A discarded blocker.** It leaves the set and the card says so, and the dependent is unblocked in that step, over keeping a dead link that blocks forever. **Recommend leaving the set.**
 6. **Daemon storage.** The daemon, in the card's own database, over the app. Dependencies are state the daemon needs
    (gate, auto-start, restart) and several desktops share a host. **Recommend the daemon.**
