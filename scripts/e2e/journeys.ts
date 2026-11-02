@@ -1,5 +1,5 @@
 /**
- * The e2e journeys (phase 10): thirteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.

@@ -107,7 +107,7 @@ describe("demo-prints: axe e CI", () => {
     expect(upload).toContain("if: always()");
   });
 
-  test("e2e: the thirteen journeys, in both languages, checked at 1280x800 and 800x600", () => {
+  test("e2e: the fourteen journeys, in both languages, checked at 1280x800 and 800x600", () => {
     expect(JOURNEYS).toEqual([
       "aprovar-bash-com-a",
       "sessao-e-mensagem",
@@ -122,6 +122,7 @@ describe("demo-prints: axe e CI", () => {
       "regras",
       "mensagens",
       "clientes",
+      "dependencias",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
