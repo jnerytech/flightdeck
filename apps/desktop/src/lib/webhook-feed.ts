@@ -5,34 +5,116 @@
  */
 import type { ExternalPermissionFrame, ExternalSession, WatchInfo } from "@flightdeck/protocol";
 import type { SidebarSession } from "./app-store.ts";
-import type { Webhooks } from "./webhooks.ts";
+import type { WebhookSource, Webhooks } from "./webhooks.ts";
 
 export interface FeedHost {
   id: string;
   name: string;
 }
 
+const basename = (path: string | null): string | null =>
+  path?.split(/[\\/]/).filter(Boolean).pop() ?? null;
+
 export class WebhookFeed {
   constructor(
-    _webhooks: Pick<Webhooks, "emit">,
-    _clientOf: (hostId: string, cwd: string | null) => string | null,
-    _now: () => number = Date.now,
+    private readonly webhooks: Pick<Webhooks, "emit">,
+    private readonly clientOf: (hostId: string, cwd: string | null) => string | null,
+    private readonly now: () => number = Date.now,
   ) {}
 
+  private send(
+    host: FeedHost,
+    source: Omit<WebhookSource, "hostId" | "hostName" | "project" | "detail" | "clientId"> &
+      Partial<WebhookSource>,
+  ): void {
+    void this.webhooks.emit({
+      hostId: host.id,
+      hostName: host.name,
+      clientId: null,
+      project: null,
+      detail: null,
+      ...source,
+    });
+  }
+
   /** A managed session's summary changed: new permission requests, and a session that ended or failed. */
-  managed(_host: FeedHost, _prev: SidebarSession | undefined, _next: SidebarSession): void {}
+  managed(host: FeedHost, prev: SidebarSession | undefined, next: SidebarSession): void {
+    if (!prev) return;
+    const title = next.name ?? basename(next.cwd) ?? next.id;
+    const clientId = this.clientOf(host.id, next.cwd);
+    const known = new Set(prev.pendingPermissions.map((p) => p.requestId));
+    for (const request of next.pendingPermissions.filter((p) => !known.has(p.requestId))) {
+      this.send(host, {
+        id: `${host.id}/${request.requestId}`,
+        kind: "needs_you",
+        clientId,
+        title,
+        detail: `Allow ${request.toolName}?`,
+      });
+    }
+    if (prev.status !== next.status && (next.status === "ended" || next.status === "error")) {
+      this.send(host, {
+        id: `${host.id}/${next.id}/${next.status}`,
+        kind: next.status === "ended" ? "session_ended" : "session_failed",
+        clientId,
+        title,
+      });
+    }
+  }
 
-  externalPermission(_host: FeedHost, _frame: ExternalPermissionFrame, _cwd: string | null): void {}
+  externalPermission(host: FeedHost, frame: ExternalPermissionFrame, cwd: string | null): void {
+    if (frame.state !== "open") return;
+    this.send(host, {
+      id: `${host.id}/${frame.requestId}`,
+      kind: "needs_you",
+      clientId: this.clientOf(host.id, cwd),
+      title: basename(cwd) ?? frame.claudeSessionId,
+      detail: `Allow ${frame.toolName}?`,
+      claudeSessionId: frame.claudeSessionId,
+    });
+  }
 
-  externalSession(
-    _host: FeedHost,
-    _prev: ExternalSession | undefined,
-    _next: ExternalSession,
-  ): void {}
+  externalSession(host: FeedHost, prev: ExternalSession | undefined, next: ExternalSession): void {
+    if (!prev || prev.status === "ended" || next.status !== "ended") return;
+    this.send(host, {
+      id: `${host.id}/${next.claudeSessionId}/ended`,
+      kind: "session_ended",
+      clientId: this.clientOf(host.id, next.cwd),
+      project: next.projectKey,
+      title: next.meta?.name ?? basename(next.cwd) ?? next.claudeSessionId,
+      claudeSessionId: next.claudeSessionId,
+    });
+  }
 
-  budget(_host: FeedHost, _label: string, _percent: number, _limit: string): void {}
+  budget(host: FeedHost, label: string, percent: number, limit: string): void {
+    this.send(host, {
+      id: `${host.id}/budget/${this.now()}`,
+      kind: "budget_alert",
+      title: label,
+      detail: `${percent}% of ${limit}`,
+    });
+  }
 
-  clientBudget(_name: string, _clientId: string, _percent: number, _limit: string): void {}
+  clientBudget(name: string, clientId: string, percent: number, limit: string): void {
+    void this.webhooks.emit({
+      id: `client/${clientId}/${this.now()}`,
+      kind: "budget_alert",
+      hostId: "",
+      hostName: "Flightdeck",
+      clientId,
+      project: null,
+      title: name,
+      detail: `${percent}% of ${limit}`,
+    });
+  }
 
-  watch(_host: FeedHost, _title: string, _before: WatchInfo | undefined, _watch: WatchInfo): void {}
+  watch(host: FeedHost, title: string, before: WatchInfo | undefined, watch: WatchInfo): void {
+    if (watch.status !== "needs_you" || before?.status === "needs_you") return;
+    this.send(host, {
+      id: `${host.id}/${watch.cardId}/watch/${this.now()}`,
+      kind: "pr_watch",
+      title,
+      detail: watch.reason,
+    });
+  }
 }
