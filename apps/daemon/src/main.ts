@@ -1036,6 +1036,13 @@ export async function startDaemon(
             hookTarget(config, daemonCommand(process.execPath, Bun.main)),
           ),
         claudePath: () => claude?.path ?? whichOnPath("claude"),
+        templateProblems: async () =>
+          (
+            await loadTemplates({
+              dir: join(config.dataDir, "templates"),
+              builtins: BUILTIN_TEMPLATES,
+            })
+          ).problems,
         version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
       }),
     sessionSettings: true,

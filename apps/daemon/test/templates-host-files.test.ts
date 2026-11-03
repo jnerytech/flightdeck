@@ -176,6 +176,8 @@ describe("templates-host-files: the in-app doctor", () => {
       { command: "start", config: file, runtime: "fake" },
       {},
       { log: () => {}, error: () => {} },
+      // Nothing real: the host's service manager is never asked.
+      { serviceInstalled: async () => true },
     );
     cleanups.push(() => daemon.stop());
     const client = new FrameClient(daemon.url);
