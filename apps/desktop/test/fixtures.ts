@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
+import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
 import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";
 import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
@@ -84,6 +85,8 @@ export function daemon(
     retention?: { eventsDays: number; externalSessionsDays: number };
     /** The host's plan quota (phase 7); pass one on a manual clock to drive it. */
     quota?: Quota;
+    /** The Claude account behind `account.*` (phase 34); the host has none without it. */
+    account?: Account;
     /** What `host.info` says for "Abrir no terminal" (phase 8). */
     terminal?: { flightdeckdPath: string | null; wslDistro: string | null };
     /** Estimated costs (phase 8) over this daemon's own usage entries. */
@@ -333,6 +336,7 @@ export function daemon(
       history,
       board,
       quota,
+      ...(options.account ? { account: options.account } : {}),
       usage,
       central,
       ...(maintenance ? { maintenance } : {}),
