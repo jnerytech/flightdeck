@@ -834,4 +834,9 @@ export const MIGRATIONS: readonly string[] = [
   INSERT INTO card_done (card_id, project_id, done_at, via, pr_url, card_created_at, approx)
   SELECT id, project_id, updated_at, 'moved', pr_url, created_at, 1 FROM cards WHERE board_column = 'done';
   `,
+  // Phase 36: how many hours a card is worth (an estimate the person types), and a default per project.
+  `
+  ALTER TABLE cards ADD COLUMN estimate_hours REAL;
+  ALTER TABLE projects ADD COLUMN default_hours REAL;
+  `,
 ];

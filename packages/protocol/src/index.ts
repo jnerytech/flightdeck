@@ -1104,6 +1104,65 @@ export interface ProjectsCloneResult {
   path: string;
 }
 
+/** Phase 36: one week of the ROI trend. Counts and the cost in US$ the agents spent; never a rate or a value. */
+export interface RoiWeek {
+  /** First day of the week (YYYY-MM-DD); the weeks end on the period's last day and go back by seven. */
+  from: string;
+  to: string;
+  costUsd: number;
+  tokens: number;
+  cards: number;
+  planned: number;
+  unplanned: number;
+  prsMerged: number;
+}
+
+/** Phase 36: what one project delivered, and cost, in a period. */
+export interface RoiPeriod {
+  costUsd: number;
+  /** Input, output and cache tokens of the period. */
+  tokens: number;
+  /** Cards done, split into those already on the board when the period began and those created in it. */
+  cards: number;
+  planned: number;
+  unplanned: number;
+  prsMerged: number;
+  plannedPrs: number;
+  unplannedPrs: number;
+  /** Done cards that came from an issue. */
+  issuesResolved: number;
+  /** PR-watch fix rounds of the cards done in the period, and what they cost. */
+  fixRounds: number;
+  fixCostUsd: number;
+  /** Estimated hours of the done cards (the card's, else the project's default) and how many had none. */
+  hours: number;
+  cardsWithoutEstimate: number;
+  /** Managed-session approvals resolved in the period, and how long they waited for the person. */
+  decisions: number;
+  waitedSeconds: number;
+  /** Cost that belongs to no card of the project (a manual session in it). */
+  outsideCardsUsd: number;
+  /** The log was approximated for some of these cards (the date comes from their last update). */
+  approxCards: number;
+  /** The last eight weeks ending on the period's last day, oldest first. */
+  weeks: RoiWeek[];
+}
+
+export interface RoiProject {
+  projectKey: string;
+  name: string;
+  current: RoiPeriod;
+  previous: RoiPeriod;
+}
+
+export interface RoiSummaryResult {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+  projects: RoiProject[];
+}
+
 /** Phase 38: where a project's board sync stands. `linked: false` carries nothing else. */
 export interface BoardSyncStatus {
   linked: boolean;
