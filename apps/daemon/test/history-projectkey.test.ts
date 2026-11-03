@@ -34,7 +34,7 @@ function fixtures() {
   return root;
 }
 
-function setup(): { index: HistoryIndexer; server: RunningServer } {
+function setup(withKeys = true): { index: HistoryIndexer; server: RunningServer } {
   const index = new HistoryIndexer({
     db: new EventStore(":memory:").db,
     roots: [fixtures()],
@@ -49,7 +49,7 @@ function setup(): { index: HistoryIndexer; server: RunningServer } {
     token: TOKEN,
     allowedRoots: [],
     history: index,
-    projectKeyOf: async (cwd) => KEYS[cwd] ?? `host:h:${cwd}`,
+    ...(withKeys ? { projectKeyOf: async (cwd: string) => KEYS[cwd] ?? `host:h:${cwd}` } : {}),
   });
   cleanups.push(() => server.stop());
   return { index, server };
@@ -104,5 +104,14 @@ describe("history-projectkey: history.list by project", () => {
       "s-main",
     ]);
     expect((await ids(client, {}))?.length).toBe(3);
+  });
+
+  test("with no way to ask for project keys, a folder key still matches its folder", async () => {
+    const { server } = setup(false);
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    expect(await ids(client, { projectKey: "host:h:/work/repo" })).toEqual(["s-main"]);
+    expect(await ids(client, { projectKey: REMOTE })).toEqual([]);
   });
 });

@@ -963,6 +963,7 @@ export async function startDaemon(
   const server = startServer({
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
+    projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
     persistRoots: (roots) =>

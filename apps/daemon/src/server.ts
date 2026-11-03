@@ -506,6 +506,14 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.history;
   }
 
+  /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
+  async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
+    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const cwds = index.distinctCwds();
+    const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
+    return cwds.filter((_, i) => keys[i] === key);
+  }
+
   function central() {
     if (!opts.central) throw featureOff("central");
     return opts.central;
@@ -1347,7 +1355,11 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminal ?? {}),
         });
       case "history.list": {
-        const page = history().list(command.payload);
+        const { projectKey, ...filter } = command.payload;
+        const index = history();
+        const page = index.list(
+          projectKey ? { ...filter, cwds: await foldersOf(index, projectKey) } : filter,
+        );
         const sessions = page.sessions.map((s) =>
           listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
         );
