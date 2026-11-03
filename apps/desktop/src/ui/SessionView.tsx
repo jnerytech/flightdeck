@@ -211,6 +211,10 @@ export function SessionView(props: {
   images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** Pins or unpins the session; its button sits in each assistant message's action row. */
+  pin?: { pinned: boolean; toggle(): void };
+  /** Forks the conversation at its latest message; offered on that message only. */
+  fork?: () => void;
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }) {
