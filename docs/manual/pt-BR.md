@@ -426,6 +426,27 @@ histórico.
     controlável, a caixa de mensagem;
   - encerrada ou do histórico: abre o leitor, com "Continuar no Flightdeck".
 
+### A caixa de mensagem
+
+- Na caixa de mensagem de uma sessão dá para **colar ou soltar imagens** (PNG, JPEG, GIF ou WebP,
+  até cinco por mensagem e 5 MB cada; o host precisa suportar). Elas aparecem como miniaturas que
+  dá para remover antes de enviar, e a conversa indica quantas imagens a mensagem levou. Um
+  arquivo que não cabe diz o motivo em vez de ser anexado.
+- Enquanto um turno roda, **Enfileirar** (ou Enter) põe a mensagem numa lista **Na fila**
+  acima da caixa, em vez de enviá-la. **Editar** devolve a mensagem para a caixa e **Remover** a
+  descarta; quando o turno termina, as mensagens da fila saem em ordem, uma por turno.
+- **Enter** envia a mensagem; **Ctrl+Enter** (ou Shift+Enter) quebra a linha. O ícone de envio
+  (↵) aparece quando a caixa tem texto. Digitar `/` oferece os snippets e os comandos da sessão.
+- Sob cada mensagem do assistente há uma linha que aparece ao passar o mouse ou ao focar pelo
+  teclado: **Copiar mensagem**, **Bifurcar a partir daqui** (na última mensagem: leva a conversa
+  inteira até ali), **Fixar sessão** e há quanto tempo a mensagem foi escrita.
+- A caixa flutua no fim da tela como um cartão arredondado. O **+** anexa imagens (quando o host
+  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, cada um um
+  seletor quando a sessão deixa mudar, e um indicador girando enquanto um turno roda. Durante o
+  turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
+  arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
+  menos movimento.
+
 ### Hooks do Claude Code
 
 As sessões abertas fora do Flightdeck só aparecem com os hooks instalados no host. Há dois

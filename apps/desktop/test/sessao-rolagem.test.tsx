@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
@@ -51,8 +53,14 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
     const el = document.querySelector("[tabindex='0'].overflow-y-auto") as HTMLElement;
     expect(el.className).toContain("[&>*]:shrink-0");
     expect(document.querySelector("header")?.className).toContain("shrink-0");
-    const composer = screen.queryByRole("textbox", { name: /./ })?.parentElement;
-    expect(composer?.className).toContain("shrink-0");
+    const dock = screen
+      .queryByRole("textbox", { name: /./ })
+      ?.closest("[data-slot='composer-card']")?.parentElement;
+    expect(dock?.className).toContain("composer-dock");
+    // The utility is what keeps the dock from shrinking.
+    expect(readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8")).toMatch(
+      /@utility composer-dock \{[^}]*flex-shrink: 0/,
+    );
   });
 
   test("a new message follows the end when you were at the end", async () => {

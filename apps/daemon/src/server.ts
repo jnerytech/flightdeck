@@ -398,6 +398,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
     ...(opts.sessionSettings ? ["session.settings"] : []),
+    // A message may carry images (`session.send` with `images`).
+    "session.images",
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -834,7 +836,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, manager.create(command.payload));
       }
       case "session.send":
-        return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
+        return ok(
+          command.type,
+          manager.send(command.payload.sessionId, command.payload.text, command.payload.images),
+        );
       case "session.interrupt":
         await manager.interrupt(command.payload.sessionId);
         return ok(command.type);
