@@ -1,6 +1,5 @@
-import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
-import { stat } from "node:fs/promises";
 import type { Database } from "bun:sqlite";
+import { stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import {
   type Arena,
@@ -23,6 +22,7 @@ import { FlightdeckError } from "../errors.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { SecretScanner } from "../snippets/model.ts";

@@ -2,7 +2,7 @@
  * Phase 21: teams. A coordinator session and workers with cards of their own, started together
  * with the instructions of coordination, paused by the plan quota and resumed with it.
  */
-import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
+
 import type { Database } from "bun:sqlite";
 import type {
   MessageInfo,
@@ -15,6 +15,7 @@ import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
 import { MANAGED_STATE } from "../messaging/endpoints.ts";
 import type { Messaging } from "../messaging/messages.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";

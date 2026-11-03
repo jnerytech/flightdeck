@@ -1,6 +1,5 @@
-import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { createHash } from "node:crypto";
-import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { existsSync, unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
@@ -65,6 +64,7 @@ import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
+import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";

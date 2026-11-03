@@ -1,5 +1,5 @@
-import { FlightdeckError } from "../errors.ts";
 import type { PersonaAgent } from "@flightdeck/protocol";
+import { FlightdeckError } from "../errors.ts";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
 
 /** What a new session needs from the personas, read before it is created. */

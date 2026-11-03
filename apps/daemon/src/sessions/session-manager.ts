@@ -6,7 +6,6 @@ import type {
   PendingPermission,
   PermissionMode,
   PermissionUpdate,
-  PersonaSubagents,
   SessionEvent,
   SessionEventOf,
   SessionPersona,

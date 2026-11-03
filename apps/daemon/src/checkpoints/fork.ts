@@ -4,8 +4,9 @@
  * comes from this phase). It opens as a resumed managed session, or as the command that opens it
  * in the terminal. The files can be rewound to the turn first.
  */
-import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
+
 import { FlightdeckError } from "../errors.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { Rewinder } from "./rewind.ts";

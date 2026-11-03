@@ -1,10 +1,10 @@
-import { preparePersonas } from "../src/personas/prepare.ts";
 import { join } from "node:path";
 import { Board, type BoardOptions } from "../src/board/board.ts";
 import { git as runGit } from "../src/board/command.ts";
 import type { PrCheck, PrComment, PrProvider } from "../src/board/pr.ts";
 import type { PrState } from "../src/board/types.ts";
 import { packPersonas } from "../src/personas/pack.ts";
+import { preparePersonas } from "../src/personas/prepare.ts";
 import { Personas } from "../src/personas/store.ts";
 import { Quota } from "../src/quota/quota.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";

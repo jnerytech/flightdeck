@@ -1,4 +1,3 @@
-import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Database } from "bun:sqlite";
 import type {
   PermissionMode,
@@ -14,6 +13,7 @@ import type {
 import type { BoardEvent } from "../board/columns.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { addTurn, noSpending, overBudget, type RunSpending } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";

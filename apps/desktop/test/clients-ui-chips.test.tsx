@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
-import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
+import { CLIENTS_KEY } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settle } from "./wait.ts";

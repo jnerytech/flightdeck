@@ -1,4 +1,3 @@
-import { preparePersonas } from "../src/personas/prepare.ts";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,6 +10,7 @@ import { INLINE_AGENTS_MAX, interactiveAgents, RECEPTOR_FILE } from "../src/cent
 import { runCli } from "../src/main.ts";
 import { personaHash } from "../src/personas/model.ts";
 import { PACK_IDS, packPersonas } from "../src/personas/pack.ts";
+import { preparePersonas } from "../src/personas/prepare.ts";
 import { Personas } from "../src/personas/store.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
