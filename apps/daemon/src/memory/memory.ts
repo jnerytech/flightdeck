@@ -215,7 +215,7 @@ export class ProjectMemory {
   }
 
   /** What the context holds at the start for a session in `project`, and what the memory leaves out. */
-  budget(project: string): ContextBudget {
+  budget(project: string): Promise<ContextBudget> {
     return contextBudget({
       project,
       claudeDir: this.claudeDir(),

@@ -1286,7 +1286,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { name: input.name });
       }
       case "memory.budget":
-        return ok(command.type, memory().budget(await memoryProject(command.payload.projectId)));
+        return ok(
+          command.type,
+          await memory().budget(await memoryProject(command.payload.projectId)),
+        );
       case "memory.suggest":
         return ok(command.type, {
           suggestions: memory().suggest(await memoryProject(command.payload.projectId)),
