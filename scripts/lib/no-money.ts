@@ -18,6 +18,15 @@ export const COST_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /** The field names of the interfaces `names` in `source` that say money (and are not the agents' cost). */
-export function moneyFieldsIn(_source: string, _names: readonly string[]): string[] {
-  return [];
+export function moneyFieldsIn(source: string, names: readonly string[]): string[] {
+  const found: string[] = [];
+  for (const name of names) {
+    const body =
+      new RegExp(`export interface ${name} \\{([\\s\\S]*?)\\n\\}`).exec(source)?.[1] ?? "";
+    for (const field of body.matchAll(/^\s{2}(\w+)\??:/gm)) {
+      const key = field[1] as string;
+      if (!COST_FIELDS.has(key) && FIELD_WORDS.test(key)) found.push(key);
+    }
+  }
+  return found;
 }
