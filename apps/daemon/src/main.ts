@@ -112,6 +112,8 @@ import { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStatus } from "./telemetry/otlp-env.ts";
 import { startTelemetry } from "./telemetry/service.ts";
 import { TelemetryStore } from "./telemetry/store.ts";
+import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
+import { loadTemplates } from "./templates/files.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -1044,6 +1046,9 @@ export async function startDaemon(
       defaultUser: userInfo().username,
     }),
     terminals,
+    // The built-in templates and the files of `<dataDir>/templates` (phase 33).
+    templates: () =>
+      loadTemplates({ dir: join(config.dataDir, "templates"), builtins: BUILTIN_TEMPLATES }),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
@@ -1221,6 +1226,9 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
     hooks: () => hooksStatus(settings, hookTarget(load(), self)),
     claudePath: () => whichOnPath("claude"),
+    templateProblems: async () =>
+      (await loadTemplates({ dir: join(load().dataDir, "templates"), builtins: BUILTIN_TEMPLATES }))
+        .problems,
   });
   for (const item of report.checks) {
     deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);

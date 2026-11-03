@@ -87,6 +87,18 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         ),
   );
 
+  const brokenTemplates = (await deps.templateProblems?.()) ?? [];
+  if (brokenTemplates.length > 0) {
+    checks.push(
+      check(
+        "templates",
+        "warn",
+        `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
+        "fix or remove those files in the templates folder",
+      ),
+    );
+  }
+
   const hooks = deps.hooks();
   checks.push(
     hooks === "installed"

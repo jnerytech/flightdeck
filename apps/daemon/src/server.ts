@@ -1352,6 +1352,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
+            ...(opts.templates ? ["templates"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
@@ -1627,6 +1628,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "terminal.list":
         return ok(command.type, { terminals: terminals().list() });
+      case "template.list": {
+        if (!opts.templates) throw featureOff("templates");
+        return ok(command.type, await opts.templates());
+      }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");
         const { mode, locked, confirm } = command.payload;
