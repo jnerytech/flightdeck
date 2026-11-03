@@ -15,12 +15,14 @@ const request = (projectPath: string, prompt = "Revise como segurança.") => ({
 });
 
 describe("personas-subagente: published through the project's agent editor (phase 12)", () => {
-  test("the persona becomes .claude/agents/persona-<id>.md, which the agent editor lists", () => {
+  test("the persona becomes .claude/agents/persona-<id>.md, which the agent editor lists", async () => {
     const project = mkdtempSync(join(tmpdir(), "fd-pub-"));
     const agents = new AgentConfig({ claudeDir: mkdtempSync(join(tmpdir(), "fd-claude-")) });
-    const result = agentPublisher(agents).publish(request(project));
+    const result = await agentPublisher(agents).publish(request(project));
     expect(result.path).toBe(".claude/agents/persona-seguranca.md");
-    const listed = agents.list(project, "agent").filter((item) => item.origin === "project");
+    const listed = (await agents.list(project, "agent")).filter(
+      (item) => item.origin === "project",
+    );
     expect(listed).toMatchObject([
       {
         path: ".claude/agents/persona-seguranca.md",
@@ -34,12 +36,12 @@ describe("personas-subagente: published through the project's agent editor (phas
     expect(text.trimEnd().endsWith("Revise como segurança.")).toBe(true);
   });
 
-  test("publishing again replaces the agent with the persona's current text", () => {
+  test("publishing again replaces the agent with the persona's current text", async () => {
     const project = mkdtempSync(join(tmpdir(), "fd-pub-"));
     const agents = new AgentConfig({ claudeDir: mkdtempSync(join(tmpdir(), "fd-claude-")) });
     const publisher = agentPublisher(agents);
-    publisher.publish(request(project));
-    publisher.publish(request(project, "Texto novo."));
+    await publisher.publish(request(project));
+    await publisher.publish(request(project, "Texto novo."));
     expect(existsSync(join(project, ".claude/agents/persona-seguranca.md"))).toBe(true);
     const text = readFileSync(join(project, ".claude/agents/persona-seguranca.md"), "utf8");
     expect(text.trimEnd().endsWith("Texto novo.")).toBe(true);

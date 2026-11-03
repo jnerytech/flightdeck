@@ -107,7 +107,7 @@ describe("ao-vivo: o leitor", () => {
     const file = writeTranscript(d.historyRoot, "-p", "viva", [
       userLine({ uuid: "u1", text: "começo", cwd: d.project, ts: "2026-10-29T10:00:00.000Z" }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const server = d.listen();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
@@ -141,7 +141,7 @@ describe("ao-vivo: o leitor", () => {
       file,
       `${userLine({ uuid: "u2", text: "linha nova", cwd: d.project, ts: "2026-10-29T10:02:00.000Z" })}\n`,
     );
-    d.history.scan();
+    await d.history.scan();
     await settle(() => document.querySelector('[data-uuid="u2"]') !== null);
     expect(document.querySelector('[data-uuid="u2"]')?.textContent ?? "").toContain("linha nova");
     // Same element: appended, not reloaded.

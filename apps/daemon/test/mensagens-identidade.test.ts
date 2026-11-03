@@ -14,17 +14,17 @@ afterEach(async () => {
 });
 
 describe("mensagens-identidade: quem é a sessão", () => {
-  test("uma sessão gerenciada sobe com o id dela no ambiente, para o MCP que ela abrir saber quem manda", () => {
+  test("uma sessão gerenciada sobe com o id dela no ambiente, para o MCP que ela abrir saber quem manda", async () => {
     const runtime = new FakeRuntime({ delayMs: 1 });
     const { manager, project } = newManager({ runtime });
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     expect(runtime.starts[0]?.env.FLIGHTDECK_SESSION).toBe(sessionId);
   });
 
   test("a sessão retomada depois do reinício leva o mesmo id", async () => {
     const runtime = new FakeRuntime({ delayMs: 1 });
     const { manager, project } = newManager({ runtime });
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     await poll(() => manager.get(sessionId).status === "idle", 3000);
     await manager.close(sessionId);
     await manager.resume(sessionId);

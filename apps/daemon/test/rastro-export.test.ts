@@ -71,8 +71,8 @@ const parsed = (json: string) =>
   };
 
 describe("rastro-export: structure and numbers by default", () => {
-  test("no prompt, input, result or thought leaves, and the timings, costs and tokens do", () => {
-    const out = setup().export(SESSION, false);
+  test("no prompt, input, result or thought leaves, and the timings, costs and tokens do", async () => {
+    const out = await setup().export(SESSION, false);
     expect(out.filename).toBe("trace-bbbbbbbb.json");
     expect(out.redacted).toBe(0);
     const file = parsed(out.json);
@@ -90,8 +90,8 @@ describe("rastro-export: structure and numbers by default", () => {
 });
 
 describe("rastro-export: with the content, past the secret scan", () => {
-  test("the text comes along, and a field with a secret in it is replaced and counted", () => {
-    const out = setup().export(SESSION, true);
+  test("the text comes along, and a field with a secret in it is replaced and counted", async () => {
+    const out = await setup().export(SESSION, true);
     const file = parsed(out.json);
     expect(file.includesContent).toBe(true);
     const nodes = flat(file.trace.turns);

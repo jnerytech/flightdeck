@@ -80,8 +80,8 @@ interface Wired {
 describe("clients-protocol: the daemon fills it", () => {
   test("project.add, project.update and project.list carry the key, with no synchronous git on the way", async () => {
     const keys: Keys = {
-      keyFor: () => {
-        throw new Error("a synchronous git spawn on a request path");
+      known: () => {
+        throw new Error("a lookup on a request path");
       },
       resolve: async (path) => `remote-of:${path}`,
     };
@@ -102,7 +102,7 @@ describe("clients-protocol: the daemon fills it", () => {
     let inFlight = 0;
     let most = 0;
     const keys: Keys = {
-      keyFor: () => "unused",
+      known: () => "unused",
       resolve: async (path) => {
         most = Math.max(most, ++inFlight);
         await Bun.sleep(20);
@@ -124,7 +124,7 @@ describe("clients-protocol: the daemon fills it", () => {
   });
 
   test("without the project keys of the central the field is left out, not guessed from the folder", async () => {
-    for (const keys of [undefined, { keyFor: () => "unused" }]) {
+    for (const keys of [undefined, { known: () => "unused" }]) {
       const { server, repo } = serve(keys);
       const client = await connect(server.url);
       const added = await client.data<Wired>("project.add", { path: repo });

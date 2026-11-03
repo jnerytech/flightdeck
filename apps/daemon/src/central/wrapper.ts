@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
@@ -41,12 +41,12 @@ export function buildClaudeLaunch(opts: {
  * Where the daemon's OTLP receiver is, with the token of its own; `null` when the daemon has
  * not published one (it is down, or telemetry is off) or no token exists.
  */
-function telemetryTarget(config: Config): TelemetryTarget | null {
+async function telemetryTarget(config: Config): Promise<TelemetryTarget | null> {
   const file = join(config.dataDir, TELEMETRY_FILE);
   const token = config.telemetry.token;
-  if (!token || !existsSync(file)) return null;
+  if (!token) return null;
   try {
-    const { url } = JSON.parse(readFileSync(file, "utf8")) as { url?: unknown };
+    const { url } = JSON.parse(await readFile(file, "utf8")) as { url?: unknown };
     return typeof url === "string" ? { url, token } : null;
   } catch {
     return null;
@@ -56,8 +56,9 @@ function telemetryTarget(config: Config): TelemetryTarget | null {
 /** The local daemon's receptor URL, if it answers within `timeoutMs`. */
 async function liveReceptor(dataDir: string, timeoutMs: number): Promise<string | null> {
   const file = join(dataDir, RECEPTOR_FILE);
-  if (!existsSync(file)) return null;
-  const { url } = JSON.parse(readFileSync(file, "utf8")) as { url: string };
+  const text = await readFile(file, "utf8").catch(() => null);
+  if (text === null) return null;
+  const { url } = JSON.parse(text) as { url: string };
   const healthy = await fetch(`${url}/health`, { signal: AbortSignal.timeout(timeoutMs) }).then(
     (response) => response.ok,
     () => false,
@@ -169,11 +170,14 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   let mcpConfigPath: string | null = null;
   if (url && token) {
     const dir = join(opts.config.dataDir, "channels");
-    mkdirSync(dir, { recursive: true });
+    await mkdir(dir, { recursive: true });
     mcpConfigPath = join(dir, `${launchId}.json`);
     const [command, ...rest] = opts.self;
     const args = [...rest, "channel", "--launch", launchId, "--url", url, "--token", token];
-    writeFileSync(mcpConfigPath, JSON.stringify({ mcpServers: { flightdeck: { command, args } } }));
+    await writeFile(
+      mcpConfigPath,
+      JSON.stringify({ mcpServers: { flightdeck: { command, args } } }),
+    );
   } else if (!print) {
     opts.log.error(
       "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
@@ -183,17 +187,17 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   // 8 KB do not fit on a Windows command line).
   const dir = join(opts.config.dataDir, "personas");
   const files: string[] = [];
-  const write = (name: string, content: string) => {
-    mkdirSync(dir, { recursive: true });
+  const write = async (name: string, content: string) => {
+    await mkdir(dir, { recursive: true });
     const file = join(dir, name);
-    writeFileSync(file, content);
+    await writeFile(file, content);
     files.push(file);
     return file;
   };
   const added: string[] = [];
   if (persona) {
     added.push(
-      ...personaArgs(persona.persona, write(`${launchId}.md`, persona.persona.body), args),
+      ...personaArgs(persona.persona, await write(`${launchId}.md`, persona.persona.body), args),
     );
   }
   // The personas of the project as agents to call; the user's own --agents wins, and without
@@ -205,7 +209,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     const json = JSON.stringify(agents);
     if (print) {
       // Only print mode reads --agents from a file.
-      added.push("--agents", write(`${launchId}-agents.json`, json));
+      added.push("--agents", await write(`${launchId}-agents.json`, json));
     } else {
       const launch = interactiveAgents({
         json,
@@ -227,7 +231,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
         env: {
           ...env,
           // Print mode is not a session of a terminal: no exporter.
-          ...wrapperTelemetryEnv(env, print ? null : telemetryTarget(opts.config)),
+          ...wrapperTelemetryEnv(env, print ? null : await telemetryTarget(opts.config)),
           FLIGHTDECK_LAUNCH_ID: launchId,
           // The badge only (never the body): the SessionStart hook forwards it to the central.
           ...(persona
@@ -248,8 +252,8 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
     if (!background) {
-      if (mcpConfigPath) rmSync(mcpConfigPath, { force: true });
-      for (const file of files) rmSync(file, { force: true });
+      if (mcpConfigPath) await rm(mcpConfigPath, { force: true });
+      for (const file of files) await rm(file, { force: true });
     }
   }
 }

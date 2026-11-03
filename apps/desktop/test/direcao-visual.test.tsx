@@ -143,7 +143,11 @@ describe("direcao-visual", () => {
 
   test("na lista, a linha tem o pontinho (sem pílula de estado) e a hora em números tabulares; só o rótulo é pílula", async () => {
     const d = makeDaemon(cleanups);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "oi",
+      name: "Gerenciada",
+    });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);

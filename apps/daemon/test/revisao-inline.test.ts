@@ -29,7 +29,7 @@ async function session(overrides: Partial<ReviewCommentsOptions> = {}) {
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
   writeFileSync(join(repo, "a.txt"), "um\ndois\ntrês\nquatro\ncinco\n");
-  const { sessionId } = ctx.manager.create({ cwd: repo, prompt: "oi" });
+  const { sessionId } = await ctx.manager.create({ cwd: repo, prompt: "oi" });
   await poll(() => ctx.manager.get(sessionId).status === "idle");
   const claudeId = ctx.manager.get(sessionId).claudeSessionId as string;
   const changes = new Changes({ db: ctx.store.db });

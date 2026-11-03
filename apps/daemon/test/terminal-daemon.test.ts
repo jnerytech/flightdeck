@@ -46,9 +46,9 @@ function setup(overrides: Partial<TerminalManagerOptions> = {}) {
   return { manager, ptys, time, logs, project, root, open };
 }
 
-const code = (fn: () => unknown) => {
+const code = async (fn: () => unknown) => {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -84,9 +84,9 @@ describe("terminal-daemon", () => {
     expect(Buffer.from(ring.snapshot()).toString()).toBe("3456789ABC");
   });
 
-  test("open: PTY com o shell padrão, o cwd real, o tamanho e o ambiente sem a chave de API; list mostra o terminal", () => {
+  test("open: PTY com o shell padrão, o cwd real, o tamanho e o ambiente sem a chave de API; list mostra o terminal", async () => {
     const { manager, ptys, project } = setup();
-    const info = manager.open({ cwd: project, cols: 100, rows: 30 });
+    const info = await manager.open({ cwd: project, cols: 100, rows: 30 });
     expect(info).toEqual({
       terminalId: info.terminalId,
       cwd: project,
@@ -111,23 +111,23 @@ describe("terminal-daemon", () => {
     expect(manager.list()).toEqual([info]);
   });
 
-  test("the shell is told it talks to an xterm, whatever the daemon's own TERM is: a service has none, and readline then scrolls a long line sideways", () => {
+  test("the shell is told it talks to an xterm, whatever the daemon's own TERM is: a service has none, and readline then scrolls a long line sideways", async () => {
     const bare = setup();
-    bare.open();
+    await bare.open();
     expect(bare.ptys.spawned[0]?.env.TERM).toBe("xterm-256color");
     expect(bare.ptys.spawned[0]?.env.COLORTERM).toBe("truecolor");
     const dumb = setup({ env: () => ({ SHELL: "/bin/zsh", TERM: "dumb" }) });
-    dumb.open();
+    await dumb.open();
     expect(dumb.ptys.spawned[0]?.env.TERM).toBe("xterm-256color");
     // What a client asks for still wins.
     const asked = setup();
-    asked.manager.open({ cwd: asked.project, cols: 80, rows: 24, env: { TERM: "screen" } });
+    await asked.manager.open({ cwd: asked.project, cols: 80, rows: 24, env: { TERM: "screen" } });
     expect(asked.ptys.spawned[0]?.env.TERM).toBe("screen");
   });
 
-  test("open com command abre esse argv, sem shell; cwd fora de allowedRoots e spawn que falha são recusados", () => {
+  test("open com command abre esse argv, sem shell; cwd fora de allowedRoots e spawn que falha são recusados", async () => {
     const { manager, ptys, project, root } = setup();
-    const info = manager.open({
+    const info = await manager.open({
       cwd: project,
       command: ["node", "--flag", "x.js"],
       cols: 80,
@@ -136,8 +136,10 @@ describe("terminal-daemon", () => {
     expect(ptys.spawned[0]?.argv).toEqual(["node", "--flag", "x.js"]);
     // Only the program is shown, never its arguments.
     expect(info.command).toBe("node");
-    expect(code(() => manager.open({ cwd: tempDir("fora-"), cols: 80, rows: 24 }))).toBe(
-      "forbidden_cwd",
+    await expect(manager.open({ cwd: tempDir("fora-"), cols: 80, rows: 24 })).rejects.toMatchObject(
+      {
+        code: "forbidden_cwd",
+      },
     );
     expect(ptys.spawned).toHaveLength(1);
     const broken = new TerminalManager({
@@ -146,13 +148,15 @@ describe("terminal-daemon", () => {
       },
       allowedRoots: [root],
     });
-    expect(code(() => broken.open({ cwd: project, cols: 80, rows: 24 }))).toBe("invalid_state");
+    expect(await code(() => broken.open({ cwd: project, cols: 80, rows: 24 }))).toBe(
+      "invalid_state",
+    );
     expect(broken.list()).toEqual([]);
   });
 
-  test("write, resize e attach com scrollback; a saída vai em lotes de até 16 KB a cada 16 ms, em base64", () => {
+  test("write, resize e attach com scrollback; a saída vai em lotes de até 16 KB a cada 16 ms, em base64", async () => {
     const { manager, ptys, time, open } = setup();
-    const { terminalId } = open();
+    const { terminalId } = await open();
     const pty = ptys.spawned[0];
     const a = fakeSink();
     expect(manager.attach(terminalId, a)).toEqual({
@@ -193,14 +197,14 @@ describe("terminal-daemon", () => {
     pty?.emit("novo");
     time.advance(16);
     expect(text(b.frames)).toBe("novo");
-    expect(code(() => manager.write("nada", "x"))).toBe("not_found");
-    expect(code(() => manager.resize("nada", 1, 1))).toBe("not_found");
-    expect(code(() => manager.attach("nada", b))).toBe("not_found");
+    expect(await code(() => manager.write("nada", "x"))).toBe("not_found");
+    expect(await code(() => manager.resize("nada", 1, 1))).toBe("not_found");
+    expect(await code(() => manager.attach("nada", b))).toBe("not_found");
   });
 
-  test("o terminal sobrevive à desconexão e o scrollback de 2 MB é reapresentado", () => {
+  test("o terminal sobrevive à desconexão e o scrollback de 2 MB é reapresentado", async () => {
     const { manager, ptys, open } = setup();
-    const { terminalId } = open();
+    const { terminalId } = await open();
     const pty = ptys.spawned[0];
     const a = fakeSink();
     manager.attach(terminalId, a);
@@ -219,9 +223,9 @@ describe("terminal-daemon", () => {
     expect([kept[0], kept[kept.length - 1]]).toEqual(["b".charCodeAt(0), "c".charCodeAt(0)]);
   });
 
-  test("sem ninguém anexado por idleMinutes (120) o terminal é encerrado; anexar zera a contagem", () => {
+  test("sem ninguém anexado por idleMinutes (120) o terminal é encerrado; anexar zera a contagem", async () => {
     const { manager, ptys, time, logs, open } = setup();
-    open();
+    await open();
     const pty = ptys.spawned[0];
     time.advance(119 * MIN);
     expect(manager.list()).toHaveLength(1);
@@ -237,24 +241,24 @@ describe("terminal-daemon", () => {
     expect(manager.list()).toEqual([]);
     expect(logs.some((line) => line.includes("ocioso"))).toBe(true);
     const short = setup({ idleMinutes: 5 });
-    short.open();
+    await short.open();
     short.time.advance(5 * MIN);
     expect(short.ptys.spawned[0]?.killed).toBe(true);
   });
 
-  test("terminal.max vivos por host: o seguinte é recusado; os que já terminaram não contam", () => {
+  test("terminal.max vivos por host: o seguinte é recusado; os que já terminaram não contam", async () => {
     const { manager, ptys, open } = setup({ max: 2 });
-    open();
-    open();
-    expect(code(open)).toBe("invalid_state");
+    await open();
+    await open();
+    expect(await code(open)).toBe("invalid_state");
     ptys.spawned[0]?.exit(0);
-    open();
+    await open();
     expect(manager.list()).toHaveLength(3);
   });
 
-  test("cliente lento: a fila de 1 MB estoura, ele recebe terminal.resync e reanexa; o PTY segue lendo e o rápido não para", () => {
+  test("cliente lento: a fila de 1 MB estoura, ele recebe terminal.resync e reanexa; o PTY segue lendo e o rápido não para", async () => {
     const { manager, ptys, time, open } = setup();
-    const { terminalId } = open();
+    const { terminalId } = await open();
     const pty = ptys.spawned[0];
     const slow = fakeSink();
     slow.backlogBytes = 2 * MB;
@@ -285,9 +289,9 @@ describe("terminal-daemon", () => {
     expect(text(slow.frames)).toBe("depois\r\n");
   });
 
-  test("conexão cheia mas fila pequena: a saída espera, em ordem, e sai quando o socket esvazia", () => {
+  test("conexão cheia mas fila pequena: a saída espera, em ordem, e sai quando o socket esvazia", async () => {
     const { manager, ptys, time, open } = setup();
-    const { terminalId } = open();
+    const { terminalId } = await open();
     const slow = fakeSink();
     slow.backlogBytes = 2 * MB;
     manager.attach(terminalId, slow);
@@ -302,9 +306,9 @@ describe("terminal-daemon", () => {
     expect(text(slow.frames)).toBe("umdois");
   });
 
-  test("close com kill encerra e remove; sem kill só desanexa; o que já acabou é removido; desconhecido é not_found", () => {
+  test("close com kill encerra e remove; sem kill só desanexa; o que já acabou é removido; desconhecido é not_found", async () => {
     const { manager, ptys, open } = setup();
-    const first = open();
+    const first = await open();
     const a = fakeSink();
     manager.attach(first.terminalId, a);
     manager.close(first.terminalId, false);
@@ -319,16 +323,16 @@ describe("terminal-daemon", () => {
       exitCode: 143,
     });
     expect(manager.list()).toEqual([]);
-    const second = open();
+    const second = await open();
     ptys.spawned[1]?.exit(0);
     manager.close(second.terminalId, false);
     expect(manager.list()).toEqual([]);
-    expect(code(() => manager.close("nada", true))).toBe("not_found");
+    expect(await code(() => manager.close("nada", true))).toBe("not_found");
   });
 
-  test("o processo que termina sozinho manda terminal.exited depois da saída pendente; o terminal fica até fechar ou ficar ocioso", () => {
+  test("o processo que termina sozinho manda terminal.exited depois da saída pendente; o terminal fica até fechar ou ficar ocioso", async () => {
     const { manager, ptys, time, open } = setup();
-    const { terminalId } = open();
+    const { terminalId } = await open();
     const a = fakeSink();
     manager.attach(terminalId, a);
     ptys.spawned[0]?.emit("último\r\n");
@@ -337,8 +341,8 @@ describe("terminal-daemon", () => {
     expect(text(a.frames)).toBe("último\r\n");
     expect(a.frames[1]).toEqual({ type: "terminal.exited", terminalId, exitCode: 7 });
     expect(manager.list()[0]).toMatchObject({ exitCode: 7, attached: 1 });
-    expect(code(() => manager.write(terminalId, "x"))).toBe("invalid_state");
-    expect(code(() => manager.resize(terminalId, 10, 10))).toBe("invalid_state");
+    expect(await code(() => manager.write(terminalId, "x"))).toBe("invalid_state");
+    expect(await code(() => manager.resize(terminalId, 10, 10))).toBe("invalid_state");
     const late = manager.attach(terminalId, fakeSink());
     expect([late.exitCode, Buffer.from(late.scrollback, "base64").toString()]).toEqual([
       7,
@@ -350,9 +354,9 @@ describe("terminal-daemon", () => {
     expect(ptys.spawned[0]?.killed).toBe(false);
   });
 
-  test("o log registra abrir, anexar e encerrar com id, pasta e só o programa, nunca o conteúdo nem os argumentos", () => {
+  test("o log registra abrir, anexar e encerrar com id, pasta e só o programa, nunca o conteúdo nem os argumentos", async () => {
     const { manager, ptys, time, logs, project } = setup();
-    const { terminalId } = manager.open({
+    const { terminalId } = await manager.open({
       cwd: project,
       command: ["node", "--token=SEGREDO-ARG"],
       cols: 80,
@@ -375,10 +379,10 @@ describe("terminal-daemon", () => {
     expect(logs.join("\n")).not.toContain("SEGREDO");
   });
 
-  test("stop mata todos os terminais", () => {
+  test("stop mata todos os terminais", async () => {
     const { manager, ptys, open } = setup();
-    open();
-    open();
+    await open();
+    await open();
     manager.stop();
     expect(ptys.spawned.map((p) => p.killed)).toEqual([true, true]);
     expect(manager.list()).toEqual([]);

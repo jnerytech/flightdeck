@@ -34,6 +34,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [Aprovações e permitir sempre](#aprovações-e-permitir-sempre)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
+  - [Achar projetos](#achar-projetos)
   - [Ciclo do card](#ciclo-do-card)
   - [Provedores de PR](#provedores-de-pr)
   - [Limite de execuções paralelas](#limite-de-execuções-paralelas)
@@ -262,6 +263,22 @@ dentro dos `allowedRoots`, nome, modo de permissão e primeiro prompt. Pedidos d
 aparecem como cards inline, com **Aprovar** e **Negar**. O app reconecta sozinho (de 1 s a 30 s)
 e retoma cada sessão do último evento visto.
 
+#### O primeiro host
+
+Sem nenhum host, o app mostra quatro passos no lugar das telas de sempre: instalar e iniciar o
+daemon (`flightdeckd setup`), copiar o link de pareamento que ele imprime, colar o link e
+apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você aperta
+**Verificar** em **Verificar este host** e libera as pastas de projetos em **Pastas permitidas**.
+Depois, **Achar meus projetos** (em **Projetos**) preenche o Board sem digitar caminho.
+
+#### Verificar um host
+
+**Verificar este host** (na página do host, para hosts online cujo daemon anuncia `doctor.run`)
+pede ao daemon que se confira: configuração, pastas permitidas, serviço, daemon, Claude Code,
+hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, **atenção** ou
+**falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
+O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
+terminal com `flightdeckd doctor`.
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
@@ -613,6 +630,78 @@ No app, o botão ▦ ao lado do host abre **Projetos de &lt;host&gt;**. Cada pro
 Ao iniciar um card, o daemon roda `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` e acrescenta `.flightdeck/worktrees/` ao `.git/info/exclude` do repositório
 (o `.gitignore` não é tocado). O prompt da sessão é a descrição do card mais o modelo.
+
+### Achar projetos
+
+**Achar meus projetos** (na tela **Projetos**, para hosts que anunciam `projects.scan` e
+`projects.clone`) tem duas partes:
+
+- **Procurar nas pastas permitidas** busca repositórios git dentro das pastas permitidas, em dois
+  níveis por padrão, até 200 repositórios. Pula pastas ocultas, `node_modules`, links e o
+  interior de um repositório já achado, e nunca abre mais de 2000 pastas. Repositórios que já são
+  projetos ficam de fora. Marque os que quiser e aperte **Adicionar selecionados**.
+- **Clonar a partir de um endereço** roda `git clone` numa pasta dentro das pastas permitidas e
+  registra o resultado como projeto. Só entram endereços `https://`, `ssh://` e `usuario@host:caminho`;
+  é recusado o endereço que começa com traço, tem espaços, aponta para um caminho local ou usa
+  `file://` ou um auxiliar de transporte, assim como um nome de pasta que não seja um nome simples
+  ou uma pasta que já exista. O git roda sem pedir senha e para depois de cinco minutos, então um
+  repositório privado precisa de chave SSH ou de um credential helper já configurado no host.
+  Toda recusa diz o motivo.
+
+
+### Começar pelo GitHub
+
+Para hosts que anunciam `github` há dois lugares:
+
+- **Hosts, painel do GitHub.** **Entrar com o GitHub** pede ao `gh` do host que inicie o fluxo de
+  dispositivo do GitHub. O painel mostra um código de uso único: aperte **Abrir o GitHub**,
+  digite o código naquela página e confirme. O painel percebe sozinho e mostra **Conectado como
+  <conta>**, onde o login fica guardado (o chaveiro do sistema, o arquivo do próprio `gh`, ou uma
+  variável de ambiente do daemon) e as permissões (`repo`, `read:project`). O Flightdeck nunca vê o
+  seu token: quem guarda é o `gh`. **Sair** pede ao `gh` que o esqueça; um login que vem de
+  `GH_TOKEN` ou `GITHUB_TOKEN` é do ambiente do daemon e não dá para sair por aqui. Se o `gh` não
+  estiver instalado no host, o painel avisa; instale e aperte **Verificar de novo**.
+- **Projetos, Começar pelo GitHub.** Lista os seus repositórios (ou busque), escolha um e, se
+  quiser, uma das issues abertas dele. Escolha a pasta permitida onde clonar e se abre **Um card do
+  quadro** ou **Uma sessão**. O host clona o repositório nessa pasta (ou usa o clone que já estiver
+  lá), registra como projeto e então:
+  - **o card** leva o título, o corpo e o link da issue (uma vez por issue); a issue escrita por
+    alguém de fora das pessoas do repositório vem marcada como conteúdo de terceiros e fica sem
+    aprovação automática;
+  - **a sessão** abre no clone com a issue citada no primeiro prompt, sob a mesma marca quando
+    vem de fora.
+  Sem issue, só o repositório é clonado e registrado. Uma pasta com esse nome que seja outro
+  repositório é recusada, e toda recusa diz o motivo.
+
+Para testar: na página do host aperte **Entrar com o GitHub**, confirme no GitHub; em **Projetos** aperte
+**Começar pelo GitHub**, escolha um repositório e aperte **Começar**.
+
+
+### Sincronização do quadro com o GitHub Projects
+
+Para hosts que anunciam `boardsync` (precisa do `gh` do host conectado, veja **Começar pelo GitHub**), o botão
+**Sincronizar** do **Board** de um projeto liga o projeto a um quadro do GitHub Projects (v2):
+
+- **Ligar quadro.** Escolha um dos seus quadros e aperte **Ligar quadro**. Os itens dele viram cards (uma issue guarda o
+  link e, quando foi escrita por um estranho, a marca de terceiros e fica sem aprovação automática); o **Status** de cada
+  item põe o card numa coluna. Depois disso o host lê o quadro a cada minuto, e **Sincronizar agora** faz isso na hora.
+- **Mapa de status.** Cada status do quadro tem uma coluna aqui: por padrão Todo e Backlog para Backlog, In Progress para
+  Em andamento, In Review para Em revisão, Done para Concluído. Mude uma coluna e aperte **Salvar mapa**; um status
+  *Sem mapa* deixa os cards onde estão. *Esperando você* não tem par no GitHub, então os cards que vão para lá não são
+  enviados.
+- **Só leitura por padrão.** Mover um card aqui não muda nada no quadro até você ligar **Enviar minhas mudanças de card ao
+  quadro**. Ligar pede confirmação e precisa da permissão `project`; se o login não a tem, a mensagem diz e nada é
+  enviado. O envio só muda o Status de itens que já são cards: nunca cria, edita ou apaga um item.
+- **Conflitos.** Se um card mudou de coluna aqui e o item mudou lá desde a última sincronização, vale a mudança mais
+  recente. Um empate em até dois segundos vai para o quadro quando o envio está desligado e para este lado quando está
+  ligado. O valor que perdeu nunca é descartado: o **Registro da sincronização** do card mostra, com os dois horários. Um
+  card que está rodando não é movido pelo quadro (o registro diz isso).
+- **No card.** **Abrir no quadro** abre o item; *Não está mais no quadro* aparece quando ele foi arquivado ou removido (o
+  card fica); o **Registro da sincronização** lista conflitos, movimentos pulados e envios que falharam.
+- **Desligar** para a sincronização e mantém os cards, com seus links.
+
+Para testar: entre no GitHub na página do host, abra o **Board** de um projeto, aperte **Sincronizar**, escolha um quadro e
+**Ligar quadro**.
 
 ### Ciclo do card
 
@@ -1801,6 +1890,14 @@ tokens e turnos.
 - **Custo:** é a diferença do total que o SDK informa para cada sessão, nunca a soma turno a
   turno.
 - **Projeto:** o mesmo da tela Sessões (o remoto `origin`, ou o caminho do repositório).
+- **Agrupado por projeto:** cada projeto é um bloco com o total (o mais caro primeiro) e seus
+  dias abaixo, do mais novo ao mais antigo. Datas e custos nunca quebram de linha.
+- **Ocultos:** pastas temporárias (`temp`, `tmp`, `/var/folders`) e worktrees de agentes
+  (`.claude/worktrees`) não aparecem.
+- **Abrir as sessões:** clique num dia para abrir o Histórico filtrado pela pasta desse projeto e
+  por esse dia. Um projeto conhecido pelo remoto (compartilhado por várias pastas e worktrees)
+  abre o Histórico filtrado pelo próprio projeto, então todas as pastas dele aparecem; uma ficha
+  "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
 ### Custos

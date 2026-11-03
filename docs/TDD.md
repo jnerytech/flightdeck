@@ -77,6 +77,12 @@ em vez de depender de cuidado.
   run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
   flaky. Area tests, typecheck and lint do not need the slot.
+- **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
+  `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a
+  test that call races the next line (an assertion runs before the work, a cleanup before the
+  stop). Await the call. When the test means to leave it alone, say so with `void`
+  (`void server.stop()` cuts a connection without waiting for it to drain). Do not silence the
+  rule with a `biome-ignore`.
 
 ## Armadilhas conhecidas
 

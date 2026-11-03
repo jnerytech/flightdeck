@@ -54,9 +54,9 @@ function setup(scanner = new SecretScanner()) {
   };
 }
 
-function codeOf(fn: () => unknown): string {
+async function codeOf(fn: () => unknown): Promise<string> {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -73,9 +73,9 @@ const cmd = (name: string, run = "ls", extra: Record<string, unknown> = {}) => (
 const names = (list: Snippet[]) => list.map((s) => s.name);
 
 describe("snippets-escopos: do host", () => {
-  test("salvar, listar, buscar, atualizar e remover; o mesmo nome em dois escopos pode, no mesmo não", () => {
+  test("salvar, listar, buscar, atualizar e remover; o mesmo nome em dois escopos pode, no mesmo não", async () => {
     const { snippets, project } = setup();
-    const saved = snippets.save(cmd("status", "git status", { tags: ["git"] }));
+    const saved = await snippets.save(cmd("status", "git status", { tags: ["git"] }));
     expect(saved).toMatchObject({
       scope: "host",
       source: "daemon",
@@ -92,32 +92,34 @@ describe("snippets-escopos: do host", () => {
       runnable: true,
     });
     expect(saved.id).toMatch(/^[0-9A-Z]{26}$/);
-    expect(snippets.list({}).snippets.map((s) => s.id)).toEqual([saved.id]);
-    expect(snippets.get(saved.id).name).toBe("status");
+    expect((await snippets.list({})).snippets.map((s) => s.id)).toEqual([saved.id]);
+    expect((await snippets.get(saved.id)).name).toBe("status");
     // Same name, same scope: refused. Same name in the project: fine.
-    expect(codeOf(() => snippets.save(cmd("status", "git status -s")))).toBe("invalid_state");
+    expect(await codeOf(() => snippets.save(cmd("status", "git status -s")))).toBe("invalid_state");
     expect(
-      codeOf(() => snippets.save(cmd("status", "x", { scope: "project", projectPath: project }))),
+      await codeOf(() =>
+        snippets.save(cmd("status", "x", { scope: "project", projectPath: project })),
+      ),
     ).toBe("ok");
-    const updated = snippets.save({ ...cmd("status", "git status -sb"), id: saved.id });
+    const updated = await snippets.save({ ...cmd("status", "git status -sb"), id: saved.id });
     expect(updated).toMatchObject({ id: saved.id, run: "git status -sb" });
-    expect(snippets.list({}).snippets).toHaveLength(1);
+    expect((await snippets.list({})).snippets).toHaveLength(1);
     // A snippet cannot change scope: create another.
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         snippets.save({ ...cmd("status"), id: saved.id, scope: "project", projectPath: project }),
       ),
     ).toBe("bad_request");
-    snippets.remove(saved.id);
-    expect(snippets.list({}).snippets).toEqual([]);
-    expect(codeOf(() => snippets.get(saved.id))).toBe("not_found");
-    expect(codeOf(() => snippets.remove(saved.id))).toBe("not_found");
-    expect(codeOf(() => snippets.save({ ...cmd("x"), id: "nada" }))).toBe("not_found");
+    await snippets.remove(saved.id);
+    expect((await snippets.list({})).snippets).toEqual([]);
+    expect(await codeOf(() => snippets.get(saved.id))).toBe("not_found");
+    expect(await codeOf(() => snippets.remove(saved.id))).toBe("not_found");
+    expect(await codeOf(() => snippets.save({ ...cmd("x"), id: "nada" }))).toBe("not_found");
   });
 
-  test("um snippet não muda de lugar na edição: do daemon para o arquivo, nem o contrário", () => {
+  test("um snippet não muda de lugar na edição: do daemon para o arquivo, nem o contrário", async () => {
     const { snippets, project, writeFile } = setup();
-    const mine = snippets.save({
+    const mine = await snippets.save({
       scope: "project",
       projectPath: project,
       name: "meu",
@@ -125,7 +127,7 @@ describe("snippets-escopos: do host", () => {
       run: "ls",
     });
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         snippets.save({
           id: mine.id,
           scope: "project",
@@ -139,7 +141,7 @@ describe("snippets-escopos: do host", () => {
     ).toBe("bad_request");
     writeFile(SPEC_FILE);
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         snippets.save({
           id: `file:${project}:testes-rapidos`,
           scope: "project",
@@ -152,55 +154,61 @@ describe("snippets-escopos: do host", () => {
     ).toBe("bad_request");
   });
 
-  test("um snippet com segredo é recusado, também no nome e nas tags", () => {
+  test("um snippet com segredo é recusado, também no nome e nas tags", async () => {
     const { snippets } = setup();
     const token = "ghp_0123456789abcdef0123456789abcdef0123";
-    expect(codeOf(() => snippets.save(cmd("a", `echo ${token}`)))).toBe("snippet_secret");
-    expect(codeOf(() => snippets.save(cmd("b", "ls", { tags: [token] })))).toBe("snippet_secret");
-    expect(snippets.list({}).snippets).toEqual([]);
+    expect(await codeOf(() => snippets.save(cmd("a", `echo ${token}`)))).toBe("snippet_secret");
+    expect(await codeOf(() => snippets.save(cmd("b", "ls", { tags: [token] })))).toBe(
+      "snippet_secret",
+    );
+    expect((await snippets.list({})).snippets).toEqual([]);
   });
 });
 
 describe("snippets-escopos: do projeto", () => {
-  test("o do daemon é só daquele projeto, que precisa estar nas pastas permitidas", () => {
+  test("o do daemon é só daquele projeto, que precisa estar nas pastas permitidas", async () => {
     const { snippets, project, other, root } = setup();
-    const mine = snippets.save({
+    const mine = await snippets.save({
       ...cmd("build", "bun run build"),
       scope: "project",
       projectPath: project,
     });
     expect(mine).toMatchObject({ scope: "project", source: "daemon", projectPath: project });
-    snippets.save(cmd("global-do-host", "uptime"));
-    expect(names(snippets.list({ projectPath: project }).snippets).sort()).toEqual([
+    await snippets.save(cmd("global-do-host", "uptime"));
+    expect(names((await snippets.list({ projectPath: project })).snippets).sort()).toEqual([
       "build",
       "global-do-host",
     ]);
     // The host list does not carry the project ones, and another project does not see them.
-    expect(names(snippets.list({}).snippets)).toEqual(["global-do-host"]);
-    expect(names(snippets.list({ projectPath: other }).snippets)).toEqual(["global-do-host"]);
-    expect(names(snippets.list({ scope: "project", projectPath: project }).snippets)).toEqual([
-      "build",
-    ]);
-    expect(names(snippets.list({ scope: "host", projectPath: project }).snippets)).toEqual([
+    expect(names((await snippets.list({})).snippets)).toEqual(["global-do-host"]);
+    expect(names((await snippets.list({ projectPath: other })).snippets)).toEqual([
       "global-do-host",
     ]);
-    expect(codeOf(() => snippets.save({ ...cmd("x"), scope: "project" }))).toBe("bad_request");
     expect(
-      codeOf(() =>
+      names((await snippets.list({ scope: "project", projectPath: project })).snippets),
+    ).toEqual(["build"]);
+    expect(names((await snippets.list({ scope: "host", projectPath: project })).snippets)).toEqual([
+      "global-do-host",
+    ]);
+    expect(await codeOf(() => snippets.save({ ...cmd("x"), scope: "project" }))).toBe(
+      "bad_request",
+    );
+    expect(
+      await codeOf(() =>
         snippets.save({ ...cmd("x"), scope: "project", projectPath: join(root, "..", "fora") }),
       ),
     ).toBe("forbidden_cwd");
-    expect(codeOf(() => snippets.list({ projectPath: join(root, "..", "fora") }))).toBe(
+    expect(await codeOf(() => snippets.list({ projectPath: join(root, "..", "fora") }))).toBe(
       "forbidden_cwd",
     );
-    expect(codeOf(() => snippets.list({ scope: "project" }))).toBe("bad_request");
+    expect(await codeOf(() => snippets.list({ scope: "project" }))).toBe("bad_request");
   });
 
-  test("o .flightdeck/snippets.yaml carrega: o comando não roda sem confiança, o prompt sim, e sem arquivo não há nada", () => {
+  test("o .flightdeck/snippets.yaml carrega: o comando não roda sem confiança, o prompt sim, e sem arquivo não há nada", async () => {
     const { snippets, project, file, writeFile } = setup();
-    expect(snippets.list({ projectPath: project })).toEqual({ snippets: [], file: null });
+    expect(await snippets.list({ projectPath: project })).toEqual({ snippets: [], file: null });
     writeFile(SPEC_FILE);
-    const listed = snippets.list({ projectPath: project });
+    const listed = await snippets.list({ projectPath: project });
     expect(listed.file).toMatchObject({ path: file, trusted: false, errors: [] });
     expect(listed.file?.hash).toMatch(/^[0-9a-f]{64}$/);
     const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
@@ -219,30 +227,31 @@ describe("snippets-escopos: do projeto", () => {
     expect(byName["revisar-seguranca"]).toMatchObject({ type: "prompt", runnable: true });
   });
 
-  test("confiar no hash libera o comando; o arquivo mudando tira a confiança; o hash errado é recusado", () => {
+  test("confiar no hash libera o comando; o arquivo mudando tira a confiança; o hash errado é recusado", async () => {
     const { snippets, project, writeFile } = setup();
     writeFile(SPEC_FILE);
-    const hash = snippets.list({ projectPath: project }).file?.hash ?? "";
-    expect(codeOf(() => snippets.trust(project, "0".repeat(64)))).toBe("invalid_state");
-    expect(snippets.trust(project, hash)).toMatchObject({ hash, trusted: true });
-    const run = () =>
-      snippets.list({ projectPath: project }).snippets.find((s) => s.name === "testes-rapidos")
-        ?.runnable;
-    expect(run()).toBe(true);
+    const hash = (await snippets.list({ projectPath: project })).file?.hash ?? "";
+    expect(await codeOf(() => snippets.trust(project, "0".repeat(64)))).toBe("invalid_state");
+    expect(await snippets.trust(project, hash)).toMatchObject({ hash, trusted: true });
+    const run = async () =>
+      (await snippets.list({ projectPath: project })).snippets.find(
+        (s) => s.name === "testes-rapidos",
+      )?.runnable;
+    expect(await run()).toBe(true);
     // Trusting twice is fine; a change to the file is a different hash and is not trusted.
-    snippets.trust(project, hash);
+    await snippets.trust(project, hash);
     writeFile(SPEC_FILE.replace("bun test", "bun test --bail"));
-    expect(snippets.list({ projectPath: project }).file?.trusted).toBe(false);
-    expect(run()).toBe(false);
+    expect((await snippets.list({ projectPath: project })).file?.trusted).toBe(false);
+    expect(await run()).toBe(false);
     // Back to the trusted content: trusted again, the hash is what counts.
     writeFile(SPEC_FILE);
-    expect(run()).toBe(true);
-    expect(codeOf(() => snippets.trust(project, hash))).toBe("ok");
+    expect(await run()).toBe(true);
+    expect(await codeOf(() => snippets.trust(project, hash))).toBe("ok");
     const missing = join(project, "..", "outro");
-    expect(codeOf(() => snippets.trust(missing, hash))).toBe("invalid_state");
+    expect(await codeOf(() => snippets.trust(missing, hash))).toBe("invalid_state");
   });
 
-  test("entradas ruins do arquivo ficam de fora com o motivo, sem derrubar as boas; um YAML quebrado não derruba nada", () => {
+  test("entradas ruins do arquivo ficam de fora com o motivo, sem derrubar as boas; um YAML quebrado não derruba nada", async () => {
     const { snippets, project, writeFile } = setup();
     writeFile(
       [
@@ -261,23 +270,23 @@ describe("snippets-escopos: do projeto", () => {
         "",
       ].join("\n"),
     );
-    const listed = snippets.list({ projectPath: project });
+    const listed = await snippets.list({ projectPath: project });
     expect(names(listed.snippets)).toEqual(["boa"]);
     expect(listed.file?.errors).toHaveLength(4);
     expect(listed.file?.errors.join("|")).toMatch(/com-segredo.*secret/);
     expect(listed.file?.errors.join("|")).toMatch(/sem-run/);
     expect(listed.file?.errors.join("|")).toMatch(/boa.*repeated name/);
     writeFile("isto: [não é uma lista");
-    const broken = snippets.list({ projectPath: project });
+    const broken = await snippets.list({ projectPath: project });
     expect(broken.snippets).toEqual([]);
     expect(broken.file?.errors[0]).toMatch(/YAML/);
     writeFile("nome: não é lista\n");
-    expect(snippets.list({ projectPath: project }).file?.errors[0]).toMatch(/lista/);
+    expect((await snippets.list({ projectPath: project })).file?.errors[0]).toMatch(/lista/);
   });
 
-  test("salvar no arquivo escreve YAML em blocos que volta igual, cria a pasta, tira a confiança e guarda os outros", () => {
+  test("salvar no arquivo escreve YAML em blocos que volta igual, cria a pasta, tira a confiança e guarda os outros", async () => {
     const { snippets, project, file } = setup();
-    const first = snippets.save({
+    const first = await snippets.save({
       scope: "project",
       target: "file",
       projectPath: project,
@@ -292,7 +301,7 @@ describe("snippets-escopos: do projeto", () => {
       id: `file:${project}:testes-rapidos`,
       runnable: false,
     });
-    snippets.save({
+    await snippets.save({
       scope: "project",
       target: "file",
       projectPath: project,
@@ -315,14 +324,14 @@ describe("snippets-escopos: do projeto", () => {
       ].join("\n"),
     );
     expect((Bun.YAML.parse(readFileSync(file, "utf8")) as unknown[]).length).toBe(2);
-    expect(names(snippets.list({ projectPath: project }).snippets).sort()).toEqual([
+    expect(names((await snippets.list({ projectPath: project })).snippets).sort()).toEqual([
       "revisar",
       "testes-rapidos",
     ]);
     // The file changed: whatever was trusted before is not anymore.
-    const hash = snippets.list({ projectPath: project }).file?.hash ?? "";
-    snippets.trust(project, hash);
-    snippets.save({
+    const hash = (await snippets.list({ projectPath: project })).file?.hash ?? "";
+    await snippets.trust(project, hash);
+    await snippets.save({
       scope: "project",
       target: "file",
       projectPath: project,
@@ -331,14 +340,14 @@ describe("snippets-escopos: do projeto", () => {
       run: "echo {{x}}",
       vars: { x: { default: "a", options: ["a", "b"] } },
     });
-    expect(snippets.list({ projectPath: project }).file?.trusted).toBe(false);
+    expect((await snippets.list({ projectPath: project })).file?.trusted).toBe(false);
   });
 
-  test("editar, renomear e remover no arquivo; o último removido deixa uma lista vazia", () => {
+  test("editar, renomear e remover no arquivo; o último removido deixa uma lista vazia", async () => {
     const { snippets, project, file, writeFile } = setup();
     writeFile(SPEC_FILE);
     const id = `file:${project}:revisar-seguranca`;
-    const renamed = snippets.save({
+    const renamed = await snippets.save({
       id,
       scope: "project",
       target: "file",
@@ -348,12 +357,12 @@ describe("snippets-escopos: do projeto", () => {
       text: "Revise {{file}}.",
     });
     expect(renamed.id).toBe(`file:${project}:revisar`);
-    expect(names(snippets.list({ projectPath: project }).snippets).sort()).toEqual([
+    expect(names((await snippets.list({ projectPath: project })).snippets).sort()).toEqual([
       "revisar",
       "testes-rapidos",
     ]);
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         snippets.save({
           id: renamed.id,
           scope: "project",
@@ -365,15 +374,15 @@ describe("snippets-escopos: do projeto", () => {
         }),
       ),
     ).toBe("invalid_state");
-    expect(codeOf(() => snippets.get(id))).toBe("not_found");
-    snippets.remove(renamed.id);
-    snippets.remove(`file:${project}:testes-rapidos`);
+    expect(await codeOf(() => snippets.get(id))).toBe("not_found");
+    await snippets.remove(renamed.id);
+    await snippets.remove(`file:${project}:testes-rapidos`);
     expect(readFileSync(file, "utf8")).toBe("[]\n");
-    expect(codeOf(() => snippets.remove(`file:${project}:testes-rapidos`))).toBe("not_found");
-    expect(codeOf(() => snippets.remove("file:sem-nome"))).toBe("not_found");
+    expect(await codeOf(() => snippets.remove(`file:${project}:testes-rapidos`))).toBe("not_found");
+    expect(await codeOf(() => snippets.remove("file:sem-nome"))).toBe("not_found");
   });
 
-  test("salvar no arquivo recusa segredo (também nas tags), um arquivo com erros e um nome já usado no projeto", () => {
+  test("salvar no arquivo recusa segredo (também nas tags), um arquivo com erros e um nome já usado no projeto", async () => {
     const { snippets, project, file, writeFile } = setup();
     const token = "ghp_0123456789abcdef0123456789abcdef0123";
     const toFile = (extra: Record<string, unknown>) => () =>
@@ -386,80 +395,85 @@ describe("snippets-escopos: do projeto", () => {
         run: "ls",
         ...extra,
       });
-    expect(codeOf(toFile({ run: `echo ${token}` }))).toBe("snippet_secret");
-    expect(codeOf(toFile({ tags: [token] }))).toBe("snippet_secret");
+    expect(await codeOf(toFile({ run: `echo ${token}` }))).toBe("snippet_secret");
+    expect(await codeOf(toFile({ tags: [token] }))).toBe("snippet_secret");
     expect(existsSync(file)).toBe(false);
-    snippets.save({
+    await snippets.save({
       scope: "project",
       projectPath: project,
       name: "novo",
       type: "command",
       run: "ls",
     });
-    expect(codeOf(toFile({}))).toBe("invalid_state");
+    expect(await codeOf(toFile({}))).toBe("invalid_state");
     writeFile("- 42\n");
-    expect(codeOf(toFile({ name: "outro" }))).toBe("invalid_state");
+    expect(await codeOf(toFile({ name: "outro" }))).toBe("invalid_state");
     expect(readFileSync(file, "utf8")).toBe("- 42\n");
   });
 });
 
 describe("snippets-escopos: favoritos, recentes e busca", () => {
-  test("favoritos no topo, depois os usados por último, depois por nome; os marcadores seguem o snippet e somem com ele", () => {
+  test("favoritos no topo, depois os usados por último, depois por nome; os marcadores seguem o snippet e somem com ele", async () => {
     const { snippets, tick } = setup();
-    const a = snippets.save(cmd("alfa"));
-    const b = snippets.save(cmd("beta"));
-    const c = snippets.save(cmd("gama"));
-    expect(names(snippets.list({}).snippets)).toEqual(["alfa", "beta", "gama"]);
-    snippets.markUsed(b.id);
+    const a = await snippets.save(cmd("alfa"));
+    const b = await snippets.save(cmd("beta"));
+    const c = await snippets.save(cmd("gama"));
+    expect(names((await snippets.list({})).snippets)).toEqual(["alfa", "beta", "gama"]);
+    await snippets.markUsed(b.id);
     tick(1000);
-    snippets.markUsed(c.id);
+    await snippets.markUsed(c.id);
     tick(1000);
-    snippets.markUsed(c.id);
-    expect(names(snippets.list({}).snippets)).toEqual(["gama", "beta", "alfa"]);
-    expect(snippets.get(c.id)).toMatchObject({ uses: 2, lastUsedAt: "2026-10-29T12:00:02.000Z" });
-    expect(snippets.favorite(a.id, true)).toMatchObject({ id: a.id, favorite: true });
-    expect(names(snippets.list({}).snippets)).toEqual(["alfa", "gama", "beta"]);
+    await snippets.markUsed(c.id);
+    expect(names((await snippets.list({})).snippets)).toEqual(["gama", "beta", "alfa"]);
+    expect(await snippets.get(c.id)).toMatchObject({
+      uses: 2,
+      lastUsedAt: "2026-10-29T12:00:02.000Z",
+    });
+    expect(await snippets.favorite(a.id, true)).toMatchObject({ id: a.id, favorite: true });
+    expect(names((await snippets.list({})).snippets)).toEqual(["alfa", "gama", "beta"]);
     // Renaming keeps the marks; unfavoriting puts it back in the order of use.
-    snippets.save({ ...cmd("alfa-novo"), id: a.id });
-    expect(snippets.get(a.id)).toMatchObject({ name: "alfa-novo", favorite: true });
-    snippets.favorite(a.id, false);
-    expect(names(snippets.list({}).snippets)).toEqual(["gama", "beta", "alfa-novo"]);
-    snippets.remove(c.id);
-    expect(codeOf(() => snippets.markUsed(c.id))).toBe("not_found");
-    expect(codeOf(() => snippets.favorite("nada", true))).toBe("not_found");
+    await snippets.save({ ...cmd("alfa-novo"), id: a.id });
+    expect(await snippets.get(a.id)).toMatchObject({ name: "alfa-novo", favorite: true });
+    await snippets.favorite(a.id, false);
+    expect(names((await snippets.list({})).snippets)).toEqual(["gama", "beta", "alfa-novo"]);
+    await snippets.remove(c.id);
+    expect(await codeOf(() => snippets.markUsed(c.id))).toBe("not_found");
+    expect(await codeOf(() => snippets.favorite("nada", true))).toBe("not_found");
   });
 
-  test("os do arquivo também têm favoritos e recentes", () => {
+  test("os do arquivo também têm favoritos e recentes", async () => {
     const { snippets, project, writeFile } = setup();
     writeFile(SPEC_FILE);
     const id = `file:${project}:revisar-seguranca`;
-    snippets.favorite(id, true);
-    snippets.markUsed(id);
-    const listed = snippets.list({ projectPath: project }).snippets;
+    await snippets.favorite(id, true);
+    await snippets.markUsed(id);
+    const listed = (await snippets.list({ projectPath: project })).snippets;
     expect(listed[0]).toMatchObject({ name: "revisar-seguranca", favorite: true, uses: 1 });
-    expect(codeOf(() => snippets.favorite(`file:${project}:nao-existe`, true))).toBe("not_found");
+    expect(await codeOf(() => snippets.favorite(`file:${project}:nao-existe`, true))).toBe(
+      "not_found",
+    );
   });
 
-  test("a busca olha o nome, as tags e o conteúdo sem diferenciar maiúsculas; filtra por tag e tipo", () => {
+  test("a busca olha o nome, as tags e o conteúdo sem diferenciar maiúsculas; filtra por tag e tipo", async () => {
     const { snippets } = setup();
-    snippets.save(cmd("deploy", "kubectl apply -f app.yaml", { tags: ["Prod", "k8s"] }));
-    snippets.save({
+    await snippets.save(cmd("deploy", "kubectl apply -f app.yaml", { tags: ["Prod", "k8s"] }));
+    await snippets.save({
       scope: "host",
       name: "explicar",
       type: "prompt",
       text: "Explique o Kubernetes",
       tags: ["ia"],
     });
-    snippets.save(cmd("limpar", "docker system prune"));
-    const search = (filter: Parameters<Snippets["list"]>[0]) =>
-      names(snippets.list(filter).snippets).sort();
-    expect(search({ query: "KUBE" })).toEqual(["deploy", "explicar"]);
-    expect(search({ query: "prod" })).toEqual(["deploy"]);
-    expect(search({ query: "limp" })).toEqual(["limpar"]);
-    expect(search({ query: "" })).toEqual(["deploy", "explicar", "limpar"]);
-    expect(search({ tag: "k8s" })).toEqual(["deploy"]);
-    expect(search({ type: "prompt" })).toEqual(["explicar"]);
-    expect(search({ type: "command", query: "kube" })).toEqual(["deploy"]);
+    await snippets.save(cmd("limpar", "docker system prune"));
+    const search = async (filter: Parameters<Snippets["list"]>[0]) =>
+      names((await snippets.list(filter)).snippets).sort();
+    expect(await search({ query: "KUBE" })).toEqual(["deploy", "explicar"]);
+    expect(await search({ query: "prod" })).toEqual(["deploy"]);
+    expect(await search({ query: "limp" })).toEqual(["limpar"]);
+    expect(await search({ query: "" })).toEqual(["deploy", "explicar", "limpar"]);
+    expect(await search({ tag: "k8s" })).toEqual(["deploy"]);
+    expect(await search({ type: "prompt" })).toEqual(["explicar"]);
+    expect(await search({ type: "command", query: "kube" })).toEqual(["deploy"]);
   });
 });
 
@@ -609,6 +623,6 @@ describe("snippets-escopos: pelo protocolo", () => {
     ).toEqual([{ name: "status", type: "command", run: "git status", vars: {}, tags: ["git"] }]);
     const broken = await client.data<{ errors: string[] }>("snippets.parse", { text: "[: :" });
     expect(broken?.errors).toHaveLength(1);
-    expect(snippets.list({}).snippets).toEqual([]);
+    expect((await snippets.list({})).snippets).toEqual([]);
   });
 });

@@ -11,11 +11,14 @@ import { cn } from "@/lib/utils";
 import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
 import { basename } from "../lib/paths.ts";
+import { projectLabel } from "../lib/usage-rows.ts";
 
 /** Native selects, as in the hub. */
 
 interface Draft {
   cwd: string;
+  /** Set by a usage row of a remote project; the chip clears it. */
+  projectKey: string;
   from: string;
   to: string;
   origin: "" | HistoryOrigin;
@@ -25,6 +28,7 @@ interface Draft {
 function toFilter(draft: Draft): HistoryFilter {
   return {
     ...(draft.cwd.trim() ? { cwd: draft.cwd.trim() } : {}),
+    ...(draft.projectKey ? { projectKey: draft.projectKey } : {}),
     ...(draft.from ? { from: `${draft.from}T00:00:00.000Z` } : {}),
     ...(draft.to ? { to: `${draft.to}T23:59:59.999Z` } : {}),
     ...(draft.origin ? { origin: draft.origin } : {}),
@@ -40,12 +44,39 @@ export function HistoryList(props: {
   /** The session open on the right, if any. */
   openId: string | null;
   onOpen(claudeSessionId: string): void;
+  /** Opened from a usage row: starts filtered by that folder and day (UTC). */
+  initial?: { cwd?: string; projectKey?: string; day?: string };
 }) {
   const { store, hostId } = props;
-  const [draft, setDraft] = useState<Draft>({ cwd: "", from: "", to: "", origin: "" });
-  const [filter, setFilter] = useState<HistoryFilter>({});
+  const [draft, setDraft] = useState<Draft>(() => ({
+    cwd: props.initial?.cwd ?? "",
+    projectKey: props.initial?.projectKey ?? "",
+    from: props.initial?.day ?? "",
+    to: props.initial?.day ?? "",
+    origin: "",
+  }));
+  const [filter, setFilter] = useState<HistoryFilter>(() => toFilter(draft));
   /** The runs nobody typed (print-mode, temp folders) stay out of the list unless asked for. */
   const [hideAutomated, setHideAutomated] = useState(true);
+  // A usage row opened this list again with another folder or day: the filter follows it.
+  const [seen, setSeen] = useState(props.initial);
+  if (
+    props.initial &&
+    (props.initial.cwd !== seen?.cwd ||
+      props.initial.projectKey !== seen?.projectKey ||
+      props.initial.day !== seen?.day)
+  ) {
+    const next = {
+      cwd: props.initial.cwd ?? "",
+      projectKey: props.initial.projectKey ?? "",
+      from: props.initial.day ?? "",
+      to: props.initial.day ?? "",
+      origin: "" as const,
+    };
+    setSeen(props.initial);
+    setDraft(next);
+    setFilter(toFilter(next));
+  }
   const [automatedCount, setAutomatedCount] = useState(0);
   /** `null` until the host answers (the skeleton shows meanwhile). */
   const [sessions, setSessions] = useState<HistorySessionSummary[] | null>(null);
@@ -68,6 +99,11 @@ export function HistoryList(props: {
     value: draft[key],
     onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
   });
+  const clearProject = () => {
+    const next = { ...draft, projectKey: "" };
+    setDraft(next);
+    setFilter(toFilter(next));
+  };
 
   return (
     <section className="flex h-full min-h-0 flex-col">
@@ -93,6 +129,14 @@ export function HistoryList(props: {
             {t("historyUi.filter")}
           </Button>
         </div>
+        {draft.projectKey && filter.projectKey === draft.projectKey && (
+          <Inline gap={2} className="text-sm">
+            <span>{t("historyUi.project", { name: projectLabel(draft.projectKey) })}</span>
+            <Button variant="link" size="sm" onClick={clearProject}>
+              {t("historyUi.clearProject")}
+            </Button>
+          </Inline>
+        )}
         <Inline gap={3} className="text-sm">
           <CheckField checked={hideAutomated} onChange={setHideAutomated}>
             {t("historyUi.hideAutomated")}

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { unwatchFile, watchFile } from "node:fs";
+import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
@@ -12,6 +13,11 @@ import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { BoardSync } from "./boardsync/engine.ts";
+import { GithubBoards } from "./boardsync/github.ts";
+import { BoardSyncLoop } from "./boardsync/loop.ts";
+import { BoardSyncService } from "./boardsync/service.ts";
+import { BoardSyncStore } from "./boardsync/store.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
@@ -45,12 +51,15 @@ import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
+import { runGh } from "./github/gh.ts";
+import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
+import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { runMessageCli } from "./messaging/cli.ts";
 import { LocalEndpoints } from "./messaging/endpoints.ts";
@@ -63,6 +72,7 @@ import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
+import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
@@ -512,10 +522,15 @@ async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<Cr
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-function terminalInfo(env: Record<string, string | undefined>) {
+async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
   return {
-    flightdeckdPath: existsSync(stable) ? stable : null,
+    flightdeckdPath: (await stat(stable).then(
+      () => true,
+      () => false,
+    ))
+      ? stable
+      : null,
     wslDistro: env.WSL_DISTRO_NAME || null,
   };
 }
@@ -536,23 +551,25 @@ export async function startDaemon(
     pty?: PtyFactory;
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
+    /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
+    serviceInstalled?: () => Promise<boolean>;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
-  const config = loadConfig(configFile);
+  const config = await loadConfig(configFile);
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
-  const lock = acquireLock(config.dataDir);
+  const lock = await acquireLock(config.dataDir);
   if (!lock) throw new AlreadyRunningError(config.dataDir);
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
   const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
-  const keys = new ProjectKeys(config.hostName, undefined, options.projectGit);
+  const keys = new ProjectKeys(config.hostName, options.projectGit);
   // The turn is counted when git has answered: a slow git must not stop the daemon meanwhile.
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
@@ -614,7 +631,6 @@ export async function startDaemon(
         ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
         ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
       }),
-    personas: personaStore,
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   const history = new HistoryIndexer({
@@ -630,14 +646,14 @@ export async function startDaemon(
   const costs = new Costs({
     db: store.db,
     pricing: resolvePricing(config.pricing),
-    loadPricing: () => resolvePricing(loadConfig(configFile).pricing),
+    loadPricing: async () => resolvePricing((await loadConfig(configFile)).pricing),
     initialLoad: () => usageIndex.status(),
   });
   const usageIndex = new UsageIndexer({
     db: store.db,
     roots: config.history.roots,
     excludeCwds: historyExcludes(config),
-    projectKey: (cwd) => keys.keyFor(cwd),
+    projectKey: (cwd) => keys.known(cwd),
     warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
     cost: (tokens) => costs.cost(tokens),
     log: (m) => logger.log(m),
@@ -647,7 +663,9 @@ export async function startDaemon(
   budgets.start();
   history.onChange(() => usageIndex.request());
   usageIndex.start();
+  const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
+    preparePersonas: prepare,
     db: store.db,
     manager,
     quota,
@@ -670,6 +688,20 @@ export async function startDaemon(
   // The diff of every session and card, for the review (phase 11).
   const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
   const issues = new Issues({ board, autoApprove });
+  // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
+  const boardSyncStore = new BoardSyncStore(store.db);
+  const boardProvider = new GithubBoards({ gh: runGh });
+  const boardEngine = new BoardSync({
+    board,
+    store: boardSyncStore,
+    provider: boardProvider,
+    autoApprove,
+  });
+  const boardLoop = new BoardSyncLoop({
+    engine: boardEngine,
+    store: boardSyncStore,
+    timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
+  });
   // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
   const automations = new Automations({
     db: store.db,
@@ -688,7 +720,7 @@ export async function startDaemon(
     backup: config.backup,
     snapshots,
   });
-  maintenance.start();
+  await maintenance.start();
   // Checked in the background: a slow or unreachable release server never delays the boot.
   const updates = config.updates.manifestUrl
     ? new UpdateChecker({
@@ -719,7 +751,7 @@ export async function startDaemon(
   });
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
   const telemetryStore = new TelemetryStore(store.db);
-  const telemetry = startTelemetry({
+  const telemetry = await startTelemetry({
     config,
     configFile,
     log: { error: (message) => logger.error(message) },
@@ -753,7 +785,7 @@ export async function startDaemon(
     scanner: snippetScanner,
   });
   const askpass = new AskpassBroker({});
-  const sshAskpass = askpassHook({
+  const sshAskpass = await askpassHook({
     broker: askpass,
     dir: sshDir,
     platform: process.platform,
@@ -767,7 +799,7 @@ export async function startDaemon(
     dir: sshDir,
     sshPath:
       config.ssh.path ??
-      resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
+      (await resolveSshPath({ platform: process.platform, exists, which: whichOnPath })),
     run: processRun(),
     exec: processExec(),
     ...(sshAskpass ? { askpass: sshAskpass } : {}),
@@ -806,14 +838,14 @@ export async function startDaemon(
     rules: new VaultRules(),
     hostName: config.hostName,
     risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
-    projectKey: (id) => keys.keyFor(board.getProject(id).path),
+    projectKey: (id) => keys.known(board.getProject(id).path),
   });
   // Phase 21: messages between sessions, delivered here and carried between hosts by the app.
   const endpoints = new LocalEndpoints({
     manager,
     external: central.external,
     nameOf: (claudeSessionId) => central.meta.get(claudeSessionId).name,
-    projectKey: (cwd) => keys.keyFor(cwd),
+    projectKey: (cwd) => keys.known(cwd),
     cardOf: (sessionId) => board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null,
     sendToLaunch: central.sendToLaunch.bind(central),
     autoApprove,
@@ -840,16 +872,21 @@ export async function startDaemon(
     quota,
     names,
     personas: {
-      resolve: (id) => {
+      resolve: async (id) => {
         try {
-          return { id, name: personaStore.resolve({ id }, {}).persona.name };
+          return { id, name: (await personaStore.resolve({ id }, {})).persona.name };
         } catch {
           return null;
         }
       },
     },
-    startCoordinator: ({ cwd, prompt, name, persona }) =>
-      manager.create({ cwd, prompt, name, ...(persona ? { persona: { id: persona } } : {}) }),
+    startCoordinator: async ({ cwd, prompt, name, persona }) => {
+      const ref = persona ? { id: persona } : undefined;
+      return manager.create(
+        { cwd, prompt, name, ...(ref ? { persona: ref } : {}) },
+        { prepared: await prepare(ref, cwd) },
+      );
+    },
     startWorker: (cardId, persona) =>
       board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
     warm: (cwd) => warmKeys(cwd),
@@ -878,7 +915,7 @@ export async function startDaemon(
     names,
     manager,
     external: central.external,
-    projectOf: (cwd) => keys.keyFor(keyedPath(cwd)),
+    projectOf: (cwd) => keys.known(keyedPath(cwd)),
     warm: warmKeys,
     cardOf,
     personaOf: (sessionId) => {
@@ -961,21 +998,58 @@ export async function startDaemon(
   board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
+  // The wrapper finds the receptor through this file: nothing is served before it is there.
+  await central.ready();
   const server = startServer({
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
+    projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
     bypass: {
       allowed: () => config.allowBypassPermissions,
-      set: (allow) => {
+      set: async (allow) => {
         config.allowBypassPermissions = allow;
-        updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+        await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
+    findProjects: true,
+    // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
+    boardsync: new BoardSyncService({
+      board,
+      store: boardSyncStore,
+      provider: boardProvider,
+      engine: boardEngine,
+      loop: boardLoop,
+    }),
+    github: new GithubService({
+      roots: config.allowedRoots,
+      board,
+      issues,
+      startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
+    }),
+    // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
+    // folders checked without blocking, and the app's version to compare with its own.
+    doctor: (appVersion) =>
+      runDoctor({
+        config: () => ({ bind: config.bind, port: config.port, allowedRoots: config.allowedRoots }),
+        isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
+        serviceInstalled:
+          options.serviceInstalled ??
+          (async () => (await serviceCommand(osServiceContext(false))) !== null),
+        healthy: async () => true,
+        tailscaleIp: () => tailscaleIp(spawnExec),
+        hooks: () =>
+          hooksStatus(
+            claudeSettingsPath(),
+            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
+          ),
+        claudePath: () => claude?.path ?? whichOnPath("claude"),
+        version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
+      }),
     sessionSettings: true,
     messaging,
     names,
@@ -1068,7 +1142,7 @@ export async function startDaemon(
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
-    forker: new Forker({ runtime, manager, rewinder }),
+    forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
     mcp: new McpConfig(),
     agentcfg,
     // Phase 26: the project's auto memory; its writes are recorded by name and hash only.
@@ -1092,7 +1166,7 @@ export async function startDaemon(
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
     ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
-    terminal: terminalInfo(env),
+    terminal: await terminalInfo(env),
   });
 
   const wsl =
@@ -1102,16 +1176,17 @@ export async function startDaemon(
           ...(options.wslCommand ? { command: options.wslCommand } : {}),
         })
       : null;
-  wsl?.start();
+  await wsl?.start();
 
   // `pair --rotate` runs in another process: follow the token in the config file.
-  const onConfigChange = () => {
-    const token = readToken(configFile);
+  const onConfigChange = async () => {
+    const token = await readToken(configFile);
     if (token) server.setToken(token);
   };
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
 
   logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
+  boardLoop.start();
   if (config.allowedRoots.length === 0) {
     logger.error(
       'aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada (rode "flightdeckd setup")',
@@ -1138,6 +1213,7 @@ export async function startDaemon(
         await automations.idle();
         prWatch.stop();
         for (const unwatch of unwatchRunEnv) unwatch();
+        boardLoop.stop();
         board.stop();
         terminals.stop();
         await central.stop();
@@ -1151,7 +1227,7 @@ export async function startDaemon(
         budgets.stop();
         quota.stop();
         store.close();
-        lock.release();
+        await lock.release();
       })();
       return stopped;
     },
@@ -1163,9 +1239,9 @@ function configPath(args: CliArgs): string {
 }
 
 /** Current token in the config file, or `null` while it is unreadable or invalid. */
-function readToken(file: string): string | null {
+async function readToken(file: string): Promise<string | null> {
   try {
-    return loadConfig(file).token;
+    return (await loadConfig(file)).token;
   } catch {
     return null;
   }
@@ -1174,8 +1250,8 @@ function readToken(file: string): string | null {
 /** `flightdeckd pair`: prints the pairing link and its QR code. */
 async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
-  if (args.rotate) rotateToken(file);
-  const config = loadConfig(file);
+  if (args.rotate) await rotateToken(file);
+  const config = await loadConfig(file);
   const tailscale = await tailscaleIp(deps.exec ?? spawnExec);
   const address = pairingAddress(config.bind, tailscale);
   const link = formatPairingLink({
@@ -1214,17 +1290,17 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   const settings = claudeSettingsPath();
   const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
   let config: Config | null = null;
-  const load = () => {
-    config ??= loadConfig(file);
+  const load = async () => {
+    config ??= await loadConfig(file);
     return config;
   };
   const report = await runDoctor({
     config: load,
-    isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+    isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
     serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
-    healthy: () => waitHealthy(healthUrl(load()), 1_000, 250),
+    healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
-    hooks: () => hooksStatus(settings, hookTarget(load(), self)),
+    hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
   });
   for (const item of report.checks) {
@@ -1253,11 +1329,11 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
       home: base.home,
       // The folders it checks are this host's, whatever the service context says it manages.
       platform: process.platform,
-      isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+      isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
       tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
       installBinary: async () => {
         const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
-        const placed = installStableBinary(self, stable, base.platform);
+        const placed = await installStableBinary(self, stable, base.platform);
         if (placed === "source") return false;
         command = [stable];
         let running = DAEMON_VERSION;
@@ -1340,7 +1416,11 @@ async function stopInstalledDaemon(
     ...serviceStopDeps(ctx, deps.log),
     ...(deps.serviceStopTimeoutMs ? { stopTimeoutMs: deps.serviceStopTimeoutMs } : {}),
   };
-  return stopServiceDaemon(stop, serviceConfig(args, installed), installed.command[0] as string);
+  return stopServiceDaemon(
+    stop,
+    await serviceConfig(args, installed),
+    installed.command[0] as string,
+  );
 }
 
 /** `service stop`: the daemon goes, the task or unit stays installed. */
@@ -1359,7 +1439,7 @@ async function startInstalledService(
 ): Promise<void> {
   const installed = await serviceCommand(ctx);
   if (!installed) throw new Error("nenhum serviço instalado");
-  const url = healthUrl(serviceConfig(args, installed));
+  const url = healthUrl(await serviceConfig(args, installed));
   await startService(ctx);
   if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
     throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
@@ -1393,10 +1473,10 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
       deps.log.log(`claude.executablePath = "${claude.path}" (seria gravado em ${file})`);
     }
   } else {
-    loadConfig(file);
+    await loadConfig(file);
     const executablePath = claude.path;
     if (executablePath) {
-      updateConfigFile(file, (raw) => ({
+      await updateConfigFile(file, (raw) => ({
         ...raw,
         claude: { ...(raw.claude as object), executablePath },
       }));
@@ -1407,7 +1487,7 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   if (ctx.dryRun) return;
   // The Windows task only has a logon trigger and systemd may be slow: start it now and check.
   if (ctx.platform === "win32") await startService(ctx);
-  const url = healthUrl(loadConfig(file));
+  const url = healthUrl(await loadConfig(file));
   if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
     throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
   }
@@ -1418,24 +1498,24 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
  * `flightdeckd history reindex`: drops the transcript index and builds it again. Takes the
  * daemon's lock, so it refuses (exit 3) while a daemon uses the same `dataDir`.
  */
-function runReindex(args: CliArgs, deps: CliDeps): void {
-  const config = loadConfig(configPath(args));
-  const lock = acquireLock(config.dataDir);
+async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
+  const config = await loadConfig(configPath(args));
+  const lock = await acquireLock(config.dataDir);
   if (!lock) {
     throw new AlreadyRunningError(config.dataDir, "pare o daemon antes de reconstruir o índice");
   }
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
     const history = new HistoryIndexer({
       db: store.db,
       roots: config.history.roots,
       excludeCwds: historyExcludes(config),
     });
-    const { sessions, messages } = history.rebuild();
+    const { sessions, messages } = await history.rebuild();
     deps.log.log(`histórico reconstruído: ${sessions} sessões, ${messages} mensagens`);
   } finally {
     store.close();
-    lock.release();
+    await lock.release();
   }
 }
 
@@ -1466,17 +1546,17 @@ export function hookTarget(
  * `flightdeckd hooks install|uninstall|status`: the only write of Flightdeck in ~/.claude, always
  * by an explicit command. Install generates `hooks.token` once and keeps it afterwards.
  */
-function runHooks(args: CliArgs, deps: CliDeps): void {
+async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
-  let config = loadConfig(file);
+  let config = await loadConfig(file);
   const settings = claudeSettingsPath();
   const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
   if (args.action === "status") {
-    deps.log.log(`hooks: ${HOOKS_LABELS[hooksStatus(settings, hookTarget(config, self))]}`);
+    deps.log.log(`hooks: ${HOOKS_LABELS[await hooksStatus(settings, hookTarget(config, self))]}`);
     return;
   }
   if (args.action === "uninstall") {
-    const removed = uninstallHooks(settings);
+    const removed = await uninstallHooks(settings);
     deps.log.log(
       removed ? `hooks removidos de ${settings}` : "nenhum hook do Flightdeck instalado",
     );
@@ -1489,10 +1569,10 @@ function runHooks(args: CliArgs, deps: CliDeps): void {
   }
   if (!config.hooks.token) {
     const token = generateToken();
-    updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
-    config = loadConfig(file);
+    await updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
+    config = await loadConfig(file);
   }
-  installHooks(settings, hookTarget(config, self));
+  await installHooks(settings, hookTarget(config, self));
   deps.log.log(
     `hooks instalados em ${settings} (cópia anterior em settings.json.flightdeck-backup)`,
   );
@@ -1506,17 +1586,18 @@ const TELEMETRY_LABELS: Record<TelemetryStatus, string> = {
 };
 
 /** `flightdeckd telemetry install|uninstall|status`: Claude Code's exporters into this daemon (phase 23). */
-function runTelemetry(args: CliArgs, deps: CliDeps): void {
+async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
   const optIn = new TelemetryOptIn({
     configFile: configPath(args),
     settingsPath: claudeSettingsPath,
   });
   if (args.action === "status") {
-    deps.log.log(`telemetry: ${TELEMETRY_LABELS[optIn.status().status]}`);
+    deps.log.log(`telemetry: ${TELEMETRY_LABELS[(await optIn.status()).status]}`);
     return;
   }
-  const had = optIn.status().status;
-  const result = args.action === "uninstall" ? optIn.uninstall(true) : optIn.install(true);
+  const had = (await optIn.status()).status;
+  const result =
+    args.action === "uninstall" ? await optIn.uninstall(true) : await optIn.install(true);
   deps.log.log(
     args.action === "uninstall"
       ? `${had === "installed" || had === "outdated" ? `telemetry removed from ${result.settingsPath}` : "no Flightdeck telemetry installed"}; the receiver has a new token`
@@ -1525,11 +1606,11 @@ function runTelemetry(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
-function runBackup(args: CliArgs, deps: CliDeps): void {
-  const config = loadConfig(configPath(args));
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+async function runBackup(args: CliArgs, deps: CliDeps): Promise<void> {
+  const config = await loadConfig(configPath(args));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
-    const info = new Maintenance({
+    const info = await new Maintenance({
       db: store.db,
       dataDir: config.dataDir,
       retention: config.retention,
@@ -1559,9 +1640,9 @@ function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
   return {
     ctx,
     log,
-    daemonRunning: (config) => {
-      const lock = acquireLock(config.dataDir);
-      lock?.release();
+    daemonRunning: async (config) => {
+      const lock = await acquireLock(config.dataDir);
+      await lock?.release();
       return lock === null;
     },
     shutdown: (config) => requestShutdown(daemonUrl(config), config.token, 3_000),
@@ -1592,17 +1673,17 @@ async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
 }
 
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
-function runRestore(args: CliArgs, deps: CliDeps): void {
+async function runRestore(args: CliArgs, deps: CliDeps): Promise<void> {
   if (!args.file) throw new Error("restore precisa do arquivo: flightdeckd restore <arquivo>");
-  const config = loadConfig(configPath(args));
-  const { beforeRestore } = restoreBackup({ file: args.file, dataDir: config.dataDir });
+  const config = await loadConfig(configPath(args));
+  const { beforeRestore } = await restoreBackup({ file: args.file, dataDir: config.dataDir });
   deps.log.log(`banco restaurado de ${args.file}; o anterior ficou em ${beforeRestore}`);
 }
 
 /** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
-function runPrune(args: CliArgs, deps: CliDeps): void {
-  const config = loadConfig(configPath(args));
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
+  const config = await loadConfig(configPath(args));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
     const maintenance = new Maintenance({
       db: store.db,
@@ -1610,7 +1691,7 @@ function runPrune(args: CliArgs, deps: CliDeps): void {
       retention: config.retention,
       ...(deps.now ? { now: deps.now } : {}),
     });
-    const counts = maintenance.prune(args.dryRun === true);
+    const counts = await maintenance.prune(args.dryRun === true);
     deps.log.log(args.dryRun ? "simulação da limpeza (nada foi apagado):" : "limpeza feita:");
     for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
   } finally {
@@ -1660,12 +1741,12 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
   try {
     const args = parseArgs(argv);
     if (args.command === "backup") {
-      runBackup(args, deps);
+      await runBackup(args, deps);
       deps.exit(0);
       return null;
     }
     if (args.command === "restore") {
-      runRestore(args, deps);
+      await runRestore(args, deps);
       deps.exit(0);
       return null;
     }
@@ -1674,7 +1755,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "db") {
-      runPrune(args, deps);
+      await runPrune(args, deps);
       deps.exit(0);
       return null;
     }
@@ -1700,7 +1781,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       const code = await runClaude({
         args: args.claudeArgs ?? [],
         cwd: deps.cwd ?? process.cwd(),
-        config: loadConfig(file),
+        config: await loadConfig(file),
         env: deps.env,
         self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
         log: deps.log,
@@ -1745,7 +1826,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "mcp") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const mcp = await startMcp({
         url: daemonUrl(config),
         token: config.token,
@@ -1757,7 +1838,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "message") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const printed = await runMessageCli(
         {
           action: args.action as "list" | "send" | "idle" | "read" | "team",
@@ -1775,7 +1856,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "action") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const printed = await runActionCli(
         {
           action: args.action as "list" | "run",
@@ -1790,7 +1871,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "snippet") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const printed = await runSnippetCli(
         {
           action: args.action as "list" | "get",
@@ -1805,17 +1886,17 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "hooks") {
-      runHooks(args, deps);
+      await runHooks(args, deps);
       deps.exit(0);
       return null;
     }
     if (args.command === "telemetry") {
-      runTelemetry(args, deps);
+      await runTelemetry(args, deps);
       deps.exit(0);
       return null;
     }
     if (args.command === "history") {
-      runReindex(args, deps);
+      await runReindex(args, deps);
       deps.exit(0);
       return null;
     }

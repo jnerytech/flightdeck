@@ -88,7 +88,7 @@ export class FakeEndpoints implements Endpoints {
     return () => this.stateListeners.delete(listener);
   }
 
-  read(id: string, last: number) {
+  async read(id: string, last: number) {
     const found = this.transcripts.get(id);
     if (!found) return this.infos.has(id) ? { summary: null, messages: [] } : null;
     return { summary: found.summary, messages: found.messages.slice(-last) };

@@ -8,6 +8,8 @@ import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
+import { FindProjects } from "@/components/projects/find-projects";
+import { StartFromGithub } from "@/components/projects/start-from-github";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -202,6 +204,14 @@ export function ProjectsPage(props: {
             }
           />
         )}
+        <div className="flex flex-wrap gap-2">
+          {host && hasFeature(host.hostInfo?.features, "projects.scan", false) && (
+            <FindProjects store={store} hostId={hostId} onAdded={() => void reload()} />
+          )}
+          {host && hasFeature(host.hostInfo?.features, "github", false) && (
+            <StartFromGithub store={store} hostId={hostId} onStarted={() => void reload()} />
+          )}
+        </div>
         <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">
           {(list?.projects ?? []).map((project) => (
             <li

@@ -26,7 +26,11 @@ const settle = waiter(4000);
 /** One host with a managed session; `waiting` leaves it asking for Bash. */
 async function setup(options: { waiting?: boolean; costs?: boolean } = {}) {
   const d = makeDaemon(cleanups, { costs: options.costs ?? false });
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   if (options.waiting) {
     d.manager.send(sessionId, "[bash]");
@@ -158,6 +162,8 @@ describe("direcao-visual: barra lateral", () => {
   test("Fixadas lista as sessões fixadas; sem nenhuma, a seção não aparece", async () => {
     const { store } = await setup();
     expect(inAside().queryByRole("button", { name: "Fixadas" })).toBeNull();
+    // The list waits for the project keys of its folders now: the row is not there at once.
+    await settle(() => hubRows(store.getState()).some((r) => r.title === "Gerenciada"));
     const row = hubRows(store.getState()).find((r) => r.title === "Gerenciada");
     await act(async () => {
       await store.setMeta(row?.hostId as string, row?.claudeSessionId as string, { pinned: true });

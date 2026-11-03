@@ -32,10 +32,10 @@ export interface RunState {
 /** What the manager asks of the system to run something. The real one opens a terminal. */
 export interface RunHost {
   /** Starts the process in a tab; `exited` settles with its exit code. */
-  spawn(request: { argv: string[]; cwd: string; env: Record<string, string> }): {
+  spawn(request: { argv: string[]; cwd: string; env: Record<string, string> }): Promise<{
     terminalId: string;
     exited: Promise<number>;
-  };
+  }>;
   /** Ends the process and its whole tree; settles when the tree is gone. */
   kill(terminalId: string): void | Promise<void>;
 }
@@ -101,6 +101,7 @@ export class RunManager {
   async start(cardId: string): Promise<RunState> {
     const card = this.opts.card(cardId);
     if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    const worktree = card.worktreePath;
     const current = this.entries.get(cardId);
     if (current && LIVE.has(current.status)) return this.snapshot(current);
     // Nothing the run.yaml declares runs before its hash is trusted.
@@ -125,7 +126,10 @@ export class RunManager {
       stopped: false,
     };
     this.entries.set(cardId, entry);
-    void this.execute(entry, config, card.worktreePath);
+    // Answers once the setup is on its way or every process has been started, as before.
+    await new Promise<void>((launched) => {
+      void this.execute(entry, config, worktree, launched);
+    });
     return this.snapshot(entry);
   }
 
@@ -197,11 +201,16 @@ export class RunManager {
     });
   }
 
-  private async execute(entry: Entry, config: RunConfig, cwd: string): Promise<void> {
+  private async execute(
+    entry: Entry,
+    config: RunConfig,
+    cwd: string,
+    launched: () => void,
+  ): Promise<void> {
     const env = portEnv(entry.ports);
-    const spawn = (what: string, argv: string[], extra: Record<string, string> = {}) => {
+    const spawn = async (what: string, argv: string[], extra: Record<string, string> = {}) => {
       try {
-        return this.opts.host.spawn({
+        return await this.opts.host.spawn({
           argv: argv.map((part) => interpolatePorts(part, entry.ports)),
           cwd,
           env: { ...env, ...extra },
@@ -212,7 +221,7 @@ export class RunManager {
     };
     try {
       if (config.setup && entry.setup !== "done") {
-        await this.runSetup(entry, spawn("o setup", config.setup));
+        await this.runSetup(entry, await spawn("o setup", config.setup), launched);
         if (entry.status !== "setup") return;
       }
       entry.status = "running";
@@ -224,20 +233,27 @@ export class RunManager {
           ]),
         );
         const url = proc.ready ? interpolatePorts(proc.ready.http, entry.ports) : null;
-        this.track(entry, proc.name, spawn(proc.name, proc.cmd, extra), url);
+        this.track(entry, proc.name, await spawn(proc.name, proc.cmd, extra), url);
       }
       this.emit(entry);
     } catch (error) {
       await this.fail(entry, error as StartError);
+    } finally {
+      launched();
     }
   }
 
   /** The setup runs to its end; `entry.status` stays `setup` only when it worked. */
-  private async runSetup(entry: Entry, setup: { terminalId: string; exited: Promise<number> }) {
+  private async runSetup(
+    entry: Entry,
+    setup: { terminalId: string; exited: Promise<number> },
+    launched: () => void,
+  ) {
     entry.setup = "running";
     entry.setupTerminalId = setup.terminalId;
     entry.setupExited = setup.exited;
     this.emit(entry);
+    launched();
     const code = await setup.exited;
     if (entry.stopped) {
       entry.status = "ended";
@@ -257,7 +273,7 @@ export class RunManager {
   private track(
     entry: Entry,
     name: string,
-    started: ReturnType<RunHost["spawn"]>,
+    started: Awaited<ReturnType<RunHost["spawn"]>>,
     url: string | null,
   ): void {
     const process: ProcessEntry = {

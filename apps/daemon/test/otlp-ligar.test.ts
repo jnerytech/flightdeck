@@ -8,6 +8,7 @@ import {
   installTelemetry,
   MANAGED_KEYS,
   type TelemetryTarget,
+  telemetryConflicts,
   telemetryEnv,
   telemetryStatus,
   uninstallTelemetry,
@@ -75,20 +76,32 @@ describe("otlp-ligar: the variables", () => {
 });
 
 describe("otlp-ligar: the opt-in in settings.json", () => {
-  test("install merges the keys into env, keeps everything else and backs the file up", () => {
+  test("reading, installing and removing the exporter keys return promises", async () => {
+    const file = settingsFile(ORIGINAL);
+    expect(telemetryStatus(file, TARGET)).toBeInstanceOf(Promise);
+    expect(telemetryConflicts(file)).toBeInstanceOf(Promise);
+    const installing = installTelemetry(file, TARGET);
+    expect(installing).toBeInstanceOf(Promise);
+    await installing;
+    const removing = uninstallTelemetry(file);
+    expect(removing).toBeInstanceOf(Promise);
+    await removing;
+  });
+
+  test("install merges the keys into env, keeps everything else and backs the file up", async () => {
     const file = settingsFile(ORIGINAL);
     const before = readFileSync(file, "utf8");
-    expect(installTelemetry(file, TARGET)).toEqual({ ok: true });
+    expect(await installTelemetry(file, TARGET)).toEqual({ ok: true });
     expect(read(file)).toEqual({
       ...ORIGINAL,
       env: { ...ORIGINAL.env, ...EXPECTED_ENV },
     });
     expect(readFileSync(`${file}.flightdeck-telemetry-backup`, "utf8")).toBe(before);
-    expect(installTelemetry(file, TARGET)).toEqual({ ok: true });
+    expect(await installTelemetry(file, TARGET)).toEqual({ ok: true });
     expect(read(file).env).toEqual({ ...ORIGINAL.env, ...EXPECTED_ENV });
   });
 
-  test("a value of the user's in any managed key is never overwritten: install refuses and names the keys", () => {
+  test("a value of the user's in any managed key is never overwritten: install refuses and names the keys", async () => {
     const mine = {
       ...ORIGINAL,
       env: {
@@ -98,48 +111,50 @@ describe("otlp-ligar: the opt-in in settings.json", () => {
     };
     const file = settingsFile(mine);
     const before = readFileSync(file, "utf8");
-    expect(installTelemetry(file, TARGET)).toEqual({
+    expect(await installTelemetry(file, TARGET)).toEqual({
       ok: false,
       keys: ["OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_LOGS_EXPORTER"],
     });
     expect(readFileSync(file, "utf8")).toBe(before);
     expect(existsSync(`${file}.flightdeck-telemetry-backup`)).toBe(false);
-    expect(telemetryStatus(file, TARGET)).toBe("conflict");
+    expect(await telemetryStatus(file, TARGET)).toBe("conflict");
   });
 
-  test("uninstall takes out only Flightdeck's keys and gives the original back; an absent file is removed again", () => {
+  test("uninstall takes out only Flightdeck's keys and gives the original back; an absent file is removed again", async () => {
     const file = settingsFile(ORIGINAL);
-    installTelemetry(file, TARGET);
-    expect(uninstallTelemetry(file)).toBe(true);
+    await installTelemetry(file, TARGET);
+    expect(await uninstallTelemetry(file)).toBe(true);
     expect(read(file)).toEqual(ORIGINAL);
-    expect(uninstallTelemetry(file)).toBe(false);
+    expect(await uninstallTelemetry(file)).toBe(false);
 
     const fresh = settingsFile();
-    installTelemetry(fresh, TARGET);
+    await installTelemetry(fresh, TARGET);
     expect(existsSync(`${fresh}.flightdeck-telemetry-backup`)).toBe(false);
-    expect(uninstallTelemetry(fresh)).toBe(true);
+    expect(await uninstallTelemetry(fresh)).toBe(true);
     expect(existsSync(fresh)).toBe(false);
-    expect(uninstallTelemetry(fresh)).toBe(false);
+    expect(await uninstallTelemetry(fresh)).toBe(false);
   });
 
-  test("uninstall leaves a user's own exporter alone", () => {
+  test("uninstall leaves a user's own exporter alone", async () => {
     const file = settingsFile({
       env: { OTEL_EXPORTER_OTLP_ENDPOINT: "https://otel.example.com", OTEL_LOGS_EXPORTER: "otlp" },
     });
-    expect(uninstallTelemetry(file)).toBe(false);
+    expect(await uninstallTelemetry(file)).toBe(false);
     expect(read(file).env.OTEL_EXPORTER_OTLP_ENDPOINT).toBe("https://otel.example.com");
   });
 
-  test("status: absent, installed, outdated (another token or port) and conflict", () => {
+  test("status: absent, installed, outdated (another token or port) and conflict", async () => {
     const file = settingsFile(ORIGINAL);
-    expect(telemetryStatus(file, TARGET)).toBe("absent");
-    expect(telemetryStatus(join(tempDir(), "none.json"), TARGET)).toBe("absent");
-    installTelemetry(file, TARGET);
-    expect(telemetryStatus(file, TARGET)).toBe("installed");
-    expect(telemetryStatus(file, { ...TARGET, token: "another-token-0123456789" })).toBe(
+    expect(await telemetryStatus(file, TARGET)).toBe("absent");
+    expect(await telemetryStatus(join(tempDir(), "none.json"), TARGET)).toBe("absent");
+    await installTelemetry(file, TARGET);
+    expect(await telemetryStatus(file, TARGET)).toBe("installed");
+    expect(await telemetryStatus(file, { ...TARGET, token: "another-token-0123456789" })).toBe(
       "outdated",
     );
-    expect(telemetryStatus(file, { ...TARGET, url: "http://127.0.0.1:9999" })).toBe("outdated");
+    expect(await telemetryStatus(file, { ...TARGET, url: "http://127.0.0.1:9999" })).toBe(
+      "outdated",
+    );
   });
 });
 
@@ -201,7 +216,7 @@ describe("otlp-ligar: the wrapper", () => {
     });
     cleanups.push(() => receiver.stop());
     writeFileSync(
-      join(loadConfig(file).dataDir, "telemetry.json"),
+      join((await loadConfig(file)).dataDir, "telemetry.json"),
       JSON.stringify({ url: receiver.url }),
     );
     const fake = installFakeClaude([
@@ -238,7 +253,7 @@ describe("otlp-ligar: the wrapper", () => {
   test("a published file that is broken or has no URL is no receiver", async () => {
     for (const content of ["not json", '{"url":5}']) {
       const file = config({ token: TARGET.token });
-      writeFileSync(join(loadConfig(file).dataDir, "telemetry.json"), content);
+      writeFileSync(join((await loadConfig(file)).dataDir, "telemetry.json"), content);
       expect(telemetryKeys(await launch(["-c"], file))).toEqual({});
     }
   });
@@ -288,7 +303,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     const file = config();
     await runCli(["telemetry", "install", "--config", file], deps);
     expect(exitCode).toBe(0);
-    const token = loadConfig(file).telemetry.token ?? "";
+    const token = (await loadConfig(file)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     expect(token).not.toBe("hooks-token-0123456789");
     expect(token).not.toBe("t".repeat(32));
@@ -297,10 +312,10 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     await runCli(["telemetry", "status", "--config", file], deps);
     expect(out.join("\n")).toContain("telemetry: installed");
     await runCli(["telemetry", "install", "--config", file], deps);
-    expect(loadConfig(file).telemetry.token).toBe(token);
+    expect((await loadConfig(file)).telemetry.token).toBe(token);
     await runCli(["telemetry", "uninstall", "--config", file], deps);
     expect(existsSync(settings())).toBe(false);
-    const rotated = loadConfig(file).telemetry.token ?? "";
+    const rotated = (await loadConfig(file)).telemetry.token ?? "";
     expect(rotated.length).toBeGreaterThanOrEqual(16);
     expect(rotated).not.toBe(token);
     await runCli(["telemetry", "status", "--config", file], deps);
@@ -312,7 +327,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     const file = config({ telemetry: { token: "old-token-0123456789abc" } });
     await runCli(["telemetry", "uninstall", "--config", file], deps);
     expect(out.join("\n")).toContain("no Flightdeck telemetry installed");
-    expect(loadConfig(file).telemetry.token).not.toBe("old-token-0123456789abc");
+    expect((await loadConfig(file)).telemetry.token).not.toBe("old-token-0123456789abc");
   });
 
   test("telemetry.port wins over hooks.port + 1", async () => {
@@ -330,7 +345,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     expect(exitCode).toBe(1);
     expect(out.join("\n")).toContain("OTEL_LOGS_EXPORTER");
     expect(read(settings())).toEqual({ env: { OTEL_LOGS_EXPORTER: "console" } });
-    expect(loadConfig(file).telemetry.token).toBeUndefined();
+    expect((await loadConfig(file)).telemetry.token).toBeUndefined();
     rmSync(settings(), { force: true });
   });
 
@@ -350,7 +365,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
 });
 
 describe("otlp-ligar: the daemon's receiver", () => {
-  function setup(telemetry: Record<string, unknown> = { port: 0 }, hooks = true) {
+  async function setup(telemetry: Record<string, unknown> = { port: 0 }, hooks = true) {
     const dir = tempDir();
     const dataDir = join(dir, "data");
     mkdirSync(dataDir, { recursive: true });
@@ -367,8 +382,8 @@ describe("otlp-ligar: the daemon's receiver", () => {
     const errors: string[] = [];
     const got: OtlpEvent[][] = [];
     let purges = 0;
-    const service = startTelemetry({
-      config: loadConfig(configFile),
+    const service = await startTelemetry({
+      config: await loadConfig(configFile),
       configFile,
       log: { error: (m) => errors.push(m) },
       onEvents: (events) => got.push(events),
@@ -388,8 +403,8 @@ describe("otlp-ligar: the daemon's receiver", () => {
     });
 
   test("it makes the token once, listens, publishes its URL for the wrapper and removes it on stop", async () => {
-    const { service, dataDir, configFile, got } = setup();
-    const token = loadConfig(configFile).telemetry.token ?? "";
+    const { service, dataDir, configFile, got } = await setup();
+    const token = (await loadConfig(configFile)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     expect(service.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     expect(read(join(dataDir, "telemetry.json"))).toEqual({ url: service.url });
@@ -400,9 +415,9 @@ describe("otlp-ligar: the daemon's receiver", () => {
   });
 
   test("a token rotated in the config file takes effect at once, without a restart", async () => {
-    const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
+    const { service, configFile } = await setup({ port: 0, token: "first-token-0123456789" });
     expect((await send(service.url, "first-token-0123456789")).status).toBe(200);
-    updateConfigFile(configFile, (raw) => ({
+    await updateConfigFile(configFile, (raw) => ({
       ...raw,
       telemetry: { port: 0, token: "second-token-0123456789" },
     }));
@@ -411,30 +426,30 @@ describe("otlp-ligar: the daemon's receiver", () => {
   });
 
   test("a config file that cannot be read leaves no valid token: every request is refused", async () => {
-    const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
+    const { service, configFile } = await setup({ port: 0, token: "first-token-0123456789" });
     writeFileSync(configFile, "not json");
     expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
     writeFileSync(configFile, JSON.stringify({ telemetry: { token: 5 } }));
     expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
   });
 
-  test("telemetry off: no receiver, no file, no token", () => {
-    const { service, dataDir, configFile } = setup({ enabled: false, port: 0 });
+  test("telemetry off: no receiver, no file, no token", async () => {
+    const { service, dataDir, configFile } = await setup({ enabled: false, port: 0 });
     expect(service.url).toBeNull();
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
-    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
   });
 
-  test("it follows the hooks: without hooks.token nothing listens, as with the hooks receptor", () => {
-    const { service, dataDir, configFile, purges } = setup({ port: 0 }, false);
+  test("it follows the hooks: without hooks.token nothing listens, as with the hooks receptor", async () => {
+    const { service, dataDir, configFile, purges } = await setup({ port: 0 }, false);
     expect(service.url).toBeNull();
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
-    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
     expect(purges()).toBe(0);
   });
 
   test("the retention purge runs at start and then on a timer, only while the receiver listens", async () => {
-    const { service, purges } = setup();
+    const { service, purges } = await setup();
     expect(purges()).toBe(1);
     await Bun.sleep(100);
     expect(purges()).toBeGreaterThanOrEqual(3);
@@ -447,7 +462,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
   test("a port that is taken is logged and the daemon carries on without the receiver", async () => {
     const taken = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("") });
     cleanups.push(() => taken.stop(true));
-    const { service, dataDir, errors, purges } = setup({ port: taken.port });
+    const { service, dataDir, errors, purges } = await setup({ port: taken.port });
     expect(service.url).toBeNull();
     expect(errors.join("\n")).toContain(`${taken.port}`);
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);

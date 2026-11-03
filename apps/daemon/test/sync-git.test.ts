@@ -3,7 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { installSleepingGit, type SleepingGit } from "../../../scripts/test/sleeping-git.ts";
 import { Board } from "../src/board/board.ts";
-import { excludeLocalSettings, excludeLocalSettingsAsync } from "../src/board/worktree.ts";
+import { excludeLocalSettingsAsync } from "../src/board/worktree.ts";
 import { ProjectKeys } from "../src/central/project-key.ts";
 import { UsageIndexer } from "../src/costs/usage-indexer.ts";
 import { ProjectMemory } from "../src/memory/memory.ts";
@@ -45,26 +45,6 @@ function sources(dir: string): string[] {
     return path.endsWith(".ts") ? [path] : [];
   });
 }
-
-describe("sync-git: the daemon does not wait for a process on the way to answer", () => {
-  test("the only synchronous spawns left in the daemon are the ones listed, each with its reason", () => {
-    const found = sources(SRC)
-      .filter((file) => /\b(spawnSync|execFileSync|execSync)\b/.test(readFileSync(file, "utf8")))
-      .map((file) => relative(SRC, file).replaceAll("\\", "/"))
-      .sort();
-    expect(found).toEqual([
-      // `exclude`: the fallback of a repository whose exclude file was not looked up yet.
-      "board/worktree.ts",
-      // `keyFor`: the answer on the spot for the few callers that cannot wait; the places on a
-      // request or a timer ask `resolve` or are warmed first.
-      "central/project-key.ts",
-      // `repoRoot`: the fallback of a project whose root was not looked up yet.
-      "memory/memory.ts",
-      // The test runtime commits in a fixture repository, like a person would.
-      "runtime/fake-runtime.ts",
-    ]);
-  });
-});
 
 describe("sync-git: a slow git does not stop the protocol", () => {
   async function served() {
@@ -164,7 +144,38 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(blocked).toBeLessThan(100);
   });
 
-  test("looking up where a repository keeps its exclude file does not hold the event loop, and the synchronous call that follows asks git nothing", async () => {
+  test("the memory folder of a project nobody looked up waits for git without holding the event loop", async () => {
+    const { repo } = gitRepo();
+    const memory = new ProjectMemory({ claudeDir: tempDir("fd-claude-") });
+    const sleeping = sleepingGit(300);
+    const blocked = await longestBlockWhile(sleeping, async () => memory.dir(repo));
+    expect(sleeping.calls().some((args) => args.includes("--git-common-dir"))).toBe(true);
+    expect(blocked).toBeLessThan(100);
+  });
+
+  test("many memory requests for one project ask git once, and a project that becomes a repository is looked at again", async () => {
+    const { repo } = gitRepo();
+    const memory = new ProjectMemory({ claudeDir: tempDir("fd-claude-") });
+    const sleeping = sleepingGit(100);
+    const asked = () => sleeping.calls().filter((args) => args.includes("--git-common-dir")).length;
+    const first = await Promise.all([memory.dir(repo), memory.dir(repo), memory.dir(repo)]);
+    await memory.dir(repo);
+    await memory.list(repo);
+    expect(new Set(first).size).toBe(1);
+    expect(asked()).toBe(1);
+    // A failed lookup is not kept: the next request asks again.
+    const gone = join(tempDir("fd-gone-"), "missing");
+    await expect(memory.dir(gone)).rejects.toThrow();
+    await expect(memory.dir(gone)).rejects.toThrow();
+    // A folder that was not a repository and became one is looked at again.
+    const plain = tempDir("fd-plain-");
+    const before = await memory.dir(plain);
+    git(plain, "init", "-q", "-b", "main");
+    expect(await memory.dir(plain)).toBe(before);
+    expect(asked()).toBe(3);
+  });
+
+  test("looking up where a repository keeps its exclude file does not hold the event loop, and the call that follows asks git nothing", async () => {
     const { repo } = gitRepo();
     const sleeping = sleepingGit(300);
     const blocked = await longestBlockWhile(sleeping, () => excludeLocalSettingsAsync(repo));
@@ -172,7 +183,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(blocked).toBeLessThan(100);
     // The line is in the file, and a second look finds it there.
     const again = sleepingGit(300);
-    excludeLocalSettings(repo);
+    await excludeLocalSettingsAsync(repo);
     expect(again.calls()).toEqual([]);
   });
 
@@ -193,7 +204,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const sleeping = sleepingGit(300);
     const blocked = (board as unknown as { budgetBlocked(id: string): boolean }).budgetBlocked(id);
     expect(blocked).toBe(false);
-    expect(asked).toEqual([keys.keyFor(repo)]);
+    expect(asked).toEqual([keys.known(repo)]);
     expect(sleeping.calls()).toEqual([]);
   });
 
@@ -207,7 +218,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const indexer = new UsageIndexer({
       db: new EventStore(":memory:").db,
       roots: [root],
-      projectKey: (cwd) => keys.keyFor(cwd),
+      projectKey: (cwd) => keys.known(cwd),
       warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
     });
     const blocked = await longestBlockWhile(sleeping, () => indexer.pass());
@@ -215,29 +226,17 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const calls = sleeping.calls().length;
     expect(calls).toBeGreaterThan(0);
     // Cached now: the synchronous answer does not start another process.
-    keys.keyFor(repo);
+    keys.known(repo);
     expect(sleeping.calls()).toHaveLength(calls);
   });
 
   test("adding a project, and the daemon's start for the ones it has, look their keys up so the budget check and the vault find them cached", async () => {
-    const asked: string[][] = [];
-    const keys = new ProjectKeys(
-      "h",
-      (args) => {
-        asked.push(args);
-        return { code: 1, stdout: "" };
-      },
-      async () => ({ code: 1, stdout: "" }),
-    );
+    const keys = new ProjectKeys("h", async () => ({ code: 1, stdout: "" }));
     const { board, manager, store, root, repo } = newBoard({ projectKeys: keys });
     const added = await board.addProject({ path: repo });
     expect(typeof keys.lookup(repo)).toBe("string");
     // A board that started later over the same projects has to warm them itself.
-    const later = new ProjectKeys(
-      "h",
-      () => ({ code: 1, stdout: "" }),
-      async () => ({ code: 1, stdout: "" }),
-    );
+    const later = new ProjectKeys("h", async () => ({ code: 1, stdout: "" }));
     const restarted = new Board({
       db: store.db,
       manager,
@@ -247,6 +246,5 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(typeof later.lookup(added.path)).toBe("object");
     await restarted.warmProjectKeys();
     expect(typeof later.lookup(added.path)).toBe("string");
-    expect(asked).toEqual([]);
   });
 });

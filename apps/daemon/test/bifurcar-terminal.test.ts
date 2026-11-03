@@ -96,7 +96,7 @@ describe("bifurcar-terminal", () => {
       userLine({ uuid: "u-cont-1", text: "continue", cwd: repo }),
       userLine({ uuid: "u-cont-2", text: "continue", cwd: repo }),
     ]);
-    history.scan();
+    await history.scan();
 
     const { manager } = newManager();
     const server = startServer({

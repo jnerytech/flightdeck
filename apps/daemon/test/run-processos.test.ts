@@ -20,9 +20,9 @@ function realm() {
 }
 
 describe("run-processos: cada processo é uma aba do terminal do host", () => {
-  test("abre o argv sem shell na worktree, com o ambiente do Run, e devolve a aba", () => {
+  test("abre o argv sem shell na worktree, com o ambiente do Run, e devolve a aba", async () => {
     const r = realm();
-    const started = r.host.spawn({
+    const started = await r.host.spawn({
       argv: ["serve", "--port", "41000"],
       cwd: r.project,
       env: { FLIGHTDECK_PORT_WEB: "41000" },
@@ -38,7 +38,7 @@ describe("run-processos: cada processo é uma aba do terminal do host", () => {
 
   test("exited traz o código de saída do processo", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     r.ptys.spawned[0]?.exit(7);
     expect(await started.exited).toBe(7);
   });
@@ -53,9 +53,9 @@ describe("run-processos: cada processo é uma aba do terminal do host", () => {
 describe("run-processos: o Stop encerra a árvore", () => {
   test("a árvore cai primeiro, e o terminal é encerrado: o filho que ignora SIGHUP e SIGTERM não escapa", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     const pty = r.ptys.spawned[0];
-    r.host.kill(started.terminalId);
+    void r.host.kill(started.terminalId);
     expect(r.treeKilled).toEqual([pty?.pid ?? -1]);
     expect(pty?.killed).toBe(true);
     expect(await started.exited).toBe(143);
@@ -63,17 +63,17 @@ describe("run-processos: o Stop encerra a árvore", () => {
 
   test("matar uma aba que já acabou, ou que não existe, não derruba nada", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     r.ptys.spawned[0]?.exit(0);
     await started.exited;
-    r.host.kill(started.terminalId);
-    r.host.kill("nenhuma");
+    void r.host.kill(started.terminalId);
+    void r.host.kill("nenhuma");
     expect(r.treeKilled).toEqual([]);
   });
 
   test("o gerenciador diz o pid de um terminal vivo, e nada de um que acabou ou não existe", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     expect(r.manager.pidOf(started.terminalId)).toBe(r.ptys.spawned[0]?.pid ?? -1);
     expect(r.manager.pidOf("nenhuma")).toBeNull();
     r.ptys.spawned[0]?.exit(0);
@@ -85,7 +85,7 @@ describe("run-processos: o Stop encerra a árvore", () => {
 describe("run-processos: killTree", () => {
   test("no Linux, mata o grupo de processos com SIGKILL, e um grupo que já acabou não é erro", () => {
     const signals: Array<[number, string]> = [];
-    killTree(4321, {
+    void killTree(4321, {
       platform: "linux",
       signal: (pid, signal) => void signals.push([pid, signal]),
     });
@@ -102,7 +102,7 @@ describe("run-processos: killTree", () => {
 
   test("no Windows, taskkill /T /F leva a árvore inteira, e uma falha dele não é erro", () => {
     const ran: string[][] = [];
-    killTree(4321, { platform: "win32", run: (argv) => void ran.push(argv) });
+    void killTree(4321, { platform: "win32", run: (argv) => void ran.push(argv) });
     expect(ran).toEqual([["taskkill", "/PID", "4321", "/T", "/F"]]);
     expect(() =>
       killTree(4321, {
@@ -117,7 +117,10 @@ describe("run-processos: killTree", () => {
   test("nunca o grupo do próprio daemon, nem o init, nem um pid sem sentido", () => {
     const signals: Array<[number, string]> = [];
     for (const pid of [process.pid, 1, 0, -5, Number.NaN]) {
-      killTree(pid, { platform: "linux", signal: (p, signal) => void signals.push([p, signal]) });
+      void killTree(pid, {
+        platform: "linux",
+        signal: (p, signal) => void signals.push([p, signal]),
+      });
     }
     expect(signals).toEqual([]);
   });
@@ -144,7 +147,7 @@ describe("run-processos: killTree", () => {
       expect(ps(child)).toBe(String(child));
       expect(ps(child)).not.toBe(ps(process.pid));
     } finally {
-      killTree(child);
+      void killTree(child);
     }
   });
 
@@ -177,7 +180,7 @@ describe("run-processos: killTree", () => {
     try {
       expect(alive(parent.pid)).toBe(true);
       expect(alive(childPid)).toBe(true);
-      killTree(parent.pid);
+      void killTree(parent.pid);
       expect(await poll(() => !alive(parent.pid), 3000)).toBe(true);
       expect(await poll(() => !alive(childPid), 3000)).toBe(true);
       // Only the run's tree went: this process and its sibling are still here.

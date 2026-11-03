@@ -48,25 +48,25 @@ async function daemon(config: Record<string, unknown> = {}) {
 describe("bypass-daemon", () => {
   test("a host starts with bypass off: the config says false and host.info announces it", async () => {
     const { client, file } = await daemon();
-    expect(loadConfig(file).allowBypassPermissions).toBe(false);
+    expect((await loadConfig(file)).allowBypassPermissions).toBe(false);
     const info = await client.data<{ allowBypassPermissions?: boolean }>("host.info", {});
     expect(info?.allowBypassPermissions).toBe(false);
   });
 
-  test("the manager refuses a bypass session while the switch is off, and creates none", () => {
+  test("the manager refuses a bypass session while the switch is off, and creates none", async () => {
     const { manager, store, project } = newManager({ allowBypass: () => false });
-    expect(() =>
+    await expect(
       manager.create({ cwd: project, prompt: "go", permissionMode: "bypassPermissions" }),
-    ).toThrow(/permission prompts/);
+    ).rejects.toThrow(/permission prompts/);
     expect(store.listSessions()).toEqual([]);
     // Any other mode is not affected.
-    manager.create({ cwd: project, prompt: "go", permissionMode: "acceptEdits" });
+    await manager.create({ cwd: project, prompt: "go", permissionMode: "acceptEdits" });
     expect(store.listSessions()).toHaveLength(1);
   });
 
-  test("with the switch on the session starts in bypassPermissions", () => {
+  test("with the switch on the session starts in bypassPermissions", async () => {
     const { manager, store, project } = newManager({ allowBypass: () => true });
-    manager.create({ cwd: project, prompt: "go", permissionMode: "bypassPermissions" });
+    await manager.create({ cwd: project, prompt: "go", permissionMode: "bypassPermissions" });
     expect(store.listSessions()[0]?.permissionMode).toBe("bypassPermissions");
   });
 
@@ -77,18 +77,18 @@ describe("bypass-daemon", () => {
       "invalid_permission_update/bypass_not_allowed",
     );
     expect(await refusal("host.bypass", { allow: true })).toBe("invalid_state/bypass_confirm");
-    expect(loadConfig(file).allowBypassPermissions).toBe(false);
+    expect((await loadConfig(file)).allowBypassPermissions).toBe(false);
     expect(await client.data("host.bypass", { allow: true, confirm: true })).toEqual({
       allowBypassPermissions: true,
     });
-    expect(loadConfig(file).allowBypassPermissions).toBe(true);
+    expect((await loadConfig(file)).allowBypassPermissions).toBe(true);
     const info = await client.data<{ allowBypassPermissions?: boolean }>("host.info", {});
     expect(info?.allowBypassPermissions).toBe(true);
     expect(await refusal("session.create", create)).toBe("ok");
     expect(await client.data("host.bypass", { allow: false })).toEqual({
       allowBypassPermissions: false,
     });
-    expect(loadConfig(file).allowBypassPermissions).toBe(false);
+    expect((await loadConfig(file)).allowBypassPermissions).toBe(false);
     expect(await refusal("session.create", create)).toBe(
       "invalid_permission_update/bypass_not_allowed",
     );
@@ -96,7 +96,11 @@ describe("bypass-daemon", () => {
 
   test("setMode still never loosens a live session to bypass while the switch is off", async () => {
     const { manager, project } = newManager({ allowBypass: () => false });
-    const { sessionId } = manager.create({ cwd: project, prompt: "go", permissionMode: "default" });
+    const { sessionId } = await manager.create({
+      cwd: project,
+      prompt: "go",
+      permissionMode: "default",
+    });
     await expect(manager.setPermissionMode(sessionId, "bypassPermissions")).rejects.toThrow();
   });
 });

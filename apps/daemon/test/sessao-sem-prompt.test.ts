@@ -13,7 +13,7 @@ describe("sessao-sem-prompt: a session can start with no first prompt", () => {
   test("it is created idle, sends nothing, and the first message starts the first turn", async () => {
     const runtime = new FakeRuntime({ delayMs: 1 });
     const { manager, store, project } = newManager({ runtime });
-    const { sessionId } = manager.create({ cwd: project });
+    const { sessionId } = await manager.create({ cwd: project });
     expect(manager.get(sessionId).status).toBe("idle");
     await Bun.sleep(30);
     const said = () =>

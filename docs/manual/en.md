@@ -34,6 +34,7 @@ are written in Portuguese.
 - [Approvals and always allow](#approvals-and-always-allow)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
+  - [Finding projects](#finding-projects)
   - [Card lifecycle](#card-lifecycle)
   - [PR providers](#pr-providers)
   - [Parallel run limit](#parallel-run-limit)
@@ -273,6 +274,22 @@ session: a folder inside `allowedRoots`, a name, a permission mode and a first p
 requests show up as inline cards with **Approve** and **Deny**. The app reconnects by itself
 (from 1 s to 30 s) and resumes each session from the last event it saw.
 
+#### The first host
+
+With no host yet, the app shows four steps instead of the usual screens: install and start the
+daemon (`flightdeckd setup`), copy the pairing link it prints, paste it and press **Test and
+add**, and then the app opens the host's own page. There you press **Check** in **Check this
+host** and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
+then fills the Board without typing a path.
+
+#### Checking a host
+
+**Check this host** (on the host's page, online hosts with a daemon that announces `doctor.run`)
+asks the daemon to check itself: configuration, allowed folders, service, daemon, Claude Code,
+hooks, Tailscale and the daemon's version against the app's. Every item is **ok**, **warning** or
+**failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
+The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
+with `flightdeckd doctor`.
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
@@ -632,6 +649,76 @@ records:
 When a card starts, the daemon runs `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` and appends `.flightdeck/worktrees/` to the repository's `.git/info/exclude`
 (`.gitignore` is not touched). The session's prompt is the card's description plus the template.
+
+### Finding projects
+
+**Find my projects** (on the **Projects** screen, for hosts that announce `projects.scan` and
+`projects.clone`) has two parts:
+
+- **Scan allowed folders** looks for git repositories under the allowed folders, two levels deep
+  by default, up to 200 repositories. It skips hidden folders, `node_modules`, links and the inside
+  of a repository it already found, and never opens more than 2000 folders. Repositories that are
+  already projects are left out. Tick the ones you want and press **Add selected**.
+- **Clone from an address** runs `git clone` into a folder inside the allowed folders and
+  registers the result as a project. Only `https://`, `ssh://` and `user@host:path` addresses are
+  accepted; an address that starts with a dash, has spaces, points to a local path or uses
+  `file://` or a transport helper is refused, and so is a folder name that is not a plain name or
+  a folder that already exists. git runs with password prompts off and stops after five minutes,
+  so a private repository needs an SSH key or a credential helper already set up on the host.
+  Every refusal says why.
+
+
+### Starting from GitHub
+
+For hosts that announce `github` there are two places:
+
+- **Hosts, GitHub panel.** **Sign in with GitHub** asks the host's `gh` to start GitHub's device
+  flow. The panel shows a one-time code: press **Open GitHub**, type the code on that page and
+  confirm. The panel notices by itself and shows **Signed in as <account>**, where the login is
+  kept (the system keyring, `gh`'s own file, or an environment variable of the daemon) and the
+  permissions (`repo`, `read:project`). Flightdeck never sees your token: `gh` keeps it. **Sign
+  out** asks `gh` to forget it; a login that comes from `GH_TOKEN` or `GITHUB_TOKEN` is managed by
+  the daemon's environment and cannot be signed out here. If `gh` is not installed on the host the
+  panel says so; install it and press **Check again**.
+- **Projects, Start from GitHub.** Lists your repositories (or search them), then pick one and,
+  if you like, one of its open issues. Choose the allowed folder to clone into and whether to open
+  **A board card** or **A session**. The host clones the repository into that folder (or reuses the
+  clone already there), registers it as a project, and then:
+  - **a card** takes the issue's title, body and link (once per issue); an issue written by
+    someone outside the repository's people is marked as third-party content and gets no
+    automatic approval;
+  - **a session** opens in the clone with the issue quoted in its first prompt, under the same
+    mark when it comes from outside.
+  Without an issue, only the repository is cloned and registered. A folder with that name that is
+  another repository is refused, and every refusal says why.
+
+To try it: on the host's page press **Sign in with GitHub**, confirm on GitHub, then on **Projects** press
+**Start from GitHub**, pick a repository, press **Start**.
+
+
+### Board sync with GitHub Projects
+
+For hosts that announce `boardsync` (it needs the host's `gh` signed in, see **Starting from GitHub**), the **Sync**
+button on a project's **Board** links the project to a GitHub Projects (v2) board:
+
+- **Link board.** Pick one of your boards and press **Link board**. Its items become cards (an issue keeps its
+  link and, when a stranger wrote it, the third-party mark with no automatic approval); the **Status** of each item puts
+  the card in a column. After that the host reads the board every minute, and **Sync now** does it at once.
+- **Status mapping.** Each status of the board has a column here: by default Todo and Backlog to Backlog, In Progress to
+  In progress, In review to In review, Done to Done. Change a column and press **Save mapping**; a status set to *Not
+  mapped* leaves cards where they are. *Needs you* has no GitHub counterpart, so cards that go there are not sent.
+- **Read only by default.** Moving a card here changes nothing on the board until you turn on **Push my card moves to the
+  board**. Turning it on asks to confirm and needs the `project` permission; if the login does not have it, the message
+  says so and nothing is sent. Push only changes the Status of items that already are cards: it never creates, edits or
+  deletes an item.
+- **Conflicts.** If a card moved here and the item changed there since the last sync, the newest change wins. A tie within
+  two seconds goes to the board when push is off and to this side when push is on. The value that lost is never dropped:
+  the card's **Sync log** shows it, with both times. A card that is running is not moved by the board (the log says so).
+- **On a card.** **Open on the board** opens the item; *No longer on the board* appears when it was archived or removed
+  (the card stays); the **Sync log** lists conflicts, skipped moves and pushes that failed.
+- **Unlink** stops the sync and keeps the cards, with their links.
+
+To try it: sign in with GitHub on the host's page, open a project's **Board**, press **Sync**, pick a board, **Link board**.
 
 ### Card lifecycle
 
@@ -1821,6 +1908,14 @@ estimated cost, tokens and turns.
 - **Cost:** it is the difference of the total the SDK reports for each session, never the sum
   turn by turn.
 - **Project:** the same as on the Sessions screen (the `origin` remote, or the repository path).
+- **Grouped by project:** each project is one block with its total (the most expensive first) and
+  its days below, newest first. Dates and costs never wrap.
+- **Hidden:** temp folders (`temp`, `tmp`, `/var/folders`) and agent worktrees
+  (`.claude/worktrees`) are not listed.
+- **Open the sessions:** click a day to open History filtered by that project's folder and that
+  day. A project known by its remote (shared by several folders and worktrees) opens History
+  filtered by the project itself, so every one of its folders is listed; a "Project: name" chip
+  above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
 ### Costs

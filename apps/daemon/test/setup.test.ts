@@ -102,7 +102,7 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
   });
 
   test("the PATH step runs right after the binary is placed, and not when running from source", async () => {
@@ -122,7 +122,7 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(h.out.join("\n")).toContain("is not a folder that exists");
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([good]);
   });
 
   test("~ in a folder answer means the home, and folders already in the config stay", async () => {
@@ -142,13 +142,13 @@ describe("setup", () => {
     const answers = ["", good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([good]);
     const insist = harness({
       answers: [""],
       confirms: { "without project folders": true, hooks: false },
     });
     await runSetup(insist.deps);
-    expect(loadConfig(insist.configFile).allowedRoots).toEqual([]);
+    expect((await loadConfig(insist.configFile)).allowedRoots).toEqual([]);
     expect(insist.calls).toEqual(["binary", "service", "pair"]);
   });
 
@@ -158,7 +158,7 @@ describe("setup", () => {
     const answers = [good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    const config = loadConfig(h.configFile);
+    const config = await loadConfig(h.configFile);
     expect(config.bind).toBe("100.64.0.9");
     expect(config.allowedNetworks).toEqual(["127.0.0.0/8", "::1/128", ...TAILSCALE_NETWORKS]);
   });
@@ -167,7 +167,7 @@ describe("setup", () => {
     const no = harness({ tailscale: "100.64.0.9", confirms: { Tailscale: false } });
     no.dir("code");
     await runSetup(no.deps);
-    expect(loadConfig(no.configFile).bind).toBe("127.0.0.1");
+    expect((await loadConfig(no.configFile)).bind).toBe("127.0.0.1");
     expect(no.asked.find((q) => q.includes("Tailscale"))).toBeDefined();
     expect(no.defaults.get("Tailscale")).toBe(false);
     const none = harness();
@@ -234,8 +234,8 @@ describe("setup", () => {
     h.asked.length = 0;
     await runSetup(h.deps, { yes: true, folders: [a, b] });
     expect(h.asked).toEqual([]);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
-    expect(loadConfig(h.configFile).bind).toBe("127.0.0.1");
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
+    expect((await loadConfig(h.configFile)).bind).toBe("127.0.0.1");
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
   });
 
@@ -355,7 +355,7 @@ describe("setup command", () => {
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has(`${h.dir}/.config/systemd/user/flightdeckd.service`)).toBe(true);
     expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
     expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
@@ -368,7 +368,7 @@ describe("setup command", () => {
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has("C:\\Temp\\flightdeckd-task.xml")).toBe(true);
     const schtasks = h.calls.filter((c) => c[0] === "schtasks").map((c) => c[1]);
     expect(schtasks).toEqual(["/Query", "/Create", "/Run"]);
@@ -405,7 +405,7 @@ describe("setup command", () => {
     // "real" leaves the probe alone: it runs the stable file, which is not a flightdeckd.
     if (stableVersion !== "real") h.deps.binaryVersion = async () => stableVersion;
     if (holdLock) h.deps.serviceStopTimeoutMs = 50;
-    const lock = holdLock ? acquireLock(h.dir) : null;
+    const lock = holdLock ? await acquireLock(h.dir) : null;
     mkdirSync(join(h.dir, "download"));
     writeFileSync(join(h.dir, "download", "flightdeckd"), "new");
     mkdirSync(join(h.dir, ".flightdeck", "bin"), { recursive: true });
@@ -415,7 +415,7 @@ describe("setup command", () => {
     mkdirSync(project);
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
-    lock?.release();
+    await lock?.release();
     return { ...h, stable, text: h.out.join("\n") };
   }
 
@@ -484,7 +484,7 @@ describe("setup command", () => {
     await runCli(["setup", "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([join(h.dir, "project")]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([join(h.dir, "project")]);
   });
 
   test("input that ends exits 1 with the way out", async () => {
@@ -556,25 +556,25 @@ describe("reconcileStableBinary", () => {
 describe("stable binary", () => {
   const platform = "linux";
 
-  test("running from source leaves everything alone", () => {
+  test("running from source leaves everything alone", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
-    expect(installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
+    expect(await installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
       "source",
     );
     expect(existsSync(stable)).toBe(false);
   });
 
-  test("a binary that is already at the stable place stays", () => {
+  test("a binary that is already at the stable place stays", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
     writeFileSync(stable, "daemon");
-    expect(installStableBinary([stable], stable, platform)).toBe("already");
+    expect(await installStableBinary([stable], stable, platform)).toBe("already");
     expect(readFileSync(stable, "utf8")).toBe("daemon");
   });
 
-  test("a stable binary that exists is kept: replacing it is what update does", () => {
+  test("a stable binary that exists is kept: replacing it is what update does", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
@@ -582,16 +582,18 @@ describe("stable binary", () => {
     const other = join(home, "download", "flightdeckd");
     mkdirSync(join(home, "download"));
     writeFileSync(other, "downloaded");
-    expect(installStableBinary([other], stable, platform)).toBe("kept");
+    expect(await installStableBinary([other], stable, platform)).toBe("kept");
     expect(readFileSync(stable, "utf8")).toBe("installed");
   });
 
-  test("the running binary is copied to ~/.flightdeck/bin, executable", () => {
+  test("the running binary is copied to ~/.flightdeck/bin, executable", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     const other = join(home, "flightdeckd");
     writeFileSync(other, "downloaded");
-    expect(installStableBinary([other], stable, platform)).toBe("copied");
+    const copying = installStableBinary([other], stable, platform);
+    expect(copying).toBeInstanceOf(Promise);
+    expect(await copying).toBe("copied");
     expect(readFileSync(stable, "utf8")).toBe("downloaded");
     // Windows has no executable bit: the file runs because of its .exe name.
     if (process.platform !== "win32") expect(statSync(stable).mode & 0o111).not.toBe(0);

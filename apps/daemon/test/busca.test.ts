@@ -8,7 +8,7 @@ const A = "/home/dev/a";
 const B = "/home/dev/b";
 
 /** Two projects (plus a subfolder and a look-alike), with text that must not be searchable. */
-function setup(fts5: boolean) {
+async function setup(fts5: boolean) {
   const root = projectsRoot();
   const store = new EventStore(":memory:");
   const logs: string[] = [];
@@ -67,7 +67,7 @@ function setup(fts5: boolean) {
     fts5,
     log: (m) => logs.push(m),
   });
-  indexer.scan();
+  await indexer.scan();
   return { indexer, logs, pathA, store };
 }
 
@@ -77,8 +77,8 @@ describe("busca", () => {
   for (const fts5 of [true, false]) {
     const mode = fts5 ? "FTS5" : "LIKE";
 
-    test(`${mode}: termo presente acha a mensagem certa, com trecho destacado`, () => {
-      const { indexer } = setup(fts5);
+    test(`${mode}: termo presente acha a mensagem certa, com trecho destacado`, async () => {
+      const { indexer } = await setup(fts5);
       expect(indexer.fts).toBe(fts5);
       const hits = indexer.search({ query: "azul" });
       expect(hits).toEqual([
@@ -98,16 +98,16 @@ describe("busca", () => {
       expect(indexer.search({ query: "   " })).toEqual([]);
     });
 
-    test(`${mode}: mais recentes primeiro; resultados de ferramenta e linhas cruas não entram`, () => {
-      const { indexer } = setup(fts5);
+    test(`${mode}: mais recentes primeiro; resultados de ferramenta e linhas cruas não entram`, async () => {
+      const { indexer } = await setup(fts5);
       expect(ids(indexer.search({ query: "flamingo" }))).toEqual(["b1", "x1", "s1", "a1"]);
       expect(ids(indexer.search({ query: "resultado" }))).toEqual([]);
       expect(ids(indexer.search({ query: "cru" }))).toEqual([]);
       expect(ids(indexer.search({ query: "flamingo", limit: 2 }))).toEqual(["b1", "x1"]);
     });
 
-    test(`${mode}: filtros de pasta e de período`, () => {
-      const { indexer } = setup(fts5);
+    test(`${mode}: filtros de pasta e de período`, async () => {
+      const { indexer } = await setup(fts5);
       // The folder itself and anything below it, never a look-alike prefix.
       expect(ids(indexer.search({ query: "flamingo", cwd: A }))).toEqual(["s1", "a1"]);
       expect(ids(indexer.search({ query: "flamingo", cwd: `${A}/` }))).toEqual(["s1", "a1"]);
@@ -127,23 +127,23 @@ describe("busca", () => {
       ).toEqual(["s1"]);
     });
 
-    test(`${mode}: texto apagado por truncamento some da busca; aspas e símbolos não quebram`, () => {
-      const { indexer, pathA } = setup(fts5);
+    test(`${mode}: texto apagado por truncamento some da busca; aspas e símbolos não quebram`, async () => {
+      const { indexer, pathA } = await setup(fts5);
       writeFileSync(pathA, `${userLine({ uuid: "n1", text: "conteúdo novo", cwd: A })}\n`);
-      indexer.scan();
+      await indexer.scan();
       expect(ids(indexer.search({ query: "azul" }))).toEqual([]);
       expect(ids(indexer.search({ query: "novo" }))).toEqual(["n1"]);
       expect(() => indexer.search({ query: 'flamingo" OR -x*' })).not.toThrow();
     });
   }
 
-  test("o trecho é cortado em volta do acerto em textos longos", () => {
+  test("o trecho é cortado em volta do acerto em textos longos", async () => {
     const root = projectsRoot();
     const store = new EventStore(":memory:");
     const long = `${"antes ".repeat(40)}agulha${" depois".repeat(40)}`;
     writeTranscript(root, "-l", "longa", [userLine({ uuid: "l1", text: long, cwd: "/l" })]);
     const indexer = new HistoryIndexer({ db: store.db, roots: [root], fts5: false });
-    indexer.scan();
+    await indexer.scan();
     const snippet = indexer.search({ query: "agulha" })[0]?.snippet ?? "";
     expect(snippet.startsWith("…")).toBe(true);
     expect(snippet.endsWith("…")).toBe(true);

@@ -245,8 +245,10 @@ function AddHost(props: {
       url: draftUrl(draft),
       token: draft.token,
     });
-    if (result.ok) props.go({ name: "hub" });
-    else setError(result.error);
+    // The first host opens its own page: that is where it is checked and its folders are chosen.
+    if (result.ok) {
+      props.go(props.empty ? { name: "host", host: result.hostId } : { name: "hub" });
+    } else setError(result.error);
   };
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
@@ -335,6 +337,11 @@ export function Screen(props: ScreenProps) {
             key={hostId}
             store={store}
             hostId={hostId}
+            initial={
+              route.name === "history" && (route.cwd || route.projectKey || route.day)
+                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+                : undefined
+            }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
             density={props.density}
             openId={opened}
@@ -625,6 +632,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
+          onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);

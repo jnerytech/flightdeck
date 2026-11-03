@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
-import { existsSync, watch as fsWatch } from "node:fs";
+import { watch as fsWatch } from "node:fs";
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
@@ -105,7 +106,10 @@ export class Changes {
     const row = this.opts.db.query(SESSION_CWD).get({ id }) as { cwd: string } | null;
     if (!row) throw new FlightdeckError("not_found", `sessão ${id} não existe`);
     // A folder that no longer exists is not a repository either.
-    const top = existsSync(row.cwd)
+    const top = (await stat(row.cwd).then(
+      () => true,
+      () => false,
+    ))
       ? await git(row.cwd, "rev-parse", "--show-toplevel")
       : { code: 1, stdout: "" };
     if (top.code !== 0) {

@@ -26,6 +26,7 @@ export function FirstRun(props: { onCopy(text: string): void }) {
         </li>
         <li>{t("welcome.step2")}</li>
         <li>{t("welcome.step3")}</li>
+        <li>{t("welcome.step4")}</li>
       </ol>
       <p className="text-muted-foreground">
         {t("welcome.trouble")}

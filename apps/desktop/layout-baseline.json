@@ -59,7 +59,7 @@
   "src/ui/ToolCall.tsx": 8,
   "src/ui/TranscriptReader.tsx": 6,
   "src/ui/UpdateBanner.tsx": 6,
-  "src/ui/UsagePanel.tsx": 16,
+  "src/ui/UsagePanel.tsx": 7,
   "src/ui/VaultPage.tsx": 13,
   "src/ui/WorkflowsPage.tsx": 12
 }

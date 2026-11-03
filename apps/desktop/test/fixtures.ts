@@ -7,7 +7,12 @@ import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
 import type { BgService } from "../../daemon/src/bg/service.ts";
 import { Board } from "../../daemon/src/board/board.ts";
+import { BoardSync } from "../../daemon/src/boardsync/engine.ts";
+import { BoardSyncLoop } from "../../daemon/src/boardsync/loop.ts";
+import { BoardSyncService } from "../../daemon/src/boardsync/service.ts";
+import { BoardSyncStore } from "../../daemon/src/boardsync/store.ts";
 import { Central } from "../../daemon/src/central/central.ts";
+import { ProjectKeys } from "../../daemon/src/central/project-key.ts";
 import { Forker } from "../../daemon/src/checkpoints/fork.ts";
 import { Rewinder } from "../../daemon/src/checkpoints/rewind.ts";
 import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
@@ -15,6 +20,8 @@ import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { spawnExec } from "../../daemon/src/exec.ts";
+import type { GhRunner } from "../../daemon/src/github/gh.ts";
+import { GithubService } from "../../daemon/src/github/service.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
@@ -23,6 +30,7 @@ import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
 import { packPersonas } from "../../daemon/src/personas/pack.ts";
+import { preparePersonas } from "../../daemon/src/personas/prepare.ts";
 import { agentPublisher } from "../../daemon/src/personas/publish.ts";
 import { Personas } from "../../daemon/src/personas/store.ts";
 import { claudeCli, filePins, Plugins } from "../../daemon/src/plugins/plugins.ts";
@@ -50,6 +58,7 @@ import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
+import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
@@ -72,7 +81,7 @@ export async function waitFor<T>(
 
 /**
  * In-process daemon with the FakeRuntime and a board; `listen` can be called again on the same port. Its
- * history index reads `historyRoot` (a fake `~/.claude/projects`); call `history.scan()` after
+ * history index reads `historyRoot` (a fake `~/.claude/projects`); call `await history.scan()` after
  * writing transcripts there.
  */
 export function daemon(
@@ -132,6 +141,12 @@ export function daemon(
     webhook?: WebhookSender;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
     personas?: boolean;
+    /** The host's self-check (`doctor.run`) and project finder (`projects.scan`, `projects.clone`), over a fake git. */
+    firstRun?: boolean;
+    /** Sign-in with GitHub and start from a repo (phase 37), through the `gh` on the PATH and a fake clone. */
+    github?: boolean | { gh?: GhRunner };
+    /** Board sync with an external board (phase 38), over an in-memory provider the test controls. */
+    boardsync?: boolean;
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
   } = {},
@@ -220,7 +235,14 @@ export function daemon(
   const plugins = options.plugins
     ? new Plugins({ cli: claudeCli(), pins: filePins(join(root, "plugin-pins.json")) })
     : undefined;
-  const board = new Board({ db: store.db, manager, allowedRoots: roots, quota });
+  const board = new Board({
+    db: store.db,
+    manager,
+    allowedRoots: roots,
+    quota,
+    // Like main.ts: the personas are read at the edge, before a session exists.
+    preparePersonas: (ref, cwd) => preparePersonas(personaStore, ref, cwd),
+  });
   cleanups.push(() => board.stop());
   const runHost = options.runenv ? fakeRunHost() : undefined;
   const runConfigs = new RunConfigs({ db: store.db });
@@ -239,8 +261,11 @@ export function daemon(
   const settingsFile = join(root, "claude-home", "settings.json");
   const configFile = join(root, "config.json");
   writeFileSync(configFile, JSON.stringify({ token: TOKEN }));
+  // Shared with the server like the real daemon does: listings look the keys up before they read them.
+  const keys = new ProjectKeys("h1");
   const central = new Central({
     ...(snapshots ? { snapshots } : {}),
+    keys,
     db: store.db,
     manager,
     hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
@@ -324,6 +349,92 @@ export function daemon(
         files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: roots }),
       }
     : undefined;
+  /** Phase 37: the GitHub service; a clone is a repository with one commit and the https origin. */
+  const githubService = options.github
+    ? new GithubService({
+        ...(typeof options.github === "object" && options.github.gh
+          ? { gh: options.github.gh }
+          : {}),
+        roots,
+        board,
+        issues: new Issues({ board }),
+        git: async (args) => {
+          const [, , url, dest] = args as [string, string, string, string];
+          mkdirSync(dest, { recursive: true });
+          for (const step of [
+            ["init", "-q", "-b", "main"],
+            ["config", "user.email", "t@flightdeck.invalid"],
+            ["config", "user.name", "Test"],
+            ["config", "commit.gpgsign", "false"],
+          ]) {
+            await Bun.spawn(["git", "-C", dest, ...step]).exited;
+          }
+          writeFileSync(join(dest, "README.md"), "# cloned\n");
+          for (const step of [
+            ["add", "."],
+            ["commit", "-q", "-m", "first"],
+            ["remote", "add", "origin", url],
+          ]) {
+            await Bun.spawn(["git", "-C", dest, ...step]).exited;
+          }
+          return { code: 0, stderr: "" };
+        },
+        startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
+      })
+    : undefined;
+  if (githubService) cleanups.push(() => githubService.loginCancel());
+  /** Phase 38: board sync over the in-memory provider; the loop is never started. */
+  const boardProvider = new FakeProvider();
+  const boardSyncStore = new BoardSyncStore(store.db);
+  const boardSyncService = options.boardsync
+    ? (() => {
+        const engine = new BoardSync({ board, store: boardSyncStore, provider: boardProvider });
+        const loop = new BoardSyncLoop({
+          engine,
+          store: boardSyncStore,
+          timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
+        });
+        cleanups.push(() => loop.stop());
+        return new BoardSyncService({
+          board,
+          store: boardSyncStore,
+          provider: boardProvider,
+          engine,
+          loop,
+        });
+      })()
+    : undefined;
+  /** What the fake git was asked, and the versions `doctor.run` was asked with. */
+  const gitCalls: string[][] = [];
+  const doctorAsked: Array<string | undefined> = [];
+  const firstRunOptions = options.firstRun
+    ? {
+        findProjects: true,
+        git: async (args: string[]) => {
+          gitCalls.push(args);
+          const dest = args[args.length - 1] as string;
+          mkdirSync(dest, { recursive: true });
+          await Bun.spawn(["git", "init", "-q", dest]).exited;
+          return { code: 0, stderr: "" };
+        },
+        doctor: async (appVersion?: string) => {
+          doctorAsked.push(appVersion);
+          return {
+            ok: true,
+            checks: [
+              { id: "folders" as const, status: "ok" as const, detail: roots.join(", ") },
+              {
+                id: "claude" as const,
+                status: "warn" as const,
+                detail: "claude is not on the PATH: sessions cannot start",
+                fix: "install Claude Code, then run: flightdeckd service install",
+              },
+              { id: "version" as const, status: "ok" as const, detail: "0.32.0" },
+            ],
+          };
+        },
+      }
+    : {};
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -331,6 +442,9 @@ export function daemon(
       ...(features ? { features } : {}),
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
+      ...firstRunOptions,
+      ...(githubService ? { github: githubService } : {}),
+      ...(boardSyncService ? { boardsync: boardSyncService } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {
@@ -345,6 +459,7 @@ export function daemon(
       quota,
       usage,
       central,
+      warmProjectKey: (cwd) => keys.resolve(cwd),
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
@@ -425,6 +540,15 @@ export function daemon(
     ptys,
     runHost,
     actions,
+    /** Opens a session the way `session.create` does: the persona is read first, then handed over. */
+    start: async (payload: Parameters<SessionManager["create"]>[0]) =>
+      manager.create(payload, {
+        prepared: await preparePersonas(personaStore, payload.persona, payload.cwd),
+      }),
+    gitCalls,
+    boardProvider,
+    boardSyncStore,
+    doctorAsked,
   };
 }
 

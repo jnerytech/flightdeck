@@ -423,6 +423,8 @@ const Cursor = z.string().min(1);
 
 export const HistoryListPayload = z.object({
   cwd: z.string().min(1).optional(),
+  /** Every folder and worktree of one project, as `projectKey` names it on the Costs screen. */
+  projectKey: z.string().min(1).optional(),
   from: z.string().min(1).optional(),
   to: z.string().min(1).optional(),
   origin: HistoryOrigin.optional(),
@@ -661,6 +663,9 @@ export const Card = z.object({
   issueRef: z.string().nullable().default(null),
   /** Phase 13: the issue's author is third party, so the card's content is untrusted. */
   issueExternal: z.boolean().default(false),
+  /** Phase 38: the item of an external board this card follows, and whether it has left that board. */
+  externalUrl: z.string().nullable().default(null),
+  externalGone: z.boolean().default(false),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -1085,6 +1090,131 @@ export interface FsFilesResult {
   files: Array<{ name: string; path: string }>;
   /** More files than the daemon returns at once. */
   truncated: boolean;
+}
+
+/** What `projects.scan` answers: the repositories found, never outside the roots. */
+export interface ProjectsScanResult {
+  repos: Array<{ name: string; path: string; root: string }>;
+  /** The scan stopped at its cap of repositories or of folders visited. */
+  truncated: boolean;
+}
+
+/** What `projects.clone` answers: the new repository's folder. */
+export interface ProjectsCloneResult {
+  path: string;
+}
+
+/** Phase 38: where a project's board sync stands. `linked: false` carries nothing else. */
+export interface BoardSyncStatus {
+  linked: boolean;
+  provider?: string;
+  boardId?: string;
+  boardTitle?: string;
+  columnMap?: Partial<Record<string, BoardColumn>>;
+  /** Local moves are sent to the board. */
+  push?: boolean;
+  lastSyncedAt?: string | null;
+  lastError?: string | null;
+  pausedUntil?: string | null;
+  /** The board has more items than one pull reads. */
+  truncated?: boolean;
+  /** The board's Status options, for the map editor. */
+  statusOptions?: string[];
+}
+
+/** One board of the external provider. */
+export interface BoardSyncBoard {
+  id: string;
+  title: string;
+  owner: string;
+  number: number;
+  url: string;
+}
+
+/** What one sync did. */
+export interface BoardSyncReport {
+  created: number;
+  moved: number;
+  updated: number;
+  conflicts: number;
+  unmapped: number;
+  gone: number;
+  skipped: number;
+  pushed: number;
+  redacted: number;
+  truncated: boolean;
+  notModified: boolean;
+}
+
+/** One line of a card's sync log: a conflict, a skipped move, a push that failed. */
+export interface BoardSyncLogEntry {
+  at: string;
+  kind: string;
+  winner: "local" | "external" | null;
+  lostValue: string | null;
+  lostAt: string | null;
+  keptValue: string | null;
+  keptAt: string | null;
+  detail: string | null;
+}
+
+/** Phase 37: whether the host's `gh` is signed in to GitHub. Never a token. */
+export interface GithubStatusResult {
+  installed: boolean;
+  loggedIn: boolean;
+  login: string | null;
+  scopes: string[];
+  /** Where `gh` keeps the login. */
+  source: "keyring" | "file" | "env" | null;
+}
+
+/** The device flow's one-time code and the page where it is typed. */
+export interface GithubLoginResult {
+  code: string;
+  url: string;
+}
+
+export interface GithubRepoItem {
+  /** `owner/name`. */
+  name: string;
+  description: string;
+  private: boolean;
+  url: string;
+  updatedAt: string;
+}
+
+export interface GithubStartResult {
+  projectId: string;
+  path: string;
+  cardId?: string;
+  sessionId?: string;
+  /** The folder was already a clone of the repo. */
+  reused: boolean;
+}
+
+export const DOCTOR_CHECK_IDS = [
+  "config",
+  "folders",
+  "service",
+  "daemon",
+  "claude",
+  "hooks",
+  "tailscale",
+  "version",
+] as const;
+
+/** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
+export interface DoctorCheckResult {
+  id: (typeof DOCTOR_CHECK_IDS)[number];
+  status: "ok" | "warn" | "fail";
+  detail: string;
+  fix?: string;
+}
+
+/** What `doctor.run` answers. */
+export interface DoctorResult {
+  ok: boolean;
+  checks: DoctorCheckResult[];
 }
 
 /** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
@@ -3375,6 +3505,68 @@ export const Command = z.discriminatedUnion("type", [
   /** The files of a folder inside the allowed roots (not the subfolders: `fs.dirs` has those). */
   cmd("fs.files", z.object({ path: z.string().min(1), hidden: z.boolean().optional() }).strict()),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
+  /** Git repositories inside the allowed roots (bounded depth and count), for "find my projects". */
+  cmd("projects.scan", z.object({ depth: z.number().int().min(1).max(3).optional() }).strict()),
+  /** Phase 37: the host's gh login (device flow), the person's repos and issues, and start from them. */
+  cmd("github.status", z.object({}).strict()),
+  cmd("github.login.start", z.object({}).strict()),
+  cmd("github.login.cancel", z.object({}).strict()),
+  cmd("github.logout", z.object({}).strict()),
+  cmd("github.repos", z.object({ query: z.string().max(100).optional() }).strict()),
+  cmd("github.issues", z.object({ repo: z.string().min(1).max(200) }).strict()),
+  cmd(
+    "github.start",
+    z
+      .object({
+        repo: z.string().min(1).max(200),
+        issue: z.string().min(1).max(20).optional(),
+        root: z.string().min(1),
+        mode: z.enum(["card", "session"]),
+      })
+      .strict(),
+  ),
+  /** Phase 38: board sync with an external board (GitHub Projects first). */
+  cmd("boardsync.boards", z.object({}).strict()),
+  cmd(
+    "boardsync.link",
+    z
+      .object({
+        projectId: z.string().min(1),
+        boardId: z.string().min(1).max(200),
+        columnMap: z.record(z.string().min(1).max(200), BoardColumn).optional(),
+      })
+      .strict(),
+  ),
+  cmd("boardsync.unlink", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd(
+    "boardsync.setMap",
+    z
+      .object({
+        projectId: z.string().min(1),
+        columnMap: z.record(z.string().min(1).max(200), BoardColumn),
+      })
+      .strict(),
+  ),
+  cmd(
+    "boardsync.setPush",
+    z.object({ projectId: z.string().min(1), push: z.boolean(), confirm: z.boolean() }).strict(),
+  ),
+  cmd("boardsync.status", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd("boardsync.syncNow", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd("boardsync.log", z.object({ cardId: z.string().min(1) }).strict()),
+  /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
+  cmd(
+    "projects.clone",
+    z
+      .object({
+        url: z.string().min(1).max(2048),
+        root: z.string().min(1),
+        name: z.string().min(1).max(100).optional(),
+      })
+      .strict(),
+  ),
+  /** The host checks itself (version, claude, hooks, ports, folders): each failure carries its fix. */
+  cmd("doctor.run", z.object({ appVersion: z.string().max(32).optional() }).strict()),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
@@ -3895,6 +4087,24 @@ export interface CommandResults {
   };
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
+  "doctor.run": DoctorResult;
+  "projects.scan": ProjectsScanResult;
+  "projects.clone": ProjectsCloneResult;
+  "boardsync.boards": { boards: BoardSyncBoard[] };
+  "boardsync.link": BoardSyncStatus;
+  "boardsync.unlink": undefined;
+  "boardsync.setMap": BoardSyncStatus;
+  "boardsync.setPush": BoardSyncStatus;
+  "boardsync.status": BoardSyncStatus;
+  "boardsync.syncNow": { status: BoardSyncStatus; report: BoardSyncReport };
+  "boardsync.log": { entries: BoardSyncLogEntry[] };
+  "github.status": GithubStatusResult;
+  "github.login.start": GithubLoginResult;
+  "github.login.cancel": undefined;
+  "github.logout": undefined;
+  "github.repos": { repos: GithubRepoItem[] };
+  "github.issues": { issues: Issue[] };
+  "github.start": GithubStartResult;
   "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };

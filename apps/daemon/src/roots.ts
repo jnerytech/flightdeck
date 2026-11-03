@@ -1,13 +1,13 @@
-import { realpathSync, statSync } from "node:fs";
+import { realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { posix, resolve, win32 } from "node:path";
 import { FlightdeckError } from "./errors.ts";
 import { isInside } from "./paths.ts";
 
-function realFolder(path: string): string | null {
+async function realFolder(path: string): Promise<string | null> {
   try {
-    const real = realpathSync.native(resolve(path));
-    return statSync(real).isDirectory() ? real : null;
+    const real = await realpath(resolve(path));
+    return (await stat(real)).isDirectory() ? real : null;
   } catch {
     return null;
   }
@@ -50,11 +50,11 @@ function systemFolders(info: PlatformInfo): string[] {
  * drive or file system root, the home folder (it holds the secrets folders), or inside any of them.
  * Windows paths compare without case and with either slash.
  */
-export function isSystemFolder(
+export async function isSystemFolder(
   path: string,
   info: PlatformInfo,
-  real = (dir: string) => dir,
-): boolean {
+  real: (dir: string) => string | Promise<string> = (dir) => dir,
+): Promise<boolean> {
   const win = info.platform === "win32";
   const p = win ? win32 : posix;
   const norm = (dir: string) => (win ? p.resolve(dir).toLowerCase() : p.resolve(dir));
@@ -64,11 +64,11 @@ export function isSystemFolder(
   };
   const target = norm(path);
   if (p.parse(target).root === target) return true;
-  return systemFolders(info).some((sys) => {
-    const system = norm(real(sys));
-    // The folder itself, or one inside it; or a folder that holds a system one (the home folder).
-    return inside(system, target) || (inside(target, system) && target !== system);
-  });
+  const systems = await Promise.all(systemFolders(info).map(async (sys) => norm(await real(sys))));
+  // The folder itself, or one inside it; or a folder that holds a system one (the home folder).
+  return systems.some(
+    (system) => inside(system, target) || (inside(target, system) && target !== system),
+  );
 }
 
 /**
@@ -77,13 +77,13 @@ export function isSystemFolder(
  * after the call. `platform` is what decides the system folders (the process's own by default; a
  * test gives its own, since a CI runner keeps its temp folders inside the user's AppData).
  */
-export function addAllowedRoot(
+export async function addAllowedRoot(
   roots: string[],
   path: string,
   confirm: boolean,
-  persist?: (roots: readonly string[]) => void,
+  persist?: (roots: readonly string[]) => void | Promise<void>,
   platform: PlatformInfo = { platform: process.platform, env: process.env, home: homedir() },
-): string[] {
+): Promise<string[]> {
   if (!confirm) {
     throw new FlightdeckError(
       "bad_request",
@@ -91,24 +91,22 @@ export function addAllowedRoot(
       "root_confirm",
     );
   }
-  const real = realFolder(path);
+  const real = await realFolder(path);
   if (!real) {
     throw new FlightdeckError("not_found", `directory does not exist: ${path}`, "root_missing", {
       path,
     });
   }
-  if (isSystemFolder(real, platform, (dir) => realFolder(dir) ?? dir)) {
+  if (await isSystemFolder(real, platform, async (dir) => (await realFolder(dir)) ?? dir)) {
     throw new FlightdeckError("forbidden_cwd", `system folder: ${real}`, "root_system", {
       path: real,
     });
   }
-  const covered = roots.some((root) => {
-    const realRoot = realFolder(root);
-    return realRoot !== null && isInside(realRoot, real);
-  });
+  const realRoots = await Promise.all(roots.map(realFolder));
+  const covered = realRoots.some((realRoot) => realRoot !== null && isInside(realRoot, real));
   if (!covered) {
     roots.push(real);
-    persist?.(roots);
+    await persist?.(roots);
   }
   return [...roots];
 }

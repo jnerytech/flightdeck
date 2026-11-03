@@ -85,7 +85,11 @@ async function setup(platform = memoryPlatform()) {
     clone(d.root, "repo-run"),
     clone(d.root, "repo-ask"),
   ];
-  const { sessionId } = d.manager.create({ cwd: one as string, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: one as string,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   writeTranscript(d.historyRoot, "-old", "hist-1", [
     userLine({
@@ -95,9 +99,9 @@ async function setup(platform = memoryPlatform()) {
       ts: "2026-09-01T10:00:00.000Z",
     }),
   ]);
-  d.history.scan();
-  d.central.hooksInstall(true);
-  const token = loadConfig(d.configFile).hooks.token ?? "";
+  await d.history.scan();
+  await d.central.hooksInstall(true);
+  const token = (await loadConfig(d.configFile)).hooks.token ?? "";
   const hook = (session: string, event: string, cwd: string, body: Record<string, unknown> = {}) =>
     fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
       method: "POST",

@@ -62,7 +62,7 @@ describe("host-info", () => {
     const { server, manager, project } = serve({
       claude: { path: "/usr/bin/claude", version: async () => "2.1.0 (Claude Code)" },
     });
-    manager.create({ cwd: project, prompt: "[tool]" });
+    await manager.create({ cwd: project, prompt: "[tool]" });
     await poll(() => manager.list()[0]?.status === "awaiting_permission");
 
     expect(protocol.Command.safeParse({ id: "1", type: "host.info", payload: {} }).success).toBe(

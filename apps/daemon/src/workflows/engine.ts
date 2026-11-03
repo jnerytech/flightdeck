@@ -13,6 +13,7 @@ import type {
 import type { BoardEvent } from "../board/columns.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { addTurn, noSpending, overBudget, type RunSpending } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
@@ -49,6 +50,8 @@ export interface EngineHost {
 export interface WorkflowEngineOptions {
   db: Database;
   manager: SessionManager;
+  /** Reads the personas for a session about to open; none when absent. */
+  preparePersonas?: Prepare;
   host: EngineHost;
   checks: CheckRunner;
   /** Milliseconds now: the budget's minutes. */
@@ -131,6 +134,7 @@ export const RESUMED_NOTE = "A execução foi interrompida; continue de onde par
 export class WorkflowEngine {
   private readonly db: Database;
   private readonly manager: SessionManager;
+  private readonly preparePersonas: Prepare;
   private readonly host: EngineHost;
   private readonly checks: CheckRunner;
   private readonly clock: () => number;
@@ -143,6 +147,7 @@ export class WorkflowEngine {
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
     this.manager = opts.manager;
+    this.preparePersonas = opts.preparePersonas ?? withoutPersonas;
     this.host = opts.host;
     this.checks = opts.checks;
     this.clock = opts.clock;
@@ -772,13 +777,18 @@ export class WorkflowEngine {
       return done;
     }
     const { title } = this.host.card(run.card_id);
-    const { sessionId } = this.manager.create({
-      cwd: worktree,
-      prompt,
-      name: `${title} · ${stepId}`,
-      ...(action.permissionMode ? { permissionMode: action.permissionMode } : {}),
-      ...(action.persona ? { persona: { id: action.persona } } : {}),
-    });
+    const persona = action.persona ? { id: action.persona } : undefined;
+    const prepared = await this.preparePersonas(persona, worktree);
+    const { sessionId } = await this.manager.create(
+      {
+        cwd: worktree,
+        prompt,
+        name: `${title} · ${stepId}`,
+        ...(action.permissionMode ? { permissionMode: action.permissionMode } : {}),
+        ...(persona ? { persona } : {}),
+      },
+      { prepared },
+    );
     this.db
       .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(sessionId, run.id, stepId, attempt);

@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
+import { GithubPanel } from "@/components/hosts/github-panel";
+import { HostDoctor } from "@/components/hosts/host-doctor";
+import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -10,6 +13,7 @@ import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import type { HostNameError } from "../lib/host-name.ts";
+import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
@@ -35,6 +39,7 @@ export function HostPage(props: {
   onRename(name: string): HostNameError | null;
   onReconnect(): void;
   onOpenAutoApprovals(): void;
+  onOpenHistory(filter: UsageHistoryTarget): void;
   onRemove(): void;
 }) {
   const t = useT();
@@ -93,6 +98,7 @@ export function HostPage(props: {
             hostId={host.id}
             online={host.status === "online"}
             costs={hasFeature(info?.features, "costs", false)}
+            onOpenHistory={props.onOpenHistory}
           />
         )}
         <Panel title={t("hostPage.info")}>
@@ -120,6 +126,12 @@ export function HostPage(props: {
           )}
         </Panel>
         <AllowedFolders store={store} host={host} />
+        {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
+          <HostDoctor store={store} host={host} />
+        )}
+        {host.status === "online" && hasFeature(info?.features, "github", false) && (
+          <GithubPanel store={store} host={host} />
+        )}
         <BypassSwitch store={store} host={host} />
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (

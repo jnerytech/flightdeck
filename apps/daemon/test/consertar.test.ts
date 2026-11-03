@@ -401,7 +401,7 @@ describe("consertar: the session runs under the usual rules", () => {
     // The other tools go through the usual asking and the risk seals: a person is asked.
     expect((await ask(fix, "Bash")).behavior).toBe("pending");
     // A session opened by hand is asked about run_with_secret, as always.
-    f.manager.create({ cwd: f.worktree, prompt: "oi" });
+    await f.manager.create({ cwd: f.worktree, prompt: "oi" });
     const manual = f.runtime.starts.at(-1);
     expect((await ask(manual, "mcp__flightdeck__run_with_secret")).behavior).toBe("pending");
   });

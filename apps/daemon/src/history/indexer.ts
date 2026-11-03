@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
-import { closeSync, openSync, readdirSync, readSync, statSync, watch } from "node:fs";
+import { watch } from "node:fs";
+import { stat as fileStat, open, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
@@ -50,6 +51,8 @@ export interface HistoryChange {
 
 export interface HistoryListFilter {
   cwd?: string;
+  /** Exactly these folders (not their children): the folders of one project. */
+  cwds?: string[];
   from?: string;
   to?: string;
   origin?: "flightdeck" | "external";
@@ -129,13 +132,11 @@ interface SessionRow {
   automated: number;
 }
 
-const isDirectory = (path: string): boolean => {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-};
+const isDirectory = (path: string): Promise<boolean> =>
+  fileStat(path).then(
+    (info) => info.isDirectory(),
+    () => false,
+  );
 
 const trimSlashes = (path: string) => path.replace(/[\\/]+$/, "");
 const offsetOf = (cursor?: string) => Math.max(0, Number.parseInt(cursor ?? "0", 10) || 0);
@@ -173,13 +174,7 @@ export function normalizeCwd(path: string): string {
   return caseInsensitive ? slashes.toLowerCase() : slashes;
 }
 
-const entries = (dir: string) => {
-  try {
-    return readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-};
+const entries = (dir: string) => readdir(dir, { withFileTypes: true }).catch(() => []);
 
 /** How much of a file a background pass reads before it gives the event loop back (about 25 ms). */
 const SLICE_BYTES = 1 << 20;
@@ -248,6 +243,14 @@ export class HistoryIndexer {
     }
   }
 
+  /** The folders of the indexed sessions, each once. */
+  distinctCwds(): string[] {
+    const rows = this.db
+      .query("SELECT DISTINCT cwd FROM history_sessions WHERE cwd != ''")
+      .all() as Array<{ cwd: string }>;
+    return rows.map((r) => r.cwd);
+  }
+
   /** Indexed sessions with at least one message, most recent first. */
   list(filter: HistoryListFilter): {
     sessions: HistorySession[];
@@ -261,6 +264,13 @@ export class HistoryIndexer {
     if (filter.cwd) {
       where.push(CWD_CONDITION);
       params.cwd = trimSlashes(filter.cwd);
+    }
+    if (filter.cwds) {
+      const names = filter.cwds.map((cwd, i) => {
+        params[`cwds${i}`] = cwd;
+        return `$cwds${i}`;
+      });
+      where.push(names.length > 0 ? `s.cwd IN (${names.join(", ")})` : "0");
     }
     // Sessions that overlap the period.
     if (filter.from) {
@@ -302,17 +312,17 @@ export class HistoryIndexer {
   }
 
   /** One page of the readable transcript (messages, summaries and system notes). */
-  get(
+  async get(
     claudeSessionId: string,
     cursor?: string,
     limit = 100,
-  ): {
+  ): Promise<{
     session: HistorySession;
     cwdExists: boolean;
     messages: HistoryMessage[];
     nextCursor: string | null;
     prevCursor: string | null;
-  } {
+  }> {
     const session = this.session(claudeSessionId);
     if (!session) {
       throw new FlightdeckError(
@@ -332,7 +342,7 @@ export class HistoryIndexer {
       .all(claudeSessionId, limit + 1, offset) as HistoryMessage[];
     return {
       session,
-      cwdExists: isDirectory(session.cwd),
+      cwdExists: await isDirectory(session.cwd),
       messages: rows.slice(0, limit),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
       prevCursor: offset > 0 ? String(Math.max(0, offset - limit)) : null,
@@ -504,14 +514,14 @@ export class HistoryIndexer {
   }
 
   /** Drops everything indexed and reads every transcript again from the start. */
-  rebuild(): { sessions: number; messages: number } {
+  async rebuild(): Promise<{ sessions: number; messages: number }> {
     this.db.transaction(() => {
       if (this.fts) this.db.run("INSERT INTO history_fts (history_fts) VALUES ('delete-all')");
       this.db.run("DELETE FROM history_messages");
       this.db.run("DELETE FROM history_sessions");
       this.db.run("DELETE FROM history_files");
     })();
-    this.scan();
+    await this.scan();
     const count = (sql: string) => (this.db.query(sql).get() as { n: number }).n;
     return {
       sessions: count("SELECT COUNT(*) AS n FROM history_sessions"),
@@ -529,10 +539,10 @@ export class HistoryIndexer {
     const pause = this.opts.pause ?? zeroTimer;
     const sliceBytes = this.opts.sliceBytes ?? SLICE_BYTES;
     const results: IndexResult[] = [];
-    for (const path of this.files()) {
+    for (const path of await this.files()) {
       let merged = null as IndexResult | null;
       for (;;) {
-        const { result, more } = this.indexSlice(path, sliceBytes);
+        const { result, more } = await this.indexSlice(path, sliceBytes);
         if (result) {
           merged = merged
             ? { ...merged, added: merged.added + result.added, reset: merged.reset || result.reset }
@@ -574,11 +584,11 @@ export class HistoryIndexer {
   }
 
   /** One pass over every root; returns the files that gained records. */
-  scan(): IndexResult[] {
+  async scan(): Promise<IndexResult[]> {
     this.claimManaged();
     const results: IndexResult[] = [];
-    for (const path of this.files()) {
-      const result = this.indexFile(path);
+    for (const path of await this.files()) {
+      const result = await this.indexFile(path);
       if (result) results.push(result);
     }
     for (const { claudeSessionId } of results) this.notify(claudeSessionId);
@@ -598,12 +608,12 @@ export class HistoryIndexer {
     for (const listener of this.listeners) listener({ claudeSessionId, cwd, lastTs, maybeActive });
   }
 
-  private files(): string[] {
+  private async files(): Promise<string[]> {
     const files: string[] = [];
     for (const root of this.opts.roots) {
-      for (const dir of entries(root)) {
+      for (const dir of await entries(root)) {
         if (!dir.isDirectory()) continue;
-        for (const file of entries(join(root, dir.name))) {
+        for (const file of await entries(join(root, dir.name))) {
           if (file.isFile() && file.name.endsWith(".jsonl")) {
             files.push(join(root, dir.name, file.name));
           }
@@ -613,19 +623,19 @@ export class HistoryIndexer {
     return files;
   }
 
-  private indexFile(path: string): IndexResult | null {
-    return this.indexSlice(path, Number.POSITIVE_INFINITY).result;
+  private async indexFile(path: string): Promise<IndexResult | null> {
+    return (await this.indexSlice(path, Number.POSITIVE_INFINITY)).result;
   }
 
   /**
    * Reads and stores the next `maxBytes` of a file, up to its last whole line (a line bigger than
    * that is read whole); `more` says there is still unread text after it.
    */
-  private indexSlice(
+  private async indexSlice(
     path: string,
     maxBytes: number,
-  ): { result: IndexResult | null; more: boolean } {
-    const stat = statSync(path);
+  ): Promise<{ result: IndexResult | null; more: boolean }> {
+    const stat = await fileStat(path);
     const claudeSessionId = basename(path, ".jsonl");
     const row = this.db
       .query("SELECT claude_session_id, offset, parse_errors FROM history_files WHERE path = ?")
@@ -642,11 +652,11 @@ export class HistoryIndexer {
     let chunk = Buffer.alloc(Math.min(stat.size - offset, maxBytes));
     let end = 0;
     for (;;) {
-      const fd = openSync(path, "r");
+      const handle = await open(path, "r");
       try {
-        readSync(fd, chunk, 0, chunk.length, offset);
+        await handle.read(chunk, 0, chunk.length, offset);
       } finally {
-        closeSync(fd);
+        await handle.close();
       }
       // Only complete lines: a last line without its newline is left for the next pass.
       end = chunk.lastIndexOf(0x0a) + 1;

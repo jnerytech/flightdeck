@@ -55,7 +55,7 @@ async function setup(clients: unknown[] = TWO, waiting = true) {
     ["Sessão Beta", repos.beta],
     ["Sessão Solta", repos.solta],
   ] as const) {
-    const { sessionId } = d.manager.create({ cwd, prompt: "oi", name });
+    const { sessionId } = await d.manager.create({ cwd, prompt: "oi", name });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   const platform = memoryPlatform();
@@ -69,8 +69,8 @@ async function setup(clients: unknown[] = TWO, waiting = true) {
   await act(async () => store.router.push({ name: "hub" }));
   await settle(() => screen.queryByRole("listitem", { name: "Sessão Solta" }) !== null);
   if (waiting) {
-    d.central.hooksInstall(true);
-    const token = loadConfig(d.configFile).hooks.token ?? "";
+    await d.central.hooksInstall(true);
+    const token = (await loadConfig(d.configFile)).hooks.token ?? "";
     const hook = (event: string, body: Record<string, unknown> = {}) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",

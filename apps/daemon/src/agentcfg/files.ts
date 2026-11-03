@@ -4,15 +4,8 @@
  * the content that was opened, and never lands outside the project.
  */
 import { createHash } from "node:crypto";
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  realpathSync,
-  writeFileSync,
-} from "node:fs";
+import type { Dirent } from "node:fs";
+import { lstat, mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -60,6 +53,12 @@ const PATHS: Record<Origin, Record<AgentCfgKind, RegExp>> = {
     skill: /^skills\/[^/]+\/SKILL\.md$/,
   },
 };
+
+const exists = (path: string) =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
 
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 
@@ -111,30 +110,31 @@ function checkedPath(kind: AgentCfgKind, path: string, origin: Origin): string {
 }
 
 /** The file inside the project, refused when it, or the folder that would hold it, resolves outside. */
-function insideProject(project: string, rel: string): string {
-  const root = realpathSync.native(project);
+async function insideProject(project: string, rel: string): Promise<string> {
+  const root = await realpath(project);
   const file = join(root, rel);
   let existing = file;
-  while (!lstatSync(existing, { throwIfNoEntry: false })) existing = dirname(existing);
-  if (!isInside(root, realpathSync.native(existing))) throw bad(`${rel} fica fora do projeto`);
+  while (!(await lstat(existing).catch(() => null))) existing = dirname(existing);
+  if (!isInside(root, await realpath(existing))) throw bad(`${rel} fica fora do projeto`);
   return file;
 }
 
-const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []);
+const entries = (dir: string): Promise<Dirent[]> =>
+  readdir(dir, { withFileTypes: true }).catch(() => []);
 
 /** CLAUDE.md files under the project (not in .git or node_modules), plus the root CLAUDE.local.md. */
-export function claudeMds(root: string): string[] {
-  const found = existsSync(join(root, "CLAUDE.local.md")) ? ["CLAUDE.local.md"] : [];
-  const walk = (dir: string, rel: string, depth: number) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+export async function claudeMds(root: string): Promise<string[]> {
+  const found = (await exists(join(root, "CLAUDE.local.md"))) ? ["CLAUDE.local.md"] : [];
+  const walk = async (dir: string, rel: string, depth: number) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
       if (entry.isFile() && entry.name === "CLAUDE.md") found.push(`${rel}${entry.name}`);
       // Links are not followed: they may lead outside the project, or in circles.
       if (entry.isDirectory() && !SKIPPED.has(entry.name) && depth < MAX_DEPTH) {
-        walk(join(dir, entry.name), `${rel}${entry.name}/`, depth + 1);
+        await walk(join(dir, entry.name), `${rel}${entry.name}/`, depth + 1);
       }
     }
   };
-  walk(root, "", 0);
+  await walk(root, "", 0);
   return found;
 }
 
@@ -142,28 +142,30 @@ export class AgentConfig {
   constructor(private readonly opts: { claudeDir?: string } = {}) {}
 
   /** The project's items first, then the user's; each group sorted by path. */
-  list(project: string, kind: AgentCfgKind): AgentCfgItem[] {
-    return [...this.found(project, kind, "project"), ...this.found(this.claudeDir(), kind, "user")];
+  async list(project: string, kind: AgentCfgKind): Promise<AgentCfgItem[]> {
+    return [
+      ...(await this.found(project, kind, "project")),
+      ...(await this.found(this.claudeDir(), kind, "user")),
+    ];
   }
 
-  read(
+  async read(
     project: string,
     kind: AgentCfgKind,
     path: string,
     origin: Origin = "project",
-  ): AgentCfgItem & { content: string } {
+  ): Promise<AgentCfgItem & { content: string }> {
     const root = origin === "user" ? this.claudeDir() : project;
     const rel = checkedPath(kind, path, origin);
-    if (!existsSync(join(root, rel))) {
-      throw new FlightdeckError("not_found", `${path} não existe`);
-    }
+    const bytes = await readFile(join(root, rel)).catch(() => null);
+    if (!bytes) throw new FlightdeckError("not_found", `${path} não existe`);
     return {
-      ...this.item(root, kind, rel, origin),
-      content: readFileSync(join(root, rel), "utf8"),
+      ...this.itemOf(bytes, kind, rel, origin),
+      content: bytes.toString("utf8"),
     };
   }
 
-  write(project: string, input: AgentCfgWrite): { hash: string } {
+  async write(project: string, input: AgentCfgWrite): Promise<{ hash: string }> {
     if (!input.confirm) throw invalid("gravar pede confirm: true");
     if (input.origin === "user")
       throw invalid("a configuração do usuário (~/.claude) é só leitura");
@@ -171,15 +173,15 @@ export class AgentConfig {
     const problem =
       input.kind === "claudemd" ? null : frontmatterProblem(input.kind, input.content);
     if (problem) throw bad(`frontmatter inválido: ${problem}`);
-    const file = insideProject(project, rel);
-    const current = existsSync(file) ? sha(readFileSync(file)) : null;
-    if (current !== input.expectedHash) {
+    const file = await insideProject(project, rel);
+    const before = await readFile(file).catch(() => null);
+    if ((before ? sha(before) : null) !== input.expectedHash) {
       throw invalid(
         input.expectedHash === null ? `${rel} já existe` : `${rel} mudou desde que foi aberto`,
       );
     }
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, input.content);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, input.content);
     return { hash: sha(input.content) };
   }
 
@@ -187,26 +189,29 @@ export class AgentConfig {
     return this.opts.claudeDir ?? join(userHome(), ".claude");
   }
 
-  private found(root: string, kind: AgentCfgKind, origin: Origin): AgentCfgItem[] {
+  private async found(root: string, kind: AgentCfgKind, origin: Origin): Promise<AgentCfgItem[]> {
     const base = origin === "project" ? ".claude/" : "";
     const paths =
       kind === "claudemd"
         ? origin === "project"
-          ? claudeMds(root)
+          ? await claudeMds(root)
           : ["CLAUDE.md"]
         : kind === "agent"
-          ? entries(join(root, base, "agents"))
+          ? (await entries(join(root, base, "agents")))
               .filter((e) => e.isFile() && e.name.endsWith(".md"))
               .map((e) => `${base}agents/${e.name}`)
-          : entries(join(root, base, "skills")).map((e) => `${base}skills/${e.name}/SKILL.md`);
-    return paths
-      .filter((p) => existsSync(join(root, p)))
-      .sort()
-      .map((p) => this.item(root, kind, p, origin));
+          : (await entries(join(root, base, "skills"))).map(
+              (e) => `${base}skills/${e.name}/SKILL.md`,
+            );
+    const items: AgentCfgItem[] = [];
+    for (const path of [...paths].sort()) {
+      const bytes = await readFile(join(root, path)).catch(() => null);
+      if (bytes) items.push(this.itemOf(bytes, kind, path, origin));
+    }
+    return items;
   }
 
-  private item(root: string, kind: AgentCfgKind, path: string, origin: Origin): AgentCfgItem {
-    const bytes = readFileSync(join(root, path));
+  private itemOf(bytes: Buffer, kind: AgentCfgKind, path: string, origin: Origin): AgentCfgItem {
     const data = kind === "claudemd" ? null : frontmatter(bytes.toString("utf8"));
     return {
       kind,

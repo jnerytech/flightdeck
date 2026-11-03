@@ -31,7 +31,7 @@ function boot(options: { messaging?: boolean } = {}) {
     allowedRoots: [],
   });
   cleanups.push(() => {
-    server.stop();
+    void server.stop();
     idle.stop();
     base.messaging.stop();
   });
@@ -247,7 +247,7 @@ describe("mensagens-protocolo: ler uma sessão", () => {
       await client.request("messages.read", { as: { session: "s1" }, session: "wsl/w1" }),
     ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
     const original = endpoints.read.bind(endpoints);
-    endpoints.read = () => null;
+    endpoints.read = async () => null;
     expect(
       await client.request("messages.read", { as: { session: "s1" }, session: "pc/s2" }),
     ).toMatchObject({ ok: false, error: { code: "not_found" } });

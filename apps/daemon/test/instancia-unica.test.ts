@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { acquireLock, LOCK_FILE } from "../src/lock.ts";
+import { acquireLock, LOCK_FILE, readLockPid } from "../src/lock.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -51,20 +51,34 @@ describe("instancia-unica", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, LOCK_FILE), String(dead.pid));
 
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     expect(lock).not.toBeNull();
-    expect(acquireLock(dataDir)).toBeNull();
-    lock?.release();
+    expect(await acquireLock(dataDir)).toBeNull();
+    await lock?.release();
     expect(existsSync(join(dataDir, LOCK_FILE))).toBe(false);
-    lock?.release();
+    await lock?.release();
   });
 
-  test("lock com conteúdo ilegível é tratado como abandonado", () => {
+  test("lock com conteúdo ilegível é tratado como abandonado", async () => {
     const { dataDir } = config();
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, LOCK_FILE), "lixo");
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     expect(lock).not.toBeNull();
-    lock?.release();
+    await lock?.release();
+  });
+
+  test("taking, reading and releasing the lock never block: each returns a promise", async () => {
+    const { dataDir } = config();
+    const taking = acquireLock(dataDir);
+    expect(taking).toBeInstanceOf(Promise);
+    const lock = await taking;
+    const reading = readLockPid(dataDir);
+    expect(reading).toBeInstanceOf(Promise);
+    expect(await reading).toBe(process.pid);
+    const releasing = lock?.release();
+    expect(releasing).toBeInstanceOf(Promise);
+    await releasing;
+    expect(await readLockPid(dataDir)).toBeNull();
   });
 });

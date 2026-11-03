@@ -75,7 +75,7 @@ describe("desktop: estado do app", () => {
 
   test("estado inicial não notifica e janela em foco também não", async () => {
     const d = setup(true);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[tool]" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "[tool]" });
     await waitFor(() => d.manager.get(sessionId).status === "awaiting_permission");
 
     const unfocused = memoryPlatform(false);

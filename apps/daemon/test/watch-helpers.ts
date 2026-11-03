@@ -4,6 +4,7 @@ import { git as runGit } from "../src/board/command.ts";
 import type { PrCheck, PrComment, PrProvider } from "../src/board/pr.ts";
 import type { PrState } from "../src/board/types.ts";
 import { packPersonas } from "../src/personas/pack.ts";
+import { preparePersonas } from "../src/personas/prepare.ts";
 import { Personas } from "../src/personas/store.ts";
 import { Quota } from "../src/quota/quota.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
@@ -72,7 +73,6 @@ export async function fixture(options: FixtureOptions = {}) {
     defaultPermissionMode: "default",
     allowApiKey: false,
     baseEnv: {},
-    personas,
   });
   const time = manualTime();
   const quota = new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers });
@@ -101,6 +101,7 @@ export async function fixture(options: FixtureOptions = {}) {
   const board = new Board({
     db: store.db,
     manager,
+    preparePersonas: (ref, cwd) => preparePersonas(personas, ref, cwd),
     allowedRoots: [root],
     prProvider: () => provider,
     prPollIntervalMs: 1_000_000,

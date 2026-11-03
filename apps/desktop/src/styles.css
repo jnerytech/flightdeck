@@ -398,3 +398,34 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* A vertical list of rows (the check results, the repositories found). */
+@utility check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* One row of such a list: a line of text and, below it, what to do. */
+@utility check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* The first line of a row: the name, then its state. */
+@utility check-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* A form block of the "find my projects" dialog. */
+@utility find-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}

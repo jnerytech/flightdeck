@@ -32,7 +32,7 @@ function transcript(d: ReturnType<typeof makeDaemon>, n: number, cwd: string, en
 async function online(build: (d: ReturnType<typeof makeDaemon>) => void) {
   const d = makeDaemon(cleanups);
   build(d);
-  d.history.scan();
+  await d.history.scan();
   const store = new AppStore(memoryPlatform(false, "en-US").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);

@@ -97,26 +97,26 @@ describe("sessoes-externas", () => {
     expect(registry.get("nao-existe")).toBeNull();
   });
 
-  test("sem evento e sem mudança no transcript além do limite, vira ended com motivo stale", () => {
+  test("sem evento e sem mudança no transcript além do limite, vira ended com motivo stale", async () => {
     const { registry, start, tick, transcript } = setup(900);
     start();
     tick(899_000);
-    registry.sweep();
+    await registry.sweep();
     expect(registry.get("s1")?.status).toBe("idle");
     // The transcript changed recently: still alive.
     tick(2_000);
     utimesSync(transcript, new Date(T0 + 900_500), new Date(T0 + 900_500));
-    registry.sweep();
+    await registry.sweep();
     expect(registry.get("s1")?.status).toBe("idle");
     tick(900_000);
-    registry.sweep();
+    await registry.sweep();
     expect(registry.get("s1")).toMatchObject({ status: "ended", statusReason: "stale" });
   });
 
-  test("a varredura roda no intervalo dado, com timers injetáveis", () => {
+  test("a varredura roda no intervalo dado, com timers injetáveis", async () => {
     const { registry, start, tick } = setup(1);
     start();
-    let callback: (() => void) | null = null;
+    let callback: (() => unknown) | null = null;
     let cleared = false;
     registry.start(60_000, {
       setInterval: (fn: () => void) => {
@@ -128,7 +128,7 @@ describe("sessoes-externas", () => {
       },
     });
     tick(5_000);
-    (callback as (() => void) | null)?.();
+    await (callback as (() => unknown) | null)?.();
     expect(registry.get("s1")?.status).toBe("ended");
     registry.stop();
     expect(cleared).toBe(true);
@@ -163,13 +163,13 @@ describe("sessoes-externas", () => {
     expect(registry.sessionForLaunch("nenhum")).toBeNull();
   });
 
-  test("sessão sem transcript legível também vira stale", () => {
+  test("sessão sem transcript legível também vira stale", async () => {
     const { registry, tick } = setup(1);
     registry.apply("UserPromptSubmit", { session_id: "s9" });
     tick(5_000);
-    const status = (() => {
+    const status = await (async () => {
       try {
-        registry.sweep();
+        await registry.sweep();
         return registry.get("s9")?.status;
       } catch {
         return "a varredura falhou";

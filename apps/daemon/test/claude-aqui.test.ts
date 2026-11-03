@@ -67,9 +67,9 @@ function setup(overrides: Partial<TerminalManagerOptions> = {}) {
 }
 
 describe("claude-aqui", () => {
-  test("claude abre flightdeckd claude no cwd, com o FLIGHTDECK_CONFIG do daemon e um launch id próprio do terminal", () => {
+  test("claude abre flightdeckd claude no cwd, com o FLIGHTDECK_CONFIG do daemon e um launch id próprio do terminal", async () => {
     const { manager, ptys, project } = setup();
-    const info = manager.open({ cwd: project, claude: {}, cols: 120, rows: 40 });
+    const info = await manager.open({ cwd: project, claude: {}, cols: 120, rows: 40 });
     expect(info.launchId ?? "").toMatch(/^[0-9A-Z]{26}$/);
     expect(info).toMatchObject({ cwd: project, command: "flightdeckd", cols: 120, rows: 40 });
     expect(ptys.spawned[0]).toMatchObject({
@@ -83,7 +83,7 @@ describe("claude-aqui", () => {
     });
     // The same API-key rule as every terminal and every managed session.
     expect(ptys.spawned[0]?.env.ANTHROPIC_API_KEY).toBeUndefined();
-    const resumed = manager.open({
+    const resumed = await manager.open({
       cwd: project,
       claude: { resume: "abc-123" },
       cols: 80,
@@ -93,19 +93,21 @@ describe("claude-aqui", () => {
     expect(resumed.launchId).not.toBe(info.launchId);
     expect(manager.list().map((t) => t.launchId)).toEqual([info.launchId, resumed.launchId]);
     // A plain terminal has no launch.
-    expect(manager.open({ cwd: project, command: ["sh"], cols: 80, rows: 24 }).launchId).toBeNull();
+    expect(
+      (await manager.open({ cwd: project, command: ["sh"], cols: 80, rows: 24 })).launchId,
+    ).toBeNull();
   });
 
-  test("Claude aqui with a persona runs flightdeckd claude --persona <id> (phase 20)", () => {
+  test("Claude aqui with a persona runs flightdeckd claude --persona <id> (phase 20)", async () => {
     const { manager, ptys, project } = setup();
-    manager.open({ cwd: project, claude: { persona: "seguranca" }, cols: 80, rows: 24 });
+    await manager.open({ cwd: project, claude: { persona: "seguranca" }, cols: 80, rows: 24 });
     expect(ptys.spawned[0]?.argv).toEqual([
       "/opt/fd/flightdeckd",
       "claude",
       "--persona",
       "seguranca",
     ]);
-    manager.open({
+    await manager.open({
       cwd: project,
       claude: { resume: "abc-123", persona: "qa" },
       cols: 80,
@@ -121,11 +123,11 @@ describe("claude-aqui", () => {
     ]);
   });
 
-  test("sem flightdeckd configurado, o Claude aqui é recusado", () => {
+  test("sem flightdeckd configurado, o Claude aqui é recusado", async () => {
     const { manager, project } = setup({ claude: undefined });
     let code = "ok";
     try {
-      manager.open({ cwd: project, claude: {}, cols: 80, rows: 24 });
+      await manager.open({ cwd: project, claude: {}, cols: 80, rows: 24 });
     } catch (error) {
       code = (error as { code?: string }).code ?? "sem código";
     }
@@ -226,7 +228,7 @@ describe("claude-aqui", () => {
     let info: TerminalInfo | null = null;
     let failure = "";
     try {
-      info = manager.open({ cwd: project, claude: {}, cols: 80, rows: 24 });
+      info = await manager.open({ cwd: project, claude: {}, cols: 80, rows: 24 });
     } catch (error) {
       failure = (error as Error).message;
     }

@@ -39,7 +39,7 @@ async function setup() {
       : assistantLine({ uuid, text, cwd: d.project, ts });
   });
   writeTranscript(d.historyRoot, "-p", "longa", lines);
-  d.history.scan();
+  await d.history.scan();
   const server = d.listen();
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
@@ -151,7 +151,7 @@ describe("leitor", () => {
       summaryLine("Resumo da conversa", "m0"),
       userLine({ uuid: "m0", text: "primeira", cwd: d.project }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
@@ -181,7 +181,7 @@ describe("leitor: a transcript opened at start-up", () => {
     writeTranscript(d.historyRoot, "-p", "longa", [
       userLine({ uuid: "m0", text: "mensagem inicial", cwd: d.project }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const server = d.listen();
     const mem = memoryPlatform();
     const first = new AppStore(mem.platform, { baseDelayMs: 60_000 });

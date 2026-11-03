@@ -34,30 +34,34 @@ async function refusalOf(run: () => Promise<unknown>) {
 }
 
 describe("recusas-sessao: folders and sessions refuse with a reason the app translates", () => {
-  test("a folder that does not exist, or lies outside allowedRoots, says which and where", () => {
+  test("a folder that does not exist, or lies outside allowedRoots, says which and where", async () => {
     const { root } = newManager();
-    expect(refusal(() => resolveAllowedCwd(`${root}/nope/deeper`, [root]))).toMatchObject({
+    expect(await refusalOf(() => resolveAllowedCwd(`${root}/nope/deeper`, [root]))).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_missing",
       params: { cwd: `${root}/nope/deeper` },
     });
-    expect(refusal(() => resolveAllowedCwd("/tmp", [root]))).toMatchObject({
+    expect(await refusalOf(() => resolveAllowedCwd("/tmp", [root]))).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_outside_roots",
       params: { cwd: "/tmp" },
     });
   });
 
-  test("a path outside allowedRoots is refused as outside whether it exists or not, so it never tells which", () => {
+  test("a path outside allowedRoots is refused as outside whether it exists or not, so it never tells which", async () => {
     const { root } = newManager();
-    expect(refusal(() => resolveAllowedCwd("/tmp", [root]))?.reason).toBe("cwd_outside_roots");
-    expect(refusal(() => resolveAllowedCwd("/does/not/exist", [root]))).toMatchObject({
+    expect((await refusalOf(() => resolveAllowedCwd("/tmp", [root])))?.reason).toBe(
+      "cwd_outside_roots",
+    );
+    expect(await refusalOf(() => resolveAllowedCwd("/does/not/exist", [root]))).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_outside_roots",
       params: { cwd: "/does/not/exist" },
     });
     // Inside a root, a folder nobody made is missing.
-    expect(refusal(() => resolveAllowedCwd(`${root}/nobody-made-this`, [root]))).toMatchObject({
+    expect(
+      await refusalOf(() => resolveAllowedCwd(`${root}/nobody-made-this`, [root])),
+    ).toMatchObject({
       reason: "cwd_missing",
     });
   });
@@ -69,7 +73,7 @@ describe("recusas-sessao: folders and sessions refuse with a reason the app tran
       reason: "session_not_found",
       params: { id: "nope" },
     });
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     expect(refusal(() => manager.resume(sessionId))).toMatchObject({
       code: "invalid_state",
       reason: "session_not_ended",
@@ -85,7 +89,7 @@ describe("recusas-sessao: folders and sessions refuse with a reason the app tran
     // Existing behaviour, tested directly: send() always starts a runtime first, so the guard in
     // deliver() is only reached when the runtime entry is missing.
     const { manager, project } = newManager();
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     const internals = manager as unknown as {
       live: Map<string, unknown>;
       deliver(id: string, text: string): void;
@@ -115,8 +119,8 @@ describe("recusas-sessao: folders and sessions refuse with a reason the app tran
   test("every message is English technical text, for logs and the CLI", async () => {
     const { manager, root } = newManager();
     const messages = [
-      refusal(() => resolveAllowedCwd("/does/not/exist", [root]))?.message,
-      refusal(() => resolveAllowedCwd("/tmp", [root]))?.message,
+      (await refusalOf(() => resolveAllowedCwd("/does/not/exist", [root])))?.message,
+      (await refusalOf(() => resolveAllowedCwd("/tmp", [root])))?.message,
       refusal(() => manager.get("nope"))?.message,
       (await refusalOf(() => manager.mcpStatus("nope")))?.message,
     ];

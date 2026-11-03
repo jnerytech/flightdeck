@@ -21,11 +21,16 @@ appendFileSync(join(stateDir, "cwds.jsonl"), `${JSON.stringify(process.cwd())}\n
 const call = readFileSync(join(stateDir, "calls.jsonl"), "utf8").trim().split(/\r?\n/).length;
 const rules = JSON.parse(readFileSync(join(stateDir, "rules.json"), "utf8")) as FakeRule[];
 const rule = rules.find(
-  (r) => (r.call === undefined || r.call === call) && r.args.every((a) => args.includes(a)),
+  (r) =>
+    (r.call === undefined || r.call === call) &&
+    r.args.every((a) => args.includes(a)) &&
+    (r.contains ?? []).every((text) => args.some((a) => a.includes(text))),
 );
 if (!rule) {
   process.stderr.write(`fake: sem resposta para ${JSON.stringify(args)}\n`);
   process.exit(1);
 }
 if (rule.stdout) process.stdout.write(rule.stdout);
+if (rule.stderr) process.stderr.write(rule.stderr);
+if (rule.delayMs) await Bun.sleep(rule.delayMs);
 process.exit(rule.code ?? 0);

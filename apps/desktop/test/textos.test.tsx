@@ -46,7 +46,7 @@ const ALLOWED = ["Flightdeck", "Ctrl K", "flightdeck://…"];
 
 async function online(language: string) {
   const d = makeDaemon(cleanups);
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
+  const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
   await poll(() => d.manager.get(sessionId).status === "idle");
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());

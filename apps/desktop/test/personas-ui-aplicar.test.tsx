@@ -38,7 +38,7 @@ async function openSession(language = "pt-BR") {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await personasHost(cleanups, store);
-  const { sessionId } = h.d.manager.create({ cwd: h.repo, prompt: "oi" });
+  const { sessionId } = await h.d.manager.create({ cwd: h.repo, prompt: "oi" });
   await poll(() => h.d.manager.get(sessionId).status === "idle");
   render(<App store={store} />);
   await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("personas") === true);

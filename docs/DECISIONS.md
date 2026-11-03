@@ -2882,6 +2882,120 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
+## Phase 37: GitHub sign-in and start from a GitHub project
+
+- **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
+  keyring and the narrowest scopes. `gh auth login --web` is that device flow (a one-time code, no client secret, no OAuth
+  app to register) and `gh` keeps the token in the keyring where the host has one. The daemon is Bun and has no keyring
+  binding; it never needs one because it never holds the token. `github.status` reads `gh auth status` (account, scopes,
+  and whether the login is in the keyring, `gh`'s hosts file or an environment variable) and returns no token. A login that
+  comes from `GH_TOKEN` or `GITHUB_TOKEN` is shown as managed by the environment and cannot be signed out from the app.
+- **Scopes:** `repo` and `read:project`, fixed in the sign-in arguments. `project` (write) is not asked for in this phase.
+- **Names reach `gh` only after they are checked:** a repo is `owner/name`, an issue is digits, a search text is one argument
+  after `--`, at most 100 characters and no control character.
+- **Start reads the issue before it clones.** A number that does not exist costs nothing. A folder that already is a clone of
+  the repo (any form of the `origin` URL) is reused, another repo under that name is refused with `clone_exists`, and a card
+  made twice from the same issue is the same card. An issue from outside the repo's people carries phase 13's third-party
+  mark in the card and in a session's first prompt.
+- **Not verified here:** the exact text `gh` prints for the code and for `gh auth status` was written from memory of the
+  current releases and has to be confirmed with a real `gh` and account (the proof of concept in the spec); the fakes
+  reproduce it, so a difference shows up as a one-line change in `status.ts` or `login.ts`.
+
+## Blocking-call audit
+
+Ranked by frequency × cost on Windows. "Closed" means a ratchet or an earlier fix already holds it.
+
+1. **Tauri sync commands on the main thread** (fixed). Tauri 2 runs a plain `#[tauri::command]`
+   on the main thread. `token_*` and `vault_*` hit the Credential Manager, `terminal_probe` walks
+   `PATH` and `terminal_open` spawns a process. They run once per host at startup and per
+   interaction, so the whole window froze. They are `async fn` now. Only the tray and window
+   commands (`tray_set_menu`, `tray_set_status`, `focus_main`, `set_close_to_tray`) and the
+   state-only `vault_remove_file` stay sync. `scripts/lib/blocking-audit-ratchet.ts` pins that list.
+2. **Sync project key in `session.list`, `history.list`, `messages.*`, `teams.*`** (closed by
+   `history-perf`; ratchet in `blocking-key-ratchet`).
+3. **`keys.keyFor` callbacks in `main.ts`** (closed, audited). Four remain: the usage indexer,
+   the board's budget gate, the actions' project rule and the name tracker. Each folder is warmed
+   first (`warmKeys` of the indexer, `Board.warmProjectKeys` and `registerProject`, `warm` of the
+   name tracker). The ratchet fixes the count at 4, so a new caller needs a conscious change.
+4. **`Bun.spawnSync` in `memory.ts`, `board/worktree.ts`** (closed). Both have an async twin used by
+   the warm path; the sync one runs only for a folder nobody looked up yet. The ratchet lists the
+   four files that may call it (`project-key.ts`, the two above and the test runtime).
+5. **Plugin inspection** (`plugins/inventory.ts`: sync reads of every file to hash a plugin).
+   Linear in the plugin size and capped by `MAX_BYTES`; it runs on install and inspect only. Left.
+6. **Review files, agent config files** (sync reads and writes of one file per request). User
+   initiated, one file at a time. Left.
+7. **History and costs SQL** (unindexed `last_ts` scan, per-session `lastActivity`). Measured in
+   `history-perf`: linear and fine up to 5k sessions. Left.
+8. **Desktop render and effects.** No large `JSON.parse` or unmemoized sort of a large list on a
+   render path: the `JSON.parse` calls decode small effect keys, the sorts run on lists of tens.
+   Nothing to fix.
+9. **Timers and watchers.** `watchFile` on the config (2 s, one `stat`), the messaging sweep (5 min),
+   the PR poll and the automations tick are async or cheap. Nothing to fix.
+
+Not done: a runner that throws on any blocking spawn in tests. `fake-runtime.ts` and the warm
+fallbacks call it on purpose, so the list-based ratchet is the practical guard.
+
+## No blocking IO in runtime code
+
+The maintainer's rule: nothing in the daemon or the app waits on the disk or on a process while the
+event loop (or the window) has other work. `scripts/lib/no-sync-ratchet.ts` counts the fs `*Sync`,
+`execSync`, `execFileSync` and `spawnSync` calls per file in `apps/daemon/src` and
+`apps/desktop/src`; `scripts/test/no-sync-ratchet.test.ts` compares the counts with a baseline that
+only goes down, so a new call fails and a removed call forces the baseline down. Scripts and tests
+are out of scope. This supersedes item 4 of the blocking-call audit: the sync fallbacks of
+`memory.ts` and `board/worktree.ts` are gone, not kept as a cold path.
+
+- **`ProjectKeys.known(cwd)` may answer with a provisional key.** The key of a folder comes from
+  `git` (the remote, else the repository root). `keyFor` ran git synchronously for a folder nobody
+  had looked at. `known` returns the cached key, and for a cold folder it returns the folder's own
+  key once while one async lookup runs in the background, so the next call is right. Callers that
+  need the real key `await resolve(cwd)` first (the receptor, `Board.registerProject`,
+  `warmProjectKeys` and the usage indexer already do). A folder cached as "not a repository" is
+  looked at again, because it may have become one. The cost: one call for a cold, unwarmed folder
+  can group under the folder key instead of the repository key.
+- **A rule accepted in a session is written after the answer.** The permission answer goes back at
+  once; the rule file is written afterwards, one write at a time (`Board` keeps a promise chain, and
+  `Board.rulesWritten()` settles it for tests), so two quick answers cannot read the same file and
+  lose a rule. Before, the answer waited for the write.
+- **Project memory looks up its repository once per project.** `ProjectMemory.dir` is async and
+  keeps one shared promise per project (git can cost 50-150 ms a call on Windows with Defender), so
+  concurrent and later requests reuse it and a cold call still awaits the real answer. A failed
+  lookup is dropped, and a folder that was not a repository is looked at again once it has a `.git`.
+  `warm` is gone. The decision log appends asynchronously and the write or delete that recorded it
+  waits for the line to land.
+- **`bun:sqlite` stays sync.** The store's calls are synchronous by design in `bun:sqlite`; they run
+  against a local file in WAL mode, are short and indexed, and are measured by `history-perf`. A
+  worker would add a message hop to every query and make transactions across calls awkward, so the
+  ratchet does not count them and they are an accepted exception.
+- **Tauri: every IO command is async and runs on the blocking pool.** The key and folder dialogs
+  wait for the person inside `spawn_blocking`, the picked key file is read there, and
+  `vault_remove_file` (which does delete a file, so item 1 of the blocking-call audit was wrong to
+  call it state-only) takes the path under the lock and deletes it there. No async command does
+  blocking work inline any more (`ASYNC_INLINE_ALLOWED` is empty). Four commands stay plain `fn`
+  because they only touch the tray or the window, which Tauri wants on the main thread, and do no
+  IO: `tray_set_menu`, `tray_set_status`, `focus_main` and `set_close_to_tray`
+  (`SYNC_COMMANDS_ALLOWED` pins the list). Rust was reviewed by reading: cargo is not on the phase
+  host, so CI's `cargo check` is the compiler check.
+- **The ratchet counts uses, not just calls, and has a command.** `syncCallCount` counts
+  `fooSync(`, `realpathSync.native(` and bare references such as `{ exists: existsSync }`, and
+  skips comments and import statements. After a merge changes the counts, run
+  `bun run no-sync:baseline` (it rewrites `SYNC_BASELINE` from the sources) and read the diff.
+- **The session manager reads no persona file.** Reading a project's personas is asynchronous IO,
+  so it moved out to the edges: whoever starts a session (`session.create`, a card, a workflow
+  step, a team coordinator, a history resume, a fork) calls `preparePersonas` first and hands the
+  resolved persona and the subagents to `SessionManager.create` as values. The session keeps the
+  subagents it opened with (the `sessions.agents` column), so `send` and `resume` reuse them
+  and need no caller to resolve anything. The cost: a change to a persona file, or to the project's
+  subagents switch, applies to new sessions only; a session already open keeps what it opened with.
+- **The path checks are asynchronous, and the baseline is empty.** `resolveAllowedCwd`, `listDirs`,
+  `listFiles`, `isSystemFolder` and `resolveSshPath` answer with promises, and so do the calls that
+  depend on them: `SessionManager.create` and `createResumed`, `TerminalManager.open`, the persona
+  and snippet stores' project lookup, and `RunHost.spawn`. A refusal is now a rejection, so a
+  caller that used `try`/`catch` around a call awaits inside it. `RunManager.start` still answers
+  once the setup is on its way or every process has started, as before; it now waits for that
+  point instead of getting it for free from synchronous spawns. `SYNC_BASELINE` has no file left:
+  the only blocking calls in runtime code are the `bun:sqlite` ones and the four Tauri commands
+  that touch the tray or the window.
 ## Fix: bypass permissions, opt-in per host
 
 - `allowBypassPermissions` (config, default `false`) is a per-host switch. The daemon refuses
@@ -2938,3 +3052,30 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
+
+## Phase 38: board sync with external boards (GitHub Projects first)
+
+- **GitHub goes through the host's `gh api graphql`.** The daemon holds no token. The provider's `scopes()` reads
+  `gh auth status`; a token that lists no scopes (fine-grained) counts as read and write, and the calls themselves refuse
+  with `board_sync_scope_missing` when it is not. `setStatus` checks the write scope before it sends anything.
+- **Every pull reads every page.** Whether GraphQL or REST honours `If-None-Match` is not confirmed (see the research), so
+  the GitHub provider is not conditional: it reads up to 20 pages of 100 items and the engine compares the result with what
+  each card last saw. The `notModified` answer and the cursor stay in the interface for a provider that has them.
+- **A status change at the provider is a manual move on this board.** The spec said a locked card is not moved. On the
+  board, "locked" only stops the automatic moves (a PR state, a session event); a person's move always goes through, and
+  a status changed on the external board is a person's move. So sync moves locked cards, with `moveCard`, which may lock
+  them again in the Backlog or Done as a hand move does. A card that is queued, in a workflow run or in progress with a
+  session is not moved: the log gets a `move_skipped` entry with the status it did not apply.
+- **Only the title is pulled after creation.** A card gets the item's title, body and link when it is made. Later, a
+  changed title at the provider replaces the card's title (the old one goes to the log as `title_changed`); the body is not
+  pulled again, because the card's description is where people add their own notes.
+- **A trigger marks a local move.** `cards.local_moved_at` is set by a database trigger when `board_column` changes, so
+  no board code had to change; a sync that settles the card (pull applied, conflict lost, push sent) clears it. With push
+  off the mark stays on a card that moved here, which is what makes a later change at the provider a conflict to be settled
+  by time and logged.
+- **No `boardsync.updated` event in this phase.** The cards a sync changes already reach the app through `board.watch`
+  (`card.updated`); the app asks `boardsync.status` when the Sync control opens and after Sync now.
+- **Push gives up after five tries.** A move that fails to send is logged (`push_failed`, with the reason) and tried at the
+  next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
+- **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
+  renamed it, come from memory and the fakes; the proof of concept in the spec settles them.

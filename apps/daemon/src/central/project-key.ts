@@ -1,20 +1,17 @@
-import { existsSync } from "node:fs";
+import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { whichOnPath } from "../which.ts";
 
 export type GitResult = { code: number; stdout: string };
-export type GitRunner = (args: string[]) => GitResult;
-/** The same without waiting for the process: the event loop keeps serving while git runs. */
+/** Asks git without waiting for the process: the event loop keeps serving while git runs. */
 export type AsyncGitRunner = (args: string[]) => Promise<GitResult>;
 
-const runGit: GitRunner = (args) => {
-  const proc = Bun.spawnSync([whichOnPath("git") ?? "git", ...args], {
-    env: process.env,
-    stdout: "pipe",
-    stderr: "ignore",
-  });
-  return { code: proc.exitCode, stdout: proc.stdout.toString() };
-};
+/** Whether `path` exists, asked without blocking. */
+const exists = (path: string): Promise<boolean> =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
 
 const runGitAsync: AsyncGitRunner = async (args) => {
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
@@ -70,9 +67,10 @@ function rootOf(commonDir: string): string {
  * cwd (worktrees count as their main repository), else `host:<hostId>:<repository root>`, else
  * `host:<hostId>:<cwd>`. Cached per cwd for the life of the daemon.
  *
- * `resolve` and `lookup` ask git without waiting for the process, so a git that starts slowly
- * (antivirus, a network drive) does not stop the daemon from serving its clients; `keyFor` waits
- * for it and is for the places that need the answer on the spot.
+ * Nothing here waits for a process or the disk. `resolve` asks git and is the answer to wait for;
+ * `lookup` is the cached key or the promise of it; `known` is for the places that need a string
+ * on the spot (a list being built, a rule being matched): the cached key, else the folder key
+ * while one lookup runs in the background, so the next call is right.
  */
 export class ProjectKeys {
   private readonly cache = new Map<string, string>();
@@ -82,53 +80,29 @@ export class ProjectKeys {
 
   constructor(
     readonly hostId: string,
-    private readonly git: GitRunner = runGit,
-    private readonly gitAsync: AsyncGitRunner = runGitAsync,
+    private readonly git: AsyncGitRunner = runGitAsync,
   ) {}
 
-  keyFor(cwd: string): string {
-    const cached = this.cached(cwd);
-    if (cached) return cached;
-    const common = this.git(commonDirArgs(cwd));
-    let key = this.folderKey(cwd);
-    if (common.code === 0) {
-      const root = rootOf(common.stdout);
-      key = this.remoteKey(root, this.git(remoteArgs(root)));
-    }
-    this.keep(cwd, key, common.code !== 0);
-    return key;
-  }
-
-  /**
-   * The cached key. A folder key that git gave for a folder with no repository is dropped when the
-   * folder has a `.git` now, which it did not have then: it became a repository, and git is asked
-   * again.
-   */
-  private cached(cwd: string): string | undefined {
+  /** The cached key, or the folder key while a lookup in the background finds the real one. */
+  known(cwd: string): string {
     const key = this.cache.get(cwd);
-    if (key && this.notRepo.has(cwd) && existsSync(join(cwd, ".git")) !== this.notRepo.get(cwd)) {
-      this.cache.delete(cwd);
-      this.notRepo.delete(cwd);
-      return undefined;
-    }
-    return key;
-  }
-
-  private keep(cwd: string, key: string, noRepo: boolean): void {
-    this.cache.set(cwd, key);
-    if (noRepo) this.notRepo.set(cwd, existsSync(join(cwd, ".git")));
-    else this.notRepo.delete(cwd);
+    // A folder cached without a repository is looked at again: it may have become one.
+    if (!key || this.notRepo.has(cwd)) void this.resolve(cwd);
+    return key ?? this.folderKey(cwd);
   }
 
   /** The key without blocking: the cached one, else a promise of it. */
   lookup(cwd: string): string | Promise<string> {
-    return this.cached(cwd) ?? this.resolve(cwd);
+    return this.cache.get(cwd) ?? this.resolve(cwd);
   }
 
-  /** The key, asking git without blocking the event loop; asked once per cwd, then cached. */
+  /**
+   * The key, asking git without blocking the event loop; asked once per cwd, then cached. A folder
+   * cached without a repository is asked again when its `.git` is not what it was then.
+   */
   resolve(cwd: string): Promise<string> {
-    const cached = this.cached(cwd);
-    if (cached) return Promise.resolve(cached);
+    const cached = this.cache.get(cwd);
+    if (cached && !this.notRepo.has(cwd)) return Promise.resolve(cached);
     let pending = this.pending.get(cwd);
     if (!pending) {
       pending = this.ask(cwd).finally(() => this.pending.delete(cwd));
@@ -140,17 +114,30 @@ export class ProjectKeys {
   /** A git that cannot be started gives the folder key, which is not kept: git is asked again. */
   private async ask(cwd: string): Promise<string> {
     try {
-      const common = await this.gitAsync(commonDirArgs(cwd));
+      const before = this.cache.get(cwd);
+      if (before && (await exists(join(cwd, ".git"))) === this.notRepo.get(cwd)) return before;
+      const common = await this.git(commonDirArgs(cwd));
       let key = this.folderKey(cwd);
       if (common.code === 0) {
         const root = rootOf(common.stdout);
-        key = this.remoteKey(root, await this.gitAsync(remoteArgs(root)));
+        key = this.remoteKey(root, await this.git(remoteArgs(root)));
       }
-      this.keep(cwd, key, common.code !== 0);
+      this.keep(
+        cwd,
+        key,
+        common.code !== 0,
+        common.code !== 0 && (await exists(join(cwd, ".git"))),
+      );
       return key;
     } catch {
       return this.folderKey(cwd);
     }
+  }
+
+  private keep(cwd: string, key: string, noRepo: boolean, hadGit: boolean): void {
+    this.cache.set(cwd, key);
+    if (noRepo) this.notRepo.set(cwd, hadGit);
+    else this.notRepo.delete(cwd);
   }
 
   private folderKey(path: string): string {
