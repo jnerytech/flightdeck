@@ -174,6 +174,24 @@ describe("clients-ui: the client switcher", () => {
     expect(screen.queryByRole("img", { name: /em outros clientes/ })).toBeNull();
   });
 
+  test("in the collapsed rail the mark becomes a dot on the button, and its count moves to the name", async () => {
+    const { store } = await setup();
+    await act(async () => store.setClientSelection("acme"));
+    const collapse = screen.queryByRole("button", { name: "Recolher barra lateral" });
+    expect(collapse).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(collapse as HTMLElement);
+    });
+    const rail = screen.queryByRole("complementary", { name: "Barra lateral" }) as HTMLElement;
+    expect(rail.getAttribute("data-collapsed")).toBe("true");
+    expect(within(rail).queryByRole("img", { name: /em outros clientes/ })).toBeNull();
+    const button = within(rail).queryByRole("button", {
+      name: "Cliente: Acme (Esperando por você em outros clientes: 1)",
+    });
+    expect(button).not.toBeNull();
+    expect(button?.querySelector("[data-attention]")).not.toBeNull();
+  });
+
   test("the open menu does not hide the rest of the window from assistive technology", async () => {
     await setup(TWO, false);
     await openMenu();
