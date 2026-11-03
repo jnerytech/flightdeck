@@ -933,3 +933,9 @@
 [data-slot="button"][data-variant="ghost"] {
   font-weight: var(--weight-label);
 }
+
+/* An icon with a dot or a count pinned to its corner. */
+@utility icon-mark {
+  position: relative;
+  display: flex;
+}

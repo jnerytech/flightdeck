@@ -65,7 +65,7 @@ export function ClientSwitcher(props: {
             title={railMark ? `${name} (${others})` : name}
             className="min-w-0 flex-1 justify-start"
           >
-            <span className="relative flex">
+            <span className="icon-mark">
               {selected ? <ClientDot color={selected.color} /> : <Briefcase aria-hidden="true" />}
               {railMark && (
                 <span
