@@ -2938,9 +2938,12 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   once; the rule file is written afterwards, one write at a time (`Board` keeps a promise chain, and
   `Board.rulesWritten()` settles it for tests), so two quick answers cannot read the same file and
   lose a rule. Before, the answer waited for the write.
-- **Project memory looks up its repository on every request.** `ProjectMemory.dir` is async and asks
-  git each time (a folder can become a repository), without a cache. `warm` is gone. The decision log
-  appends asynchronously and the write or delete that recorded it waits for the line to land.
+- **Project memory looks up its repository once per project.** `ProjectMemory.dir` is async and
+  keeps one shared promise per project (git can cost 50-150 ms a call on Windows with Defender), so
+  concurrent and later requests reuse it and a cold call still awaits the real answer. A failed
+  lookup is dropped, and a folder that was not a repository is looked at again once it has a `.git`.
+  `warm` is gone. The decision log appends asynchronously and the write or delete that recorded it
+  waits for the line to land.
 - **`bun:sqlite` stays sync.** The store's calls are synchronous by design in `bun:sqlite`; they run
   against a local file in WAL mode, are short and indexed, and are measured by `history-perf`. A
   worker would add a message hop to every query and make transactions across calls awkward, so the

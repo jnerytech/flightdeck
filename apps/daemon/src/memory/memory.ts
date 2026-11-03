@@ -103,12 +103,8 @@ async function rootFrom(real: string, code: number, out: string): Promise<string
   return common.endsWith(".git") ? dirname(common) : real;
 }
 
-/**
- * The repository's own folder when `project` is inside one (a worktree answers for its main one).
- * Asked again on every call: a folder can become a repository. The event loop keeps serving while
- * git runs.
- */
-async function repoRoot(project: string): Promise<string> {
+/** The repository's own folder, and whether `project` is inside a repository at all. */
+async function lookUpRoot(project: string): Promise<{ root: string; repo: boolean }> {
   const real = await realpath(resolve(project));
   const proc = Bun.spawn([whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"], {
     cwd: real,
@@ -118,7 +114,7 @@ async function repoRoot(project: string): Promise<string> {
     stderr: "pipe",
   });
   const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
-  return rootFrom(real, code, out.trim());
+  return { root: await rootFrom(real, code, out.trim()), repo: code === 0 };
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */
@@ -137,11 +133,36 @@ export function managedClaudeMdPath(platform: NodeJS.Platform = process.platform
 }
 
 export class ProjectMemory {
+  /**
+   * The repository root of each project, as one shared promise: concurrent and later requests
+   * reuse the lookup, so git runs once per project. A failed lookup is dropped, and a folder that
+   * was not a repository is looked at again once it has a `.git`.
+   */
+  private readonly roots = new Map<string, Promise<{ root: string; repo: boolean }>>();
+
   constructor(private readonly opts: ProjectMemoryOptions = {}) {}
+
+  private async repoRoot(project: string): Promise<string> {
+    const known = this.roots.get(project);
+    if (known) {
+      const found = await known.catch(() => undefined);
+      if (found && (found.repo || !(await exists(join(project, ".git"))))) return found.root;
+      if (this.roots.get(project) === known) this.roots.delete(project);
+    }
+    let pending = this.roots.get(project);
+    if (!pending) {
+      pending = lookUpRoot(project);
+      this.roots.set(project, pending);
+      pending.catch(() => {
+        if (this.roots.get(project) === pending) this.roots.delete(project);
+      });
+    }
+    return (await pending).root;
+  }
 
   /** The memory folder of the project the way Claude Code names it (all worktrees share one). */
   async dir(project: string): Promise<string> {
-    const slug = (await repoRoot(project)).replace(/[^A-Za-z0-9]/g, "-");
+    const slug = (await this.repoRoot(project)).replace(/[^A-Za-z0-9]/g, "-");
     return join(this.claudeDir(), "projects", slug, "memory");
   }
 
