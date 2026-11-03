@@ -2556,6 +2556,7 @@ export const ptBR = {
     choose: "Escolher esta pasta",
     openFirst: "Abra uma pasta primeiro",
     hidden: "Mostrar pastas ocultas",
+    noRoots: "Este host ainda não permite nenhuma pasta",
     empty: "Nenhuma subpasta aqui.",
     truncated: "Só as primeiras {n} pastas aparecem: digite o caminho para ir além.",
     loading: "Carregando as pastas…",

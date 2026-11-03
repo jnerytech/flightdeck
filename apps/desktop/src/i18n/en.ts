@@ -2550,6 +2550,7 @@ export const en: Dictionary = {
     choose: "Choose this folder",
     openFirst: "Open a folder first",
     hidden: "Show hidden folders",
+    noRoots: "This host allows no folders yet",
     empty: "No subfolders here.",
     truncated: "Only the first {n} folders are shown: type the path to go further.",
     loading: "Loading folders…",

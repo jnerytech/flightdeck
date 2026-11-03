@@ -283,6 +283,17 @@
   }
 }
 
+/* A disabled button and its reason: one block, the reason wrapping under it at a readable width. */
+@utility action-with-reason {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+@utility action-reason {
+  max-width: 18rem;
+}
+
 /* A key of a shortcut, as printed in a list. */
 @utility keycap {
   border: 1px solid var(--border);
