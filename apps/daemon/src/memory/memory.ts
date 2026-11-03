@@ -225,7 +225,7 @@ export class ProjectMemory {
   }
 
   /** Entries that look duplicated, old, orphaned, broken or in contradiction. Read only. */
-  suggest(project: string): MemorySuggestion[] {
+  suggest(project: string): Promise<MemorySuggestion[]> {
     return suggestCleanup(this.dir(project), (this.opts.clock ?? Date.now)());
   }
 

@@ -1292,7 +1292,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
       case "memory.suggest":
         return ok(command.type, {
-          suggestions: memory().suggest(await memoryProject(command.payload.projectId)),
+          suggestions: await memory().suggest(await memoryProject(command.payload.projectId)),
         });
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
