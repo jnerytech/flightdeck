@@ -898,6 +898,15 @@ export const TemplateListResult = z.object({
 });
 export type TemplateListResult = z.infer<typeof TemplateListResult>;
 
+/** A task started from a template: its session, where it works and where its results go. */
+export const TemplateStartResult = z.object({
+  sessionId: z.string(),
+  workingFolder: z.string(),
+  outputFolder: z.string(),
+  permissionMode: PermissionMode,
+});
+export type TemplateStartResult = z.infer<typeof TemplateStartResult>;
+
 /** Whether the host's terminals are on, how many at most and which shell they open. */
 export const TerminalSettings = z.object({
   enabled: z.boolean(),
@@ -3204,6 +3213,19 @@ export const Command = z.discriminatedUnion("type", [
   cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
   cmd("template.list", z.object({}).strict()),
   cmd(
+    "template.start",
+    z
+      .object({
+        templateId: z.string().min(1),
+        /** The language the prompt is written in (the app's). */
+        language: z.enum(["en", "pt-BR"]),
+        /** What the person answered, by field id: a path, a text or the id of an option. */
+        values: z.record(z.string(), z.string()),
+        name: z.string().min(1).max(100).optional(),
+      })
+      .strict(),
+  ),
+  cmd(
     "ui.set",
     z
       .object({
@@ -3950,6 +3972,7 @@ export interface CommandResults {
   "terminal.settings": TerminalSettings;
   "ui.set": UiSettings;
   "template.list": TemplateListResult;
+  "template.start": TemplateStartResult;
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
