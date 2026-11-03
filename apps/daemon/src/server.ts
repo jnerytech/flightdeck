@@ -34,6 +34,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type UiSettings,
   type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
@@ -246,6 +247,9 @@ export interface ServerOptions {
   sessionFiles?: SessionFiles;
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
+  /** The host's default mode and lock (phase 33); changed by `ui.set`, which `onUiSettings` keeps. */
+  ui?: UiSettings;
+  onUiSettings?: (ui: UiSettings) => void | Promise<void>;
   /** Called after `terminal.settings` changes whether terminals are on (the config keeps it). */
   onTerminalSettings?: (enabled: boolean) => void;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
@@ -1344,8 +1348,10 @@ export function startServer(opts: ServerOptions): RunningServer {
           features: [
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
+            ...(opts.ui ? ["ui.mode"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
+          ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });
@@ -1618,6 +1624,25 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "terminal.list":
         return ok(command.type, { terminals: terminals().list() });
+      case "ui.set": {
+        if (!opts.ui) throw featureOff("ui.mode");
+        const { mode, locked, confirm } = command.payload;
+        if (confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "changing how this host presents itself needs confirm: true",
+            "ui_confirm",
+          );
+        }
+        const next: UiSettings = {
+          mode: mode ?? opts.ui.mode,
+          locked: locked ?? opts.ui.locked,
+        };
+        await opts.onUiSettings?.(next);
+        opts.ui.mode = next.mode;
+        opts.ui.locked = next.locked;
+        return ok(command.type, { ...next });
+      }
       case "terminal.settings": {
         const { enabled, confirm } = command.payload;
         const manager = terminals();

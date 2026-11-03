@@ -1044,6 +1044,9 @@ export async function startDaemon(
       defaultUser: userInfo().username,
     }),
     terminals,
+    // The host's default mode and lock (phase 33), kept in the config like the other settings.
+    ui: { ...config.ui },
+    onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
     // Turned on or off from the app: kept in the config file, like the rest of the host settings.
     onTerminalSettings: (enabled) =>
       updateConfigFile(configFile, (raw) => ({
