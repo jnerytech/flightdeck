@@ -1005,7 +1005,9 @@ código 3.
 
 - **Histórico por host** (🕘 ao lado do nome do host): sessões indexadas com título, pasta, data
   da última mensagem, origem (`Flightdeck` ou `terminal`) e o selo "possivelmente em uso";
-  filtros por pasta, período (dias inteiros, em UTC) e origem.
+  filtros por pasta, período (dias inteiros, em UTC) e origem. Os botões **Lista/Cartões** (a mesma
+  escolha da tela Sessões) desenham cada sessão como um cartão com título, pasta, host, data,
+  origem, o selo "possivelmente em uso" e, nos hosts que informam custos, o custo estimado.
 - **Busca global** (`Ctrl+K` dentro do app, ou "Buscar no histórico"): é a última seção da
   [paleta](#paleta-ctrlk). Enter, sem nada escolhido, consulta todos os hosts online em paralelo
   e junta os acertos por data, com host, pasta e trecho destacado. Host offline, ou que não

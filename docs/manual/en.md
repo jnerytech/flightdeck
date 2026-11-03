@@ -1024,7 +1024,9 @@ exits with code 3.
 
 - **Per-host history** (🕘 next to the host name): indexed sessions with title, folder, date of
   the last message, origin (`Flightdeck` or `terminal`) and the "possibly in use" badge; filters
-  by folder, period (whole days, in UTC) and origin.
+  by folder, period (whole days, in UTC) and origin. The **List/Cards** buttons (the same choice as
+  the Sessions screen) draw each session as a card with title, folder, host, date, origin, the
+  "possibly in use" badge and, on hosts that report costs, the estimated cost.
 - **Global search** (`Ctrl+K` inside the app, or "Search the history"): it is the last section of
   the [palette](#palette-ctrlk). Enter, with nothing selected, queries every online host in
   parallel and merges the hits by date, with host, folder and a highlighted snippet. A host that
