@@ -8,6 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ActionButton } = await import("../src/components/feedback/action-button.tsx");
+const { FieldRow } = await import("../src/components/layout/form.tsx");
 const { AllowedFolders } = await import("../src/components/hosts/allowed-folders.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 
@@ -43,6 +44,41 @@ describe("botao-motivo-linha: a button's reason does not make its row taller", (
   });
 });
 
+describe("botao-motivo-linha: a button in a form row", () => {
+  const row = (disabled: boolean) => (
+    <FieldRow>
+      <input aria-label="pasta" />
+      <ActionButton disabled={disabled} disabledReason="Digite a pasta.">
+        Adicionar
+      </ActionButton>
+    </FieldRow>
+  );
+
+  test("the reason is the row's help line, under the input's edge and not under the button", () => {
+    render(row(true));
+    const button = screen.getByRole("button", { name: "Adicionar" });
+    const help = screen.getByText("Digite a pasta.");
+    expect(help.className).toContain("field-help");
+    expect(button.getAttribute("aria-describedby")).toBe(help.id);
+    // The button has no box of its own, and the help follows the row it belongs to.
+    expect(button.parentElement?.className ?? "").not.toContain("action-button-box");
+    const rowBox = screen.getByRole("textbox", { name: "pasta" }).parentElement as HTMLElement;
+    expect(rowBox.className).toContain("field-row");
+    expect(rowBox.nextElementSibling).toBe(help);
+    expect(css).toMatch(/@utility field-help \{/);
+  });
+
+  test("the help is gone once the button is enabled", () => {
+    const { rerender } = render(row(true));
+    expect(screen.queryByText("Digite a pasta.")).not.toBeNull();
+    rerender(row(false));
+    expect(screen.queryByText("Digite a pasta.")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Adicionar" }).getAttribute("aria-describedby"),
+    ).toBeNull();
+  });
+});
+
 describe("botao-motivo-linha: allowed folders", () => {
   const setup = (pick?: () => Promise<string | null>, url = "ws://127.0.0.1:1/v1/ws") => {
     const platform = memoryPlatform(false, "pt-BR").platform;
@@ -52,6 +88,14 @@ describe("botao-motivo-linha: allowed folders", () => {
     render(<AllowedFolders store={store} host={host} />);
     return store;
   };
+
+  test("its reason is the help line of the row, under the input", () => {
+    setup();
+    const input = screen.getByRole("textbox", { name: "Pasta a permitir" });
+    const help = screen.getByText("Digite a pasta a permitir.");
+    expect(help.className).toContain("field-help");
+    expect((input.parentElement as HTMLElement).nextElementSibling).toBe(help);
+  });
 
   test("the box says what a folder looks like", () => {
     setup();

@@ -190,3 +190,12 @@ export function CheckField(props: {
     </label>
   );
 }
+
+/**
+ * A form row: fields and the buttons that act on them on one line, and under it the help line.
+ * An ActionButton inside says why it is disabled there (aligned with the first field), not under
+ * itself.
+ */
+export function FieldRow(props: { children: ReactNode; className?: string }) {
+  return <div className={props.className}>{props.children}</div>;
+}
