@@ -151,7 +151,10 @@ describe("sessao-clique: the session screen answers a click", () => {
     const { rerender } = render(
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
     );
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "oi" } });
     expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "" } });
     expect(screen.queryByRole("button", { name: "Parar o turno" })).toBeNull();
     rerender(
       <SessionView

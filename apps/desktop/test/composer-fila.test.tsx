@@ -53,14 +53,16 @@ describe("composer-fila: messages queued while a turn runs", () => {
     expect(screen.getByText("primeiro")).toBeTruthy();
   });
 
-  test("Ctrl+Enter during a turn queues too", async () => {
+  test("Enter during a turn queues too", async () => {
     const { sent, box } = setup();
     fireEvent.change(box(), { target: { value: "pelo teclado" } });
     await act(async () => {
-      fireEvent.keyDown(box(), { key: "Enter", ctrlKey: true });
+      fireEvent.keyDown(box(), { key: "Enter" });
     });
     expect(sent).toEqual([]);
-    expect(screen.getByText("pelo teclado")).toBeTruthy();
+    expect(
+      within(screen.getByRole("list", { name: "Na fila" })).getByText("pelo teclado"),
+    ).toBeTruthy();
   });
 
   test("a queued message can be removed, or taken back to the box to edit", async () => {

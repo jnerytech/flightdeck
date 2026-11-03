@@ -178,7 +178,7 @@ describe("desktop: interface", () => {
     await waitFor(() => expect(screen.getByText(/arquivo criado/)).toBeTruthy());
 
     type("Mensagem", "[tool] outra vez");
-    fireEvent.keyDown(screen.getByLabelText("Mensagem"), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(screen.getByLabelText("Mensagem"), { key: "Enter" });
     await waitFor(() => expect(screen.getByRole("button", { name: "Negar" })).toBeTruthy());
     // The reason opens after Negar (phase 10); a second Negar sends it.
     await act(async () => {
