@@ -236,6 +236,6 @@ describe("projetos-busca: the commands", () => {
     const clone = await ask(bare, "projects.clone", { url: "https://a/b.git", root });
     expect(clone && !clone.ok && clone.error.reason).toBe("feature_off");
     const info = await ask(bare, "host.info", {});
-    expect(info?.ok && (info.data as { features: string[] }).features).toEqual([]);
+    expect(info?.ok && (info.data as { features: string[] }).features).toEqual(["session.images"]);
   });
 });
