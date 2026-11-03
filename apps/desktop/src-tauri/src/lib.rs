@@ -11,32 +11,47 @@ use tauri::{Emitter, Manager, State, WindowEvent, Wry};
 
 const KEYRING_SERVICE: &str = "dev.flightdeck.app";
 
+/// Runs blocking work (the credential store, a PATH walk, a process spawn) on the blocking pool:
+/// a plain `async fn` still holds one of the runtime's few workers while it waits.
+async fn spawn_blocking_result<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 fn entry(host_id: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, host_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn token_get(host_id: String) -> Result<Option<String>, String> {
-    match entry(&host_id)?.get_password() {
+async fn token_get(host_id: String) -> Result<Option<String>, String> {
+    spawn_blocking_result(move || match entry(&host_id)?.get_password() {
         Ok(token) => Ok(Some(token)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 #[tauri::command]
-fn token_set(host_id: String, token: String) -> Result<(), String> {
-    entry(&host_id)?
-        .set_password(&token)
-        .map_err(|e| e.to_string())
+async fn token_set(host_id: String, token: String) -> Result<(), String> {
+    spawn_blocking_result(move || {
+        entry(&host_id)?
+            .set_password(&token)
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 #[tauri::command]
-fn token_delete(host_id: String) -> Result<(), String> {
-    match entry(&host_id)?.delete_credential() {
+async fn token_delete(host_id: String) -> Result<(), String> {
+    spawn_blocking_result(move || match entry(&host_id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 /// Phase 16: the vault's values live in the OS credential store under their own service, one
@@ -51,32 +66,37 @@ fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
 }
 
 #[tauri::command]
-fn vault_get(id: String) -> Result<Option<String>, String> {
-    match vault_entry(&id)?.get_password() {
+async fn vault_get(id: String) -> Result<Option<String>, String> {
+    spawn_blocking_result(move || match vault_entry(&id)?.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 #[tauri::command]
-fn vault_set(id: String, value: String) -> Result<(), String> {
+async fn vault_set(id: String, value: String) -> Result<(), String> {
     if cfg!(windows) && value.encode_utf16().count() * 2 > WINDOWS_CREDENTIAL_MAX_BYTES {
         return Err(format!(
             "the value is over {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, the limit of the Windows credential store"
         ));
     }
-    vault_entry(&id)?
-        .set_password(&value)
-        .map_err(|e| e.to_string())
+    spawn_blocking_result(move || {
+        vault_entry(&id)?
+            .set_password(&value)
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 #[tauri::command]
-fn vault_delete(id: String) -> Result<(), String> {
-    match vault_entry(&id)?.delete_credential() {
+async fn vault_delete(id: String) -> Result<(), String> {
+    spawn_blocking_result(move || match vault_entry(&id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 /// A key pair `ssh-keygen` made: the private key goes to the vault, the public one to the screen.
@@ -374,11 +394,17 @@ struct TerminalEnv {
 }
 
 #[tauri::command]
-fn terminal_probe() -> TerminalEnv {
-    TerminalEnv {
+async fn terminal_probe() -> TerminalEnv {
+    tauri::async_runtime::spawn_blocking(|| TerminalEnv {
         windows: cfg!(windows),
         wt: cfg!(windows) && on_path("wt.exe"),
-    }
+    })
+    .await
+    // A probe that did not finish reads as "no Windows Terminal": the app falls back to cmd.
+    .unwrap_or(TerminalEnv {
+        windows: cfg!(windows),
+        wt: false,
+    })
 }
 
 /// `symlink_metadata`: `wt.exe` is an app execution alias, a reparse point `is_file` rejects.
@@ -397,28 +423,31 @@ const TERMINAL_PROGRAMS: [&str; 2] = ["wt.exe", "cmd.exe"];
 /// Starts the terminal with the arguments as a list; no shell in between, except the `cmd /k` of
 /// the fallback without Windows Terminal.
 #[tauri::command]
-fn terminal_open(program: String, args: Vec<String>) -> Result<(), String> {
+async fn terminal_open(program: String, args: Vec<String>) -> Result<(), String> {
     if !TERMINAL_PROGRAMS
         .iter()
         .any(|p| p.eq_ignore_ascii_case(&program))
     {
         return Err(format!("programa não permitido: {program}"));
     }
-    let mut command = std::process::Command::new(&program);
-    command.args(&args);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // `cmd /c start` opens the terminal's own console; the outer cmd needs no window.
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        if program.eq_ignore_ascii_case("cmd.exe") {
-            command.creation_flags(CREATE_NO_WINDOW);
+    spawn_blocking_result(move || {
+        let mut command = std::process::Command::new(&program);
+        command.args(&args);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // `cmd /c start` opens the terminal's own console; the outer cmd needs no window.
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            if program.eq_ignore_ascii_case("cmd.exe") {
+                command.creation_flags(CREATE_NO_WINDOW);
+            }
         }
-    }
-    command
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| format!("{program}: {e}"))
+        command
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("{program}: {e}"))
+    })
+    .await
 }
 
 #[tauri::command]
