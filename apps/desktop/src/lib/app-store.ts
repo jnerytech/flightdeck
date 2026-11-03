@@ -376,6 +376,8 @@ export type HostCommandType = Extract<
   | "template.list"
   | "template.start"
   | "task.results"
+  | "task.preview"
+  | "session.close"
   | `mcp.${string}`
   | `agentcfg.${string}`
   | `issues.${string}`

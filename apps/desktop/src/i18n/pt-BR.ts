@@ -2700,6 +2700,7 @@ export const ptBR = {
     },
   },
   simple: {
+    modeLabel: "Modo simples",
     yes: "Sim, pode continuar",
     no: "Não",
     holdHint: "Segure para dizer sim: isto é difícil de desfazer.",

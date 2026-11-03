@@ -2696,6 +2696,7 @@ export const en: Dictionary = {
     },
   },
   simple: {
+    modeLabel: "Simple mode",
     yes: "Yes, go ahead",
     no: "No, don't",
     holdHint: "Hold to say yes: this one is hard to undo.",
