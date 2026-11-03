@@ -90,6 +90,10 @@ describe("mcp-cards: a session manages the cards of its own project", () => {
     expect(await manage({ action: "move", column: "done" }, { session: free })).toBe(
       "invalid_state/card_id_needed",
     );
+    // A session id the manager does not know has no folder, so it is outside every project.
+    expect(await manage({ action: "move", column: "done" }, { session: "unknown-session" })).toBe(
+      "invalid_state/card_scope_unknown",
+    );
     expect(
       (
         (await manage(
