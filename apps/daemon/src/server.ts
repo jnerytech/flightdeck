@@ -1210,15 +1210,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
-        return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });
+        return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
       }
       case "agentcfg.read": {
         const { projectId, kind, path, origin } = command.payload;
-        return ok(command.type, agentcfg().read(projectPath(projectId), kind, path, origin));
+        return ok(command.type, await agentcfg().read(projectPath(projectId), kind, path, origin));
       }
       case "agentcfg.write": {
         const { projectId, confirm, ...input } = command.payload;
-        const written = agentcfg().write(projectPath(projectId), {
+        const written = await agentcfg().write(projectPath(projectId), {
           ...input,
           confirm: confirm === true,
         });
@@ -1755,7 +1755,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, personas().subagents({ projectPath, language }));
       }
       case "personas.publishAgent":
-        return ok(command.type, personas().publishAgent(command.payload));
+        return ok(command.type, await personas().publishAgent(command.payload));
       case "personas.resolve": {
         const { ref, projectPath } = command.payload;
         const store = personas();
