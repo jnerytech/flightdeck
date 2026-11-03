@@ -127,6 +127,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
+import { loadTileCount, saveTileCount, type TileCount } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -659,6 +660,8 @@ export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
   private readonly connections = new Map<string, HostConnection>();
+  /** Sessions followed without being open (the project page's tiles), with how many follow each. */
+  private readonly watched = new Map<string, number>();
   private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
@@ -1093,11 +1096,68 @@ export class AppStore {
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
     const previous = this.state.selected;
-    if (previous?.sessionId && previous.sessionId !== sessionId) {
+    if (
+      previous?.sessionId &&
+      previous.sessionId !== sessionId &&
+      !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
+    ) {
       this.connections.get(previous.hostId)?.unsubscribe(previous.sessionId);
     }
     if (sessionId) this.connections.get(hostId)?.subscribe(sessionId);
     this.update({ selected: { hostId, sessionId } });
+  }
+
+  /**
+   * Follows a session's full event stream without opening it, for as long as the returned function
+   * has not been called (the tiles of a project follow several at once).
+   */
+  watchSession(hostId: string, sessionId: string): () => void {
+    const key = `${hostId}/${sessionId}`;
+    this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
+    this.connections.get(hostId)?.subscribe(sessionId);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const left = (this.watched.get(key) ?? 1) - 1;
+      if (left > 0) {
+        this.watched.set(key, left);
+        return;
+      }
+      this.watched.delete(key);
+      const open = this.state.selected;
+      if (open?.hostId === hostId && open.sessionId === sessionId) return;
+      this.connections.get(hostId)?.unsubscribe(sessionId);
+    };
+  }
+
+  /** How many tiles the project page shows; kept across starts. */
+  tileCount(): TileCount {
+    return loadTileCount(this.platform.storage);
+  }
+
+  setTileCount(count: TileCount): void {
+    saveTileCount(this.platform.storage, count);
+  }
+
+  /** Sends a message to a session of a host, whether it is the open one or not. */
+  async sendTo(
+    hostId: string,
+    sessionId: string,
+    text: string,
+    images?: SessionImage[],
+  ): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    try {
+      await conn.request("session.send", {
+        sessionId,
+        text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (error) {
+      this.fail(error);
+    }
   }
 
   async setCloseToTray(enabled: boolean): Promise<void> {
@@ -1998,6 +2058,9 @@ export class AppStore {
     // A session selected before its host had a connection (a route opened at start-up).
     const selected = this.state.selected;
     if (selected?.hostId === config.id && selected.sessionId) conn.subscribe(selected.sessionId);
+    for (const key of this.watched.keys()) {
+      if (key.startsWith(`${config.id}/`)) conn.subscribe(key.slice(config.id.length + 1));
+    }
     conn.watch();
     conn.watchBoard();
     conn.watchHistory();

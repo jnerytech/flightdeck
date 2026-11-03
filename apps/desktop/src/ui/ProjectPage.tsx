@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
+import { SessionTiles } from "@/components/projects/session-tiles";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
@@ -113,6 +114,13 @@ export function ProjectPage(props: {
           </li>
         ))}
       </ul>
+      <SessionTiles
+        store={store}
+        state={state}
+        hostId={hostId}
+        projectKey={store.projectKeyOf(hostId, project)}
+        onOpen={(row) => props.go({ name: "session", host: hostId, id: row.sessionId as string })}
+      />
     </Page>
   );
 }
