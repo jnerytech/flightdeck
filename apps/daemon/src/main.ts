@@ -6,6 +6,7 @@ import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Account } from "./account/account.ts";
+import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
 import { Actions } from "./actions/actions.ts";
 import { runActionCli, runSnippetCli } from "./actions/cli.ts";
@@ -503,12 +504,12 @@ interface CreatedRuntime {
   runtime: AgentRuntime;
   /** What `host.info` reports about `claude`; only the real runtime has one. */
   claude?: { path: string | null; version(): Promise<string | null> };
-  /** What the account card reads (phase 34); only the real runtime has a `claude` to ask. */
+  /** What the account card reads (phase 34); the real runtime asks its `claude`, the fake one answers a demo account. */
   accountReaders?: ReturnType<typeof accountReaders>;
 }
 
 async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<CreatedRuntime> {
-  if (kind === "fake") return { runtime: new FakeRuntime() };
+  if (kind === "fake") return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders() };
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
   const runtime = new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
   const path = runtime.claudePath ?? null;
