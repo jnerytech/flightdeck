@@ -207,6 +207,16 @@ describe("board-ui", () => {
     expect(column("Backlog")).toEqual(["C", "B"]);
     const moved = board.listProjects()[0];
     expect(board.getBoard(moved?.id ?? "").columns[3]?.cards.map((c) => c.title)).toEqual(["A"]);
+    // A column lights up while a card is over it and goes back when the card leaves or drops.
+    const over = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.dragEnter(over);
+    });
+    expect(over.className).toContain("drop-over");
+    await act(async () => {
+      fireEvent.dragLeave(over);
+    });
+    expect(over.className).not.toContain("drop-over");
     // Dropping without dragging anything does nothing.
     await act(async () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
