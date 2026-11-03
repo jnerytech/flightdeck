@@ -414,6 +414,11 @@ histórico.
 - **Resumo:** abaixo, uma linha tirada do transcript, sem IA: "Pedido: <primeira linha do último
   prompt, até 80 caracteres>" e o que a sessão faz agora ("rodando Bash", "esperando aprovação de
   Write", "ociosa há 12 min"). O daemon manda isso no campo `summary` das listas.
+- **Visualização:** os dois botões no início da barra (**Lista** e **Cartões**) trocam o jeito de
+  desenhar as sessões. O cartão mostra o título (clique para abrir), o projeto, o host, a bolinha de
+  estado, a persona, o custo (nos hosts que informam) e a última linha (o pedido e o que a sessão
+  faz, como a ferramenta esperando aprovação), com o mesmo menu de uma linha. Os cartões ocupam
+  quantas colunas a largura permitir. A escolha fica guardada.
 - **Filtros:** texto, host, origem, estado, "Só fixadas" e "Mostrar arquivadas". As arquivadas
   ficam fora por padrão.
 - **Menu:** renomear, fixar (as fixadas vão para o topo do grupo), arquivar e "Copiar comando"

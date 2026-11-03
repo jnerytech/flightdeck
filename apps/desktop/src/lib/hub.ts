@@ -105,14 +105,16 @@ export type HubView = "list" | "cards";
 export const HUB_VIEW_KEY = "flightdeck.hubView";
 
 /** The stored view; anything unreadable is the list. */
-export function loadHubView(_storage: { getItem(key: string): string | null }): HubView {
-  return "list";
+export function loadHubView(storage: { getItem(key: string): string | null }): HubView {
+  return storage.getItem(HUB_VIEW_KEY) === "cards" ? "cards" : "list";
 }
 
 export function saveHubView(
-  _storage: { setItem(key: string, value: string): void },
-  _view: HubView,
-): void {}
+  storage: { setItem(key: string, value: string): void },
+  view: HubView,
+): void {
+  storage.setItem(HUB_VIEW_KEY, view);
+}
 
 export interface HubGroup {
   key: string;

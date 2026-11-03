@@ -85,7 +85,15 @@ import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
+import {
+  type HubFilter,
+  type HubView,
+  hubRows,
+  loadHubFilter,
+  loadHubView,
+  saveHubFilter,
+  saveHubView,
+} from "./hub.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -807,6 +815,15 @@ export class AppStore {
 
   saveHubFilter(filter: HubFilter): void {
     saveHubFilter(this.platform.storage, filter);
+  }
+
+  /** How the hub draws its sessions: lines or cards. */
+  hubView(): HubView {
+    return loadHubView(this.platform.storage);
+  }
+
+  saveHubView(view: HubView): void {
+    saveHubView(this.platform.storage, view);
   }
 
   subscribe = (listener: () => void): (() => void) => {

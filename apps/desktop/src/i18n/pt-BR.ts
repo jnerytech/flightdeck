@@ -490,6 +490,9 @@ export const ptBR = {
     release: "Soltar o par",
   },
   hub: {
+    view: "Visualização",
+    viewList: "Lista",
+    viewCards: "Cartões",
     pick: "Escolha uma sessão para ver a conversa.",
     resize: "Redimensionar a lista",
     back: "Voltar à lista",

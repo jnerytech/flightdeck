@@ -493,6 +493,9 @@ export const en: Dictionary = {
     release: "Free the pair",
   },
   hub: {
+    view: "View",
+    viewList: "List",
+    viewCards: "Cards",
     pick: "Choose a session to see the conversation.",
     resize: "Resize the list",
     back: "Back to the list",

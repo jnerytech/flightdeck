@@ -429,6 +429,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
   for approval of Write", "idle 12 min ago"). The daemon sends it in the `summary` field of the
   lists.
+- **View:** the two buttons at the start of the toolbar (**List** and **Cards**) switch how the
+  sessions are drawn. A card shows the title (click to open), the project, the host, the status
+  dot, the persona, the cost (on hosts that report it) and the last line (the request and what the
+  session is doing, such as the tool waiting for approval), with the same menu as a row. Cards sit
+  in as many columns as the width allows. The choice is remembered.
 - **Filters:** text, host, origin, state, "Pinned only" and "Show archived". Archived sessions are
   left out by default.
 - **Menu:** rename, pin (pinned sessions go to the top of the group), archive and "Copy command"
