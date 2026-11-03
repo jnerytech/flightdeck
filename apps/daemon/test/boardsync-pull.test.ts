@@ -56,6 +56,23 @@ describe("board-pull: items become cards, statuses move them", () => {
     expect(s.board.getCard(id).externalGone).toBe(true);
   });
 
+  test("watchers are told when a card gets its link to the item or leaves the board", async () => {
+    const s = await syncSetup();
+    const seen: Array<{ externalUrl: string | null; externalGone: boolean }> = [];
+    s.board.watch((card) =>
+      seen.push({ externalUrl: card.externalUrl, externalGone: card.externalGone }),
+    );
+    s.provider.items = [item(1)];
+    await s.sync.syncProject(s.project.id);
+    expect(seen.at(-1)).toEqual({
+      externalUrl: "https://github.com/acme/app/issues/1",
+      externalGone: false,
+    });
+    s.provider.items = [item(1, { archived: true, updatedAt: "2026-10-02T10:00:00Z" })];
+    await s.sync.syncProject(s.project.id);
+    expect(seen.at(-1)?.externalGone).toBe(true);
+  });
+
   test("a third party's issue carries the mark and gets no automatic approval", async () => {
     const s = await syncSetup();
     s.provider.items = [
