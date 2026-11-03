@@ -594,3 +594,40 @@
 @utility field-row-end {
   align-items: flex-end;
 }
+
+/* Settings: a rail of the sections (and a search) beside the sections themselves. */
+@utility settings-layout {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+@utility settings-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@utility settings-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  & [aria-current="true"] {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+}
+@utility settings-sections {
+  display: flex;
+  max-width: 42rem;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+@utility settings-section {
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 4px;
+    border-radius: 0.5rem;
+  }
+}

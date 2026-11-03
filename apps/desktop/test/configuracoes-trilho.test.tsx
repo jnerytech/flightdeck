@@ -39,7 +39,7 @@ function setup(updater = true) {
 const rail = () => screen.getByRole("navigation", { name: "Seções das configurações" });
 const items = () =>
   within(rail())
-    .getAllByRole("button")
+    .queryAllByRole("button")
     .map((b) => b.textContent);
 
 describe("configuracoes-trilho: the rail and the search", () => {

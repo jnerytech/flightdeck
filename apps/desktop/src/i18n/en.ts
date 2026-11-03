@@ -2415,6 +2415,26 @@ export const en: Dictionary = {
     library: "Library",
     infra: "Infra",
   },
+  settingsRail: {
+    label: "Settings sections",
+    search: "Search settings",
+    none: "No setting matches.",
+    budgets: "Budgets",
+    watch: "Watch and fix PRs",
+    messaging: "Messages between sessions",
+    words: {
+      appearance:
+        "theme dark light system density list font size terminal language english portuguese",
+      clients: "clients customers manage",
+      window: "window tray close autostart start with windows",
+      updates: "updates version check notify",
+      shortcut: "global shortcut keyboard search hotkey",
+      budgets: "budget limit cost spend quota",
+      watch: "watch pull request pr ci fix checks",
+      messaging: "messages conversations rules agents",
+      webhooks: "webhook url notify events http",
+    },
+  },
   tiles: {
     title: "Sessions side by side",
     hint: "Alt+arrows move between the tiles.",

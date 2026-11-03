@@ -610,6 +610,18 @@ icon shows when there is text. From the keyboard, Tab reaches each tile, and **A
 move between them (left and right by one, up and down by a row). The tiles follow their sessions
 live; the list is the project's, so a session of another project never shows here.
 
+### The sidebar, the tab strip and Settings
+
+- The sidebar keeps **Sessions**, **Needs you**, **Projects** and **Board** on top; the rest is in
+  three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
+  Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
+  not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
+  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
+  or right, move to the other area, pin), **New tab** and **Split**.
+- **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
+  a search box: typing keeps the sections whose name or settings match.
+
 ## Board
 
 Each project (a git repository on the host) has a board with five columns: Backlog, In progress,

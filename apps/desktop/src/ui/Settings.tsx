@@ -28,6 +28,14 @@ function SettingRow(props: { label: string; children: (id: string) => ReactNode 
   );
 }
 
+/** One block of the screen: its name on the rail, the words it answers to in the search, and its content. */
+interface SettingsSection {
+  id: string;
+  label: string;
+  words: string;
+  node: ReactNode;
+}
+
 const SETTINGS_KEYS = ["hosts", "budgets", "projects"] as const;
 
 /**
@@ -64,11 +72,26 @@ export const Settings = memo(function Settings(props: {
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
+  const [query, setQuery] = useState("");
+  const [current, setCurrent] = useState<string | null>(null);
   /** A checkbox with its sentence on its right. */
   const check = "flex items-center gap-2 text-sm";
-  return (
-    <Page title={t("prefs.title")}>
-      <div className="flex max-w-2xl flex-col gap-5">
+  const budgetHosts = state.hosts.filter(
+    // Budgets came with the costs (phase 8).
+    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
+  );
+  const watchHosts = state.hosts.filter(
+    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "watch", false),
+  );
+  const messagingHosts = state.hosts.filter(
+    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
+  );
+  const sections: SettingsSection[] = [
+    {
+      id: "appearance",
+      label: t("prefs.appearance"),
+      words: t("settingsRail.words.appearance"),
+      node: (
         <Panel title={t("prefs.appearance")}>
           <SettingRow label={t("settings.theme")}>
             {(id) => (
@@ -127,6 +150,13 @@ export const Settings = memo(function Settings(props: {
             )}
           </SettingRow>
         </Panel>
+      ),
+    },
+    {
+      id: "clients",
+      label: t("clients.title"),
+      words: t("settingsRail.words.clients"),
+      node: (
         <Panel title={t("clients.title")}>
           <p className="text-muted-foreground text-sm">{t("clients.settingsHint")}</p>
           <div>
@@ -135,6 +165,13 @@ export const Settings = memo(function Settings(props: {
             </Button>
           </div>
         </Panel>
+      ),
+    },
+    {
+      id: "window",
+      label: t("prefs.window"),
+      words: t("settingsRail.words.window"),
+      node: (
         <Panel title={t("prefs.window")}>
           <label className={check}>
             <input
@@ -157,25 +194,41 @@ export const Settings = memo(function Settings(props: {
             <small className="text-muted-foreground text-xs">{t("prefs.unavailable")}</small>
           )}
         </Panel>
-        {settings.updaterSupported && (
-          <Panel title={t("prefs.updates")}>
-            <label className={check}>
-              <input
-                type="checkbox"
-                aria-label={t("prefs.notifyUpdates")}
-                checked={settings.notifyUpdates}
-                onChange={(e) => props.onNotifyUpdates(e.target.checked)}
-              />
-              {t("prefs.notifyUpdates")}
-            </label>
-            <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
-              {t("prefs.checkNow")}
-            </Button>
-            {props.appUpdate.upToDate && (
-              <p className="text-muted-foreground text-sm">{t("prefs.upToDate")}</p>
-            )}
-          </Panel>
-        )}
+      ),
+    },
+    ...(settings.updaterSupported
+      ? [
+          {
+            id: "updates",
+            label: t("prefs.updates"),
+            words: t("settingsRail.words.updates"),
+            node: (
+              <Panel title={t("prefs.updates")}>
+                <label className={check}>
+                  <input
+                    type="checkbox"
+                    aria-label={t("prefs.notifyUpdates")}
+                    checked={settings.notifyUpdates}
+                    onChange={(e) => props.onNotifyUpdates(e.target.checked)}
+                  />
+                  {t("prefs.notifyUpdates")}
+                </label>
+                <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
+                  {t("prefs.checkNow")}
+                </Button>
+                {props.appUpdate.upToDate && (
+                  <p className="text-muted-foreground text-sm">{t("prefs.upToDate")}</p>
+                )}
+              </Panel>
+            ),
+          },
+        ]
+      : []),
+    {
+      id: "shortcut",
+      label: t("prefs.shortcut"),
+      words: t("settingsRail.words.shortcut"),
+      node: (
         <Panel title={t("prefs.shortcut")}>
           {settings.shortcutProblem && <InlineNotice>{settings.shortcutProblem}</InlineNotice>}
           <Form variant="inline" onSubmit={() => props.onGlobalShortcut(shortcut)}>
@@ -203,42 +256,133 @@ export const Settings = memo(function Settings(props: {
             />
           </Form>
         </Panel>
-        {state.hosts
-          // Budgets came with the costs (phase 8).
-          .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-          .map((h) => (
-            <BudgetsSection
-              key={h.id}
-              store={props.store}
-              hostId={h.id}
-              hostName={h.name}
-              budgets={state.budgets[h.id] ?? []}
-            />
+      ),
+    },
+    ...(budgetHosts.length > 0
+      ? [
+          {
+            id: "budgets",
+            label: t("settingsRail.budgets"),
+            words: t("settingsRail.words.budgets"),
+            node: (
+              <>
+                {budgetHosts.map((h) => (
+                  <BudgetsSection
+                    key={h.id}
+                    store={props.store}
+                    hostId={h.id}
+                    hostName={h.name}
+                    budgets={state.budgets[h.id] ?? []}
+                  />
+                ))}
+              </>
+            ),
+          },
+        ]
+      : []),
+    ...(watchHosts.length > 0
+      ? [
+          {
+            id: "watch",
+            label: t("settingsRail.watch"),
+            words: t("settingsRail.words.watch"),
+            node: (
+              <>
+                {watchHosts.map((h) => (
+                  <WatchSettingsSection
+                    key={`watch/${h.id}`}
+                    store={props.store}
+                    hostId={h.id}
+                    hostName={h.name}
+                    projects={state.projects[h.id] ?? []}
+                  />
+                ))}
+              </>
+            ),
+          },
+        ]
+      : []),
+    ...(messagingHosts.length > 0
+      ? [
+          {
+            id: "messaging",
+            label: t("settingsRail.messaging"),
+            words: t("settingsRail.words.messaging"),
+            node: (
+              <>
+                {messagingHosts.map((h) => (
+                  <MessagingRulesSection
+                    key={`messaging/${h.id}`}
+                    store={props.store}
+                    hostId={h.id}
+                    hostName={h.name}
+                  />
+                ))}
+              </>
+            ),
+          },
+        ]
+      : []),
+    {
+      id: "webhooks",
+      label: t("webhooks.title"),
+      words: t("settingsRail.words.webhooks"),
+      node: <WebhooksSection store={props.store} />,
+    },
+  ];
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? sections.filter((section) =>
+        `${section.label} ${section.words}`.toLowerCase().includes(needle),
+      )
+    : sections;
+  const go = (id: string) => {
+    setCurrent(id);
+    const target = document.getElementById(`settings-${id}`);
+    target?.scrollIntoView?.({ block: "start" });
+    target?.focus({ preventScroll: true });
+  };
+
+  return (
+    <Page title={t("prefs.title")}>
+      <div className="settings-layout">
+        <div className="settings-side">
+          <Input
+            type="search"
+            aria-label={t("settingsRail.search")}
+            placeholder={t("settingsRail.search")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <nav aria-label={t("settingsRail.label")} className="settings-rail">
+            {shown.map((section) => (
+              <Button
+                key={section.id}
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                aria-current={current === section.id ? "true" : undefined}
+                onClick={() => go(section.id)}
+              >
+                {section.label}
+              </Button>
+            ))}
+          </nav>
+        </div>
+        <div className="settings-sections">
+          {shown.length === 0 && <output>{t("settingsRail.none")}</output>}
+          {shown.map((section) => (
+            <section
+              key={section.id}
+              id={`settings-${section.id}`}
+              aria-label={section.label}
+              tabIndex={-1}
+              className="settings-section"
+            >
+              {section.node}
+            </section>
           ))}
-        {state.hosts
-          .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "watch", false))
-          .map((h) => (
-            <WatchSettingsSection
-              key={`watch/${h.id}`}
-              store={props.store}
-              hostId={h.id}
-              hostName={h.name}
-              projects={state.projects[h.id] ?? []}
-            />
-          ))}
-        {state.hosts
-          .filter(
-            (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
-          )
-          .map((h) => (
-            <MessagingRulesSection
-              key={`messaging/${h.id}`}
-              store={props.store}
-              hostId={h.id}
-              hostName={h.name}
-            />
-          ))}
-        <WebhooksSection store={props.store} />
+        </div>
       </div>
     </Page>
   );

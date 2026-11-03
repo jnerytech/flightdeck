@@ -2421,6 +2421,26 @@ export const ptBR = {
     library: "Biblioteca",
     infra: "Infra",
   },
+  settingsRail: {
+    label: "Seções das configurações",
+    search: "Buscar nas configurações",
+    none: "Nenhuma configuração corresponde.",
+    budgets: "Orçamentos",
+    watch: "Vigiar e corrigir PRs",
+    messaging: "Mensagens entre sessões",
+    words: {
+      appearance:
+        "tema escuro claro sistema densidade lista fonte tamanho terminal idioma inglês português",
+      clients: "clientes gerenciar",
+      window: "janela bandeja fechar iniciar com o windows",
+      updates: "atualizações versão verificar avisar",
+      shortcut: "atalho global teclado busca",
+      budgets: "orçamento limite custo gasto cota",
+      watch: "vigiar pull request pr ci corrigir checks",
+      messaging: "mensagens conversas regras agentes",
+      webhooks: "webhook url avisar eventos http",
+    },
+  },
   tiles: {
     title: "Sessões lado a lado",
     hint: "Alt+setas movem entre os blocos.",
