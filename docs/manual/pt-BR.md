@@ -424,6 +424,16 @@ histórico.
     controlável, a caixa de mensagem;
   - encerrada ou do histórico: abre o leitor, com "Continuar no Flightdeck".
 
+### A caixa de mensagem
+
+- Na caixa de mensagem de uma sessão dá para **colar ou soltar imagens** (PNG, JPEG, GIF ou WebP,
+  até cinco por mensagem e 5 MB cada; o host precisa suportar). Elas aparecem como miniaturas que
+  dá para remover antes de enviar, e a conversa indica quantas imagens a mensagem levou. Um
+  arquivo que não cabe diz o motivo em vez de ser anexado.
+- Enquanto um turno roda, **Enfileirar** (ou Ctrl+Enter) põe a mensagem numa lista **Na fila**
+  acima da caixa, em vez de enviá-la. **Editar** devolve a mensagem para a caixa e **Remover** a
+  descarta; quando o turno termina, as mensagens da fila saem em ordem, uma por turno.
+
 ### Hooks do Claude Code
 
 As sessões abertas fora do Flightdeck só aparecem com os hooks instalados no host. Há dois
@@ -1508,13 +1518,6 @@ Para usar:
 - Numa aba de terminal, **Ctrl+Shift+Espaço** lista os snippets de comando daquele host e do app.
 - Na caixa de mensagem de uma sessão, **/** lista os snippets de prompt; o escolhido entra na
   caixa preenchido com a pasta da sessão, ou como está escrito quando falta um valor.
-- Na caixa de mensagem de uma sessão dá para **colar ou soltar imagens** (PNG, JPEG, GIF ou WebP,
-  até cinco por mensagem e 5 MB cada; o host precisa suportar). Elas aparecem como miniaturas que
-  dá para remover antes de enviar, e a conversa indica quantas imagens a mensagem levou. Um
-  arquivo que não cabe diz o motivo em vez de ser anexado.
-- Enquanto um turno roda, **Enfileirar** (ou Ctrl+Enter) põe a mensagem numa lista **Na fila**
-  acima da caixa, em vez de enviá-la. **Editar** devolve a mensagem para a caixa e **Remover** a
-  descarta; quando o turno termina, as mensagens da fila saem em ordem, uma por turno.
 - O Claude lê snippets pelas ferramentas `list_snippets` e `get_snippet` do MCP do Flightdeck. O
   Flightdeck nunca roda um snippet pelo Claude: um comando que o Claude roda passa pelas permissões
   do próprio Claude Code.
