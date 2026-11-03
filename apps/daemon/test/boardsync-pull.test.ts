@@ -154,7 +154,7 @@ describe("board-pull: items become cards, statuses move them", () => {
     s.provider.items = [item(1, { status: "In Review", updatedAt: "2026-10-02T10:00:00Z" })];
     expect(await s.sync.syncProject(s.project.id)).toEqual({ ...ZERO, moved: 1 });
     expect(s.cards()[0]?.column).toBe("review");
-    expect(await s.sync.syncProject(s.project.id)).toEqual(ZERO);
+    expect(await s.sync.syncProject(s.project.id)).toEqual({ ...ZERO, notModified: true });
     const card = s.cards()[0];
     expect(s.store.externalOf(card?.id ?? "")).toMatchObject({
       externalStatus: "In Review",
@@ -162,13 +162,15 @@ describe("board-pull: items become cards, statuses move them", () => {
     });
   });
 
-  test("a card that is running is not moved by the provider, and the log says why", async () => {
+  test("a card that is queued or running is not moved by the provider, and the log says why", async () => {
     const s = await syncSetup();
     s.provider.items = [item(1, { status: "In Progress" })];
     await s.sync.syncProject(s.project.id);
     const card = s.cards()[0];
-    // A session is running in it: the card is made busy directly.
-    s.db.query("UPDATE cards SET session_id = ? WHERE id = ?").run("sess-1", card?.id ?? "");
+    // It waits in the start queue: the card is made busy directly.
+    s.db
+      .query("INSERT INTO card_runs (id, card_id, queued_at) VALUES (?, ?, ?)")
+      .run("run-1", card?.id ?? "", "2026-10-02T09:00:00Z");
     s.provider.items = [item(1, { status: "Done", updatedAt: "2026-10-02T10:00:00Z" })];
     const report = await s.sync.syncProject(s.project.id);
     expect(report).toEqual({ ...ZERO, skipped: 1 });
@@ -211,6 +213,7 @@ describe("board-pull: items become cards, statuses move them", () => {
       ...(await pull(id, since)),
       items: [item(1)],
       truncated: true,
+      notModified: false,
     });
     const report = await s.sync.syncProject(s.project.id);
     expect(report).toEqual({ ...ZERO, truncated: true });

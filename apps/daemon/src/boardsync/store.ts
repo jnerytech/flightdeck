@@ -196,6 +196,16 @@ export class BoardSyncStore {
     };
   }
 
+  /** The ids of the project's cards that have an external id. */
+  linkedCards(projectId: string): string[] {
+    return this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND external_id IS NOT NULL",
+      )
+      .all(projectId)
+      .map((row) => row.id);
+  }
+
   cardByExternal(projectId: string, externalId: string): string | null {
     return (
       this.db
