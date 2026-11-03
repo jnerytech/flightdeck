@@ -109,7 +109,8 @@ describe("hub-cartoes: a session card", () => {
 });
 
 describe("hub-cartoes: the hub as a grid", () => {
-  async function hub(platform = memoryPlatform()) {
+  /** A daemon with one idle managed session. */
+  async function withSession() {
     const d = makeDaemon(cleanups);
     const repo = join(d.root, "gerenciada");
     mkdirSync(repo);
@@ -117,15 +118,25 @@ describe("hub-cartoes: the hub as a grid", () => {
     git(repo, "remote", "add", "origin", "https://github.com/acme/central.git");
     const { sessionId } = d.manager.create({ cwd: repo, prompt: "oi", name: "Gerenciada" });
     await poll(() => d.manager.get(sessionId).status === "idle");
+    return d;
+  }
+  /** A window on the hub; the host is added only the first time, a later window finds it saved. */
+  async function hub(
+    platform = memoryPlatform(),
+    daemon?: Awaited<ReturnType<typeof withSession>>,
+  ) {
+    const d = daemon ?? (await withSession());
     const store = new AppStore(platform.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
-    await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
-    });
+    if (!daemon) {
+      await act(async () => {
+        await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      });
+    }
     await settle(() => store.getState().hosts[0]?.status === "online");
     await act(async () => store.router.push({ name: "hub" }));
     await settle(() => !!screen.queryByRole("listitem", { name: "Gerenciada" }));
-    return { platform, store };
+    return { platform, store, d };
   }
   const toggle = (name: string) => screen.queryByRole("button", { name });
 
@@ -150,13 +161,13 @@ describe("hub-cartoes: the hub as a grid", () => {
 
   test("the choice is kept: a new window opens on the cards", async () => {
     const platform = memoryPlatform();
-    await hub(platform);
+    const { d } = await hub(platform);
     await act(async () => {
       fireEvent.click(toggle("Cartões") as HTMLElement);
     });
     expect(platform.items.get(HUB_VIEW_KEY)).toBe("cards");
     cleanup();
-    await hub(platform);
+    await hub(platform, d);
     expect(document.querySelector("[data-slot='session-card']")).not.toBeNull();
     expect(toggle("Cartões")?.getAttribute("aria-pressed")).toBe("true");
   });
