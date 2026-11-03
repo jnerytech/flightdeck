@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { auditCommits, findForbiddenMarkers, parseCommits, runAudit } from "../lib/tdd-audit.ts";
+import {
+  auditCommits,
+  findForbiddenMarkers,
+  parseCommits,
+  parseWaivers,
+  runAudit,
+} from "../lib/tdd-audit.ts";
 
 // Built by concatenation so this very file never contains the forbidden markers.
 const ONLY = `.${"only"}(`;
@@ -111,5 +117,93 @@ describe("tdd-audit", () => {
 
     const noTag = runAudit({ since: "nao-existe", git: git([]), readFile: () => "" });
     expect(noTag).toEqual({ code: 2, output: "tag ou commit desconhecido: nao-existe" });
+  });
+
+  describe("waivers", () => {
+    const HASH_A = "a".repeat(40);
+    const HASH_B = "b".repeat(40);
+    const run = (subjects: string[], hashes: string[], waivers: object[]) =>
+      runAudit({
+        since: "fase-1",
+        waivers: waivers as never,
+        git: (args) => {
+          if (args[0] === "rev-parse") return "abc";
+          if (args[0] === "log") {
+            return subjects.map((s, i) => `${hashes[i]}\x1f${s}`).join("\n");
+          }
+          return "";
+        },
+        readFile: () => "",
+      });
+
+    test("parseWaivers reads hash, scope and reason, and rejects anything malformed", () => {
+      const ok = { hash: HASH_A, scope: "a", reason: "made during the rc merge" };
+      expect(parseWaivers(JSON.stringify([ok]))).toEqual([ok]);
+      expect(parseWaivers("[]")).toEqual([]);
+      expect(() => parseWaivers("{}")).toThrow("array");
+      expect(() => parseWaivers(JSON.stringify([{ ...ok, hash: "abc1234" }]))).toThrow("40");
+      expect(() => parseWaivers(JSON.stringify([{ ...ok, reason: " " }]))).toThrow("reason");
+      expect(() => parseWaivers(JSON.stringify([{ ...ok, scope: "" }]))).toThrow("scope");
+    });
+
+    test("a waived violation passes and is printed, so it stays visible", () => {
+      const result = run(
+        ["fix(a): f"],
+        [HASH_A],
+        [{ hash: HASH_A, scope: "a", reason: "rc merge" }],
+      );
+      expect(result).toEqual({
+        code: 0,
+        output: ["TDD AUDIT OK (1 waived)", `  waived  ${HASH_A}  a  rc merge`].join("\n"),
+      });
+    });
+
+    test("a waiver matches the full hash and the scope only", () => {
+      const abbreviated = run(
+        ["fix(a): f"],
+        [HASH_A],
+        [{ hash: HASH_A.slice(0, 7), scope: "a", reason: "r" }],
+      );
+      expect(abbreviated.code).toBe(1);
+      const otherScope = run(["fix(a): f"], [HASH_A], [{ hash: HASH_A, scope: "b", reason: "r" }]);
+      expect(otherScope.code).toBe(1);
+      expect(otherScope.output).toContain(`  ${HASH_A}  a  fix sem commit test(a) anterior`);
+    });
+
+    test("a waiver for a commit outside the range, or one that needs none, is stale and fails", () => {
+      const outside = run(
+        ["test(a): t", "feat(a): f"],
+        [HASH_A, HASH_B],
+        [{ hash: "c".repeat(40), scope: "a", reason: "r" }],
+      );
+      expect(outside.code).toBe(1);
+      expect(outside.output).toContain(
+        `  ${"c".repeat(40)}  a  stale waiver: not a violation in the audited range`,
+      );
+      const needless = run(
+        ["test(a): t", "feat(a): f"],
+        [HASH_A, HASH_B],
+        [{ hash: HASH_B, scope: "a", reason: "r" }],
+      );
+      expect(needless.code).toBe(1);
+      expect(needless.output).toContain("stale waiver");
+    });
+
+    test("a failing audit still prints the waived commits", () => {
+      const result = run(
+        ["fix(a): f", "fix(b): g"],
+        [HASH_A, HASH_B],
+        [{ hash: HASH_A, scope: "a", reason: "rc merge" }],
+      );
+      expect(result.code).toBe(1);
+      expect(result.output).toBe(
+        [
+          "TDD AUDIT FAIL: 1 violação(ões)",
+          `  ${HASH_B}  b  fix sem commit test(b) anterior`,
+          "1 waived:",
+          `  waived  ${HASH_A}  a  rc merge`,
+        ].join("\n"),
+      );
+    });
   });
 });

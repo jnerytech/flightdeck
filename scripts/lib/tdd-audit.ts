@@ -68,8 +68,23 @@ export function findForbiddenMarkers(files: { path: string; content: string }[])
   return violations;
 }
 
+/** A fix/feat commit that was made without an earlier same-scope test commit, accepted on purpose. */
+export interface Waiver {
+  /** The full 40-character commit hash; an abbreviation never matches. */
+  hash: string;
+  scope: string;
+  reason: string;
+}
+
+/** Parses the waiver file: a JSON array of `{ hash, scope, reason }`. Throws on a malformed entry. */
+export function parseWaivers(_text: string): Waiver[] {
+  return [];
+}
+
 export interface AuditDeps {
   since: string;
+  /** Accepted exceptions; every one must still match a violation in the audited range. */
+  waivers?: Waiver[];
   /** Runs git with the given arguments; `null` when git fails. */
   git: (args: string[]) => string | null;
   readFile: (path: string) => string;
