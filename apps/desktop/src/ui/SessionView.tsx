@@ -12,6 +12,7 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
+import { MessageActions } from "@/components/session/message-actions";
 import {
   Composer,
   Message,
@@ -65,7 +66,15 @@ type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 function AssistantMessage(props: {
   item: Item<"assistant">;
   toolResults: SessionState["toolResults"];
+  t: T;
+  actions: SessionActions;
+  pin: SessionViewProps["pin"];
+  /** Only the latest message offers Fork. */
+  fork: SessionViewProps["fork"];
 }) {
+  const text = props.item.blocks
+    .flatMap((block) => (block.type === "text" ? [block.text] : []))
+    .join("\n\n");
   return (
     <Message from="assistant">
       {props.item.blocks.map((block, i) =>
@@ -80,6 +89,16 @@ function AssistantMessage(props: {
             result={props.toolResults[block.id]}
           />
         ),
+      )}
+      {text !== "" && (
+        <MessageActions
+          text={text}
+          at={props.item.at}
+          t={props.t}
+          copyText={props.actions.copyText}
+          fork={props.fork}
+          pin={props.pin}
+        />
       )}
     </Message>
   );
@@ -147,6 +166,9 @@ const TimelineItem = memo(function TimelineItem(props: {
   alwaysAllow: boolean;
   t: T;
   nowMs: number;
+  pin: SessionViewProps["pin"];
+  /** Set on the latest assistant message only. */
+  fork: SessionViewProps["fork"];
 }) {
   const { item } = props;
   switch (item.kind) {
@@ -162,7 +184,16 @@ const TimelineItem = memo(function TimelineItem(props: {
         </Message>
       );
     case "assistant":
-      return <AssistantMessage item={item} toolResults={props.toolResults} />;
+      return (
+        <AssistantMessage
+          item={item}
+          toolResults={props.toolResults}
+          t={props.t}
+          actions={props.actions}
+          pin={props.pin}
+          fork={props.fork}
+        />
+      );
     case "permission":
       return <PermissionItem {...props} item={item} />;
     case "result":
@@ -184,8 +215,7 @@ const TimelineItem = memo(function TimelineItem(props: {
   }
 });
 
-/** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: {
+interface SessionViewProps {
   title: string;
   session: SessionState;
   actions: SessionActions;
@@ -217,7 +247,10 @@ export function SessionView(props: {
   fork?: () => void;
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
-}) {
+}
+
+/** Chat history in streaming, tool calls, approval cards, message box and session controls. */
+export function SessionView(props: SessionViewProps) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
@@ -263,6 +296,9 @@ export function SessionView(props: {
         : undefined,
     [props.prompts, slash],
   );
+  const latestAssistant = [...session.items]
+    .reverse()
+    .find((item) => item.kind === "assistant")?.seq;
   const working = isBusy(session.status);
   const closed = session.status === "ended" || session.status === "error";
 
@@ -414,6 +450,8 @@ export function SessionView(props: {
               alwaysAllow={props.alwaysAllow === true}
               t={t}
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
+              pin={props.pin}
+              fork={item.seq === latestAssistant ? props.fork : undefined}
             />
           ))}
           {session.streaming && (
@@ -478,6 +516,7 @@ export function SessionView(props: {
       {(attached.length > 0 || refusal) && (
         <div className="composer-images">
           {attached.map((image, at) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: two pasted copies of one image look the same
             <div key={`${at}:${image.data.slice(-16)}`} className="composer-image">
               <img
                 alt={t("session.imageAttached", { n: String(at + 1) })}

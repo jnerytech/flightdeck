@@ -124,7 +124,10 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ...(event.images ? { images: event.images } : {}),
       });
     case "message.assistant":
-      return { ...push({ kind: "assistant", seq, blocks: event.blocks }), streaming: "" };
+      return {
+        ...push({ kind: "assistant", seq, blocks: event.blocks, at: envelope.ts }),
+        streaming: "",
+      };
     case "tool.result":
       return {
         ...next,

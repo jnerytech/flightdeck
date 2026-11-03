@@ -66,7 +66,7 @@ export function Message(props: {
       data-uuid={props["data-uuid"]}
       aria-current={props["aria-current"]}
       className={cn(
-        "max-w-full break-words text-sm",
+        "message-hover max-w-full break-words text-sm",
         props.from === "user"
           ? "self-end whitespace-pre-wrap rounded-lg bg-secondary px-3 py-2"
           : "flex flex-col gap-2",

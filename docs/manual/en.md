@@ -450,6 +450,9 @@ A session appears only once. The order of preference is managed, then terminal, 
   ends the queued messages go out in order, one per turn.
 - **Enter** sends the message; **Ctrl+Enter** (or Shift+Enter) adds a new line. The send icon (↵)
   shows when the box has text. Typing `/` offers the snippets and the commands of the session.
+- Under each assistant message a row shows on hover or keyboard focus: **Copy message**, **Fork from
+  here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
+  long ago the message was written.
 
 ### Claude Code hooks
 

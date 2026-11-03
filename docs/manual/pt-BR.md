@@ -435,6 +435,9 @@ histórico.
   descarta; quando o turno termina, as mensagens da fila saem em ordem, uma por turno.
 - **Enter** envia a mensagem; **Ctrl+Enter** (ou Shift+Enter) quebra a linha. O ícone de envio
   (↵) aparece quando a caixa tem texto. Digitar `/` oferece os snippets e os comandos da sessão.
+- Sob cada mensagem do assistente há uma linha que aparece ao passar o mouse ou ao focar pelo
+  teclado: **Copiar mensagem**, **Bifurcar a partir daqui** (na última mensagem: leva a conversa
+  inteira até ali), **Fixar sessão** e há quanto tempo a mensagem foi escrita.
 
 ### Hooks do Claude Code
 
