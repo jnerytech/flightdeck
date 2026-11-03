@@ -411,6 +411,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.sessionSettings ? ["session.settings"] : []),
     ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
+    ...(opts.github ? ["github"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -540,6 +541,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  function github(): GithubService {
+    if (!opts.github) throw featureOff("github");
+    return opts.github;
   }
 
   function vault(): Vault {
@@ -1571,6 +1577,22 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { depth } = command.payload;
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
+      case "github.status":
+        return ok(command.type, await github().status());
+      case "github.login.start":
+        return ok(command.type, await github().loginStart());
+      case "github.login.cancel":
+        github().loginCancel();
+        return ok(command.type);
+      case "github.logout":
+        await github().logout();
+        return ok(command.type);
+      case "github.repos":
+        return ok(command.type, { repos: await github().repos(command.payload.query) });
+      case "github.issues":
+        return ok(command.type, { issues: await github().issues(command.payload.repo) });
+      case "github.start":
+        return ok(command.type, await github().start(command.payload));
       case "projects.clone":
         if (!opts.findProjects) throw featureOff("projects.clone");
         return ok(

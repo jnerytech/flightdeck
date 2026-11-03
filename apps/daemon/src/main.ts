@@ -47,6 +47,7 @@ import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
+import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
@@ -973,6 +974,13 @@ export async function startDaemon(
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
     findProjects: true,
+    // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 36).
+    github: new GithubService({
+      roots: config.allowedRoots,
+      board,
+      issues,
+      startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
+    }),
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
     doctor: (appVersion) =>

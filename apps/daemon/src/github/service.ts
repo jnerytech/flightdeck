@@ -23,37 +23,48 @@ export interface GithubServiceOptions {
 }
 
 export class GithubService {
-  constructor(private readonly opts: GithubServiceOptions) {}
+  private readonly gh: GhRunner;
+  private readonly github: Github;
+  private readonly login: GithubLogin;
 
-  async status(): Promise<GithubStatus> {
-    void githubStatus;
-    void runGh;
-    return { installed: true, loggedIn: true, login: "", scopes: [], source: "file" };
+  constructor(private readonly opts: GithubServiceOptions) {
+    this.gh = opts.gh ?? runGh;
+    this.github = new Github({ gh: this.gh });
+    this.login = opts.login ?? new GithubLogin();
   }
 
-  async loginStart(): Promise<DeviceCode> {
-    void GithubLogin;
-    return { code: "", url: "" };
+  status(): Promise<GithubStatus> {
+    return githubStatus(this.gh);
   }
 
-  loginCancel(): void {}
-
-  async logout(): Promise<void> {
-    void Github;
+  loginStart(): Promise<DeviceCode> {
+    return this.login.start();
   }
 
-  async repos(_query?: string): Promise<GithubRepo[]> {
-    return [];
+  loginCancel(): void {
+    this.login.cancel();
   }
 
-  async issues(_repo: string): Promise<Issue[]> {
-    return [];
+  logout(): Promise<void> {
+    return this.github.logout();
   }
 
-  async start(_request: GithubStartRequest): Promise<GithubStartResult> {
-    void startFromGithub;
-    void spawnGit;
-    void this.opts;
-    return { projectId: "", path: "", reused: true };
+  repos(query?: string): Promise<GithubRepo[]> {
+    return this.github.repos(query);
+  }
+
+  issues(repo: string): Promise<Issue[]> {
+    return this.github.issues(repo);
+  }
+
+  start(request: GithubStartRequest): Promise<GithubStartResult> {
+    return startFromGithub(request, {
+      gh: this.gh,
+      git: this.opts.git ?? spawnGit,
+      roots: this.opts.roots,
+      board: this.opts.board,
+      issues: this.opts.issues,
+      startSession: (session) => this.opts.startSession(session),
+    });
   }
 }
