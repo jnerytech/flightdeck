@@ -97,7 +97,7 @@ async function setup() {
   // A session opened in the terminal (hooks), live.
   const appA = join(d.root, "app-a");
   mkdirSync(appA);
-  d.central.hooksInstall(true);
+  await d.central.hooksInstall(true);
   await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
     method: "POST",
     headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },

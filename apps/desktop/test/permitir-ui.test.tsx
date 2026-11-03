@@ -124,7 +124,7 @@ describe("permitir-ui", () => {
 
   test("pedido do terminal: Permitir nesta sessão só aparece com sugestão de sessão", async () => {
     const d = await online();
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     const hooksToken = loadConfig(d.configFile).hooks.token ?? "";
     const hook = (event: string, body: Record<string, unknown>) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {

@@ -111,6 +111,7 @@ describe("hooks-ui", () => {
       selfCommand: ["flightdeckd"],
       settingsPath: () => d.settingsFile,
     });
+    await central.ready();
     expect(central.receptorUrl()).not.toBeNull();
     const published = join(dataDir, RECEPTOR_FILE);
     expect(existsSync(published) ? JSON.parse(readFileSync(published, "utf8")).url : null).toBe(

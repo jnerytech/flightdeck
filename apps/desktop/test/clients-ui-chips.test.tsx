@@ -69,7 +69,7 @@ async function setup(clients: unknown[] = TWO, waiting = true) {
   await act(async () => store.router.push({ name: "hub" }));
   await settle(() => screen.queryByRole("listitem", { name: "Sessão Solta" }) !== null);
   if (waiting) {
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     const token = loadConfig(d.configFile).hooks.token ?? "";
     const hook = (event: string, body: Record<string, unknown> = {}) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
