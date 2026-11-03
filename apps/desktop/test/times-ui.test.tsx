@@ -279,8 +279,38 @@ describe("times-ui: the teams of a host", () => {
     await workerRows(1);
     await click("Criar time");
     await settle(() => row("t3") !== null);
+    // The button opens the pickers; Cancelar closes them without adding anything.
     await click("Adicionar executora a t3", row("t3"));
+    await settle(
+      () =>
+        within(row("t3") as HTMLElement).queryByLabelText("Modelo da nova executora de t3") !==
+        null,
+    );
+    await click("Cancelar", row("t3"));
+    expect(
+      within(row("t3") as HTMLElement).queryByLabelText("Modelo da nova executora de t3"),
+    ).toBeNull();
+    expect((await teams())[0]?.members.length).toBe(2);
+    await click("Adicionar executora a t3", row("t3"));
+    const form = row("t3") as HTMLElement;
+    await settle(
+      () =>
+        (within(form)
+          .queryByLabelText("Persona da nova executora de t3 (opcional)")
+          ?.querySelectorAll("option").length ?? 0) > 5,
+    );
+    await act(async () => {
+      fireEvent.change(within(form).getByLabelText("Persona da nova executora de t3 (opcional)"), {
+        target: { value: "qa" },
+      });
+      fireEvent.change(within(form).getByLabelText("Modelo da nova executora de t3"), {
+        target: { value: "sonnet" },
+      });
+    });
+    await click("Adicionar a t3", row("t3"));
     await settle(() => (row("t3")?.textContent ?? "").includes("t3 · executora 2"));
+    const added = (await teams())[0]?.members.find((m) => m.name === "t3 · executora 2");
+    expect(added).toMatchObject({ persona: "qa", model: "sonnet" });
     expect((await teams())[0]?.members.length).toBe(3);
     await act(async () => {
       fireEvent.change(
