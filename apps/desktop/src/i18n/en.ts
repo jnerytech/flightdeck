@@ -2699,6 +2699,8 @@ export const en: Dictionary = {
     rootsTitle: "Allowed folders",
     rootsList: "Allowed folders of this host",
     rootsInput: "Folder to allow",
+    rootsPlaceholder: "D:\\repos\\...",
+    rootsChoose: "Choose folder…",
     rootsNeeded: "Type the folder to allow.",
     rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",

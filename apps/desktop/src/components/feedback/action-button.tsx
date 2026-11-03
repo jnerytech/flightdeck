@@ -33,23 +33,27 @@ export function ActionButton(
     };
     (result as PromiseLike<unknown>).then(done, done);
   };
+  const button = (
+    <Button
+      {...rest}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
+      onClick={handle}
+    >
+      {busy && <Spinner />}
+      {children}
+    </Button>
+  );
+  if (!showReason) return button;
+  // The reason hangs under the button and takes no height, so a row of an input and this button
+  // keeps the button as tall as the input and lined up with it.
   return (
-    <>
-      <Button
-        {...rest}
-        disabled={disabled || busy}
-        aria-busy={busy || undefined}
-        aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
-        onClick={handle}
-      >
-        {busy && <Spinner />}
-        {children}
-      </Button>
-      {showReason && (
-        <span id={reasonId} className="text-muted-foreground text-xs">
-          {disabledReason}
-        </span>
-      )}
-    </>
+    <span className="action-button-box">
+      {button}
+      <span id={reasonId} className="action-reason">
+        {disabledReason}
+      </span>
+    </span>
   );
 }

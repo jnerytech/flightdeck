@@ -528,3 +528,21 @@
     outline: 2px solid var(--color-ring);
   }
 }
+
+/* An ActionButton's disabled reason hangs under the button and adds no height to its row (issue #38). */
+@utility action-button-box {
+  position: relative;
+  display: inline-flex;
+}
+@utility action-reason {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  margin-top: 0.125rem;
+  width: max-content;
+  max-width: 20rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}

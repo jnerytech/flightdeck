@@ -2705,6 +2705,8 @@ export const ptBR = {
     rootsTitle: "Pastas permitidas",
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
+    rootsPlaceholder: "D:\\repos\\...",
+    rootsChoose: "Escolher pasta…",
     rootsNeeded: "Digite a pasta a permitir.",
     rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",

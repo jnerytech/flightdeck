@@ -4,6 +4,7 @@ import { Panel } from "@/components/layout/panel";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
+import { isLocalUrl } from "@/lib/terminal";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** The folders a host lets its sessions and projects use, and a way to add one (the host decides). */
@@ -24,10 +25,23 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
       <div className="flex flex-wrap items-center gap-2">
         <Input
           aria-label={t("hostPage.rootsInput")}
+          placeholder={t("hostPage.rootsPlaceholder")}
           className="w-80"
           value={folder}
           onChange={(e) => setFolder(e.target.value)}
         />
+        {/* The system's dialog browses THIS machine's folders: only for a host that runs here. */}
+        {store.canPickFolder() && isLocalUrl(host.url) && (
+          <ActionButton
+            variant="outline"
+            onClick={async () => {
+              const picked = await store.pickFolder();
+              if (picked) setFolder(picked);
+            }}
+          >
+            {t("hostPage.rootsChoose")}
+          </ActionButton>
+        )}
         <ActionButton
           variant="outline"
           disabled={!folder.trim() || host.status !== "online"}
