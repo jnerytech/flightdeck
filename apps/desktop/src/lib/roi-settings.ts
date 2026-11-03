@@ -62,10 +62,13 @@ const empty = (): RoiSettingsData => ({
   people: [],
 });
 
-const amount = (value: number | null | undefined, reason: string): number | null => {
+const amount = (
+  value: number | null | undefined,
+  reason: string,
+  max = MAX_AMOUNT,
+): number | null => {
   if (value === null || value === undefined) return null;
-  if (!Number.isFinite(value) || value < 0 || value > MAX_AMOUNT)
-    throw new RoiSettingsError(reason);
+  if (!Number.isFinite(value) || value < 0 || value > max) throw new RoiSettingsError(reason);
   return value;
 };
 
