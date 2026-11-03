@@ -104,4 +104,15 @@ describe("sessao-trabalhando: the conversation shows that Claude is working", ()
     expect(badgePulses("unread")).toBe(false);
     expect(badgePulses(null)).toBe(false);
   });
+
+  test("without a fixed clock the row ticks each second", async () => {
+    const { WorkingRow } = await import("../src/components/session/working-row.tsx");
+    const { act } = await import("@testing-library/react");
+    render(<WorkingRow label="Trabalhando" since={Date.now()} tool={null} />);
+    expect(screen.getByRole("status").textContent).toContain("0s");
+    await act(async () => {
+      await new Promise((done) => setTimeout(done, 2100));
+    });
+    expect(screen.getByRole("status").textContent).not.toContain("Trabalhando 0s");
+  });
 });
