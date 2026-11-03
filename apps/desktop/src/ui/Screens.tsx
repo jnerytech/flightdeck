@@ -1,6 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
-import { type ComponentType, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useState } from "react";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -31,6 +31,7 @@ import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
+import { lazyScreen } from "./lazy-screen.ts";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
@@ -46,14 +47,6 @@ import { TranscriptReader } from "./TranscriptReader.tsx";
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
  * keeps the entry chunk under its limit; scripts/test/screens-lazy.test.ts lists them).
  */
-function lazyScreen<M extends Record<K, unknown>, K extends keyof M & string>(
-  load: () => Promise<M>,
-  name: K,
-): M[K] {
-  const component = lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
-  return component as unknown as M[K];
-}
-
 const ActionsPage = lazyScreen(() => import("./ActionsPage.tsx"), "ActionsPage");
 const AgentPage = lazyScreen(() => import("./AgentPage.tsx"), "AgentPage");
 const AutoApprovalsPage = lazyScreen(() => import("./AutoApprovalsPage.tsx"), "AutoApprovalsPage");
