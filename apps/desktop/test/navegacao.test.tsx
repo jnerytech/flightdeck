@@ -135,6 +135,8 @@ describe("navegacao", () => {
   test("abrir um pedido fecha Configurações (sem beco sem saída); Alt+←, Alt+→, botões do mouse e Voltar", async () => {
     await setup();
     await click("Configurações");
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
     await sidebar.queueItem("alfa · Pedinte: Bash");

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const {
@@ -52,6 +53,8 @@ describe("terminal-ui: the route and the settings", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
     });
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => screen.queryByLabelText("Tamanho da fonte do terminal") !== null);
     const field = screen.queryByLabelText(
       "Tamanho da fonte do terminal",
     ) as HTMLInputElement | null;
