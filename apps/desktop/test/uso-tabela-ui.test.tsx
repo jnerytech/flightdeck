@@ -32,7 +32,9 @@ const fakeStore = () =>
     hostCommand: () => Promise.resolve({ byDay: BY_DAY }),
   }) as unknown as AppStore;
 
-async function panel(onOpenHistory = (_f: { cwd?: string; day: string }) => {}) {
+async function panel(
+  onOpenHistory = (_f: { cwd?: string; projectKey?: string; day: string }) => {},
+) {
   const view = render(
     <TContext.Provider value={translator("en")}>
       <UsagePanel store={fakeStore()} hostId="h" online costs onOpenHistory={onOpenHistory} />
@@ -63,8 +65,8 @@ describe("uso-tabela-ui: the host's usage table", () => {
     }
   });
 
-  test("a row opens the history of its folder and day; a remote project gives the day only", async () => {
-    const opened: Array<{ cwd?: string; day: string }> = [];
+  test("a row opens the history of its folder and day; a remote project gives its key and the day", async () => {
+    const opened: Array<{ cwd?: string; projectKey?: string; day: string }> = [];
     const view = await panel((f) => opened.push(f));
     const buttons = [...view.container.querySelectorAll("tbody button")] as HTMLElement[];
     await act(async () => {
@@ -73,7 +75,7 @@ describe("uso-tabela-ui: the host's usage table", () => {
     });
     expect(opened).toEqual([
       { cwd: "/home/ana/entrevista", day: "2026-10-15" },
-      { day: "2026-10-15" },
+      { projectKey: "github.com/acme/repo", day: "2026-10-15" },
     ]);
   });
 });
@@ -90,7 +92,7 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
       formatDateTime: String,
       router: { push: () => {} },
     } as unknown as AppStore;
-    const list = (initial: { cwd?: string; day?: string } | undefined) => (
+    const list = (initial: { cwd?: string; projectKey?: string; day?: string } | undefined) => (
       <HistoryList
         store={store}
         hostId="h"
@@ -120,5 +122,41 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
     view.rerender(list(undefined));
     await act(() => Bun.sleep(30));
     expect(asked).toHaveLength(count);
+  });
+
+  test("a project key filters the list, shows as a chip, and the chip clears it", async () => {
+    const asked: unknown[] = [];
+    const store = {
+      i18n: new I18n({ settings: { get: () => null, set: () => {} } } as never),
+      historyList: (_host: string, filter: unknown) => {
+        asked.push(filter);
+        return Promise.resolve({ sessions: [], nextCursor: null });
+      },
+      formatDateTime: String,
+      router: { push: () => {} },
+    } as unknown as AppStore;
+    const view = render(
+      <HistoryList
+        store={store}
+        hostId="h"
+        hostName="pc"
+        density="comfortable"
+        openId={null}
+        onOpen={() => {}}
+        initial={{ projectKey: "github.com/acme/repo", day: "2026-10-15" }}
+      />,
+    );
+    await waitFor(() => expect(asked.length).toBeGreaterThan(0));
+    expect(asked[0]).toMatchObject({
+      projectKey: "github.com/acme/repo",
+      from: "2026-10-15T00:00:00.000Z",
+    });
+    expect(view.container.textContent).toContain("Projeto: repo");
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: "Limpar projeto" }));
+    });
+    await waitFor(() => expect(asked.at(-1)).not.toHaveProperty("projectKey"));
+    expect(asked.at(-1)).toMatchObject({ from: "2026-10-15T00:00:00.000Z" });
+    expect(view.container.textContent).not.toContain("Projeto: repo");
   });
 });
