@@ -3079,3 +3079,26 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
+
+## Phase 36: ROI per project
+
+Proof of concept, run 2026-11-03 on the phase host (git 2.43.0, gh 2.88.1):
+
+1. **Agent commits.** `git log --since="30 days ago" --format=%B | grep -ci "^Co-Authored-By: Claude"` gave 2968 of 2983
+   commits (99.5%) in this repository, so the trailer separates agent commits well **here**. It does not prove the
+   marker is independent: the trailer is added by the attribution rule the sessions are given, not by Claude Code on its
+   own, and a repository with human commits was not available to measure the false-positive side. Decision: the commit
+   signal is offered, **off by default**, and labelled approximate on screen.
+2. **Approval waits.** Only managed sessions write a request with both `created_at` and `resolved_at`
+   (`permission_requests`, `event-store.ts`); the vault keeps `heldMs` on its own decision rows; the hook path of
+   terminal and external sessions has no equivalent table. Decision: the "requests waited N h for you" total covers
+   **managed-session approvals** and the card says so; the vault wait is not added to it.
+3. **Issues closed.** `gh issue list --state closed --search "closed:>=2026-10-01" --limit 100` answered 100 rows in
+   0.77 s with a token; without a token (`GH_CONFIG_DIR` empty, no `GH_TOKEN`) it exits at once with "To get started
+   with GitHub CLI, please run: gh auth login". Decision: the signal is read **on demand**, cached for an hour, and a
+   missing login is the refusal `gh_logged_out`.
+- **Planned and unplanned (addendum).** A done card is *planned* when it existed before the period began and *unplanned*
+  when it was created inside it. The card's creation time is copied into the done-log row so the split survives a later
+  edit, and needs no input from the person.
+- **Person (addendum).** A person is a named group of hosts kept in the app; the daemon returns tokens, never a person or
+  a limit. The person budget is shown, not enforced, and the table is ordered by name.

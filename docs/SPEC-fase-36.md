@@ -134,6 +134,94 @@ client's rates and the switches, and returns the numbers with their derivation:
 - Rates and the billed value are stored with the clients, in the app's own store, and exported/imported with them only
   if the person includes them (the clients export gets a checkbox, off by default).
 
+## Addendum: lead with "did we deliver more?", and a person dimension (issue #36, comment of 2026-11-03)
+
+The maintainer asked that the view start from the simplest ROI, before any time-saved estimate, and that budgets gain a
+person next to client and project. This addendum changes the order of the screens and adds four areas; nothing above is
+removed.
+
+**1. The headline is "did we deliver more?".** For the chosen period and the one before it, the ROI card and the Costs
+table first show *items delivered* (cards done) split into **planned** and **unplanned**, next to *cost*, and say in one
+line whether the team delivered more, fewer or about the same (within 5%), and at what cost per item:
+
+- **Planned** is a done card that was already on the board when the period began (`card_done.card_created_at < from`);
+  **unplanned** is a card created inside the period and done inside it. The split needs no estimate and no new input
+  from the person; the card's creation time is copied into the done-log row when the card is done.
+- The daemon returns both counts (cards, and PRs merged) per period and per week; the app writes the sentence, from the
+  dictionaries: "Delivered 7 (5 planned, 2 unplanned) for 28.00, against 4 for 31.00 last month: more, at a lower cost
+  per item."
+- A period with nothing delivered says so and still shows the cost. Estimates, rates and ROI come after, as above.
+
+**2. Per-person token budget against delivery.** A **person** is a named group of hosts kept in the app, like a client
+(a daemon knows hosts, not people; one host per person is the default). A person has a **monthly token limit** and/or a
+**monthly cost limit**, typed in the app. Money stays in the app; the daemon only adds `tokens` to `roi.summary` (input,
+output and cache tokens of the period, per project key), so the app sums them over the person's hosts and shows:
+
+- tokens (and cost) used this month against the limit, with the share used;
+- what that person's hosts delivered in the same month (cards done, PRs merged, planned and unplanned);
+- tokens per delivered item, so a person at 90% of the budget with nothing delivered reads differently from one at 90%
+  with ten cards.
+
+In this phase the person budget is **shown, not enforced**: no alert, block or queue (the existing host and client
+budgets keep their behavior). It is a view, not a performance score: the page says that cost and delivery are
+correlated, that hosts are not people, and offers no ranking of people.
+
+**3. Rework stays a guardrail**: fix rounds and their cost remain beside the headline (the PR auto-fix round limit is
+its own issue).
+
+**4. New areas** (after `roi-resumo` and `roi-calculo` of the table below): `roi-planejado` (planned and unplanned counts
+and tokens in `roi.summary`), `roi-entregamos-mais` (the comparison and its sentence in `lib/roi.ts`), `roi-pessoas`
+(people, their hosts and limits persisted with the clients, left out of a clients export unless ticked),
+`roi-pessoas-ui` (the per-person table: used against limit, delivery, tokens per item, in both languages, axe clean) and
+`roi-bdd` (the scenarios as `.feature` files, checked by a test that the steps parse and that every scenario of this
+spec is present, in `pt-BR` and `en`).
+
+```gherkin
+Feature: Did we deliver more?
+
+  Scenario: The project page leads with delivered items against cost
+    Given "shop" delivered 5 planned and 2 unplanned cards this month for 28.00 dollars
+    And "shop" delivered 4 planned cards last month for 31.00 dollars
+    When I open the project "shop"
+    Then the first line says "Delivered 7 (5 planned, 2 unplanned) for 28.00"
+    And it says "more than last month, at a lower cost per item"
+
+  Scenario: Delivering about the same is said plainly
+    Given "shop" delivered 10 cards this month and 10 cards last month
+    When I open the project "shop"
+    Then the first line says "about the same as last month"
+
+  Scenario: Nothing delivered still shows the cost
+    Given "shop" delivered no card this month and its agents cost 6.00 dollars
+    When I open the project "shop"
+    Then the first line says "Nothing delivered this month" and shows the cost 6.00
+
+Feature: Token budget per person against delivery
+
+  Scenario: A person sees tokens used against the limit and what was delivered
+    Given the person "Ana" owns the host "alfa" and has a monthly limit of 5 million tokens
+    And "alfa" used 3.1 million tokens and delivered 7 cards and 4 PRs this month
+    When I open the people table in Costs
+    Then the row of "Ana" shows "62% of 5 million tokens used"
+    And it shows "7 cards, 4 PRs" and "0.44 million tokens per card"
+
+  Scenario: The people table is not a ranking
+    Given two people with different delivery
+    When I open the people table
+    Then the rows are ordered by name
+    And the page says that hosts are not people and the figures are correlated
+```
+
+Rows added to **Tests and criteria**:
+
+| Area | What must pass |
+| --- | --- |
+| `roi-planejado` | a card done in the period that was created before it counts as planned, one created inside it as unplanned, for cards and for PRs merged, per period, per previous period and per week; `tokens` sums input, output and cache tokens of the period; the done-log row keeps `card_created_at` |
+| `roi-entregamos-mais` | the comparison says more, fewer or about the same (within 5%) from the delivered counts, adds the cost per item of both periods, handles zero in either period without dividing, and builds the sentence from dictionary keys in both languages |
+| `roi-pessoas` | a person has a name, hosts and a token and/or cost limit; they persist with the clients, a clients export leaves them out unless the box is ticked and an import restores them; a host in two people is refused with a reason |
+| `roi-pessoas-ui` | the table lists people by name (never by delivery), shows used against limit, cards and PRs, tokens per item and "—" where a figure cannot be computed; a person with no limit shows usage only; both languages; axe clean |
+| `roi-bdd` | the `.feature` files in `pt-BR` and `en` hold every scenario of this spec; each scenario has a Given, a When and a Then; the test fails when a scenario is missing from either language |
+
 ## Acceptance scenarios
 
 Written for people who do not code. They become `.feature` files in `pt-BR` and `en` under `scripts/e2e/bdd/features/`
