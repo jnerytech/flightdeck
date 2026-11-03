@@ -23,6 +23,7 @@ import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
 import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
+import type { PreparedPersonas } from "../personas/prepare.ts";
 import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "../personas/store.ts";
 import type {
@@ -198,12 +199,13 @@ export class SessionManager {
    */
   create(
     payload: CommandPayload<"session.create">,
-    extra: { unattended?: boolean } = {},
+    extra: { unattended?: boolean; prepared?: PreparedPersonas } = {},
   ): { sessionId: string } {
     const cwd = resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const id = ulid();
     // Resolved before anything is created: a missing, untrusted or invalid persona leaves no session.
-    const resolved = payload.persona ? this.resolvePersona(payload.persona, cwd) : null;
+    const resolved =
+      payload.persona && !extra.prepared ? this.resolvePersona(payload.persona, cwd) : null;
     const asked = payload.permissionMode ?? this.opts.defaultPermissionMode;
     // A persona only suggests: it counts when it is less permissive than what was asked for.
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
