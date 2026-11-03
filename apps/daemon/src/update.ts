@@ -1,12 +1,4 @@
-import {
-  chmodSync,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-} from "node:fs";
+import { access, chmod, copyFile, mkdir, realpath, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { type HookTarget, hooksStatus, installHooks } from "./central/hooks-install.ts";
@@ -119,9 +111,9 @@ const samePath = (a: string, b: string, platform: string) =>
  * The file a path ends up at once links and 8.3 short names (`RUNNER~1`) are followed; the path
  * itself when it does not exist.
  */
-function resolved(path: string): string {
+async function resolved(path: string): Promise<string> {
   try {
-    return realpathSync.native(path);
+    return await realpath(path);
   } catch {
     return path;
   }
@@ -152,7 +144,8 @@ export async function stopServiceDaemon(
   const pid = (await deps.lockPid?.(config.dataDir)) ?? null;
   const path = pid !== null && deps.processPath ? await deps.processPath(pid) : null;
   // A package manager may put the executable behind a link: compare where both lead.
-  const same = path !== null && samePath(resolved(path), resolved(serviceExe), deps.ctx.platform);
+  const same =
+    path !== null && samePath(await resolved(path), await resolved(serviceExe), deps.ctx.platform);
   if (pid === null || !same) {
     return false;
   }
@@ -176,16 +169,19 @@ async function updateHooks(deps: UpdateDeps, config: Config): Promise<void> {
 }
 
 /** Puts `from` at `stableBin`, keeping the previous binary as `.old`. True when there was one. */
-export function swapBinary(from: string, stableBin: string): boolean {
+export async function swapBinary(from: string, stableBin: string): Promise<boolean> {
   const old = `${stableBin}.old`;
   const incoming = `${stableBin}.new`;
-  mkdirSync(join(stableBin, ".."), { recursive: true });
-  rmSync(old, { force: true });
-  const hadPrevious = existsSync(stableBin);
-  if (hadPrevious) renameSync(stableBin, old);
-  copyFileSync(from, incoming);
-  chmodSync(incoming, 0o755);
-  renameSync(incoming, stableBin);
+  await mkdir(join(stableBin, ".."), { recursive: true });
+  await rm(old, { force: true });
+  const hadPrevious = await access(stableBin).then(
+    () => true,
+    () => false,
+  );
+  if (hadPrevious) await rename(stableBin, old);
+  await copyFile(from, incoming);
+  await chmod(incoming, 0o755);
+  await rename(incoming, stableBin);
   return hadPrevious;
 }
 
@@ -204,8 +200,8 @@ async function rollback(
   const { log, ctx, stableBin } = deps;
   const { version, hadPrevious, installed, reinstalled, serviceExe } = state;
   await stopServiceDaemon(deps, config, stableBin);
-  rmSync(stableBin, { force: true });
-  if (hadPrevious) renameSync(`${stableBin}.old`, stableBin);
+  await rm(stableBin, { force: true });
+  if (hadPrevious) await rename(`${stableBin}.old`, stableBin);
   if (reinstalled) {
     await installService({ ...ctx, command: installed.command }, installed.config);
     log.error(`serviço reinstalado de volta em ${serviceExe}`);
@@ -255,10 +251,11 @@ export async function runUpdate(
     return 1;
   }
 
-  const hadPrevious = swapBinary(opts.from, stableBin);
+  const hadPrevious = await swapBinary(opts.from, stableBin);
 
   const reinstalled =
-    installed !== null && !samePath(resolved(serviceExe), resolved(stableBin), ctx.platform);
+    installed !== null &&
+    !samePath(await resolved(serviceExe), await resolved(stableBin), ctx.platform);
   if (reinstalled) {
     // The service keeps the config it had.
     const result = await installService({ ...ctx, command: [stableBin] }, installed.config);
