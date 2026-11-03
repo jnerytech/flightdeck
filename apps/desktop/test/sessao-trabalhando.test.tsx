@@ -94,9 +94,7 @@ describe("sessao-trabalhando: the conversation shows that Claude is working", ()
       />,
     );
     expect(screen.queryByRole("status", { name: "Trabalhando…" })).toBeNull();
-    rerender(
-      <SessionView title="s" session={{ ...answered, status: "idle" }} actions={actions} />,
-    );
+    rerender(<SessionView title="s" session={{ ...answered, status: "idle" }} actions={actions} />);
     expect(screen.queryByRole("status", { name: "Trabalhando…" })).toBeNull();
   });
 
