@@ -38,9 +38,9 @@ export interface StopDeps {
 
 export interface UpdateDeps extends StopDeps {
   /** The config given to the CLI (or the default one). */
-  config: Config;
+  config: Config | Promise<Config>;
   /** Loads the service's own `--config`; absent when the CLI was given one. */
-  configFromService?(path: string): Config;
+  configFromService?(path: string): Config | Promise<Config>;
   /** Version of this flightdeckd, the one being replaced. */
   currentVersion: string;
   /** Claude Code's settings, where `hooks install` writes. */
@@ -243,8 +243,8 @@ export async function runUpdate(
   // Without --config on the CLI, the service's own config says where its daemon lives.
   const config =
     installed?.config && deps.configFromService
-      ? deps.configFromService(installed.config)
-      : deps.config;
+      ? await deps.configFromService(installed.config)
+      : await deps.config;
   if (installed === null && (await deps.daemonRunning(config))) {
     log.error("há um daemon rodando fora do serviço: pare o daemon e rode de novo");
     return 1;

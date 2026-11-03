@@ -88,7 +88,7 @@ export interface BoardOptions {
   maxParallelRuns?: number;
   prPollIntervalMs?: number;
   /** Persists host-wide settings changed through `board.settings`. */
-  onSettingsChange?: (settings: { maxParallelRuns: number }) => void;
+  onSettingsChange?: (settings: { maxParallelRuns: number }) => void | Promise<void>;
   /** Runs workflow `check` commands; the real shell runner when absent. */
   checks?: CheckRunner;
   /** Milliseconds now, for the workflow budget's minutes; `Date.now` when absent. */
@@ -1791,10 +1791,10 @@ export class Board {
   }
 
   /** A higher limit starts queued cards right away; a lower one lets running ones finish. */
-  setMaxParallelRuns(value: number): void {
+  async setMaxParallelRuns(value: number): Promise<void> {
     this.limit = value;
-    this.opts.onSettingsChange?.({ maxParallelRuns: value });
     this.pump();
+    await this.opts.onSettingsChange?.({ maxParallelRuns: value });
   }
 
   stop(): void {

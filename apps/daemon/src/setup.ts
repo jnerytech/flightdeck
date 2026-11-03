@@ -139,7 +139,7 @@ function yesFolders(deps: SetupDeps, current: string[], given: string[]): string
 
 /** `flightdeckd setup`: the first run, step by step. */
 export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Promise<void> {
-  const config = loadConfig(deps.configFile);
+  const config = await loadConfig(deps.configFile);
   const current = storedRoots(deps.configFile);
   // Checked before anything is installed: a bad answer on the command line changes nothing.
   const given = options.yes ? yesFolders(deps, current, options.folders ?? []) : null;
@@ -153,7 +153,7 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
       `Tailscale found (${tailscale}). Use Flightdeck from other devices over Tailscale?`,
       false,
     ));
-  updateConfigFile(deps.configFile, (raw) => ({
+  await updateConfigFile(deps.configFile, (raw) => ({
     ...raw,
     allowedRoots: roots,
     ...(remote

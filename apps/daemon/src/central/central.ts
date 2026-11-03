@@ -112,7 +112,7 @@ export class Central {
     this.confirm(confirm);
     if (!this.token) {
       const token = generateToken();
-      updateConfigFile(this.opts.configFile, (raw) => ({
+      await updateConfigFile(this.opts.configFile, (raw) => ({
         ...raw,
         hooks: { ...(raw.hooks as object), token },
       }));

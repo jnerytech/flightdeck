@@ -77,13 +77,13 @@ export function isSystemFolder(
  * after the call. `platform` is what decides the system folders (the process's own by default; a
  * test gives its own, since a CI runner keeps its temp folders inside the user's AppData).
  */
-export function addAllowedRoot(
+export async function addAllowedRoot(
   roots: string[],
   path: string,
   confirm: boolean,
-  persist?: (roots: readonly string[]) => void,
+  persist?: (roots: readonly string[]) => void | Promise<void>,
   platform: PlatformInfo = { platform: process.platform, env: process.env, home: homedir() },
-): string[] {
+): Promise<string[]> {
   if (!confirm) {
     throw new FlightdeckError(
       "bad_request",
@@ -108,7 +108,7 @@ export function addAllowedRoot(
   });
   if (!covered) {
     roots.push(real);
-    persist?.(roots);
+    await persist?.(roots);
   }
   return [...roots];
 }

@@ -22,23 +22,23 @@ export class TelemetryOptIn {
   constructor(private readonly opts: TelemetryOptInOptions) {}
 
   /** The receiver's port: `telemetry.port`, else `hooks.port + 1`; 0 when neither is fixed. */
-  private port(): number {
-    const { telemetry, hooks } = loadConfig(this.opts.configFile);
+  private async port(): Promise<number> {
+    const { telemetry, hooks } = await loadConfig(this.opts.configFile);
     return telemetry.port ?? (hooks.port === 0 ? 0 : hooks.port + 1);
   }
 
-  private setToken(token: string): void {
-    updateConfigFile(this.opts.configFile, (raw) => ({
+  private async setToken(token: string): Promise<void> {
+    await updateConfigFile(this.opts.configFile, (raw) => ({
       ...raw,
       telemetry: { ...(raw.telemetry as object), token },
     }));
   }
 
-  status(): TelemetryOptInStatus {
-    const port = this.port();
+  async status(): Promise<TelemetryOptInStatus> {
+    const port = await this.port();
     const file = this.opts.settingsPath();
     const url = port === 0 ? null : `http://127.0.0.1:${port}`;
-    const token = loadConfig(this.opts.configFile).telemetry.token ?? "";
+    const token = (await loadConfig(this.opts.configFile)).telemetry.token ?? "";
     return {
       status: telemetryStatus(file, { url: url ?? "", token }),
       settingsPath: file,
@@ -47,10 +47,10 @@ export class TelemetryOptIn {
     };
   }
 
-  install(confirm: boolean): TelemetryOptInStatus {
+  async install(confirm: boolean): Promise<TelemetryOptInStatus> {
     this.confirm(confirm);
     const file = this.opts.settingsPath();
-    const port = this.port();
+    const port = await this.port();
     if (port === 0) {
       throw new FlightdeckError(
         "invalid_state",
@@ -67,17 +67,19 @@ export class TelemetryOptIn {
         { keys: conflicts.join(", ") },
       );
     }
-    if (!loadConfig(this.opts.configFile).telemetry.token) this.setToken(generateToken());
-    const token = loadConfig(this.opts.configFile).telemetry.token ?? "";
+    if (!(await loadConfig(this.opts.configFile)).telemetry.token) {
+      await this.setToken(generateToken());
+    }
+    const token = (await loadConfig(this.opts.configFile)).telemetry.token ?? "";
     installTelemetry(file, { url: `http://127.0.0.1:${port}`, token });
     return this.status();
   }
 
-  uninstall(confirm: boolean): TelemetryOptInStatus {
+  async uninstall(confirm: boolean): Promise<TelemetryOptInStatus> {
     this.confirm(confirm);
     uninstallTelemetry(this.opts.settingsPath());
     // The token that was written into settings.json stops working, wherever a copy is left.
-    this.setToken(generateToken());
+    await this.setToken(generateToken());
     return this.status();
   }
 

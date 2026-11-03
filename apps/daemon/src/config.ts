@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
@@ -198,19 +198,23 @@ export function expandHome(path: string): string {
  * Loads and validates the config file, creating it with defaults (and a fresh token) when it
  * does not exist. Paths are returned with `~` expanded.
  */
-export function loadConfig(path: string = defaultConfigPath()): Config {
+export async function loadConfig(path: string = defaultConfigPath()): Promise<Config> {
   const file = resolve(expandHome(path));
   let raw: unknown = {};
-  if (existsSync(file)) {
-    raw = JSON.parse(readFileSync(file, "utf8"));
+  let exists = true;
+  try {
+    raw = JSON.parse(await readFile(file, "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    exists = false;
   }
   const config = Config.parse(raw);
   const hasToken = typeof (raw as { token?: unknown }).token === "string";
-  if (!existsSync(file) || !hasToken) {
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  if (!exists || !hasToken) {
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
     // No-op on Windows (ACLs), restricts to the owner elsewhere.
-    chmodSync(file, 0o600);
+    await chmod(file, 0o600);
   }
   return {
     ...config,
@@ -229,13 +233,13 @@ export function loadConfig(path: string = defaultConfigPath()): Config {
  * Rewrites the raw config file through `update`, keeping fields it does not touch. Writes to a
  * temp file and renames it, so a running daemon never reads a half-written config.
  */
-export function updateConfigFile(
+export async function updateConfigFile(
   file: string,
   update: (raw: Record<string, unknown>) => Record<string, unknown>,
-): void {
-  const raw = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+): Promise<void> {
+  const raw = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
   const tmp = `${file}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(update(raw), null, 2)}\n`, { mode: 0o600 });
-  chmodSync(tmp, 0o600);
-  renameSync(tmp, file);
+  await writeFile(tmp, `${JSON.stringify(update(raw), null, 2)}\n`, { mode: 0o600 });
+  await chmod(tmp, 0o600);
+  await rename(tmp, file);
 }

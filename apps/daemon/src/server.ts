@@ -132,7 +132,7 @@ export interface ServerOptions {
   token: string;
   allowedRoots: readonly string[];
   /** Keeps the allowed folders in the config file after `roots.add`. */
-  persistRoots?: (roots: readonly string[]) => void;
+  persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
@@ -257,7 +257,7 @@ export interface ServerOptions {
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
   /** Called after `terminal.settings` changes whether terminals are on (the config keeps it). */
-  onTerminalSettings?: (enabled: boolean) => void;
+  onTerminalSettings?: (enabled: boolean) => void | Promise<void>;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -1461,7 +1461,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
         return ok(command.type, {
-          allowedRoots: addAllowedRoot(
+          allowedRoots: await addAllowedRoot(
             opts.allowedRoots as string[],
             path,
             confirm === true,
@@ -1472,7 +1472,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
-        if (maxParallelRuns !== undefined) board().setMaxParallelRuns(maxParallelRuns);
+        if (maxParallelRuns !== undefined) await board().setMaxParallelRuns(maxParallelRuns);
         return ok(command.type, { maxParallelRuns: board().maxParallelRuns });
       }
       case "board.watch": {
@@ -1527,7 +1527,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "costs.status":
         return ok(command.type, costs().status());
       case "costs.reprice":
-        return ok(command.type, costs().reprice());
+        return ok(command.type, await costs().reprice());
       case "costs.summary":
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
@@ -1555,11 +1555,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
       }
       case "telemetry.status":
-        return ok(command.type, optIn().status());
+        return ok(command.type, await optIn().status());
       case "telemetry.install":
-        return ok(command.type, optIn().install(command.payload.confirm === true));
+        return ok(command.type, await optIn().install(command.payload.confirm === true));
       case "telemetry.uninstall":
-        return ok(command.type, optIn().uninstall(command.payload.confirm === true));
+        return ok(command.type, await optIn().uninstall(command.payload.confirm === true));
       case "telemetry.summary":
         return ok(command.type, telemetry().summary());
       case "costs.session":
@@ -1680,7 +1680,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           );
         }
         manager.setEnabled(enabled);
-        opts.onTerminalSettings?.(enabled);
+        await opts.onTerminalSettings?.(enabled);
         return ok(command.type, manager.settings());
       }
       case "pr.comments":

@@ -38,13 +38,13 @@ function currentToken(configFile: string): string | undefined {
  * `telemetry.json` in `dataDir`, where `flightdeckd claude` finds it. A port that is taken is
  * logged and the daemon goes on without the receiver.
  */
-export function startTelemetry(opts: TelemetryOptions): TelemetryService {
+export async function startTelemetry(opts: TelemetryOptions): Promise<TelemetryService> {
   const { config, configFile } = opts;
   const off: TelemetryService = { url: null, stop: async () => {} };
   // Like the hooks receptor, it listens only once the hooks are set up: a daemon without them opens no extra port.
   if (!config.telemetry.enabled || !config.hooks.token) return off;
   if (!config.telemetry.token) {
-    updateConfigFile(configFile, (raw) => ({
+    await updateConfigFile(configFile, (raw) => ({
       ...raw,
       telemetry: { ...(raw.telemetry as object), token: generateToken() },
     }));

@@ -20,7 +20,6 @@ import {
   type HooksStatus,
   type HookTarget,
   hooksStatus,
-  hooksStatusAsync,
   installHooks,
   uninstallHooks,
 } from "./central/hooks-install.ts";
@@ -545,7 +544,7 @@ export async function startDaemon(
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
-  const config = loadConfig(configFile);
+  const config = await loadConfig(configFile);
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
@@ -633,7 +632,7 @@ export async function startDaemon(
   const costs = new Costs({
     db: store.db,
     pricing: resolvePricing(config.pricing),
-    loadPricing: () => resolvePricing(loadConfig(configFile).pricing),
+    loadPricing: async () => resolvePricing((await loadConfig(configFile)).pricing),
     initialLoad: () => usageIndex.status(),
   });
   const usageIndex = new UsageIndexer({
@@ -722,7 +721,7 @@ export async function startDaemon(
   });
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
   const telemetryStore = new TelemetryStore(store.db);
-  const telemetry = startTelemetry({
+  const telemetry = await startTelemetry({
     config,
     configFile,
     log: { error: (message) => logger.error(message) },
@@ -986,7 +985,7 @@ export async function startDaemon(
         healthy: async () => true,
         tailscaleIp: () => tailscaleIp(spawnExec),
         hooks: () =>
-          hooksStatusAsync(
+          hooksStatus(
             claudeSettingsPath(),
             hookTarget(config, daemonCommand(process.execPath, Bun.main)),
           ),
@@ -1122,8 +1121,8 @@ export async function startDaemon(
   wsl?.start();
 
   // `pair --rotate` runs in another process: follow the token in the config file.
-  const onConfigChange = () => {
-    const token = readToken(configFile);
+  const onConfigChange = async () => {
+    const token = await readToken(configFile);
     if (token) server.setToken(token);
   };
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
@@ -1180,9 +1179,9 @@ function configPath(args: CliArgs): string {
 }
 
 /** Current token in the config file, or `null` while it is unreadable or invalid. */
-function readToken(file: string): string | null {
+async function readToken(file: string): Promise<string | null> {
   try {
-    return loadConfig(file).token;
+    return (await loadConfig(file)).token;
   } catch {
     return null;
   }
@@ -1191,8 +1190,8 @@ function readToken(file: string): string | null {
 /** `flightdeckd pair`: prints the pairing link and its QR code. */
 async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
-  if (args.rotate) rotateToken(file);
-  const config = loadConfig(file);
+  if (args.rotate) await rotateToken(file);
+  const config = await loadConfig(file);
   const tailscale = await tailscaleIp(deps.exec ?? spawnExec);
   const address = pairingAddress(config.bind, tailscale);
   const link = formatPairingLink({
@@ -1231,17 +1230,17 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   const settings = claudeSettingsPath();
   const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
   let config: Config | null = null;
-  const load = () => {
-    config ??= loadConfig(file);
+  const load = async () => {
+    config ??= await loadConfig(file);
     return config;
   };
   const report = await runDoctor({
     config: load,
     isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
     serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
-    healthy: () => waitHealthy(healthUrl(load()), 1_000, 250),
+    healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
-    hooks: () => hooksStatus(settings, hookTarget(load(), self)),
+    hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
   });
   for (const item of report.checks) {
@@ -1357,7 +1356,11 @@ async function stopInstalledDaemon(
     ...serviceStopDeps(ctx, deps.log),
     ...(deps.serviceStopTimeoutMs ? { stopTimeoutMs: deps.serviceStopTimeoutMs } : {}),
   };
-  return stopServiceDaemon(stop, serviceConfig(args, installed), installed.command[0] as string);
+  return stopServiceDaemon(
+    stop,
+    await serviceConfig(args, installed),
+    installed.command[0] as string,
+  );
 }
 
 /** `service stop`: the daemon goes, the task or unit stays installed. */
@@ -1376,7 +1379,7 @@ async function startInstalledService(
 ): Promise<void> {
   const installed = await serviceCommand(ctx);
   if (!installed) throw new Error("nenhum serviço instalado");
-  const url = healthUrl(serviceConfig(args, installed));
+  const url = healthUrl(await serviceConfig(args, installed));
   await startService(ctx);
   if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
     throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
@@ -1410,10 +1413,10 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
       deps.log.log(`claude.executablePath = "${claude.path}" (seria gravado em ${file})`);
     }
   } else {
-    loadConfig(file);
+    await loadConfig(file);
     const executablePath = claude.path;
     if (executablePath) {
-      updateConfigFile(file, (raw) => ({
+      await updateConfigFile(file, (raw) => ({
         ...raw,
         claude: { ...(raw.claude as object), executablePath },
       }));
@@ -1424,7 +1427,7 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   if (ctx.dryRun) return;
   // The Windows task only has a logon trigger and systemd may be slow: start it now and check.
   if (ctx.platform === "win32") await startService(ctx);
-  const url = healthUrl(loadConfig(file));
+  const url = healthUrl(await loadConfig(file));
   if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
     throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
   }
@@ -1436,7 +1439,7 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
  * daemon's lock, so it refuses (exit 3) while a daemon uses the same `dataDir`.
  */
 async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
-  const config = loadConfig(configPath(args));
+  const config = await loadConfig(configPath(args));
   const lock = await acquireLock(config.dataDir);
   if (!lock) {
     throw new AlreadyRunningError(config.dataDir, "pare o daemon antes de reconstruir o índice");
@@ -1485,7 +1488,7 @@ export function hookTarget(
  */
 async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
-  let config = loadConfig(file);
+  let config = await loadConfig(file);
   const settings = claudeSettingsPath();
   const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
   if (args.action === "status") {
@@ -1506,8 +1509,8 @@ async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
   }
   if (!config.hooks.token) {
     const token = generateToken();
-    updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
-    config = loadConfig(file);
+    await updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
+    config = await loadConfig(file);
   }
   await installHooks(settings, hookTarget(config, self));
   deps.log.log(
@@ -1523,17 +1526,18 @@ const TELEMETRY_LABELS: Record<TelemetryStatus, string> = {
 };
 
 /** `flightdeckd telemetry install|uninstall|status`: Claude Code's exporters into this daemon (phase 23). */
-function runTelemetry(args: CliArgs, deps: CliDeps): void {
+async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
   const optIn = new TelemetryOptIn({
     configFile: configPath(args),
     settingsPath: claudeSettingsPath,
   });
   if (args.action === "status") {
-    deps.log.log(`telemetry: ${TELEMETRY_LABELS[optIn.status().status]}`);
+    deps.log.log(`telemetry: ${TELEMETRY_LABELS[(await optIn.status()).status]}`);
     return;
   }
-  const had = optIn.status().status;
-  const result = args.action === "uninstall" ? optIn.uninstall(true) : optIn.install(true);
+  const had = (await optIn.status()).status;
+  const result =
+    args.action === "uninstall" ? await optIn.uninstall(true) : await optIn.install(true);
   deps.log.log(
     args.action === "uninstall"
       ? `${had === "installed" || had === "outdated" ? `telemetry removed from ${result.settingsPath}` : "no Flightdeck telemetry installed"}; the receiver has a new token`
@@ -1542,8 +1546,8 @@ function runTelemetry(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
-function runBackup(args: CliArgs, deps: CliDeps): void {
-  const config = loadConfig(configPath(args));
+async function runBackup(args: CliArgs, deps: CliDeps): Promise<void> {
+  const config = await loadConfig(configPath(args));
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   try {
     const info = new Maintenance({
@@ -1611,14 +1615,14 @@ async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
 async function runRestore(args: CliArgs, deps: CliDeps): Promise<void> {
   if (!args.file) throw new Error("restore precisa do arquivo: flightdeckd restore <arquivo>");
-  const config = loadConfig(configPath(args));
+  const config = await loadConfig(configPath(args));
   const { beforeRestore } = await restoreBackup({ file: args.file, dataDir: config.dataDir });
   deps.log.log(`banco restaurado de ${args.file}; o anterior ficou em ${beforeRestore}`);
 }
 
 /** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
-function runPrune(args: CliArgs, deps: CliDeps): void {
-  const config = loadConfig(configPath(args));
+async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
+  const config = await loadConfig(configPath(args));
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   try {
     const maintenance = new Maintenance({
@@ -1677,7 +1681,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
   try {
     const args = parseArgs(argv);
     if (args.command === "backup") {
-      runBackup(args, deps);
+      await runBackup(args, deps);
       deps.exit(0);
       return null;
     }
@@ -1691,7 +1695,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "db") {
-      runPrune(args, deps);
+      await runPrune(args, deps);
       deps.exit(0);
       return null;
     }
@@ -1717,7 +1721,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       const code = await runClaude({
         args: args.claudeArgs ?? [],
         cwd: deps.cwd ?? process.cwd(),
-        config: loadConfig(file),
+        config: await loadConfig(file),
         env: deps.env,
         self: deps.selfCommand ?? daemonCommand(process.execPath, Bun.main),
         log: deps.log,
@@ -1762,7 +1766,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "mcp") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const mcp = await startMcp({
         url: daemonUrl(config),
         token: config.token,
@@ -1774,7 +1778,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "message") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const printed = await runMessageCli(
         {
           action: args.action as "list" | "send" | "idle" | "read" | "team",
@@ -1792,7 +1796,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "action") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const printed = await runActionCli(
         {
           action: args.action as "list" | "run",
@@ -1807,7 +1811,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "snippet") {
-      const config = loadConfig(configPath(args));
+      const config = await loadConfig(configPath(args));
       const printed = await runSnippetCli(
         {
           action: args.action as "list" | "get",
@@ -1827,7 +1831,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "telemetry") {
-      runTelemetry(args, deps);
+      await runTelemetry(args, deps);
       deps.exit(0);
       return null;
     }

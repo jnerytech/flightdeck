@@ -4,7 +4,9 @@ type HooksState = "installed" | "absent" | "outdated";
 
 export interface DoctorDeps {
   /** The config; throws with the cause when it cannot be read. */
-  config(): { bind: string; port: number; allowedRoots: string[] };
+  config():
+    | { bind: string; port: number; allowedRoots: string[] }
+    | Promise<{ bind: string; port: number; allowedRoots: string[] }>;
   isDirectory(path: string): boolean | Promise<boolean>;
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
@@ -63,9 +65,9 @@ const SETUP = "run: flightdeckd setup";
 
 /** Checks what a first run needs, one line per thing, each failure with its fix. */
 export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks: DoctorCheck[] }> {
-  let config: ReturnType<DoctorDeps["config"]>;
+  let config: Awaited<ReturnType<DoctorDeps["config"]>>;
   try {
-    config = deps.config();
+    config = await deps.config();
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     return { ok: false, checks: [check("config", "config", "fail", detail, SETUP)] };
