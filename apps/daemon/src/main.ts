@@ -960,6 +960,8 @@ export async function startDaemon(
   board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
+  // The wrapper finds the receptor through this file: nothing is served before it is there.
+  await central.ready();
   const server = startServer({
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
