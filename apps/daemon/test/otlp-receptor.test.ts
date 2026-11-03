@@ -99,6 +99,31 @@ describe("otlp-receptor: what it refuses, before anything is decoded", () => {
     expect((await post(server, "/", "{}")).status).toBe(404);
   });
 
+  test("a large gzipped body is inflated off the event loop, which keeps ticking", async () => {
+    const size = 200_000_000;
+    const { server, got } = receiver({ maxBytes: size + 1 });
+    const body = gzipSync(Buffer.alloc(size));
+    let last = performance.now();
+    let widest = 0;
+    const ticker = setInterval(() => {
+      const now = performance.now();
+      widest = Math.max(widest, now - last);
+      last = now;
+    }, 2);
+    try {
+      const response = await post(server, "/v1/logs", body, {
+        "content-encoding": "gzip",
+        "content-type": "application/x-protobuf",
+      });
+      expect(response.status).toBe(400);
+    } finally {
+      clearInterval(ticker);
+    }
+    expect(got).toEqual([]);
+    // Inflating 200 MB in one synchronous call stalls the loop for hundreds of milliseconds.
+    expect(widest).toBeLessThan(250);
+  });
+
   test("a body over the limit is 413: declared, streamed without a length, or inflated by gzip", async () => {
     const { server, got } = receiver({ maxBytes: 2_000 });
     const big = jsonLogs(
