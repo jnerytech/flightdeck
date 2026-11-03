@@ -6,6 +6,7 @@ import {
   HTTP_HOOK_EVENTS,
   hookEntries,
   hooksStatus,
+  hooksStatusAsync,
   installHooks,
   uninstallHooks,
 } from "../src/central/hooks-install.ts";
@@ -173,6 +174,17 @@ describe("hooks-install", () => {
     writeFileSync(file, JSON.stringify(partial));
     expect(hooksStatus(file, TARGET)).toBe("outdated");
     expect(hooksStatus(join(tempDir(), "nao-existe.json"), TARGET)).toBe("absent");
+  });
+});
+
+describe("hooks-install: status without blocking", () => {
+  test("hooksStatusAsync answers like hooksStatus: absent, installed, outdated, no file", async () => {
+    const file = settingsFile(ORIGINAL);
+    expect(await hooksStatusAsync(file, TARGET)).toBe("absent");
+    installHooks(file, TARGET);
+    expect(await hooksStatusAsync(file, TARGET)).toBe("installed");
+    expect(await hooksStatusAsync(file, { ...TARGET, permissionTimeoutS: 60 })).toBe("outdated");
+    expect(await hooksStatusAsync(join(tempDir(), "nao-existe.json"), TARGET)).toBe("absent");
   });
 });
 

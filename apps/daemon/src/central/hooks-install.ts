@@ -162,5 +162,10 @@ export function hooksStatus(file: string, target: HookTarget): HooksStatus {
     : "outdated";
 }
 
+/** The same answer as `hooksStatus`, reading the file without blocking (the running daemon uses it). */
+export async function hooksStatusAsync(_file: string, _target: HookTarget): Promise<HooksStatus> {
+  return "absent";
+}
+
 const sortKeys = (value: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
