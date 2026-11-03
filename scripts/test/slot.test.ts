@@ -585,6 +585,37 @@ describe("slot: --priority", () => {
     expect(f.sleeps.filter((ms) => ms === RENICE_MS).length).toBeGreaterThanOrEqual(2);
   });
 
+  test("a pass whose process listing fails is skipped, the next one still lowers the others, and the command's code is kept", async () => {
+    const list = table();
+    const f = withProcesses(list);
+    const listing = f.env.processes as () => Promise<ProcessInfo[]>;
+    let attempts = 0;
+    f.env.processes = async () => {
+      attempts++;
+      if (attempts === 1) throw new Error("ps is not available right now");
+      return listing();
+    };
+    const child: SlotChild = {
+      wait: async () => {
+        for (let i = 0; i < 50 && attempts < 2; i++) await new Promise((r) => setTimeout(r, 0));
+        return 5;
+      },
+      kill: () => {},
+    };
+    f.env.spawn = () => child;
+    const sleep = f.env.sleep;
+    f.env.sleep = async (ms) => {
+      await sleep(ms);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+    expect(await run(f.env, ["--priority", "bun", "run", "test"])).toBe(5);
+    expect(attempts).toBeGreaterThanOrEqual(2);
+    expect(f.calls).toEqual([
+      [30, 15],
+      [31, 15],
+    ]);
+  });
+
   test("a run without --priority never reads the process list", async () => {
     const f = withProcesses(table());
     expect(await run(f.env, ["bun", "run", "test"])).toBe(0);

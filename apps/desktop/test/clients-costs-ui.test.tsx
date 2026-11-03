@@ -115,6 +115,28 @@ describe("clients-costs: the Costs screen across hosts", () => {
     expect(rows).toEqual(["BetaUS$ 3.00", "AcmeUS$ 2.00", "Sem clienteUS$ 1.00"]);
   });
 
+  test("a summary that names no model shows the totals without a top-model card", async () => {
+    const { store } = await setup();
+    await settle(() => total() === "US$ 3.00");
+    expect(screen.queryByText("Modelo principal")).not.toBeNull();
+    const ask = store.hostCommand.bind(store);
+    (store as unknown as { hostCommand: unknown }).hostCommand = async (
+      hostId: string,
+      type: string,
+      payload: unknown,
+    ) => {
+      const answer = await (ask as (h: string, t: string, p: unknown) => Promise<unknown>)(
+        hostId,
+        type,
+        payload,
+      );
+      return type === "costs.summary" ? { ...(answer as object), byModel: [] } : answer;
+    };
+    await pickHost("__all__");
+    await settle(() => screen.queryByText("Modelo principal") === null);
+    expect(total()).toBe("US$ 6.00");
+  });
+
   test("one host splits its own spend by client too", async () => {
     await setup();
     await settle(() => rowsOf("Por cliente").length === 2);

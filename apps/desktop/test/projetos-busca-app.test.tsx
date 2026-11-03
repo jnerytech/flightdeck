@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
@@ -125,5 +126,83 @@ describe("projetos-busca-app: find my projects", () => {
     expect(screen.getAllByRole("alert")[0]?.textContent).toContain(
       "Only https:// and ssh addresses are cloned.",
     );
+  });
+
+  test("unticking a repository takes it off the selection, and Cancel closes the dialog", async () => {
+    const { d } = await projectsPage("en");
+    await settle(() => screen.queryByRole("button", { name: "Find my projects" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Find my projects" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Scan allowed folders" }));
+    });
+    const fresh = join(d.root, "group", "fresh");
+    await settle(() => screen.queryByRole("checkbox", { name: fresh }) !== null);
+    const box = screen.getByRole("checkbox", { name: fresh });
+    await act(async () => {
+      fireEvent.click(box);
+    });
+    await settle(() => screen.queryByRole("button", { name: "Add selected (1)" }) !== null);
+    await act(async () => {
+      fireEvent.click(box);
+    });
+    await settle(() => screen.queryByRole("button", { name: "Add selected (0)" }) !== null);
+    expect(
+      (screen.getByRole("button", { name: "Add selected (0)" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    });
+    await settle(() => screen.queryByRole("checkbox", { name: fresh }) === null);
+    // Escape closes it too (the dialog's own close path).
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Find my projects" }));
+    });
+    await settle(() => screen.queryByRole("button", { name: "Cancel" }) !== null);
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog") === null);
+  });
+
+  test("a folder name typed by the person is the one git clones into", async () => {
+    const { d } = await projectsPage("en");
+    await settle(() => screen.queryByRole("button", { name: "Find my projects" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Find my projects" }));
+    });
+    const url = "https://example.com/acme/widget.git";
+    fireEvent.change(screen.getByLabelText("Repository address"), { target: { value: url } });
+    fireEvent.change(screen.getByLabelText("Folder name (optional)"), {
+      target: { value: "custom" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Clone" }));
+    });
+    await settle(() => d.gitCalls.length === 1);
+    expect(d.gitCalls).toEqual([["clone", "--", url, join(d.root, "custom")]]);
+  });
+
+  test("the destination folder picked from the host's allowed folders is where git clones", async () => {
+    const { d, store, hostId } = await projectsPage("en");
+    const other = realTempDir("fd-other-");
+    await act(async () => {
+      expect(await store.allowRoot(hostId, other)).toBe(true);
+    });
+    await settle(() => screen.queryByRole("button", { name: "Find my projects" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Find my projects" }));
+    });
+    const select = screen.getByLabelText("Destination folder") as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([d.root, other]);
+    fireEvent.change(select, { target: { value: other } });
+    const url = "https://example.com/acme/widget.git";
+    fireEvent.change(screen.getByLabelText("Repository address"), { target: { value: url } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Clone" }));
+    });
+    await settle(() => d.gitCalls.length === 1);
+    expect(d.gitCalls).toEqual([["clone", "--", url, join(other, "widget")]]);
   });
 });

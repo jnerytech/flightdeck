@@ -130,6 +130,21 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(store.getState().sessions[sessionKey(hostId, ids[0] as string)]?.pending).toEqual([]);
   });
 
+  test("Deny answers the request of that tile too, and the request goes away", async () => {
+    const { store, hostId, ids } = await setup(["pede", "quieta"]);
+    await waitFor(() => tiles().length === 2, "two tiles");
+    const tile = tiles()[0] as HTMLElement;
+    await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
+    await act(async () => {
+      fireEvent.click(within(tile).getByRole("button", { name: "Deny" }));
+    });
+    await waitFor(
+      () => within(tile).queryByRole("group", { name: "Request" }) === null,
+      "answered",
+    );
+    expect(store.getState().sessions[sessionKey(hostId, ids[0] as string)]?.pending).toEqual([]);
+  });
+
   test("the small composer: Enter sends to that session only, Ctrl+Enter breaks the line, the send icon needs text", async () => {
     await setup(["um", "dois"]);
     await waitFor(() => tiles().length === 2, "two tiles");
