@@ -145,7 +145,7 @@ describe("retencao", () => {
     expect(eventsOf("old")).toBe(2);
   });
 
-  test("roda no boot e a cada 24 h com relógio e agendador injetados, e guarda a última limpeza", () => {
+  test("roda no boot e a cada 24 h com relógio e agendador injetados, e guarda a última limpeza", async () => {
     const { db, eventsOf } = fixture();
     const dataDir = tempDir();
     let now = NOW;
@@ -163,11 +163,11 @@ describe("retencao", () => {
         clearInterval: () => {},
       },
     });
-    maintenance.start();
+    await maintenance.start();
     cleanups.push(() => maintenance.stop());
     expect(eventsOf("old")).toBe(0);
     expect(intervals.map((i) => i.ms)).toEqual([DAY]);
-    expect(maintenance.lastPrune()).toMatchObject({
+    expect(await maintenance.lastPrune()).toMatchObject({
       at: new Date(NOW).toISOString(),
       dryRun: false,
     });
@@ -175,16 +175,16 @@ describe("retencao", () => {
     now += 81 * DAY;
     intervals[0]?.fn();
     expect(eventsOf("recent")).toBe(0);
-    expect(maintenance.lastPrune()?.counts.events).toBe(2);
+    expect((await maintenance.lastPrune())?.counts.events).toBe(2);
     expect(existsSync(join(dataDir, "maintenance.json"))).toBe(true);
-    expect(maintenance.prune(true)).toEqual({
+    expect(await maintenance.prune(true)).toEqual({
       events: 0,
       permission_requests: 0,
       external_sessions: 0,
       usage_entries: 0,
       quota_samples: 0,
     });
-    expect(maintenance.lastPrune()?.dryRun).toBe(true);
+    expect((await maintenance.lastPrune())?.dryRun).toBe(true);
   });
 
   test("retention na config: padrões 90, 30 e 400 dias", () => {

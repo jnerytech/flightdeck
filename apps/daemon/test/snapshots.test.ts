@@ -213,7 +213,7 @@ describe("snapshots", () => {
         },
       },
     });
-    maintenance.start();
+    await maintenance.start();
     maintenance.stop();
     expect(policies).toEqual([{ perSession: 50, days: 30 }]);
   });
