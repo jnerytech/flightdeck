@@ -3,6 +3,18 @@
 
 /** Every reason of the daemon outside the snippet model: the app has a text for each, in both languages. */
 export const DAEMON_REASONS = [
+  "messaging_session_missing",
+  "messaging_plain_session",
+  "messaging_channel_down",
+  "messaging_idle_other_host",
+  "messaging_asker_unknown",
+  "messaging_target_not_found",
+  "messaging_host_unknown",
+  "messaging_peer_not_found",
+  "messaging_self",
+  "messaging_no_route",
+  "messaging_read_other_host",
+  "messaging_policy_invalid",
   "project_no_issues",
   "project_no_origin",
   "remote_not_github",

@@ -51,6 +51,8 @@ export class Idle {
       throw new FlightdeckError(
         "invalid_state",
         `a sessão ${addressOf(target)} é de outro host: o aviso de ocioso só vale para sessões deste host`,
+        "messaging_idle_other_host",
+        { address: addressOf(target) },
       );
     }
     const subscription: Subscription = {

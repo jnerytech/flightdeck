@@ -183,12 +183,22 @@ export class LocalEndpoints implements Endpoints {
       return this.opts.manager.send(id, text).queued ? "queued" : "delivered";
     }
     const terminal = this.opts.external.get(id);
-    if (!terminal) throw new FlightdeckError("not_found", `sessão ${id} não existe`);
+    if (!terminal)
+      throw new FlightdeckError(
+        "not_found",
+        `sessão ${id} não existe`,
+        "messaging_session_missing",
+        { id },
+      );
     if (!terminal.controllable || !terminal.launchId) {
-      throw new FlightdeckError("invalid_state", PLAIN_REASON);
+      throw new FlightdeckError("invalid_state", PLAIN_REASON, "messaging_plain_session");
     }
     if (!this.opts.sendToLaunch(terminal.launchId, text)) {
-      throw new FlightdeckError("invalid_state", "o canal do terminal não está conectado");
+      throw new FlightdeckError(
+        "invalid_state",
+        "o canal do terminal não está conectado",
+        "messaging_channel_down",
+      );
     }
     return "delivered";
   }

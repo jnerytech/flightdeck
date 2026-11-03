@@ -870,6 +870,21 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    messaging_session_missing: "A sessão {id} não existe.",
+    messaging_plain_session:
+      "Um claude puro, sem canal, só recebe pela troca nativa do Claude Code.",
+    messaging_channel_down: "O canal do terminal não está conectado.",
+    messaging_idle_other_host:
+      "A sessão {address} é de outro host: o aviso de ocioso só vale para sessões deste host.",
+    messaging_asker_unknown: "A sessão que pede não existe neste host: não sei quem está mandando.",
+    messaging_target_not_found: "A sessão {address} não foi encontrada.",
+    messaging_host_unknown: "O host {host} não é conhecido: o app descreve os hosts.",
+    messaging_peer_not_found: "A sessão {address} não foi encontrada no host {host}.",
+    messaging_self: "Uma sessão não manda mensagem para si mesma.",
+    messaging_no_route:
+      "As sessões não são do mesmo projeto nem do mesmo time, e nenhuma exceção em Configurações libera este par.",
+    messaging_read_other_host: "A sessão é de outro host: o read_session só lê sessões deste host.",
+    messaging_policy_invalid: "As regras de mensagens não valem: {errors}",
     project_no_issues:
       "Este projeto não tem integração de issues: configure nas definições do projeto.",
     project_no_origin: "Este projeto não tem o remoto origin.",

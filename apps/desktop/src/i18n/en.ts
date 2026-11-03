@@ -874,6 +874,23 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    messaging_session_missing: "The session {id} does not exist.",
+    messaging_plain_session:
+      "A plain claude with no channel only receives through Claude Code's own exchange.",
+    messaging_channel_down: "The terminal's channel is not connected.",
+    messaging_idle_other_host:
+      "The session {address} is on another host: the idle notice only covers sessions of this host.",
+    messaging_asker_unknown:
+      "The session that is asking does not exist on this host: it is not known who is sending.",
+    messaging_target_not_found: "The session {address} was not found.",
+    messaging_host_unknown: "The host {host} is not known: the app describes the hosts.",
+    messaging_peer_not_found: "The session {address} was not found on the host {host}.",
+    messaging_self: "A session does not message itself.",
+    messaging_no_route:
+      "The sessions are not in the same project or team, and no exception in Settings frees this pair.",
+    messaging_read_other_host:
+      "The session is on another host: read_session only reads sessions of this host.",
+    messaging_policy_invalid: "The messaging rules are not valid: {errors}",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     project_no_origin: "This project has no origin remote.",
     remote_not_github: "The remote {url} is not a GitHub one.",
