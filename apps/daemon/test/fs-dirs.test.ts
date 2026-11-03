@@ -193,6 +193,6 @@ describe("fs-dirs: the fs.dirs command", () => {
     });
     stops.push(() => bare.stop());
     const none = await ask(bare, "host.info", {});
-    expect(none?.ok && (none.data as { features: string[] }).features).toEqual([]);
+    expect(none?.ok && (none.data as { features: string[] }).features).toEqual(["session.images"]);
   });
 });
