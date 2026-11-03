@@ -1851,10 +1851,13 @@ export class AppStore {
       onTeams: (frame) => {
         for (const listener of this.teamListeners) listener(config.id, frame);
         if (frame.reason) {
-          this.notifyUser({
-            title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
-            body: frame.reason,
-          });
+          this.notifyUser(
+            {
+              title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
+              body: frame.reason,
+            },
+            { name: "teams" },
+          );
         }
       },
       onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
@@ -2528,14 +2531,17 @@ export class AppStore {
         Math.round(threshold * 100),
         usd(state?.limitUsd ?? 0),
       );
-      this.notifyUser({
-        title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t("clients.budgetAlert", {
-          name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
-          percent: Math.round(threshold * 100),
-          limit: usd(state?.limitUsd ?? 0),
-        }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("messages.budgetTitle"),
+          body: this.i18n.t("clients.budgetAlert", {
+            name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
+            percent: Math.round(threshold * 100),
+            limit: usd(state?.limitUsd ?? 0),
+          }),
+        },
+        { name: "costs" },
+      );
     }
   }
 
@@ -2773,11 +2779,14 @@ export class AppStore {
       watch,
     );
     if (watch.status === "needs_you" && before?.status !== "needs_you") {
-      const title = this.state.cards[key]?.title ?? watch.cardId;
-      this.notifyUser({
-        title: this.i18n.t("watchUi.notifyTitle"),
-        body: `${title}: ${watch.reason ?? ""}`,
-      });
+      const card = this.state.cards[key];
+      const title = card?.title ?? watch.cardId;
+      this.notifyUser(
+        { title: this.i18n.t("watchUi.notifyTitle"), body: `${title}: ${watch.reason ?? ""}` },
+        card
+          ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
+          : undefined,
+      );
     }
   }
 
@@ -3267,15 +3276,18 @@ export class AppStore {
       Math.round(update.threshold * 100),
       usd(update.budget.limitUsd),
     );
-    this.notifyUser({
-      title: this.i18n.t("messages.budgetTitle"),
-      body: this.i18n.t("messages.budgetBody", {
-        host: host.name,
-        label: budgetLabel(update.budget, this.i18n.t),
-        percent: Math.round(update.threshold * 100),
-        limit: usd(update.budget.limitUsd),
-      }),
-    });
+    this.notifyUser(
+      {
+        title: this.i18n.t("messages.budgetTitle"),
+        body: this.i18n.t("messages.budgetBody", {
+          host: host.name,
+          label: budgetLabel(update.budget, this.i18n.t),
+          percent: Math.round(update.threshold * 100),
+          limit: usd(update.budget.limitUsd),
+        }),
+      },
+      { name: "costs" },
+    );
   }
 
   private keepBudget(hostId: string, budget: Budget, removed: boolean): void {
@@ -3294,10 +3306,13 @@ export class AppStore {
     const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      this.notifyUser({
-        title: this.i18n.t("deps.notifyTitle"),
-        body: this.i18n.t("deps.notifyBody", { title: card.title }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("deps.notifyTitle"),
+          body: this.i18n.t("deps.notifyBody", { title: card.title }),
+        },
+        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
+      );
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });
