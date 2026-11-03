@@ -183,7 +183,7 @@ export class Teams {
       name: stored.name,
       role: stored.role,
       persona: stored.persona,
-      model: null,
+      model: stored.model ?? null,
       cardId: stored.cardId,
       sessionId,
       address: sessionId ? `${this.opts.host}/${sessionId}` : null,
@@ -275,18 +275,21 @@ export class Teams {
     name: string,
     persona: string | null,
     coordinator: string | null,
+    model: string | null = null,
   ): Promise<StoredMember> {
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
       description: workerInstructions(brief, coordinator),
+      // The card's variant is where a card keeps the model its session opens in.
+      ...(model ? { variant: { label: "team", model, effort: null, persona } } : {}),
     });
     // Before the card starts: its session is named with this persona from the first moment.
     if (persona) this.cardPersonas.set(card.id, persona);
     await (this.opts.startWorker
-      ? this.opts.startWorker(card.id, persona, null)
+      ? this.opts.startWorker(card.id, persona, model)
       : this.opts.board.startCard(card.id));
-    return { name, role: "worker", persona, cardId: card.id, sessionId: null };
+    return { name, role: "worker", persona, model, cardId: card.id, sessionId: null };
   }
 
   async create(input: NewTeam): Promise<TeamInfo> {
@@ -304,6 +307,7 @@ export class Teams {
         (this.opts.personas?.resolve(COORDINATOR_PERSONA) ? COORDINATOR_PERSONA : undefined),
     );
     const workerPersonas = (input.workerPersonas ?? []).map((p) => this.checkPersona(p));
+    const coordinatorModel = input.coordinatorModel ?? null;
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
     const id = ulid((this.opts.clock ?? Date.now)());
@@ -323,8 +327,13 @@ export class Teams {
     });
     const startCoordinator =
       this.opts.startCoordinator ??
-      ((start: { cwd: string; prompt: string; name: string }) =>
-        this.opts.manager.create({ cwd: start.cwd, prompt: start.prompt, name: start.name }));
+      ((start: { cwd: string; prompt: string; name: string; model: string | null }) =>
+        this.opts.manager.create({
+          cwd: start.cwd,
+          prompt: start.prompt,
+          name: start.name,
+          ...(start.model ? { model: start.model } : {}),
+        }));
     const coordinatorName = `${label(name)} · coordenadora`;
     // The session is named as it starts, and its persona is set on that name right below.
     await this.opts.warm?.(project.path);
@@ -333,7 +342,7 @@ export class Teams {
       prompt,
       name: coordinatorName,
       persona: coordinatorPersona,
-      model: null,
+      model: coordinatorModel,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
     const address = `${this.opts.host}/${sessionId}`;
@@ -342,12 +351,21 @@ export class Teams {
         name: coordinatorName,
         role: "coordinator",
         persona: coordinatorPersona,
+        model: coordinatorModel,
         cardId: null,
         sessionId,
       },
     ];
     for (const [i, workerName] of workerNames.entries()) {
-      members.push(await this.startWorker(team, workerName, workerPersonas[i] ?? null, address));
+      members.push(
+        await this.startWorker(
+          team,
+          workerName,
+          workerPersonas[i] ?? null,
+          address,
+          input.workerModels?.[i] ?? null,
+        ),
+      );
     }
     this.opts.db
       .query(
