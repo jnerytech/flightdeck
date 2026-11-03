@@ -235,6 +235,8 @@ const REASONS = [
   "action_secret_expired",
   "action_ssh_env_name",
   "action_ssh_env_value",
+  "account_refresh_too_soon",
+  "account_unavailable",
 ];
 
 const cleanups: Array<() => unknown> = [];
