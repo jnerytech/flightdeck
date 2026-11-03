@@ -15,21 +15,45 @@ export interface HostUi {
   locked?: unknown;
 }
 
+const asMode = (value: unknown): UiMode | null =>
+  value === "full" || value === "simple" ? value : null;
+
 /** The effective mode: the person's own choice, else the host's default, else full. */
-export function effectiveMode(_choice: unknown, _host: HostUi | null | undefined): ModeAnswer {
-  return { mode: "simple", canSwitch: false };
+export function effectiveMode(choice: unknown, host: HostUi | null | undefined): ModeAnswer {
+  const hostMode = asMode(host?.mode) ?? "full";
+  const locked = host?.locked === true;
+  // A locked host's mode stands: the switch is not offered, whatever was chosen before.
+  if (locked) return { mode: hostMode, canSwitch: false };
+  return { mode: asMode(choice) ?? hostMode, canSwitch: true };
 }
 
 /** The person's choices, by host; anything unreadable is no choice. */
-export function loadChoices(_storage: {
+export function loadChoices(storage: {
   getItem(key: string): string | null;
 }): Record<string, UiMode> {
-  return {};
+  let stored: unknown;
+  try {
+    stored = JSON.parse(storage.getItem(UI_CHOICES_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return {};
+  const choices: Record<string, UiMode> = {};
+  for (const [host, value] of Object.entries(stored)) {
+    const mode = asMode(value);
+    if (mode) choices[host] = mode;
+  }
+  return choices;
 }
 
 /** Keeps one host's choice; `null` forgets it, so the host's default speaks again. */
 export function saveChoice(
-  _storage: { getItem(key: string): string | null; setItem(key: string, value: string): void },
-  _hostId: string,
-  _mode: UiMode | null,
-): void {}
+  storage: { getItem(key: string): string | null; setItem(key: string, value: string): void },
+  hostId: string,
+  mode: UiMode | null,
+): void {
+  const choices = loadChoices(storage);
+  if (mode) choices[hostId] = mode;
+  else delete choices[hostId];
+  storage.setItem(UI_CHOICES_KEY, JSON.stringify(choices));
+}
