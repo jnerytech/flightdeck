@@ -105,4 +105,27 @@ describe("inbox-ui", () => {
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
+
+  test("an entry whose card is gone opens the pull request instead", async () => {
+    const { phone } = await setup([
+      {
+        id: "9",
+        at: ago(0),
+        title: "PR em observação",
+        body: "alfa · A: falhou",
+        route: { name: "card", host: "h-gone", projectId: "p", cardId: "c" },
+        fallbackUrl: "https://git.test/acme/api/pull/7",
+        read: false,
+      },
+    ]);
+    const opened: string[] = [];
+    (phone.platform as { openExternal(url: string): Promise<void> }).openExternal = async (url) => {
+      opened.push(url);
+    };
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /PR em observação/ }));
+    });
+    expect(opened).toEqual(["https://git.test/acme/api/pull/7"]);
+  });
 });

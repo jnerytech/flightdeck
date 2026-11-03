@@ -16,7 +16,25 @@ export interface InboxEntry {
   link?: string;
   /** The screen a click opens, when it is not a request. */
   route?: Route;
+  /** Where a click goes when `route` is a card that is gone: its pull request. */
+  fallbackUrl?: string;
   read: boolean;
+}
+
+/** What a click on an entry does. */
+export type InboxTarget =
+  | { kind: "link"; link: string }
+  | { kind: "route"; route: Route }
+  | { kind: "url"; url: string };
+
+/** Where a click on `entry` goes; `cardExists` says whether a card route still has its card. */
+export function inboxTarget(
+  entry: InboxEntry,
+  cardExists: (route: Extract<Route, { name: "card" }>) => boolean,
+): InboxTarget | null {
+  void entry;
+  void cardExists;
+  return null;
 }
 
 export type InboxDay = "today" | "yesterday" | string;
@@ -72,6 +90,7 @@ const Stored = z.array(
     body: z.string(),
     link: z.string().optional(),
     route: z.custom<Route>((v) => typeof v === "object" && v !== null && "name" in v).optional(),
+    fallbackUrl: z.string().optional(),
     read: z.boolean(),
   }),
 );

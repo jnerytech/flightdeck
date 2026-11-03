@@ -87,6 +87,17 @@ const hostOptions = () =>
   ].map((o) => o.text);
 
 describe("clients-costs: the Costs screen across hosts", () => {
+  test("a route with host and client opens that host's costs for that client", async () => {
+    const { store } = await setup();
+    const beta = store.getState().hosts.find((h) => h.name === "beta")?.id as string;
+    await act(async () => store.router.push({ name: "costs", host: beta, client: "beta" }));
+    await settle(() => store.getState().clientSelection === "beta");
+    expect(store.getState().clientSelection).toBe("beta");
+    expect((screen.queryByLabelText("Host dos custos") as HTMLSelectElement).value).toBe(beta);
+    await settle(() => total() === "US$ 3.00");
+    expect(total()).toBe("US$ 3.00");
+  });
+
   test("it keeps the first host by default, and offers all hosts when there are several", async () => {
     await setup();
     expect(hostOptions()).toEqual(["alfa", "beta", "Todos os hosts"]);

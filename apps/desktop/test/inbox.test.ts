@@ -5,6 +5,7 @@ import {
   INBOX_CAP,
   INBOX_KEY,
   type InboxEntry,
+  inboxTarget,
   loadInbox,
   markAllRead,
   markRead,
@@ -72,5 +73,46 @@ describe("inbox", () => {
     expect(loadInbox(storage)).toEqual(list);
     store.set(INBOX_KEY, "{not json");
     expect(loadInbox(storage)).toEqual([]);
+  });
+});
+
+describe("inbox: where a click goes", () => {
+  const card = { name: "card", host: "h", projectId: "p", cardId: "c" } as const;
+  const base = { id: "1", at: "2026-11-03T10:00:00Z", title: "t", body: "b", read: false };
+  const there = () => true;
+  const gone = () => false;
+
+  test("a request link wins over the route", () => {
+    const e: InboxEntry = { ...base, link: "flightdeck://r/1", route: { name: "teams" } };
+    expect(inboxTarget(e, there)).toEqual({ kind: "link", link: "flightdeck://r/1" });
+  });
+
+  test("a route opens as it is, with its params", () => {
+    const e: InboxEntry = { ...base, route: { name: "costs", host: "h", projectKey: "/a" } };
+    expect(inboxTarget(e, there)).toEqual({
+      kind: "route",
+      route: { name: "costs", host: "h", projectKey: "/a" },
+    });
+  });
+
+  test("a card that is still there opens, a card that is gone opens its pull request", () => {
+    const e: InboxEntry = { ...base, route: card, fallbackUrl: "https://git.test/pr/7" };
+    expect(inboxTarget(e, there)).toEqual({ kind: "route", route: card });
+    expect(inboxTarget(e, gone)).toEqual({ kind: "url", url: "https://git.test/pr/7" });
+  });
+
+  test("a card that is gone with no pull request still tries the route", () => {
+    expect(inboxTarget({ ...base, route: card }, gone)).toEqual({ kind: "route", route: card });
+  });
+
+  test("an entry with nowhere to go has no target, and the fallback url survives storage", () => {
+    expect(inboxTarget(base, there)).toBeNull();
+    const kept = new Map<string, string>();
+    saveInbox({ setItem: (k, v) => kept.set(k, v) }, [
+      { ...base, route: card, fallbackUrl: "https://git.test/pr/7" },
+    ]);
+    expect(loadInbox({ getItem: (k) => kept.get(k) ?? null })[0]?.fallbackUrl).toBe(
+      "https://git.test/pr/7",
+    );
   });
 });
