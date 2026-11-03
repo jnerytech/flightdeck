@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { Central } from "../src/central/central.ts";
 import { ProjectKeys } from "../src/central/project-key.ts";
 import { HistoryIndexer } from "../src/history/indexer.ts";
+import { LocalEndpoints } from "../src/messaging/endpoints.ts";
+import type { Messaging } from "../src/messaging/messages.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { newManager, tempDir } from "./helpers.ts";
@@ -120,5 +122,69 @@ describe("history-perf: the lists never block the event loop on git", () => {
     expect(data?.sessions.length).toBe(FOLDERS);
     expect(calls.blocking).toBe(0);
     expect(calls.async).toBe(FOLDERS);
+  });
+
+  test("external.list reads no key through a blocking git call", async () => {
+    const { manager, root } = newManager();
+    const { keys, calls } = countingKeys();
+    const hub = central(keys, manager);
+    for (let i = 0; i < FOLDERS; i++) {
+      hub.external.apply("SessionStart", { session_id: `x${i}`, cwd: join(root, `f${i}`) });
+    }
+    calls.blocking = 0;
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+      central: hub,
+      warmProjectKey: (cwd) => keys.resolve(cwd),
+    });
+    cleanups.push(() => server.stop());
+    const client = await app(server.url);
+    const data = await client.data<{ sessions: unknown[] }>("external.list", {});
+    expect(data?.sessions.length).toBe(FOLDERS);
+    expect(calls.blocking).toBe(0);
+  });
+
+  test("a messages command resolves the keys of the cold sessions it lists without a blocking git call", async () => {
+    const { manager, root } = newManager();
+    const { keys, calls } = countingKeys();
+    const hub = central(keys, manager);
+    for (let i = 0; i < FOLDERS; i++) {
+      const cwd = join(root, `folder-${i}`);
+      mkdirSync(cwd);
+      manager.create({ cwd, prompt: "hi" });
+      hub.external.apply("SessionStart", { session_id: `x${i}`, cwd: join(root, `ext-${i}`) });
+    }
+    calls.blocking = 0;
+    const endpoints = new LocalEndpoints({
+      manager,
+      external: hub.external,
+      nameOf: () => null,
+      projectKey: (cwd) => keys.keyFor(cwd),
+      cardOf: () => null,
+      sendToLaunch: () => false,
+    });
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+      central: hub,
+      // Only the directory is read here; the real service lists the same endpoints.
+      messaging: { directory: () => endpoints.list() } as unknown as Messaging,
+      warmProjectKey: (cwd) => keys.resolve(cwd),
+    });
+    cleanups.push(() => server.stop());
+    const client = await app(server.url);
+    const data = await client.data<{ sessions: unknown[] }>("messages.directory", {});
+    expect(data?.sessions.length).toBe(FOLDERS * 2);
+    expect(calls.blocking).toBe(0);
+    expect(calls.async).toBe(FOLDERS * 2);
   });
 });
