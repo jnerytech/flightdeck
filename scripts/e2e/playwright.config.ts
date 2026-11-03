@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
+import { defineBddConfig } from "playwright-bdd";
 import { browserLaunch, whichOnNodePath } from "../lib/browser.ts";
 import { E2E_TEST_DIR, E2E_TEST_MATCH, grepFor, runnerSettings } from "../lib/e2e-config.ts";
 
@@ -16,10 +17,26 @@ const which = (name: string) => whichOnNodePath(name, process.env, process.platf
 const repoRoot = resolve(import.meta.dirname, "../..");
 const { use, outputDir, ...settings } = runnerSettings(process.env, repoRoot);
 
+/** The scenarios of the BDD pilot, one project per language: `bddgen` turns them into tests first. */
+const bdd = (language: "pt" | "en") =>
+  defineBddConfig({
+    features: `bdd/features/*.${language}.feature`,
+    steps: ["bdd/fixtures.ts", "bdd/steps.ts"],
+    outputDir: `.features-gen/${language}`,
+  });
+const viewport = { width: 1280, height: 800 };
+
 export default defineConfig({
   ...settings,
-  testDir: resolve(repoRoot, E2E_TEST_DIR),
-  testMatch: E2E_TEST_MATCH,
+  projects: [
+    {
+      name: "journeys",
+      testDir: resolve(repoRoot, E2E_TEST_DIR),
+      testMatch: E2E_TEST_MATCH,
+    },
+    { name: "bdd-pt", testDir: bdd("pt"), timeout: 180_000, use: { locale: "pt-BR", viewport } },
+    { name: "bdd-en", testDir: bdd("en"), timeout: 180_000, use: { locale: "en", viewport } },
+  ],
   outputDir,
   grep: grepFor(process.env.E2E_ONLY),
   timeout: 90_000,
