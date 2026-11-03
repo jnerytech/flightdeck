@@ -33,9 +33,11 @@ export function syncTauriCommands(rust: string): string[] {
 }
 
 /** Async commands that wait on the user (a dialog), so a worker thread is the right place for them. */
-export const ASYNC_INLINE_ALLOWED: string[] = [];
+export const ASYNC_INLINE_ALLOWED = ["pick_folder", "vault_pick_file"];
 
 /** The async commands whose body never calls `spawn_blocking`: they still block a runtime worker. */
-export function asyncCommandsInline(_rust: string): string[] {
-  return ["?"];
+export function asyncCommandsInline(rust: string): string[] {
+  return [...rust.matchAll(/#\[tauri::command[^\]]*\]\s*async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g)]
+    .filter((match) => !match[0].includes("spawn_blocking"))
+    .map((match) => match[1] as string);
 }

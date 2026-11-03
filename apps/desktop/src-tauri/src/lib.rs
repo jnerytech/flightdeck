@@ -11,32 +11,47 @@ use tauri::{Emitter, Manager, State, WindowEvent, Wry};
 
 const KEYRING_SERVICE: &str = "dev.flightdeck.app";
 
+/// Runs blocking work (the credential store, a PATH walk, a process spawn) on the blocking pool:
+/// a plain `async fn` still holds one of the runtime's few workers while it waits.
+async fn spawn_blocking_result<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 fn entry(host_id: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, host_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn token_get(host_id: String) -> Result<Option<String>, String> {
-    match entry(&host_id)?.get_password() {
+    spawn_blocking_result(move || match entry(&host_id)?.get_password() {
         Ok(token) => Ok(Some(token)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 #[tauri::command]
 async fn token_set(host_id: String, token: String) -> Result<(), String> {
-    entry(&host_id)?
-        .set_password(&token)
-        .map_err(|e| e.to_string())
+    spawn_blocking_result(move || {
+        entry(&host_id)?
+            .set_password(&token)
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 #[tauri::command]
 async fn token_delete(host_id: String) -> Result<(), String> {
-    match entry(&host_id)?.delete_credential() {
+    spawn_blocking_result(move || match entry(&host_id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 /// Phase 16: the vault's values live in the OS credential store under their own service, one
@@ -52,11 +67,12 @@ fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
 
 #[tauri::command]
 async fn vault_get(id: String) -> Result<Option<String>, String> {
-    match vault_entry(&id)?.get_password() {
+    spawn_blocking_result(move || match vault_entry(&id)?.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 #[tauri::command]
@@ -66,17 +82,21 @@ async fn vault_set(id: String, value: String) -> Result<(), String> {
             "the value is over {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, the limit of the Windows credential store"
         ));
     }
-    vault_entry(&id)?
-        .set_password(&value)
-        .map_err(|e| e.to_string())
+    spawn_blocking_result(move || {
+        vault_entry(&id)?
+            .set_password(&value)
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 #[tauri::command]
 async fn vault_delete(id: String) -> Result<(), String> {
-    match vault_entry(&id)?.delete_credential() {
+    spawn_blocking_result(move || match vault_entry(&id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
-    }
+    })
+    .await
 }
 
 /// A key pair `ssh-keygen` made: the private key goes to the vault, the public one to the screen.
@@ -375,10 +395,16 @@ struct TerminalEnv {
 
 #[tauri::command]
 async fn terminal_probe() -> TerminalEnv {
-    TerminalEnv {
+    tauri::async_runtime::spawn_blocking(|| TerminalEnv {
         windows: cfg!(windows),
         wt: cfg!(windows) && on_path("wt.exe"),
-    }
+    })
+    .await
+    // A probe that did not finish reads as "no Windows Terminal": the app falls back to cmd.
+    .unwrap_or(TerminalEnv {
+        windows: cfg!(windows),
+        wt: false,
+    })
 }
 
 /// `symlink_metadata`: `wt.exe` is an app execution alias, a reparse point `is_file` rejects.
@@ -404,21 +430,24 @@ async fn terminal_open(program: String, args: Vec<String>) -> Result<(), String>
     {
         return Err(format!("programa não permitido: {program}"));
     }
-    let mut command = std::process::Command::new(&program);
-    command.args(&args);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // `cmd /c start` opens the terminal's own console; the outer cmd needs no window.
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        if program.eq_ignore_ascii_case("cmd.exe") {
-            command.creation_flags(CREATE_NO_WINDOW);
+    spawn_blocking_result(move || {
+        let mut command = std::process::Command::new(&program);
+        command.args(&args);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // `cmd /c start` opens the terminal's own console; the outer cmd needs no window.
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            if program.eq_ignore_ascii_case("cmd.exe") {
+                command.creation_flags(CREATE_NO_WINDOW);
+            }
         }
-    }
-    command
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| format!("{program}: {e}"))
+        command
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("{program}: {e}"))
+    })
+    .await
 }
 
 #[tauri::command]
