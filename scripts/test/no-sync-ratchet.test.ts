@@ -60,6 +60,13 @@ describe("no-sync: runtime code does not block on IO", () => {
         "const after = 2;",
       ].join("\n"),
     );
-    expect(withBaseline(source, {})).toContain("= {\n};");
+    // The formatter writes an empty object on one line; an empty baseline renders that way too.
+    expect(withBaseline(source, {})).toContain("= {};");
+    const empty =
+      "const a = 1;\nexport const SYNC_BASELINE: Record<string, number> = {};\nconst b = 2;";
+    expect(withBaseline(empty, counts)).toContain(
+      '= {\n  "apps/daemon/src/a.ts": 1,\n  "apps/daemon/src/b.ts": 2,\n};\nconst b = 2;',
+    );
+    expect(withBaseline(empty, {})).toBe(empty);
   });
 });
