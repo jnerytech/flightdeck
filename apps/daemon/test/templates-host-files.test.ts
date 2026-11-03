@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Template, TemplateListResult } from "@flightdeck/protocol";
 import { runDoctor } from "../src/doctor.ts";
+import { startDaemon } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { BUILTIN_TEMPLATES } from "../src/templates/builtin.ts";
 import { loadTemplates, parseTemplateFile, serializeTemplate } from "../src/templates/files.ts";
@@ -160,5 +161,31 @@ describe("templates-host-files: the doctor and the protocol", () => {
     expect(list?.problems.map((p) => p.file)).toEqual(["broken.md"]);
     const info = await client.data<{ features: string[] }>("host.info", {});
     expect(info?.features).toContain("templates");
+  });
+});
+
+describe("templates-host-files: the in-app doctor", () => {
+  test("Given a running daemon with a broken template file, When doctor.run is asked, Then the templates check warns and names the file", async () => {
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    const dataDir = join(dir, "data");
+    mkdirSync(join(dataDir, "templates"), { recursive: true });
+    writeFileSync(join(dataDir, "templates", "broken.md"), "not a template");
+    writeFileSync(file, JSON.stringify({ port: 0, token: TOKEN, dataDir }));
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => daemon.stop());
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const report = await client.data<{
+      checks: Array<{ id: string; status: string; detail: string }>;
+    }>("doctor.run", {});
+    const check = report?.checks.find((c) => c.id === "templates");
+    expect(check?.status).toBe("warn");
+    expect(check?.detail).toContain("broken.md");
   });
 });
