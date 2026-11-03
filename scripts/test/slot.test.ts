@@ -4,9 +4,12 @@ import {
   cancel,
   DEFAULT_MAX_AGE_MS,
   describeHolder,
+  lowerOthers,
   POLL_MS,
+  type ProcessInfo,
   parseArgs,
   parseHolder,
+  RENICE_MS,
   release,
   run,
   type SlotChild,
@@ -468,5 +471,124 @@ describe("slot: cancel", () => {
     const { env, logs } = fake();
     expect(await run(env, ["--cancel"])).toBe(0);
     expect(logs).toEqual(["nothing to cancel for sonar"]);
+  });
+});
+
+const proc = (pid: number, ppid: number, nice: number, command: string): ProcessInfo => ({
+  pid,
+  ppid,
+  nice,
+  command,
+});
+
+/** A process list with the slot's own tree (10 > 11 > 12) and other sessions' processes. */
+const table = (): ProcessInfo[] => [
+  proc(10, 1, 0, "bun scripts/slot.ts -- bun run test"),
+  proc(11, 10, 0, "bun run test"),
+  proc(12, 11, 0, "bun test --coverage"),
+  proc(30, 1, 0, "bun --config=bunfig.area.toml test apps/daemon/test/a.test.ts"),
+  proc(31, 1, 10, "/home/u/.bun/bin/bun test apps/daemon/test/b.test.ts"),
+  proc(32, 1, 15, "bun test c"),
+  proc(33, 1, 19, "bun test d"),
+  proc(40, 1, 0, "node vite"),
+  proc(41, 1, 0, "bun run lint"),
+  proc(42, 1, 0, "bun x biome check"),
+];
+
+/** An env whose process table is live: reniced entries change, so a second pass finds them done. */
+function withProcesses(list: ProcessInfo[], extra: Parameters<typeof fake>[0] = {}) {
+  const f = fake(extra);
+  const calls: Array<[number, number]> = [];
+  let listed = 0;
+  f.env.processes = async () => {
+    listed++;
+    return list.map((p) => ({ ...p }));
+  };
+  f.env.renice = (pid, nice) => {
+    calls.push([pid, nice]);
+    const target = list.find((p) => p.pid === pid);
+    if (target) target.nice = nice;
+  };
+  return { ...f, calls, listed: () => listed };
+}
+
+describe("slot: --priority", () => {
+  test("--priority is read before the command, with --nice or without", () => {
+    expect(parseArgs(["--priority", "bun", "run", "test"])).toEqual({
+      kind: "run",
+      nice: false,
+      priority: true,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
+      command: ["bun", "run", "test"],
+    });
+    expect(parseArgs(["--nice", "--priority", "--", "bun"])).toEqual({
+      kind: "run",
+      nice: true,
+      priority: true,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
+      command: ["--", "bun"],
+    });
+  });
+
+  test("it raises the niceness of the other bun test processes, and only those", async () => {
+    const f = withProcesses(table());
+    expect(await lowerOthers(f.env)).toEqual([30, 31]);
+    expect(f.calls).toEqual([
+      [30, 15],
+      [31, 15],
+    ]);
+  });
+
+  test("a process already at 15 or more is never lowered, and a second pass changes nothing", async () => {
+    const f = withProcesses(table());
+    await lowerOthers(f.env);
+    f.calls.length = 0;
+    expect(await lowerOthers(f.env)).toEqual([]);
+    expect(f.calls).toEqual([]);
+  });
+
+  test("a platform that cannot list or renice processes is left alone", async () => {
+    const f = fake();
+    expect(await lowerOthers(f.env)).toEqual([]);
+  });
+
+  test("a run with --priority lowers the others while the command runs, every RENICE_MS", async () => {
+    const list = table();
+    let ticks = 0;
+    const f = withProcesses(list);
+    const child: SlotChild = {
+      wait: async () => {
+        // Bounded: with no renicing loop the ticks never come and the command just ends.
+        for (let i = 0; i < 50 && ticks < 3; i++) await new Promise((r) => setTimeout(r, 0));
+        return 0;
+      },
+      kill: () => {},
+    };
+    f.env.spawn = () => child;
+    // The fake sleep gives the child's timer a turn, so the loop cannot starve it.
+    const sleep = f.env.sleep;
+    f.env.sleep = async (ms) => {
+      await sleep(ms);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+    f.onSleep.push(() => {
+      ticks++;
+      // A new test process shows up in the second tick: it is caught in the third.
+      if (ticks === 2) list.push(proc(50, 1, 0, "bun test e"));
+    });
+    expect(await run(f.env, ["--priority", "bun", "run", "test"])).toBe(0);
+    expect(f.calls).toEqual([
+      [30, 15],
+      [31, 15],
+      [50, 15],
+    ]);
+    expect(f.sleeps.filter((ms) => ms === RENICE_MS).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a run without --priority never reads the process list", async () => {
+    const f = withProcesses(table());
+    expect(await run(f.env, ["bun", "run", "test"])).toBe(0);
+    expect(f.listed()).toBe(0);
+    expect(f.calls).toEqual([]);
   });
 });

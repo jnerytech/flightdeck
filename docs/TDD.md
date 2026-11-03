@@ -82,7 +82,11 @@ em vez de depender de cuidado.
 - **The slot for the heavy runs.** The full suite, `demo:shots`, `e2e`, the smokes and the builds
   run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
-  flaky. Area tests, typecheck and lint do not need the slot.
+  flaky. Area tests, typecheck and lint do not need the slot. A full gate that must not be
+  disturbed by the sessions' area tests runs with `--priority` (`bun run slot -- --priority bun run
+  test`): while it runs, the slot raises the niceness of the other `bun test` processes of the
+  same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
+  process tree, restores nothing (those processes finish niced) and does nothing on Windows.
 - **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
   `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a
   test that call races the next line (an assertion runs before the work, a cleanup before the
