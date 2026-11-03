@@ -49,16 +49,24 @@ describe("isolamento: a test must not write into the repository", () => {
     expect(() => assertRepoUntouched(c)).toThrow(/head/i);
   });
 
-  test("a changed repository config is reported, and core.bare by name", () => {
+  test("a changed core setting of the repository config is reported, and core.bare by name", () => {
     const edited = repo();
     const a = installRepoGuard(edited);
-    git(edited, "config", "user.name", "someone else");
+    git(edited, "config", "core.ignorecase", "true");
     expect(() => assertRepoUntouched(a)).toThrow(/config/);
 
     const bare = repo();
     const b = installRepoGuard(bare);
     git(bare, "config", "core.bare", "true");
     expect(() => assertRepoUntouched(b)).toThrow(/core\.bare/);
+  });
+
+  test("a branch or remote entry is not a change: sessions in other worktrees add them while a test runs", () => {
+    const shared = repo();
+    const guard = installRepoGuard(shared);
+    git(shared, "config", "branch.other.remote", "origin");
+    git(shared, "config", "remote.origin.url", "https://example.invalid/x.git");
+    expect(() => assertRepoUntouched(guard)).not.toThrow();
   });
 
   test("a folder that is not a repository has nothing to guard", () => {
