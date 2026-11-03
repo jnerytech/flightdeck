@@ -353,13 +353,21 @@ flightdeckd service uninstall           # para o daemon e remove o serviço
 O daemon do Windows pode manter o daemon de cada distro WSL rodando (e a distro acordada):
 
 ```json
-"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7421 }]
+"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7430 }]
 ```
 
 Cada item vira `wsl.exe -d <distro> --exec bash -lc "<command>"`, reiniciado com backoff de 1 s
 até 60 s, com log em `dataDir/logs/wsl-<distro>.log`. O daemon do WSL escuta em
-`127.0.0.1:7421`, que o Windows alcança por `localhost`. Se esse daemon também recebe hooks, o
+`127.0.0.1:7430`, que o Windows alcança por `localhost`. Se esse daemon também recebe hooks, o
 `hooks.port` dele precisa ser diferente do do Windows (veja [Hooks do Claude Code](#hooks-do-claude-code)).
+
+**Configurando o daemon do WSL.** Rode `flightdeckd setup` dentro da distro. O WSL compartilha o
+`localhost` com o Windows, então o setup detecta o WSL (`WSL_DISTRO_NAME`, ou `/proc/version`) e
+sobe em 10 as portas que ainda estão nos padrões do daemon do Windows: `port` 7430, `hooks.port`
+7431 e `telemetry.port` 7432 (o Windows fica com 7420, 7421 e 7422). Elas são gravadas no
+`config.json`, então ninguém precisa editá-lo à mão; uma porta que você mesmo definiu fica como
+está, e rodar o setup de novo não muda nada. Uma config nova no WSL também chama o host de
+"<hostname> (WSL <distro>)", para distinguir os dois daemons no app.
 
 ## Acesso remoto pela Tailscale
 

@@ -138,6 +138,7 @@ import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
+import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
@@ -1243,6 +1244,7 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
       log: deps.log,
       configFile: file,
       home: base.home,
+      wsl: detectWsl({ env: deps.env, procVersion: () => readProcVersion() }),
       // The folders it checks are this host's, whatever the service context says it manages.
       platform: process.platform,
       isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,

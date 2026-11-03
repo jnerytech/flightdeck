@@ -23,13 +23,17 @@ export function readProcVersion(
 export const realWslProbe: WslProbe = { env: process.env, procVersion: () => readProcVersion() };
 
 /** Where this host runs inside WSL: the distro name (null when unknown), or null outside WSL. */
-export function detectWsl(_probe: WslProbe): { distro: string | null } | null {
-  return null;
+export function detectWsl(probe: WslProbe): { distro: string | null } | null {
+  const distro = probe.env.WSL_DISTRO_NAME;
+  if (distro) return { distro };
+  return /microsoft/i.test(probe.procVersion() ?? "") ? { distro: null } : null;
 }
 
 /** The host name by default: the machine's, and inside WSL "<hostname> (WSL <distro>)". */
-export function defaultHostName(_probe: WslProbe = realWslProbe): string {
-  return hostname();
+export function defaultHostName(probe: WslProbe = realWslProbe): string {
+  const wsl = detectWsl(probe);
+  if (!wsl) return hostname();
+  return `${hostname()} (WSL${wsl.distro ? ` ${wsl.distro}` : ""})`;
 }
 
 /** Ports of a daemon in WSL are the Windows daemon's plus this, so both can run side by side. */
