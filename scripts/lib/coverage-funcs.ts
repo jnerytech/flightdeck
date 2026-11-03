@@ -96,6 +96,8 @@ export function onLoadFor(
 
 export interface CoveragePlanDeps {
   files: string[];
+  /** Test files to run instead of the ones that import `files`, for a file every test reaches. */
+  tests?: string[];
   platform: NodeJS.Platform;
   /** Runs git with the given arguments; `null` when git fails. */
   git: (args: string[]) => string | null;
@@ -112,6 +114,7 @@ export interface CoveragePlan extends Plan {
 /** The tests that reach `files`, run with the preload that instruments them in memory. */
 export function planCoverageFuncs({
   files,
+  tests,
   platform,
   git,
   readFile,
@@ -119,13 +122,18 @@ export function planCoverageFuncs({
 }: CoveragePlanDeps): CoveragePlan {
   const fail = (output: string): CoveragePlan => ({ code: 2, output, command: null, env: {} });
   if (files.length === 0) return fail("usage: bun run coverage:funcs <file.ts>...");
-  const targets = files.map((f) => slashes(f).replace(/^\.\//, ""));
+  const clean = (list: string[]) => list.map((f) => slashes(f).replace(/^\.\//, ""));
+  const targets = clean(files);
+  const given = clean(tests ?? []);
   const tracked = (git(["ls-files", "*.ts", "*.tsx"]) ?? "").split("\n").filter(Boolean);
-  const unknown = targets.filter((f) => !tracked.includes(f));
+  const unknown = [...targets, ...given].filter((f) => !tracked.includes(f));
   if (unknown.length > 0) {
     return fail(`coverage:funcs: not a tracked .ts or .tsx file: ${unknown.join(", ")}`);
   }
-  const related = selectRelated(targets, new Map(tracked.map((path) => [path, readFile(path)])));
+  const related =
+    given.length > 0
+      ? given.map((path) => ({ path, why: "given" }))
+      : selectRelated(targets, new Map(tracked.map((path) => [path, readFile(path)])));
   if (related.length === 0) {
     return {
       code: 0,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun run coverage:funcs <file.ts>...`: runs the tests that reach the files and lists the functions
+ * `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]`: runs the tests that reach the files and lists the functions
  * of those files that no test called, as `file:line`. Bun's coverage counts functions per file but
  * does not name them; this does, with istanbul. The files are instrumented in memory, never rewritten.
  */
@@ -11,13 +11,17 @@ import { join, resolve } from "node:path";
 import { formatReport, planCoverageFuncs } from "./lib/coverage-funcs.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
-const files = process.argv.slice(2).filter((a) => a !== "--");
+const args = process.argv.slice(2).filter((a) => a !== "--");
+const split = args.indexOf("--tests");
+const files = split < 0 ? args : args.slice(0, split);
+const tests = split < 0 ? [] : args.slice(split + 1);
 const dir = mkdtempSync(join(tmpdir(), "coverage-funcs-"));
 const out = join(dir, "coverage.json");
 writeFileSync(out, "{}");
 
 const plan = planCoverageFuncs({
   files,
+  tests,
   platform: process.platform,
   git: (args) => {
     const proc = spawnSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
