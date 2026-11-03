@@ -192,6 +192,8 @@ export function SessionView(props: {
   prompts?: PromptSnippets;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
+  bypass?: { host: string };
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }) {

@@ -132,6 +132,8 @@ export function daemon(
     webhook?: WebhookSender;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
     personas?: boolean;
+    /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
+    bypass?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -174,7 +176,9 @@ export function daemon(
         publisher: agentPublisher(new AgentConfig({ claudeDir: join(root, "claude-home") })),
       })
     : undefined;
+  let bypass = options.bypass === true;
   const manager = new SessionManager({
+    allowBypass: () => bypass,
     ...(personaStore ? { personas: personaStore } : {}),
     ...(snapshots
       ? {
@@ -329,6 +333,7 @@ export function daemon(
       fsDirs: true,
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
+      bypass: { allowed: () => bypass, set: (allow) => void (bypass = allow) },
       manager,
       history,
       board,

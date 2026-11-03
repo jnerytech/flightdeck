@@ -100,3 +100,22 @@ describe("bypass-daemon", () => {
     await expect(manager.setPermissionMode(sessionId, "bypassPermissions")).rejects.toThrow();
   });
 });
+
+describe("bypass-daemon: over the protocol", () => {
+  test("session.setMode takes bypassPermissions only while the host switch is on", async () => {
+    const { client, project, refusal } = await daemon();
+    const created = await client.data<{ sessionId: string }>("session.create", {
+      cwd: project,
+      prompt: "go",
+      permissionMode: "default",
+    });
+    const sessionId = created?.sessionId ?? "";
+    await Bun.sleep(100);
+    const setMode = { sessionId, permissionMode: "bypassPermissions" };
+    expect(await refusal("session.setMode", setMode)).toBe(
+      "invalid_permission_update/mode_looser_than_start",
+    );
+    await client.data("host.bypass", { allow: true, confirm: true });
+    expect(await refusal("session.setMode", setMode)).toBe("ok");
+  });
+});
