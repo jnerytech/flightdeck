@@ -13,6 +13,10 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
+/** The refusal an ack carries. */
+const refusal = (ack: Record<string, unknown>) =>
+  (ack.error ?? {}) as { code?: string; reason?: string; params?: Record<string, number> };
+
 const signedIn: AuthStatus = {
   loggedIn: true,
   authMethod: "claude.ai",
@@ -124,9 +128,9 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     expect(AccountState.safeParse(ok.data).success).toBe(true);
     const refused = await client.request("account.refresh", {});
     expect(refused.ok).toBe(false);
-    expect(refused.error?.code).toBe("invalid_state");
-    expect(refused.error?.reason).toBe("account_refresh_too_soon");
-    const wait = refused.error?.params?.waitSeconds;
+    expect(refusal(refused).code).toBe("invalid_state");
+    expect(refusal(refused).reason).toBe("account_refresh_too_soon");
+    const wait = refusal(refused).params?.waitSeconds;
     expect(typeof wait === "number" && wait > 0 && wait <= 30).toBe(true);
   });
 
@@ -136,7 +140,7 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     for (const type of ["account.get", "account.watch", "account.refresh"]) {
       const ack = await client.request(type, { extra: 1 });
       expect(ack.ok).toBe(false);
-      expect(ack.error?.code).toBe("bad_request");
+      expect(refusal(ack).code).toBe("bad_request");
     }
   });
 
@@ -144,7 +148,7 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     const { client } = await connect(false);
     const ack = await client.request("account.get", {});
     expect(ack.ok).toBe(false);
-    expect(ack.error?.reason).toBe("feature_off");
+    expect(refusal(ack).reason).toBe("feature_off");
     const info = await client.request("host.info", {});
     expect((info.data as { features: string[] }).features).not.toContain("account");
   });
