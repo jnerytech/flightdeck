@@ -945,6 +945,10 @@ export type TaskFile = z.infer<typeof TaskFile>;
 export const TaskResultsResult = z.object({ files: z.array(TaskFile), truncated: z.boolean() });
 export type TaskResultsResult = z.infer<typeof TaskResultsResult>;
 
+/** The start of a text file a task made, to show before opening it. */
+export const TaskPreviewResult = z.object({ text: z.string(), truncated: z.boolean() });
+export type TaskPreviewResult = z.infer<typeof TaskPreviewResult>;
+
 /** A task started from a template: its session, where it works and where its results go. */
 export const TemplateStartResult = z.object({
   sessionId: z.string(),
@@ -3377,6 +3381,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
   cmd("template.list", z.object({}).strict()),
   cmd("task.results", z.object({ sessionId: z.string().min(1) }).strict()),
+  cmd("task.preview", z.object({ sessionId: z.string().min(1), path: z.string().min(1) }).strict()),
   cmd(
     "template.start",
     z
@@ -4166,6 +4171,7 @@ export interface CommandResults {
   "ui.set": UiSettings;
   "template.list": TemplateListResult;
   "task.results": TaskResultsResult;
+  "task.preview": TaskPreviewResult;
   "template.start": TemplateStartResult;
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;

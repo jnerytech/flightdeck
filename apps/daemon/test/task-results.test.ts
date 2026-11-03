@@ -129,3 +129,43 @@ describe("task-results: over the protocol, after a template starts", () => {
     expect(info?.features).toContain("tasks");
   });
 });
+
+describe("task-results: a preview of what a task made", () => {
+  test("Given a text, Markdown or CSV file the task made, When previewed, Then its start comes back", async () => {
+    const { tracker, output } = await began();
+    put(join(output, "report.md"), "# Report\nbody", 0);
+    put(join(output, "table.csv"), "a,b\n1,2", 0);
+    expect(await tracker.preview("s1", join(output, "report.md"))).toEqual({
+      text: "# Report\nbody",
+      truncated: false,
+    });
+    expect((await tracker.preview("s1", join(output, "table.csv"))).text).toBe("a,b\n1,2");
+  });
+
+  test("Given a long text, Then only the start comes back and it says it was cut", async () => {
+    const { tracker, output } = await began();
+    put(join(output, "big.txt"), "x".repeat(100_000), 0);
+    const preview = await tracker.preview("s1", join(output, "big.txt"));
+    expect(preview.truncated).toBe(true);
+    expect(preview.text.length).toBe(65_536);
+  });
+
+  test("Given a file outside the task's folders, a link out, or a kind that is not text, Then it is refused", async () => {
+    const { tracker, work, output } = await began();
+    const away = tempDir();
+    put(join(away, "secret.txt"), "not yours", 0);
+    symlinkSync(join(away, "secret.txt"), join(work, "link.txt"));
+    put(join(output, "image.png"), "binary", 0);
+    for (const path of [
+      join(away, "secret.txt"),
+      join(work, "link.txt"),
+      join(output, "image.png"),
+      join(work, "..", "x.txt"),
+    ]) {
+      await expect(tracker.preview("s1", path)).rejects.toMatchObject({ code: "forbidden_cwd" });
+    }
+    await expect(tracker.preview("nope", join(output, "a.md"))).rejects.toMatchObject({
+      reason: "task_unknown",
+    });
+  });
+});

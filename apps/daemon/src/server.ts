@@ -1766,6 +1766,13 @@ export function startServer(opts: ServerOptions): RunningServer {
           ),
         );
       }
+      case "task.preview": {
+        if (!opts.tasks) throw featureOff("tasks");
+        return ok(
+          command.type,
+          await opts.tasks.preview(command.payload.sessionId, command.payload.path),
+        );
+      }
       case "task.results": {
         if (!opts.tasks) throw featureOff("tasks");
         return ok(command.type, await opts.tasks.results(command.payload.sessionId));

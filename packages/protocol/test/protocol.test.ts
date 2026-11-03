@@ -366,6 +366,7 @@ const validCommands: Record<CommandType, unknown> = {
   "ui.set": { mode: "simple", locked: true, confirm: true },
   "template.list": {},
   "task.results": { sessionId: "s1" },
+  "task.preview": { sessionId: "s1", path: "/w/a.md" },
   "template.start": { templateId: "summarise-folder", language: "en", values: { folder: "/work" } },
   "ssh.list": {},
   "ssh.save": {

@@ -1,6 +1,6 @@
 import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
-import type { TaskFile, TaskResultsResult } from "@flightdeck/protocol";
+import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 
@@ -67,6 +67,11 @@ export class TaskTracker {
     await mkdir(this.opts.dir, { recursive: true });
     const kept: Kept = { folders: [...folders], before };
     await writeFile(this.file(sessionId), JSON.stringify(kept));
+  }
+
+  /** The start of a text file inside the task's folders (text, Markdown or CSV), for a preview. */
+  async preview(_sessionId: string, _path: string): Promise<TaskPreviewResult> {
+    return { text: "", truncated: false };
   }
 
   /** The files the task made or changed since, newest first, only inside its own folders. */
