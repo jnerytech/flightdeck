@@ -217,6 +217,31 @@ describe("planCoverageFuncs", () => {
     });
   });
 
+  test("tests named by hand replace the related ones", () => {
+    const plan = planCoverageFuncs({
+      ...deps,
+      files: ["apps/daemon/src/a.ts"],
+      tests: ["./apps/daemon/test/a.test.ts"],
+    });
+    expect(plan.output).toBe(
+      "coverage:funcs: 1 test file(s) for 1 file(s)\n  apps/daemon/test/a.test.ts  given",
+    );
+    expect(plan.command?.slice(-1)).toEqual(["./apps/daemon/test/a.test.ts"]);
+    expect(plan.env.COVERAGE_FUNCS_FILES).toBe(JSON.stringify(["apps/daemon/src/a.ts"]));
+  });
+
+  test("a test named by hand that is not tracked is refused", () => {
+    const plan = planCoverageFuncs({
+      ...deps,
+      files: ["apps/daemon/src/a.ts"],
+      tests: ["apps/daemon/test/missing.test.ts"],
+    });
+    expect(plan.code).toBe(2);
+    expect(plan.output).toBe(
+      "coverage:funcs: not a tracked .ts or .tsx file: apps/daemon/test/missing.test.ts",
+    );
+  });
+
   test("many test files go through the slot", () => {
     const many: Record<string, string> = { "src/a.ts": "export const a = 1;" };
     for (let i = 0; i < 61; i += 1) many[`test/t${i}.test.ts`] = 'import "../src/a.ts";';
