@@ -75,6 +75,7 @@ describe("direcao-visual: barra lateral", () => {
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
       "Sessões",
       "Precisa de você",
+      "Projetos",
       "Board",
       "Workflows",
       "Custos",

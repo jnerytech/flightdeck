@@ -58,7 +58,11 @@ async function setup() {
 
 const main = () => screen.queryByRole("main") as HTMLElement;
 const row = (title: string) => within(main()).queryByRole("listitem", { name: title });
-const split = () => within(main()).queryByRole("group");
+// The hub's view switch is a group too: the split is the one that holds the separator.
+const split = () =>
+  within(main())
+    .queryAllByRole("group")
+    .find((group) => group.querySelector('[role="separator"]') !== null) ?? null;
 const click = async (el: HTMLElement | null) => {
   expect(el).not.toBeNull();
   await act(async () => {

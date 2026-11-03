@@ -236,10 +236,13 @@ describe("conexoes-ui: the connection test", () => {
     });
     await click("Editar vps");
     await click("Testar conexão");
-    expect(screen.queryByRole("status")?.textContent).not.toBe("authentication refused");
-    expect(screen.queryByRole("status")?.textContent).toContain(
-      "O servidor recusou a autenticação",
-    );
+    // The tab strip's position announcement is a status too: read them all.
+    const said = screen
+      .queryAllByRole("status")
+      .map((el) => el.textContent ?? "")
+      .join(" ");
+    expect(said).not.toContain("authentication refused");
+    expect(said).toContain("O servidor recusou a autenticação");
   });
 
   test("a destino that is not saved yet cannot be tested", async () => {

@@ -289,7 +289,12 @@ describe("mudancas-ui", () => {
     await click("Reverter arquivo");
     await settle(() => !files().includes("novo.txt"));
     expect(files()).not.toContain("novo.txt");
-    expect(screen.queryByRole("status")?.textContent ?? "").toContain("novo.txt revertido");
+    expect(
+      screen
+        .queryAllByRole("status")
+        .map((el) => el.textContent ?? "")
+        .join(" "),
+    ).toContain("novo.txt revertido");
     expect(() => readFileSync(join(ctx.repo, "novo.txt"))).toThrow();
 
     await click("Desfazer");
