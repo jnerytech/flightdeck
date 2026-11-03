@@ -2568,6 +2568,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("daemon.shutdown", z.object({}).strict()),
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
+  cmd("daemon.update.check", z.object({}).strict()),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -3842,6 +3843,7 @@ export interface CommandResults {
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
+  "daemon.update.check": UpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;

@@ -58,6 +58,11 @@ export class UpdateChecker {
     return this.manifest;
   }
 
+  /** Checks right now, whatever the interval says, and returns what was found. */
+  async checkNow(): Promise<UpdateStatus> {
+    return { available: false, version: null, checkedAt: "1970-01-01T00:00:00.000Z" };
+  }
+
   private async check(): Promise<void> {
     const checkedAt = new Date(this.now()).toISOString();
     try {

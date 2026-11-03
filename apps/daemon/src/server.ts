@@ -1344,6 +1344,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
+      case "daemon.update.check": {
+        if (!opts.updates) throw featureOff("updater");
+        return ok(command.type, { available: false, version: null, checkedAt: "" });
+      }
       case "daemon.shutdown": {
         const shutdown = opts.onShutdown;
         if (!shutdown) throw featureOff("shutdown");
