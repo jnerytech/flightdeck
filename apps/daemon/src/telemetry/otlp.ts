@@ -323,7 +323,7 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
       try {
         body = await readBody(req, max);
         if (req.headers.get("content-encoding") === "gzip") {
-          body = await inflate(body, { maxOutputLength: max });
+          body = await (opts.inflate ?? inflate)(body, { maxOutputLength: max });
         }
       } catch (error) {
         if (error instanceof TooBig || error instanceof RangeError) {
