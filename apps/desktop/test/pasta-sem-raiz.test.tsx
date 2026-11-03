@@ -20,11 +20,20 @@ describe("pasta-sem-raiz: a host that allows no folder says so and offers to add
       ok: true,
       data: { path: null, dirs: [], truncated: false },
     });
-    (store as unknown as Record<string, unknown>).allowRoot = async (host: string, path: string) => {
+    (store as unknown as Record<string, unknown>).allowRoot = async (
+      host: string,
+      path: string,
+    ) => {
       asked.push(`${host}:${path}`);
       return true;
     };
-    const host = { id: "h", name: "wsl", status: "online", url: "ws://x", info: { allowedRoots: [] } };
+    const host = {
+      id: "h",
+      name: "wsl",
+      status: "online",
+      url: "ws://x",
+      info: { allowedRoots: [] },
+    };
     render(
       <TContext.Provider value={store.i18n.t}>
         <FolderPicker store={store} host={host as never} onPick={() => {}} onClose={() => {}} />
