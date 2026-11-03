@@ -198,13 +198,7 @@ describe("textos", () => {
     });
     await act(() => Bun.sleep(300));
     const host = main().textContent ?? "";
-    for (const text of [
-      "Information",
-      "Claude Code hooks",
-      "Rename",
-      "Reconnect",
-      "Remove host",
-    ]) {
+    for (const text of ["Information", "Claude Code hooks", "Rename", "Reconnect", "Remove host"]) {
       expect(host).toContain(text);
     }
     expect(host).not.toMatch(/Informações|Reconectar|Remover host|Nome do host/);
