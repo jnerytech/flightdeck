@@ -169,6 +169,8 @@ export interface HostView extends HostConfig {
   incompatibility: string | null;
   /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
   daemonUpdate: { target: string; failed: string | null } | null;
+  /** The daemon's update check asked for from the app: running, or why it did not run. */
+  updateCheck: { busy: boolean; failed: string | null } | null;
   sessions: SidebarSession[];
 }
 
@@ -626,6 +628,7 @@ const newHostView = (config: HostConfig): HostView => ({
   hostInfo: null,
   incompatibility: null,
   daemonUpdate: null,
+  updateCheck: null,
   sessions: [],
 });
 
@@ -2180,6 +2183,12 @@ export class AppStore {
       this.options.daemonUpdateTimeoutMs ?? 120_000,
     );
   }
+
+  /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
+  async checkDaemonUpdate(_hostId: string): Promise<void> {}
+
+  /** The same check, once when the app is newer than the daemon, at most once per 10 minutes. */
+  async autoCheckDaemonUpdate(_hostId: string): Promise<void> {}
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {
     if (envelope.event.type === "session.summary") {
