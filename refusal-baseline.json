@@ -14,7 +14,7 @@
   "apps/daemon/src/names/names.ts": 2,
   "apps/daemon/src/permissions/permission-broker.ts": 1,
   "apps/daemon/src/permissions/permission-updates.ts": 1,
-  "apps/daemon/src/plugins/inventory.ts": 3,
+  "apps/daemon/src/plugins/inventory.ts": 2,
   "apps/daemon/src/plugins/plugins.ts": 19,
   "apps/daemon/src/server.ts": 4,
   "apps/daemon/src/teams/teams.ts": 5,

@@ -133,7 +133,8 @@ async function contentHash(
 ): Promise<{ hash: string; bytes: number }> {
   const hash = createHash("sha256");
   let bytes = 0;
-  const tooBig = () => new FlightdeckError("bad_request", "plugin grande demais");
+  const tooBig = () =>
+    new FlightdeckError("bad_request", "plugin is over the size limit", "plugin_too_big");
   for (const path of listing.files) {
     const file = join(root, path);
     const size = (await stat(file)).size;
