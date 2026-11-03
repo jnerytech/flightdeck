@@ -4,7 +4,7 @@
  * an argument, which shows up in the process list), and what comes back is masked and cut. Every
  * parameter has to match the whole of its pattern.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { buildChildEnv } from "../env.ts";
@@ -165,13 +165,13 @@ export async function runAction(
     value: secrets[id] as string,
   }));
   if (opts.sshKey) masked.push({ name: opts.sshKey.id, value: opts.sshKey.value });
-  const folder = mkdtempSync(join(tmpdir(), "fd-action-"));
+  const folder = await mkdtemp(join(tmpdir(), "fd-action-"));
   const started = performance.now();
   try {
     const paths: Record<string, string> = {};
     for (const [i, id] of files.entries()) {
       paths[id] = join(folder, `segredo-${i}`);
-      writeFileSync(paths[id] as string, secrets[id] as string, { mode: 0o600 });
+      await writeFile(paths[id] as string, secrets[id] as string, { mode: 0o600 });
     }
     const fill = (text: string) =>
       text.replace(new RegExp(REFERENCE.source, "g"), (_match, kind: string, name: string) => {
@@ -237,6 +237,6 @@ export async function runAction(
       ),
     };
   } finally {
-    rmSync(folder, { recursive: true, force: true });
+    await rm(folder, { recursive: true, force: true });
   }
 }
