@@ -30,11 +30,12 @@ const host = (id: string, name: string, features: string[] = ["costs"]) => ({
   sessions: [],
 });
 
-const project = (id: string, name: string, baseBranch = "main") => ({
+const project = (id: string, name: string, hostName: string, baseBranch = "main") => ({
   id,
   name,
   path: `/work/${name}`,
   baseBranch,
+  projectKey: `host:${hostName}:/work/${name}`,
 });
 
 const external = (id: string, cwd: string, status: string, at: string) => ({
@@ -46,8 +47,12 @@ const external = (id: string, cwd: string, status: string, at: string) => ({
   projectKey: `host:alfa:${cwd}`,
 });
 
-function setup(options: { costs?: Record<string, CostsSummary | null> } = {}) {
-  const store: Store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+function setup(options: { costs?: Record<string, CostsSummary | null>; language?: string } = {}) {
+  const store: Store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
+    baseDelayMs: 600_000,
+  });
+  // The app starts its language from the platform; the screen is rendered without the shell.
+  store.i18n.start();
   const asked: string[] = [];
   store.loadPalette = async () => {};
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
@@ -58,8 +63,8 @@ function setup(options: { costs?: Record<string, CostsSummary | null> } = {}) {
     ...store.getState(),
     hosts: [host("h1", "alfa"), host("h2", "beta", [])],
     projects: {
-      h1: [project("p-api", "api", "develop"), project("p-web", "web")],
-      h2: [project("p-docs", "docs")],
+      h1: [project("p-api", "api", "alfa", "develop"), project("p-web", "web", "alfa")],
+      h2: [project("p-docs", "docs", "beta")],
     },
     externals: {
       "h1/c1": external("c1", "/work/api", "running", "2026-11-02T10:00:00Z"),
@@ -120,8 +125,12 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(asked.filter((a) => a.startsWith("h2:"))).toEqual([]);
     expect(within(card("docs")).getByText("—")).not.toBeNull();
     // The week: seven days ending today.
-    const week7 = asked.find((a) => a.startsWith("h1:costs.summary"));
-    expect(week7).toBeDefined();
+    const asking = asked.find((a) => a.startsWith("h1:costs.summary"));
+    const { from, to } = JSON.parse(asking?.split("costs.summary:")[1] ?? "{}") as {
+      from: string;
+      to: string;
+    };
+    expect((Date.parse(to) - Date.parse(from)) / 86_400_000).toBe(6);
   });
 
   test("search narrows the cards, and says so when none match", async () => {
@@ -162,5 +171,20 @@ describe("projetos-lista-ui: the Projects overview", () => {
     render(view({ ...state, projects: {} } as never));
     await act(() => Bun.sleep(20));
     expect(screen.queryByText("No projects yet.")).not.toBeNull();
+  });
+
+  test("in Portuguese the labels and the plural follow the dictionary", async () => {
+    const { view } = setup({ language: "pt-BR" });
+    render(view());
+    await act(() => Bun.sleep(20));
+    expect(screen.queryByRole("searchbox", { name: "Buscar projetos" })).not.toBeNull();
+    expect(screen.queryByLabelText("Ordenar por")).not.toBeNull();
+    expect(card("api").textContent).toContain("2 sessões ativas");
+    expect(card("api").textContent).toContain("1 em andamento");
+    expect(card("api").textContent).toContain("1 precisa de você");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar projetos" }), {
+      target: { value: "zzz" },
+    });
+    expect(screen.queryByText("Nenhum projeto corresponde à busca.")).not.toBeNull();
   });
 });
