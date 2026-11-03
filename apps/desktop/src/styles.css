@@ -1197,3 +1197,16 @@
 @utility template-card-title {
   font-weight: var(--weight-strong);
 }
+
+/* Simple mode (phase 33): Settings. */
+@utility settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@utility settings-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+}
