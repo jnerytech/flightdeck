@@ -88,7 +88,7 @@ describe("regras-projeto", () => {
     const { requestId } = await asking("Novo");
     await allow(requestId, [rule("ls:*")]);
     expect(readJson(join(repo, SETTINGS))).toEqual({ permissions: { allow: ["Bash(ls:*)"] } });
-    const { sessionId } = manager.create({ cwd: repo, prompt: "[bash] fora" });
+    const { sessionId } = await manager.create({ cwd: repo, prompt: "[bash] fora" });
     await poll(() => store.pendingPermissions(sessionId).length > 0, 3000);
     await allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("pwd:*")]);
     expect(readJson(join(repo, SETTINGS)).permissions.allow).toEqual(["Bash(ls:*)"]);

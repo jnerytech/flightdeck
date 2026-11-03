@@ -71,7 +71,7 @@ async function online() {
   git(d.root, "init", "-q", "-b", "main", "work");
   git(repo, "config", "commit.gpgsign", "false");
   git(repo, "commit", "-q", "--allow-empty", "-m", "first");
-  d.manager.create({ cwd: repo, prompt: "hi" });
+  await d.manager.create({ cwd: repo, prompt: "hi" });
   await settle(() => (store.getState().hosts[0]?.sessions.length ?? 0) > 0);
   return { d, store, hostId, repo };
 }

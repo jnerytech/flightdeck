@@ -234,9 +234,9 @@ export class TerminalManager {
     };
   }
 
-  open(req: OpenRequest): TerminalInfo {
+  async open(req: OpenRequest): Promise<TerminalInfo> {
     this.assertOn();
-    const cwd = req.internal ? req.cwd : resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
+    const cwd = req.internal ? req.cwd : await resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
     const max = this.opts.max ?? DEFAULT_MAX;
     if (this.live() >= max) {
       throw new FlightdeckError("invalid_state", `limite de ${max} terminais por host`);

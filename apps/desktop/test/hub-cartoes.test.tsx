@@ -116,7 +116,7 @@ describe("hub-cartoes: the hub as a grid", () => {
     mkdirSync(repo);
     git(repo, "init", "-q", "-b", "main");
     git(repo, "remote", "add", "origin", "https://github.com/acme/central.git");
-    const { sessionId } = d.manager.create({ cwd: repo, prompt: "oi", name: "Gerenciada" });
+    const { sessionId } = await d.manager.create({ cwd: repo, prompt: "oi", name: "Gerenciada" });
     await poll(() => d.manager.get(sessionId).status === "idle");
     return d;
   }

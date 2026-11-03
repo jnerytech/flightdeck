@@ -108,9 +108,13 @@ async function codeOf(promise: Promise<unknown>): Promise<string> {
 describe("snippets-uso: a paleta com variáveis", () => {
   test("render devolve o texto pronto: valores, padrões e o contexto, com a branch lida do cwd", async () => {
     const s = setup();
-    const snippet = s.host("deploy", "git -C {{cwd}} push origin {{branch}} --tags {{extra}}", {
-      vars: { extra: { default: "--dry-run" } },
-    });
+    const snippet = await s.host(
+      "deploy",
+      "git -C {{cwd}} push origin {{branch}} --tags {{extra}}",
+      {
+        vars: { extra: { default: "--dry-run" } },
+      },
+    );
     const rendered = await s.use.render({ id: snippet.id, context: { cwd: s.project } });
     expect(rendered.text).toBe(`git -C ${s.project} push origin main --tags --dry-run`);
     expect(rendered.fields.map((f) => f.name)).toEqual(["cwd", "branch", "extra"]);
@@ -125,10 +129,10 @@ describe("snippets-uso: a paleta com variáveis", () => {
 
   test("a branch só é lida quando o modelo a usa, só em pasta permitida, e HEAD solto ou fora de repositório é faltar valor", async () => {
     const s = setup();
-    const plain = s.host("ls", "ls -la {{cwd}}");
+    const plain = await s.host("ls", "ls -la {{cwd}}");
     await s.use.render({ id: plain.id, context: { cwd: s.project } });
     expect(s.git).toEqual([]);
-    const branchy = s.host("branch", "echo {{branch}}");
+    const branchy = await s.host("branch", "echo {{branch}}");
     expect(
       await codeOf(s.use.render({ id: branchy.id, context: { cwd: join(s.root, "..", "fora") } })),
     ).toBe("forbidden_cwd");
@@ -143,7 +147,7 @@ describe("snippets-uso: a paleta com variáveis", () => {
       "bad_request",
     );
     // The file and the selection come from the app; a value of the user wins over the default.
-    const withFile = s.prompt("revisar", "Revise {{file}}: {{selection}}");
+    const withFile = await s.prompt("revisar", "Revise {{file}}: {{selection}}");
     expect(
       (await s.use.render({ id: withFile.id, context: { file: "a.ts", selection: "x\ny" } })).text,
     ).toBe("Revise a.ts: x\ny");
@@ -159,7 +163,7 @@ describe("snippets-uso: colar e rodar no terminal", () => {
   test("colar escreve o comando no terminal sem Enter, e com Enter quando se pede; conta como uso", async () => {
     const s = setup();
     const { terminalId } = await terminal(s);
-    const snippet = s.host("testes", "bun test {{arquivo}}", {
+    const snippet = await s.host("testes", "bun test {{arquivo}}", {
       vars: { arquivo: { default: "a.test.ts" } },
     });
     const pasted = await s.use.use({ id: snippet.id, action: "paste", terminalId });
@@ -173,7 +177,7 @@ describe("snippets-uso: colar e rodar no terminal", () => {
       values: { arquivo: "b.test.ts" },
     });
     expect(s.ptys.spawned[0]?.written).toEqual(["bun test a.test.ts", "bun test b.test.ts\r"]);
-    expect(s.snippets.get(snippet.id).uses).toBe(2);
+    expect((await s.snippets.get(snippet.id)).uses).toBe(2);
     expect(await codeOf(s.use.use({ id: snippet.id, action: "paste", terminalId: "nada" }))).toBe(
       "not_found",
     );
@@ -195,17 +199,17 @@ describe("snippets-uso: colar e rodar no terminal", () => {
     expect(s.ptys.spawned).toHaveLength(1);
     expect(s.ptys.spawned[0]?.written).toEqual(["bun test "]);
     // Trusted by hash, it runs.
-    const hash = s.snippets.list({ projectPath: s.project }).file?.hash ?? "";
-    s.snippets.trust(s.project, hash);
+    const hash = (await s.snippets.list({ projectPath: s.project })).file?.hash ?? "";
+    await s.snippets.trust(s.project, hash);
     await s.use.use({ id, action: "paste", terminalId, enter: true });
     expect(s.ptys.spawned[0]?.written).toEqual(["bun test ", "bun test \r"]);
     // The failed attempts did not count as uses.
-    expect(s.snippets.get(id).uses).toBe(2);
+    expect((await s.snippets.get(id)).uses).toBe(2);
   });
 
   test("rodar abre uma aba nova no cwd escolhido e escreve o comando com Enter", async () => {
     const s = setup();
-    const snippet = s.host("hora", "date");
+    const snippet = await s.host("hora", "date");
     const ran = await s.use.use({
       id: snippet.id,
       action: "run",
@@ -240,7 +244,7 @@ describe("snippets-uso: colar e rodar no terminal", () => {
   test("falta de valor ou valor inseguro não escreve nada nem conta como uso", async () => {
     const s = setup();
     const { terminalId } = await terminal(s);
-    const snippet = s.host("eco", "echo {{msg}}");
+    const snippet = await s.host("eco", "echo {{msg}}");
     expect(await codeOf(s.use.use({ id: snippet.id, action: "paste", terminalId }))).toBe(
       "bad_request",
     );
@@ -250,14 +254,14 @@ describe("snippets-uso: colar e rodar no terminal", () => {
       ),
     ).toBe("bad_request");
     expect(s.ptys.spawned[0]?.written).toEqual([]);
-    expect(s.snippets.get(snippet.id).uses).toBe(0);
+    expect((await s.snippets.get(snippet.id)).uses).toBe(0);
   });
 });
 
 describe("snippets-uso: enviar à sessão", () => {
   test("um prompt vai à sessão gerenciada ou à sessão de terminal controlável, e conta como uso", async () => {
     const s = setup();
-    const snippet = s.prompt("revisar", "Revise {{file}} com cuidado.");
+    const snippet = await s.prompt("revisar", "Revise {{file}} com cuidado.");
     const managed = await s.use.use({
       id: snippet.id,
       action: "send",
@@ -273,13 +277,13 @@ describe("snippets-uso: enviar à sessão", () => {
       context: { file: "b.ts" },
     });
     expect(s.external).toEqual([["L1", "Revise b.ts com cuidado."]]);
-    expect(s.snippets.get(snippet.id).uses).toBe(2);
+    expect((await s.snippets.get(snippet.id)).uses).toBe(2);
   });
 
   test("a sessão: uma só, que exista e tenha canal; e o tipo certo para cada ação", async () => {
     const s = setup();
-    const prompt = s.prompt("oi", "Oi");
-    const command = s.host("ls", "ls -la");
+    const prompt = await s.prompt("oi", "Oi");
+    const command = await s.host("ls", "ls -la");
     const both = {
       id: prompt.id,
       action: "send" as const,
@@ -305,7 +309,7 @@ describe("snippets-uso: enviar à sessão", () => {
     expect(
       await codeOf(s.use.use({ id: prompt.id, action: "run", context: { cwd: s.project } })),
     ).toBe("bad_request");
-    expect(s.snippets.get(prompt.id).uses).toBe(0);
+    expect((await s.snippets.get(prompt.id)).uses).toBe(0);
   });
 
   test("um prompt do arquivo é enviado sem confiança", async () => {
@@ -346,14 +350,14 @@ describe("snippets-uso: pelo protocolo", () => {
   test("snippets.render e snippets.use", async () => {
     const s = setup();
     const { client, codeOfCall } = await connect(s);
-    const snippet = s.host("eco", "echo {{msg}}");
+    const snippet = await s.host("eco", "echo {{msg}}");
     expect(
       await client.data("snippets.render", { id: snippet.id, values: { msg: "oi" } }),
     ).toMatchObject({
       text: "echo oi",
       fields: [{ name: "msg", special: false }],
     });
-    const { terminalId } = s.terminals.open({ cwd: s.project, cols: 80, rows: 24 });
+    const { terminalId } = await s.terminals.open({ cwd: s.project, cols: 80, rows: 24 });
     expect(
       await client.data("snippets.use", {
         id: snippet.id,

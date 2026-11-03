@@ -23,14 +23,14 @@ function setup() {
 }
 
 describe("incremental", () => {
-  test("acrescentar linhas indexa só as novas, a partir do offset salvo", () => {
+  test("acrescentar linhas indexa só as novas, a partir do offset salvo", async () => {
     const { root, db, indexer } = setup();
     const first = userLine({ uuid: "u1", text: "Primeira pergunta", cwd: CWD });
     const path = writeTranscript(root, "-home-dev-projeto-inc", ID, [
       first,
       assistantLine({ uuid: "a1", text: "Primeira resposta", cwd: CWD }),
     ]);
-    expect(indexer.scan().map((r) => [r.claudeSessionId, r.added])).toEqual([[ID, 2]]);
+    expect((await indexer.scan()).map((r) => [r.claudeSessionId, r.added])).toEqual([[ID, 2]]);
     expect(fileRow(db, path)?.offset).toBe(statSync(path).size);
 
     // Rewrite bytes already read (same length): a pass that reread from 0 would pick this up.
@@ -41,7 +41,7 @@ describe("incremental", () => {
       path,
       `${userLine({ uuid: "u2", text: "Segunda com ação 😀", cwd: CWD })}\r\n${assistantLine({ uuid: "a2", text: "ok", cwd: CWD })}\n`,
     );
-    expect(indexer.scan().map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
+    expect((await indexer.scan()).map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
       [ID, 2, false],
     ]);
     expect(storedMessages(db, ID).map((m) => m.text)).toEqual([
@@ -53,26 +53,26 @@ describe("incremental", () => {
     // Offsets are bytes, multibyte text and CRLF included.
     expect(fileRow(db, path)?.offset).toBe(statSync(path).size);
     // Nothing new: nothing read.
-    expect(indexer.scan()).toEqual([]);
+    expect(await indexer.scan()).toEqual([]);
   });
 
-  test("uma última linha sem quebra final espera a próxima leitura", () => {
+  test("uma última linha sem quebra final espera a próxima leitura", async () => {
     const { root, db, indexer } = setup();
     const path = writeTranscript(root, "-p", ID, [
       userLine({ uuid: "u1", text: "completa", cwd: CWD }),
     ]);
-    indexer.scan();
+    await indexer.scan();
     const before = fileRow(db, path)?.offset ?? -1;
 
     const partial = assistantLine({ uuid: "a1", text: "meio escrita", cwd: CWD });
     appendRaw(path, partial.slice(0, 20));
-    expect(indexer.scan()).toEqual([]);
+    expect(await indexer.scan()).toEqual([]);
     expect(fileRow(db, path)?.offset).toBe(before);
     expect(fileRow(db, path)?.parse_errors).toBe(0);
     expect(storedMessages(db, ID).map((m) => m.uuid)).toEqual(["u1"]);
 
     appendRaw(path, `${partial.slice(20)}\n`);
-    expect(indexer.scan().map((r) => r.added)).toEqual([1]);
+    expect((await indexer.scan()).map((r) => r.added)).toEqual([1]);
     expect(storedMessages(db, ID).map((m) => [m.uuid, m.text])).toEqual([
       ["u1", "completa"],
       ["a1", "meio escrita"],
@@ -80,7 +80,7 @@ describe("incremental", () => {
     expect(fileRow(db, path)?.offset).toBe(statSync(path).size);
   });
 
-  test("linhas inválidas são contadas no arquivo; vários projetos e raízes", () => {
+  test("linhas inválidas são contadas no arquivo; vários projetos e raízes", async () => {
     const { root, db } = setup();
     const other = projectsRoot();
     const first = writeTranscript(root, "-a", "aaaa", [
@@ -90,10 +90,7 @@ describe("incremental", () => {
     writeTranscript(root, "-b", "bbbb", [userLine({ uuid: "u1", text: "dois", cwd: "/b" })]);
     writeTranscript(other, "-c", "cccc", [userLine({ uuid: "u1", text: "três", cwd: "/c" })]);
     const indexer = new HistoryIndexer({ db, roots: [root, other, `${root}-inexistente`] });
-    const ids = indexer
-      .scan()
-      .map((r) => r.claudeSessionId)
-      .sort();
+    const ids = (await indexer.scan()).map((r) => r.claudeSessionId).sort();
     expect(ids).toEqual(["aaaa", "bbbb", "cccc"]);
     expect(fileRow(db, first)?.parse_errors).toBe(1);
   });

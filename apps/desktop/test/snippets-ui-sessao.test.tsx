@@ -29,7 +29,11 @@ async function open() {
   await h.save({ name: "status", type: "command", run: "git status" });
   store.globalSnippets.save({ name: "resumir", type: "prompt", text: "Resuma o que mudou." });
   store.globalSnippets.save({ name: "traduzir", type: "prompt", text: "Traduza {{texto}}." });
-  const { sessionId } = h.d.manager.create({ cwd: h.d.project, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await h.d.manager.create({
+    cwd: h.d.project,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => h.d.manager.get(sessionId).status === "idle");
   render(<App store={store} />);
   await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("snippets") === true);

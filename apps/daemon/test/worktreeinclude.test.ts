@@ -100,4 +100,21 @@ describe("worktreeinclude", () => {
     const two = await without.board.addProject({ path: without.repo, promptTemplate: "" });
     expect([one.worktreeInclude, two.worktreeInclude]).toEqual([true, false]);
   });
+
+  test("an update and a listing tell the wire whether the project has a .worktreeinclude", async () => {
+    const withFile = boardWithSecrets(".env\n");
+    const without = boardWithSecrets(null);
+    const one = await withFile.board.addProject({ path: withFile.repo, promptTemplate: "" });
+    const two = await without.board.addProject({ path: without.repo, promptTemplate: "" });
+    // The synchronous reads of the board's own rows carry no file answer; the wire form does.
+    expect([
+      withFile.board.getProject(one.id).worktreeInclude,
+      without.board.getProject(two.id).worktreeInclude,
+    ]).toEqual([false, false]);
+    const updated = withFile.board.updateProject(one.id, { name: "renamed" });
+    expect((await withFile.board.forWire(updated)).worktreeInclude).toBe(true);
+    expect((await without.board.forWire(without.board.getProject(two.id))).worktreeInclude).toBe(
+      false,
+    );
+  });
 });

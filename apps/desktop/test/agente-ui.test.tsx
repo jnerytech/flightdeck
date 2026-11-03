@@ -135,7 +135,7 @@ async function setup(
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
   if (options.live) {
-    const { sessionId } = d.manager.create({ cwd: repo, prompt: "hi" });
+    const { sessionId } = await d.manager.create({ cwd: repo, prompt: "hi" });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   const server = d.listen();

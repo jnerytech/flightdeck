@@ -236,7 +236,7 @@ describe("orcamentos", () => {
     expect(
       (await cardWhen(ctx.board, free.id, (c) => c.sessionId !== null))?.queueReason,
     ).toBeNull();
-    const manual = ctx.manager.create({ cwd: ctx.repo, prompt: "oi" });
+    const manual = await ctx.manager.create({ cwd: ctx.repo, prompt: "oi" });
     expect(await poll(() => ctx.manager.get(manual.sessionId).status === "idle")).toBe(true);
     expect(ctx.board.getCard(held.id)).toMatchObject({ queued: true, queueReason: "budget" });
     budgets.set(raised(budget, 10));

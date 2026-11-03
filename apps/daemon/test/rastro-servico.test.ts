@@ -70,26 +70,34 @@ function setup(options: { indexed?: boolean; telemetry?: boolean } = {}) {
 }
 
 describe("rastro-modelo: the service", () => {
-  test("it reads the transcript and the subagents' from disk, and prices them from the usage entries", () => {
+  test("it reads the transcript and the subagents' from disk, and prices them from the usage entries", async () => {
     const { service } = setup();
-    const trace = service.get(SESSION);
+    const trace = await service.get(SESSION);
     expect(trace.turns.map((t) => t.id)).toEqual(["turn:1", "turn:2"]);
     expect(trace.costUsd).toBeCloseTo(0.87, 10);
     expect(trace.turns[0]?.children.map((c) => c.id)).toContain("agent:a1");
     expect(trace.slowest).toBe("agent:a2");
   });
 
-  test("a tool call's time is the telemetry's when the host has it", () => {
+  test("the trace is read without blocking: get returns a promise", async () => {
+    const pending = setup().service.get(SESSION);
+    expect(pending).toBeInstanceOf(Promise);
+    await pending;
+  });
+
+  test("a tool call's time is the telemetry's when the host has it", async () => {
     const { service } = setup({ telemetry: true });
-    const bash = service.get(SESSION).turns[0]?.children.find((c) => c.id === "tool:toolu_2");
+    const bash = (await service.get(SESSION)).turns[0]?.children.find(
+      (c) => c.id === "tool:toolu_2",
+    );
     expect(bash?.durationMs).toBe(9_500);
   });
 
-  test("a session that is not indexed, or whose file is gone, is refused with the reason the app knows", () => {
+  test("a session that is not indexed, or whose file is gone, is refused with the reason the app knows", async () => {
     const { service } = setup({ indexed: false });
     let error: unknown;
     try {
-      service.get(SESSION);
+      await service.get(SESSION);
     } catch (e) {
       error = e;
     }
@@ -97,14 +105,14 @@ describe("rastro-modelo: the service", () => {
     expect((error as FlightdeckError).reason).toBe("transcript_not_indexed");
     const gone = setup();
     gone.db.query("UPDATE history_sessions SET file_path = '/nowhere/x.jsonl'").run();
-    expect(() => gone.service.get(SESSION)).toThrow(FlightdeckError);
+    await expect(gone.service.get(SESSION)).rejects.toThrow(FlightdeckError);
   });
 
-  test("a session without a subagents folder is just its own turns", () => {
+  test("a session without a subagents folder is just its own turns", async () => {
     const { db, project } = setup();
     rmSync(join(project, SESSION), { recursive: true });
     const bare = new TraceService({ db, scanner: new SecretScanner() });
-    const trace = bare.get(SESSION);
+    const trace = await bare.get(SESSION);
     expect(trace.turns).toHaveLength(2);
     // The calls that started subagents stay plain tool calls.
     expect(trace.turns[0]?.children.map((c) => c.kind)).toEqual([

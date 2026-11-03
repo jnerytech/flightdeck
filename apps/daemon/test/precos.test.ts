@@ -167,7 +167,7 @@ describe("precos", () => {
       models: { "claude-mystery-9": { input: M, output: 0, cacheRead: 0 } },
       fastMultiplier: { "claude-opus-5-5": 1 },
     });
-    expect(costs.reprice()).toEqual({ entries: 5 });
+    expect(await costs.reprice()).toEqual({ entries: 5 });
     const after = costById(db);
     expect(after.msg_A ?? 0).toBeCloseTo(0.0037, 12);
     expect(after.msg_B ?? 0).toBeCloseTo(0.00044, 12);

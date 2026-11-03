@@ -255,7 +255,11 @@ describe("aprovacao-ui", () => {
     const project = await d.board.addProject({ path: repo, promptTemplate: "" });
     const card = d.board.createCard(project.id, { title: "Testar", description: "[bash]" });
     await d.board.startCard(card.id);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Pedinte" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "[bash]",
+      name: "Pedinte",
+    });
     await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
     const requestId = d.manager.pendingPermissions(sessionId)[0]?.requestId ?? "";
 
@@ -273,11 +277,11 @@ describe("aprovacao-ui", () => {
     const hostId = store.getState().hosts[0]?.id ?? "";
 
     // A terminal session asking for Edit (the app watches, so the receptor holds it).
-    d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    await d.central.hooksInstall(true);
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({ session_id: "ext-1", hook_event_name: event, cwd: repo, ...body }),
       }).catch(() => undefined);
     await hook("SessionStart", {});
@@ -400,17 +404,17 @@ describe("aprovacao-ui", () => {
 
   test("a fila mostra o resumo de uma ferramenta MCP em chave e valor", async () => {
     const d = makeDaemon(cleanups);
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
-    const hook = (event: string, body: object) =>
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({
           session_id: "ext-m",
           hook_event_name: event,
@@ -436,7 +440,7 @@ describe("aprovacao-ui", () => {
 
   test("na sessão do terminal, Copiar pasta copia a pasta inteira do pedido de Bash", async () => {
     const d = makeDaemon(cleanups);
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     const mem = memoryPlatform();
     const copied: string[] = [];
     mem.platform.copyText = async (text) => {
@@ -449,10 +453,10 @@ describe("aprovacao-ui", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
-    const hook = (event: string, body: object) =>
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({
           session_id: "ext-b",
           hook_event_name: event,

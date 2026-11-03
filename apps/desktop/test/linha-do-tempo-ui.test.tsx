@@ -55,7 +55,7 @@ async function setup(options: { checkpoints?: boolean; git?: boolean } = {}) {
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "inicial");
   }
-  const { sessionId } = d.manager.create({ cwd: repo, prompt: "oi", name: "Alpha" });
+  const { sessionId } = await d.manager.create({ cwd: repo, prompt: "oi", name: "Alpha" });
   await poll(() => d.manager.get(sessionId).status === "idle");
   await d.snapshots?.idle();
   const claudeSessionId = d.manager.get(sessionId).claudeSessionId as string;
@@ -400,11 +400,11 @@ describe("linha-do-tempo-ui", () => {
     writeFileSync(join(repo, "README.md"), "# repo\n");
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "inicial");
-    d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    await d.central.hooksInstall(true);
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({ session_id: "ext-1", hook_event_name: event, cwd: repo, ...body }),
       });
     await hook("SessionStart", {});
@@ -416,7 +416,7 @@ describe("linha-do-tempo-ui", () => {
     writeTranscript(d.historyRoot, "-p", "ext-1", [
       userLine({ uuid: "u-ext", text: "arrume o README", cwd: repo }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {

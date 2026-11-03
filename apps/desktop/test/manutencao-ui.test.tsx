@@ -76,7 +76,7 @@ const click = async (name: string) => {
 
 /** An ended session with a few events, past the retention of 0 days. */
 async function endedSession(d: Awaited<ReturnType<typeof setup>>) {
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Antiga" });
+  const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Antiga" });
   await poll(() => d.manager.get(sessionId).status === "idle", "sessão ociosa");
   await d.manager.close(sessionId);
   await poll(() => d.manager.get(sessionId).status === "ended", "sessão encerrada");
@@ -167,7 +167,7 @@ describe("manutencao-ui", () => {
     });
     await waitFor(() => expect(text()).toContain("conversa removida pela retenção"));
     // A session with its events keeps showing them.
-    const kept = d.manager.create({ cwd: d.project, prompt: "fica", name: "Nova" });
+    const kept = await d.manager.create({ cwd: d.project, prompt: "fica", name: "Nova" });
     await poll(() => d.manager.get(kept.sessionId).status === "idle", "sessão ociosa");
     await act(async () => {
       d.store.select(d.hostId, kept.sessionId);

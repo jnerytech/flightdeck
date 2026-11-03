@@ -54,9 +54,9 @@ function setup(indexed = true) {
 }
 
 describe("resumo-protocolo: the service", () => {
-  test("it reads the transcript from disk and prices it from the usage entries", () => {
+  test("it reads the transcript from disk and prices it from the usage entries", async () => {
     const { service } = setup();
-    expect(service.get(SESSION, { question: "Run it?", state: "waiting" })).toEqual({
+    expect(await service.get(SESSION, { question: "Run it?", state: "waiting" })).toEqual({
       asked: "Add a retry",
       done: "Retry added.",
       files: ["/r/queue.ts"],
@@ -68,14 +68,20 @@ describe("resumo-protocolo: the service", () => {
     });
   });
 
-  test("without a question or a state they are null and idle", () => {
-    const summary = setup().service.get(SESSION);
+  test("without a question or a state they are null and idle", async () => {
+    const summary = await setup().service.get(SESSION);
     expect(summary.question).toBeNull();
     expect(summary.state).toBe("idle");
   });
 
-  test("a transcript that is not indexed is not found", () => {
-    expect(() => setup(false).service.get(SESSION)).toThrow(/not indexed/);
+  test("the summary is read without blocking: get returns a promise", async () => {
+    const pending = setup().service.get(SESSION);
+    expect(pending).toBeInstanceOf(Promise);
+    await pending;
+  });
+
+  test("a transcript that is not indexed is not found", async () => {
+    await expect(setup(false).service.get(SESSION)).rejects.toThrow(/not indexed/);
   });
 });
 
@@ -121,7 +127,7 @@ describe("resumo-protocolo: over the protocol", () => {
     expect(ack.error?.reason).toBe("feature_off");
   });
 
-  test("the command checks its payload", () => {
+  test("the command checks its payload", async () => {
     const parse = (payload: unknown) =>
       Command.safeParse({ id: "1", type: "session.summary", payload }).success;
     expect(parse({ claudeSessionId: SESSION })).toBe(true);
@@ -130,7 +136,7 @@ describe("resumo-protocolo: over the protocol", () => {
     expect(parse({ claudeSessionId: SESSION, extra: 1 })).toBe(false);
   });
 
-  test("a summary that does not fit the schema is refused", () => {
+  test("a summary that does not fit the schema is refused", async () => {
     expect(SessionRecap.safeParse({ asked: "x" }).success).toBe(false);
   });
 });

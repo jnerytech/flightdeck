@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { hostname } from "node:os";
+import { hostname, release } from "node:os";
 
 /** What tells a process it runs inside WSL: its environment and `/proc/version`. */
 export interface WslProbe {
@@ -8,10 +7,12 @@ export interface WslProbe {
   procVersion(): string | null;
 }
 
-/** The text of `/proc/version`, or null when it cannot be read (not Linux, or no access). */
-export function readProcVersion(
-  read: (path: string) => string = (path) => readFileSync(path, "utf8"),
-): string | null {
+/**
+ * The kernel version text that names Microsoft under WSL, or null when it cannot be read. By
+ * default it is the kernel release (`uname -r`, the same text as the start of `/proc/version`),
+ * so no file is read synchronously.
+ */
+export function readProcVersion(read: (path: string) => string = () => release()): string | null {
   try {
     return read("/proc/version");
   } catch {

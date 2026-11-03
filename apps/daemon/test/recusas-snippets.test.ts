@@ -41,7 +41,7 @@ describe("recusas-snippets: the snippet store says why", () => {
     );
     expect((await refused(() => snippets.get("nada"))).reason).toBe("not_found");
     expect((await refused(() => snippets.find("nada"))).reason).toBe("not_found");
-    const saved = snippets.save({ scope: "host", ...PROMPT });
+    const saved = await snippets.save({ scope: "host", ...PROMPT });
     expect(await refused(() => snippets.save({ scope: "host", ...PROMPT }))).toMatchObject({
       reason: "name_taken",
       params: { name: "revisar" },
@@ -53,7 +53,7 @@ describe("recusas-snippets: the snippet store says why", () => {
         )
       ).reason,
     ).toBe("snippet_scope_fixed");
-    const inFile = snippets.save({
+    const inFile = await snippets.save({
       scope: "project",
       projectPath: project,
       target: "file",
@@ -93,7 +93,7 @@ describe("recusas-snippets: the snippet store says why", () => {
 });
 
 describe("recusas-snippets: using one says why", () => {
-  function usage(withTerminals = false) {
+  async function usage(withTerminals = false) {
     const ctx = setup();
     const { manager } = newManager();
     const terminals = withTerminals
@@ -104,18 +104,23 @@ describe("recusas-snippets: using one says why", () => {
       manager,
       ...(terminals ? { terminals } : {}),
     } as never);
-    const prompt = ctx.snippets.save({
+    const prompt = await ctx.snippets.save({
       scope: "host",
       name: "plain",
       type: "prompt",
       text: "Revise tudo.",
     });
-    const command = ctx.snippets.save({ scope: "host", name: "rodar", type: "command", run: "ls" });
+    const command = await ctx.snippets.save({
+      scope: "host",
+      name: "rodar",
+      type: "command",
+      run: "ls",
+    });
     return { ...ctx, use, prompt, command };
   }
 
   test("an action that does not fit the kind of snippet", async () => {
-    const { use, prompt, command } = usage();
+    const { use, prompt, command } = await usage();
     expect((await refused(() => use.use({ id: command.id, action: "send" } as never))).reason).toBe(
       "snippet_is_command",
     );
@@ -125,7 +130,7 @@ describe("recusas-snippets: using one says why", () => {
   });
 
   test("terminals and targets", async () => {
-    const { use, prompt, command } = usage();
+    const { use, prompt, command } = await usage();
     expect(
       (await refused(() => use.use({ id: command.id, action: "paste", terminalId: "t" } as never)))
         .reason,
@@ -145,7 +150,7 @@ describe("recusas-snippets: using one says why", () => {
         )
       ).reason,
     ).toBe("session_not_found");
-    const withT = usage(true);
+    const withT = await usage(true);
     expect(
       (await refused(() => withT.use.use({ id: withT.command.id, action: "paste" } as never)))
         .reason,

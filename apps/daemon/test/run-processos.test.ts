@@ -20,9 +20,9 @@ function realm() {
 }
 
 describe("run-processos: cada processo é uma aba do terminal do host", () => {
-  test("abre o argv sem shell na worktree, com o ambiente do Run, e devolve a aba", () => {
+  test("abre o argv sem shell na worktree, com o ambiente do Run, e devolve a aba", async () => {
     const r = realm();
-    const started = r.host.spawn({
+    const started = await r.host.spawn({
       argv: ["serve", "--port", "41000"],
       cwd: r.project,
       env: { FLIGHTDECK_PORT_WEB: "41000" },
@@ -38,7 +38,7 @@ describe("run-processos: cada processo é uma aba do terminal do host", () => {
 
   test("exited traz o código de saída do processo", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     r.ptys.spawned[0]?.exit(7);
     expect(await started.exited).toBe(7);
   });
@@ -53,7 +53,7 @@ describe("run-processos: cada processo é uma aba do terminal do host", () => {
 describe("run-processos: o Stop encerra a árvore", () => {
   test("a árvore cai primeiro, e o terminal é encerrado: o filho que ignora SIGHUP e SIGTERM não escapa", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     const pty = r.ptys.spawned[0];
     void r.host.kill(started.terminalId);
     expect(r.treeKilled).toEqual([pty?.pid ?? -1]);
@@ -63,7 +63,7 @@ describe("run-processos: o Stop encerra a árvore", () => {
 
   test("matar uma aba que já acabou, ou que não existe, não derruba nada", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     r.ptys.spawned[0]?.exit(0);
     await started.exited;
     void r.host.kill(started.terminalId);
@@ -73,7 +73,7 @@ describe("run-processos: o Stop encerra a árvore", () => {
 
   test("o gerenciador diz o pid de um terminal vivo, e nada de um que acabou ou não existe", async () => {
     const r = realm();
-    const started = r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
+    const started = await r.host.spawn({ argv: ["serve"], cwd: r.project, env: {} });
     expect(r.manager.pidOf(started.terminalId)).toBe(r.ptys.spawned[0]?.pid ?? -1);
     expect(r.manager.pidOf("nenhuma")).toBeNull();
     r.ptys.spawned[0]?.exit(0);

@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { appendFile, mkdir, readlink as readLink, rm, writeFile } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
 import { dirname } from "node:path";
 import { userHome } from "./config.ts";
@@ -21,15 +21,15 @@ export function isServiceController(cmd: string[]): boolean {
  * Tests set `FLIGHTDECK_SERVICE_GUARD` to a file: service commands are then recorded there and
  * never run (the preload fails the suite if any was attempted).
  */
-const guardedExec: typeof spawnExec = (cmd) => {
+const guardedExec: typeof spawnExec = async (cmd) => {
   const guard = process.env.FLIGHTDECK_SERVICE_GUARD;
   if (!guard || !isServiceController(cmd)) return spawnExec(cmd);
-  appendFileSync(
+  await appendFile(
     guard,
     `${cmd.join(" ")}
 `,
   );
-  return Promise.resolve({ code: 99, stdout: "" });
+  return { code: 99, stdout: "" };
 };
 
 /** The real `ServiceContext`; `overrides` only exist so tests can exercise the Windows branch. */
@@ -48,13 +48,13 @@ export function osServiceContext(
     tempDir: tmpdir(),
     dryRun,
     exec: guardedExec,
-    writeFile(path, content) {
-      mkdirSync(dirname(path), { recursive: true });
+    async writeFile(path, content) {
+      await mkdir(dirname(path), { recursive: true });
       // Task Scheduler expects the XML in UTF-16 (the declaration says so) with a BOM.
-      if (path.endsWith(".xml")) writeFileSync(path, `\ufeff${content}`, "utf16le");
-      else writeFileSync(path, content);
+      if (path.endsWith(".xml")) await writeFile(path, `\ufeff${content}`, "utf16le");
+      else await writeFile(path, content);
     },
-    removeFile: (path) => rmSync(path, { force: true }),
+    removeFile: (path) => rm(path, { force: true }),
     which: whichOnPath,
   };
 }
@@ -66,7 +66,7 @@ export function osServiceContext(
 export async function processPath(
   pid: number,
   platform: string = process.platform,
-  readlink: (path: string) => string = readlinkSync,
+  readlink: (path: string) => string | Promise<string> = readLink,
   exec: Exec = spawnExec,
 ): Promise<string | null> {
   if (platform === "win32") {
@@ -81,7 +81,7 @@ export async function processPath(
     return stdout.trim() || null;
   }
   try {
-    return readlink(`/proc/${pid}/exe`);
+    return await readlink(`/proc/${pid}/exe`);
   } catch {
     return null;
   }

@@ -65,7 +65,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
     }
     const index = new HistoryIndexer({ db: new EventStore(":memory:").db, roots: [root] });
     cleanups.push(() => index.stop());
-    index.scan();
+    await index.scan();
     const { keys, calls } = countingKeys();
     const { manager } = newManager();
     const server = startServer({
@@ -95,7 +95,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
     for (let i = 0; i < FOLDERS; i++) {
       const cwd = join(root, `folder-${i}`);
       mkdirSync(cwd);
-      manager.create({ cwd, prompt: "hi" });
+      await manager.create({ cwd, prompt: "hi" });
     }
     const { keys, calls } = countingKeys();
     const server = startServer({
@@ -145,7 +145,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
     for (let i = 0; i < FOLDERS; i++) {
       const cwd = join(root, `folder-${i}`);
       mkdirSync(cwd);
-      manager.create({ cwd, prompt: "hi" });
+      await manager.create({ cwd, prompt: "hi" });
       hub.external.apply("SessionStart", { session_id: `x${i}`, cwd: join(root, `ext-${i}`) });
     }
     const endpoints = new LocalEndpoints({

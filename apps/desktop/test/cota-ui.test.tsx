@@ -165,7 +165,7 @@ describe("cota-ui", () => {
 
   test("painel de uso do host: últimos 7 dias, por dia e projeto", async () => {
     const { manager, project, store } = await online();
-    const { sessionId } = manager.create({ cwd: project, prompt: "[cost:0.5]" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "[cost:0.5]" });
     await settle(() => manager.get(sessionId).status === "idle");
     await click("Abrir host alfa");
     await settle(() =>

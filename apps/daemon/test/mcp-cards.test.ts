@@ -55,8 +55,8 @@ async function setup() {
     const error = ack.error as { code?: string; reason?: string };
     return `${error.code}/${error.reason}`;
   };
-  const free = ctx.manager.create({ cwd: ctx.repo, prompt: "solta" }).sessionId;
-  const lost = ctx.manager.create({ cwd: ctx.root, prompt: "fora" }).sessionId;
+  const free = (await ctx.manager.create({ cwd: ctx.repo, prompt: "solta" })).sessionId;
+  const lost = (await ctx.manager.create({ cwd: ctx.root, prompt: "fora" })).sessionId;
   return { ...ctx, mine, sibling, foreign, sessionId, free, lost, manage, server };
 }
 

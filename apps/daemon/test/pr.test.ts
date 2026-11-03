@@ -259,7 +259,7 @@ describe("pr: erros e configuração", () => {
       file,
       JSON.stringify({ token: "t".repeat(32), board: { prPollIntervalMs: 500 } }),
     );
-    expect(loadConfig(file).board.prPollIntervalMs).toBe(500);
+    expect((await loadConfig(file)).board.prPollIntervalMs).toBe(500);
     expect(Config.parse({}).board.prPollIntervalMs).toBeUndefined();
   });
 });

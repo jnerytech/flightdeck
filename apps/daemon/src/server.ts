@@ -74,6 +74,7 @@ import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import { resolveAllowedCwd } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
+import { preparePersonas } from "./personas/prepare.ts";
 import type { Personas } from "./personas/store.ts";
 import type { Plugins } from "./plugins/plugins.ts";
 import { cloneRepo, type GitRunner, scanRepos, spawnGit } from "./project-find.ts";
@@ -133,9 +134,9 @@ export interface ServerOptions {
   token: string;
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
-  bypass?: { allowed(): boolean; set(allow: boolean): void };
+  bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
   /** Keeps the allowed folders in the config file after `roots.add`. */
-  persistRoots?: (roots: readonly string[]) => void;
+  persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
@@ -260,7 +261,7 @@ export interface ServerOptions {
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
   /** Called after `terminal.settings` changes whether terminals are on (the config keeps it). */
-  onTerminalSettings?: (enabled: boolean) => void;
+  onTerminalSettings?: (enabled: boolean) => void | Promise<void>;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -869,10 +870,15 @@ export function startServer(opts: ServerOptions): RunningServer {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
         if (opts.warmProjectKey) {
-          const cwd = resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
+          const cwd = await resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
           await opts.warmProjectKey(cwd);
         }
-        return ok(command.type, manager.create(command.payload));
+        const prepared = await preparePersonas(
+          opts.personas,
+          command.payload.persona,
+          command.payload.cwd,
+        );
+        return ok(command.type, await manager.create(command.payload, { prepared }));
       }
       case "session.send":
         return ok(
@@ -948,11 +954,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { claudeSessionId, ...meta });
       }
       case "maintenance.status":
-        return ok(command.type, maintenance().status());
+        return ok(command.type, await maintenance().status());
       case "maintenance.backup":
-        return ok(command.type, maintenance().backupNow());
+        return ok(command.type, await maintenance().backupNow());
       case "maintenance.prune":
-        return ok(command.type, maintenance().prune(command.payload.dryRun === true));
+        return ok(command.type, await maintenance().prune(command.payload.dryRun === true));
       case "snapshots.list":
         return ok(command.type, {
           // A terminal turn's uuid is found in the indexed transcript, when it can be told.
@@ -1106,7 +1112,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { sessions: messaging().sessions(command.payload.as) });
       case "messages.read": {
         const { as, session, last } = command.payload;
-        return ok(command.type, messaging().read(as, session, last));
+        return ok(command.type, await messaging().read(as, session, last));
       }
       case "messages.relay":
         return ok(command.type, messaging().relay(command.payload.message));
@@ -1334,11 +1340,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return;
       }
       case "hooks.status":
-        return ok(command.type, central().hooksStatus());
+        return ok(command.type, await central().hooksStatus());
       case "hooks.install":
-        return ok(command.type, central().hooksInstall(command.payload.confirm === true));
+        return ok(command.type, await central().hooksInstall(command.payload.confirm === true));
       case "hooks.uninstall":
-        return ok(command.type, central().hooksUninstall(command.payload.confirm === true));
+        return ok(command.type, await central().hooksUninstall(command.payload.confirm === true));
       case "external.list": {
         const { external, meta } = central();
         const sessions = external
@@ -1405,7 +1411,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "history.get": {
         const { claudeSessionId, cursor, limit } = command.payload;
-        return ok(command.type, history().get(claudeSessionId, cursor, limit));
+        return ok(command.type, await history().get(claudeSessionId, cursor, limit));
       }
       case "history.search": {
         const index = history();
@@ -1433,11 +1439,13 @@ export function startServer(opts: ServerOptions): RunningServer {
             "session_maybe_active",
           );
         }
+        const { agents } = await preparePersonas(opts.personas, undefined, session.cwd);
         return ok(
           command.type,
-          manager.createResumed({
+          await manager.createResumed({
             cwd: session.cwd,
             claudeSessionId,
+            agents,
             name: name ?? session.title,
             ...(permissionMode ? { permissionMode } : {}),
           }),
@@ -1456,15 +1464,15 @@ export function startServer(opts: ServerOptions): RunningServer {
           projects: await Promise.all(
             board()
               .listProjects()
-              .map((p) => board().withKey(p)),
+              .map((p) => board().forWire(p)),
           ),
           maxParallelRuns: board().maxParallelRuns,
         });
       case "project.add":
-        return ok(command.type, await board().withKey(await board().addProject(command.payload)));
+        return ok(command.type, await board().forWire(await board().addProject(command.payload)));
       case "project.update": {
         const { projectId, ...patch } = command.payload;
-        return ok(command.type, await board().withKey(board().updateProject(projectId, patch)));
+        return ok(command.type, await board().forWire(board().updateProject(projectId, patch)));
       }
       case "board.get":
         return ok(command.type, board().getBoard(command.payload.projectId));
@@ -1472,7 +1480,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
         return ok(command.type, {
-          allowedRoots: addAllowedRoot(
+          allowedRoots: await addAllowedRoot(
             opts.allowedRoots as string[],
             path,
             confirm === true,
@@ -1492,12 +1500,12 @@ export function startServer(opts: ServerOptions): RunningServer {
             "bypass_confirm",
           );
         }
-        opts.bypass.set(allow);
+        await opts.bypass.set(allow);
         return ok(command.type, { allowBypassPermissions: allow });
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
-        if (maxParallelRuns !== undefined) board().setMaxParallelRuns(maxParallelRuns);
+        if (maxParallelRuns !== undefined) await board().setMaxParallelRuns(maxParallelRuns);
         return ok(command.type, { maxParallelRuns: board().maxParallelRuns });
       }
       case "board.watch": {
@@ -1552,7 +1560,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "costs.status":
         return ok(command.type, costs().status());
       case "costs.reprice":
-        return ok(command.type, costs().reprice());
+        return ok(command.type, await costs().reprice());
       case "costs.summary":
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
@@ -1571,20 +1579,20 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
-        return ok(command.type, summary().get(claudeSessionId, { question, state }));
+        return ok(command.type, await summary().get(claudeSessionId, { question, state }));
       }
       case "trace.get":
-        return ok(command.type, trace().get(command.payload.claudeSessionId));
+        return ok(command.type, await trace().get(command.payload.claudeSessionId));
       case "trace.export": {
         const { claudeSessionId, includeContent } = command.payload;
-        return ok(command.type, trace().export(claudeSessionId, includeContent === true));
+        return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
       }
       case "telemetry.status":
-        return ok(command.type, optIn().status());
+        return ok(command.type, await optIn().status());
       case "telemetry.install":
-        return ok(command.type, optIn().install(command.payload.confirm === true));
+        return ok(command.type, await optIn().install(command.payload.confirm === true));
       case "telemetry.uninstall":
-        return ok(command.type, optIn().uninstall(command.payload.confirm === true));
+        return ok(command.type, await optIn().uninstall(command.payload.confirm === true));
       case "telemetry.summary":
         return ok(command.type, telemetry().summary());
       case "costs.session":
@@ -1618,7 +1626,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { path, hidden } = command.payload;
         return ok(
           command.type,
-          listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
+          await listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
       case "projects.scan": {
@@ -1639,7 +1647,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { path, hidden } = command.payload;
         return ok(
           command.type,
-          listFiles(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
+          await listFiles(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
       case "session.files":
@@ -1660,7 +1668,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cwd, command: argv, claude, cols, rows } = command.payload;
         return ok(
           command.type,
-          terminals().open({
+          await terminals().open({
             cwd,
             ...(argv ? { command: argv } : {}),
             ...(claude ? { claude } : {}),
@@ -1705,7 +1713,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           );
         }
         manager.setEnabled(enabled);
-        opts.onTerminalSettings?.(enabled);
+        await opts.onTerminalSettings?.(enabled);
         return ok(command.type, manager.settings());
       }
       case "pr.comments":
@@ -1743,42 +1751,45 @@ export function startServer(opts: ServerOptions): RunningServer {
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
       case "snippets.list":
-        return ok(command.type, snippets().list(command.payload));
+        return ok(command.type, await snippets().list(command.payload));
       case "snippets.save":
-        return ok(command.type, snippets().save(command.payload));
+        return ok(command.type, await snippets().save(command.payload));
       case "snippets.get": {
         const { id, name, projectPath } = command.payload;
         return ok(
           command.type,
-          id ? snippets().get(id) : snippets().find(name as string, projectPath),
+          id ? await snippets().get(id) : await snippets().find(name as string, projectPath),
         );
       }
       case "snippets.remove":
-        snippets().remove(command.payload.id);
+        await snippets().remove(command.payload.id);
         return ok(command.type);
       case "snippets.trust":
         return ok(
           command.type,
-          snippets().trust(command.payload.projectPath, command.payload.hash),
+          await snippets().trust(command.payload.projectPath, command.payload.hash),
         );
       case "snippets.favorite":
-        return ok(command.type, snippets().favorite(command.payload.id, command.payload.favorite));
+        return ok(
+          command.type,
+          await snippets().favorite(command.payload.id, command.payload.favorite),
+        );
       case "snippets.parse":
         return ok(command.type, snippets().parse(command.payload.text));
       case "snippets.importHistory": {
         const { limit, reveal, select } = command.payload;
         const importer = snippetHistory();
-        const done = select ? importer.import(select) : { created: [], skipped: [] };
-        const preview = importer.preview({
+        const done = select ? await importer.import(select) : { created: [], skipped: [] };
+        const preview = await importer.preview({
           ...(limit ? { limit } : {}),
           ...(reveal ? { reveal } : {}),
         });
         return ok(command.type, { ...preview, ...done });
       }
       case "personas.list":
-        return ok(command.type, personas().list(command.payload));
+        return ok(command.type, await personas().list(command.payload));
       case "personas.save":
-        return ok(command.type, personas().save(command.payload));
+        return ok(command.type, await personas().save(command.payload));
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1790,7 +1801,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await personaSessions().clear(command.payload));
       case "personas.subagents": {
         const { projectPath, language } = command.payload;
-        return ok(command.type, personas().subagents({ projectPath, language }));
+        return ok(command.type, await personas().subagents({ projectPath, language }));
       }
       case "personas.publishAgent":
         return ok(command.type, await personas().publishAgent(command.payload));
@@ -1798,11 +1809,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { ref, projectPath } = command.payload;
         const store = personas();
         try {
-          return ok(command.type, store.resolve(ref, { projectPath, language: ref.language }));
+          return ok(
+            command.type,
+            await store.resolve(ref, { projectPath, language: ref.language }),
+          );
         } catch (error) {
           // A folder the daemon does not allow has no personas of its own: the host's and the pack's apply.
           if (projectPath && error instanceof FlightdeckError && error.code === "forbidden_cwd") {
-            return ok(command.type, store.resolve(ref, { language: ref.language }));
+            return ok(command.type, await store.resolve(ref, { language: ref.language }));
           }
           throw error;
         }
@@ -1813,12 +1827,20 @@ export function startServer(opts: ServerOptions): RunningServer {
           personas().reset(command.payload.id, { language: command.payload.language }),
         );
       case "personas.remove":
-        personas().remove(command.payload.scope, command.payload.id, command.payload.projectPath);
+        await personas().remove(
+          command.payload.scope,
+          command.payload.id,
+          command.payload.projectPath,
+        );
         return ok(command.type);
       case "personas.trust":
         return ok(
           command.type,
-          personas().trust(command.payload.projectPath, command.payload.id, command.payload.hash),
+          await personas().trust(
+            command.payload.projectPath,
+            command.payload.id,
+            command.payload.hash,
+          ),
         );
       case "snippets.render":
         return ok(command.type, await snippetUse().render(command.payload));
@@ -1860,9 +1882,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.hostkey.forget":
         return ok(command.type, sshHostKeys().forget(command.payload.targetId));
       case "ssh.import.preview":
-        return ok(command.type, sshImport().preview());
+        return ok(command.type, await sshImport().preview());
       case "ssh.import.apply":
-        return ok(command.type, sshImport().apply(command.payload.aliases));
+        return ok(command.type, await sshImport().apply(command.payload.aliases));
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });
       case "review.add":

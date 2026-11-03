@@ -2,6 +2,7 @@
  * Phase 21: teams. A coordinator session and workers with cards of their own, started together
  * with the instructions of coordination, paused by the plan quota and resumed with it.
  */
+
 import type { Database } from "bun:sqlite";
 import type {
   MessageInfo,
@@ -14,6 +15,7 @@ import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
 import { MANAGED_STATE } from "../messaging/endpoints.ts";
 import type { Messaging } from "../messaging/messages.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
@@ -29,7 +31,9 @@ export const COORDINATOR_PERSONA = "coordenador";
 
 /** The personas of phase 20 plug in here. */
 export interface TeamPersonas {
-  resolve(id: string): { id: string; name: string } | null;
+  resolve(
+    id: string,
+  ): { id: string; name: string } | null | Promise<{ id: string; name: string } | null>;
 }
 
 export interface TeamsOptions {
@@ -53,9 +57,9 @@ export interface TeamsOptions {
     name: string;
     persona: string | null;
     model: string | null;
-  }) => {
-    sessionId: string;
-  };
+  }) => { sessionId: string } | Promise<{ sessionId: string }>;
+  /** Reads the personas for the coordinator when `startCoordinator` is not given. */
+  preparePersonas?: Prepare;
   /** Starts a worker's card; phase 20 passes the persona on. */
   startWorker?: (cardId: string, persona: string | null, model: string | null) => Promise<unknown>;
   /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
@@ -260,9 +264,9 @@ export class Teams {
 
   // --- creating ---
 
-  private checkPersona(id: string | null | undefined): string | null {
+  private async checkPersona(id: string | null | undefined): Promise<string | null> {
     if (id === null || id === undefined) return null;
-    const found = this.opts.personas?.resolve(id);
+    const found = await this.opts.personas?.resolve(id);
     if (!found) throw bad(`a persona ${id} não existe`, "persona_unknown", { persona: id });
     return found.id;
   }
@@ -305,11 +309,14 @@ export class Teams {
       );
     }
     // The spec's coordinator is the pack's `coordenador` (phase 20) when none is asked for.
-    const coordinatorPersona = this.checkPersona(
+    const coordinatorPersona = await this.checkPersona(
       input.coordinatorPersona ??
-        (this.opts.personas?.resolve(COORDINATOR_PERSONA) ? COORDINATOR_PERSONA : undefined),
+        ((await this.opts.personas?.resolve(COORDINATOR_PERSONA))
+          ? COORDINATOR_PERSONA
+          : undefined),
     );
-    const workerPersonas = (input.workerPersonas ?? []).map((p) => this.checkPersona(p));
+    const workerPersonas: Array<string | null> = [];
+    for (const p of input.workerPersonas ?? []) workerPersonas.push(await this.checkPersona(p));
     const coordinatorModel = input.coordinatorModel ?? null;
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
@@ -330,17 +337,20 @@ export class Teams {
     });
     const startCoordinator =
       this.opts.startCoordinator ??
-      ((start: { cwd: string; prompt: string; name: string; model: string | null }) =>
-        this.opts.manager.create({
-          cwd: start.cwd,
-          prompt: start.prompt,
-          name: start.name,
-          ...(start.model ? { model: start.model } : {}),
-        }));
+      (async (start: { cwd: string; prompt: string; name: string; model: string | null }) =>
+        this.opts.manager.create(
+          {
+            cwd: start.cwd,
+            prompt: start.prompt,
+            name: start.name,
+            ...(start.model ? { model: start.model } : {}),
+          },
+          { prepared: await (this.opts.preparePersonas ?? withoutPersonas)(undefined, start.cwd) },
+        ));
     const coordinatorName = `${label(name)} · coordenadora`;
     // The session is named as it starts, and its persona is set on that name right below.
     await this.opts.warm?.(project.path);
-    const { sessionId } = startCoordinator({
+    const { sessionId } = await startCoordinator({
       cwd: project.path,
       prompt,
       name: coordinatorName,
@@ -479,13 +489,13 @@ export class Teams {
   }
 
   /** Gives a member another persona: stored, applied to its open session and to its name. */
-  private changePersona(
+  private async changePersona(
     row: Row,
     info: TeamInfo,
     change: { member: string; persona: string | null },
   ) {
     const target = this.find(info, change.member);
-    const persona = this.checkPersona(change.persona);
+    const persona = await this.checkPersona(change.persona);
     const members = this.stored(this.row(row.id)).map((m) =>
       m.name === target.name ? { ...m, persona } : m,
     );
@@ -583,7 +593,7 @@ export class Teams {
           : "Os comandos de verificação do time voltaram a ser os checks do projeto.",
       );
     }
-    if (patch.persona) this.changePersona(row, info, patch.persona);
+    if (patch.persona) await this.changePersona(row, info, patch.persona);
     if (patch.addWorkers || patch.addMember) {
       if (row.state === "paused") {
         throw invalid(
@@ -599,7 +609,7 @@ export class Teams {
       await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
     if (patch.addMember) {
       const spec = {
-        persona: this.checkPersona(patch.addMember.persona),
+        persona: await this.checkPersona(patch.addMember.persona),
         model: patch.addMember.model ?? null,
       };
       await this.addWorkers(row, 1, coordinator, tellCoordinator, spec);

@@ -411,7 +411,7 @@ describe("auto-aprovacao", () => {
       context: () => ({ projectId: "p1", settings: ON }),
     });
     const { manager, project } = newManager({ runtime, store, autoApprove: auto });
-    const { sessionId } = manager.create({ cwd: project, prompt: "[bash]" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "[bash]" });
     const events = record(manager, sessionId);
     cleanups.push(() => events.unsubscribe());
     const resolved = await poll(() => events.find("permission.resolved")[0], 3000);

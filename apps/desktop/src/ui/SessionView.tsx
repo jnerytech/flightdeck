@@ -482,6 +482,7 @@ export function SessionView(props: {
       {(attached.length > 0 || refusal) && (
         <div className="composer-images">
           {attached.map((image, at) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: the same image can be attached twice, so the position is part of its identity
             <div key={`${at}:${image.data.slice(-16)}`} className="composer-image">
               <img
                 alt={t("session.imageAttached", { n: String(at + 1) })}

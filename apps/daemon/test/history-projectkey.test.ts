@@ -34,13 +34,13 @@ function fixtures() {
   return root;
 }
 
-function setup(withKeys = true): { index: HistoryIndexer; server: RunningServer } {
+async function setup(withKeys = true): Promise<{ index: HistoryIndexer; server: RunningServer }> {
   const index = new HistoryIndexer({
     db: new EventStore(":memory:").db,
     roots: [fixtures()],
   });
   cleanups.push(() => index.stop());
-  index.scan();
+  await index.scan();
   const server = startServer({
     manager: newManager().manager,
     hostName: "h",
@@ -79,8 +79,8 @@ describe("history-projectkey: history.list by project", () => {
     ).toBe(false);
   });
 
-  test("the index lists its folders once, and filters by an exact list of them", () => {
-    const { index } = setup();
+  test("the index lists its folders once, and filters by an exact list of them", async () => {
+    const { index } = await setup();
     expect(index.distinctCwds().sort()).toEqual([
       "/work/other",
       "/work/repo",
@@ -92,7 +92,7 @@ describe("history-projectkey: history.list by project", () => {
   });
 
   test("a git-remote key covers the folder and its worktree; a folder key only its folder", async () => {
-    const { server } = setup();
+    const { server } = await setup();
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
@@ -107,7 +107,7 @@ describe("history-projectkey: history.list by project", () => {
   });
 
   test("with no way to ask for project keys, a folder key still matches its folder", async () => {
-    const { server } = setup(false);
+    const { server } = await setup(false);
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });

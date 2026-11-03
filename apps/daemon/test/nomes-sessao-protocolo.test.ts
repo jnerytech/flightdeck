@@ -52,7 +52,7 @@ async function setup(options: { names?: boolean } = {}) {
     allowedRoots: [],
   });
   cleanups.push(() => server.stop());
-  const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+  const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
   const claudeId = (await poll(() => manager.get(sessionId).claudeSessionId)) ?? "";
   central.external.apply("SessionStart", { session_id: "e1", cwd: "/work/loja" });
   const client = new FrameClient(server.url);

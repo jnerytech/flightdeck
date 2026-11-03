@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import {
   type McpServerStatus,
   type Options,
@@ -203,7 +203,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
    * one turn and a structured answer. Anything but a clear answer is a question for the user.
    */
   async judgePermission(opts: JudgeOptions): Promise<JudgeResult> {
-    mkdirSync(opts.cwd, { recursive: true });
+    await mkdir(opts.cwd, { recursive: true });
     const prompt = new AsyncQueue<SDKUserMessage>();
     prompt.push({
       type: "user",

@@ -21,14 +21,14 @@ afterEach(async () => {
 const settle = waiter(3000);
 
 /** A daemon with one transcript per entry of `messages` (`[uuid, text, ts]`). */
-function historyHost(messages: Array<[string, string, string]>) {
+async function historyHost(messages: Array<[string, string, string]>) {
   const d = makeDaemon(cleanups);
   for (const [uuid, text, ts] of messages) {
     writeTranscript(d.historyRoot, `-${uuid}`, `sess-${uuid}`, [
       userLine({ uuid, text, cwd: d.project, ts }),
     ]);
   }
-  d.history.scan();
+  await d.history.scan();
   return d.listen();
 }
 
@@ -60,11 +60,11 @@ function deadUrl(): string {
 }
 
 async function fleet(searchTimeoutMs = 3000) {
-  const a = historyHost([
+  const a = await historyHost([
     ["a1", "o flamingo azul de setembro", "2026-09-01T10:00:00.000Z"],
     ["a2", "outro flamingo, agora no dia 10", "2026-09-10T10:00:00.000Z"],
   ]);
-  const b = historyHost([["b1", "flamingo do host B", "2026-09-05T10:00:00.000Z"]]);
+  const b = await historyHost([["b1", "flamingo do host B", "2026-09-05T10:00:00.000Z"]]);
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, {
     searchTimeoutMs,

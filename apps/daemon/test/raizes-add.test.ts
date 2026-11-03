@@ -22,7 +22,7 @@ async function serve(extra: object = {}) {
     port: 0,
     token: TOKEN,
     allowedRoots: roots,
-    persistRoots: (list) => saved.push([...list]),
+    persistRoots: (list) => void saved.push([...list]),
     rootsPlatform: testRootsPlatform(),
     ...extra,
   });

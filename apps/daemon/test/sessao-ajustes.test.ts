@@ -24,7 +24,7 @@ async function code(promise: Promise<unknown>): Promise<string> {
 async function liveSession() {
   const runtime = new FakeRuntime({ delayMs: 1, slashCommands: ["compact", "review"] });
   const { manager, store, project } = newManager({ runtime });
-  const { sessionId } = manager.create({ cwd: project, prompt: "hi" });
+  const { sessionId } = await manager.create({ cwd: project, prompt: "hi" });
   await poll(() => manager.get(sessionId).status === "idle", 3000);
   return { manager, store, runtime, sessionId };
 }
@@ -132,7 +132,7 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
       const { manager, project } = newManager({
         runtime: new FakeRuntime({ delayMs: 1 }),
       });
-      const { sessionId } = manager.create({ cwd: project, prompt: "hi", permissionMode });
+      const { sessionId } = await manager.create({ cwd: project, prompt: "hi", permissionMode });
       await poll(() => manager.get(sessionId).status === "idle", 3000);
       return { manager, sessionId };
     };

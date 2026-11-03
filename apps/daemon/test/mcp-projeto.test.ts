@@ -237,7 +237,7 @@ describe("mcp-projeto", () => {
   test("sessão gerenciada viva: liga e desliga na hora pelo runtime", async () => {
     const runtime = new FakeRuntime({ delayMs: 1 });
     const { manager, project } = newManager({ runtime });
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     await poll(() => manager.get(sessionId).status === "idle", 3000);
     await manager.toggleMcpServer(sessionId, "eco", false);
     expect(runtime.mcpToggles).toEqual([{ name: "eco", enabled: false }]);

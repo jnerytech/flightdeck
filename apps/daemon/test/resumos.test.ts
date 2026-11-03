@@ -40,7 +40,7 @@ describe("resumos", () => {
 
   test("watch recebe o estado atual e um resumo a cada mudança de estado e de pendências", async () => {
     const { manager, project } = newManager();
-    const existing = manager.create({ cwd: project, prompt: "antes" });
+    const existing = await manager.create({ cwd: project, prompt: "antes" });
     await poll(() => manager.get(existing.sessionId).status === "idle");
 
     const received: EventEnvelope[] = [];
@@ -49,7 +49,7 @@ describe("resumos", () => {
       [existing.sessionId, "idle"],
     ]);
 
-    const { sessionId } = manager.create({ cwd: project, prompt: "[tool]", name: "n" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "[tool]", name: "n" });
     const waiting = await poll(() =>
       summaries(received).find(
         (s) => s.sessionId === sessionId && s.pendingPermissions.length === 1,
@@ -93,7 +93,7 @@ describe("resumos", () => {
       allowedRoots: [],
     });
     servers.push(server);
-    const old = manager.create({ cwd: project, prompt: "x" });
+    const old = await manager.create({ cwd: project, prompt: "x" });
     await poll(() => manager.get(old.sessionId).status === "idle");
 
     const ws = new WebSocket(server.url);
@@ -108,7 +108,7 @@ describe("resumos", () => {
     await poll(() => summaries(events()).length > 0, 1000);
     expect(summaries(events()).map((s) => s.sessionId)).toEqual([old.sessionId]);
 
-    const { sessionId } = manager.create({ cwd: project, prompt: "novo" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "novo" });
     const live = () =>
       summaries(events())
         .filter((s) => s.sessionId === sessionId)
@@ -135,7 +135,7 @@ describe("resumos", () => {
       calls++;
       throw new Error("watcher quebrado");
     });
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     await poll(() => manager.get(sessionId).status === "idle");
     expect(manager.get(sessionId).status).toBe("idle");
     expect(calls).toBeGreaterThan(0);
@@ -181,7 +181,7 @@ describe("resumos", () => {
     });
     const received: EventEnvelope[] = [];
     manager.watchSummaries((e) => received.push(e));
-    const { sessionId } = manager.create({ cwd: project, prompt: "duas" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "duas" });
     const flat = () =>
       summaries(received)
         .filter((s) => s.sessionId === sessionId)

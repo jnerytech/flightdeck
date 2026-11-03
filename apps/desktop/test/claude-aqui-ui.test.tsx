@@ -191,7 +191,7 @@ describe("claude-aqui: no app", () => {
     const { store, hostId, root, ptys, historyRoot, history } = await setup();
     const id = "77777777-7777-4777-8777-777777777777";
     writeTranscript(historyRoot, "-p", id, [userLine({ uuid: "u1", text: "oi", cwd: root })]);
-    history.scan();
+    await history.scan();
     render(<App store={store} />);
     await act(async () => {
       store.router.push({ name: "reader", target: { hostId, claudeSessionId: id } });
