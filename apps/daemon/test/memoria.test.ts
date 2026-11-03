@@ -264,11 +264,15 @@ describe("memoria: o orçamento de contexto", () => {
       .replace(displayPath(ctx.repo), ".")
       .replace(displayPath(ctx.managed), "managed/CLAUDE.md");
 
-  test("cada fonte entra com o tamanho, uma estimativa de tokens e se vem na partida ou só quando Claude lê", () => {
+  test("cada fonte entra com o tamanho, uma estimativa de tokens e se vem na partida ou só quando Claude lê", async () => {
     const ctx = seeded();
-    const sources = ctx.memory
-      .budget(ctx.repo)
-      .sources.map((s) => [s.kind, rel(s.path, ctx), s.load, s.bytes, s.tokens]);
+    const sources = (await ctx.memory.budget(ctx.repo)).sources.map((s) => [
+      s.kind,
+      rel(s.path, ctx),
+      s.load,
+      s.bytes,
+      s.tokens,
+    ]);
     const row = (kind: string, path: string, load: string, bytes: number) => [
       kind,
       path,
@@ -300,9 +304,16 @@ describe("memoria: o orçamento de contexto", () => {
     );
   });
 
-  test("o total da partida soma só o que entra na partida", () => {
+  test("the budget is computed without blocking: it comes back as a promise", async () => {
     const ctx = seeded();
-    const budget = ctx.memory.budget(ctx.repo);
+    const pending = ctx.memory.budget(ctx.repo);
+    expect(pending).toBeInstanceOf(Promise);
+    expect((await pending).sources.length).toBeGreaterThan(0);
+  });
+
+  test("o total da partida soma só o que entra na partida", async () => {
+    const ctx = seeded();
+    const budget = await ctx.memory.budget(ctx.repo);
     const start = budget.sources
       .filter((s) => s.load === "start")
       .reduce((n, s) => n + s.tokens, 0);
@@ -310,7 +321,7 @@ describe("memoria: o orçamento de contexto", () => {
     expect(start).toBeGreaterThan(0);
   });
 
-  test("a memória que cabe entra inteira; os arquivos de tópico ficam para quando Claude os lê", () => {
+  test("a memória que cabe entra inteira; os arquivos de tópico ficam para quando Claude os lê", async () => {
     const ctx = seeded();
     ctx.put(
       "MEMORY.md",
@@ -318,7 +329,7 @@ describe("memoria: o orçamento de contexto", () => {
     );
     ctx.put("user_role.md", "r\n");
     ctx.put("feedback_testes.md", "t\n");
-    const budget = ctx.memory.budget(ctx.repo);
+    const budget = await ctx.memory.budget(ctx.repo);
     expect(budget.memory).toEqual({
       limitLines: 200,
       limitBytes: 25600,
@@ -346,12 +357,12 @@ describe("memoria: o orçamento de contexto", () => {
     ]);
   });
 
-  test("passando de 200 linhas, o resto fica de fora: as linhas e os arquivos que só elas citam", () => {
+  test("passando de 200 linhas, o resto fica de fora: as linhas e os arquivos que só elas citam", async () => {
     const ctx = seeded();
     const lines = Array.from({ length: 205 }, (_, i) => `- [Nota ${i + 1}](nota_${i + 1}.md) — n`);
     ctx.put("MEMORY.md", `${lines.join("\n")}\n`);
     for (const n of [1, 201, 205]) ctx.put(`nota_${n}.md`, "x\n");
-    const { memory } = ctx.memory.budget(ctx.repo);
+    const { memory } = await ctx.memory.budget(ctx.repo);
     expect(memory.cutBy).toBe("lines");
     expect(memory.indexLines).toBe(205);
     expect(memory.loadedLines).toBe(200);
@@ -359,21 +370,21 @@ describe("memoria: o orçamento de contexto", () => {
     expect(memory.leftOutFiles).toEqual(["nota_201.md", "nota_205.md"]);
   });
 
-  test("passando de 25 KB com poucas linhas, quem corta é o tamanho, numa fronteira de linha", () => {
+  test("passando de 25 KB com poucas linhas, quem corta é o tamanho, numa fronteira de linha", async () => {
     const ctx = seeded();
     const long = (n: number) => `- ${String(n).padStart(2, "0")} ${"x".repeat(1_020)}`;
     const lines = Array.from({ length: 30 }, (_, i) => long(i));
     ctx.put("MEMORY.md", `${lines.join("\n")}\n`);
-    const { memory } = ctx.memory.budget(ctx.repo);
+    const { memory } = await ctx.memory.budget(ctx.repo);
     expect(memory.cutBy).toBe("bytes");
     expect(memory.loadedBytes).toBeLessThanOrEqual(25600);
     expect(memory.loadedLines).toBe(Math.floor(25600 / ((lines[0] as string).length + 1)));
     expect(memory.leftOutLines).toEqual(lines.slice(memory.loadedLines));
   });
 
-  test("sem memória nem CLAUDE.md, o orçamento é vazio e não falha", () => {
+  test("sem memória nem CLAUDE.md, o orçamento é vazio e não falha", async () => {
     const { memory, repo } = setup();
-    const budget = memory.budget(repo);
+    const budget = await memory.budget(repo);
     expect(budget.sources.filter((s) => s.kind === "memory")).toEqual([]);
     expect(budget.memory.indexLines).toBe(0);
     expect(budget.memory.cutBy).toBeNull();
@@ -656,7 +667,7 @@ describe("memoria: o daemon inteiro", () => {
 });
 
 describe("memoria: ramos do orçamento e dos nomes", () => {
-  test("regras em subpastas entram, arquivos que não são .md e pastas fundas demais ficam de fora, e skills sem SKILL.md ou sem nome são ignoradas", () => {
+  test("regras em subpastas entram, arquivos que não são .md e pastas fundas demais ficam de fora, e skills sem SKILL.md ou sem nome são ignoradas", async () => {
     const ctx = setup();
     const at = (root: string, path: string, text: string) => {
       mkdirSync(join(root, path, ".."), { recursive: true });
@@ -668,9 +679,8 @@ describe("memoria: ramos do orçamento e dos nomes", () => {
     at(ctx.repo, ".claude/skills/sem-arquivo/leia.txt", "x");
     at(ctx.repo, ".claude/skills/sem-nome/SKILL.md", "sem frontmatter\n");
     at(ctx.repo, ".claude/skills/solto.txt", "x");
-    const paths = ctx.memory
-      .budget(ctx.repo)
-      .sources.filter((s) => s.kind === "rules" || s.kind === "skills")
+    const paths = (await ctx.memory.budget(ctx.repo)).sources
+      .filter((s) => s.kind === "rules" || s.kind === "skills")
       .map((s) => s.path.replace(displayPath(ctx.repo), "."));
     expect(paths).toEqual(["./.claude/rules/a/b.md"]);
   });

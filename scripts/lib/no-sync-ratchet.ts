@@ -70,7 +70,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/main.ts": 3,
   "apps/daemon/src/maintenance/backup.ts": 12,
   "apps/daemon/src/maintenance/maintenance.ts": 3,
-  "apps/daemon/src/memory/budget.ts": 15,
   "apps/daemon/src/memory/memory.ts": 21,
   "apps/daemon/src/memory/suggest.ts": 7,
   "apps/daemon/src/messaging/endpoints.ts": 1,
