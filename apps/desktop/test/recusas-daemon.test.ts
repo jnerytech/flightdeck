@@ -319,6 +319,8 @@ const REASONS = [
   "team_close_confirm",
   "team_coordinator_stays",
   "team_closed",
+  "team_quota_until",
+  "team_quota_over",
 ];
 
 const cleanups: Array<() => unknown> = [];
