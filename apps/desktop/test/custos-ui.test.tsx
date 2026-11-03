@@ -130,6 +130,19 @@ describe("custos-ui", () => {
     expect(errors.filter((line) => line.includes("same key"))).toEqual([]);
   });
 
+  test("a fourth tile of the strip names the model that spent the most, with its cost", async () => {
+    await online();
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
+    expect(text("Modelo principal")).toBe("claude-opus-5-5 · US$ 3.50");
+    // A model name is longer than a number: its tile writes it smaller, so it keeps to one line.
+    const value = screen.queryByLabelText("Modelo principal")?.parentElement;
+    expect(value?.className).toContain("text-base");
+    expect(screen.queryByLabelText("Custo estimado")?.parentElement?.className).toContain(
+      "text-xl",
+    );
+  });
+
   test("tela Custos: período, totais, economia do cache, gráfico por dia empilhado por projeto, quebras e o aviso de estimativa", async () => {
     await online();
     await click("Custos");
@@ -223,6 +236,15 @@ describe("custos-ui", () => {
     expect(tint(segment("kD", "2026-10-14"))).toBe(swatches[3] as string);
     expect(tint(segment("kE", "2026-10-14"))).toBe(swatches[3] as string);
     expect(tint(segment("kF", "2026-10-14"))).toBe(swatches[3] as string);
+  });
+
+  test("a route with host and project opens Costs already filtered by that project", async () => {
+    const { store } = await online();
+    const host = store.getState().hosts[0]?.id as string;
+    await act(async () => store.router.push({ name: "costs", host, projectKey: "kB" }));
+    await settle(() => text("Custo estimado") === "US$ 0.50");
+    expect(text("Custo estimado")).toBe("US$ 0.50");
+    expect((screen.queryByLabelText("Projeto") as HTMLSelectElement).value).toBe("kB");
   });
 
   test("filtros por projeto, modelo e origem", async () => {

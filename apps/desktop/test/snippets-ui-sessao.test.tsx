@@ -114,9 +114,7 @@ describe("snippets-uso: in the session", () => {
         }) as HTMLElement,
       );
     });
-    await act(() => Bun.sleep(100));
-    const send = screen.queryByRole("button", { name: "Enviar à sessão" });
-    expect(send).not.toBeNull();
+    const send = await screen.findByRole("button", { name: "Enviar à sessão" });
     await act(async () => {
       fireEvent.click(send as HTMLElement);
     });

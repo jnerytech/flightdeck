@@ -195,7 +195,12 @@ export class TerminalManager {
 
   /** Every terminal command goes through here: a host with the terminal off refuses them. */
   private assertOn(): void {
-    if (!this.on) throw new FlightdeckError("terminal_disabled", "terminal desligado neste host");
+    if (!this.on)
+      throw new FlightdeckError(
+        "terminal_disabled",
+        "terminal desligado neste host",
+        "terminal_disabled",
+      );
   }
 
   private log(message: string): void {
@@ -208,14 +213,25 @@ export class TerminalManager {
 
   private get(terminalId: string): Entry {
     const entry = this.entries.get(terminalId);
-    if (!entry) throw new FlightdeckError("not_found", `terminal ${terminalId} não existe`);
+    if (!entry)
+      throw new FlightdeckError(
+        "not_found",
+        `terminal ${terminalId} não existe`,
+        "terminal_missing",
+        { id: terminalId },
+      );
     return entry;
   }
 
   private running(terminalId: string): Entry {
     const entry = this.get(terminalId);
     if (entry.exitCode !== null || entry.closing) {
-      throw new FlightdeckError("invalid_state", `terminal ${terminalId} já terminou`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `terminal ${terminalId} já terminou`,
+        "terminal_ended",
+        { id: terminalId },
+      );
     }
     return entry;
   }
@@ -239,7 +255,12 @@ export class TerminalManager {
     const cwd = req.internal ? req.cwd : await resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
     const max = this.opts.max ?? DEFAULT_MAX;
     if (this.live() >= max) {
-      throw new FlightdeckError("invalid_state", `limite de ${max} terminais por host`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `limite de ${max} terminais por host`,
+        "terminal_limit",
+        { max },
+      );
     }
     const env = (this.opts.env ?? (() => process.env))();
     const id = ulid(this.now());
@@ -249,7 +270,11 @@ export class TerminalManager {
     if (req.claude) {
       const claude = this.opts.claude;
       if (!claude) {
-        throw new FlightdeckError("invalid_state", "Claude aqui indisponível neste host");
+        throw new FlightdeckError(
+          "invalid_state",
+          "Claude aqui indisponível neste host",
+          "claude_here_unavailable",
+        );
       }
       // The launch that `flightdeckd claude` will register: the session it opens is this one.
       launchId = ulid(this.now());
@@ -291,7 +316,12 @@ export class TerminalManager {
       });
     } catch (error) {
       const why = error instanceof Error ? error.message : String(error);
-      throw new FlightdeckError("invalid_state", `não consegui abrir o terminal: ${why}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `não consegui abrir o terminal: ${why}`,
+        "terminal_open_failed",
+        { why },
+      );
     }
     const entry: Entry = {
       id,

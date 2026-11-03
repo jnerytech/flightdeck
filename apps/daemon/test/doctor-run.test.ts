@@ -79,7 +79,7 @@ describe("doctor-run: the doctor.run command", () => {
     );
     expect(info?.ok && (info.data as { features: string[] }).features).toContain("doctor.run");
     const bare = await ask(server(), "host.info", {});
-    expect(bare?.ok && (bare.data as { features: string[] }).features).toEqual([]);
+    expect(bare?.ok && (bare.data as { features: string[] }).features).toEqual(["session.images"]);
     const refused = await ask(server(), "doctor.run", {});
     expect(refused && !refused.ok && refused.error.reason).toBe("feature_off");
   });

@@ -145,9 +145,13 @@ describe("paleta", () => {
       "flamingo",
       "alfa",
       "Nova sessão em alfa",
+      "Ir para Sessões",
+      "Ir para Precisa de você",
+      "Ir para Projetos",
       "Alternar tema",
       "Trocar idioma",
       "Ir para Configurações",
+      "Mostrar os atalhos de teclado",
       "Gerenciar clientes",
     ]);
     // No screen for it on this host: no "Ir para Custos".
@@ -189,7 +193,7 @@ describe("paleta", () => {
     const { repo, opened } = await setup();
     const choose = async (query: string, ...keys: string[]) => {
       await openPalette();
-      await settle(() => sections().length === 5);
+      await settle(() => sections().includes("Ações"));
       await type(query);
       await press("ArrowDown");
       for (const key of keys) await press(key);
@@ -220,6 +224,8 @@ describe("paleta", () => {
     await act(async () => {
       fireEvent.click(option as HTMLElement);
     });
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => screen.queryByRole("heading", { name: "Configurações" }) !== null);
     expect(screen.queryByRole("heading", { name: "Configurações" })).not.toBeNull();
     expect(dialog()).toBeNull();
 
@@ -228,21 +234,27 @@ describe("paleta", () => {
     expect(screen.queryByRole("button", { name: "Voltar ao board" })).not.toBeNull();
 
     await choose("Configurações", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Configurações" }) !== null);
     expect(screen.queryByRole("heading", { name: "Configurações" })).not.toBeNull();
 
     await choose("Nova sessão", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Nova sessão em alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Nova sessão em alfa" })).not.toBeNull();
 
     await choose("alfa", "Enter");
+    await settle(() => screen.queryByRole("region", { name: "Hooks do Claude Code" }) !== null);
     expect(screen.queryByRole("region", { name: "Hooks do Claude Code" })).not.toBeNull();
 
     await choose("flamingo", "Tab", "ArrowDown", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Workflows de flamingo" }) !== null);
     expect(screen.queryByRole("heading", { name: "Workflows de flamingo" })).not.toBeNull();
 
     await choose("alfa", "Tab", "ArrowDown", "ArrowDown", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Projetos de alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Projetos de alfa" })).not.toBeNull();
 
     await choose("alfa", "Tab", "ArrowDown", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Nova sessão em alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Nova sessão em alfa" })).not.toBeNull();
 
     await choose("app-a", "Enter");

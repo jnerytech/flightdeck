@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { runAudit } from "./lib/tdd-audit.ts";
+import { parseWaivers, runAudit } from "./lib/tdd-audit.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const args = process.argv.slice(2).filter((a) => a !== "--");
@@ -16,6 +16,7 @@ if (!since) {
 
 const result = runAudit({
   since,
+  waivers: parseWaivers(readFileSync(resolve(ROOT, "scripts/tdd-audit-waivers.json"), "utf8")),
   git: (gitArgs) => {
     const proc = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8" });
     return proc.status === 0 ? proc.stdout : null;

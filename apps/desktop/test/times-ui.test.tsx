@@ -111,6 +111,7 @@ async function daemonWithProject(hostName: string, options: { projects?: boolean
         cardId: string | null;
         sessionId: string | null;
         persona: string | null;
+        model: string | null;
       }>;
     }>;
   };
@@ -146,20 +147,24 @@ async function create(name: string, workers = "1") {
   await click("Novo time");
   await change("Objetivo", `objetivo de ${name}`);
   await change("Nome do time", name);
-  await change("Executoras", workers);
+  await workerRows(Number(workers));
   await click("Criar time");
   await settle(() => row(name) !== null);
 }
 
-/** Checks the workers' personas in the form, in this order, by the persona's id. */
+/** Brings the form's worker rows (two to begin with) to `count`. */
+async function workerRows(count: number) {
+  const rows = () => screen.queryAllByLabelText(/^Modelo da executora \d+$/).length;
+  while (rows() < count) await click("Adicionar executora ao novo time");
+  while (rows() > count) await click(`Remover a executora ${rows()}`);
+  expect(rows()).toBe(count);
+}
+
+/** Picks the workers' personas in the form, one row each, by the persona's id. */
 async function pickWorkerPersonas(...ids: string[]) {
-  const group = screen.getByRole("group", { name: "Personas das executoras (opcional)" });
-  for (const id of ids) {
-    const box = group.querySelector(`input[type="checkbox"][value="${id}"]`);
-    expect(box).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(box as Element);
-    });
+  await workerRows(ids.length);
+  for (const [i, id] of ids.entries()) {
+    await change(`Persona da executora ${i + 1} (opcional)`, id);
   }
 }
 
@@ -189,7 +194,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await change("Objetivo", "revisar o login");
     await change("Nome do time", "login");
-    await change("Executoras", "2");
+    await workerRows(2);
     await click("Criar time");
     await settle(() => row("login") !== null);
     const created = await teams();
@@ -211,7 +216,6 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await change("Objetivo", "com personas");
     await change("Nome do time", "tp");
-    await change("Executoras", "2");
     await pickWorkerPersonas("qa", "revisor");
     await click("Criar time");
     await settle(() => row("tp") !== null);
@@ -272,11 +276,41 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await change("Objetivo", "mais um");
     await change("Nome do time", "t3");
-    await change("Executoras", "1");
+    await workerRows(1);
     await click("Criar time");
     await settle(() => row("t3") !== null);
+    // The button opens the pickers; Cancelar closes them without adding anything.
     await click("Adicionar executora a t3", row("t3"));
+    await settle(
+      () =>
+        within(row("t3") as HTMLElement).queryByLabelText("Modelo da nova executora de t3") !==
+        null,
+    );
+    await click("Cancelar", row("t3"));
+    expect(
+      within(row("t3") as HTMLElement).queryByLabelText("Modelo da nova executora de t3"),
+    ).toBeNull();
+    expect((await teams())[0]?.members.length).toBe(2);
+    await click("Adicionar executora a t3", row("t3"));
+    const form = row("t3") as HTMLElement;
+    await settle(
+      () =>
+        (within(form)
+          .queryByLabelText("Persona da nova executora de t3 (opcional)")
+          ?.querySelectorAll("option").length ?? 0) > 5,
+    );
+    await act(async () => {
+      fireEvent.change(within(form).getByLabelText("Persona da nova executora de t3 (opcional)"), {
+        target: { value: "qa" },
+      });
+      fireEvent.change(within(form).getByLabelText("Modelo da nova executora de t3"), {
+        target: { value: "sonnet" },
+      });
+    });
+    await click("Adicionar a t3", row("t3"));
     await settle(() => (row("t3")?.textContent ?? "").includes("t3 · executora 2"));
+    const added = (await teams())[0]?.members.find((m) => m.name === "t3 · executora 2");
+    expect(added).toMatchObject({ persona: "qa", model: "sonnet" });
     expect((await teams())[0]?.members.length).toBe(3);
     await act(async () => {
       fireEvent.change(
@@ -350,32 +384,58 @@ describe("times-ui: the teams of a host", () => {
     expect(made[0]?.members[0]?.persona).toBe("revisor");
   });
 
-  test("the workers' personas are a multiple choice of the host's personas, in the order picked", async () => {
+  test("the form has one row per worker, each with the host's personas and a model, and rows are added and removed", async () => {
     await open();
     await click("Novo time");
-    // The group shows before the host's personas load: wait for its choices, not for the group.
+    // Two rows to begin with; the persona list of each row is the host's, loaded after the form opens.
     await settle(
       () =>
-        (screen
-          .queryByRole("group", { name: "Personas das executoras (opcional)" })
-          ?.querySelectorAll('input[type="checkbox"]').length ?? 0) > 5,
+        (screen.queryByLabelText("Persona da executora 1 (opcional)")?.querySelectorAll("option")
+          .length ?? 0) > 5,
     );
-    const group = screen.getByRole("group", { name: "Personas das executoras (opcional)" });
-    expect(group.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(5);
-    // No free text left for a persona name.
+    expect(screen.queryByLabelText("Persona da executora 2 (opcional)")).not.toBeNull();
+    const model = screen.queryByLabelText("Modelo da executora 1") as HTMLSelectElement | null;
+    expect(model?.tagName).toBe("SELECT");
+    expect([...(model?.options ?? [])].map((o) => o.value)).toEqual([
+      "",
+      "opus",
+      "sonnet",
+      "haiku",
+    ]);
+    // Adding a row, then removing the first one: the rows renumber and the last row's choice stays.
+    await click("Adicionar executora ao novo time");
+    await change("Persona da executora 3 (opcional)", "qa");
+    await click("Remover a executora 1");
     expect(
-      screen.queryByLabelText("Personas das executoras (opcional, separadas por vírgula)"),
-    ).toBeNull();
-    await pickWorkerPersonas("revisor", "qa");
-    // The order picked is shown, and it is the workers' order.
-    const position = (id: string) =>
-      /#(\d)/.exec(
-        group.querySelector(`input[value="${id}"]`)?.closest("label")?.textContent ?? "",
-      )?.[1];
-    expect([position("revisor"), position("qa")]).toEqual(["1", "2"]);
-    // Unchecking the first one moves the second up.
-    await pickWorkerPersonas("revisor");
-    expect([position("revisor"), position("qa")]).toEqual([undefined, "1"]);
+      (screen.queryByLabelText("Persona da executora 2 (opcional)") as HTMLSelectElement).value,
+    ).toBe("qa");
+    expect(screen.queryByLabelText("Persona da executora 3 (opcional)")).toBeNull();
+    // The last row cannot be removed: a team has at least one worker.
+    await workerRows(1);
+    expect(
+      (screen.queryByRole("button", { name: "Remover a executora 1" }) as HTMLButtonElement | null)
+        ?.disabled,
+    ).toBe(true);
+  });
+
+  test("the coordinator and each worker open in the model picked, and the default is the persona's own", async () => {
+    const { teams } = await open();
+    await click("Novo time");
+    await change("Objetivo", "com modelos");
+    await change("Nome do time", "tm");
+    await change("Modelo da coordenadora", "opus");
+    await change("Modelo da executora 2", "haiku");
+    await click("Criar time");
+    await settle(() => row("tm") !== null);
+    const members = (await teams())[0]?.members as Array<{ name: string; model: string | null }>;
+    expect(members.map((m) => [m.name, m.model])).toEqual([
+      ["tm · coordenadora", "opus"],
+      ["tm · executora 1", null],
+      ["tm · executora 2", "haiku"],
+    ]);
+    // The model each member was asked for is shown on its line.
+    await settle(() => (row("tm")?.textContent ?? "").includes("haiku"));
+    expect(row("tm")?.textContent).toContain("opus");
   });
 
   test("a member's persona is switched with a picker of the host's personas", async () => {

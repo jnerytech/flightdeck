@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
-import type { AppState, AppStore, GlobalHit } from "../lib/app-store.ts";
+import { type AppState, type AppStore, type GlobalHit, needsYou } from "../lib/app-store.ts";
 import {
   type PaletteItem,
   type PaletteSection,
@@ -80,11 +80,19 @@ export function GlobalSearch(props: {
         costs,
         t: store.i18n.t,
         globalSnippets: store.globalSnippets.list(),
+        recents: store.paletteRecents(),
+        waiting: needsYou(props.state).length > 0,
       });
   const visible = sections.flatMap((section) => section.items);
   const back = () => {
     setActionsOf(null);
     setCursor(-1);
+  };
+
+  /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
+  const choose = (item: PaletteItem) => {
+    if (!actionsOf) store.recordPaletteUse(item.id);
+    props.onGo(item.target);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -96,7 +104,7 @@ export function GlobalSearch(props: {
     } else if (e.key === "Enter" && chosen) {
       // With nothing chosen, Enter submits the form: the history search.
       e.preventDefault();
-      props.onGo(chosen.target);
+      choose(chosen);
     } else if (e.key === "Tab") {
       e.preventDefault();
       if (actionsOf) back();
@@ -149,10 +157,13 @@ export function GlobalSearch(props: {
                 aria-label={item.label}
                 aria-selected={visible.indexOf(item) === cursor}
                 className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent aria-selected:bg-accent"
-                onClick={() => props.onGo(item.target)}
+                onClick={() => choose(item)}
               >
                 <span>{item.label}</span>{" "}
                 <span className="truncate text-muted-foreground text-xs">{item.detail}</span>
+                {item.shortcut && (
+                  <kbd className="keycap ml-auto shrink-0 bg-muted font-mono">{item.shortcut}</kbd>
+                )}
               </button>
             ))}
           </div>

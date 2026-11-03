@@ -60,7 +60,7 @@ export function ChangesPanel(props: {
       setChanges(result.data);
       setUnavailable(null);
     } else {
-      setUnavailable(refusalText(result.code, result.message, t));
+      setUnavailable(refusalText(result.code, result.message, t, result));
     }
     await loadComments();
   }, [store, hostId, target, loadComments, t]);

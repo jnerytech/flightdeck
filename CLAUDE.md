@@ -28,7 +28,16 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run slot -- --status` shows the holder (with a warning past `--max-age`, 90 min by
   default), `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
-- Before any code commit: `bun run test && bun run typecheck && bun run lint`.
+  `--priority` (for the maintainer's full gate) also lowers the other `bun test` processes of the
+  user while it runs.
+- Tests for what you changed: `bun run test:related [--base <ref>]`. It takes the files changed
+  since the merge-base with `main` (or `<ref>`), picks the changed test files plus every test
+  that imports a changed file (transitively), prints each with the reason, and runs them in one
+  call (through the slot above 60 files). A change to `package.json`, a `bunfig` or the preload
+  prints a warning: run the full suite then.
+- Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run tdd:audit`
+  and `bun run test:related`. The full suite (`bun run test`) runs at the orchestrator's version
+  gate and in CI, not in every session.
 - Format: `bun run format`. Smokes: `bun run smoke:<name>` (list in `package.json`; never
   `smoke:real` unless asked).
 - Audit: `bun run tdd:audit -- --since <tag or commit>`. Accepts any commit, for example

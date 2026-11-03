@@ -115,10 +115,74 @@ describe("precisa-de-voce: a paused loop and a team the quota paused", () => {
       title: "Time login",
       body: "a cota do plano passou do limite",
     });
+    expect(store.getState().inbox[0]?.route).toEqual({
+      name: "teams",
+      host: store.getState().hosts[0]?.id,
+      team: "t1",
+    });
     await act(async () => {
       store.router.push({ name: "teams" });
     });
     await settle(() => screen.queryByText("pausado pela cota") !== null);
     expect(screen.queryByText("pausado pela cota")).not.toBeNull();
+  });
+
+  test("a route with a team lists that team first and marks it", async () => {
+    const { store, daemon } = await open();
+    const make = (id: string, name: string) => ({
+      id,
+      name,
+      projectId: "p1",
+      goal: `meta ${name}`,
+      coordinator: null,
+      members: [],
+      checks: [],
+      state: "active",
+      pausedBy: null,
+      instructionsVersion: "1",
+      createdAt: "2026-10-30T12:00:00.000Z",
+    });
+    daemon.messaging.teams = [make("t1", "alfa-time"), make("t2", "beta-time")];
+    const host = store.getState().hosts[0]?.id as string;
+    await act(async () => {
+      store.router.push({ name: "teams", host, team: "t2" });
+    });
+    await settle(() => screen.queryByText("beta-time") !== null);
+    const items = [...screen.getByRole("list", { name: "Times" }).children];
+    expect(items.map((li) => li.querySelector("strong")?.textContent)).toEqual([
+      "beta-time",
+      "alfa-time",
+    ]);
+    expect(items.map((li) => li.getAttribute("aria-current"))).toEqual(["true", null]);
+  });
+
+  test("a host budget alert opens Costs for its host and project", async () => {
+    const { store, daemon, mem } = await open(["messaging", "teams", "costs"]);
+    await act(async () => {
+      daemon.push({
+        type: "budget.updated",
+        budget: {
+          id: "b1",
+          scope: "project",
+          projectKey: "kA",
+          period: "day",
+          limitUsd: 10,
+          action: "notify",
+          createdAt: "2026-10-30T12:00:00.000Z",
+          periodKey: "2026-10-30",
+          spentUsd: 8,
+          fraction: 0.8,
+          crossed: [0.5, 0.8],
+        },
+        threshold: 0.8,
+        removed: false,
+      });
+    });
+    await settle(() => mem.notifications.length > 0);
+    expect(store.getState().inbox[0]?.route).toEqual({
+      name: "costs",
+      host: store.getState().hosts[0]?.id,
+      projectKey: "kA",
+    });
   });
 });

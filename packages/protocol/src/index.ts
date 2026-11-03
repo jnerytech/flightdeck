@@ -304,7 +304,12 @@ export const SessionEvent = z.discriminatedUnion("type", [
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
   }),
-  z.object({ type: z.literal("message.user"), text: z.string() }),
+  /** `images`: how many came with the message (the bytes stay out of the log). */
+  z.object({
+    type: z.literal("message.user"),
+    text: z.string(),
+    images: z.number().int().positive().optional(),
+  }),
   /** A persona was applied to the session (it is conversation instruction, not system prompt). */
   z.object({ type: z.literal("persona.applied"), persona: SessionPersona }),
   /** The role was left: back to normal behavior. */
@@ -398,7 +403,31 @@ export const SessionCreatePayload = z.object({
   persona: PersonaRef.optional(),
 });
 
-export const SessionSendPayload = z.object({ sessionId: z.string(), text: z.string().min(1) });
+/** What a message may carry as images: the types the API reads, five of them, 5 MB each. */
+export const SESSION_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
+export const SESSION_IMAGE_MAX_COUNT = 5;
+export const SESSION_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+/** One image of a message: its type and its bytes in base64. */
+export const SessionImage = z.object({
+  mediaType: z.enum(SESSION_IMAGE_TYPES),
+  /** Base64 of at most `SESSION_IMAGE_MAX_BYTES` bytes. */
+  data: z
+    .string()
+    .min(1)
+    .max(Math.ceil((SESSION_IMAGE_MAX_BYTES * 4) / 3) + 4),
+});
+export type SessionImage = z.infer<typeof SessionImage>;
+
+export const SessionSendPayload = z
+  .object({
+    sessionId: z.string(),
+    text: z.string(),
+    images: z.array(SessionImage).max(SESSION_IMAGE_MAX_COUNT).optional(),
+  })
+  .refine((p) => p.text.length > 0 || (p.images?.length ?? 0) > 0, {
+    message: "a message needs text or an image",
+  });
 export const SessionIdPayload = z.object({ sessionId: z.string() });
 export const SessionSubscribePayload = z.object({
   sessionId: z.string(),
@@ -1484,6 +1513,47 @@ export const QuotaState = z.object({
 });
 export type QuotaState = z.infer<typeof QuotaState>;
 
+// Phase 34: the Claude account the host's own `claude` is signed in to (never a token).
+export const AccountStatus = z.enum([
+  "signed_in",
+  "signed_out",
+  "api_key",
+  "third_party",
+  "unknown",
+]);
+export type AccountStatus = z.infer<typeof AccountStatus>;
+
+export const AccountState = z.object({
+  status: AccountStatus,
+  /** The account's email, shown as text in the card only; `null` when none is known. */
+  name: z.string().nullable(),
+  organization: z.string().nullable(),
+  /** `pro`, `max`, `team`, `enterprise`, `free` or any other plan name the CLI reports. */
+  plan: z.string().nullable(),
+  /** `firstParty`, `bedrock`, ... as the CLI names it. */
+  provider: z.string().nullable(),
+  /** The plan windows now valid on the host, with the age of each reading. */
+  windows: z.array(QuotaWindow),
+  /** When the account was last read (ISO); `null` before the first read. */
+  readAt: z.string().nullable(),
+  /** The last read failed, so everything above is the previous reading. */
+  stale: z.boolean(),
+  /** Why the last read failed (`account_unavailable`), or `null`. */
+  error: z.string().nullable(),
+  /** `status` when only the CLI's status was read, `sdk` when the usage report was too. */
+  source: z.enum(["status", "sdk"]),
+  /** What the person runs on the host to sign in; the app shows it and never runs it for them. */
+  loginCommand: z.literal("claude auth login"),
+});
+export type AccountState = z.infer<typeof AccountState>;
+
+/** Sent after `account.watch` with the host's account after each read and each change of its windows. */
+export const AccountUpdated = z.object({
+  type: z.literal("account.updated"),
+  ...AccountState.shape,
+});
+export type AccountUpdated = z.infer<typeof AccountUpdated>;
+
 /** Usage of the host's managed sessions in one day (host time zone) and project. */
 export const UsageRow = z.object({
   /** `YYYY-MM-DD`. */
@@ -2308,6 +2378,8 @@ export const TeamMember = z.object({
   name: z.string(),
   role: z.enum(["coordinator", "worker"]),
   persona: z.string().nullable(),
+  /** The model it was asked to run in; null is the persona's own, else the default. */
+  model: z.string().nullable(),
   cardId: z.string().nullable(),
   /** Null while a worker's card waits in the quota queue and has no session yet. */
   sessionId: z.string().nullable(),
@@ -2654,6 +2726,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("daemon.shutdown", z.object({}).strict()),
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
+  cmd("daemon.update.check", z.object({}).strict()),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -2852,6 +2925,9 @@ export const Command = z.discriminatedUnion("type", [
       workers: z.number().int().min(1).max(8),
       coordinatorPersona: z.string().min(1).optional(),
       workerPersonas: z.array(z.string().min(1)).max(8).optional(),
+      /** The model of the coordinator and of each worker; none or null is the persona's own. */
+      coordinatorModel: z.string().min(1).optional(),
+      workerModels: z.array(z.string().min(1).nullable()).max(8).optional(),
       checks: z.array(z.string().min(1).max(400)).max(10).optional(),
     }),
   ),
@@ -2866,6 +2942,13 @@ export const Command = z.discriminatedUnion("type", [
         .object({ member: z.string().min(1), persona: z.string().min(1).nullable() })
         .optional(),
       addWorkers: z.number().int().min(1).max(8).optional(),
+      /** One more worker with the persona and model asked for (none or null is the default). */
+      addMember: z
+        .object({
+          persona: z.string().min(1).nullable().optional(),
+          model: z.string().min(1).nullable().optional(),
+        })
+        .optional(),
       removeMember: z.string().min(1).optional(),
     }),
   ),
@@ -3176,6 +3259,10 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  cmd("account.get", z.object({}).strict()),
+  cmd("account.watch", z.object({}).strict()),
+  cmd("account.unwatch", z.object({}).strict()),
+  cmd("account.refresh", z.object({}).strict()),
   cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
   /** `permissions.allow` of the project's `.claude/settings.local.json`. */
   cmd("rules.list", z.object({ projectId: z.string() })),
@@ -3972,6 +4059,7 @@ export interface CommandResults {
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
+  "daemon.update.check": UpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;
@@ -4083,6 +4171,10 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "account.get": AccountState;
+  "account.watch": undefined;
+  "account.unwatch": undefined;
+  "account.refresh": AccountState;
   "usage.summary": UsageSummary;
   "rules.list": { rules: string[] };
   "rules.remove": { rules: string[] };
@@ -4546,6 +4638,7 @@ export const ServerMessage = z.union([
   RunUpdated,
   RunEnvUpdated,
   QuotaUpdated,
+  AccountUpdated,
   AskpassRequest,
   BudgetUpdated,
   ChangesUpdated,

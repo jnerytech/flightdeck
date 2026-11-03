@@ -171,17 +171,26 @@ export class ReviewComments {
 
   /** A draft on lines of a file; the quote is read here, from the file itself. */
   async add(input: NewReviewComment): Promise<ReviewComment> {
-    if (!input.body.trim()) throw new FlightdeckError("bad_request", "comentário vazio");
+    if (!input.body.trim()) {
+      throw new FlightdeckError("bad_request", "the comment is empty", "review_comment_empty");
+    }
     const resolved = await this.opts.changes.resolve(input.target);
     const lines = await this.content(resolved, input.path, input.side);
     if (!lines) {
-      throw new FlightdeckError("bad_request", `${input.path} não existe desse lado do diff`);
+      throw new FlightdeckError(
+        "bad_request",
+        `${input.path} does not exist on that side of the diff`,
+        "review_side_missing",
+        { path: input.path },
+      );
     }
     const { lineStart, lineEnd } = input;
     if (lineStart < 1 || lineEnd < lineStart || lineEnd > lines.length) {
       throw new FlightdeckError(
         "bad_request",
-        `linhas ${lineStart}–${lineEnd} fora de ${input.path}`,
+        `lines ${lineStart}–${lineEnd} are outside ${input.path}`,
+        "review_lines_outside",
+        { start: lineStart, end: lineEnd, path: input.path },
       );
     }
     const row: Row = {
@@ -211,8 +220,16 @@ export class ReviewComments {
   /** A draft's text; a sent comment is history and stays as it went. */
   async update(id: string, body: string): Promise<ReviewComment | null> {
     const row = this.row(id);
-    if (row.state !== "draft") throw new FlightdeckError("invalid_state", "comentário já enviado");
-    if (!body.trim()) throw new FlightdeckError("bad_request", "comentário vazio");
+    if (row.state !== "draft") {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the comment was already sent",
+        "review_comment_sent",
+      );
+    }
+    if (!body.trim()) {
+      throw new FlightdeckError("bad_request", "the comment is empty", "review_comment_empty");
+    }
     this.db.query("UPDATE review_comments SET body = ? WHERE id = ?").run(body, id);
     return (await this.list(row.target)).find((c) => c.id === id) ?? null;
   }
@@ -232,7 +249,7 @@ export class ReviewComments {
       )
       .all(target);
     if (drafts.length === 0) {
-      throw new FlightdeckError("invalid_state", "nenhum comentário em rascunho");
+      throw new FlightdeckError("invalid_state", "no comment in draft", "review_no_drafts");
     }
     const resolved = await this.opts.changes.resolve(target);
     const text = reviewMessage(drafts.map((d) => toComment(d, false)));
@@ -266,7 +283,14 @@ export class ReviewComments {
 
   private row(id: string): Row {
     const row = this.db.query<Row, [string]>("SELECT * FROM review_comments WHERE id = ?").get(id);
-    if (!row) throw new FlightdeckError("not_found", `comentário ${id} não existe`);
+    if (!row) {
+      throw new FlightdeckError(
+        "not_found",
+        `comment ${id} does not exist`,
+        "review_comment_not_found",
+        { id },
+      );
+    }
     return row;
   }
 }

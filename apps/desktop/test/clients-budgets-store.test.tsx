@@ -117,6 +117,17 @@ describe("clients-budgets: the app watches a client's month limit", () => {
     expect(platform.notifications).toHaveLength(4);
   });
 
+  test("a client's alert opens Costs filtered by that client", async () => {
+    const { store } = await setup();
+    await act(() => store.checkClientBudgets());
+    const routes = store
+      .getState()
+      .inbox.map((e) => e.route)
+      .filter((r) => r?.name === "costs");
+    expect(routes).toContainEqual({ name: "costs", client: "acme" });
+    expect(routes).toContainEqual({ name: "costs", client: "beta" });
+  });
+
   test("what was announced before a restart is not announced again", async () => {
     const { store, platform } = await setup(
       { acme: 4, beta: 3 },

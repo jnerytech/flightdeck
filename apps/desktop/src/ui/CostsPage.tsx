@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
@@ -92,6 +93,10 @@ const COSTSPAGE_KEYS = [
 export const CostsPage = memo(function CostsPage(props: {
   store: AppStore;
   onOpenSession(hostId: string, session: TopSession): void;
+  /** What an alert opens the screen on: its host, its project and its client. */
+  host?: string;
+  projectKey?: string;
+  client?: string;
 }) {
   const t = useT();
   const number = useFormatNumber();
@@ -101,7 +106,7 @@ export const CostsPage = memo(function CostsPage(props: {
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
   );
   /** The host the user picked; until then (or if it left), the first one that announces costs. */
-  const [chosen, setChosen] = useState("");
+  const [chosen, setChosen] = useState(props.host ?? "");
   const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
   const hostId = acrossHosts
     ? ALL_HOSTS
@@ -130,7 +135,16 @@ export const CostsPage = memo(function CostsPage(props: {
   const [period, setPeriod] = useState<Period>("7d");
   const today = store.today();
   const [range, setRange] = useState(periodRange("7d", today));
-  const [filters, setFilters] = useState<Omit<CostsFilter, "from" | "to">>({});
+  const [filters, setFilters] = useState<Omit<CostsFilter, "from" | "to">>(
+    props.projectKey ? { projectKey: props.projectKey } : {},
+  );
+  // A later alert opens another host, project or client while the screen is already up.
+  const { host: alertHost, projectKey: alertProject, client: alertClient } = props;
+  useEffect(() => {
+    if (alertHost) setChosen(alertHost);
+    setFilters(alertProject ? { projectKey: alertProject } : {});
+    if (alertClient) store.setClientSelection(alertClient);
+  }, [store, alertHost, alertProject, alertClient]);
   const [summary, setSummary] = useState<CostsSummary | null>(null);
   /** The period without filters: the filters offer every project and model of it. */
   const [all, setAll] = useState<CostsSummary | null>(null);
@@ -205,6 +219,7 @@ export const CostsPage = memo(function CostsPage(props: {
       : [];
 
   const loading = useMinLoading(hostId !== "" && summary === null);
+  const topModel = [...(summary?.byModel ?? [])].sort((a, b) => b.costUsd - a.costUsd)[0];
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
   return (
     <Page
@@ -396,10 +411,18 @@ export const CostsPage = memo(function CostsPage(props: {
                 [t("costsUi.estimated"), usd(summary.totals.costUsd)],
                 [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
                 [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd)],
+                ...(topModel
+                  ? [[t("costsUi.topModel"), `${topModel.model} · ${usd(topModel.costUsd)}`]]
+                  : []),
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
                   <dt className="text-muted-foreground text-xs">{label}</dt>
-                  <dd className="font-semibold text-xl tabular-nums">
+                  <dd
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      label === t("costsUi.topModel") ? "text-base" : "text-xl",
+                    )}
+                  >
                     <output aria-label={label}>{value}</output>
                   </dd>
                 </div>

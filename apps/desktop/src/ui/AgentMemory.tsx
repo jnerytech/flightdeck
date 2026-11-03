@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Field, Form, FormActions } from "@/components/layout/form";
+import { Field, FieldRow, Form, FormActions } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -206,7 +206,7 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
-              <Inline gap={3}>
+              <FieldRow>
                 <ActionButton
                   disabled={!dirty}
                   disabledReason={t("memoryUi.nothingChanged")}
@@ -219,7 +219,7 @@ export function AgentMemory(props: { store: AppStore; hostId: string; projectId:
                     {t("memoryUi.saved")}
                   </span>
                 )}
-              </Inline>
+              </FieldRow>
             </Stack>
           )}
           <section aria-label={t("memoryUi.suggestions")}>

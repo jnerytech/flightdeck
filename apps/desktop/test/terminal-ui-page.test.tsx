@@ -352,4 +352,75 @@ describe("terminal-ui: the terminal screen", () => {
     }
     expect(x.pasted).toEqual(["do menu"]);
   });
+
+  test("typing in the search finds as you go, keeping the match; emptying the box clears it", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.change(box, { target: { value: "er" } });
+    });
+    expect(x.finds.at(-1)).toBe("next:er");
+    expect(x.findOptions.at(-1)).toMatchObject({ incremental: true });
+    await act(async () => {
+      fireEvent.change(box, { target: { value: "" } });
+    });
+    expect(x.finds.at(-1)).toBe("clear");
+  });
+
+  test("the search says where the current match is, or that there is none", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.change(box, { target: { value: "erro" } });
+      x.foundResults(1, 5);
+    });
+    expect(screen.queryByText("2 de 5")).not.toBeNull();
+    await act(async () => {
+      x.foundResults(-1, 0);
+    });
+    expect(screen.queryByText("2 de 5")).toBeNull();
+    expect(screen.queryByText("Nenhum resultado")).not.toBeNull();
+  });
+
+  test("the search bar has buttons for the next and previous match and for closing", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.change(box, { target: { value: "erro" } });
+    });
+    await click("Próximo resultado");
+    expect(x.finds.at(-1)).toBe("next:erro");
+    await click("Resultado anterior");
+    expect(x.finds.at(-1)).toBe("prev:erro");
+    await click("Fechar busca");
+    expect(screen.queryByRole("searchbox", { name: "Buscar no terminal" })).toBeNull();
+    expect(x.finds.at(-1)).toBe("clear");
+  });
+
+  test("the menu has Selecionar tudo, and Copiar is off while nothing is selected", async () => {
+    const { x, copied } = await setup();
+    await settle(() => state("Ao vivo"));
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    await act(async () => {
+      fireEvent.contextMenu(area, { clientX: 5, clientY: 5 });
+    });
+    expect((button("Copiar") as HTMLButtonElement).disabled).toBe(true);
+    await click("Selecionar tudo");
+    expect(x.selectedAll()).toBe(1);
+    expect(screen.queryByRole("menu", { name: "Terminal" })).toBeNull();
+    x.select("trecho");
+    await act(async () => {
+      fireEvent.contextMenu(area, { clientX: 5, clientY: 5 });
+    });
+    expect((button("Copiar") as HTMLButtonElement).disabled).toBe(false);
+    expect(document.activeElement).toBe(button("Copiar"));
+    await click("Copiar");
+    expect(copied).toEqual(["trecho"]);
+  });
 });

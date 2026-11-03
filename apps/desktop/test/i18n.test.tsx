@@ -270,16 +270,14 @@ describe("i18n", () => {
     };
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
-    await act(async () => Bun.sleep(5));
     expect(document.documentElement.lang).toBe("pt-BR");
-    const settings = screen.queryByRole("button", { name: "Configurações" });
-    expect(settings).not.toBeNull();
+    // The screens are lazy chunks: wait for each one instead of guessing a delay.
+    const settings = await screen.findByRole("button", { name: "Configurações" });
     await act(async () => {
-      fireEvent.click(settings as HTMLElement);
+      fireEvent.click(settings);
     });
-    const select = screen.queryByLabelText("Idioma") as HTMLSelectElement | null;
-    expect(select).not.toBeNull();
-    expect([...(select?.options ?? [])].map((o) => o.textContent)).toEqual([
+    const select = (await screen.findByLabelText("Idioma")) as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent)).toEqual([
       "Português (Brasil)",
       "English",
     ]);
@@ -294,16 +292,15 @@ describe("i18n", () => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     });
     // The palette speaks English now, its field too.
-    const input = screen.queryByLabelText("Search the history") as HTMLInputElement | null;
-    expect(input).not.toBeNull();
+    const input = (await screen.findByLabelText("Search the history")) as HTMLInputElement;
     await act(async () => {
-      fireEvent.change(input as HTMLInputElement, { target: { value: "language" } });
+      fireEvent.change(input, { target: { value: "language" } });
     });
     await act(async () => {
-      fireEvent.keyDown(input as HTMLInputElement, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
     });
     await act(async () => {
-      fireEvent.keyDown(input as HTMLInputElement, { key: "Enter" });
+      fireEvent.keyDown(input, { key: "Enter" });
     });
     expect(store.i18n.lang).toBe("pt-BR");
     expect(document.documentElement.lang).toBe("pt-BR");

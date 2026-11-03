@@ -58,7 +58,11 @@ async function setup() {
 
 const main = () => screen.queryByRole("main") as HTMLElement;
 const row = (title: string) => within(main()).queryByRole("listitem", { name: title });
-const split = () => within(main()).queryByRole("group");
+// The hub's view switch is a group too: the split is the one that holds the separator.
+const split = () =>
+  within(main())
+    .queryAllByRole("group")
+    .find((group) => group.querySelector('[role="separator"]') !== null) ?? null;
 const click = async (el: HTMLElement | null) => {
   expect(el).not.toBeNull();
   await act(async () => {
@@ -172,6 +176,8 @@ describe("direcao-visual: três colunas", () => {
   test("em Configurações a densidade confortável (40 px) vale para a lista e fica guardada", async () => {
     const { store, mem } = await setup();
     await click(screen.queryByRole("button", { name: "Configurações" }));
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => screen.queryByLabelText("Densidade da lista") !== null);
     const select = screen.queryByLabelText("Densidade da lista") as HTMLSelectElement | null;
     expect(select?.value).toBe("compact");
     expect([...(select?.options ?? [])].map((o) => o.textContent)).toEqual([

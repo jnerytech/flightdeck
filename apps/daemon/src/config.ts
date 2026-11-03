@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { homedir, hostname } from "node:os";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { PricingConfig } from "./costs/pricing.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 import { validRegex } from "./permissions/risk.ts";
 import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
+import { defaultHostName } from "./wsl-host.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
 export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
@@ -25,7 +26,7 @@ export const Config = z.object({
   hostName: z
     .string()
     .min(1)
-    .default(() => hostname()),
+    .default(() => defaultHostName()),
   bind: z.string().min(1).default("127.0.0.1"),
   port: z.number().int().min(0).max(65535).default(7420),
   token: z
@@ -122,9 +123,9 @@ export const Config = z.object({
         .url()
         .nullable()
         .default(RUNNING_COMPILED ? MANIFEST_URL : null),
-      checkIntervalH: z.number().int().min(1).default(24),
+      checkIntervalH: z.number().int().min(1).default(6),
     })
-    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 24 })),
+    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 6 })),
   /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })

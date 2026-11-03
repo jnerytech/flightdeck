@@ -1,4 +1,5 @@
 import {
+  type AccountUpdated,
   type Ack,
   type AskpassRequest,
   type BudgetUpdated,
@@ -44,6 +45,7 @@ import {
 import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
@@ -217,6 +219,8 @@ export interface ServerOptions {
   features?: string[];
   /** The host's plan quota behind `quota.*` (phase 7). */
   quota?: Quota;
+  /** The Claude account behind `account.*` (phase 34). */
+  account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
   usage?: UsageLedger;
   /** Estimated costs behind the `costs.*` commands (phase 8). */
@@ -311,6 +315,8 @@ interface Connection {
   unwatchRunEnv?: () => void;
   /** Stops the `quota.watch` stream, when active. */
   unwatchQuota?: () => void;
+  /** Stops the `account.watch` stream, when active. */
+  unwatchAccount?: () => void;
   /** Stops the `askpass.watch` stream, when active. */
   unwatchAskpass?: () => void;
   /** Stops the `budget.watch` stream, when active. */
@@ -343,6 +349,7 @@ type Outgoing =
   | ExternalUpdated
   | ExternalPermissionFrame
   | RunUpdated
+  | AccountUpdated
   | RunEnvUpdated
   | QuotaUpdated
   | BudgetUpdated
@@ -421,6 +428,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
     ...(opts.sessionSettings ? ["session.settings"] : []),
+    // A message may carry images (`session.send` with `images`).
+    "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
@@ -432,6 +441,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
     ...(opts.quota ? ["quota"] : []),
+    ...(opts.account ? ["account"] : []),
     // Project rules live in the board's projects.
     ...(opts.board ? ["rules"] : []),
     ...(opts.costs ? ["costs"] : []),
@@ -709,6 +719,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.usage;
   }
 
+  function account(): Account {
+    if (!opts.account) throw featureOff("account");
+    return opts.account;
+  }
+
   function quota(): Quota {
     if (!opts.quota) throw featureOff("quota");
     return opts.quota;
@@ -906,7 +921,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await manager.create(command.payload, { prepared }));
       }
       case "session.send":
-        return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
+        return ok(
+          command.type,
+          manager.send(command.payload.sessionId, command.payload.text, command.payload.images),
+        );
       case "session.interrupt":
         await manager.interrupt(command.payload.sessionId);
         return ok(command.type);
@@ -1352,6 +1370,10 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "daemon.update.apply": {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
+      }
+      case "daemon.update.check": {
+        if (!opts.updates) throw featureOff("updater");
+        return ok(command.type, await opts.updates.checkNow());
       }
       case "daemon.shutdown": {
         const shutdown = opts.onShutdown;
@@ -1987,6 +2009,23 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchQuota = host.watch((state) => send(ws, { type: "quota.updated", ...state }));
         return ok(command.type);
       }
+      case "account.get":
+        return ok(command.type, await account().get());
+      case "account.watch": {
+        const host = account();
+        ws.data.unwatchAccount?.();
+        ws.data.unwatchAccount = host.watch((state) =>
+          send(ws, { type: "account.updated", ...state }),
+        );
+        return ok(command.type);
+      }
+      case "account.unwatch":
+        account();
+        ws.data.unwatchAccount?.();
+        ws.data.unwatchAccount = undefined;
+        return ok(command.type);
+      case "account.refresh":
+        return ok(command.type, await account().refresh());
       case "runenv.config":
         return ok(
           command.type,
@@ -2156,6 +2195,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchRuns?.();
         ws.data.unwatchRunEnv?.();
         ws.data.unwatchQuota?.();
+        ws.data.unwatchAccount?.();
         ws.data.unwatchAskpass?.();
         ws.data.unwatchBudgets?.();
         if (ws.data.terminalSink) opts.terminals?.detachAll(ws.data.terminalSink);

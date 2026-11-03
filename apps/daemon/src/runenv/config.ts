@@ -9,6 +9,17 @@ import { hashOf } from "../workflows/repo.ts";
 /** Where a project's run environment is declared, read from the base branch only. */
 export const RUN_CONFIG_PATH = ".flightdeck/run.yaml";
 
+const missing = () =>
+  new FlightdeckError(
+    "invalid_state",
+    `no ${RUN_CONFIG_PATH} on the base branch`,
+    "run_config_missing",
+  );
+const invalid = (errors: string[]) =>
+  new FlightdeckError("invalid_state", "the run.yaml has validation errors", "run_config_invalid", {
+    errors: errors.join("; "),
+  });
+
 /** A block holds this many ports per card. */
 export const PORT_BLOCK = 10;
 
@@ -215,16 +226,16 @@ export class RunConfigs {
   /** Trusts the file's current content; `hash` is what the user reviewed. */
   async trust(project: ProjectRef, hash: string): Promise<RunConfigInfo> {
     const found = await runConfigSource(project.path, project.baseBranch);
-    if (!found) throw new FlightdeckError("invalid_state", `sem ${RUN_CONFIG_PATH} no ramo-base`);
+    if (!found) throw missing();
     if (found.hash !== hash) {
       throw new FlightdeckError(
         "invalid_state",
-        "o run.yaml mudou; revise os comandos de novo antes de confiar",
+        "the run.yaml changed; review the commands again before trusting it",
+        "run_config_changed",
       );
     }
-    if (parseRunConfig(found.source).errors.length > 0) {
-      throw new FlightdeckError("invalid_state", "o run.yaml tem erros de validação");
-    }
+    const { errors } = parseRunConfig(found.source);
+    if (errors.length > 0) throw invalid(errors);
     this.opts.db
       .query(
         "INSERT OR IGNORE INTO trusted_run_configs (project_id, hash, trusted_at) VALUES (?, ?, ?)",
@@ -236,16 +247,14 @@ export class RunConfigs {
   /** The trusted, valid configuration, or an error saying what is missing. */
   async resolve(project: ProjectRef): Promise<RunConfig> {
     const info = await this.info(project);
-    if (!info.exists)
-      throw new FlightdeckError("invalid_state", `sem ${RUN_CONFIG_PATH} no ramo-base`);
-    if (!info.config) {
+    if (!info.exists) throw missing();
+    if (!info.config) throw invalid(info.errors);
+    if (!info.trusted) {
       throw new FlightdeckError(
         "invalid_state",
-        `o run.yaml tem erros de validação: ${info.errors.join("; ")}`,
+        "the run.yaml is not trusted; trust it on the card",
+        "run_config_untrusted",
       );
-    }
-    if (!info.trusted) {
-      throw new FlightdeckError("invalid_state", "run.yaml não confiado; confie nele no card");
     }
     return info.config;
   }

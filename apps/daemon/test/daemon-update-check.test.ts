@@ -53,12 +53,12 @@ function checker(url: string, currentVersion = "0.8.0") {
 }
 
 describe("daemon-update-check", () => {
-  test("config: a cada 24 h; rodando do código-fonte não há manifesto padrão", () => {
-    expect(Config.parse({}).updates).toEqual({ manifestUrl: null, checkIntervalH: 24 });
+  test("config: a cada 6 h; rodando do código-fonte não há manifesto padrão", () => {
+    expect(Config.parse({}).updates).toEqual({ manifestUrl: null, checkIntervalH: 6 });
     expect(
-      Config.parse({ updates: { manifestUrl: "http://127.0.0.1:9/m.json", checkIntervalH: 6 } })
+      Config.parse({ updates: { manifestUrl: "http://127.0.0.1:9/m.json", checkIntervalH: 12 } })
         .updates,
-    ).toEqual({ manifestUrl: "http://127.0.0.1:9/m.json", checkIntervalH: 6 });
+    ).toEqual({ manifestUrl: "http://127.0.0.1:9/m.json", checkIntervalH: 12 });
     expect(() => Config.parse({ updates: { checkIntervalH: 0 } })).toThrow();
   });
 

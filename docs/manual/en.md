@@ -32,6 +32,7 @@ are written in Portuguese.
   - [How it works](#how-it-works)
   - [Why the VS Code extension is left out](#why-the-vs-code-extension-is-left-out)
 - [Approvals and always allow](#approvals-and-always-allow)
+- [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
   - [Finding projects](#finding-projects)
@@ -81,6 +82,7 @@ are written in Portuguese.
   - [Who may message whom](#who-may-message-whom)
   - [Teams](#teams)
 - [Costs, budgets and quota](#costs-budgets-and-quota)
+  - [The Claude account of a host](#the-claude-account-of-a-host)
   - [Plan quota](#plan-quota)
   - [Quota queue](#quota-queue)
   - [Usage](#usage)
@@ -90,6 +92,7 @@ are written in Portuguese.
   - [Quota history](#quota-history)
 - [Clients: grouping work across hosts and projects](#clients-grouping-work-across-hosts-and-projects)
 - [Session summary and webhooks](#session-summary-and-webhooks)
+- [Notification center](#notification-center)
 - [Tabs and embedded terminal](#tabs-and-embedded-terminal)
   - [Tabs](#tabs)
   - [Split view](#split-view)
@@ -100,6 +103,7 @@ are written in Portuguese.
   - [Tray](#tray)
   - [Open in terminal](#open-in-terminal)
   - [Palette Ctrl+K](#palette-ctrlk)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
   - [Global shortcut](#global-shortcut)
 - [Interface](#interface)
   - [Design and navigation](#design-and-navigation)
@@ -407,13 +411,21 @@ flightdeckd service uninstall           # stops the daemon and removes the servi
 The Windows daemon can keep the daemon of each WSL distro running (and the distro awake):
 
 ```json
-"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7421 }]
+"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7430 }]
 ```
 
 Each item becomes `wsl.exe -d <distro> --exec bash -lc "<command>"`, restarted with backoff from
 1 s up to 60 s, logging to `dataDir/logs/wsl-<distro>.log`. The WSL daemon listens on
-`127.0.0.1:7421`, which Windows reaches through `localhost`. If that daemon also receives hooks,
+`127.0.0.1:7430`, which Windows reaches through `localhost`. If that daemon also receives hooks,
 its `hooks.port` must differ from Windows's (see [Claude Code hooks](#claude-code-hooks)).
+
+**Setting up the WSL daemon.** Run `flightdeckd setup` inside the distro. WSL shares `localhost`
+with Windows, so setup detects WSL (`WSL_DISTRO_NAME`, or `/proc/version`) and moves the ports
+that are still at the Windows daemon's defaults up by 10: `port` 7430, `hooks.port` 7431 and
+`telemetry.port` 7432 (Windows keeps 7420, 7421 and 7422). They are written to `config.json`, so
+nobody edits it by hand; a port you set yourself stays, and running setup again changes nothing.
+A new config in WSL also names the host "<hostname> (WSL <distro>)", so the two daemons are easy
+to tell apart in the app.
 
 ## Remote access over Tailscale
 
@@ -469,6 +481,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
   for approval of Write", "idle 12 min ago"). The daemon sends it in the `summary` field of the
   lists.
+- **View:** the two buttons at the start of the toolbar (**List** and **Cards**) switch how the
+  sessions are drawn. A card shows the title (click to open), the project, the host, the status
+  dot, the persona, the cost (on hosts that report it) and the last line (the request and what the
+  session is doing, such as the tool waiting for approval), with the same menu as a row. Cards sit
+  in as many columns as the width allows. The choice is remembered.
 - **Filters:** text, host, origin, state, "Pinned only" and "Show archived". Archived sessions are
   left out by default.
 - **Menu:** rename, pin (pinned sessions go to the top of the group), archive and "Copy command"
@@ -478,6 +495,26 @@ A session appears only once. The order of preference is managed, then terminal, 
   - terminal, still alive: opens the live transcript, with its permission requests and, if it is
     controllable, the message box;
   - ended or from history: opens the reader, with "Continue in Flightdeck".
+
+### The message box
+
+- In a session's message box you can **paste or drop images** (PNG, JPEG, GIF or WebP, up to five
+  per message and 5 MB each; the host must support it). They show as thumbnails you can remove
+  before sending, and the conversation notes how many images a message carried. A file that does
+  not fit says why instead of being attached.
+- While a turn runs, **Queue** (or Enter) puts the message in a **Queued** list above the box
+  instead of sending it. **Edit** takes it back into the box and **Remove** drops it; when the turn
+  ends the queued messages go out in order, one per turn.
+- **Enter** sends the message; **Ctrl+Enter** (or Shift+Enter) adds a new line. The send icon (↵)
+  shows when the box has text. Typing `/` offers the snippets and the commands of the session.
+- Under each assistant message a row shows on hover or keyboard focus: **Copy message**, **Fork from
+  here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
+  long ago the message was written.
+- The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
+  Under the card a status line shows the model and the permission mode, each a picker when the
+  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
+  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks
 
@@ -603,6 +640,44 @@ Cards run in worktrees, and each worktree has its own `.claude`:
 
 On the Projects screen, **Edit** shows the project's **Rules** section, with a remove button that
 asks for confirmation and preserves the rest of the file.
+
+## Projects
+
+The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
+host as a card: its name, host, base branch, the live sessions, the cards in progress, the ones
+that need you, the last activity and what it cost over the last seven days. The cost is a dash
+when the host does not report costs. Type in the search box to narrow the list by name, host,
+branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
+needs attention first.
+
+Click a card to open the project's page. It links the project's **Board**, **Sessions**,
+**Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
+settings, where the folder, base branch, setup and personas are edited).
+
+### Sessions side by side
+
+When the project has sessions that Flightdeck started, the page shows them as **tiles**: 2, 3, 4 or
+6 at a time (pick the number in **Tiles on screen**; it is kept). The sessions that need you come
+first, then the running ones, then the idle ones. Each tile has the session's name (a button that
+opens it), its status, its **last lines**, the **request** it is waiting on (with **Allow** and
+**Deny**) and a small message box: **Enter** sends, **Ctrl+Enter** adds a new line, and the send
+icon shows when there is text. From the keyboard, Tab reaches each tile, and **Alt+arrow keys**
+move between them (left and right by one, up and down by a row). The tiles follow their sessions
+live; the list is the project's, so a session of another project never shows here.
+
+### The sidebar, the tab strip and Settings
+
+- The sidebar keeps **Sessions**, **Needs you**, **Projects** and **Board** on top; the rest is in
+  three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
+  Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
+  not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
+  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
+  or right, move to the other area, pin), **New tab** and **Split**.
+- **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
+  a search box: typing keeps the sections whose name or settings match.
+- **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
+  the top model with what it cost.
 
 ## Board
 
@@ -1139,7 +1214,9 @@ exits with code 3.
 
 - **Per-host history** (🕘 next to the host name): indexed sessions with title, folder, date of
   the last message, origin (`Flightdeck` or `terminal`) and the "possibly in use" badge; filters
-  by folder, period (whole days, in UTC) and origin.
+  by folder, period (whole days, in UTC) and origin. The **List/Cards** buttons (the same choice as
+  the Sessions screen) draw each session as a card with title, folder, host, date, origin, the
+  "possibly in use" badge and, on hosts that report costs, the estimated cost.
 - **Global search** (`Ctrl+K` inside the app, or "Search the history"): it is the last section of
   the [palette](#palette-ctrlk). Enter, with nothing selected, queries every online host in
   parallel and merges the hits by date, with host, folder and a highlighted snippet. A host that
@@ -1615,6 +1692,22 @@ In a terminal, an action is masked when it runs through `flightdeckd action run`
 `flightdeck` mod uses): what it prints is the daemon's masked result. Anything else a
 terminal shows is not masked.
 
+## Notification center
+
+The bell at the right of the top bar keeps every notification the app sends: a request that
+needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
+unblocked. A badge on the bell counts the unread ones.
+
+- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
+- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+  opens the host). A budget alert opens Costs already filtered by its host and project, or by
+  its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
+  result, an unblocked card) opens the PR in your browser when the card is gone.
+- **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
+  (the newest 500) and survives a restart. Esc closes the panel.
+- The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
+  (the window had focus) is not in it either.
+
 ## Snippets
 
 **Snippets** are saved commands and prompts. The **Snippets** screen (sidebar, for hosts that keep
@@ -1845,8 +1938,10 @@ Claude Code sessions can message each other through Flightdeck, on the same host
 
 - **A team** is a coordinator session and its workers. Each worker runs in a card, with its own
   worktree.
-- **Teams** (sidebar) creates a team: the project, the goal, a name, the number of workers and,
-  if you want, the coordinator's persona.
+- **Teams** (sidebar) creates a team: the project, the goal, a name and, if you want, the
+  coordinator's persona and model. The workers are rows: each has its own persona and model, and
+  you add or remove rows (the number of rows is the number of workers, 1 to 8). With no choice,
+  the model is the persona's. Each member's model shows on its line.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
   2. send one task to each worker, and ask to hear when it goes idle;
@@ -1859,13 +1954,47 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;
   - change a member's persona;
-  - add a worker, or take a member out (its card stays on the board);
+  - add a worker, choosing its persona and model (the coordinator is told its name and card);
+  - take a member out: its session is stopped, the coordinator is told, and its card stays on the
+    board;
   - close the team, with a confirmation.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.
 
 ## Costs, budgets and quota
+
+### The Claude account of a host
+
+The host page has an **Account** card, above the usage panel, that shows which Claude account the
+host's own `claude` is signed in to. Flightdeck never signs you in and never sees a token: it asks
+the `claude` already installed on the host (`claude auth status`, plus the account and usage
+reports of the Agent SDK), and Anthropic's terms keep a login out of third-party apps.
+
+#### Which account is this host using?
+
+- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+  two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
+  the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- It is read when you open the page and again every 5 minutes while the page stays open, and at
+  once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
+  reads now; it waits 30 seconds between reads.
+- Each host has its own account. The email is shown on this card only: it is not put in
+  notifications, the window title, the status line or the tray, and the daemon keeps it in memory,
+  never in its database or logs.
+- If a read fails, the card keeps the last reading and says "Could not refresh". If the host is
+  offline, it says so instead of showing an old reading.
+
+#### What if the host is not signed in?
+
+The card says "This host is not signed in to Claude." and shows the command **`claude auth login`**.
+Open the host's terminal (the **Open terminal** button does), run it there, follow the steps, and
+come back: the card updates. **Copy command** copies it. The card has no form and never asks for a
+code or a token.
+
+A host that uses an API key or a cloud provider (Bedrock, Vertex, a gateway) shows "Plan limits do
+not apply": it has no plan windows. If the card says the account could not be read, check that
+`claude` is installed on that host and press **Try again**.
 
 ### Plan quota
 
@@ -2174,7 +2303,7 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
-  the middle button closes any tab. Drag a tab onto another to reorder it.
+  the middle button closes any tab. Drag a tab onto another to reorder it. While dragging, a bar marks where the tab will land. The order is kept between sessions.
 - **Shortcuts:**
 
   | Shortcut | Action |
@@ -2184,7 +2313,8 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
   | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
-  | `Ctrl+Shift+PageUp` / `PageDown` | move the tab left or right |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
+  | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
   In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
@@ -2221,9 +2351,12 @@ tab, with no SSH.
   Linux) in its first allowed folder. The panel also lists the live terminals, each with
   **Open**.
 - **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` or the right button's
-  **Copy** / **Paste** menu (`Ctrl+C` goes to the process), search with `Ctrl+Shift+F` (Enter for the next match, Shift+Enter for the previous,
-  Esc to close). Links open in the browser. The font is the system monospace; its size is in
-  Settings (**Terminal font size**, 10 to 24).
+  menu (**Copy**, which needs a selection, **Paste** and **Select all**; `Ctrl+C` goes to the
+  process). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
+  the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
+  closes. Links in the output open in the browser (`http` and `https` only). The font is the
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24).
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
   keeps running on the host) or **End process**. A terminal shown as detached or ended has
@@ -2315,6 +2448,19 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
+- With nothing typed, a **Recent** section comes first with the last five entries you opened
+  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+  keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
+  **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
+  command shows its keys at the right.
+
+### Keyboard shortcuts
+
+`?` (outside text fields) opens a sheet with every shortcut, by group. The go-to chords press `g`
+and then a letter within about a second and a half: `g s` Sessions, `g n` Needs you, `g p`
+Projects, `g c` Costs, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
+forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
+`A`/`N` on a request. None of them fires while you type in a field.
 
 ### Global shortcut
 
@@ -2470,9 +2616,15 @@ signature (see [Installation](#from-the-release-binaries)).
   - an invalid signature or a broken download shows up in the banner, and nothing is installed;
   - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
 - **The daemon:**
-  - checks `daemon-latest.json` on start and every `updates.checkIntervalH` (24 h);
+  - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
+    default);
   - on the host page, the app shows **Update daemon to X** when there is a new version, and asks
     for confirmation;
+  - the host page also shows when the daemon last checked, and the error of that check if it
+    failed, with **Check for updates**: it asks the daemon to look at the manifest now (command
+    `daemon.update.check`). When the app is newer than the daemon, the page does this once by
+    itself when you open it, at most once every 10 minutes per host. A daemon from before this
+    command refuses it, and the page says why; update that one by hand with `flightdeckd update`;
   - the daemon downloads the binary for its own system to `<dataDir>/updates/`, verifies the
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
@@ -2483,7 +2635,7 @@ signature (see [Installation](#from-the-release-binaries)).
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 24 } }
+               "checkIntervalH": 6 } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no

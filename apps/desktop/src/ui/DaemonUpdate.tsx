@@ -26,14 +26,49 @@ export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
   }
   if (progress)
     return <p className="text-muted-foreground text-sm">{t("daemonUpdate.updating")}</p>;
-  if (!offer?.available || !offer.version) return null;
-  const version = offer.version;
+  const check = host.updateCheck;
+  const version = offer?.available ? offer.version : null;
   return (
     <>
-      <Button variant="outline" className="self-start" onClick={() => setConfirming(true)}>
-        {t("daemonUpdate.button", { version })}
-      </Button>
-      {confirming && (
+      {version && (
+        <Button variant="outline" className="self-start" onClick={() => setConfirming(true)}>
+          {t("daemonUpdate.button", { version })}
+        </Button>
+      )}
+      {offer && (
+        <div className="row-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={check?.busy === true}
+            onClick={() => void store.checkDaemonUpdate(host.id)}
+          >
+            {check?.busy ? t("daemonUpdate.checking") : t("daemonUpdate.check")}
+          </Button>
+          <span
+            className="text-muted-foreground text-sm"
+            title={store.formatDateTime(offer.checkedAt)}
+          >
+            {t("daemonUpdate.lastCheck", { when: store.formatWhen(offer.checkedAt) })}
+          </span>
+          {offer.error && (
+            <span className="text-sm text-status-needs-you">
+              {t("daemonUpdate.lastError", { error: offer.error })}
+            </span>
+          )}
+          {!offer.available && !offer.error && offer.version && (
+            <span className="text-muted-foreground text-sm">
+              {t("daemonUpdate.upToDate", { version: offer.version })}
+            </span>
+          )}
+          {check?.failed && (
+            <span role="alert" className="text-sm text-status-needs-you">
+              {t("daemonUpdate.checkFailed", { reason: check.failed })}
+            </span>
+          )}
+        </div>
+      )}
+      {version && confirming && (
         <ConfirmDialog
           message={t("daemonUpdate.message", { host: host.name, version })}
           confirmLabel={t("daemonUpdate.confirm")}

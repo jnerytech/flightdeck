@@ -157,8 +157,8 @@ describe("mudancas-ui", () => {
     mkdirSync(outside);
     await openSession(ctx, outside);
     await openChanges();
-    await settle(() => screen.queryByText(/não está num repositório git/) !== null);
-    expect(screen.queryByText(/não está num repositório git/)).not.toBeNull();
+    await settle(() => screen.queryByText(/não é um repositório git/) !== null);
+    expect(screen.queryByText(/não é um repositório git/)).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Enviar revisão" })).toBeNull();
   });
 
@@ -291,7 +291,12 @@ describe("mudancas-ui", () => {
     await click("Reverter arquivo");
     await settle(() => !files().includes("novo.txt"));
     expect(files()).not.toContain("novo.txt");
-    expect(screen.queryByRole("status")?.textContent ?? "").toContain("novo.txt revertido");
+    expect(
+      screen
+        .queryAllByRole("status")
+        .map((el) => el.textContent ?? "")
+        .join(" "),
+    ).toContain("novo.txt revertido");
     expect(() => readFileSync(join(ctx.repo, "novo.txt"))).toThrow();
 
     await click("Desfazer");
@@ -505,9 +510,9 @@ describe("mudancas-ui", () => {
     await settle(() => document.querySelector(".cm-content") === null);
     expect(document.querySelector(".cm-content")).toBeNull();
     const shown = screen.queryByRole("dialog")?.textContent ?? "";
-    // The translated sentence (with the fix), then the host's own English text behind it.
     expect(shown).toContain("está fora das pastas permitidas do host");
-    expect(shown).toContain("outside allowedRoots");
+    // The reason carries the whole sentence now; the host's English text is no longer appended.
+    expect(shown).not.toContain("outside allowedRoots");
     expect(readFileSync(join(outside, "a.txt"), "utf8")).toBe("um\ndois\n");
   });
 

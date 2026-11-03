@@ -9,6 +9,7 @@ import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
 import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from "./check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
+import { installGitEnvGuard } from "./git-env.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
@@ -18,6 +19,10 @@ import { defaultTestTimeoutMs } from "./timeout.ts";
 // Area runs (`bun --config=bunfig.area.toml test <file>`) have no --timeout flag, and a preload
 // default reaches the first file only: enough for one file. The full suite passes the flag.
 setDefaultTimeout(defaultTestTimeoutMs(process.platform));
+
+// A run started from a git command or hook inherits GIT_DIR and friends; a test's `git init --bare`
+// would then re-initialise the real repository. Before every guard, so they see a clean env.
+installGitEnvGuard();
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
 const clis = installCliGuard();

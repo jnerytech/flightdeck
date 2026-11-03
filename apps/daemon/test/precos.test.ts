@@ -230,9 +230,11 @@ describe("precos", () => {
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "costs",
-    ]);
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["costs"]);
     expect(await client.data("costs.reprice", {})).toEqual({ entries: 5 });
     // Without an indexer there is no load to wait for.
     expect(await client.data("costs.status", {})).toEqual({

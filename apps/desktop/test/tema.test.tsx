@@ -145,9 +145,7 @@ describe("tema", () => {
     const { mem } = themePlatform();
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
-    await act(async () => Bun.sleep(5));
-    const settings = screen.queryByRole("button", { name: "Configurações" });
-    expect(settings).not.toBeNull();
+    const settings = await screen.findByRole("button", { name: "Configurações" });
     await act(async () => {
       fireEvent.click(settings as HTMLElement);
     });

@@ -1,17 +1,29 @@
-import type { PermissionMode, PermissionUpdate, SettableMode } from "@flightdeck/protocol";
-import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
+import {
+  type PermissionMode,
+  type PermissionUpdate,
+  SESSION_IMAGE_MAX_BYTES,
+  SESSION_IMAGE_MAX_COUNT,
+  type SessionImage,
+  type SettableMode,
+} from "@flightdeck/protocol";
+import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
+import { MODELS } from "@/components/personas/model-select";
+import { ActivityLine } from "@/components/session/activity-line";
+import { MessageActions } from "@/components/session/message-actions";
 import {
   Composer,
+  ComposerDock,
   Message,
   SessionHeader,
   SessionPane,
   Timeline,
 } from "@/components/session/parts";
+import { SessionStatusLine } from "@/components/session/status-line";
 import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
@@ -20,6 +32,8 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import { activityOf } from "../lib/session-activity.ts";
+import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -27,10 +41,9 @@ import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The permission modes a live session can switch between, and the model aliases it takes. */
+/** The permission modes a live session can switch between. */
 const MODES = ["plan", "default", "acceptEdits"] as const;
 const ALL_MODES = [...MODES, "bypassPermissions"] as const;
-const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
@@ -38,7 +51,7 @@ const END_SLACK = 24;
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
   copyText?(text: string): Promise<boolean>;
-  send(text: string): Promise<void>;
+  send(text: string, images?: SessionImage[]): Promise<void>;
   /** Changes the permission mode / the model (null: the default) of the open session. */
   setMode?(mode: SettableMode): Promise<void>;
   setModel?(model: string | null): Promise<void>;
@@ -59,7 +72,15 @@ type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 function AssistantMessage(props: {
   item: Item<"assistant">;
   toolResults: SessionState["toolResults"];
+  t: T;
+  actions: SessionActions;
+  pin: SessionViewProps["pin"];
+  /** Only the latest message offers Fork. */
+  fork: SessionViewProps["fork"];
 }) {
+  const text = props.item.blocks
+    .flatMap((block) => (block.type === "text" ? [block.text] : []))
+    .join("\n\n");
   return (
     <Message from="assistant">
       {props.item.blocks.map((block, i) =>
@@ -74,6 +95,16 @@ function AssistantMessage(props: {
             result={props.toolResults[block.id]}
           />
         ),
+      )}
+      {text !== "" && (
+        <MessageActions
+          text={text}
+          at={props.item.at}
+          t={props.t}
+          copyText={props.actions.copyText}
+          fork={props.fork}
+          pin={props.pin}
+        />
       )}
     </Message>
   );
@@ -141,13 +172,34 @@ const TimelineItem = memo(function TimelineItem(props: {
   alwaysAllow: boolean;
   t: T;
   nowMs: number;
+  pin: SessionViewProps["pin"];
+  /** Set on the latest assistant message only. */
+  fork: SessionViewProps["fork"];
 }) {
   const { item } = props;
   switch (item.kind) {
     case "user":
-      return <Message from="user">{item.text}</Message>;
+      return (
+        <Message from="user">
+          {item.text}
+          {item.images ? (
+            <div className="text-muted-foreground text-xs">
+              {props.t("session.imagesSent", { count: String(item.images) })}
+            </div>
+          ) : null}
+        </Message>
+      );
     case "assistant":
-      return <AssistantMessage item={item} toolResults={props.toolResults} />;
+      return (
+        <AssistantMessage
+          item={item}
+          toolResults={props.toolResults}
+          t={props.t}
+          actions={props.actions}
+          pin={props.pin}
+          fork={props.fork}
+        />
+      );
     case "permission":
       return <PermissionItem {...props} item={item} />;
     case "result":
@@ -169,8 +221,7 @@ const TimelineItem = memo(function TimelineItem(props: {
   }
 });
 
-/** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: {
+interface SessionViewProps {
   title: string;
   session: SessionState;
   actions: SessionActions;
@@ -192,13 +243,22 @@ export function SessionView(props: {
   nowMs?: number;
   /** Phase 18: the prompt snippets `/` offers in the message box, and the text of the chosen one. */
   prompts?: PromptSnippets;
+  /** The host announces `session.images`: the message box takes pasted or dropped images. */
+  images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
   /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
   bypass?: { host: string };
+  /** Pins or unpins the session; its button sits in each assistant message's action row. */
+  pin?: { pinned: boolean; toggle(): void };
+  /** Forks the conversation at its latest message; offered on that message only. */
+  fork?: () => void;
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
-}) {
+}
+
+/** Chat history in streaming, tool calls, approval cards, message box and session controls. */
+export function SessionView(props: SessionViewProps) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
@@ -247,22 +307,133 @@ export function SessionView(props: {
         : undefined,
     [props.prompts, slash],
   );
+  const latestAssistant = [...session.items]
+    .reverse()
+    .find((item) => item.kind === "assistant")?.seq;
   const working = isBusy(session.status);
+  const activity = activityOf(session);
   const closed = session.status === "ended" || session.status === "error";
 
   const box = useRef<HTMLTextAreaElement>(null);
+  const files = useRef<HTMLInputElement>(null);
+  /** Where the cursor goes once Ctrl+Enter has put a line break in the text. */
+  const caret = useRef<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the new text is when the cursor moves
+  useLayoutEffect(() => {
+    if (caret.current !== null) box.current?.setSelectionRange(caret.current, caret.current);
+    caret.current = null;
+  }, [text]);
   /** The session is being ended: Encerrar is busy until the daemon says so. */
   const [ending, setEnding] = useState(false);
 
+  /** The images waiting to go with the next message, and why the last file was turned away. */
+  const [attached, setAttached] = useState<SessionImage[]>([]);
+  const [refusal, setRefusal] = useState<ImageRefusal | null>(null);
+  const attach = async (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (!props.images || images.length === 0) return;
+    let have = attached.length;
+    const taken: SessionImage[] = [];
+    let turned: ImageRefusal | null = null;
+    for (const file of images) {
+      const why = refuseImage(file, have);
+      if (why) turned = why;
+      else {
+        taken.push(await readImage(file));
+        have++;
+      }
+    }
+    setRefusal(turned);
+    if (taken.length > 0) setAttached((before) => [...before, ...taken]);
+  };
+
+  /** Messages written during a turn: they wait here and go out, in order, as the turns end. */
+  const [queued, setQueued] = useState<Array<{ text: string; images: SessionImage[] }>>([]);
+  /** A queued message went out and its turn has not shown up yet: the next one waits for it. */
+  const awaiting = useRef<number | null>(null);
+  const nextQueued = queued[0];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the head of the queue is what it reads
+  useEffect(() => {
+    // The turn showed up (the session worked, or its user message reached the conversation).
+    if (awaiting.current !== null && (working || cards > awaiting.current)) awaiting.current = null;
+    if (working || closed || !nextQueued || awaiting.current !== null) return;
+    awaiting.current = cards;
+    void actions
+      .send(nextQueued.text, nextQueued.images.length > 0 ? nextQueued.images : undefined)
+      .then(() => setQueued((rest) => rest.slice(1)))
+      .catch(() => {
+        awaiting.current = null;
+      });
+  }, [working, closed, nextQueued, cards]);
+
   const submit = () => {
     const value = text.trim();
-    if (!value) {
+    if (!value && attached.length === 0) {
       // A click with nothing to send is not dead: the cursor goes where the text is typed.
       box.current?.focus();
       return undefined;
     }
     setText("");
-    return actions.send(value);
+    setAttached([]);
+    setRefusal(null);
+    if (working) {
+      setQueued((before) => [...before, { text: value, images: attached }]);
+      return undefined;
+    }
+    return actions.send(value, attached.length > 0 ? attached : undefined);
+  };
+
+  const pickers = {
+    ...(props.settings && actions.setModel
+      ? {
+          model: (
+            <NativeSelect
+              compact
+              inline
+              aria-label={t("session.modelLabel")}
+              value={model}
+              onChange={(e) => {
+                setModel(e.target.value);
+                void actions.setModel?.(e.target.value || null);
+              }}
+            >
+              <option value="">{t("session.modelDefault")}</option>
+              {MODELS.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </NativeSelect>
+          ),
+        }
+      : {}),
+    ...(props.settings && actions.setMode
+      ? {
+          mode: (
+            <NativeSelect
+              compact
+              inline
+              aria-label={t("session.modeLabel")}
+              value={mode}
+              onChange={(e) => {
+                const next = e.target.value as SettableMode;
+                if (next === "bypassPermissions") {
+                  setBypassAsk(true);
+                  return;
+                }
+                setMode(next);
+                void actions.setMode?.(next);
+              }}
+            >
+              {offeredModes.map((value) => (
+                <option key={value} value={value}>
+                  {t(`modes.${value}.name`)}
+                </option>
+              ))}
+            </NativeSelect>
+          ),
+        }
+      : {}),
   };
 
   return (
@@ -345,6 +516,8 @@ export function SessionView(props: {
               alwaysAllow={props.alwaysAllow === true}
               t={t}
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
+              pin={props.pin}
+              fork={item.seq === latestAssistant ? props.fork : undefined}
             />
           ))}
           {session.streaming && (
@@ -377,47 +550,179 @@ export function SessionView(props: {
           </Button>
         )}
       </div>
-      <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
-      <Composer>
-        {props.prompts && (
-          <IconActionButton
-            label={t("session.insertSnippet")}
-            onClick={() => {
-              setText("/");
-              box.current?.focus();
-            }}
-          >
-            <BookText aria-hidden="true" />
-          </IconActionButton>
-        )}
-        {props.pickPath && (
-          <IconActionButton label={t("session.mentionFolder")} onClick={() => setPicking(true)}>
-            <AtSign aria-hidden="true" />
-          </IconActionButton>
-        )}
-        {props.settings && actions.setMode && (
-          <NativeSelect
-            compact
-            inline
-            aria-label={t("session.modeLabel")}
-            value={mode}
-            onChange={(e) => {
-              const next = e.target.value as SettableMode;
-              if (next === "bypassPermissions") {
-                setBypassAsk(true);
-                return;
-              }
-              setMode(next);
-              void actions.setMode?.(next);
-            }}
-          >
-            {offeredModes.map((value) => (
-              <option key={value} value={value}>
-                {t(`modes.${value}.name`)}
-              </option>
+      <ComposerDock>
+        <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+        {queued.length > 0 && (
+          <ul aria-label={t("session.queue")} className="composer-images">
+            {queued.map((item, at) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: the queue is only ever edited by position
+              <li key={at} className="composer-queued">
+                <span className="min-w-0 flex-1 truncate text-sm">{item.text}</span>
+                {item.images.length > 0 && (
+                  <span className="text-muted-foreground text-xs">
+                    {t("session.imagesSent", { count: String(item.images.length) })}
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t("session.queueEdit", { text: item.text })}
+                  onClick={() => {
+                    setQueued((before) => before.filter((_, i) => i !== at));
+                    setText(item.text);
+                    setAttached(item.images);
+                    box.current?.focus();
+                  }}
+                >
+                  {t("session.edit")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t("session.queueRemove", { text: item.text })}
+                  onClick={() => setQueued((before) => before.filter((_, i) => i !== at))}
+                >
+                  {t("session.remove")}
+                </Button>
+              </li>
             ))}
-          </NativeSelect>
+          </ul>
         )}
+        {(attached.length > 0 || refusal) && (
+          <div className="composer-images">
+            {attached.map((image, at) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: two pasted copies of one image look the same
+              <div key={`${at}:${image.data.slice(-16)}`} className="composer-image">
+                <img
+                  alt={t("session.imageAttached", { n: String(at + 1) })}
+                  src={`data:${image.mediaType};base64,${image.data}`}
+                  className="composer-thumb"
+                />
+                <IconActionButton
+                  label={t("session.imageRemove", { n: String(at + 1) })}
+                  onClick={() => setAttached((before) => before.filter((_, i) => i !== at))}
+                >
+                  <X aria-hidden="true" />
+                </IconActionButton>
+              </div>
+            ))}
+            {refusal && (
+              <p role="alert" className="text-status-error text-xs">
+                {t(`session.imageRefused.${refusal}`, {
+                  max: String(
+                    refusal === "size"
+                      ? SESSION_IMAGE_MAX_BYTES / (1024 * 1024)
+                      : SESSION_IMAGE_MAX_COUNT,
+                  ),
+                })}
+              </p>
+            )}
+          </div>
+        )}
+        {working && <ActivityLine activity={activity} t={t} />}
+        <Composer>
+          {props.images && (
+            <>
+              <IconActionButton label={t("session.attach")} onClick={() => files.current?.click()}>
+                <Plus aria-hidden="true" />
+              </IconActionButton>
+              <input
+                ref={files}
+                type="file"
+                multiple
+                hidden
+                aria-hidden="true"
+                tabIndex={-1}
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                onChange={(e) => {
+                  void attach(Array.from(e.target.files ?? []));
+                  e.target.value = "";
+                }}
+              />
+            </>
+          )}
+          {props.prompts && (
+            <IconActionButton
+              label={t("session.insertSnippet")}
+              onClick={() => {
+                setText("/");
+                box.current?.focus();
+              }}
+            >
+              <BookText aria-hidden="true" />
+            </IconActionButton>
+          )}
+          {props.pickPath && (
+            <IconActionButton label={t("session.mentionFolder")} onClick={() => setPicking(true)}>
+              <AtSign aria-hidden="true" />
+            </IconActionButton>
+          )}
+          <Textarea
+            ref={box}
+            aria-label={t("session.message")}
+            placeholder={t("session.placeholder")}
+            title={t("session.shortcuts")}
+            aria-keyshortcuts="Enter"
+            value={text}
+            className="composer-box max-h-40 min-h-9 flex-1 resize-none"
+            rows={1}
+            onChange={(e) => setText(e.target.value)}
+            onPaste={(e) => {
+              const files = Array.from(e.clipboardData?.files ?? []);
+              if (props.images && files.some((file) => file.type.startsWith("image/"))) {
+                e.preventDefault();
+                void attach(files);
+              }
+            }}
+            onDragOver={(e) => props.images && e.preventDefault()}
+            onDrop={(e) => {
+              if (!props.images) return;
+              e.preventDefault();
+              void attach(Array.from(e.dataTransfer?.files ?? []));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && working) void actions.interrupt();
+              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+              if (e.ctrlKey || e.metaKey) {
+                // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
+                e.preventDefault();
+                const field = e.currentTarget;
+                const at = field.selectionStart;
+                caret.current = at + 1;
+                setText(`${text.slice(0, at)}\n${text.slice(field.selectionEnd)}`);
+              } else if (!e.shiftKey) {
+                e.preventDefault();
+                void submit();
+              }
+            }}
+          />
+          {working ? (
+            <>
+              <ActionButton variant="outline" aria-keyshortcuts="Enter" onClick={submit}>
+                {t("session.queueAdd")}
+              </ActionButton>
+              <ActionButton
+                variant="destructive"
+                aria-label={t("session.stopTurn")}
+                onClick={() => actions.interrupt()}
+              >
+                <Square aria-hidden="true" />
+                {t("session.interrupt")}
+              </ActionButton>
+            </>
+          ) : (
+            (text.trim() !== "" || attached.length > 0) && (
+              <ActionButton
+                size="icon"
+                aria-label={t("session.send")}
+                aria-keyshortcuts="Enter"
+                onClick={submit}
+              >
+                <CornerDownLeft aria-hidden="true" />
+              </ActionButton>
+            )
+          )}
+        </Composer>
         {bypassAsk && props.bypass && (
           <ConfirmDialog
             destructive
@@ -431,56 +736,14 @@ export function SessionView(props: {
             }}
           />
         )}
-        {props.settings && actions.setModel && (
-          <NativeSelect
-            compact
-            inline
-            aria-label={t("session.modelLabel")}
-            value={model}
-            onChange={(e) => {
-              setModel(e.target.value);
-              void actions.setModel?.(e.target.value || null);
-            }}
-          >
-            <option value="">{t("session.modelDefault")}</option>
-            {MODELS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </NativeSelect>
-        )}
-        <Textarea
-          ref={box}
-          aria-label={t("session.message")}
-          placeholder={t("session.placeholder")}
-          value={text}
-          className="max-h-40 min-h-9 flex-1 resize-none"
-          rows={1}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && working) void actions.interrupt();
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              void submit();
-            }
-          }}
+        <SessionStatusLine
+          t={t}
+          model={session.model}
+          mode={session.permissionMode ?? "default"}
+          pickers={pickers}
+          working={working}
         />
-        {working ? (
-          <>
-            <ActionButton
-              variant="destructive"
-              aria-label={t("session.stopTurn")}
-              onClick={() => actions.interrupt()}
-            >
-              <Square aria-hidden="true" />
-              {t("session.interrupt")}
-            </ActionButton>
-          </>
-        ) : (
-          <ActionButton onClick={submit}>{t("session.send")}</ActionButton>
-        )}
-      </Composer>
+      </ComposerDock>
       {picking &&
         props.pickPath?.((path) => {
           setPicking(false);

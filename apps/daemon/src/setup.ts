@@ -2,6 +2,7 @@ import { access, chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, posix, resolve, win32 } from "node:path";
 import { loadConfig, updateConfigFile } from "./config.ts";
 import { compareVersions, swapBinary } from "./update.ts";
+import { WSL_PORT_OFFSET } from "./wsl-host.ts";
 
 export interface SetupDeps {
   /** Free-text question; an empty answer means "nothing". */
@@ -15,6 +16,8 @@ export interface SetupDeps {
   platform: NodeJS.Platform;
   isDirectory(path: string): boolean | Promise<boolean>;
   tailscaleIp(): Promise<string | null>;
+  /** The WSL distro this host runs in (`{ distro: null }` when unknown); null outside WSL. */
+  wsl?: { distro: string | null } | null;
   /** Puts the running binary at its stable place; false when running from source. */
   installBinary(): Promise<boolean>;
   /** Puts the binary's folder on the user's PATH (or prints how); runs only after `installBinary`. */
@@ -141,6 +144,22 @@ async function yesFolders(deps: SetupDeps, current: string[], given: string[]): 
   return roots;
 }
 
+/**
+ * Inside WSL the Windows daemon already listens on 7420, 7421 and 7422 (WSL shares the
+ * localhost), so the ports still at those defaults move up by `WSL_PORT_OFFSET`. A port the
+ * person chose stays, and so a second run changes nothing.
+ */
+function shiftedPorts(raw: Record<string, unknown>): Record<string, unknown> {
+  const section = (key: string) => (raw[key] ?? {}) as Record<string, unknown>;
+  const shifted = (value: unknown, fallback: number) =>
+    value === undefined || value === fallback ? fallback + WSL_PORT_OFFSET : value;
+  return {
+    port: shifted(raw.port, 7420),
+    hooks: { ...section("hooks"), port: shifted(section("hooks").port, 7421) },
+    telemetry: { ...section("telemetry"), port: shifted(section("telemetry").port, 7422) },
+  };
+}
+
 /** `flightdeckd setup`: the first run, step by step. */
 export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Promise<void> {
   const config = await loadConfig(deps.configFile);
@@ -159,6 +178,7 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
     ));
   await updateConfigFile(deps.configFile, (raw) => ({
     ...raw,
+    ...(deps.wsl ? shiftedPorts(raw) : {}),
     allowedRoots: roots,
     ...(remote
       ? {

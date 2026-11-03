@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import type { TeamsUpdatedFrame } from "@flightdeck/protocol";
 import { ExternalSessions } from "../src/central/external.ts";
 import type { FlightdeckError } from "../src/errors.ts";
@@ -167,6 +167,40 @@ describe("times: criar", () => {
     });
     expect(team.members.map((m) => m.persona)).toEqual(["arquiteto", "qa", null]);
     expect(started.map((s) => s.persona)).toEqual(["arquiteto", "qa", null]);
+  });
+
+  test("each member opens in the model the team gives it, and none means the persona's own", async () => {
+    const started: Array<{ role: string; model: string | null }> = [];
+    const { teams, project, board, manager } = await setup({
+      startCoordinator: (input) => {
+        started.push({ role: "coordinator", model: input.model });
+        return manager.create({
+          cwd: input.cwd,
+          prompt: input.prompt,
+          name: input.name,
+          ...(input.model ? { model: input.model } : {}),
+        });
+      },
+    });
+    const team = await teams.create({
+      ...NEW,
+      projectId: project.id,
+      coordinatorModel: "opus",
+      workerModels: ["haiku", null],
+    });
+    expect(started).toEqual([{ role: "coordinator", model: "opus" }]);
+    expect(team.members.map((m) => m.model)).toEqual(["opus", "haiku", null]);
+    await whenChanged(board, () =>
+      team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
+    );
+    const modelOf = (member: { cardId: string | null; sessionId: string | null }) =>
+      manager.get(
+        (member.cardId ? board.getCard(member.cardId).sessionId : member.sessionId) as string,
+      ).model;
+    // The fake runtime reports its own model for the session nobody asked a model for.
+    expect(team.members.map(modelOf)).toEqual(["opus", "haiku", "fake-model"]);
+    // The model is kept with the team, so a later reading shows it too.
+    expect(teams.get(team.id).members.map((m) => m.model)).toEqual(["opus", "haiku", null]);
   });
 
   test("the coordinator starts once the project of its folder has been looked up, and the lookup is skipped when the folder is known", async () => {
@@ -413,5 +447,93 @@ describe("times: acompanhar", () => {
     off();
     ctx.teams.resume(team.id);
     expect(seen).toEqual(["paused"]);
+  });
+});
+
+const reasonOf = async (promise: Promise<unknown> | (() => unknown)) => {
+  try {
+    await (typeof promise === "function" ? promise() : promise);
+    return "ok";
+  } catch (error) {
+    return (error as FlightdeckError).reason ?? "none";
+  }
+};
+
+describe("times: members of a running team", () => {
+  async function running(over: Partial<TeamsOptions> = {}) {
+    const ctx = await setup({
+      personas: { resolve: (id) => (id === "qa" ? { id, name: id } : null) },
+      ...over,
+    });
+    const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id, name: "time" });
+    await whenChanged(ctx.board, () =>
+      team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
+    );
+    return { ...ctx, team: ctx.teams.get(team.id) };
+  }
+  const told = (messaging: Messaging) =>
+    messaging.list({}).filter((m) => m.kind === "system" && m.text.includes("Entrou"));
+
+  test("adding a member starts a worker in the persona and model asked for, and tells the coordinator", async () => {
+    const { teams, team, board, messaging } = await running();
+    const grown = await teams.update({
+      team: team.id,
+      addMember: { persona: "qa", model: "haiku" },
+    });
+    const added = grown.members.at(-1);
+    expect(added).toMatchObject({
+      name: "time · executora 3",
+      role: "worker",
+      persona: "qa",
+      model: "haiku",
+    });
+    expect(teams.personaOfCard(added?.cardId as string)).toBe("qa");
+    expect(board.getCard(added?.cardId as string).variant?.model).toBe("haiku");
+    const notice = told(messaging).at(-1)?.text ?? "";
+    expect(notice).toContain("time · executora 3");
+    expect(notice).toContain("qa");
+    expect(notice).toContain("haiku");
+    // With nothing asked for, the member takes the defaults.
+    const plain = await teams.update({ team: team.id, addMember: {} });
+    expect(plain.members.at(-1)).toMatchObject({ persona: null, model: null });
+  });
+
+  test("a persona the host does not know refuses the member and creates no card", async () => {
+    const { teams, team, board, project } = await running();
+    const cards = () => board.getBoard(project.id).columns.flatMap((c) => c.cards).length;
+    const before = cards();
+    expect(await reasonOf(teams.update({ team: team.id, addMember: { persona: "nada" } }))).toBe(
+      "persona_unknown",
+    );
+    expect(cards()).toBe(before);
+    expect(teams.get(team.id).members).toHaveLength(3);
+  });
+
+  test("removing a member stops its card, tells the coordinator, and leaves the card on the board", async () => {
+    const { teams, team, board, messaging } = await running();
+    const stop = spyOn(board, "stopCard");
+    const worker = team.members[1];
+    const shrunk = await teams.update({ team: team.id, removeMember: worker?.name as string });
+    expect(stop).toHaveBeenCalledWith(worker?.cardId as string);
+    expect(shrunk.members.map((m) => m.name)).not.toContain(worker?.name as string);
+    expect(board.getCard(worker?.cardId as string).id).toBe(worker?.cardId as string);
+    expect(
+      messaging.list({}).some((m) => m.kind === "system" && m.text.includes("saiu do time")),
+    ).toBe(true);
+  });
+
+  test("the refusals carry a reason the app can translate", async () => {
+    const { teams, team } = await running();
+    expect(
+      await reasonOf(teams.update({ team: team.id, removeMember: team.coordinator as string })),
+    ).toBe("team_coordinator_stays");
+    expect(await reasonOf(teams.update({ team: team.id, removeMember: "nada" }))).toBe(
+      "team_member_unknown",
+    );
+    teams.pause(team.id);
+    expect(await reasonOf(teams.update({ team: team.id, addMember: {} }))).toBe("team_paused");
+    teams.resume(team.id);
+    teams.close(team.id, true);
+    expect(await reasonOf(teams.update({ team: team.id, addMember: {} }))).toBe("team_closed");
   });
 });

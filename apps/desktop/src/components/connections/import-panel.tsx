@@ -1,6 +1,7 @@
 import type { SshImportEntry } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 
@@ -47,7 +48,7 @@ export function ImportPanel(props: {
           ))}
         </ul>
       )}
-      <div className="flex gap-2">
+      <FieldRow>
         <ActionButton
           disabled={picked.size === 0}
           disabledReason={t("connections.import.pickOne")}
@@ -60,7 +61,7 @@ export function ImportPanel(props: {
         <Button variant="ghost" onClick={props.onClose}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </FieldRow>
     </div>
   );
 }

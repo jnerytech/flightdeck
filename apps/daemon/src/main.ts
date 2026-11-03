@@ -6,6 +6,9 @@ import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { Account } from "./account/account.ts";
+import { demoAccountReaders } from "./account/demo.ts";
+import { accountReaders } from "./account/readers.ts";
 import { Actions } from "./actions/actions.ts";
 import { runActionCli, runSnippetCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
@@ -149,6 +152,7 @@ import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
+import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
@@ -512,14 +516,25 @@ interface CreatedRuntime {
   runtime: AgentRuntime;
   /** What `host.info` reports about `claude`; only the real runtime has one. */
   claude?: { path: string | null; version(): Promise<string | null> };
+  /** What the account card reads (phase 34); the real runtime asks its `claude`, the fake one answers a demo account. */
+  accountReaders?: ReturnType<typeof accountReaders>;
 }
 
 async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<CreatedRuntime> {
-  if (kind === "fake") return { runtime: new FakeRuntime() };
+  if (kind === "fake") return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders() };
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
   const runtime = new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
   const path = runtime.claudePath ?? null;
-  return { runtime, claude: { path, version: claudeVersionProbe(path, spawnExec) } };
+  const { query } = await import("@anthropic-ai/claude-agent-sdk");
+  return {
+    runtime,
+    claude: { path, version: claudeVersionProbe(path, spawnExec) },
+    accountReaders: accountReaders({
+      claudePath: path,
+      exec: spawnExec,
+      query: query as unknown as Parameters<typeof accountReaders>[0]["query"],
+    }),
+  };
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
@@ -566,10 +581,12 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
-  const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
+  const { runtime, claude, accountReaders: readers } = await createRuntime(runtimeKind, claudePath);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
+  // Phase 34: who the host's own `claude` is signed in to, for the account card.
+  const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
   // The turn is counted when git has answered: a slow git must not stop the daemon meanwhile.
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
@@ -623,7 +640,10 @@ export async function startDaemon(
       quota.record(readings);
       quotaHistory.sample(readings);
     },
-    onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
+    onTurn: (sessionId, cwd, turn) => {
+      usage.record(sessionId, cwd, turn);
+      account?.turnEnded();
+    },
     onTurnEdge: (edge) =>
       snapshots.enqueue({
         cwd: edge.cwd,
@@ -881,13 +901,14 @@ export async function startDaemon(
         }
       },
     },
-    startCoordinator: async ({ cwd, prompt, name, persona }) => {
+    startCoordinator: async ({ cwd, prompt, name, persona, model }) => {
       const ref = persona ? { id: persona } : undefined;
       return manager.create(
-        { cwd, prompt, name, ...(ref ? { persona: ref } : {}) },
+        { cwd, prompt, name, ...(ref ? { persona: ref } : {}), ...(model ? { model } : {}) },
         { prepared: await prepare(ref, cwd) },
       );
     },
+    // The worker's model travels on its card (see `Teams.startWorker`).
     startWorker: (cardId, persona) =>
       board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
     warm: (cwd) => warmKeys(cwd),
@@ -1167,6 +1188,7 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
+    ...(account ? { account } : {}),
     ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
     terminal: await terminalInfo(env),
   });
@@ -1329,6 +1351,7 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
       log: deps.log,
       configFile: file,
       home: base.home,
+      wsl: detectWsl({ env: deps.env, procVersion: () => readProcVersion() }),
       // The folders it checks are this host's, whatever the service context says it manages.
       platform: process.platform,
       isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,

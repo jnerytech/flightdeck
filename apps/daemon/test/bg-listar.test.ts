@@ -147,7 +147,11 @@ describe("bg-listar: over the protocol", () => {
 
   test("the host announces bg, and bg.list answers", async () => {
     const client = await served(true);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain("bg");
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("bg");
     const list = await client.data<{ supported: boolean; sessions: unknown[] }>("bg.list", {});
     expect(list?.sessions).toHaveLength(2);
   });

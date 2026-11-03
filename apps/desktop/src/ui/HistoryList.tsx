@@ -1,6 +1,9 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CardGrid } from "@/components/hub/card-grid";
+import { HistoryCard } from "@/components/hub/history-card";
+import { ViewToggle } from "@/components/hub/view-toggle";
 import { CheckField, NativeSelect } from "@/components/layout/form";
 import { Inline } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -9,9 +12,12 @@ import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { cn } from "@/lib/utils";
 import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
+import { usd } from "../lib/costs.ts";
 import type { Density } from "../lib/density.ts";
+import type { HubView } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { projectLabel } from "../lib/usage-rows.ts";
+import { hasFeature } from "../lib/version.ts";
 
 /** Native selects, as in the hub. */
 
@@ -82,6 +88,29 @@ export function HistoryList(props: {
   const [sessions, setSessions] = useState<HistorySessionSummary[] | null>(null);
   const loading = useMinLoading(sessions === null);
   const { t } = store.i18n;
+  /** Lines or cards: the same choice as the hub's. */
+  const [view, setView] = useState<HubView>(() => store.hubView());
+  /** Estimated cost by session id (hosts with costs); asked only for the cards. */
+  const [costs, setCosts] = useState<Record<string, number>>({});
+  const hasCosts = hasFeature(
+    store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "costs",
+    false,
+  );
+  const ids = view === "cards" && hasCosts ? (sessions ?? []).map((s) => s.claudeSessionId) : [];
+  const asked = ids.join();
+  useEffect(() => {
+    if (!asked) return;
+    let live = true;
+    void store
+      .hostCommand(hostId, "costs.sessions", { claudeSessionIds: asked.split(",").slice(0, 500) })
+      .then((result) => {
+        if (live) setCosts(result?.costs ?? {});
+      });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, asked]);
 
   useEffect(() => {
     let live = true;
@@ -108,9 +137,21 @@ export function HistoryList(props: {
   return (
     <section className="flex h-full min-h-0 flex-col">
       <div className="flex flex-col gap-2 border-b px-4 py-3">
-        <h2 className="font-semibold text-base">
-          {t("historyUi.title", { host: props.hostName })}
-        </h2>
+        <Inline gap={3}>
+          <h2 className="font-semibold text-base">
+            {t("historyUi.title", { host: props.hostName })}
+          </h2>
+          <ViewToggle
+            view={view}
+            label={t("hub.view")}
+            listLabel={t("hub.viewList")}
+            cardsLabel={t("hub.viewCards")}
+            onChange={(next) => {
+              setView(next);
+              store.saveHubView(next);
+            }}
+          />
+        </Inline>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             aria-label={t("historyUi.folder")}
@@ -172,7 +213,33 @@ export function HistoryList(props: {
             }
           />
         )}
-        {!loading && sessions && sessions.length > 0 && (
+        {!loading && sessions && sessions.length > 0 && view === "cards" && (
+          <CardGrid label={t("historyUi.list")}>
+            {sessions.map((s) => {
+              const title = s.title ?? s.claudeSessionId;
+              const cost = costs[s.claudeSessionId];
+              return (
+                <HistoryCard
+                  key={s.claudeSessionId}
+                  title={title}
+                  project={basename(s.cwd)}
+                  host={props.hostName}
+                  when={store.formatDateTime(s.lastTs ?? "")}
+                  origin={t(
+                    `hub.originTags.${s.origin === "external" ? "terminal" : "flightdeck"}`,
+                  )}
+                  costLabel={t("hub.cost", { title })}
+                  {...(cost === undefined ? {} : { cost: usd(cost) })}
+                  {...(s.maybeActive ? { maybeActive: t("reader.maybeActive") } : {})}
+                  {...(s.automated ? { automated: t("historyUi.automatedTag") } : {})}
+                  current={props.openId === s.claudeSessionId}
+                  onOpen={() => props.onOpen(s.claudeSessionId)}
+                />
+              );
+            })}
+          </CardGrid>
+        )}
+        {!loading && sessions && sessions.length > 0 && view === "list" && (
           <ul aria-label={t("historyUi.list")} className="flex flex-col">
             {sessions.map((s) => (
               <li

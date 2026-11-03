@@ -87,12 +87,28 @@ export class Changes {
 
   async resolve(target: string): Promise<ResolvedTarget> {
     const match = /^(session|card):(.+)$/.exec(target);
-    if (!match) throw new FlightdeckError("bad_request", `alvo inválido: ${target}`);
+    if (!match)
+      throw new FlightdeckError(
+        "bad_request",
+        `invalid target: ${target}`,
+        "review_target_invalid",
+        { target },
+      );
     const [, kind, id] = match as unknown as [string, "session" | "card", string];
     if (kind === "card") {
-      if (!this.opts.board) throw new FlightdeckError("not_found", `card ${id} não existe`);
+      if (!this.opts.board) {
+        throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", {
+          id,
+        });
+      }
       const card = this.opts.board.getCard(id);
-      if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+      if (!card.worktreePath) {
+        throw new FlightdeckError(
+          "invalid_state",
+          "the card has no worktree yet",
+          "card_no_worktree",
+        );
+      }
       const base = this.opts.board.getProject(card.projectId).baseBranch;
       return {
         target,
@@ -104,7 +120,11 @@ export class Changes {
       };
     }
     const row = this.opts.db.query(SESSION_CWD).get({ id }) as { cwd: string } | null;
-    if (!row) throw new FlightdeckError("not_found", `sessão ${id} não existe`);
+    if (!row) {
+      throw new FlightdeckError("not_found", `session ${id} does not exist`, "session_not_found", {
+        id,
+      });
+    }
     // A folder that no longer exists is not a repository either.
     const top = (await stat(row.cwd).then(
       () => true,
@@ -113,7 +133,12 @@ export class Changes {
       ? await git(row.cwd, "rev-parse", "--show-toplevel")
       : { code: 1, stdout: "" };
     if (top.code !== 0) {
-      throw new FlightdeckError("invalid_state", `${row.cwd} não está num repositório git`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `${row.cwd} is not in a git repository`,
+        "repo_not_git",
+        { path: row.cwd },
+      );
     }
     return {
       target,

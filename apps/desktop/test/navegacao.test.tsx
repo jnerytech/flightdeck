@@ -139,6 +139,8 @@ describe("navegacao", () => {
   test("abrir um pedido fecha Configurações (sem beco sem saída); Alt+←, Alt+→, botões do mouse e Voltar", async () => {
     await setup();
     await click("Configurações");
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
     await sidebar.queueItem("alfa · Pedinte: Bash");
@@ -377,7 +379,12 @@ describe("navegacao", () => {
     store.router.push({ name: "reader", target: { hostId: "h-fixo", claudeSessionId: "hist-2" } });
     render(<App store={store} />);
     // While the saved hosts load and connect, the screen says so (its name may not be known yet).
-    const status = screen.queryByRole("status")?.getAttribute("aria-label") ?? "";
+    // The tab strip's own position announcement is a status too: pick the loading one.
+    const status =
+      screen
+        .queryAllByRole("status")
+        .map((el) => el.getAttribute("aria-label") ?? "")
+        .find((label) => /^(Carregando…|Conectando a alfa…)$/.test(label)) ?? "";
     expect(status).toMatch(/^(Carregando…|Conectando a alfa…)$/);
     await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("Leitura cedo"));
     expect(screen.queryByRole("main")?.textContent ?? "").toContain("Leitura cedo");

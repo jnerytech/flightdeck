@@ -79,14 +79,21 @@ describe("direcao-visual: barra lateral", () => {
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
       "Sessões",
       "Precisa de você",
+      "Projetos",
       "Board",
+      // Then the folding groups, each with its heading.
+      "Trabalho",
       "Workflows",
       "Custos",
+      "Biblioteca",
       // The vault is the app's (phase 16), so Cofre shows whatever the hosts offer.
       "Cofre",
+      "Infra",
       "Histórico",
     ]);
-    for (const item of items) expect(item.querySelector("svg")).not.toBeNull();
+    for (const item of items.filter((b) => b.getAttribute("aria-expanded") === null)) {
+      expect(item.querySelector("svg")).not.toBeNull();
+    }
     // Search with its shortcut, settings and the theme button close the bar.
     const search = inAside().queryByRole("button", { name: "Buscar no histórico (Ctrl+K)" });
     expect(search?.querySelector("kbd")?.textContent).toBe("Ctrl K");

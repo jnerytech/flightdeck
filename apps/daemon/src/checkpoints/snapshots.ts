@@ -206,7 +206,13 @@ export class Snapshots {
   async files(claudeSessionId: string, n: number): Promise<TurnFiles> {
     const rows = this.list(claudeSessionId);
     const start = rows.find((row) => row.n === n && row.kind === "before");
-    if (!start) throw new FlightdeckError("not_found", `turno ${n} sem snapshot nesta sessão`);
+    if (!start)
+      throw new FlightdeckError(
+        "not_found",
+        `turn ${n} has no snapshot in this session`,
+        "snapshot_missing",
+        { n },
+      );
     const end = rows.find((row) => row.n > n && row.kind !== "safety");
     if (end?.kind !== "after") return { files: [], insertions: 0, deletions: 0 };
     const diff = (flag: string) =>

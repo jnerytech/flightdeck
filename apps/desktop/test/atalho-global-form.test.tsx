@@ -32,6 +32,8 @@ async function openSettings(supported = true) {
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
   });
+  // Settings is a lazy screen: its chunk may still be loading when the click returns.
+  await settle(() => screen.queryByLabelText("Atalho global") !== null);
   return { ...mem, registered };
 }
 

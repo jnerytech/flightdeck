@@ -9,6 +9,7 @@ import {
   ChevronRight,
   type LucideIcon,
   MessageSquare,
+  MoreHorizontal,
   Pin,
   PinOff,
   Plus,
@@ -54,6 +55,8 @@ const ICONS: Record<TabKind, LucideIcon> = {
 const COMPACT_AT = 8;
 /** How far an arrow moves the strip. */
 const STEP = 240;
+/** How a tab is moved from the keyboard. */
+const MOVE_KEYS = "Control+Shift+ArrowLeft Control+Shift+ArrowRight";
 
 /** What a terminal tab says about the ssh destino it was opened from, if it was. */
 const sshOf = (tab: Tab, store: AppStore) => {
@@ -83,6 +86,12 @@ export function TabBar(props: {
   useSyncExternalStore(tabs.subscribe, () => tabs.version);
   /** The tab being dragged to a new place. */
   const dragged = useRef<string | null>(null);
+  /** The tab a drag is over and the side the dragged one will land on, to mark the place. */
+  const [dropOn, setDropOn] = useState<{ id: string; side: "before" | "after" } | null>(null);
+  /** What a screen reader is told about the last move. */
+  const [announcement, setAnnouncement] = useState("");
+  /** The tab a keyboard move just went off with: the focus goes back to it. */
+  const focusTab = useRef<string | null>(null);
   const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
   /** A move button just went off with the focus on it: the focus goes to the tab instead. */
   const refocusTab = useRef(false);
@@ -112,6 +121,11 @@ export function TabBar(props: {
     measure();
   }, [tabs.activeId, tabs.tabs.length, measure]);
   useEffect(() => {
+    if (focusTab.current) {
+      const id = focusTab.current;
+      focusTab.current = null;
+      tablist.current?.querySelector<HTMLElement>(`[role="tab"][data-tab-id="${id}"]`)?.focus();
+    }
     if (!refocusTab.current) return;
     refocusTab.current = false;
     tablist.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
@@ -122,9 +136,22 @@ export function TabBar(props: {
     tabs.shift(id, delta);
     refocusTab.current = !tabs.canShift(id, delta);
   };
+  /** Moves a tab one place with the keyboard and says where it went. */
+  const moveByKey = (tab: Tab, delta: -1 | 1) => {
+    if (!tabs.canShift(tab.id, delta)) return;
+    tabs.shift(tab.id, delta);
+    focusTab.current = tab.id;
+    setAnnouncement(
+      t("tabs.moved", {
+        title: title(tab, state, store),
+        n: tabs.tabs.findIndex((other) => other.id === tab.id) + 1,
+        total: tabs.tabs.length,
+      }),
+    );
+  };
   const activeLabel = active ? title(active, state, store) : "";
   return (
-    <div className="flex h-9 items-end gap-1 border-b px-2">
+    <div className="tab-bar">
       {/* Only tabs (and the presentation wrappers that hold them) in the tablist; the move and pin buttons act on the active tab and sit after it. */}
       {more.left && (
         <Button
@@ -161,10 +188,15 @@ export function TabBar(props: {
                 key={tab.id}
                 role="presentation"
                 {...(prod === undefined ? {} : { "data-prod": String(prod) })}
+                {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
                   "tab-item group flex items-center rounded-t-md border border-b-0 text-sm",
                   selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
                   prod && "border-2 border-destructive",
+                  dropOn?.id === tab.id &&
+                    (dropOn.side === "before"
+                      ? "border-l-2 border-l-primary"
+                      : "border-r-2 border-r-primary"),
                 )}
               >
                 <button
@@ -173,12 +205,23 @@ export function TabBar(props: {
                   aria-selected={selected}
                   data-preview={tab.preview}
                   {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
-                  {...(tab.pinned ? { "aria-label": label } : { "aria-keyshortcuts": "Delete" })}
+                  data-tab-id={tab.id}
+                  aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
+                  {...(tab.pinned ? { "aria-label": label } : {})}
                   className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => tabs.activate(tab.id)}
                   onDoubleClick={() => tabs.commit(tab.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Delete") store.closeTab(tabs, tab.id);
+                    else if (
+                      e.ctrlKey &&
+                      e.shiftKey &&
+                      (e.key === "ArrowLeft" || e.key === "ArrowRight")
+                    ) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
+                    }
                   }}
                   onAuxClick={(e) => {
                     // The middle button closes a tab (App opens items in a new tab with it).
@@ -190,10 +233,23 @@ export function TabBar(props: {
                   onDragStart={() => {
                     dragged.current = tab.id;
                   }}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    const from = tabs.tabs.findIndex((other) => other.id === dragged.current);
+                    if (from < 0 || tabs.tabs[from]?.id === tab.id) return setDropOn(null);
+                    setDropOn({
+                      id: tab.id,
+                      side: from < tabs.tabs.indexOf(tab) ? "after" : "before",
+                    });
+                  }}
+                  onDragEnd={() => {
+                    dragged.current = null;
+                    setDropOn(null);
+                  }}
                   onDrop={() => {
                     const id = dragged.current;
                     dragged.current = null;
+                    setDropOn(null);
                     if (id) tabs.move(id, tabs.tabs.indexOf(tab));
                   }}
                 >
@@ -286,46 +342,42 @@ export function TabBar(props: {
         </DropdownMenu>
       )}
       {active && (
-        <div className="mb-0.5 flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t("tabs.moveLeft", { title: activeLabel })}
-            disabled={!tabs.canShift(active.id, -1)}
-            onClick={() => shift(active.id, -1)}
-          >
-            <ArrowLeft />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t("tabs.moveRight", { title: activeLabel })}
-            disabled={!tabs.canShift(active.id, 1)}
-            onClick={() => shift(active.id, 1)}
-          >
-            <ArrowRight />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t("tabs.moveToOther", { title: activeLabel })}
-            onClick={() => store.workspace.moveToOtherArea(active.id)}
-          >
-            <ArrowLeftRight />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
-            onClick={() => tabs.pin(active.id, !active.pinned)}
-          >
-            {active.pinned ? <PinOff /> : <Pin />}
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mb-0.5 size-7"
+              aria-label={t("tabs.actions", { title: activeLabel })}
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              disabled={!tabs.canShift(active.id, -1)}
+              onSelect={() => shift(active.id, -1)}
+            >
+              <ArrowLeft aria-hidden="true" />
+              {t("tabs.moveLeft", { title: activeLabel })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!tabs.canShift(active.id, 1)}
+              onSelect={() => shift(active.id, 1)}
+            >
+              <ArrowRight aria-hidden="true" />
+              {t("tabs.moveRight", { title: activeLabel })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => store.workspace.moveToOtherArea(active.id)}>
+              <ArrowLeftRight aria-hidden="true" />
+              {t("tabs.moveToOther", { title: activeLabel })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => tabs.pin(active.id, !active.pinned)}>
+              {active.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+              {t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
       <Button
         variant="ghost"
@@ -340,6 +392,9 @@ export function TabBar(props: {
         <Plus />
       </Button>
       {props.children}
+      <div role="status" aria-label={t("tabs.position")} className="sr-only">
+        {announcement}
+      </div>
     </div>
   );
 }

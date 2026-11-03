@@ -1,4 +1,5 @@
 import type {
+  AccountState,
   AskpassRequest,
   BgList,
   BgSession,
@@ -33,6 +34,7 @@ import type {
   RunConfigInfo,
   RunState,
   SessionEventOf,
+  SessionImage,
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
@@ -55,6 +57,7 @@ import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
   AppUpdate,
+  Notification,
   Platform,
   TrayAction,
   TrayStatus,
@@ -86,7 +89,16 @@ import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
+import {
+  type HubFilter,
+  type HubView,
+  hubRows,
+  loadHubFilter,
+  loadHubView,
+  saveHubFilter,
+  saveHubView,
+} from "./hub.ts";
+import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -104,6 +116,7 @@ import {
   type SessionState,
 } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
@@ -115,6 +128,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
+import { loadTileCount, saveTileCount, type TileCount } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -129,7 +143,7 @@ import {
 } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
-import { hasFeature } from "./version.ts";
+import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
@@ -152,12 +166,12 @@ export interface HostView extends HostConfig {
   info: HelloResult | null;
   /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
   hostInfo: HostInfoResult | null;
-  /** Round trip of the last heartbeat. */
-  latencyMs: number | null;
   /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
   incompatibility: string | null;
   /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
   daemonUpdate: { target: string; failed: string | null } | null;
+  /** The daemon's update check asked for from the app: running, or why it did not run. */
+  updateCheck: { busy: boolean; failed: string | null } | null;
   sessions: SidebarSession[];
 }
 
@@ -173,6 +187,8 @@ export interface AppState {
   selected: Selection | null;
   error: string | null;
   settings: Settings;
+  /** The notifications the app sent, newest first, kept for the notification center. */
+  inbox: InboxEntry[];
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -192,6 +208,8 @@ export interface AppState {
   meta: Record<string, SessionMeta>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
+  /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
+  account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
@@ -300,6 +318,7 @@ export type HostCommandType = Extract<
   | `gate.${string}`
   | `maintenance.${string}`
   | `quota.${string}`
+  | `account.${string}`
   | `usage.${string}`
   | `rules.${string}`
   | `costs.${string}`
@@ -593,6 +612,9 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
+/** How many used palette entries are kept (the palette shows five). */
+const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
@@ -602,14 +624,17 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** The least time between two checks the app starts by itself for one host. */
+const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
+
 const newHostView = (config: HostConfig): HostView => ({
   ...config,
   status: "offline",
   info: null,
   hostInfo: null,
-  latencyMs: null,
   incompatibility: null,
   daemonUpdate: null,
+  updateCheck: null,
   sessions: [],
 });
 
@@ -644,6 +669,8 @@ export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
   private readonly connections = new Map<string, HostConnection>();
+  /** Sessions followed without being open (the project page's tiles), with how many follow each. */
+  private readonly watched = new Map<string, number>();
   private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
@@ -710,6 +737,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      account: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -734,6 +762,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
+      inbox: [],
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
@@ -765,6 +794,9 @@ export class AppStore {
   get tabs(): Tabs {
     return this.workspace.tabs;
   }
+
+  /** When the page last asked each host for an update check on its own. */
+  private readonly autoUpdateChecks = new Map<string, number>();
 
   getState = (): AppState => this.state;
 
@@ -816,12 +848,40 @@ export class AppStore {
     saveHubFilter(this.platform.storage, filter);
   }
 
+  /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
+  private readonly latencies = new Map<string, number | null>();
+  private readonly latencyListeners = new Set<() => void>();
+
+  getLatency = (hostId: string): number | null => this.latencies.get(hostId) ?? null;
+
+  /** For the one component that shows a latency; a heartbeat never reaches `subscribe`. */
+  subscribeLatency = (listener: () => void): (() => void) => {
+    this.latencyListeners.add(listener);
+    return () => this.latencyListeners.delete(listener);
+  };
+
+  private setLatency(hostId: string, latencyMs: number | null): void {
+    if (this.getLatency(hostId) === latencyMs) return;
+    this.latencies.set(hostId, latencyMs);
+    for (const listener of [...this.latencyListeners]) listener();
+  }
+
+  /** How the hub draws its sessions: lines or cards. */
+  hubView(): HubView {
+    return loadHubView(this.platform.storage);
+  }
+
+  saveHubView(view: HubView): void {
+    saveHubView(this.platform.storage, view);
+  }
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
 
   async init(): Promise<void> {
+    this.update({ inbox: loadInbox(this.platform.storage) });
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.theme.start();
@@ -834,6 +894,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      account: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -952,6 +1013,33 @@ export class AppStore {
     return true;
   }
 
+  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
+  decideOldest(decision: "approve" | "deny"): void {
+    const item = needsYou(this.state)[0];
+    if (item) this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+  }
+
+  /** What the palette was used for lately, most recent first. */
+  paletteRecents(): string[] {
+    try {
+      const stored = JSON.parse(this.platform.storage.getItem(PALETTE_RECENTS_KEY) ?? "[]");
+      return Array.isArray(stored)
+        ? stored.filter((id): id is string => typeof id === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
+  recordPaletteUse(id: string): void {
+    const next = [id, ...this.paletteRecents().filter((other) => other !== id)].slice(
+      0,
+      PALETTE_RECENTS_KEPT,
+    );
+    this.platform.storage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(next));
+  }
+
   private openRequest(item: PendingItem): void {
     void this.platform.showMainWindow();
     for (const listener of this.openRequestListeners) listener(item);
@@ -974,6 +1062,39 @@ export class AppStore {
       void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
+  /** Sends an OS notification and keeps it in the notification center. */
+  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+    const entry: InboxEntry = {
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
+      title: n.title,
+      body: n.body,
+      ...(n.link ? { link: n.link } : {}),
+      ...(route ? { route } : {}),
+      ...(fallbackUrl ? { fallbackUrl } : {}),
+      read: false,
+    };
+    this.setInbox(addEntry(this.state.inbox, entry));
+    void this.platform.notify(n);
+  }
+
+  private setInbox(inbox: InboxEntry[]): void {
+    this.update({ inbox });
+    saveInbox(this.platform.storage, inbox);
+  }
+
+  inboxMarkRead(id: string): void {
+    this.setInbox(markRead(this.state.inbox, id));
+  }
+
+  inboxMarkAllRead(): void {
+    this.setInbox(markAllRead(this.state.inbox));
+  }
+
+  inboxClear(): void {
+    this.setInbox([]);
+  }
+
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
   openLink(url: string): void {
     if (/^https?:\/\//i.test(url)) void this.platform.openExternal(url);
@@ -987,11 +1108,77 @@ export class AppStore {
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
     const previous = this.state.selected;
-    if (previous?.sessionId && previous.sessionId !== sessionId) {
+    if (
+      previous?.sessionId &&
+      previous.sessionId !== sessionId &&
+      !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
+    ) {
       this.connections.get(previous.hostId)?.unsubscribe(previous.sessionId);
     }
     if (sessionId) this.connections.get(hostId)?.subscribe(sessionId);
     this.update({ selected: { hostId, sessionId } });
+  }
+
+  /**
+   * Follows a session's full event stream without opening it, for as long as the returned function
+   * has not been called (the tiles of a project follow several at once).
+   */
+  watchSession(hostId: string, sessionId: string): () => void {
+    const key = `${hostId}/${sessionId}`;
+    this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
+    this.connections.get(hostId)?.subscribe(sessionId);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const left = (this.watched.get(key) ?? 1) - 1;
+      if (left > 0) {
+        this.watched.set(key, left);
+        return;
+      }
+      this.watched.delete(key);
+      const open = this.state.selected;
+      if (open?.hostId === hostId && open.sessionId === sessionId) return;
+      this.connections.get(hostId)?.unsubscribe(sessionId);
+    };
+  }
+
+  /** The sidebar groups the user folded; kept across starts. */
+  sidebarFolded(): SidebarGroup[] {
+    return loadFolded(this.platform.storage);
+  }
+
+  setSidebarFolded(folded: readonly SidebarGroup[]): void {
+    saveFolded(this.platform.storage, folded);
+  }
+
+  /** How many tiles the project page shows; kept across starts. */
+  tileCount(): TileCount {
+    return loadTileCount(this.platform.storage);
+  }
+
+  setTileCount(count: TileCount): void {
+    saveTileCount(this.platform.storage, count);
+  }
+
+  /** Sends a message to a session of a host, whether it is the open one or not. */
+  async sendTo(
+    hostId: string,
+    sessionId: string,
+    text: string,
+    images?: SessionImage[],
+  ): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    try {
+      await conn.request("session.send", {
+        sessionId,
+        text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (error) {
+      this.fail(error);
+    }
   }
 
   async setCloseToTray(enabled: boolean): Promise<void> {
@@ -1640,9 +1827,11 @@ export class AppStore {
     }
   }
 
-  async send(text: string): Promise<void> {
+  async send(text: string, images?: SessionImage[]): Promise<void> {
     startMeasure("send");
-    await this.onSelected((conn, sessionId) => conn.request("session.send", { sessionId, text }));
+    await this.onSelected((conn, sessionId) =>
+      conn.request("session.send", { sessionId, text, ...(images?.length ? { images } : {}) }),
+    );
     endMeasure("send");
   }
 
@@ -1817,7 +2006,7 @@ export class AppStore {
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
       onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
-      onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
+      onPing: () => this.setLatency(config.id, conn.latencyMs),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
@@ -1830,10 +2019,13 @@ export class AppStore {
       onTeams: (frame) => {
         for (const listener of this.teamListeners) listener(config.id, frame);
         if (frame.reason) {
-          void this.platform.notify({
-            title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
-            body: frame.reason,
-          });
+          this.notifyUser(
+            {
+              title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
+              body: frame.reason,
+            },
+            { name: "teams", host: config.id, team: frame.team.id },
+          );
         }
       },
       onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
@@ -1854,7 +2046,7 @@ export class AppStore {
           text: alert.message,
         };
         this.update({ notices: [...this.state.notices, notice] });
-        void this.platform.notify({
+        this.notifyUser({
           title: this.i18n.t("vaultAudit.alertTitle"),
           body: alert.message,
         });
@@ -1862,6 +2054,8 @@ export class AppStore {
       onRunUpdated: (run) => this.onRun(config.id, run),
       onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
+      onAccountUpdated: (state) =>
+        this.update({ account: { ...this.state.account, [config.id]: state } }),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
       onTerminal: (frame) => {
         for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
@@ -1885,6 +2079,9 @@ export class AppStore {
     // A session selected before its host had a connection (a route opened at start-up).
     const selected = this.state.selected;
     if (selected?.hostId === config.id && selected.sessionId) conn.subscribe(selected.sessionId);
+    for (const key of this.watched.keys()) {
+      if (key.startsWith(`${config.id}/`)) conn.subscribe(key.slice(config.id.length + 1));
+    }
     conn.watch();
     conn.watchBoard();
     conn.watchHistory();
@@ -2005,6 +2202,37 @@ export class AppStore {
     );
   }
 
+  /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
+  async checkDaemonUpdate(hostId: string): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: true, failed: null } }));
+    try {
+      const update = await conn.request("daemon.update.check", {});
+      this.updateHost(hostId, (h) => ({
+        ...h,
+        updateCheck: null,
+        hostInfo: h.hostInfo ? { ...h.hostInfo, update } : h.hostInfo,
+      }));
+    } catch (error) {
+      const failed = describeError(error);
+      this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: false, failed } }));
+    }
+  }
+
+  /** The same check, once when the app is newer than the daemon, at most once per 10 minutes. */
+  async autoCheckDaemonUpdate(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const info = host?.hostInfo;
+    if (host?.status !== "online" || !info?.update) return;
+    if (!isNewer(APP_VERSION, info.daemonVersion)) return;
+    const last = this.autoUpdateChecks.get(hostId);
+    const now = this.now();
+    if (last !== undefined && now - last < AUTO_UPDATE_CHECK_MS) return;
+    this.autoUpdateChecks.set(hostId, now);
+    await this.checkDaemonUpdate(hostId);
+  }
+
   private onEvent(hostId: string, envelope: EventEnvelope): void {
     if (envelope.event.type === "session.summary") {
       this.onSummary(hostId, envelope.event);
@@ -2064,7 +2292,7 @@ export class AppStore {
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
-      void this.platform.notify(n);
+      this.notifyUser(n);
     }
   }
 
@@ -2120,7 +2348,7 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      void this.platform.notify({
+      this.notifyUser({
         title: this.i18n.t("notify.externalTitle"),
         body: `${host?.name ?? hostId} · ${frame.toolName}`,
         link: requestLink(hostId, frame.requestId),
@@ -2141,11 +2369,33 @@ export class AppStore {
       const known = window.window === "five_hour" || window.window === "seven_day";
       const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
       const percent = Math.round((window.utilization ?? 0) * 100);
-      void this.platform.notify({
-        title: t("notify.quotaTitle"),
-        body: t("notify.quotaBody", { host: host.name, window: label, percent }),
-      });
+      this.notifyUser(
+        {
+          title: t("notify.quotaTitle"),
+          body: t("notify.quotaBody", { host: host.name, window: label, percent }),
+        },
+        { name: "host", host: hostId },
+      );
     }
+  }
+
+  /** Starts the host's account stream while its card is on screen; returns the function that ends it. */
+  watchAccount(hostId: string): () => void {
+    const conn = this.connections.get(hostId);
+    conn?.watchAccount(true);
+    // What the host already knows comes at once; its first read follows through the stream.
+    void conn?.request("account.get", {}).then(
+      (state) => this.update({ account: { ...this.state.account, [hostId]: state } }),
+      () => {},
+    );
+    return () => conn?.watchAccount(false);
+  }
+
+  /** Asks the host to read its account again now; `false` when it refused (the banner says why). */
+  async refreshAccount(hostId: string): Promise<boolean> {
+    const state = await this.hostCommand(hostId, "account.refresh", {});
+    if (state) this.update({ account: { ...this.state.account, [hostId]: state } });
+    return state !== null;
   }
 
   /** Creates a budget or changes the one with `input.id`; the list follows the answer. */
@@ -2504,14 +2754,17 @@ export class AppStore {
         Math.round(threshold * 100),
         usd(state?.limitUsd ?? 0),
       );
-      void this.platform.notify({
-        title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t("clients.budgetAlert", {
-          name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
-          percent: Math.round(threshold * 100),
-          limit: usd(state?.limitUsd ?? 0),
-        }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("messages.budgetTitle"),
+          body: this.i18n.t("clients.budgetAlert", {
+            name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
+            percent: Math.round(threshold * 100),
+            limit: usd(state?.limitUsd ?? 0),
+          }),
+        },
+        { name: "costs", client: clientId },
+      );
     }
   }
 
@@ -2749,11 +3002,15 @@ export class AppStore {
       watch,
     );
     if (watch.status === "needs_you" && before?.status !== "needs_you") {
-      const title = this.state.cards[key]?.title ?? watch.cardId;
-      void this.platform.notify({
-        title: this.i18n.t("watchUi.notifyTitle"),
-        body: `${title}: ${watch.reason ?? ""}`,
-      });
+      const card = this.state.cards[key];
+      const title = card?.title ?? watch.cardId;
+      this.notifyUser(
+        { title: this.i18n.t("watchUi.notifyTitle"), body: `${title}: ${watch.reason ?? ""}` },
+        card
+          ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
+          : undefined,
+        card?.prUrl,
+      );
     }
   }
 
@@ -2823,7 +3080,7 @@ export class AppStore {
       (a) => a.hostId !== hostId || loopPairKey(a) !== loopPairKey(alert),
     );
     this.update({ loopAlerts: [...others, alert] });
-    void this.platform.notify({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+    this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
   }
 
   /**
@@ -3177,7 +3434,7 @@ export class AppStore {
         },
       },
     };
-    void this.platform.notify({
+    this.notifyUser({
       title: t("vaultApproval.notifyTitle"),
       body: t("vaultApproval.notifyBody", {
         requester,
@@ -3243,15 +3500,22 @@ export class AppStore {
       Math.round(update.threshold * 100),
       usd(update.budget.limitUsd),
     );
-    void this.platform.notify({
-      title: this.i18n.t("messages.budgetTitle"),
-      body: this.i18n.t("messages.budgetBody", {
-        host: host.name,
-        label: budgetLabel(update.budget, this.i18n.t),
-        percent: Math.round(update.threshold * 100),
-        limit: usd(update.budget.limitUsd),
-      }),
-    });
+    this.notifyUser(
+      {
+        title: this.i18n.t("messages.budgetTitle"),
+        body: this.i18n.t("messages.budgetBody", {
+          host: host.name,
+          label: budgetLabel(update.budget, this.i18n.t),
+          percent: Math.round(update.threshold * 100),
+          limit: usd(update.budget.limitUsd),
+        }),
+      },
+      {
+        name: "costs",
+        host: hostId,
+        ...(update.budget.projectKey ? { projectKey: update.budget.projectKey } : {}),
+      },
+    );
   }
 
   private keepBudget(hostId: string, budget: Budget, removed: boolean): void {
@@ -3270,10 +3534,14 @@ export class AppStore {
     const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      void this.platform.notify({
-        title: this.i18n.t("deps.notifyTitle"),
-        body: this.i18n.t("deps.notifyBody", { title: card.title }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("deps.notifyTitle"),
+          body: this.i18n.t("deps.notifyBody", { title: card.title }),
+        },
+        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
+        card.prUrl,
+      );
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });

@@ -20,7 +20,12 @@ export function assetKey(platform: string, arch: string): string {
   if (platform === "win32") os = "windows";
   else if (platform === "linux") os = "linux";
   if (!os || (arch !== "x64" && arch !== "arm64")) {
-    throw new FlightdeckError("invalid_state", `sem binário do daemon para ${platform}-${arch}`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `sem binário do daemon para ${platform}-${arch}`,
+      "update_no_binary",
+      { platform, arch },
+    );
   }
   return `${os}-${arch}`;
 }
@@ -44,10 +49,18 @@ export class DaemonUpdater {
 
   async apply(confirm: boolean): Promise<{ started: true }> {
     if (!confirm)
-      throw new FlightdeckError("invalid_state", "atualizar o daemon pede confirm: true");
+      throw new FlightdeckError(
+        "invalid_state",
+        "atualizar o daemon pede confirm: true",
+        "update_confirm",
+      );
     const manifest = this.opts.manifest();
     if (!manifest) {
-      throw new FlightdeckError("invalid_state", "o daemon ainda não verificou o manifesto");
+      throw new FlightdeckError(
+        "invalid_state",
+        "o daemon ainda não verificou o manifesto",
+        "update_manifest_unchecked",
+      );
     }
     const platform = this.opts.platform ?? process.platform;
     const key = assetKey(platform, this.opts.arch ?? process.arch);
@@ -56,6 +69,8 @@ export class DaemonUpdater {
       throw new FlightdeckError(
         "invalid_state",
         `o manifesto ${manifest.version} não tem binário para ${key}`,
+        "update_manifest_no_binary",
+        { version: manifest.version, key },
       );
     }
     const dir = join(this.opts.dataDir, "updates");

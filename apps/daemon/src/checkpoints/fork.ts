@@ -42,7 +42,12 @@ export class Forker {
 
   async fork(request: ForkRequest): Promise<ForkResult> {
     const fork = this.opts.runtime.forkSession;
-    if (!fork) throw new FlightdeckError("invalid_state", "este runtime não bifurca sessões");
+    if (!fork)
+      throw new FlightdeckError(
+        "invalid_state",
+        "this runtime does not fork sessions",
+        "fork_unsupported",
+      );
     if (request.rewindTurn !== undefined) {
       await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true);
     }

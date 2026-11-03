@@ -146,9 +146,11 @@ describe("rastro-modelo: over the protocol", () => {
 
   test("the host announces trace, and trace.get answers", async () => {
     const client = await served(true);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "trace",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("trace");
     const trace = await client.data<{ turns: unknown[] }>("trace.get", {
       claudeSessionId: SESSION,
     });

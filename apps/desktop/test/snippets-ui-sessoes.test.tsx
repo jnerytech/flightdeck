@@ -105,9 +105,7 @@ describe("snippets-uso: terminal sessions and new sessions", () => {
     await act(async () => {
       fireEvent.change(box() as HTMLElement, { target: { value: "/rev" } });
     });
-    await act(() => Bun.sleep(150));
-    const option = screen.queryByRole("option", { name: "revisar" });
-    expect(option).not.toBeNull();
+    const option = await screen.findByRole("option", { name: "revisar" });
     await act(async () => {
       fireEvent.click(option as HTMLElement);
     });

@@ -107,9 +107,11 @@ describe("resumo-protocolo: over the protocol", () => {
 
   test("the host announces summary and session.summary answers with a valid summary", async () => {
     const client = await served(true);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "summary",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("summary");
     const data = await client.data("session.summary", { claudeSessionId: SESSION });
     const summary = SessionRecap.parse(data);
     expect(summary.asked).toBe("Add a retry");

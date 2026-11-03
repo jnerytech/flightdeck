@@ -37,7 +37,11 @@ async function features(parts: {
   const client = new FrameClient(server.url);
   cleanups.push(() => client.close());
   await client.request("hello", { token: TOKEN, client: "t" });
-  return (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+  return (
+    (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+      (name) => name !== "session.images",
+    ) ?? []
+  );
 }
 
 describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {

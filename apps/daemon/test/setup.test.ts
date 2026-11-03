@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { acquireLock } from "../src/lock.ts";
@@ -13,6 +14,14 @@ import {
   type SetupDeps,
 } from "../src/setup.ts";
 import { stableBinPath } from "../src/update.ts";
+import {
+  defaultHostName,
+  detectWsl,
+  readProcVersion,
+  realWslProbe,
+  WSL_PORT_OFFSET,
+  type WslProbe,
+} from "../src/wsl-host.ts";
 import { tempDir } from "./helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
@@ -494,6 +503,25 @@ describe("setup command", () => {
     expect(h.exits).toEqual([1]);
     expect(h.out.join("\n")).toContain("--yes --folders");
   });
+
+  test("in WSL the ports the person did not choose are shifted, and written to config.json", async () => {
+    const h = cliHarness();
+    h.deps.env = { WSL_DISTRO_NAME: "Ubuntu" };
+    const read = () =>
+      JSON.parse(readFileSync(h.file, "utf8")) as {
+        port: number;
+        hooks: { port: number };
+        telemetry: { port?: number };
+      };
+    const chosen = read().port;
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(read().port).toBe(chosen);
+    expect(read().hooks.port).toBe(7431);
+    expect(read().telemetry.port).toBe(7432);
+  });
 });
 
 describe("reconcileStableBinary", () => {
@@ -611,5 +639,85 @@ describe("setup: nothing outside its temporary folders", () => {
   test("a harness on another platform's home creates nothing on the real disk", () => {
     harness({ platform: "win32", home: "C:\\Users\\dev" });
     expect(existsSync(join(process.cwd(), "C:\\Users\\dev"))).toBe(false);
+  });
+});
+
+describe("setup: WSL host", () => {
+  const probe = (env: Record<string, string>, version: string | null = null): WslProbe => ({
+    env,
+    procVersion: () => version,
+  });
+  const ports = (file: string) => {
+    const raw = JSON.parse(readFileSync(file, "utf8")) as {
+      port: number;
+      hooks: { port: number };
+      telemetry: { port?: number };
+    };
+    return [raw.port, raw.hooks.port, raw.telemetry.port];
+  };
+
+  test("WSL is told by WSL_DISTRO_NAME first, then by /proc/version", () => {
+    expect(detectWsl(probe({ WSL_DISTRO_NAME: "Ubuntu" }, "Linux (microsoft)"))).toEqual({
+      distro: "Ubuntu",
+    });
+    expect(detectWsl(probe({}, "Linux version 5.15.0-microsoft-standard-WSL2"))).toEqual({
+      distro: null,
+    });
+    expect(detectWsl(probe({}, "Linux version 6.1.0 (Debian)"))).toBeNull();
+    expect(detectWsl(probe({}, null))).toBeNull();
+    expect(detectWsl(probe({ WSL_DISTRO_NAME: "" }, null))).toBeNull();
+  });
+
+  test("the default host name adds the distro inside WSL and is the machine's elsewhere", () => {
+    const machine = hostname();
+    expect(defaultHostName(probe({ WSL_DISTRO_NAME: "Ubuntu" }))).toBe(`${machine} (WSL Ubuntu)`);
+    expect(defaultHostName(probe({}, "microsoft"))).toBe(`${machine} (WSL)`);
+    expect(defaultHostName(probe({}, null))).toBe(machine);
+  });
+
+  test("a new config takes the WSL host name, and the real probe reads the process", async () => {
+    const before = process.env.WSL_DISTRO_NAME;
+    process.env.WSL_DISTRO_NAME = "Debian";
+    try {
+      const file = join(tempDir("fd-wsl-"), "config.json");
+      expect((await loadConfig(file)).hostName).toBe(`${hostname()} (WSL Debian)`);
+    } finally {
+      if (before === undefined) delete process.env.WSL_DISTRO_NAME;
+      else process.env.WSL_DISTRO_NAME = before;
+    }
+  });
+
+  test("/proc/version is read as text, and null when it cannot be read", () => {
+    expect(readProcVersion((path) => `read ${path}`)).toBe("read /proc/version");
+    expect(
+      readProcVersion(() => {
+        throw new Error("ENOENT");
+      }),
+    ).toBeNull();
+    expect(["string", "object"]).toContain(typeof realWslProbe.procVersion());
+  });
+
+  test("setup in WSL moves the ports off the Windows daemon's 7420, 7421 and 7422", async () => {
+    const h = harness();
+    h.deps.wsl = { distro: "Ubuntu" };
+    await runSetup(h.deps);
+    expect(ports(h.configFile)).toEqual([7420 + WSL_PORT_OFFSET, 7421 + WSL_PORT_OFFSET, 7432]);
+    expect((await loadConfig(h.configFile)).hooks.port).toBe(7431);
+  });
+
+  test("a port the person chose stays, and a second run changes nothing", async () => {
+    const h = harness({ config: { port: 9000, hooks: { port: 7421 } } });
+    h.deps.wsl = { distro: null };
+    await runSetup(h.deps);
+    expect(ports(h.configFile)).toEqual([9000, 7431, 7432]);
+    const first = readFileSync(h.configFile, "utf8");
+    await runSetup(h.deps);
+    expect(readFileSync(h.configFile, "utf8")).toBe(first);
+  });
+
+  test("outside WSL the ports stay", async () => {
+    const h = harness();
+    await runSetup(h.deps);
+    expect(ports(h.configFile)).toEqual([7420, 7421, undefined]);
   });
 });

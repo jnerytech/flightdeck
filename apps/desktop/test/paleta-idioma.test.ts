@@ -46,10 +46,14 @@ describe("paleta", () => {
       "alfa | online | Abrir página do host | Nova sessão | Projetos",
       "# Ações",
       "Nova sessão em alfa | ação",
+      "Ir para Sessões | ação",
+      "Ir para Precisa de você | ação",
+      "Ir para Projetos | ação",
       "Alternar tema | ação",
       "Trocar idioma | ação",
       "Ir para Custos | ação",
       "Ir para Configurações | ação",
+      "Mostrar os atalhos de teclado | ação",
       "Gerenciar clientes | ação",
     ]);
   });
@@ -67,10 +71,14 @@ describe("paleta", () => {
       "alfa | online | Open host page | New session | Projects",
       "# Actions",
       "New session in alfa | action",
+      "Go to Sessions | action",
+      "Go to Needs you | action",
+      "Go to Projects | action",
       "Toggle theme | action",
       "Switch language | action",
       "Go to Costs | action",
       "Go to Settings | action",
+      "Show the keyboard shortcuts | action",
       "Manage clients | action",
     ]);
   });
