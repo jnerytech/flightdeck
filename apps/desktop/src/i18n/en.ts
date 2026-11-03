@@ -447,6 +447,7 @@ export const en: Dictionary = {
   sidebar: {
     sessions: "Sessions",
     openSessions: "Open Sessions",
+    projects: "Projects",
     needsYou: "Needs you",
     board: "Board",
     workflows: "Workflows",

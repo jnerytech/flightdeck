@@ -443,6 +443,7 @@ export const ptBR = {
   sidebar: {
     sessions: "Sessões",
     openSessions: "Abrir Sessões",
+    projects: "Projetos",
     needsYou: "Precisa de você",
     board: "Board",
     workflows: "Workflows",
