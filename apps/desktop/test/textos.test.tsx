@@ -201,8 +201,7 @@ describe("textos", () => {
     for (const text of [
       "Information",
       "Claude Code hooks",
-      "Host name",
-      "Save name",
+      "Rename",
       "Reconnect",
       "Remove host",
     ]) {

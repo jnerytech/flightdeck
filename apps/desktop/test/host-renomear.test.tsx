@@ -41,37 +41,38 @@ const click = (el: HTMLElement | null) =>
     expect(el).not.toBeNull();
     if (el) fireEvent.click(el);
   });
+const button = (name: string) => waitFor(() => screen.getByRole("button", { name }));
 
 /** Opens the sidebar menu of host `name` and picks Renomear. */
 async function renameFromMenu(name: string) {
-  const trigger = screen.queryByRole("button", { name: `Menu de ${name}` });
+  const trigger = await waitFor(() => screen.getByRole("button", { name: `Menu de ${name}` }));
   await act(async () => {
-    if (trigger) {
-      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-      fireEvent.click(trigger);
-    }
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    fireEvent.click(trigger);
   });
   await click(await waitFor(() => screen.getByRole("menuitem", { name: "Renomear" })));
 }
 
 const field = () => screen.queryByLabelText("Nome do host") as HTMLInputElement | null;
-const type = (value: string) =>
-  act(async () => {
-    if (field()) fireEvent.change(field() as HTMLInputElement, { target: { value } });
+const type = async (value: string) => {
+  await waitFor(() => expect(field()).not.toBeNull());
+  await act(async () => {
+    fireEvent.change(field() as HTMLInputElement, { target: { value } });
   });
-const save = () => click(screen.queryByRole("button", { name: "Salvar nome" }));
+};
+const save = async () => click(await button("Salvar nome"));
 
 describe("host-renomear", () => {
   test("the sidebar menu renames a host: trimmed, saved, shown everywhere at once", async () => {
     const { store, items } = await setup();
     await renameFromMenu("pc");
-    expect(field()?.value).toBe("pc");
+    await waitFor(() => expect(field()?.value).toBe("pc"));
     await type("  Windows  ");
     await save();
     expect(store.getState().hosts[0]?.name).toBe("Windows");
     expect(items.get("flightdeck.hosts")).toContain('"name":"Windows"');
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByLabelText("Windows: online")).not.toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText("Windows: online")).not.toBeNull());
   });
 
   test("an empty name is refused with a message, and the dialog stays open", async () => {
@@ -79,7 +80,7 @@ describe("host-renomear", () => {
     await renameFromMenu("pc");
     await type("   ");
     await save();
-    expect(text()).toContain("Digite um nome para o host.");
+    await waitFor(() => expect(text()).toContain("Digite um nome para o host."));
     expect(store.getState().hosts[0]?.name).toBe("pc");
     expect(field()).not.toBeNull();
   });
@@ -89,7 +90,7 @@ describe("host-renomear", () => {
     await renameFromMenu("pc");
     await type("WSL");
     await save();
-    expect(text()).toContain("Já existe um host com esse nome.");
+    await waitFor(() => expect(text()).toContain("Já existe um host com esse nome."));
     expect(store.getState().hosts[0]?.name).toBe("pc");
   });
 
@@ -100,18 +101,19 @@ describe("host-renomear", () => {
     await act(async () => {
       fireEvent.keyDown(field() as HTMLElement, { key: "Escape" });
     });
-    expect(field()).toBeNull();
+    await waitFor(() => expect(field()).toBeNull());
     expect(store.getState().hosts[0]?.name).toBe("pc");
   });
 
   test("the host page header has Renomear too, and no longer a name field in the body", async () => {
     const { store } = await setup();
-    await click(screen.queryByRole("button", { name: "Abrir host pc" }));
-    expect(field()).toBeNull();
-    await click(screen.queryByRole("button", { name: "Renomear" }));
+    await click(await button("Abrir host pc"));
+    await click(await button("Renomear"));
     await type("Notebook");
     await save();
     expect(store.getState().hosts[0]?.name).toBe("Notebook");
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Notebook" })).not.toBeNull());
+    // The body no longer has a name field of its own.
+    await waitFor(() => expect(field()).toBeNull());
   });
 });

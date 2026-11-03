@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
+import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,6 @@ export function RenameHostDialog(props: {
           <DialogTitle>{t("hostPage.renameTitle")}</DialogTitle>
         </DialogHeader>
         <form
-          className="grid gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             const refused = props.onRename(name);
@@ -31,28 +31,30 @@ export function RenameHostDialog(props: {
             else props.onClose();
           }}
         >
-          <Input
-            aria-label={t("hostPage.nameLabel")}
-            aria-invalid={error !== null}
-            // biome-ignore lint/a11y/noAutofocus: the dialog exists to type the name
-            autoFocus
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setError(null);
-            }}
-          />
-          {error && (
-            <p role="alert" className="text-sm text-status-error">
-              {t(error === "empty" ? "hostPage.renameEmpty" : "hostPage.renameDuplicate")}
-            </p>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={props.onClose}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit">{t("hostPage.saveName")}</Button>
-          </DialogFooter>
+          <Stack gap={4}>
+            <Input
+              aria-label={t("hostPage.nameLabel")}
+              aria-invalid={error !== null}
+              // biome-ignore lint/a11y/noAutofocus: the dialog exists to type the name
+              autoFocus
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError(null);
+              }}
+            />
+            {error && (
+              <p role="alert" className="text-sm text-status-error">
+                {t(error === "empty" ? "hostPage.renameEmpty" : "hostPage.renameDuplicate")}
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={props.onClose}>
+                {t("common.cancel")}
+              </Button>
+              <Button type="submit">{t("hostPage.saveName")}</Button>
+            </DialogFooter>
+          </Stack>
         </form>
       </AppDialogContent>
     </Dialog>
