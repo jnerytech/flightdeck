@@ -55,7 +55,7 @@ describe("recusas-gestao: the terminal", () => {
 
   test("off, missing, ended, over the limit, and no Claude here", async () => {
     const off = manager({ enabled: false });
-    expect(await refused(() => off.terminals.open({ cwd: off.root }))).toEqual({
+    expect(await refused(() => off.terminals.open({ cwd: off.root, cols: 80, rows: 24 }))).toEqual({
       code: "terminal_disabled",
       reason: "terminal_disabled",
       params: undefined,
@@ -66,13 +66,15 @@ describe("recusas-gestao: the terminal", () => {
       reason: "terminal_missing",
       params: { id: "nope" },
     });
-    const first = await terminals.open({ cwd: root });
-    expect(await refused(() => terminals.open({ cwd: root }))).toEqual({
+    const first = await terminals.open({ cwd: root, cols: 80, rows: 24 });
+    expect(await refused(() => terminals.open({ cwd: root, cols: 80, rows: 24 }))).toEqual({
       code: "invalid_state",
       reason: "terminal_limit",
       params: { max: 1 },
     });
-    expect(await refused(() => terminals.open({ cwd: root, claude: {} }))).toMatchObject({
+    expect(
+      await refused(() => terminals.open({ cwd: root, claude: {}, cols: 80, rows: 24 })),
+    ).toMatchObject({
       reason: "terminal_limit",
     });
     ptys.spawned[0]?.exit(0);
@@ -82,7 +84,9 @@ describe("recusas-gestao: the terminal", () => {
       params: { id: first.terminalId },
     });
     const free = manager();
-    expect(await refused(() => free.terminals.open({ cwd: free.root, claude: {} }))).toEqual({
+    expect(
+      await refused(() => free.terminals.open({ cwd: free.root, claude: {}, cols: 80, rows: 24 })),
+    ).toEqual({
       code: "invalid_state",
       reason: "claude_here_unavailable",
       params: undefined,
@@ -95,7 +99,7 @@ describe("recusas-gestao: the terminal", () => {
         throw new Error("spawn failed");
       },
     });
-    expect(await refused(() => terminals.open({ cwd: root }))).toEqual({
+    expect(await refused(() => terminals.open({ cwd: root, cols: 80, rows: 24 }))).toEqual({
       code: "invalid_state",
       reason: "terminal_open_failed",
       params: { why: "spawn failed" },
