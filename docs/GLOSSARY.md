@@ -117,3 +117,23 @@ O valor técnico do modo nunca aparece na tela: só o nome e uma linha de explic
 `bypassPermissions`, `acceptEdits`, `dontAsk`, `allowedRoots`, `subtype`, `claudeSessionId`,
 `awaiting_permission`, `needs_you` e `pendingPermissions`. O teste `textos` varre as telas
 principais atrás deles.
+
+## Modo simples (fase 33)
+
+As palavras que o modo simples põe no lugar das do modo completo (`apps/desktop/src/i18n/simple.ts`):
+
+| Modo completo / Full mode | Modo simples / Simple mode |
+| --- | --- |
+| sessão / session | tarefa / task |
+| Precisa de você / needs you | esperando a sua resposta / waiting for your answer |
+| persona | estilo / style |
+| pedido de permissão / permission request | pergunta / question |
+| encerrar a sessão / end session | parar a tarefa / stop the task |
+| host / projeto | computador / pasta (computer / folder) |
+| custo, tokens, orçamento / cost, tokens, budget | escondidos; quando um orçamento para a tarefa: "Esta tarefa parou: o limite de gastos foi atingido." |
+
+### Termos que não aparecem no modo simples
+
+Nome de ferramenta, JSON, id de sessão, nomes de worktree e de branch, hooks, MCP, plugins, cofre,
+nomes de modo de permissão, terminal, "Continuar no terminal" e "Copiar comando". A lista que o
+teste `simple-vocabulary` varre está em `apps/desktop/src/lib/simple-words.ts` (as duas línguas).
