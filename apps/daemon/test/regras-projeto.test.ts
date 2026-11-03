@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { ruleString } from "../src/board/project-rules.ts";
-import { excludeLocalSettings } from "../src/board/worktree.ts";
+import { excludeLocalSettingsAsync } from "../src/board/worktree.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
 import { must, poll, tempDir } from "./helpers.ts";
@@ -188,7 +188,7 @@ describe("regras-projeto", () => {
 
   test("rules.list e rules.remove (com confirmação), guardando o resto do arquivo", async () => {
     const { repo, board, project, manager, root } = await setup();
-    expect(board.listRules(project.id)).toEqual([]);
+    expect(await board.listRules(project.id)).toEqual([]);
     writeSettings(repo, {
       permissions: { allow: ["Read", "Bash(npm test:*)"], ask: ["x"] },
       env: { A: "1" },
@@ -234,16 +234,12 @@ describe("regras-projeto", () => {
     expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
   });
 
-  test("fora de um repositório git, garantir o exclude falha com a mensagem do git", () => {
+  test("fora de um repositório git, garantir o exclude falha com a mensagem do git", async () => {
     const outside = tempDir();
-    const failed = (() => {
-      try {
-        excludeLocalSettings(outside);
-        return null;
-      } catch (error) {
-        return (error as { code?: string; message?: string }).code ?? "outro";
-      }
-    })();
+    const failed = await excludeLocalSettingsAsync(outside).then(
+      () => null,
+      (error) => (error as { code?: string }).code ?? "outro",
+    );
     expect(failed).toBe("invalid_state");
   });
 

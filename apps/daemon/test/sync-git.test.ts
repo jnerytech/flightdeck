@@ -3,7 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { installSleepingGit, type SleepingGit } from "../../../scripts/test/sleeping-git.ts";
 import { Board } from "../src/board/board.ts";
-import { excludeLocalSettings, excludeLocalSettingsAsync } from "../src/board/worktree.ts";
+import { excludeLocalSettingsAsync } from "../src/board/worktree.ts";
 import { ProjectKeys } from "../src/central/project-key.ts";
 import { UsageIndexer } from "../src/costs/usage-indexer.ts";
 import { ProjectMemory } from "../src/memory/memory.ts";
@@ -144,7 +144,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(blocked).toBeLessThan(100);
   });
 
-  test("looking up where a repository keeps its exclude file does not hold the event loop, and the synchronous call that follows asks git nothing", async () => {
+  test("looking up where a repository keeps its exclude file does not hold the event loop, and the call that follows asks git nothing", async () => {
     const { repo } = gitRepo();
     const sleeping = sleepingGit(300);
     const blocked = await longestBlockWhile(sleeping, () => excludeLocalSettingsAsync(repo));
@@ -152,7 +152,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(blocked).toBeLessThan(100);
     // The line is in the file, and a second look finds it there.
     const again = sleepingGit(300);
-    excludeLocalSettings(repo);
+    await excludeLocalSettingsAsync(repo);
     expect(again.calls()).toEqual([]);
   });
 
