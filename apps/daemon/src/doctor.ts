@@ -7,7 +7,7 @@ export interface DoctorDeps {
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
   tailscaleIp(): Promise<string | null>;
-  hooks(): "installed" | "absent" | "outdated";
+  hooks(): "installed" | "absent" | "outdated" | Promise<"installed" | "absent" | "outdated">;
   claudePath(): string | null;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
   version?: { daemon: string; app?: string };
@@ -128,7 +128,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         ),
   );
 
-  const hooks = deps.hooks();
+  const hooks = await deps.hooks();
   checks.push(
     hooks === "installed"
       ? check("hooks", "hooks", "ok", "installed")

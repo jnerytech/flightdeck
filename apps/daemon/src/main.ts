@@ -20,6 +20,7 @@ import {
   type HooksStatus,
   type HookTarget,
   hooksStatus,
+  hooksStatusAsync,
   installHooks,
   uninstallHooks,
 } from "./central/hooks-install.ts";
@@ -984,7 +985,7 @@ export async function startDaemon(
         healthy: async () => true,
         tailscaleIp: () => tailscaleIp(spawnExec),
         hooks: () =>
-          hooksStatus(
+          hooksStatusAsync(
             claudeSettingsPath(),
             hookTarget(config, daemonCommand(process.execPath, Bun.main)),
           ),
