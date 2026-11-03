@@ -1513,10 +1513,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, board().workflows.getRun(runId));
       }
       case "rules.list":
-        return ok(command.type, { rules: board().listRules(command.payload.projectId) });
+        return ok(command.type, { rules: await board().listRules(command.payload.projectId) });
       case "rules.remove": {
         const { projectId, rule, confirm } = command.payload;
-        return ok(command.type, { rules: board().removeRule(projectId, rule, confirm === true) });
+        return ok(command.type, {
+          rules: await board().removeRule(projectId, rule, confirm === true),
+        });
       }
       case "costs.status":
         return ok(command.type, costs().status());

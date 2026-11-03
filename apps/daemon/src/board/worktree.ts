@@ -1,16 +1,16 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
+
+/** Whether `path` exists, asked without blocking. */
+const exists = (path: string): Promise<boolean> =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
 
 /** Line added to `.git/info/exclude`: worktrees live inside the repo but never show up in it.
  * Only the worktrees: phase 5 keeps versioned workflows in `.flightdeck/workflows`. */
@@ -48,7 +48,7 @@ async function freeSlug(repo: string, base: string): Promise<string> {
   for (let n = 1; ; n++) {
     const slug = n === 1 ? base : `${base}-${n}`;
     const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`);
-    if (branch.code !== 0 && !existsSync(worktreeDir(repo, slug))) return slug;
+    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug;
   }
 }
 
@@ -89,42 +89,24 @@ async function excludeFileAsync(repo: string): Promise<string> {
 }
 
 /**
- * The exclude file of `repo`, waiting for git if nobody looked it up yet. Every launch looks it
- * up first (`excludeLocalSettingsAsync`), so this waits only for a repository the daemon has not
- * launched a card in since it started: a rule accepted in a card resumed after a restart.
- */
-function excludeFileSync(repo: string): string {
-  const known = excludeFiles.get(repo);
-  if (known) return known;
-  const proc = Bun.spawnSync(excludePathCommand(), spawnOptions(repo));
-  return excludeFileFrom(repo, proc.exitCode, proc.stdout.toString(), proc.stderr.toString());
-}
-
-/**
  * Adds a line to the repo's local exclude file, once; `.gitignore` is never touched. It is the
  * common git dir, so it holds for every worktree of the repository too.
  */
-function addExcludeLine(file: string, line: string): void {
-  const current = existsSync(file) ? readFileSync(file, "utf8") : "";
+async function addExcludeLine(file: string, line: string): Promise<void> {
+  const current = await readFile(file, "utf8").catch(() => "");
   if (current.split(/\r?\n/).includes(line)) return;
-  mkdirSync(dirname(file), { recursive: true });
+  await mkdir(dirname(file), { recursive: true });
   const separator = current === "" || current.endsWith("\n") ? "" : "\n";
-  writeFileSync(file, `${current}${separator}${line}\n`);
+  await writeFile(file, `${current}${separator}${line}\n`);
 }
 
 /**
  * The rules file never shows up in a card's diff nor in a commit of the agent. Ensured on every
- * launch and before every write, so worktrees made before phase 7 get it too. Synchronous
- * because it is also called right before a rule is written, in the middle of an answer; the
- * launch uses `excludeLocalSettingsAsync` first, so git has been asked by then.
+ * launch and before every write, so worktrees made before phase 7 get it too. Asks git without
+ * waiting for it the first time; the exclude file's place is remembered afterwards.
  */
-export function excludeLocalSettings(repo: string): void {
-  addExcludeLine(excludeFileSync(repo), LOCAL_SETTINGS);
-}
-
-/** The same without waiting for git: the event loop keeps serving while it looks. */
 export async function excludeLocalSettingsAsync(repo: string): Promise<void> {
-  addExcludeLine(await excludeFileAsync(repo), LOCAL_SETTINGS);
+  await addExcludeLine(await excludeFileAsync(repo), LOCAL_SETTINGS);
 }
 
 /** Patterns (in the `.gitignore` format) of ignored files a new worktree gets from the repo. */
@@ -169,7 +151,7 @@ export async function copyIncluded(
       "--ignored",
       "-z",
       `--exclude=/${LOCAL_SETTINGS}`,
-      ...(existsSync(include) ? [`--exclude-from=${include}`] : []),
+      ...((await exists(include)) ? [`--exclude-from=${include}`] : []),
     ),
     "git ls-files",
   );
@@ -183,14 +165,14 @@ export async function copyIncluded(
   for (const path of matching
     .filter((p) => ignored.has(p))
     .sort((a, b) => (a < b ? -1 : Number(a > b)))) {
-    const size = statSync(join(repo, path)).size;
+    const size = (await stat(join(repo, path))).size;
     if (total + size > limit) {
       skipped.push(path);
       continue;
     }
     total += size;
-    mkdirSync(dirname(join(worktree, path)), { recursive: true });
-    copyFileSync(join(repo, path), join(worktree, path));
+    await mkdir(dirname(join(worktree, path)), { recursive: true });
+    await copyFile(join(repo, path), join(worktree, path));
     copied.push(path);
   }
   return { copied, skipped };
@@ -258,7 +240,7 @@ async function create(
   const slug = await freeSlug(repo, slugify(title));
   const branch = `fd/${slug}`;
   const path = worktreeDir(repo, slug);
-  addExcludeLine(await excludeFileAsync(repo), EXCLUDE_LINE);
+  await addExcludeLine(await excludeFileAsync(repo), EXCLUDE_LINE);
   await excludeLocalSettingsAsync(repo);
   must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
   const { skipped } = await copyIncluded(repo, path, includeLimit);
