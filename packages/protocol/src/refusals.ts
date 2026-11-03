@@ -327,6 +327,7 @@ export const DAEMON_FEATURES = [
   "bg",
   "summary",
   "webhook",
+  "account",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 
