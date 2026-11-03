@@ -84,6 +84,7 @@ import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
+import { type HostNameError, hostNameError } from "./host-name.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
@@ -907,9 +908,13 @@ export class AppStore {
     this.persistHosts();
   }
 
-  renameHost(hostId: string, name: string): void {
-    this.updateHost(hostId, (h) => ({ ...h, name }));
+  /** Saves the app-side display name (trimmed); the error says why a name is refused. */
+  renameHost(hostId: string, name: string): HostNameError | null {
+    const error = hostNameError(name, this.state.hosts, hostId);
+    if (error) return error;
+    this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
+    return null;
   }
 
   /** Drops the connection and opens a new one right away. */
