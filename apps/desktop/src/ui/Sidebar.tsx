@@ -54,30 +54,50 @@ function NavButton(props: {
   collapsed: boolean;
   onClick(): void;
   disabled?: boolean;
+  /** A chip or badge after the label: expanded only, the rail has no room for it. */
   tail?: ReactNode;
+  /** What the tail says in words (a count, a shortcut): the rail moves it to the name and the tooltip. */
+  hint?: string;
+  /** The keys that open this item, for assistive technology (`Control+K`). */
+  keys?: string;
+  /** Something waits here: the rail marks the icon with a dot instead of a badge. */
+  attention?: boolean;
   /** The screen the user is on: full contrast and marked as the current page. */
   active?: boolean;
   /** Something waits here: full contrast even when it is not the open screen. */
   strong?: boolean;
 }) {
+  const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
   return (
     <button
       type="button"
       aria-current={props.active ? "page" : undefined}
+      aria-keyshortcuts={props.keys}
       className={cn(
         ITEM,
         props.collapsed && "justify-center px-0",
         (props.active || props.strong) && "text-sidebar-foreground",
         props.active && "bg-sidebar-accent",
       )}
-      aria-label={props.name ?? (props.collapsed ? props.label : undefined)}
-      title={props.collapsed ? props.label : undefined}
+      aria-label={props.name ?? (props.collapsed ? railName : undefined)}
+      title={props.collapsed ? railName : undefined}
       disabled={props.disabled ?? false}
       onClick={props.onClick}
     >
-      {props.icon}
+      {props.collapsed && props.attention ? (
+        <span className="relative flex">
+          {props.icon}
+          <span
+            data-attention
+            aria-hidden="true"
+            className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
+          />
+        </span>
+      ) : (
+        props.icon
+      )}
       {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
-      {props.tail}
+      {!props.collapsed && props.tail}
     </button>
   );
 }
@@ -182,6 +202,8 @@ export function Sidebar(props: {
           icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
           active={here === "needs-you"}
           strong={pending > 0}
+          attention={pending > 0}
+          {...(pending > 0 ? { hint: String(pending) } : {})}
           label={t("sidebar.needsYou")}
           onClick={() => go({ name: "needs-you" })}
           tail={
@@ -443,6 +465,8 @@ export function Sidebar(props: {
           icon={<Search aria-hidden="true" className={icon} />}
           label={t("sidebar.search")}
           name={t("sidebar.searchLabel")}
+          hint="Ctrl K"
+          keys="Control+K"
           onClick={props.onOpenSearch}
           tail={
             <kbd className="rounded border bg-background px-1 font-mono text-[11px] text-muted-foreground">
