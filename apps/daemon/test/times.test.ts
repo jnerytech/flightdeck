@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import type { TeamsUpdatedFrame } from "@flightdeck/protocol";
 import { ExternalSessions } from "../src/central/external.ts";
 import type { FlightdeckError } from "../src/errors.ts";
@@ -447,5 +447,100 @@ describe("times: acompanhar", () => {
     off();
     ctx.teams.resume(team.id);
     expect(seen).toEqual(["paused"]);
+  });
+});
+
+const reasonOf = async (promise: Promise<unknown> | (() => unknown)) => {
+  try {
+    await (typeof promise === "function" ? promise() : promise);
+    return "ok";
+  } catch (error) {
+    return (error as FlightdeckError).reason ?? "none";
+  }
+};
+
+describe("times: members of a running team", () => {
+  async function running(over: Partial<TeamsOptions> = {}) {
+    const ctx = await setup({
+      personas: { resolve: (id) => (id === "qa" ? { id, name: id } : null) },
+      ...over,
+    });
+    const team = await ctx.teams.create({ ...NEW, projectId: ctx.project.id, name: "time" });
+    await whenChanged(ctx.board, () =>
+      team.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
+    );
+    return { ...ctx, team: ctx.teams.get(team.id) };
+  }
+  const told = (messaging: Messaging) =>
+    messaging.list({}).filter((m) => m.kind === "system" && m.text.includes("Entrou"));
+
+  test("adding a member starts a worker in the persona and model asked for, and tells the coordinator", async () => {
+    const started: Array<[string | null, string | null]> = [];
+    const { teams, team, board, messaging } = await running({
+      startWorker: async (cardId, persona, model) => {
+        started.push([persona, model]);
+        await board.startCard(cardId);
+      },
+    });
+    started.length = 0;
+    const grown = await teams.update({
+      team: team.id,
+      addMember: { persona: "qa", model: "haiku" },
+    });
+    const added = grown.members.at(-1);
+    expect(added).toMatchObject({
+      name: "time · executora 3",
+      role: "worker",
+      persona: "qa",
+      model: "haiku",
+    });
+    expect(started).toEqual([["qa", "haiku"]]);
+    expect(board.getCard(added?.cardId as string).variant?.model).toBe("haiku");
+    const notice = told(messaging).at(-1)?.text ?? "";
+    expect(notice).toContain("time · executora 3");
+    expect(notice).toContain("qa");
+    expect(notice).toContain("haiku");
+    // With nothing asked for, the member takes the defaults.
+    const plain = await teams.update({ team: team.id, addMember: {} });
+    expect(plain.members.at(-1)).toMatchObject({ persona: null, model: null });
+  });
+
+  test("a persona the host does not know refuses the member and creates no card", async () => {
+    const { teams, team, board, project } = await running();
+    const cards = () => board.getBoard(project.id).columns.flatMap((c) => c.cards).length;
+    const before = cards();
+    expect(await reasonOf(teams.update({ team: team.id, addMember: { persona: "nada" } }))).toBe(
+      "persona_unknown",
+    );
+    expect(cards()).toBe(before);
+    expect(teams.get(team.id).members).toHaveLength(3);
+  });
+
+  test("removing a member stops its card, tells the coordinator, and leaves the card on the board", async () => {
+    const { teams, team, board, messaging } = await running();
+    const stop = spyOn(board, "stopCard");
+    const worker = team.members[1];
+    const shrunk = await teams.update({ team: team.id, removeMember: worker?.name as string });
+    expect(stop).toHaveBeenCalledWith(worker?.cardId as string);
+    expect(shrunk.members.map((m) => m.name)).not.toContain(worker?.name as string);
+    expect(board.getCard(worker?.cardId as string).id).toBe(worker?.cardId as string);
+    expect(
+      messaging.list({}).some((m) => m.kind === "system" && m.text.includes("saiu do time")),
+    ).toBe(true);
+  });
+
+  test("the refusals carry a reason the app can translate", async () => {
+    const { teams, team } = await running();
+    expect(
+      await reasonOf(teams.update({ team: team.id, removeMember: team.coordinator as string })),
+    ).toBe("team_coordinator_stays");
+    expect(await reasonOf(teams.update({ team: team.id, removeMember: "nada" }))).toBe(
+      "team_member_unknown",
+    );
+    teams.pause(team.id);
+    expect(await reasonOf(teams.update({ team: team.id, addMember: {} }))).toBe("team_paused");
+    teams.resume(team.id);
+    teams.close(team.id, true);
+    expect(await reasonOf(teams.update({ team: team.id, addMember: {} }))).toBe("team_closed");
   });
 });

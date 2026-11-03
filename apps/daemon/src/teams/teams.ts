@@ -83,6 +83,8 @@ export interface TeamPatch {
   checks?: string[];
   persona?: { member: string; persona: string | null };
   addWorkers?: number;
+  /** One more worker with the persona and model asked for (none or null is the default). */
+  addMember?: { persona?: string | null; model?: string | null };
   removeMember?: string;
 }
 
