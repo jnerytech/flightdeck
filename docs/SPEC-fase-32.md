@@ -18,9 +18,14 @@ Part 1:
   the task stays in focus:
   - sidebar items at the muted tone, the active item and the "Needs you" row at full contrast;
   - softer borders and separators in both themes;
-  - one weight scale: `font-medium` only for titles and primary actions, regular for filters and
-    pills.
-- **Motion tokens**: `--dur-fast`, `--dur-base` and `--ease-out` in `styles.css`; controls, list
+  - the open screen is marked in the sidebar (`aria-current="page"`), so "full contrast for the
+    active item" has something to hold on to;
+  - the weight scale (bold only for titles and primary actions) waits for part 2: the buttons
+    that carry `font-medium` are vendored in `components/ui`.
+- **Motion tokens**: phase 10 already defined `--duration-fast`, `--duration-base` and
+  `--ease-out-soft` in the theme, but nothing used them and the theme inlines them into
+  utilities. `:root` gets `--motion-fast`, `--motion-base` and `--motion-ease` (same values, a test
+  keeps them equal); controls, list
   rows and sidebar items ease their hover and selected colours with them. The existing
   reduced-motion block stays the off switch (it zeroes every duration).
 - **Skeletons shaped like the content**: `LoadingState` takes a `shape` (`rows`, the default,
