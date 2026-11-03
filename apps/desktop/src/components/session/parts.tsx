@@ -78,9 +78,18 @@ export function Message(props: {
   );
 }
 
-/** A line under the conversation: the message box and its button. */
+/** Under the conversation: what waits to go out, the activity line, the box and its state line. */
+export function ComposerDock(props: { children: ReactNode }) {
+  return <div className="composer-dock">{props.children}</div>;
+}
+
+/** The floating rounded card of the message box and its buttons. */
 export function Composer(props: { children: ReactNode }) {
-  return <div className="flex shrink-0 items-end gap-2 border-t p-3">{props.children}</div>;
+  return (
+    <div data-slot="composer-card" className="composer-card">
+      {props.children}
+    </div>
+  );
 }
 
 /** A session pane: header, timeline and composer stacked, filling its column. */

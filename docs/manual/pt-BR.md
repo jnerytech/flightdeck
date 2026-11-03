@@ -438,6 +438,12 @@ histórico.
 - Sob cada mensagem do assistente há uma linha que aparece ao passar o mouse ou ao focar pelo
   teclado: **Copiar mensagem**, **Bifurcar a partir daqui** (na última mensagem: leva a conversa
   inteira até ali), **Fixar sessão** e há quanto tempo a mensagem foi escrita.
+- A caixa flutua no fim da tela como um cartão arredondado. O **+** anexa imagens (quando o host
+  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, cada um um
+  seletor quando a sessão deixa mudar, e um indicador girando enquanto um turno roda. Durante o
+  turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
+  arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
+  menos movimento.
 
 ### Hooks do Claude Code
 

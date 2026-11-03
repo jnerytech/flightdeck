@@ -453,6 +453,11 @@ A session appears only once. The order of preference is managed, then terminal, 
 - Under each assistant message a row shows on hover or keyboard focus: **Copy message**, **Fork from
   here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
   long ago the message was written.
+- The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
+  Under the card a status line shows the model and the permission mode, each a picker when the
+  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
+  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks
 

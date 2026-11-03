@@ -348,3 +348,53 @@
     opacity: 1;
   }
 }
+
+/* Under the conversation: queue, thumbnails, activity line, the floating box and its state line. */
+@utility composer-dock {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.75rem;
+}
+@utility composer-card {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  background: var(--color-card);
+  padding: 0.375rem 0.5rem;
+  box-shadow: 0 1px 6px oklch(0 0 0 / 0.08);
+  &:focus-within {
+    border-color: var(--color-ring);
+  }
+}
+@utility composer-box {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  &:focus-visible {
+    box-shadow: none;
+    outline: none;
+  }
+}
+@utility session-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border: 0;
+  padding: 0 0.5rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+@utility activity-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
