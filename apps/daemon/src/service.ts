@@ -137,8 +137,8 @@ export interface ServiceContext {
   /** Print what would be done; never write files nor run commands. */
   dryRun: boolean;
   exec: (cmd: string[]) => Promise<{ code: number; stdout: string }>;
-  writeFile(path: string, content: string): void;
-  removeFile(path: string): void;
+  writeFile(path: string, content: string): void | Promise<void>;
+  removeFile(path: string): void | Promise<void>;
   which(name: string): string | null;
 }
 
@@ -186,7 +186,7 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
       instructions: [],
     };
   }
-  ctx.writeFile(path, unit);
+  await ctx.writeFile(path, unit);
   for (const cmd of SYSTEMD_INSTALL) await runChecked(ctx, cmd);
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
@@ -209,7 +209,7 @@ async function installTask(ctx: ServiceContext, config?: string | null): Promise
   if (ctx.dryRun) {
     return { output: [`# ${xmlPath}`, xml, "# comando:", display(create)], instructions: [] };
   }
-  ctx.writeFile(xmlPath, xml);
+  await ctx.writeFile(xmlPath, xml);
   await runChecked(ctx, create);
   return { output: [`tarefa ${TASK_NAME} criada para o logon de ${ctx.user}`], instructions: [] };
 }
@@ -231,7 +231,7 @@ export async function uninstallService(ctx: ServiceContext): Promise<ServiceResu
   }
   await runChecked(ctx, commands[0] as string[]);
   if (linux) {
-    ctx.removeFile(unitPath(ctx));
+    await ctx.removeFile(unitPath(ctx));
     await runChecked(ctx, commands[1] as string[]);
   }
   return { output: ["serviço removido"], instructions: [] };
