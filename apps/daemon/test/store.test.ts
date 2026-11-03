@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { tempDir } from "./helpers.ts";
 import { EventStore } from "../src/store/event-store.ts";
+import { tempDir } from "./helpers.ts";
 
 function newStore() {
   const store = new EventStore(":memory:");
