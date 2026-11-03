@@ -13,6 +13,7 @@ import type { AppStore, HostView } from "../lib/app-store.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
+import { HostAccount } from "./HostAccount.tsx";
 import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
 import { TelemetrySection } from "./TelemetrySection.tsx";
@@ -77,6 +78,7 @@ export function HostPage(props: {
             </span>
           </InlineNotice>
         )}
+        {hasFeature(info?.features, "account", false) && <HostAccount store={store} host={host} />}
         {(hasFeature(info?.features, "quota", false) ||
           hasFeature(info?.features, "costs", false)) && (
           <UsagePanel
