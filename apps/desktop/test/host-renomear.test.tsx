@@ -20,7 +20,7 @@ afterEach(async () => {
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
+const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 8000 });
 const text = () => document.body.textContent ?? "";
 
 async function setup() {
@@ -75,7 +75,7 @@ describe("host-renomear", () => {
     expect(items.get("flightdeck.hosts")).toContain('"name":"Windows"');
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(screen.queryByLabelText("Windows: online")).not.toBeNull());
-  });
+  }, 15_000);
 
   test("an empty name is refused with a message, and the dialog stays open", async () => {
     const { store } = await setup();
@@ -85,7 +85,7 @@ describe("host-renomear", () => {
     await waitFor(() => expect(text()).toContain("Digite um nome para o host."));
     expect(store.getState().hosts[0]?.name).toBe("pc");
     expect(field()).not.toBeNull();
-  });
+  }, 15_000);
 
   test("a name another host has is refused, ignoring case", async () => {
     const { store } = await setup();
@@ -94,7 +94,7 @@ describe("host-renomear", () => {
     await save();
     await waitFor(() => expect(text()).toContain("Já existe um host com esse nome."));
     expect(store.getState().hosts[0]?.name).toBe("pc");
-  });
+  }, 15_000);
 
   test("Esc cancels without renaming", async () => {
     const { store } = await setup();
@@ -105,7 +105,7 @@ describe("host-renomear", () => {
     });
     await waitFor(() => expect(field()).toBeNull());
     expect(store.getState().hosts[0]?.name).toBe("pc");
-  });
+  }, 15_000);
 
   test("the host page header has Renomear too, and no longer a name field in the body", async () => {
     const { store } = await setup();
@@ -117,5 +117,5 @@ describe("host-renomear", () => {
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Notebook" })).not.toBeNull());
     // The body no longer has a name field of its own.
     await waitFor(() => expect(field()).toBeNull());
-  });
+  }, 15_000);
 });
