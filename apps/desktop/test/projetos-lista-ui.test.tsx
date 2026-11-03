@@ -6,7 +6,9 @@ import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen, within, waitFor } = await import(
+  "@testing-library/react"
+);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { ProjectsOverview } = await import("../src/ui/ProjectsOverview.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
@@ -111,7 +113,7 @@ describe("projetos-lista-ui: the Projects overview", () => {
   test("every project is a card with its host, branch, live sessions, cards, last activity and cost", async () => {
     const { view, asked } = setup({ costs: { h1: week("host:alfa:/work/api", 4.25) } });
     render(view());
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
     expect(names().sort()).toEqual(["api", "docs", "web"]);
     const api = within(card("api"));
     expect(api.getByText("alfa")).not.toBeNull();
@@ -136,7 +138,7 @@ describe("projetos-lista-ui: the Projects overview", () => {
   test("search narrows the cards, and says so when none match", async () => {
     const { view } = setup();
     render(view());
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
     fireEvent.change(screen.getByRole("searchbox", { name: "Search projects" }), {
       target: { value: "beta" },
     });
@@ -151,7 +153,7 @@ describe("projetos-lista-ui: the Projects overview", () => {
   test("sort changes the order: name, then needs attention first", async () => {
     const { view } = setup();
     render(view());
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
     fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "name" } });
     expect(names()).toEqual(["api", "docs", "web"]);
     fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "attention" } });
@@ -161,7 +163,7 @@ describe("projetos-lista-ui: the Projects overview", () => {
   test("a card opens its project", async () => {
     const { view, opened } = setup();
     render(view());
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "Open project api (alfa)" }));
     expect(opened.map((c) => [c.hostId, c.projectId])).toEqual([["h1", "p-api"]]);
   });
@@ -169,14 +171,14 @@ describe("projetos-lista-ui: the Projects overview", () => {
   test("with no projects it says so", async () => {
     const { view, state } = setup();
     render(view({ ...state, projects: {} } as never));
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
     expect(screen.queryByText("No projects yet.")).not.toBeNull();
   });
 
   test("in Portuguese the labels and the plural follow the dictionary", async () => {
     const { view } = setup({ language: "pt-BR" });
     render(view());
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
     expect(screen.queryByRole("searchbox", { name: "Buscar projetos" })).not.toBeNull();
     expect(screen.queryByLabelText("Ordenar por")).not.toBeNull();
     expect(card("api").textContent).toContain("2 sessões ativas");

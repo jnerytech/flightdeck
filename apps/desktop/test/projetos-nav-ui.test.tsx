@@ -4,7 +4,7 @@ import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -35,7 +35,7 @@ describe("projetos-nav-ui: the Projects item of the sidebar", () => {
     expect(at(/^Projects/)).toBeLessThan(at(/^Board/));
     await act(async () => void fireEvent.click(item(/^Projects/)));
     // The screens load lazily.
-    await act(() => Bun.sleep(100));
+    await waitFor(() => expect(screen.queryByText("No projects yet.")).not.toBeNull());
     expect(names()).toEqual(["all-projects"]);
     expect(screen.queryByRole("heading", { name: "Projects" })).not.toBeNull();
     expect(screen.queryByText("No projects yet.")).not.toBeNull();
@@ -53,7 +53,7 @@ describe("projetos-nav-ui: the Projects item of the sidebar", () => {
     await act(async () => {
       store.tabs.active.router.push({ name: "project", host: "h1", projectId: "p1" });
     });
-    await act(() => Bun.sleep(100));
+    await waitFor(() => expect(marked()).toBe(true));
     expect(marked()).toBe(true);
     store.dispose();
   });

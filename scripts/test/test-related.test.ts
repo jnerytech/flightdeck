@@ -150,7 +150,7 @@ describe("planRelated", () => {
       "bun",
       "--config=bunfig.area.toml",
       "test",
-      "--timeout=5000",
+      "--timeout=15000",
       "./apps/daemon/test/a.test.ts",
     ]);
   });
