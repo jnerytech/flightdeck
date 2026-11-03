@@ -31,7 +31,12 @@ async function setup() {
       timestamp: ts,
     });
   writeTranscript(d.historyRoot, "-p", "ferramentas", [
-    userLine({ uuid: "u1", text: "ver a agulha", cwd: d.project, ts: "2026-09-01T10:00:00.000Z" }),
+    userLine({
+      uuid: "u1",
+      text: "pedido inicial",
+      cwd: d.project,
+      ts: "2026-09-01T10:00:00.000Z",
+    }),
     call("a1", "2026-09-01T10:00:01.000Z", [
       { type: "text", text: "Vou listar a agulha." },
       { type: "tool_use", id: "t1", name: "Bash", input: { command: "ls -la src" } },
@@ -64,10 +69,10 @@ async function openReader() {
   });
   const input = screen.queryByLabelText("Buscar no histórico") as HTMLInputElement;
   await act(async () => {
-    fireEvent.change(input, { target: { value: "agulha" } });
+    fireEvent.change(input, { target: { value: "inicial" } });
     fireEvent.submit(input);
   });
-  await settle(() => screen.queryAllByText(/agulha/).length > 0);
+  await settle(() => screen.queryAllByText(/inicial/).length > 0);
   const hit = screen.queryByRole("list", { name: "Resultados da busca" })?.querySelector("button");
   await act(async () => {
     fireEvent.click(hit as HTMLElement);
@@ -80,8 +85,8 @@ describe("historico-ferramentas: the transcript reader", () => {
     await setup();
     await openReader();
     const log = within(screen.getByRole("log", { name: "Transcript" }));
-    await settle(() => log.queryAllByRole("group", { name: /^Ferramenta / }).length === 3);
-    const rows = log.getAllByRole("group", { name: /^Ferramenta / });
+    await settle(() => log.queryAllByRole("figure", { name: /^Ferramenta / }).length === 3);
+    const rows = log.getAllByRole("figure", { name: /^Ferramenta / });
     expect(rows.map((r) => r.getAttribute("aria-label"))).toEqual([
       "Ferramenta Bash",
       "Ferramenta Read",

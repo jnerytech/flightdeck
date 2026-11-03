@@ -1147,6 +1147,7 @@ export const en: Dictionary = {
       "This session may be in use somewhere else: the file changed in the last 2 minutes. Two processes writing the same conversation corrupt it.",
     continueAnyway: "Continue anyway",
     loadPrevious: "Load earlier",
+    tool: "Tool {name}",
     transcript: "Transcript",
   },
   toolCall: {

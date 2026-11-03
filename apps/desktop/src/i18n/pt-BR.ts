@@ -1147,6 +1147,7 @@ export const ptBR = {
       "Esta sessão pode estar em uso em outro lugar: o arquivo mudou nos últimos 2 minutos. Dois processos escrevendo na mesma conversa a corrompem.",
     continueAnyway: "Continuar mesmo assim",
     loadPrevious: "Carregar anteriores",
+    tool: "Ferramenta {name}",
     transcript: "Transcript",
   },
   toolCall: {
