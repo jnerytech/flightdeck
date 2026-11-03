@@ -227,6 +227,174 @@ async fn vault_pick_file(
     }))
 }
 
+/// What a task's result may be when the app opens it: documents and pictures, never anything that
+/// runs (no programs, scripts, shortcuts, macro documents or pages).
+const OPENABLE: &[&str] = &[
+    "pdf", "txt", "md", "csv", "json", "png", "jpg", "jpeg", "gif", "webp", "svg", "docx", "xlsx",
+    "pptx", "odt", "ods", "odp",
+];
+
+/// Whether a path ends in one of the extensions a result may have, whatever the case.
+fn has_openable_extension(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| OPENABLE.contains(&ext.to_ascii_lowercase().as_str()))
+        .unwrap_or(false)
+}
+
+/// The checks that need no disk, done before the disk is touched: a full path on a local drive or
+/// the root, with no network share, no alternate data stream and no `..`, naming a document.
+fn check_result_text(path: &str) -> Result<(), String> {
+    if path.is_empty() || path.contains('\0') {
+        return Err("not a path".to_string());
+    }
+    // A network path makes the system reach out to the server, handing it the user's credentials.
+    if path.starts_with("\\\\") || path.starts_with("//") {
+        return Err("network paths are not opened".to_string());
+    }
+    let bytes = path.as_bytes();
+    let drive = bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    if drive {
+        if bytes[2] != b'\\' && bytes[2] != b'/' {
+            return Err("a path starts at the root of a drive".to_string());
+        }
+        // A colon after the drive letter names an alternate data stream.
+        if path[2..].contains(':') {
+            return Err("streams are not opened".to_string());
+        }
+    } else if !path.starts_with('/') {
+        return Err("a path starts at the root".to_string());
+    }
+    if path.split(['/', '\\']).any(|part| part == "..") {
+        return Err("no .. in a path".to_string());
+    }
+    if !has_openable_extension(std::path::Path::new(path)) {
+        return Err("this kind of file is not opened".to_string());
+    }
+    Ok(())
+}
+
+/// Whether two spellings of a path are the same place (case blind on Windows, `\\?\` ignored).
+fn same_path(real: &std::path::Path, given: &std::path::Path) -> bool {
+    let norm = |path: &std::path::Path| {
+        let text = path.to_string_lossy().replace('\\', "/");
+        let text = text.strip_prefix("//?/").unwrap_or(&text).to_string();
+        let text = if cfg!(windows) { text.to_lowercase() } else { text };
+        text.trim_end_matches('/').to_string()
+    };
+    norm(real) == norm(given)
+}
+
+/// The file a result path names, once it is known to be a plain document of this machine: the text
+/// checks, a regular file that is not a link, and a real path that is the one given (a link or a
+/// junction anywhere on the way would make them differ).
+fn checked_result(path: &str) -> Result<std::path::PathBuf, String> {
+    check_result_text(path)?;
+    let given = std::path::Path::new(path);
+    let meta = std::fs::symlink_metadata(given).map_err(|e| e.to_string())?;
+    if meta.file_type().is_symlink() || !meta.is_file() {
+        return Err("only a plain file is opened".to_string());
+    }
+    let real = std::fs::canonicalize(given).map_err(|e| e.to_string())?;
+    if !same_path(&real, given) || !has_openable_extension(&real) {
+        return Err("a link on the way to the file".to_string());
+    }
+    Ok(real)
+}
+
+/// Opens a file a task made with the system's default app, or shows it in the file manager. The
+/// webview cannot ask the opener plugin for a path itself: only this command, which refuses
+/// anything that is not a plain document (see `checked_result`).
+#[tauri::command]
+async fn open_result(app: tauri::AppHandle, path: String, reveal: bool) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    spawn_blocking_result(move || {
+        let file = checked_result(&path)?;
+        if reveal {
+            app.opener().reveal_item_in_dir(&file).map_err(|e| e.to_string())
+        } else {
+            app.opener()
+                .open_path(file.to_string_lossy().to_string(), None::<String>)
+                .map_err(|e| e.to_string())
+        }
+    })
+    .await
+}
+
+#[cfg(test)]
+mod open_result_tests {
+    use super::*;
+
+    #[test]
+    fn a_document_on_a_drive_or_under_the_root_passes_the_text_checks() {
+        assert!(check_result_text("C:\\Users\\ana\\Reports\\Q3.DOCX").is_ok());
+        assert!(check_result_text("D:/work/a.pdf").is_ok());
+        assert!(check_result_text("/home/ana/Reports/a.md").is_ok());
+    }
+
+    #[test]
+    fn network_paths_streams_relative_paths_and_dotdot_are_refused() {
+        for path in [
+            "\\\\server\\share\\a.pdf",
+            "//server/share/a.pdf",
+            "\\\\?\\UNC\\server\\share\\a.pdf",
+            "C:\\work\\a.pdf:evil.exe",
+            "C:work\\a.pdf",
+            "relative/a.pdf",
+            "a.pdf",
+            "/home/ana/../root/a.pdf",
+            "C:\\work\\..\\a.pdf",
+            "",
+        ] {
+            assert!(check_result_text(path).is_err(), "{path} should be refused");
+        }
+    }
+
+    #[test]
+    fn programs_scripts_shortcuts_pages_and_macro_documents_are_refused() {
+        for kind in [
+            "exe", "bat", "cmd", "lnk", "url", "sh", "ps1", "html", "htm", "js", "vbs", "docm",
+            "xlsm", "scr", "msi", "jar", "app", "desktop", "reg", "dll",
+        ] {
+            let path = format!("/home/ana/Reports/report.{kind}");
+            assert!(check_result_text(&path).is_err(), "{kind} should be refused");
+        }
+        assert!(check_result_text("/home/ana/Reports/noextension").is_err());
+    }
+
+    #[test]
+    fn the_same_place_is_the_same_whatever_the_spelling() {
+        use std::path::Path;
+        assert!(same_path(Path::new("/a/b/c.pdf"), Path::new("/a/b/c.pdf/")));
+        assert!(same_path(Path::new("\\\\?\\C:\\a\\c.pdf"), Path::new("C:\\a\\c.pdf")) || !cfg!(windows));
+        assert!(!same_path(Path::new("/a/b/c.pdf"), Path::new("/a/x/c.pdf")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_and_a_directory_are_refused_on_disk_and_a_plain_document_is_not() {
+        let dir = std::env::temp_dir().join(format!("fd-open-result-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let dir = std::fs::canonicalize(&dir).unwrap();
+        let file = dir.join("a.pdf");
+        std::fs::write(&file, b"x").unwrap();
+        let link = dir.join("link.pdf");
+        std::os::unix::fs::symlink(&file, &link).unwrap();
+        let folder = dir.join("folder.pdf");
+        std::fs::create_dir_all(&folder).unwrap();
+        assert!(checked_result(file.to_str().unwrap()).is_ok());
+        assert!(checked_result(link.to_str().unwrap()).is_err());
+        assert!(checked_result(folder.to_str().unwrap()).is_err());
+        // A link in the folders on the way is refused too.
+        let way = std::env::temp_dir().join(format!("fd-open-result-way-{}", std::process::id()));
+        let _ = std::fs::remove_file(&way);
+        std::os::unix::fs::symlink(&dir, &way).unwrap();
+        assert!(checked_result(way.join("a.pdf").to_str().unwrap()).is_err());
+        let _ = std::fs::remove_file(&way);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
 /// Opens the system folder dialog; `None` when it is cancelled. The folder is only a suggestion:
 /// the daemon checks it against its allowed roots before anything uses it.
 #[tauri::command]
@@ -582,6 +750,7 @@ pub fn run() {
             vault_generate_key,
             vault_pick_file,
             pick_folder,
+            open_result,
             vault_remove_file,
             tray_set_status,
             tray_set_menu,

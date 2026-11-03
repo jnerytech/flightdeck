@@ -8,7 +8,7 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
-import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
@@ -55,8 +55,9 @@ export function tauriPlatform(
     },
     isFocused: () => win.document.hasFocus(),
     openExternal: (url) => openUrl(url),
-    openPath: (path) => openPath(path),
-    revealPath: (path) => revealItemInDir(path),
+    // Through the shell's own command, which opens only plain documents of this machine.
+    openPath: (path) => call("open_result", { path, reveal: false }),
+    revealPath: (path) => call("open_result", { path, reveal: true }),
     onDeepLink(handler) {
       let stopped = false;
       const deliver = (urls: string[] | null) => {
