@@ -1,3 +1,4 @@
+import { createInstrumenter as createIstanbulInstrumenter } from "istanbul-lib-instrument";
 import { testArgs } from "../test/timeout.ts";
 import { type Plan, SLOT_ABOVE, selectRelated } from "./test-related.ts";
 
@@ -14,33 +15,84 @@ export const PRELOAD = "./scripts/test/coverage-funcs-preload.ts";
 
 export type Instrumenter = (code: string, file: string) => string;
 
+/**
+ * Istanbul's instrumenter, which parses TypeScript through Babel. A `.tsx` file needs the JSX
+ * plugin and a `.ts` file must not have it (`<T>(a) => a` would read as a tag), so there are two.
+ * The path given is what the coverage is keyed by.
+ */
 export function createInstrumenter(): Instrumenter {
-  return () => "";
+  const make = (parserPlugins: Array<"typescript" | "jsx">) =>
+    createIstanbulInstrumenter({ esModules: true, coverageVariable: COVERAGE_VAR, parserPlugins });
+  const ts = make(["typescript"]);
+  const tsx = make(["typescript", "jsx"]);
+  return (code, file) => (file.endsWith("x") ? tsx : ts).instrumentSync(code, file);
 }
 
-export function uncalled(_coverage: FunctionCoverage): Array<{ line: number; name: string }> {
-  return [];
+/** The functions that no test called, by line. */
+export function uncalled(coverage: FunctionCoverage): Array<{ line: number; name: string }> {
+  return Object.entries(coverage.fnMap)
+    .filter(([id]) => coverage.f[id] === 0)
+    .map(([, { line, name }]) => ({ line, name }))
+    .sort((a, b) => a.line - b.line);
 }
 
+const LINE_MAX = 100;
+const functions = (n: number) => `${n} ${n === 1 ? "function" : "functions"}`;
+
+/**
+ * One block per file: the count, then every function never called as `file:line  name`. Istanbul
+ * does not name methods and arrows, so those show their source line instead.
+ */
 export function formatReport(
-  _targets: Array<{ file: string; source: string }>,
-  _coverage: Record<string, FunctionCoverage>,
+  targets: Array<{ file: string; source: string }>,
+  coverage: Record<string, FunctionCoverage>,
 ): string {
-  return "";
+  return targets
+    .map(({ file, source }) => {
+      const found = coverage[file];
+      if (!found) return `${file}: no test loaded this file`;
+      const total = Object.keys(found.fnMap).length;
+      if (total === 0) return `${file}: no functions`;
+      const missed = uncalled(found);
+      if (missed.length === 0) return `${file}: all ${functions(total)} called`;
+      const lines = source.split("\n");
+      const shown = missed.map(({ line, name }) => {
+        const text = name.startsWith("(anonymous_") ? (lines[line - 1] ?? "").trim() : name;
+        return `  ${file}:${line}  ${text.length > LINE_MAX ? `${text.slice(0, LINE_MAX - 1)}…` : text}`;
+      });
+      return [`${file}: ${missed.length} of ${functions(total)} never called`, ...shown].join("\n");
+    })
+    .join("\n");
 }
 
+const slashes = (path: string) => path.replaceAll("\\", "/");
+
+const escaped = (path: string) =>
+  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? "[\\\\/]" : `\\${c}`));
+
+/**
+ * What the preload registers with `Bun.plugin`: a filter for the listed files (any root, either
+ * separator) and a loader that hands Bun the instrumented text. The sources on disk stay as they are.
+ */
 export function onLoadFor(
-  _files: string[],
-  _instrument: Instrumenter,
-  _read: (path: string) => string,
+  files: string[],
+  instrument: Instrumenter,
+  read: (path: string) => string,
 ): {
   filter: RegExp;
   load: (path: string) => { contents: string; loader: "ts" | "tsx" } | undefined;
 } {
-  return { filter: /$^/, load: () => undefined };
+  const filter = new RegExp(`(?:^|[\\\\/])(?:${files.map(escaped).join("|")})$`);
+  return {
+    filter,
+    load(path) {
+      const unix = slashes(path);
+      const file = files.find((f) => unix === f || unix.endsWith(`/${f}`));
+      if (!file) return undefined;
+      return { contents: instrument(read(path), file), loader: file.endsWith("x") ? "tsx" : "ts" };
+    },
+  };
 }
-
-const slashes = (path: string) => path.replaceAll("\\", "/");
 
 export interface CoveragePlanDeps {
   files: string[];
