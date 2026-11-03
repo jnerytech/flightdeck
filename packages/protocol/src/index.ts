@@ -826,32 +826,65 @@ export const LocalizedText = z.object({ en: z.string().min(1), "pt-BR": z.string
 export type LocalizedText = z.infer<typeof LocalizedText>;
 
 /** What a template asks the person for: one of a folder, a file, a short text or a choice. */
-export const TemplateField = z.object({
-  id: z.string(),
-  kind: z.enum(["folder", "file", "text", "choice"]),
-  label: LocalizedText,
-  optional: z.boolean().optional(),
-  choices: z.array(z.object({ id: z.string(), label: LocalizedText })).optional(),
-});
+export const TemplateField = z
+  .object({
+    id: z.string().regex(/^[a-z][a-z0-9_]{0,23}$/),
+    kind: z.enum(["folder", "file", "text", "choice"]),
+    label: LocalizedText,
+    optional: z.boolean().optional(),
+    choices: z.array(z.object({ id: z.string().min(1), label: LocalizedText })).optional(),
+  })
+  .superRefine((field, ctx) => {
+    const count = field.choices?.length ?? 0;
+    if (field.kind === "choice" ? count < 2 : count > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "a choice has two or more options; other fields have none",
+        path: ["choices"],
+      });
+    }
+  });
 export type TemplateField = z.infer<typeof TemplateField>;
 
 /** How far Claude may go: never beyond editing the chosen folder. */
 export const TemplatePreset = z.enum(["read_only", "ask_before_changes", "edit_folder"]);
 export type TemplatePreset = z.infer<typeof TemplatePreset>;
 
+/** The `{name}` placeholders a text holds. */
+export const placeholdersOf = (text: string): string[] =>
+  [...text.matchAll(/\{([a-z][a-z0-9_]*)\}/g)].map((match) => match[1] as string);
+
 /** A template of a simple-mode task: what to ask, the prompt to fill and how far Claude may go. */
-export const Template = z.object({
-  id: z.string(),
-  title: LocalizedText,
-  description: LocalizedText,
-  icon: z.string(),
-  fields: z.array(TemplateField),
-  prompt: LocalizedText,
-  preset: TemplatePreset,
-  planFirst: z.boolean(),
-  /** Where the results go, relative to the chosen folder; `Flightdeck results` when absent. */
-  outputFolder: z.string().optional(),
-});
+export const Template = z
+  .object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/),
+    title: LocalizedText,
+    description: LocalizedText,
+    icon: z.string().min(1),
+    /** One to three fields, each asked once. */
+    fields: z.array(TemplateField).min(1).max(3),
+    prompt: LocalizedText,
+    preset: TemplatePreset,
+    planFirst: z.boolean(),
+    /** Where the results go, relative to the chosen folder; `Flightdeck results` when absent. */
+    outputFolder: z.string().optional(),
+  })
+  .superRefine((template, ctx) => {
+    const ids = template.fields.map((field) => field.id);
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({ code: "custom", message: "two fields share an id", path: ["fields"] });
+    }
+    for (const language of ["en", "pt-BR"] as const) {
+      const unknown = placeholdersOf(template.prompt[language]).filter((id) => !ids.includes(id));
+      if (unknown.length > 0) {
+        ctx.addIssue({
+          code: "custom",
+          message: `the prompt names fields that do not exist: ${unknown.join(", ")}`,
+          path: ["prompt", language],
+        });
+      }
+    }
+  });
 export type Template = z.infer<typeof Template>;
 
 /** Whether the host's terminals are on, how many at most and which shell they open. */
