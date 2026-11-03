@@ -177,6 +177,16 @@ describe("board-ui", () => {
     expect(board.maxParallelRuns).toBe(3);
   });
 
+  test("uma coluna vazia oferece Adicionar card, que abre o formulário do card novo", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    const region = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(region).getByRole("button", { name: "Adicionar card" }));
+    });
+    expect(screen.queryByLabelText("Título do card")).not.toBeNull();
+  });
+
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);
