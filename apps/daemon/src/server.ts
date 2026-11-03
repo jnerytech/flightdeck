@@ -106,6 +106,7 @@ import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
+import { startTemplate } from "./templates/start.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
@@ -1733,6 +1734,29 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "template.list": {
         if (!opts.templates) throw featureOff("templates");
         return ok(command.type, await opts.templates());
+      }
+      case "template.start": {
+        if (!opts.templates) throw featureOff("templates");
+        const { templateId, language, values, name } = command.payload;
+        const template = (await opts.templates()).templates.find((t) => t.id === templateId);
+        if (!template) {
+          throw new FlightdeckError(
+            "not_found",
+            `there is no template ${templateId}`,
+            "template_unknown",
+            { id: templateId },
+          );
+        }
+        return ok(
+          command.type,
+          await startTemplate(
+            template,
+            language,
+            values,
+            { allowedRoots: opts.allowedRoots, create: (payload) => manager.create(payload) },
+            name,
+          ),
+        );
       }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");
