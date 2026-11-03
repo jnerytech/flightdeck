@@ -163,6 +163,7 @@ function ManagedSession(props: {
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }
           : {})}
+        images={hasFeature(host?.hostInfo?.features, "session.images", false)}
         pickPath={(done) =>
           host && (
             <FolderPicker

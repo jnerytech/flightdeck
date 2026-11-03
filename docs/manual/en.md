@@ -478,6 +478,16 @@ A session appears only once. The order of preference is managed, then terminal, 
     controllable, the message box;
   - ended or from history: opens the reader, with "Continue in Flightdeck".
 
+### The message box
+
+- In a session's message box you can **paste or drop images** (PNG, JPEG, GIF or WebP, up to five
+  per message and 5 MB each; the host must support it). They show as thumbnails you can remove
+  before sending, and the conversation notes how many images a message carried. A file that does
+  not fit says why instead of being attached.
+- While a turn runs, **Queue** (or Ctrl+Enter) puts the message in a **Queued** list above the box
+  instead of sending it. **Edit** takes it back into the box and **Remove** drops it; when the turn
+  ends the queued messages go out in order, one per turn.
+
 ### Claude Code hooks
 
 Sessions opened outside Flightdeck only show up once the hooks are installed on the host. There

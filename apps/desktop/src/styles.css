@@ -399,6 +399,31 @@
   }
 }
 
+/* The images waiting to go with the next message, above the message box. */
+@utility composer-images {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem 0;
+}
+@utility composer-image {
+  display: flex;
+  align-items: flex-start;
+}
+@utility composer-thumb {
+  height: 4rem;
+  width: 4rem;
+  border-radius: 0.375rem;
+  object-fit: cover;
+}
+@utility composer-queued {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* The terminal's find bar: the box, where the match is, and the buttons in one row. */
 @utility terminal-find {
   display: flex;

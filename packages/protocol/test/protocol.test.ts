@@ -4,6 +4,9 @@ import {
   type CommandType,
   EventEnvelope,
   Project,
+  SESSION_IMAGE_MAX_BYTES,
+  SESSION_IMAGE_MAX_COUNT,
+  SESSION_IMAGE_TYPES,
   ServerMessage,
   SessionEvent,
 } from "../src/index.ts";
@@ -574,5 +577,53 @@ describe("protocolo", () => {
         error: { code: "bad_request", message: "x" },
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("images in a message", () => {
+  const send = (payload: Record<string, unknown>) =>
+    Command.safeParse({ id: "1", type: "session.send", payload: { sessionId: "s", ...payload } });
+  const png = { mediaType: "image/png", data: "iVBORw0KGgo=" };
+
+  test("the limits are five images of the four types the API reads, up to 5 MB each", () => {
+    expect(SESSION_IMAGE_MAX_COUNT).toBe(5);
+    expect(SESSION_IMAGE_MAX_BYTES).toBe(5 * 1024 * 1024);
+    expect([...SESSION_IMAGE_TYPES]).toEqual([
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+    ]);
+  });
+
+  test("a message carries its images, with or without text", () => {
+    const withText = send({ text: "look", images: [png] });
+    expect(withText.success).toBe(true);
+    const payload: unknown = withText.success ? withText.data.payload : null;
+    expect((payload as { images?: unknown }).images).toEqual([png]);
+    expect(send({ text: "", images: [png] }).success).toBe(true);
+  });
+
+  test("an empty message with no image is still refused", () => {
+    expect(send({ text: "" }).success).toBe(false);
+    expect(send({ text: "", images: [] }).success).toBe(false);
+  });
+
+  test("a type outside the list, too many images or one too big are refused", () => {
+    expect(send({ text: "x", images: [{ ...png, mediaType: "image/svg+xml" }] }).success).toBe(
+      false,
+    );
+    expect(send({ text: "x", images: Array(6).fill(png) }).success).toBe(false);
+    const big = "A".repeat(Math.ceil((SESSION_IMAGE_MAX_BYTES * 4) / 3) + 8);
+    expect(send({ text: "x", images: [{ ...png, data: big }] }).success).toBe(false);
+  });
+
+  test("the user message event says how many images came with it", () => {
+    const parsed: unknown = SessionEvent.parse({ type: "message.user", text: "x", images: 2 });
+    expect(parsed).toEqual({
+      type: "message.user",
+      text: "x",
+      images: 2,
+    });
   });
 });
