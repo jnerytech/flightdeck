@@ -205,9 +205,10 @@ describe("github-start: a repo or an issue becomes a project, a card or a sessio
   });
 
   test("signed out: gh_logged_out, before any clone", async () => {
-    installFakeCli("gh", [
+    const cli = installFakeCli("gh", [
       { args: ["auth", "status"], code: 1, stderr: "You are not logged into any GitHub hosts.\n" },
     ]);
+    cleanups.push(cli.restore);
     const s = setup();
     await expect(s.start()).rejects.toMatchObject({ reason: "gh_logged_out" });
     expect(s.clones).toEqual([]);

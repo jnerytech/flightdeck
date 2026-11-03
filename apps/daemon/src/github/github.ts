@@ -26,6 +26,13 @@ const ISSUE_LIMIT = 50;
 const REPO = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9._-]+$/;
 const SEARCH_LIMIT = 30;
 
+/** A repo is `owner/name`, checked before it reaches gh as an argument. */
+export function checkRepo(repo: string): void {
+  if (!REPO.test(repo) || /\/\.+$/.test(repo)) {
+    throw refuse("repo_invalid", `${repo} is not an owner/name repository`, { repo });
+  }
+}
+
 export interface GithubRepo {
   /** `owner/name`. */
   name: string;
@@ -64,7 +71,7 @@ export class Github {
   }
 
   /** Needs the `repo` scope when gh says which scopes it has (a fine-grained token does not). */
-  private async withRepoScope(): Promise<void> {
+  async ensureAccess(): Promise<void> {
     const status = await this.signedIn();
     if (status.scopes.length > 0 && !status.scopes.includes("repo")) {
       throw refuse("gh_scope_missing", "the GitHub login lacks the repo scope", { scope: "repo" });
@@ -76,7 +83,7 @@ export class Github {
     if (query !== undefined && (query.length > 100 || [...query].some((c) => c < " "))) {
       throw refuse("query_invalid", "the search text is too long or has control characters");
     }
-    await this.withRepoScope();
+    await this.ensureAccess();
     const search = query !== undefined && query.trim() !== "";
     const result = await this.opts.gh(
       search
@@ -120,12 +127,28 @@ export class Github {
     }));
   }
 
+  /** One issue of `repo`, as the app shows it; a number gh does not know is `issue_not_found`. */
+  async issue(repo: string, id: string): Promise<Issue> {
+    checkRepo(repo);
+    if (!/^\d+$/.test(id)) throw refuse("issue_invalid", `${id} is not an issue number`, { id });
+    await this.ensureAccess();
+    const result = await this.opts.gh(["issue", "view", id, "-R", repo, "--json", GH_FIELDS]);
+    if (!result || result.code !== 0) {
+      const detail = result ? detailOf(result) : "";
+      if (/could not resolve|not found/i.test(detail)) {
+        throw refuse("issue_not_found", `issue ${id} of ${repo} was not found`, { repo, id });
+      }
+      throw refuse("issues_failed", `gh could not read the issue: ${detail}`, { detail });
+    }
+    const me = await this.opts.gh(["api", "user", "--jq", ".login"]);
+    const login = me && me.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
+    return new GithubIssues(repo).toIssue(JSON.parse(result.stdout) as GhIssue, login);
+  }
+
   /** The open issues of `repo` (`owner/name`), asked of GitHub whatever folder the daemon is in. */
   async issues(repo: string): Promise<Issue[]> {
-    if (!REPO.test(repo) || /\/\.+$/.test(repo)) {
-      throw refuse("repo_invalid", `${repo} is not an owner/name repository`, { repo });
-    }
-    await this.withRepoScope();
+    checkRepo(repo);
+    await this.ensureAccess();
     const result = await this.opts.gh([
       "issue",
       "list",
