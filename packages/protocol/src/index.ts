@@ -663,6 +663,9 @@ export const Card = z.object({
   issueRef: z.string().nullable().default(null),
   /** Phase 13: the issue's author is third party, so the card's content is untrusted. */
   issueExternal: z.boolean().default(false),
+  /** Phase 38: the item of an external board this card follows, and whether it has left that board. */
+  externalUrl: z.string().nullable().default(null),
+  externalGone: z.boolean().default(false),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -1115,6 +1118,8 @@ export interface BoardSyncStatus {
   pausedUntil?: string | null;
   /** The board has more items than one pull reads. */
   truncated?: boolean;
+  /** The board's Status options, for the map editor. */
+  statusOptions?: string[];
 }
 
 /** One board of the external provider. */

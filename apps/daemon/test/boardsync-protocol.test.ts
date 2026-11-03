@@ -104,6 +104,12 @@ describe("board-sync-protocol: the boardsync commands", () => {
         Done: "done",
       },
     });
+    expect(linked?.ok && (linked.data as { statusOptions: string[] }).statusOptions).toEqual([
+      "Todo",
+      "In Progress",
+      "In Review",
+      "Done",
+    ]);
     const cards = h.store.linkedCards(h.project.id);
     expect(cards).toHaveLength(1);
     const status = await ask(h.server, "boardsync.status", { projectId: h.project.id });

@@ -42,6 +42,20 @@ describe("board-pull: items become cards, statuses move them", () => {
     });
   });
 
+  test("the card shows the item it follows and whether it left the board", async () => {
+    const s = await syncSetup();
+    s.provider.items = [item(1)];
+    await s.sync.syncProject(s.project.id);
+    const id = s.cards()[0]?.id ?? "";
+    expect(s.board.getCard(id)).toMatchObject({
+      externalUrl: "https://github.com/acme/app/issues/1",
+      externalGone: false,
+    });
+    s.provider.items = [item(1, { archived: true, updatedAt: "2026-10-02T10:00:00Z" })];
+    await s.sync.syncProject(s.project.id);
+    expect(s.board.getCard(id).externalGone).toBe(true);
+  });
+
   test("a third party's issue carries the mark and gets no automatic approval", async () => {
     const s = await syncSetup();
     s.provider.items = [

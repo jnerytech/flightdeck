@@ -204,6 +204,8 @@ interface CardRow {
   notice_params: string | null;
   issue_ref: string | null;
   issue_external: number;
+  external_url: string | null;
+  external_gone: number;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -520,6 +522,8 @@ export class Board {
         .get(id)?.n as number,
       issueRef: row.issue_ref,
       issueExternal: row.issue_external === 1,
+      externalUrl: null,
+      externalGone: true,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
