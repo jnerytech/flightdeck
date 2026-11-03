@@ -32,6 +32,16 @@ describe("lazy-wait-ratchet: a fixed wait followed by a one-shot query only goes
     expect(fixedWaitSites("")).toBe(0);
   });
 
+  test("a query in the next block or function is not right after the wait", () => {
+    const helper = `const click = async () => {\n  await act(() => Bun.sleep(30));\n};\n\nconst find = () => screen.queryByRole("button");`;
+    const nested = `test("a", async () => {\n  if (x) {\n    await Bun.sleep(5);\n  }\n  screen.queryByRole("a");\n});`;
+    expect(fixedWaitSites(helper)).toBe(0);
+    expect(fixedWaitSites(nested)).toBe(0);
+    expect(
+      fixedWaitSites(`if (x) {\n  await Bun.sleep(5);\n  const a = screen.queryByRole("a");\n}`),
+    ).toBe(1);
+  });
+
   test("it counts per file, skips the files that hold the shared waits and files with none", () => {
     const dir = realTempDir("lazy-wait-");
     mkdirSync(resolve(dir, "sub"));
