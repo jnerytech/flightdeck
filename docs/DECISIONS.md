@@ -2957,3 +2957,7 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   IO: `tray_set_menu`, `tray_set_status`, `focus_main` and `set_close_to_tray`
   (`SYNC_COMMANDS_ALLOWED` pins the list). Rust was reviewed by reading: cargo is not on the phase
   host, so CI's `cargo check` is the compiler check.
+- **The ratchet counts uses, not just calls, and has a command.** `syncCallCount` counts
+  `fooSync(`, `realpathSync.native(` and bare references such as `{ exists: existsSync }`, and
+  skips comments and import statements. After a merge changes the counts, run
+  `bun run no-sync:baseline` (it rewrites `SYNC_BASELINE` from the sources) and read the diff.
