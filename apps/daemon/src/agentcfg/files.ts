@@ -62,8 +62,11 @@ const exists = (path: string) =>
 
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
-const bad = (message: string) => new FlightdeckError("bad_request", message);
+type Params = Record<string, string | number>;
+const invalid = (message: string, reason: string, params?: Params) =>
+  new FlightdeckError("invalid_state", message, reason, params);
+const bad = (message: string, reason: string, params?: Params) =>
+  new FlightdeckError("bad_request", message, reason, params);
 
 /**
  * The YAML between the leading `---` lines; null when there is none or it does not parse. YAML
@@ -81,20 +84,27 @@ export function frontmatter(text: string): Record<string, unknown> | null {
 
 const filled = (value: unknown) => typeof value === "string" && value.trim() !== "";
 
-/** What is wrong with an agent's or a skill's frontmatter, or null. */
-function frontmatterProblem(kind: AgentCfgKind, text: string): string | null {
+/** What is wrong with an agent's or a skill's frontmatter, as a refusal, or null. */
+function frontmatterProblem(kind: AgentCfgKind, text: string): FlightdeckError | null {
   const data = frontmatter(text);
-  if (!data) return "falta o frontmatter YAML entre linhas ---";
-  if (!filled(data.name)) return "name é obrigatório";
-  if (!filled(data.description)) return "description é obrigatório";
+  if (!data) {
+    return bad("the YAML frontmatter between --- lines is missing", "agentcfg_frontmatter_missing");
+  }
+  for (const field of ["name", "description"]) {
+    if (!filled(data[field])) {
+      return bad(`${field} is required`, "agentcfg_field_required", { field });
+    }
+  }
   if (kind !== "agent") return null;
   const { tools, model } = data;
   const toolsOk =
     tools === undefined ||
     typeof tools === "string" ||
     (Array.isArray(tools) && tools.every((t) => typeof t === "string"));
-  if (!toolsOk) return "tools é um texto ou uma lista de textos";
-  if (model !== undefined && typeof model !== "string") return "model é um texto";
+  if (!toolsOk) return bad("tools is a text or a list of texts", "agentcfg_tools_type");
+  if (model !== undefined && typeof model !== "string") {
+    return bad("model is a text", "agentcfg_model_type");
+  }
   return null;
 }
 
@@ -104,7 +114,7 @@ function checkedPath(kind: AgentCfgKind, path: string, origin: Origin): string {
   const escapes =
     isAbsolute(path) || rel.split("/").some((s) => s === "" || s === "." || s === "..");
   if (escapes || !PATHS[origin][kind].test(rel)) {
-    throw bad(`caminho inválido para ${kind}: ${path}`);
+    throw bad(`invalid path for ${kind}: ${path}`, "agentcfg_path_invalid", { kind, path });
   }
   return rel;
 }
@@ -115,7 +125,8 @@ async function insideProject(project: string, rel: string): Promise<string> {
   const file = join(root, rel);
   let existing = file;
   while (!(await lstat(existing).catch(() => null))) existing = dirname(existing);
-  if (!isInside(root, await realpath(existing))) throw bad(`${rel} fica fora do projeto`);
+  if (!isInside(root, await realpath(existing)))
+    throw bad(`${rel} is outside the project`, "agentcfg_outside_project", { path: rel });
   return file;
 }
 
@@ -158,7 +169,10 @@ export class AgentConfig {
     const root = origin === "user" ? this.claudeDir() : project;
     const rel = checkedPath(kind, path, origin);
     const bytes = await readFile(join(root, rel)).catch(() => null);
-    if (!bytes) throw new FlightdeckError("not_found", `${path} não existe`);
+    if (!bytes)
+      throw new FlightdeckError("not_found", `${path} does not exist`, "agentcfg_file_missing", {
+        path,
+      });
     return {
       ...this.itemOf(bytes, kind, rel, origin),
       content: bytes.toString("utf8"),
@@ -166,19 +180,19 @@ export class AgentConfig {
   }
 
   async write(project: string, input: AgentCfgWrite): Promise<{ hash: string }> {
-    if (!input.confirm) throw invalid("gravar pede confirm: true");
+    if (!input.confirm) throw invalid("writing needs confirm: true", "agentcfg_confirm");
     if (input.origin === "user")
-      throw invalid("a configuração do usuário (~/.claude) é só leitura");
+      throw invalid("the user's configuration (~/.claude) is read-only", "agentcfg_user_readonly");
     const rel = checkedPath(input.kind, input.path, "project");
     const problem =
       input.kind === "claudemd" ? null : frontmatterProblem(input.kind, input.content);
-    if (problem) throw bad(`frontmatter inválido: ${problem}`);
+    if (problem) throw problem;
     const file = await insideProject(project, rel);
     const before = await readFile(file).catch(() => null);
     if ((before ? sha(before) : null) !== input.expectedHash) {
-      throw invalid(
-        input.expectedHash === null ? `${rel} já existe` : `${rel} mudou desde que foi aberto`,
-      );
+      throw input.expectedHash === null
+        ? invalid(`${rel} already exists`, "agentcfg_exists", { path: rel })
+        : invalid(`${rel} changed since it was opened`, "agentcfg_changed", { path: rel });
     }
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, input.content);
