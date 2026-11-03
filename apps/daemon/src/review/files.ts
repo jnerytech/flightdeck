@@ -72,11 +72,24 @@ export class ReviewFiles {
     const { root } = await this.opts.changes.resolve(target);
     const full = fileInRoot(root, path);
     const bytes = await bytesOrNull(full);
-    if (!bytes) throw new FlightdeckError("not_found", `${path} não existe`);
-    if (bytes.length > MAX_BYTES) {
-      throw new FlightdeckError("bad_request", `${path} passa de 1 MB: edite fora do Flightdeck`);
+    if (!bytes) {
+      throw new FlightdeckError("not_found", `${path} does not exist`, "review_file_missing", {
+        path,
+      });
     }
-    if (bytes.includes(0)) throw new FlightdeckError("bad_request", `${path} não é texto`);
+    if (bytes.length > MAX_BYTES) {
+      throw new FlightdeckError(
+        "bad_request",
+        `${path} is over 1 MB: edit it outside Flightdeck`,
+        "review_file_big",
+        { path },
+      );
+    }
+    if (bytes.includes(0)) {
+      throw new FlightdeckError("bad_request", `${path} is not text`, "review_file_binary", {
+        path,
+      });
+    }
     return { path, text: bytes.toString("utf8"), hash: sha256(bytes), size: bytes.length };
   }
 
@@ -89,10 +102,17 @@ export class ReviewFiles {
   ): Promise<Omit<FileContent, "text">> {
     const full = await this.writable(target, path);
     const bytes = Buffer.from(text, "utf8");
-    if (bytes.length > MAX_BYTES) throw new FlightdeckError("bad_request", "texto passa de 1 MB");
+    if (bytes.length > MAX_BYTES) {
+      throw new FlightdeckError("bad_request", "the text is over 1 MB", "review_text_big");
+    }
     const before = await bytesOrNull(full);
     if ((before ? sha256(before) : null) !== expectedHash) {
-      throw new FlightdeckError("file_conflict", `${path} mudou desde que foi aberto`);
+      throw new FlightdeckError(
+        "file_conflict",
+        `${path} changed since it was opened`,
+        "review_file_changed",
+        { path },
+      );
     }
     await writeFile(full, bytes);
     return { path, hash: sha256(bytes), size: bytes.length };
@@ -107,7 +127,13 @@ export class ReviewFiles {
     path: string,
     confirm: boolean,
   ): Promise<{ path: string; undoUntil: string }> {
-    if (!confirm) throw new FlightdeckError("invalid_state", "confirme o revert com confirm: true");
+    if (!confirm) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "confirm the revert with confirm: true",
+        "review_revert_confirm",
+      );
+    }
     const { root, base } = await this.opts.changes.resolve(target);
     const full = await this.writable(target, path);
     await this.pruneTrash();
@@ -136,12 +162,22 @@ export class ReviewFiles {
 
   /** Puts back what the revert replaced, within 30 s of it. */
   async undoRevert(target: string, path: string, confirm: boolean): Promise<{ path: string }> {
-    if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirme o desfazer com confirm: true");
+    if (!confirm) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "confirm the undo with confirm: true",
+        "review_undo_confirm",
+      );
+    }
     const key = `${target}\0${path}`;
     const undo = this.undos.get(key);
     if (!undo || this.now() - undo.at > UNDO_MS) {
-      throw new FlightdeckError("invalid_state", `nada para desfazer em ${path}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `nothing to undo in ${path}`,
+        "review_undo_nothing",
+        { path },
+      );
     }
     const full = await this.writable(target, path);
     if (undo.copy) {
@@ -182,7 +218,12 @@ export class ReviewFiles {
     const full = fileInRoot(root, path);
     const real = await realpath(full).catch(() => null);
     if (real && !isInside(realRoot, real)) {
-      throw new FlightdeckError("forbidden_cwd", `${path} aponta para fora do repositório`);
+      throw new FlightdeckError(
+        "forbidden_cwd",
+        `${path} points outside the repository`,
+        "review_path_link",
+        { path },
+      );
     }
     return full;
   }

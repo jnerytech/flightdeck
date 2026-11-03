@@ -86,8 +86,13 @@ export interface ProjectMemoryOptions {
 }
 
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
-const bad = (message: string) => new FlightdeckError("bad_request", message);
+type Params = Record<string, string | number>;
+const invalid = (message: string, reason: string, params?: Params) =>
+  new FlightdeckError("invalid_state", message, reason, params);
+const bad = (message: string, reason: string, params?: Params) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const notFound = (name: string) =>
+  new FlightdeckError("not_found", `${name} does not exist`, "memory_not_found", { name });
 
 /** A plain file name ending in .md: nothing that leaves the folder, nothing hidden. */
 const NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,98}\.md$/;
@@ -182,22 +187,21 @@ export class ProjectMemory {
   async read(project: string, name: string): Promise<MemoryFile & { content: string }> {
     const dir = await this.dir(project);
     const file = await this.file(dir, name);
-    if (!(await exists(file))) throw new FlightdeckError("not_found", `${name} não existe`);
+    if (!(await exists(file))) throw notFound(name);
     const index = await this.index(dir);
     return { ...(await this.describe(dir, name, index)), content: await readFile(file, "utf8") };
   }
 
   async write(project: string, input: MemoryWrite): Promise<{ hash: string }> {
-    if (!input.confirm) throw invalid("gravar pede confirm: true");
+    if (!input.confirm) throw invalid("writing needs confirm: true", "memory_write_confirm");
     const dir = await this.dir(project);
     const file = await this.file(dir, input.name);
     const current = (await exists(file)) ? sha(await readFile(file)) : null;
     if (current !== input.expectedHash) {
-      throw invalid(
-        input.expectedHash === null
-          ? `${input.name} já existe`
-          : `${input.name} mudou desde que foi aberto`,
-      );
+      const name = input.name;
+      throw input.expectedHash === null
+        ? invalid(`${name} already exists`, "memory_exists", { name })
+        : invalid(`${name} changed since it was opened`, "memory_changed", { name });
     }
     await mkdir(dir, { recursive: true });
     await this.safeDir(dir);
@@ -208,11 +212,15 @@ export class ProjectMemory {
   }
 
   async remove(project: string, input: MemoryRemove): Promise<void> {
-    if (!input.confirm) throw invalid("apagar pede confirm: true");
+    if (!input.confirm) throw invalid("deleting needs confirm: true", "memory_delete_confirm");
     const file = await this.file(await this.dir(project), input.name);
-    if (!(await exists(file))) throw new FlightdeckError("not_found", `${input.name} não existe`);
+    if (!(await exists(file))) throw notFound(input.name);
     const current = sha(await readFile(file));
-    if (current !== input.expectedHash) throw invalid(`${input.name} mudou desde que foi aberto`);
+    if (current !== input.expectedHash) {
+      throw invalid(`${input.name} changed since it was opened`, "memory_changed", {
+        name: input.name,
+      });
+    }
     await unlink(file);
     await this.record("delete", input.name, current, null);
   }
@@ -254,11 +262,12 @@ export class ProjectMemory {
 
   /** The file's path, refused when the name is not a plain .md name or the folder leads outside. */
   private async file(dir: string, name: string): Promise<string> {
-    if (!NAME.test(name)) throw bad(`nome inválido para a memória: ${name}`);
+    if (!NAME.test(name))
+      throw bad(`invalid memory name: ${name}`, "memory_name_invalid", { name });
     if (await exists(dir)) await this.safeDir(dir);
     const file = join(dir, name);
     const info = await lstat(file).catch(() => undefined);
-    if (info?.isSymbolicLink()) throw bad(`${name} é um link`);
+    if (info?.isSymbolicLink()) throw bad(`${name} is a link`, "memory_is_link", { name });
     return file;
   }
 
@@ -266,7 +275,7 @@ export class ProjectMemory {
   private async safeDir(dir: string): Promise<void> {
     const root = await realpath(this.claudeDir());
     if (!isInside(root, await realpath(dir))) {
-      throw bad("a pasta de memória fica fora da pasta do Claude");
+      throw bad("the memory folder is outside the Claude folder", "memory_dir_outside");
     }
   }
 

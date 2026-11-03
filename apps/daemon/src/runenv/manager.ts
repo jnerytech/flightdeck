@@ -100,7 +100,13 @@ export class RunManager {
    */
   async start(cardId: string): Promise<RunState> {
     const card = this.opts.card(cardId);
-    if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+    if (!card.worktreePath) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card has no worktree yet",
+        "card_no_worktree",
+      );
+    }
     const current = this.entries.get(cardId);
     if (current && LIVE.has(current.status)) return this.snapshot(current);
     // Nothing the run.yaml declares runs before its hash is trusted.
@@ -108,7 +114,8 @@ export class RunManager {
     if (config.exclusive && this.otherLive(card.projectId, cardId)) {
       throw new FlightdeckError(
         "invalid_state",
-        "outro card está rodando neste projeto (modo não concorrente)",
+        "another card is running in this project (non-concurrent mode)",
+        "run_exclusive",
       );
     }
     const ports = await this.opts.ports.reserve(cardId, config.ports);
