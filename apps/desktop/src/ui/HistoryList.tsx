@@ -40,12 +40,32 @@ export function HistoryList(props: {
   /** The session open on the right, if any. */
   openId: string | null;
   onOpen(claudeSessionId: string): void;
+  /** Opened from a usage row: starts filtered by that folder and day (UTC). */
+  initial?: { cwd?: string; day?: string };
 }) {
   const { store, hostId } = props;
-  const [draft, setDraft] = useState<Draft>({ cwd: "", from: "", to: "", origin: "" });
-  const [filter, setFilter] = useState<HistoryFilter>({});
+  const [draft, setDraft] = useState<Draft>(() => ({
+    cwd: props.initial?.cwd ?? "",
+    from: props.initial?.day ?? "",
+    to: props.initial?.day ?? "",
+    origin: "",
+  }));
+  const [filter, setFilter] = useState<HistoryFilter>(() => toFilter(draft));
   /** The runs nobody typed (print-mode, temp folders) stay out of the list unless asked for. */
   const [hideAutomated, setHideAutomated] = useState(true);
+  // A usage row opened this list again with another folder or day: the filter follows it.
+  const [seen, setSeen] = useState(props.initial);
+  if (props.initial && (props.initial.cwd !== seen?.cwd || props.initial.day !== seen?.day)) {
+    const next = {
+      cwd: props.initial.cwd ?? "",
+      from: props.initial.day ?? "",
+      to: props.initial.day ?? "",
+      origin: "" as const,
+    };
+    setSeen(props.initial);
+    setDraft(next);
+    setFilter(toFilter(next));
+  }
   const [automatedCount, setAutomatedCount] = useState(0);
   /** `null` until the host answers (the skeleton shows meanwhile). */
   const [sessions, setSessions] = useState<HistorySessionSummary[] | null>(null);

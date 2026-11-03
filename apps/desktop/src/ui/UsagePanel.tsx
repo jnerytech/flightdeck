@@ -1,9 +1,11 @@
 import type { UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
+import { UsageGroupRows } from "@/components/usage/usage-group";
 import { useFormatNumber, useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { periodRange, usd } from "../lib/costs.ts";
+import { groupByProject } from "../lib/usage-rows.ts";
 
 interface Row {
   day: string;
@@ -24,10 +26,12 @@ export function UsagePanel(props: {
   hostId: string;
   online: boolean;
   costs: boolean;
+  /** A row was clicked: the history of its folder (when it has one) on that day. */
+  onOpenHistory?(filter: { cwd?: string; day: string }): void;
 }) {
   const t = useT();
   const number = useFormatNumber();
-  const { store, hostId, online, costs } = props;
+  const { store, hostId, online, costs, onOpenHistory } = props;
   const [rows, setRows] = useState<Row[] | null>(null);
   useEffect(() => {
     if (!online) return;
@@ -70,7 +74,6 @@ export function UsagePanel(props: {
             <thead className="text-muted-foreground text-xs">
               <tr>
                 <th className="py-1 font-medium">{t("usageUi.day")}</th>
-                <th className="py-1 font-medium">{t("usageUi.project")}</th>
                 <th className="py-1 pl-4 text-right font-medium">{t("usageUi.cost")}</th>
                 <th className="py-1 pl-4 text-right font-medium">{t("usageUi.tokens")}</th>
                 {!costs && (
@@ -78,21 +81,16 @@ export function UsagePanel(props: {
                 )}
               </tr>
             </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={`${row.day}/${row.projectKey}`} className="border-t">
-                  <td className="py-1">{row.day}</td>
-                  <td className="py-1">{row.projectKey}</td>
-                  <td className="py-1 pl-4 text-right">{usd(row.costUsd)}</td>
-                  <td className="py-1 pl-4 text-right">
-                    {Array.isArray(row.tokens)
-                      ? row.tokens.map(number).join(" / ")
-                      : number(row.tokens)}
-                  </td>
-                  {row.turns !== null && <td className="py-1 pl-4 text-right">{row.turns}</td>}
-                </tr>
-              ))}
-            </tbody>
+            {groupByProject(rows).map((group) => (
+              <UsageGroupRows
+                key={group.projectKey}
+                group={group}
+                columns={costs ? 3 : 4}
+                total={usd(group.costUsd)}
+                format={{ cost: usd, number }}
+                onOpenHistory={onOpenHistory}
+              />
+            ))}
           </table>
         )}
       </Panel>

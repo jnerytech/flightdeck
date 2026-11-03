@@ -2619,7 +2619,6 @@ export const en: Dictionary = {
   usageUi: {
     title: "Usage in the last 7 days",
     day: "Day",
-    project: "Project",
     cost: "Cost",
     tokens: "Tokens",
     turns: "Turns",

@@ -90,7 +90,7 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
       formatDateTime: String,
       router: { push: () => {} },
     } as unknown as AppStore;
-    render(
+    const list = (initial: { cwd?: string; day?: string } | undefined) => (
       <HistoryList
         store={store}
         hostId="h"
@@ -98,17 +98,27 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
         density="comfortable"
         openId={null}
         onOpen={() => {}}
-        initial={{ cwd: "/home/ana/entrevista", day: "2026-10-15" }}
-      />,
+        initial={initial}
+      />
     );
+    const view = render(list({ cwd: "/home/ana/entrevista", day: "2026-10-15" }));
     await waitFor(() => expect(asked.length).toBeGreaterThan(0));
     expect(asked[0]).toMatchObject({
       cwd: "/home/ana/entrevista",
       from: "2026-10-15T00:00:00.000Z",
       to: "2026-10-15T23:59:59.999Z",
     });
-    expect(document.querySelector<HTMLInputElement>("input[aria-label='Folder']")?.value).toBe(
+    expect(document.querySelector<HTMLInputElement>("input[aria-label='Pasta']")?.value).toBe(
       "/home/ana/entrevista",
     );
+
+    // Another usage row opens it again: the filter follows; a plain reopen keeps what is there.
+    view.rerender(list({ day: "2026-10-14" }));
+    await waitFor(() => expect(asked.at(-1)).toMatchObject({ from: "2026-10-14T00:00:00.000Z" }));
+    expect(asked.at(-1)).not.toHaveProperty("cwd");
+    const count = asked.length;
+    view.rerender(list(undefined));
+    await act(() => Bun.sleep(30));
+    expect(asked).toHaveLength(count);
   });
 });

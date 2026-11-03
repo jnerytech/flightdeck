@@ -16,7 +16,7 @@ export type Route =
   | { name: "external"; host: string; claudeSessionId: string }
   /** A transcript; `list: "history"` when it was opened from a host's history list. */
   | { name: "reader"; target: ReaderTarget; list?: "history" }
-  | { name: "history"; host: string }
+  | { name: "history"; host: string; cwd?: string; day?: string }
   | { name: "host"; host: string }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }

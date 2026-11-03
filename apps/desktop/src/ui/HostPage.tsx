@@ -34,6 +34,7 @@ export function HostPage(props: {
   onRename(name: string): void;
   onReconnect(): void;
   onOpenAutoApprovals(): void;
+  onOpenHistory(filter: { cwd?: string; day: string }): void;
   onRemove(): void;
 }) {
   const t = useT();
@@ -84,6 +85,7 @@ export function HostPage(props: {
             hostId={host.id}
             online={host.status === "online"}
             costs={hasFeature(info?.features, "costs", false)}
+            onOpenHistory={props.onOpenHistory}
           />
         )}
         <Panel title={t("hostPage.info")}>

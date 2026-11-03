@@ -2625,7 +2625,6 @@ export const ptBR = {
   usageUi: {
     title: "Uso dos últimos 7 dias",
     day: "Dia",
-    project: "Projeto",
     cost: "Custo",
     tokens: "Tokens",
     turns: "Turnos",

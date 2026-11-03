@@ -331,6 +331,11 @@ export function Screen(props: ScreenProps) {
             key={hostId}
             store={store}
             hostId={hostId}
+            initial={
+              route.name === "history" && (route.cwd || route.day)
+                ? { cwd: route.cwd, day: route.day }
+                : undefined
+            }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
             density={props.density}
             openId={opened}
@@ -620,6 +625,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
+          onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);
