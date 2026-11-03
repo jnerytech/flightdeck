@@ -821,6 +821,39 @@ export const UiSettings = z.object({
 });
 export type UiSettings = z.infer<typeof UiSettings>;
 
+/** A text in the two languages the app speaks; both are always written (phase 33). */
+export const LocalizedText = z.object({ en: z.string().min(1), "pt-BR": z.string().min(1) });
+export type LocalizedText = z.infer<typeof LocalizedText>;
+
+/** What a template asks the person for: one of a folder, a file, a short text or a choice. */
+export const TemplateField = z.object({
+  id: z.string(),
+  kind: z.enum(["folder", "file", "text", "choice"]),
+  label: LocalizedText,
+  optional: z.boolean().optional(),
+  choices: z.array(z.object({ id: z.string(), label: LocalizedText })).optional(),
+});
+export type TemplateField = z.infer<typeof TemplateField>;
+
+/** How far Claude may go: never beyond editing the chosen folder. */
+export const TemplatePreset = z.enum(["read_only", "ask_before_changes", "edit_folder"]);
+export type TemplatePreset = z.infer<typeof TemplatePreset>;
+
+/** A template of a simple-mode task: what to ask, the prompt to fill and how far Claude may go. */
+export const Template = z.object({
+  id: z.string(),
+  title: LocalizedText,
+  description: LocalizedText,
+  icon: z.string(),
+  fields: z.array(TemplateField),
+  prompt: LocalizedText,
+  preset: TemplatePreset,
+  planFirst: z.boolean(),
+  /** Where the results go, relative to the chosen folder; `Flightdeck results` when absent. */
+  outputFolder: z.string().optional(),
+});
+export type Template = z.infer<typeof Template>;
+
 /** Whether the host's terminals are on, how many at most and which shell they open. */
 export const TerminalSettings = z.object({
   enabled: z.boolean(),
