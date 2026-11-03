@@ -3,6 +3,8 @@
 
 /** Every reason of the daemon outside the snippet model: the app has a text for each, in both languages. */
 export const DAEMON_REASONS = [
+  "bypass_not_allowed",
+  "bypass_confirm",
   "cwd_missing",
   "cwd_outside_roots",
   "request_invalid",

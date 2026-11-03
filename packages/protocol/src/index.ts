@@ -2373,6 +2373,8 @@ export const Command = z.discriminatedUnion("type", [
    * loopback and Tailscale.
    */
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
+  /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
+  cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */
   cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
@@ -3495,6 +3497,8 @@ export const HostInfoResult = z.object({
   wslDistro: z.string().nullable().optional(),
   /** Phase 14: the host's terminals: on or off, how many at most, which shell. */
   terminal: TerminalSettings.optional(),
+  /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
+  allowBypassPermissions: z.boolean().optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -3575,6 +3579,10 @@ export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 
 /** The host's allowed folders after `roots.add`. */
 export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
+
+/** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
+export const BypassResult = z.object({ allowBypassPermissions: z.boolean() });
+export type BypassResult = z.infer<typeof BypassResult>;
 export type RootsResult = z.infer<typeof RootsResult>;
 
 export const BoardSettings = z.object({ maxParallelRuns: z.number().int().min(1) });
@@ -3648,6 +3656,7 @@ export interface CommandResults {
   "board.get": BoardResult;
   "board.settings": BoardSettings;
   "roots.add": RootsResult;
+  "host.bypass": BypassResult;
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;

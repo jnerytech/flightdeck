@@ -1075,6 +1075,9 @@ export const en: Dictionary = {
     mcp_query_not_live: "The session is not running, so its MCP servers cannot be queried.",
     external_no_channel:
       "This session has no channel: only sessions opened with flightdeckd claude receive messages.",
+    bypass_not_allowed:
+      "This host does not allow sessions without permission prompts. Turn it on in the host's settings first.",
+    bypass_confirm: "Turning on sessions without permission prompts needs your confirmation.",
     transcript_not_indexed: "The transcript {id} is not indexed on this host.",
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",

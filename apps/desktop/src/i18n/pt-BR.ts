@@ -1074,6 +1074,9 @@ export const ptBR = {
     mcp_query_not_live: "A sessão não está rodando, então não dá para consultar os servidores MCP.",
     external_no_channel:
       "Esta sessão não tem canal: só sessões abertas com flightdeckd claude recebem mensagens.",
+    bypass_not_allowed:
+      "Este host não permite sessões sem pedidos de permissão. Ative antes nas configurações do host.",
+    bypass_confirm: "Ativar sessões sem pedidos de permissão precisa da sua confirmação.",
     transcript_not_indexed: "O transcript {id} não está indexado neste host.",
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",

@@ -1429,6 +1429,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           ),
         });
       }
+      case "host.bypass":
+        return ok(command.type, { allowBypassPermissions: command.payload.allow });
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
         if (maxParallelRuns !== undefined) board().setMaxParallelRuns(maxParallelRuns);
