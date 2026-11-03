@@ -93,7 +93,7 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     info: { allowedRoots: ["/work"] },
   } as unknown as Parameters<typeof NewSessionForm>[0]["host"];
 
-  test("without a first prompt the button is off and says why; typing one turns it on", async () => {
+  test("the first prompt is optional: with none the session is created idle, with one it is sent", async () => {
     const created: unknown[] = [];
     const { TContext } = await import("../src/i18n/context.tsx");
     const { translator } = await import("../src/i18n/index.ts");
@@ -104,16 +104,33 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     );
     const button = () =>
       screen.queryByRole("button", { name: "Create session" }) as HTMLButtonElement | null;
-    expect(button()?.disabled).toBe(true);
-    expect(screen.queryByText("Write the first prompt to create the session")).not.toBeNull();
+    expect(button()?.disabled).toBe(false);
     expect(screen.queryByRole("heading", { name: "New session on pc" })).not.toBeNull();
     await fill("First prompt", "   ");
-    expect(button()?.disabled).toBe(true);
-    await fill("First prompt", "faça isto");
     expect(button()?.disabled).toBe(false);
-    expect(screen.queryByText("Write the first prompt to create the session")).toBeNull();
     await press("Create session");
-    expect(created).toEqual([{ cwd: "/work", prompt: "faça isto", permissionMode: "default" }]);
+    expect(created).toEqual([{ cwd: "/work", permissionMode: "default" }]);
+    await fill("First prompt", "faça isto");
+    await press("Create session");
+    expect(created[1]).toEqual({ cwd: "/work", prompt: "faça isto", permissionMode: "default" });
+  });
+
+  test("a Model select sits by the permission mode: the default sends none, a choice sends it", async () => {
+    const created: Array<Record<string, unknown>> = [];
+    const { TContext } = await import("../src/i18n/context.tsx");
+    const { translator } = await import("../src/i18n/index.ts");
+    render(
+      <TContext.Provider value={translator("en")}>
+        <NewSessionForm host={host} onCreate={(payload) => void created.push(payload)} />
+      </TContext.Provider>,
+    );
+    const model = screen.queryByLabelText("Model") as HTMLSelectElement;
+    expect(Array.from(model.options).map((o) => o.value)).toEqual(["", "opus", "sonnet", "haiku"]);
+    await press("Create session");
+    expect(created[0]).not.toHaveProperty("model");
+    await fill("Model", "sonnet");
+    await press("Create session");
+    expect(created[1]?.model).toBe("sonnet");
   });
 
   test("while the session is being created the button is busy and a second click creates nothing", async () => {
