@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { Exec } from "../src/exec.ts";
-import { FlightdeckError } from "../src/errors.ts";
 import {
-  type IdleQuery,
   accountInfo,
   authStatus,
+  type IdleQuery,
   normalizePlan,
   usageReport,
   withIdleQuery,
 } from "../src/account/readers.ts";
+import { FlightdeckError } from "../src/errors.ts";
+import type { Exec } from "../src/exec.ts";
 
 const SIGNED_IN = {
   loggedIn: true,
@@ -206,7 +206,6 @@ describe("conta-leitores: accountInfo (SDK)", () => {
 });
 
 describe("conta-leitores: usageReport (SDK)", () => {
-  const NOW = Date.UTC(2026, 10, 3, 12, 0, 0);
   const report = {
     subscription_type: "max",
     rate_limits_available: true,
@@ -225,7 +224,7 @@ describe("conta-leitores: usageReport (SDK)", () => {
   });
 
   test("windows become 0 to 1 fractions with the reset in milliseconds; unknown keys are ignored", async () => {
-    const got = await usageReport(asQuery(report), undefined, () => NOW);
+    const got = await usageReport(asQuery(report));
     expect(got.plan).toBe("max");
     expect(got.available).toBe(true);
     expect(got.windows).toEqual([
