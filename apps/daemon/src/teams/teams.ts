@@ -52,11 +52,12 @@ export interface TeamsOptions {
     prompt: string;
     name: string;
     persona: string | null;
+    model: string | null;
   }) => {
     sessionId: string;
   };
   /** Starts a worker's card; phase 20 passes the persona on. */
-  startWorker?: (cardId: string, persona: string | null) => Promise<unknown>;
+  startWorker?: (cardId: string, persona: string | null, model: string | null) => Promise<unknown>;
   /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
   warm?: (cwd: string) => Promise<unknown> | undefined;
   /** Tells a running session its persona changed. */
@@ -70,6 +71,9 @@ export interface NewTeam {
   workers: number;
   coordinatorPersona?: string;
   workerPersonas?: string[];
+  /** The model of the coordinator and of each worker; none or null is the persona's own. */
+  coordinatorModel?: string;
+  workerModels?: Array<string | null>;
   checks?: string[];
 }
 
@@ -87,6 +91,7 @@ interface StoredMember {
   name: string;
   role: "coordinator" | "worker";
   persona: string | null;
+  model?: string | null;
   cardId: string | null;
   sessionId: string | null;
 }
@@ -178,6 +183,7 @@ export class Teams {
       name: stored.name,
       role: stored.role,
       persona: stored.persona,
+      model: null,
       cardId: stored.cardId,
       sessionId,
       address: sessionId ? `${this.opts.host}/${sessionId}` : null,
@@ -278,7 +284,7 @@ export class Teams {
     // Before the card starts: its session is named with this persona from the first moment.
     if (persona) this.cardPersonas.set(card.id, persona);
     await (this.opts.startWorker
-      ? this.opts.startWorker(card.id, persona)
+      ? this.opts.startWorker(card.id, persona, null)
       : this.opts.board.startCard(card.id));
     return { name, role: "worker", persona, cardId: card.id, sessionId: null };
   }
@@ -327,6 +333,7 @@ export class Teams {
       prompt,
       name: coordinatorName,
       persona: coordinatorPersona,
+      model: null,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
     const address = `${this.opts.host}/${sessionId}`;

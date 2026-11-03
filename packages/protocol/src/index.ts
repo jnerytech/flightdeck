@@ -2109,6 +2109,8 @@ export const TeamMember = z.object({
   name: z.string(),
   role: z.enum(["coordinator", "worker"]),
   persona: z.string().nullable(),
+  /** The model it was asked to run in; null is the persona's own, else the default. */
+  model: z.string().nullable(),
   cardId: z.string().nullable(),
   /** Null while a worker's card waits in the quota queue and has no session yet. */
   sessionId: z.string().nullable(),

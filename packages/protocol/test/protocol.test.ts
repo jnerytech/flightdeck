@@ -171,6 +171,8 @@ const validCommands: Record<CommandType, unknown> = {
     workers: 2,
     coordinatorPersona: "arquiteto",
     workerPersonas: ["qa", "docs"],
+    coordinatorModel: "opus",
+    workerModels: ["haiku", null],
     checks: ["bun test"],
   },
   "teams.update": {

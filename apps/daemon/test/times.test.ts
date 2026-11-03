@@ -169,6 +169,39 @@ describe("times: criar", () => {
     expect(started.map((s) => s.persona)).toEqual(["arquiteto", "qa", null]);
   });
 
+  test("each member opens in the model the team gives it, and none means the persona's own", async () => {
+    const started: Array<{ role: string; model: string | null }> = [];
+    const { teams, project, board, manager } = await setup({
+      startCoordinator: (input) => {
+        started.push({ role: "coordinator", model: input.model });
+        return manager.create({
+          cwd: input.cwd,
+          prompt: input.prompt,
+          name: input.name,
+          ...(input.model ? { model: input.model } : {}),
+        });
+      },
+    });
+    const team = await teams.create({
+      ...NEW,
+      projectId: project.id,
+      coordinatorModel: "opus",
+      workerModels: ["haiku", null],
+    });
+    expect(started).toEqual([{ role: "coordinator", model: "opus" }]);
+    expect(team.members.map((m) => m.model)).toEqual(["opus", "haiku", null]);
+    await whenChanged(board, () =>
+      team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
+    );
+    const modelOf = (member: { cardId: string | null; sessionId: string | null }) =>
+      manager.get(
+        (member.cardId ? board.getCard(member.cardId).sessionId : member.sessionId) as string,
+      ).model;
+    expect(team.members.map(modelOf)).toEqual(["opus", "haiku", null]);
+    // The model is kept with the team, so a later reading shows it too.
+    expect(teams.get(team.id).members.map((m) => m.model)).toEqual(["opus", "haiku", null]);
+  });
+
   test("the coordinator starts once the project of its folder has been looked up, and the lookup is skipped when the folder is known", async () => {
     const gate = Promise.withResolvers<void>();
     const asked: string[] = [];
