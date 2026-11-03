@@ -69,6 +69,8 @@ const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPag
 const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
 const PreviewPage = lazyScreen(() => import("./PreviewPage.tsx"), "PreviewPage");
 const ProjectsPage = lazyScreen(() => import("./ProjectsPage.tsx"), "ProjectsPage");
+const ProjectsOverview = lazyScreen(() => import("./ProjectsOverview.tsx"), "ProjectsOverview");
+const ProjectPage = lazyScreen(() => import("./ProjectPage.tsx"), "ProjectPage");
 const SnippetsPage = lazyScreen(() => import("./SnippetsPage.tsx"), "SnippetsPage");
 const TeamsPage = lazyScreen(() => import("./TeamsPage.tsx"), "TeamsPage");
 const VaultPage = lazyScreen(() => import("./VaultPage.tsx"), "VaultPage");
@@ -83,6 +85,7 @@ function hostToWait(route: Route): string | null {
     case "external":
     case "history":
     case "projects":
+    case "project":
     case "board":
     case "card":
     case "workflows":
@@ -528,6 +531,25 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <SnippetsPage store={store} go={go} />;
     case "connections":
       return <ConnectionsPage store={store} go={go} connect={route.connect} />;
+    case "all-projects":
+      return (
+        <ProjectsOverview
+          store={store}
+          state={state}
+          onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
+        />
+      );
+    case "project":
+      return (
+        <ProjectPage
+          key={`${route.host}/${route.projectId}`}
+          store={store}
+          state={state}
+          hostId={route.host}
+          projectId={route.projectId}
+          go={go}
+        />
+      );
     case "costs":
       return <CostsPage store={store} onOpenSession={costsOpener(go)} />;
     case "vault":
