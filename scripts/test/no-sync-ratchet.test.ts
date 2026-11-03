@@ -18,7 +18,10 @@ function sources(dir: string): string[] {
 describe("no-sync: runtime code does not block on IO", () => {
   test("counts fs, child_process and Bun blocking calls, and nothing else", () => {
     const source = [
-      'import { readFileSync } from "node:fs";',
+      "import {",
+      "  existsSync,",
+      "  readFileSync,",
+      '} from "node:fs";',
       "const a = readFileSync(path, 'utf8');",
       "const b = fs.statSync(path);",
       "const c = Bun.spawnSync(['git']);",
@@ -28,8 +31,11 @@ describe("no-sync: runtime code does not block on IO", () => {
       " * writeFileSync(path) in a doc block",
       "this.startPeersSync();",
       "const f = await readFile(path);",
+      "const g = realpathSync.native(path);",
+      "const h = { exists: existsSync, read: readFileSync };",
     ].join("\n");
-    expect(syncCallCount(source)).toBe(5);
+    // Calls, `.native(` calls and bare references count; the import lines do not.
+    expect(syncCallCount(source)).toBe(8);
     expect(syncCallCount("")).toBe(0);
   });
 
