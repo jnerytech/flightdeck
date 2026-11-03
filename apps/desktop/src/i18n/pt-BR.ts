@@ -2414,6 +2414,12 @@ export const ptBR = {
     deny: "Negar o pedido",
     dismiss: "Fechar o pedido",
   },
+  sidebarGroups: {
+    main: "Principal",
+    work: "Trabalho",
+    library: "Biblioteca",
+    infra: "Infra",
+  },
   tiles: {
     title: "Sessões lado a lado",
     hint: "Alt+setas movem entre os blocos.",

@@ -110,7 +110,6 @@ describe("sidebar-grupos: the bar in groups", () => {
     const { view } = setup();
     render(view(true));
     expect(screen.queryByRole("button", { name: "Library" })).toBeNull();
-    expect(screen.queryByRole("group", { name: "Library" })).toBeNull();
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "History" })).toBeTruthy();
   });

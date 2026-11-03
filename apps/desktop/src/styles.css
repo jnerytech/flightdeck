@@ -492,3 +492,39 @@
     cursor: pointer;
   }
 }
+
+/* The sidebar's main block and its folding groups. */
+@utility sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+@utility sidebar-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+@utility sidebar-group-title {
+  display: flex;
+  height: 1.5rem;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  &:hover {
+    color: var(--color-foreground);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+  }
+}

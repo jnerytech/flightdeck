@@ -1048,10 +1048,12 @@ export class AppStore {
 
   /** The sidebar groups the user folded; kept across starts. */
   sidebarFolded(): SidebarGroup[] {
-    return [];
+    return loadFolded(this.platform.storage);
   }
 
-  setSidebarFolded(_folded: readonly SidebarGroup[]): void {}
+  setSidebarFolded(folded: readonly SidebarGroup[]): void {
+    saveFolded(this.platform.storage, folded);
+  }
 
   /** How many tiles the project page shows; kept across starts. */
   tileCount(): TileCount {

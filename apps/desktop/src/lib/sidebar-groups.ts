@@ -5,11 +5,18 @@ export type SidebarGroup = (typeof SIDEBAR_GROUPS)[number];
 export const SIDEBAR_FOLDED_KEY = "flightdeck.sidebarFolded";
 
 /** The groups folded last time; anything unreadable is none. */
-export function loadFolded(_storage: { getItem(key: string): string | null }): SidebarGroup[] {
-  return [];
+export function loadFolded(storage: { getItem(key: string): string | null }): SidebarGroup[] {
+  try {
+    const stored = JSON.parse(storage.getItem(SIDEBAR_FOLDED_KEY) ?? "[]") as unknown;
+    return Array.isArray(stored) ? SIDEBAR_GROUPS.filter((group) => stored.includes(group)) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function saveFolded(
-  _storage: { setItem(key: string, value: string): void },
-  _folded: readonly SidebarGroup[],
-): void {}
+  storage: { setItem(key: string, value: string): void },
+  folded: readonly SidebarGroup[],
+): void {
+  storage.setItem(SIDEBAR_FOLDED_KEY, JSON.stringify(folded));
+}

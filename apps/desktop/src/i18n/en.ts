@@ -2408,6 +2408,12 @@ export const en: Dictionary = {
     deny: "Deny the request",
     dismiss: "Close the request",
   },
+  sidebarGroups: {
+    main: "Main",
+    work: "Work",
+    library: "Library",
+    infra: "Infra",
+  },
   tiles: {
     title: "Sessions side by side",
     hint: "Alt+arrows move between the tiles.",
