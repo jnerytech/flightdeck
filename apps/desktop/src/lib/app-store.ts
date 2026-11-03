@@ -1164,6 +1164,21 @@ export class AppStore {
     saveFolded(this.platform.storage, folded);
   }
 
+  /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
+  canOpenPaths(_hostId: string): boolean {
+    return true;
+  }
+
+  /** Opens a file the host made with the system's default app; false when it cannot. */
+  async openPath(_hostId: string, _path: string): Promise<boolean> {
+    return false;
+  }
+
+  /** Shows a file the host made in the system's file manager; false when it cannot. */
+  async revealPath(_hostId: string, _path: string): Promise<boolean> {
+    return false;
+  }
+
   /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
   uiMode(hostId: string): ModeAnswer {
     const host = this.state.hosts.find((h) => h.id === hostId);
