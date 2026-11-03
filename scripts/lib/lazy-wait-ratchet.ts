@@ -4,7 +4,7 @@ import { relative, resolve } from "node:path";
 /** Files that hold the shared waits themselves. */
 const SHARED = new Set(["wait.ts", "helpers.ts", "fixtures.ts"]);
 
-/** Lines after a fixed wait that still count as "right after it". */
+/** Lines after a fixed wait, in its own block, that still count as "right after it". */
 export const WINDOW = 5;
 
 /** A wait of a fixed time: `Bun.sleep(…)`, `sleep(…)` or `setTimeout(…)`. */
@@ -20,10 +20,18 @@ const ONE_SHOT = /\b(?:get|query)(?:All)?By[A-Z]/;
  */
 export function fixedWaitSites(source: string): number {
   const lines = source.split("\n");
+  const indent = (line: string) => line.length - line.trimStart().length;
   let sites = 0;
   lines.forEach((line, i) => {
     if (!FIXED_WAIT.test(line)) return;
-    if (lines.slice(i, i + 1 + WINDOW).some((below) => ONE_SHOT.test(below))) sites += 1;
+    for (const below of lines.slice(i, i + 1 + WINDOW)) {
+      // The block of the wait ends at the first line that steps out of it.
+      if (below.trim() !== "" && indent(below) < indent(line)) return;
+      if (ONE_SHOT.test(below)) {
+        sites += 1;
+        return;
+      }
+    }
   });
   return sites;
 }
