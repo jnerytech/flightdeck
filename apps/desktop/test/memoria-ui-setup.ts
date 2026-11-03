@@ -19,7 +19,7 @@ export async function memoriaHost(cleanups: Array<() => unknown>, store: AppStor
     await Bun.sleep(10);
   }
   const project = await store.hostCommand(hostId, "project.add", { path: repo });
-  const dir = d.memory?.dir(repo) ?? "";
+  const dir = (await d.memory?.dir(repo)) ?? "";
   /** A file of the project's memory, written straight to its folder. */
   const put = (name: string, text: string) => {
     mkdirSync(dir, { recursive: true });

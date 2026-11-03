@@ -3,9 +3,10 @@
  * edited because of a suggestion, the person decides on the screen.
  */
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { frontmatter } from "../agentcfg/files.ts";
+import { exists } from "./exists.ts";
 import type { MemorySuggestion } from "./memory.ts";
 
 const STALE_AFTER_MS = 90 * 86_400_000;
@@ -28,8 +29,8 @@ interface Topic {
   negated: boolean;
 }
 
-function topicOf(dir: string, name: string): Topic {
-  const text = readFileSync(join(dir, name), "utf8");
+async function topicOf(dir: string, name: string): Promise<Topic> {
+  const text = await readFile(join(dir, name), "utf8");
   const data = frontmatter(text);
   const tokens =
     (typeof data?.description === "string" ? data.description : "")
@@ -38,7 +39,7 @@ function topicOf(dir: string, name: string): Topic {
   return {
     name,
     text,
-    mtimeMs: statSync(join(dir, name)).mtimeMs,
+    mtimeMs: (await stat(join(dir, name))).mtimeMs,
     type: typeof data?.type === "string" ? data.type : null,
     words: new Set(tokens.filter((t) => t.length >= 3 && !NEGATIONS.has(t))),
     negated: tokens.some((t) => NEGATIONS.has(t)),
@@ -63,13 +64,17 @@ function duplicatesOf(topics: Topic[]): MemorySuggestion[] {
 }
 
 /** Index entries that point at a file that is not there. */
-function brokenLinksOf(dir: string, index: string): MemorySuggestion[] {
-  return index.split("\n").flatMap((line) =>
-    [...line.matchAll(/\]\(([^)\s]+\.md)\)/g)]
-      .map((match) => match[1] as string)
-      .filter((name) => !existsSync(join(dir, name)))
-      .map((name) => ({ kind: "broken-link", files: [name], detail: line })),
+async function brokenLinksOf(dir: string, index: string): Promise<MemorySuggestion[]> {
+  const links = index.split("\n").flatMap((line) =>
+    [...line.matchAll(/\]\(([^)\s]+\.md)\)/g)].map((match) => ({
+      name: match[1] as string,
+      line,
+    })),
   );
+  const present = await Promise.all(links.map((link) => exists(join(dir, link.name))));
+  return links
+    .filter((_, i) => !present[i])
+    .map(({ name, line }) => ({ kind: "broken-link", files: [name], detail: line }));
 }
 
 /** Topics the index does not mention, and topics not touched for a long time. */
@@ -95,17 +100,19 @@ function contradictionsOf(topics: Topic[]): MemorySuggestion[] {
   );
 }
 
-export function suggestCleanup(dir: string, nowMs: number): MemorySuggestion[] {
-  if (!existsSync(dir)) return [];
-  const topics = readdirSync(dir, { withFileTypes: true })
+export async function suggestCleanup(dir: string, nowMs: number): Promise<MemorySuggestion[]> {
+  if (!(await exists(dir))) return [];
+  const names = (await readdir(dir, { withFileTypes: true }))
     .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "MEMORY.md")
-    .map((e) => topicOf(dir, e.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map((e) => e.name);
+  const topics = (await Promise.all(names.map((name) => topicOf(dir, name)))).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const indexPath = join(dir, "MEMORY.md");
-  const index = existsSync(indexPath) ? readFileSync(indexPath, "utf8") : "";
+  const index = (await exists(indexPath)) ? await readFile(indexPath, "utf8") : "";
   const found: MemorySuggestion[] = [
     ...duplicatesOf(topics),
-    ...brokenLinksOf(dir, index),
+    ...(await brokenLinksOf(dir, index)),
     ...orphansAndStaleOf(topics, index, nowMs),
     ...contradictionsOf(topics),
   ];

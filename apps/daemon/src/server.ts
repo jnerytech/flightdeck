@@ -782,12 +782,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  async function memoryProject(projectId: string): Promise<string> {
-    const path = projectPath(projectId);
-    await memory().warm(path);
-    return path;
-  }
-
   function sessionFiles(): SessionFiles {
     if (!opts.sessionFiles) throw featureOff("sessionFiles");
     return opts.sessionFiles;
@@ -1270,31 +1264,28 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "plugins.marketplaceUpdate":
         return ok(command.type, await pluginsApi().marketplaceUpdate(command.payload.name));
       case "memory.list":
-        return ok(command.type, memory().list(await memoryProject(command.payload.projectId)));
+        return ok(command.type, await memory().list(projectPath(command.payload.projectId)));
       case "memory.read": {
         const { projectId, name } = command.payload;
-        return ok(command.type, memory().read(await memoryProject(projectId), name));
+        return ok(command.type, await memory().read(projectPath(projectId), name));
       }
       case "memory.write": {
         const { projectId, confirm, ...input } = command.payload;
         return ok(
           command.type,
-          memory().write(await memoryProject(projectId), { ...input, confirm: confirm === true }),
+          await memory().write(projectPath(projectId), { ...input, confirm: confirm === true }),
         );
       }
       case "memory.delete": {
         const { projectId, confirm, ...input } = command.payload;
-        memory().remove(await memoryProject(projectId), { ...input, confirm: confirm === true });
+        await memory().remove(projectPath(projectId), { ...input, confirm: confirm === true });
         return ok(command.type, { name: input.name });
       }
       case "memory.budget":
-        return ok(
-          command.type,
-          await memory().budget(await memoryProject(command.payload.projectId)),
-        );
+        return ok(command.type, await memory().budget(projectPath(command.payload.projectId)));
       case "memory.suggest":
         return ok(command.type, {
-          suggestions: memory().suggest(await memoryProject(command.payload.projectId)),
+          suggestions: await memory().suggest(projectPath(command.payload.projectId)),
         });
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
