@@ -51,7 +51,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/actions/run.ts": 3,
   "apps/daemon/src/actions/shell.ts": 3,
   "apps/daemon/src/actions/trust.ts": 4,
-  "apps/daemon/src/agentcfg/files.ts": 13,
   "apps/daemon/src/board/board.ts": 1,
   "apps/daemon/src/board/diff.ts": 1,
   "apps/daemon/src/central/central.ts": 3,
