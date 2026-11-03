@@ -116,6 +116,7 @@ import {
   type SessionState,
 } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
@@ -1138,6 +1139,15 @@ export class AppStore {
       if (open?.hostId === hostId && open.sessionId === sessionId) return;
       this.connections.get(hostId)?.unsubscribe(sessionId);
     };
+  }
+
+  /** The sidebar groups the user folded; kept across starts. */
+  sidebarFolded(): SidebarGroup[] {
+    return loadFolded(this.platform.storage);
+  }
+
+  setSidebarFolded(folded: readonly SidebarGroup[]): void {
+    saveFolded(this.platform.storage, folded);
   }
 
   /** How many tiles the project page shows; kept across starts. */

@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const menu = tabMenu({ act, fireEvent, screen } as never);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -52,30 +54,30 @@ describe("abas: arrastar para reordenar", () => {
       store.tabs.open({ name: "needs-you" });
       store.tabs.open({ name: "settings" });
     });
-    const button = (name: string) => screen.queryByRole("button", { name }) as HTMLButtonElement;
-    const left = () => button("Mover a aba Configurações para a esquerda");
-    const right = () => button("Mover a aba Configurações para a direita");
-    expect(left().disabled).toBe(false);
-    expect(right().disabled).toBe(true);
+    const left = "Mover a aba Configurações para a esquerda";
+    const right = "Mover a aba Configurações para a direita";
+    const disabled = (name: string) => menu.item(name)?.getAttribute("aria-disabled") === "true";
+    await menu.open("Configurações");
+    expect(disabled(left)).toBe(false);
+    expect(disabled(right)).toBe(true);
     await act(async () => {
-      fireEvent.click(left());
+      fireEvent.click(menu.item(left) as HTMLElement);
     });
     expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
-    expect(right().disabled).toBe(false);
+    await menu.open("Configurações");
+    expect(disabled(right)).toBe(false);
     await act(async () => {
-      fireEvent.click(left());
+      fireEvent.click(menu.item(left) as HTMLElement);
     });
     expect(names()).toEqual(["Configurações", "Sessões", "Precisa de você"]);
-    expect(left().disabled).toBe(true);
-    // The button that just went off was the focus: it moves to the tab, not to the page.
-    const selected = screen
-      .queryAllByRole("tab")
-      .find((tab) => tab.getAttribute("aria-selected") === "true");
-    expect(document.activeElement).toBe(selected as HTMLElement);
+    await menu.open("Configurações");
+    expect(disabled(left)).toBe(true);
     await act(async () => {
-      fireEvent.click(right());
+      fireEvent.click(menu.item(right) as HTMLElement);
     });
     expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
+    // The menu closes with the focus back on the tab's own button or the tab, never on the page.
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   test("a pinned tab keeps its group: the unpinned tab next to it cannot go left past it", async () => {
@@ -86,9 +88,9 @@ describe("abas: arrastar para reordenar", () => {
       store.tabs.pin(store.tabs.tabs[0]?.id ?? "", true);
     });
     expect(names()).toEqual(["Sessões", "Precisa de você"]);
-    const left = screen.queryByRole("button", {
-      name: "Mover a aba Precisa de você para a esquerda",
-    }) as HTMLButtonElement;
-    expect(left.disabled).toBe(true);
+    await menu.open("Precisa de você");
+    expect(
+      menu.item("Mover a aba Precisa de você para a esquerda")?.getAttribute("aria-disabled"),
+    ).toBe("true");
   });
 });

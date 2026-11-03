@@ -1,11 +1,15 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 /** Below this width the sidebar collapses by itself. */
 export const NARROW_QUERY = "(max-width: 959px)";
+
+/** Where the top bar lets the tab strip sit, once the shell has drawn it (null before, and in tests). */
+const HeaderSlot = createContext<HTMLElement | null>(null);
+export const useHeaderSlot = () => useContext(HeaderSlot);
 
 export interface AppShellLabels {
   sidebar: string;
@@ -29,6 +33,7 @@ export function AppShell(props: {
   const [manual, setManual] = useState<{ open: boolean; narrow: boolean } | null>(null);
   const open = manual?.narrow === narrow ? manual.open : !narrow;
   const { labels } = props;
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
     <div className="grid h-screen grid-rows-[auto_minmax(0,1fr)] bg-background text-foreground">
       <header className="flex h-12 items-center gap-2 border-b px-3">
@@ -41,7 +46,8 @@ export function AppShell(props: {
         >
           {open ? <PanelLeftClose /> : <PanelLeftOpen />}
         </Button>
-        <div className="flex min-w-0 flex-1 items-center gap-2">{props.header}</div>
+        <div className="header-crumbs">{props.header}</div>
+        <div ref={setSlot} className="header-tabs" />
       </header>
       <div
         className={cn(
@@ -56,7 +62,9 @@ export function AppShell(props: {
         >
           {props.sidebar(!open)}
         </aside>
-        <main className="min-h-0 min-w-0 overflow-hidden">{props.children}</main>
+        <main className="min-h-0 min-w-0 overflow-hidden">
+          <HeaderSlot.Provider value={slot}>{props.children}</HeaderSlot.Provider>
+        </main>
       </div>
     </div>
   );

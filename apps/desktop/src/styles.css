@@ -84,6 +84,10 @@
 }
 
 :root {
+  /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
+  --weight-strong: 600;
+  --weight-label: 500;
+  --weight-text: 400;
   /* The motion tokens as plain variables (the theme's are inlined into utilities, not emitted). */
   --motion-fast: 120ms;
   --motion-base: 180ms;
@@ -778,4 +782,154 @@
 }
 @utility meter-height {
   height: 0.5rem;
+}
+
+/* The sidebar's main block and its folding groups. */
+@utility sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+@utility sidebar-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+@utility sidebar-group-title {
+  display: flex;
+  height: 1.5rem;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  &:hover {
+    color: var(--color-foreground);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+  }
+}
+
+/* An ActionButton's disabled reason hangs under the button and adds no height to its row (issue #38). */
+@utility action-button-box {
+  position: relative;
+  display: inline-flex;
+}
+@utility action-reason {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  margin-top: 0.125rem;
+  width: max-content;
+  max-width: 20rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* A form row and its help line: the reason a button is disabled sits under the first field. */
+@utility field-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility field-help {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
+@utility header-crumbs {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 24rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility header-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-self: stretch;
+  align-items: flex-end;
+}
+@utility tab-bar {
+  display: flex;
+  height: 2.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0.5rem;
+}
+@utility field-row-end {
+  align-items: flex-end;
+}
+
+/* Settings: a rail of the sections (and a search) beside the sections themselves. */
+@utility settings-layout {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+@utility settings-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@utility settings-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  & [aria-current="true"] {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+}
+@utility settings-sections {
+  display: flex;
+  max-width: 42rem;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+@utility settings-section {
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 4px;
+    border-radius: 0.5rem;
+  }
+}
+
+/* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
+[data-slot="button"][data-variant="default"],
+[data-slot="button"][data-variant="destructive"] {
+  font-weight: var(--weight-strong);
+}
+[data-slot="button"][data-variant="outline"],
+[data-slot="button"][data-variant="secondary"],
+[data-slot="button"][data-variant="ghost"] {
+  font-weight: var(--weight-label);
 }

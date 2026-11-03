@@ -650,6 +650,21 @@ que a abre), o status, as **últimas linhas**, o **pedido** que ela espera (com 
 entre eles (esquerda e direita de um em um, cima e baixo uma linha). Os blocos acompanham as
 sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto nunca aparece aqui.
 
+### A barra lateral, a barra de abas e as Configurações
+
+- A barra lateral mantém **Sessões**, **Precisa de você**, **Projetos** e **Board** no topo; o
+  resto fica em três grupos que dobram: **Trabalho** (Workflows, Custos, Conversas, Times),
+  **Biblioteca** (Personas, Snippets, Plugins, Cofre) e **Infra** (Conexões, Histórico). Um grupo
+  sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho estreito de ícones
+  não tem títulos.
+- Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
+  cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
+  para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- As **Configurações** têm um trilho com as suas seções (leva até a seção e põe o foco nela) e uma
+  caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
+- **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
+  cache e o modelo principal com o que ele custou.
+
 ## Board
 
 Cada projeto (um repositório git do host) tem um board com cinco colunas: Backlog, Em andamento,

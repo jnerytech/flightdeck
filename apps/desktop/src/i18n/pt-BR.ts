@@ -1676,6 +1676,7 @@ export const ptBR = {
     previewRefused: "Só endereços de 127.0.0.1 e localhost abrem aqui.",
   },
   tabs: {
+    actions: "Ações da aba {title}",
     openInNew: "Abrir em nova aba",
     moveToOther: "Mover a aba {title} para a outra área",
     position: "Posição das abas",
@@ -2669,6 +2670,32 @@ export const ptBR = {
     deny: "Negar o pedido",
     dismiss: "Fechar o pedido",
   },
+  sidebarGroups: {
+    main: "Principal",
+    work: "Trabalho",
+    library: "Biblioteca",
+    infra: "Infra",
+  },
+  settingsRail: {
+    label: "Seções das configurações",
+    search: "Buscar nas configurações",
+    none: "Nenhuma configuração corresponde.",
+    budgets: "Orçamentos",
+    watch: "Vigiar e corrigir PRs",
+    messaging: "Mensagens entre sessões",
+    words: {
+      appearance:
+        "tema escuro claro sistema densidade lista fonte tamanho terminal idioma inglês português",
+      clients: "clientes gerenciar",
+      window: "janela bandeja fechar iniciar com o windows",
+      updates: "atualizações versão verificar avisar",
+      shortcut: "atalho global teclado busca",
+      budgets: "orçamento limite custo gasto cota",
+      watch: "vigiar pull request pr ci corrigir checks",
+      messaging: "mensagens conversas regras agentes",
+      webhooks: "webhook url avisar eventos http",
+    },
+  },
   tiles: {
     title: "Sessões lado a lado",
     hint: "Alt+setas movem entre os blocos.",
@@ -2854,6 +2881,7 @@ export const ptBR = {
     noHostLink: "Adicionar host",
     estimated: "Custo estimado",
     tokens: "Tokens",
+    topModel: "Modelo principal",
     cacheSavings: "Economia do cache",
     byProject: "Por projeto",
     byModel: "Por modelo",
@@ -2957,6 +2985,8 @@ export const ptBR = {
     rootsTitle: "Pastas permitidas",
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
+    rootsPlaceholder: "D:\\repos\\...",
+    rootsChoose: "Escolher pasta…",
     rootsNeeded: "Digite a pasta a permitir.",
     bypassTitle: "Sessões sem pedidos de permissão",
     bypassHint:

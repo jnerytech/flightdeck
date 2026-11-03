@@ -1677,6 +1677,7 @@ export const en: Dictionary = {
     previewRefused: "Only 127.0.0.1 and localhost addresses open here.",
   },
   tabs: {
+    actions: "Actions of tab {title}",
     openInNew: "Open in new tab",
     moveToOther: "Move tab {title} to the other area",
     position: "Tab position",
@@ -2665,6 +2666,32 @@ export const en: Dictionary = {
     deny: "Deny the request",
     dismiss: "Close the request",
   },
+  sidebarGroups: {
+    main: "Main",
+    work: "Work",
+    library: "Library",
+    infra: "Infra",
+  },
+  settingsRail: {
+    label: "Settings sections",
+    search: "Search settings",
+    none: "No setting matches.",
+    budgets: "Budgets",
+    watch: "Watch and fix PRs",
+    messaging: "Messages between sessions",
+    words: {
+      appearance:
+        "theme dark light system density list font size terminal language english portuguese",
+      clients: "clients customers manage",
+      window: "window tray close autostart start with windows",
+      updates: "updates version check notify",
+      shortcut: "global shortcut keyboard search hotkey",
+      budgets: "budget limit cost spend quota",
+      watch: "watch pull request pr ci fix checks",
+      messaging: "messages conversations rules agents",
+      webhooks: "webhook url notify events http",
+    },
+  },
   tiles: {
     title: "Sessions side by side",
     hint: "Alt+arrows move between the tiles.",
@@ -2850,6 +2877,7 @@ export const en: Dictionary = {
     noHostLink: "Add a host",
     estimated: "Estimated cost",
     tokens: "Tokens",
+    topModel: "Top model",
     cacheSavings: "Cache savings",
     byProject: "By project",
     byModel: "By model",
@@ -2953,6 +2981,8 @@ export const en: Dictionary = {
     rootsTitle: "Allowed folders",
     rootsList: "Allowed folders of this host",
     rootsInput: "Folder to allow",
+    rootsPlaceholder: "D:\\repos\\...",
+    rootsChoose: "Choose folder…",
     rootsNeeded: "Type the folder to allow.",
     bypassTitle: "Sessions without permission prompts",
     bypassHint:

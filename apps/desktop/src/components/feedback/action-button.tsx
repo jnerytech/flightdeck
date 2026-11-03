@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Spinner } from "@/components/feedback/busy";
+import { useFieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -21,6 +22,14 @@ export function ActionButton(
   const started = React.useRef(false);
   const busy = pending || running;
   const showReason = Boolean(disabled && !busy && disabledReason);
+  const row = useFieldRow();
+  const inRow = row !== null;
+  // In a form row the reason is the row's help line, under the first field.
+  React.useEffect(() => {
+    if (!row || !showReason) return;
+    row.setReason(disabledReason ?? null);
+    return () => row.setReason(null);
+  }, [row, showReason, disabledReason]);
   const handle = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (started.current) return;
     const result = onClick?.(event) as unknown;
@@ -38,19 +47,20 @@ export function ActionButton(
       {...rest}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
+      aria-describedby={showReason ? (row?.id ?? reasonId) : rest["aria-describedby"]}
       onClick={handle}
     >
       {busy && <Spinner />}
       {children}
     </Button>
   );
-  if (!showReason) return button;
-  // The reason sits under the button, in the button's own block, never as a column beside it.
+  if (!showReason || inRow) return button;
+  // The reason hangs under the button and takes no height, so a row of an input and this button
+  // keeps the button as tall as the input and lined up with it.
   return (
-    <span className="action-with-reason">
+    <span className="action-button-box">
       {button}
-      <span id={reasonId} className="action-reason text-muted-foreground text-xs">
+      <span id={reasonId} className="action-reason">
         {disabledReason}
       </span>
     </span>

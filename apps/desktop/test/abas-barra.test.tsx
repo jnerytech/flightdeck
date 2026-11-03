@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const menu = tabMenu({ act, fireEvent, screen } as never);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -63,15 +65,22 @@ describe("abas: a barra de abas", () => {
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
     });
-    await press("Fixar aba Precisa de você");
+    await menu.choose("Precisa de você", "Fixar aba Precisa de você");
     expect(names()).toEqual(["Precisa de você", "Sessões"]);
-    expect(screen.queryByRole("button", { name: "Desafixar aba Precisa de você" })).not.toBeNull();
+    await menu.open("Precisa de você");
+    expect(menu.item("Desafixar aba Precisa de você")).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(menu.item("Desafixar aba Precisa de você") as HTMLElement, {
+        key: "Escape",
+      });
+    });
     expect(screen.queryByText("Precisa de você", { selector: "[role=tab] span" })).toBeNull();
     await act(async () => {
       fireEvent.click(tabs()[1] as HTMLElement);
     });
-    // The buttons are the active tab's: Sessões now.
-    expect(screen.queryByRole("button", { name: "Desafixar aba Precisa de você" })).toBeNull();
+    // The menu is the active tab's: Sessões now.
+    expect(screen.queryByRole("button", { name: "Ações da aba Precisa de você" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ações da aba Sessões" })).not.toBeNull();
     await act(async () => {
       const close = screen.queryByLabelText("Fechar aba Sessões");
       expect(close).not.toBeNull();
@@ -152,5 +161,30 @@ describe("abas: a barra de abas", () => {
     await press("Precisa de você");
     expect(store.tabs.tabs).toHaveLength(1);
     expect(store.router.current).toEqual({ name: "needs-you" });
+  });
+
+  test("the strip keeps three tools: the active tab's menu, a new tab and the split", async () => {
+    const store = setup();
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+    });
+    // The bar holds the scrolling strip and the tools; the new-tab button is one of its children.
+    const bar = screen.queryByRole("button", { name: "Nova aba" })?.parentElement as HTMLElement;
+    const tools = [...bar.querySelectorAll(":scope > button")].map(
+      (b) => b.getAttribute("aria-label") ?? "",
+    );
+    expect(tools.filter((name) => !name.startsWith("Rolar"))).toEqual([
+      "Ações da aba Precisa de você",
+      "Nova aba",
+      "Dividir a tela",
+    ]);
+    await menu.open("Precisa de você");
+    const items = [...document.querySelectorAll("[role='menuitem']")].map((m) => m.textContent);
+    expect(items).toEqual([
+      "Mover a aba Precisa de você para a esquerda",
+      "Mover a aba Precisa de você para a direita",
+      "Mover a aba Precisa de você para a outra área",
+      "Fixar aba Precisa de você",
+    ]);
   });
 });
