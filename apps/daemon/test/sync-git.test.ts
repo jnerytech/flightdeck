@@ -55,9 +55,6 @@ describe("sync-git: the daemon does not wait for a process on the way to answer"
     expect(found).toEqual([
       // `exclude`: the fallback of a repository whose exclude file was not looked up yet.
       "board/worktree.ts",
-      // `keyFor`: the answer on the spot for the few callers that cannot wait; the places on a
-      // request or a timer ask `resolve` or are warmed first.
-      "central/project-key.ts",
       // `repoRoot`: the fallback of a project whose root was not looked up yet.
       "memory/memory.ts",
       // The test runtime commits in a fixture repository, like a person would.
@@ -193,7 +190,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const sleeping = sleepingGit(300);
     const blocked = (board as unknown as { budgetBlocked(id: string): boolean }).budgetBlocked(id);
     expect(blocked).toBe(false);
-    expect(asked).toEqual([keys.keyFor(repo)]);
+    expect(asked).toEqual([keys.known(repo)]);
     expect(sleeping.calls()).toEqual([]);
   });
 
@@ -207,7 +204,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const indexer = new UsageIndexer({
       db: new EventStore(":memory:").db,
       roots: [root],
-      projectKey: (cwd) => keys.keyFor(cwd),
+      projectKey: (cwd) => keys.known(cwd),
       warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
     });
     const blocked = await longestBlockWhile(sleeping, () => indexer.pass());
@@ -215,29 +212,17 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const calls = sleeping.calls().length;
     expect(calls).toBeGreaterThan(0);
     // Cached now: the synchronous answer does not start another process.
-    keys.keyFor(repo);
+    keys.known(repo);
     expect(sleeping.calls()).toHaveLength(calls);
   });
 
   test("adding a project, and the daemon's start for the ones it has, look their keys up so the budget check and the vault find them cached", async () => {
-    const asked: string[][] = [];
-    const keys = new ProjectKeys(
-      "h",
-      (args) => {
-        asked.push(args);
-        return { code: 1, stdout: "" };
-      },
-      async () => ({ code: 1, stdout: "" }),
-    );
+    const keys = new ProjectKeys("h", async () => ({ code: 1, stdout: "" }));
     const { board, manager, store, root, repo } = newBoard({ projectKeys: keys });
     const added = await board.addProject({ path: repo });
     expect(typeof keys.lookup(repo)).toBe("string");
     // A board that started later over the same projects has to warm them itself.
-    const later = new ProjectKeys(
-      "h",
-      () => ({ code: 1, stdout: "" }),
-      async () => ({ code: 1, stdout: "" }),
-    );
+    const later = new ProjectKeys("h", async () => ({ code: 1, stdout: "" }));
     const restarted = new Board({
       db: store.db,
       manager,
@@ -247,6 +232,5 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(typeof later.lookup(added.path)).toBe("object");
     await restarted.warmProjectKeys();
     expect(typeof later.lookup(added.path)).toBe("string");
-    expect(asked).toEqual([]);
   });
 });

@@ -207,7 +207,7 @@ describe("orcamentos", () => {
 
   test("card novo do projeto bloqueado fica na fila com motivo budget; outro projeto e sessão manual seguem", async () => {
     const { budgets, spend } = setup();
-    const ctx = newBoard({ budgets, projectKeys: { keyFor: (path) => `k:${basename(path)}` } });
+    const ctx = newBoard({ budgets, projectKeys: { known: (path) => `k:${basename(path)}` } });
     cleanups.push(() => ctx.board.stop());
     const outro = join(ctx.root, "outro");
     mkdirSync(outro);
