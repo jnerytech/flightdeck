@@ -61,6 +61,7 @@ import { statuslineData } from "./costs/statusline.ts";
 import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs, listFiles } from "./fs-dirs.ts";
+import type { GithubService } from "./github/service.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -137,6 +138,8 @@ export interface ServerOptions {
   fsDirs?: boolean;
   /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Sign-in with GitHub and start from a GitHub project (phase 36): the `github.*` commands. */
+  github?: GithubService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
   findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
