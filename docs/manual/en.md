@@ -1741,7 +1741,9 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;
   - change a member's persona;
-  - add a worker, or take a member out (its card stays on the board);
+  - add a worker, choosing its persona and model (the coordinator is told its name and card);
+  - take a member out: its session is stopped, the coordinator is told, and its card stays on the
+    board;
   - close the team, with a confirmation.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window

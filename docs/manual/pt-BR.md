@@ -1723,7 +1723,9 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   - pausar (STOP a todos os membros) e retomar;
   - mandar uma mensagem a todos;
   - trocar a persona de um membro;
-  - acrescentar uma executora ou tirar um membro (o card fica no board);
+  - acrescentar uma executora, escolhendo a persona e o modelo dela (a coordenadora recebe o aviso
+    com o nome e o card da nova executora);
+  - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
