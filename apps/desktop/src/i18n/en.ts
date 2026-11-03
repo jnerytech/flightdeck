@@ -2620,6 +2620,7 @@ export const en: Dictionary = {
     noHostLink: "Add a host",
     estimated: "Estimated cost",
     tokens: "Tokens",
+    topModel: "Top model",
     cacheSavings: "Cache savings",
     byProject: "By project",
     byModel: "By model",

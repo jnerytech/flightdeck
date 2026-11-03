@@ -621,6 +621,8 @@ live; the list is the project's, so a session of another project never shows her
   or right, move to the other area, pin), **New tab** and **Split**.
 - **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
   a search box: typing keeps the sections whose name or settings match.
+- **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
+  the top model with what it cost.
 
 ## Board
 

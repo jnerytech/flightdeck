@@ -2626,6 +2626,7 @@ export const ptBR = {
     noHostLink: "Adicionar host",
     estimated: "Custo estimado",
     tokens: "Tokens",
+    topModel: "Modelo principal",
     cacheSavings: "Economia do cache",
     byProject: "Por projeto",
     byModel: "Por modelo",

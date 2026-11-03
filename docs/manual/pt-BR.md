@@ -607,6 +607,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
 - As **Configurações** têm um trilho com as suas seções (leva até a seção e põe o foco nela) e uma
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
+- **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
+  cache e o modelo principal com o que ele custou.
 
 ## Board
 
