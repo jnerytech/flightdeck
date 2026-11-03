@@ -58,7 +58,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/checkpoints/rewind.ts": 3,
   "apps/daemon/src/checkpoints/snapshots.ts": 5,
   "apps/daemon/src/config.ts": 10,
-  "apps/daemon/src/costs/usage-indexer.ts": 8,
   "apps/daemon/src/fs-dirs.ts": 4,
   "apps/daemon/src/history/indexer.ts": 6,
   "apps/daemon/src/lock.ts": 7,
