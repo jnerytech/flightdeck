@@ -78,7 +78,7 @@ export function processExec(): ExecSsh {
  */
 export function resolveSshPath(opts: {
   platform: NodeJS.Platform;
-  exists: (path: string) => boolean;
+  exists: (path: string) => boolean | Promise<boolean>;
   which: (name: string) => string | null;
 }): string {
   if (opts.platform === "win32") {
