@@ -333,7 +333,6 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div
           ref={boardRef}
-          hidden={loading}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"

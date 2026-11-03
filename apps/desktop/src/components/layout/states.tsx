@@ -43,7 +43,7 @@ const ROWS = ["w-2/3", "w-1/2", "w-3/4"];
 const GRID: Record<LoadingShape, string> = {
   rows: "",
   columns: "grid-cols-5",
-  tiles: "grid-cols-2 sm:grid-cols-4",
+  tiles: "grid-cols-4",
 };
 
 /** A list or panel that failed: the message and a way to try again. */
