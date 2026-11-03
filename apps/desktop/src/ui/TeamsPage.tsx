@@ -230,6 +230,48 @@ function Member(props: {
   );
 }
 
+/** The persona and model of a worker about to join a running team. */
+function NewMember(props: {
+  store: AppStore;
+  hostId: string;
+  team: TeamInfo;
+  onAdd(member: { persona: string; model: string }): void;
+  onCancel(): void;
+}) {
+  const { store, team } = props;
+  const { t } = store.i18n;
+  const [persona, setPersona] = useState("");
+  const [model, setModel] = useState("");
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <PersonaPicker
+        store={store}
+        hostId={props.hostId}
+        label={t("teamsUi.newMemberPersona", { name: team.name })}
+        value={persona}
+        onChange={setPersona}
+        idsOnly
+      />
+      <ModelSelect
+        label={t("teamsUi.newMemberModel", { name: team.name })}
+        defaultLabel={t("teamsUi.modelDefault")}
+        value={model}
+        onChange={setModel}
+      />
+      <Button
+        size="sm"
+        aria-label={t("teamsUi.addMember", { name: team.name })}
+        onClick={() => props.onAdd({ persona, model })}
+      >
+        {t("teamsUi.addMemberButton")}
+      </Button>
+      <Button variant="ghost" size="sm" onClick={props.onCancel}>
+        {t("teamsUi.cancel")}
+      </Button>
+    </div>
+  );
+}
+
 /** One team with its members and its controls. */
 function Team(props: {
   store: AppStore;
@@ -242,6 +284,7 @@ function Team(props: {
   const { t } = store.i18n;
   const [text, setText] = useState("");
   const [sent, setSent] = useState<{ delivered: number; refused: number } | null>(null);
+  const [adding, setAdding] = useState(false);
   const [confirm, setConfirm] = useState<
     { kind: "close" } | { kind: "remove"; member: string } | null
   >(null);
@@ -316,11 +359,7 @@ function Team(props: {
               variant="outline"
               size="sm"
               aria-label={t("teamsUi.addWorker", { name: team.name })}
-              onClick={() =>
-                void act(
-                  store.hostCommand(hostId, "teams.update", { team: team.id, addWorkers: 1 }),
-                )
-              }
+              onClick={() => setAdding(true)}
             >
               {t("teamsUi.addWorkerButton")}
             </Button>
@@ -333,6 +372,26 @@ function Team(props: {
               {t("teamsUi.closeButton")}
             </Button>
           </div>
+          {adding && (
+            <NewMember
+              store={store}
+              hostId={hostId}
+              team={team}
+              onCancel={() => setAdding(false)}
+              onAdd={(member) => {
+                setAdding(false);
+                void act(
+                  store.hostCommand(hostId, "teams.update", {
+                    team: team.id,
+                    addMember: {
+                      persona: member.persona || null,
+                      model: member.model || null,
+                    },
+                  }),
+                );
+              }}
+            />
+          )}
           <div className="flex flex-wrap items-center gap-1">
             <Input
               aria-label={t("teamsUi.messageAll")}
