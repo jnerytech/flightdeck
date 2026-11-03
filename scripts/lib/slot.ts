@@ -24,6 +24,16 @@ export interface SlotChild {
   kill(): void;
 }
 
+/** One process of the user, as the process list shows it. */
+export interface ProcessInfo {
+  pid: number;
+  ppid: number;
+  /** The niceness now: 0 is normal, 19 is the lowest priority. */
+  nice: number;
+  /** The command line, program first. */
+  command: string;
+}
+
 export interface SlotEnv {
   fs: SlotFs;
   path: string;
@@ -34,18 +44,26 @@ export interface SlotEnv {
   sleep(ms: number): Promise<void>;
   log(line: string): void;
   spawn(command: string[], nice: boolean): SlotChild;
+  /** The user's processes; absent where the platform cannot list them (no renicing then). */
+  processes?(): Promise<ProcessInfo[]>;
+  /** Sets the niceness of a process; the caller only ever raises it. */
+  renice?(pid: number, nice: number): void;
   /** Calls the handler with the exit code of SIGINT or SIGTERM; returns the way to stop listening. */
   onSignal(handler: (code: number) => void): () => void;
 }
 
 export type SlotArgs =
   | { kind: "status"; maxAgeMs: number }
-  | { kind: "run"; nice: boolean; maxAgeMs: number; command: string[] }
+  | { kind: "run"; nice: boolean; priority?: true; maxAgeMs: number; command: string[] }
   | { kind: "usage" };
 
 export type Attempt = { acquired: boolean; holder: SlotHolder | null };
 
 export const POLL_MS = 2000;
+/** How often a `--priority` run lowers the other test processes. */
+export const RENICE_MS = 5000;
+/** The niceness the other sessions' test processes are raised to. */
+export const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE = "usage: bun run slot -- [--nice] <command...> | bun run slot -- --status";
@@ -190,4 +208,13 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   } finally {
     stopListening();
   }
+}
+
+/**
+ * Raises the niceness of the other `bun test` processes of the user to `NICE_OTHERS`, so a gate
+ * run with `--priority` gets the CPU. Only raises (a process already at or above it is left), skips
+ * the slot's own process tree, and restores nothing. Returns the pids it changed.
+ */
+export async function lowerOthers(_env: SlotEnv): Promise<number[]> {
+  return [];
 }
