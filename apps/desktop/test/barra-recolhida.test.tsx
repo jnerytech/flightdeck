@@ -24,7 +24,11 @@ const settle = waiter(4000);
 /** One host with a session asking for Bash, so "Precisa de você" has a count. */
 async function setup() {
   const d = makeDaemon(cleanups, {});
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   d.manager.send(sessionId, "[bash]");
   await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
