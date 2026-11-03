@@ -226,6 +226,34 @@ export const AutoApproveSuspension = z.object({
 });
 export type AutoApproveSuspension = z.infer<typeof AutoApproveSuspension>;
 
+/** A text in the two languages the app speaks; both are always written (phase 33). */
+export const LocalizedText = z.object({ en: z.string().min(1), "pt-BR": z.string().min(1) });
+export type LocalizedText = z.infer<typeof LocalizedText>;
+
+/** How a request reads to someone who does not use a terminal, in both languages (phase 33). */
+export const PlainInfo = z.object({
+  kind: z.enum([
+    "create",
+    "replace",
+    "change",
+    "delete",
+    "move",
+    "copy",
+    "read",
+    "web",
+    "helper",
+    "run",
+  ]),
+  sentence: LocalizedText,
+  consequence: LocalizedText,
+  reversible: z.boolean(),
+  /** `needs_full_access`: simple mode does not show it, the task pauses. */
+  outcome: z.enum(["ask", "needs_full_access"]),
+  /** The yes is held for two seconds. */
+  hold: z.boolean(),
+});
+export type PlainInfo = z.infer<typeof PlainInfo>;
+
 /** An open permission request, as listed in `session.summary`. */
 export const PendingPermission = z.object({
   requestId: z.string(),
@@ -332,6 +360,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     /** Phase 13; optional only because events stored before it do not have it. */
     risk: RiskLevel.optional(),
     riskReason: z.string().optional(),
+    /** Phase 33: the request in plain words, worded by the host (it knows the files). */
+    plain: PlainInfo.optional(),
   }),
   z.object({
     type: z.literal("permission.resolved"),
@@ -826,10 +856,6 @@ export const UiSettings = z.object({
   locked: z.boolean(),
 });
 export type UiSettings = z.infer<typeof UiSettings>;
-
-/** A text in the two languages the app speaks; both are always written (phase 33). */
-export const LocalizedText = z.object({ en: z.string().min(1), "pt-BR": z.string().min(1) });
-export type LocalizedText = z.infer<typeof LocalizedText>;
 
 /** What a template asks the person for: one of a folder, a file, a short text or a choice. */
 export const TemplateField = z

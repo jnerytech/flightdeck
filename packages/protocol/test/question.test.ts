@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { PlainInfo } from "../src/index.ts";
 import {
   type PlainQuestion,
+  plainInfo,
   plainQuestion,
   type QuestionLanguage,
   type QuestionRequest,
@@ -177,5 +179,44 @@ describe("question-policy: what simple mode does with a request", () => {
       expect(policy.allowForSession).toBe(false);
       expect(policy.escapeDenies).toBe(true);
     }
+  });
+});
+
+describe("plain-info: the request in both languages, from one source", () => {
+  test("Given a request, Then both languages and the policy come together", () => {
+    const info = plainInfo({
+      toolName: "Write",
+      input: { file_path: "/w/Reports/a.md" },
+      fileExists: false,
+      risk: "low",
+    });
+    expect(info).toEqual({
+      kind: "create",
+      sentence: {
+        en: "Create the file a.md in Reports",
+        "pt-BR": "Criar o arquivo a.md em Reports",
+      },
+      consequence: {
+        en: "This adds a new file. Nothing existing changes.",
+        "pt-BR": "Isto adiciona um arquivo novo. Nada do que existe muda.",
+      },
+      reversible: true,
+      outcome: "ask",
+      hold: false,
+    });
+    expect(PlainInfo.safeParse(info).success).toBe(true);
+  });
+
+  test("Given a high risk or a vault request, Then the hold or the full-access outcome shows", () => {
+    expect(
+      plainInfo({ toolName: "Bash", input: { command: "a && b" }, risk: "high" }),
+    ).toMatchObject({
+      hold: true,
+      outcome: "ask",
+      reversible: false,
+    });
+    expect(plainInfo({ toolName: "Bash", input: { command: "ls" }, vault: true })).toMatchObject({
+      outcome: "needs_full_access",
+    });
   });
 });
