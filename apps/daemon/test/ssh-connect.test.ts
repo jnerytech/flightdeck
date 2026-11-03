@@ -365,7 +365,7 @@ describe("ssh-connect", () => {
     expect(s.delivered[1]?.cleaned).toBe(1);
     // Stopping the connector cleans what is still around.
     await s.open(target.id, { privateKey: PRIVATE });
-    s.connector.stop();
+    await s.connector.stop();
     expect(s.delivered[2]?.cleaned).toBe(1);
   });
 
@@ -737,7 +737,7 @@ describe("ssh-connect: peças", () => {
     });
     await real.connect({ targetId: target.id, cols: 80, rows: 24, privateKey: PRIVATE });
     expect(cleaned).toBe(0);
-    real.stop();
+    await real.stop();
     expect(cleaned).toBe(1);
   });
 

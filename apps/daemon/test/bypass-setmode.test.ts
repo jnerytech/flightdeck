@@ -7,7 +7,7 @@ import { newManager, poll } from "./helpers.ts";
 async function live(allowBypass: boolean, mode: "default" | "plan" = "default") {
   const runtime = new FakeRuntime({ delayMs: 1 });
   const { manager, project } = newManager({ runtime, allowBypass: () => allowBypass });
-  const { sessionId } = manager.create({ cwd: project, prompt: "hi", permissionMode: mode });
+  const { sessionId } = await manager.create({ cwd: project, prompt: "hi", permissionMode: mode });
   await poll(() => manager.get(sessionId).status === "idle", 3000);
   return { manager, runtime, sessionId };
 }

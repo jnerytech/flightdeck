@@ -987,9 +987,9 @@ export async function startDaemon(
     ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
     bypass: {
       allowed: () => config.allowBypassPermissions,
-      set: (allow) => {
+      set: async (allow) => {
         config.allowBypassPermissions = allow;
-        updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+        await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
     persistRoots: (roots) =>

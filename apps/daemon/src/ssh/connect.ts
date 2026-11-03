@@ -192,7 +192,7 @@ export class SshConnector {
       plan.timer = this.timers.set(() => void plan.release(), DELIVERY_MS);
       return info;
     } catch (error) {
-      plan.release();
+      await plan.release();
       throw error;
     }
   }
@@ -212,7 +212,7 @@ export class SshConnector {
       const result = await this.opts.run(plan.argv, plan.env);
       return result.code === 0 ? { ok: true, error: null } : translate(result.stderr, result.code);
     } finally {
-      plan.release();
+      await plan.release();
     }
   }
 
@@ -274,7 +274,7 @@ export class SshConnector {
         timedOut: done.timedOut,
       };
     } finally {
-      plan.release();
+      await plan.release();
     }
   }
 

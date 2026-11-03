@@ -134,7 +134,7 @@ export interface ServerOptions {
   token: string;
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
-  bypass?: { allowed(): boolean; set(allow: boolean): void };
+  bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -1495,7 +1495,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             "bypass_confirm",
           );
         }
-        opts.bypass.set(allow);
+        await opts.bypass.set(allow);
         return ok(command.type, { allowBypassPermissions: allow });
       }
       case "board.settings": {

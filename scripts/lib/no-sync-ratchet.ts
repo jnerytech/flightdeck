@@ -85,12 +85,18 @@ export function renderBaseline(counts: Record<string, number>): string {
 /** `source` (this module's text) with the `SYNC_BASELINE` object replaced by `counts`. */
 export function withBaseline(source: string, counts: Record<string, number>): string {
   // The declaration at the start of a line: the same text inside this function does not match.
-  const declaration = /^export const SYNC_BASELINE: Record<string, number> = \{$/m.exec(source);
+  // The formatter keeps an empty object on one line (`{};`), so both shapes are read.
+  const declaration = /^export const SYNC_BASELINE: Record<string, number> = \{(\};)?$/m.exec(
+    source,
+  );
   if (!declaration) throw new Error("SYNC_BASELINE not found");
-  const start = declaration.index + declaration[0].length;
-  const end = source.indexOf("\n};", start);
+  const head = source.slice(0, declaration.index);
+  const opening = "export const SYNC_BASELINE: Record<string, number> = {";
+  const rest = declaration[1]
+    ? source.slice(declaration.index + declaration[0].length)
+    : source.slice(source.indexOf("\n};", declaration.index) + "\n};".length);
   const body = renderBaseline(counts);
-  return `${source.slice(0, start)}\n${body}${body ? "\n" : ""}${source.slice(end + 1)}`;
+  return `${head}${opening}${body ? `\n${body}\n};` : "};"}${rest}`;
 }
 
 export const SYNC_BASELINE: Record<string, number> = {};
