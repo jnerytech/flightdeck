@@ -16,7 +16,7 @@ fn entry(host_id: &str) -> Result<keyring::Entry, String> {
 }
 
 #[tauri::command]
-fn token_get(host_id: String) -> Result<Option<String>, String> {
+async fn token_get(host_id: String) -> Result<Option<String>, String> {
     match entry(&host_id)?.get_password() {
         Ok(token) => Ok(Some(token)),
         Err(keyring::Error::NoEntry) => Ok(None),
@@ -25,14 +25,14 @@ fn token_get(host_id: String) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn token_set(host_id: String, token: String) -> Result<(), String> {
+async fn token_set(host_id: String, token: String) -> Result<(), String> {
     entry(&host_id)?
         .set_password(&token)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn token_delete(host_id: String) -> Result<(), String> {
+async fn token_delete(host_id: String) -> Result<(), String> {
     match entry(&host_id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
@@ -51,7 +51,7 @@ fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
 }
 
 #[tauri::command]
-fn vault_get(id: String) -> Result<Option<String>, String> {
+async fn vault_get(id: String) -> Result<Option<String>, String> {
     match vault_entry(&id)?.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
@@ -60,7 +60,7 @@ fn vault_get(id: String) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn vault_set(id: String, value: String) -> Result<(), String> {
+async fn vault_set(id: String, value: String) -> Result<(), String> {
     if cfg!(windows) && value.encode_utf16().count() * 2 > WINDOWS_CREDENTIAL_MAX_BYTES {
         return Err(format!(
             "the value is over {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, the limit of the Windows credential store"
@@ -72,7 +72,7 @@ fn vault_set(id: String, value: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn vault_delete(id: String) -> Result<(), String> {
+async fn vault_delete(id: String) -> Result<(), String> {
     match vault_entry(&id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
@@ -374,7 +374,7 @@ struct TerminalEnv {
 }
 
 #[tauri::command]
-fn terminal_probe() -> TerminalEnv {
+async fn terminal_probe() -> TerminalEnv {
     TerminalEnv {
         windows: cfg!(windows),
         wt: cfg!(windows) && on_path("wt.exe"),
@@ -397,7 +397,7 @@ const TERMINAL_PROGRAMS: [&str; 2] = ["wt.exe", "cmd.exe"];
 /// Starts the terminal with the arguments as a list; no shell in between, except the `cmd /k` of
 /// the fallback without Windows Terminal.
 #[tauri::command]
-fn terminal_open(program: String, args: Vec<String>) -> Result<(), String> {
+async fn terminal_open(program: String, args: Vec<String>) -> Result<(), String> {
     if !TERMINAL_PROGRAMS
         .iter()
         .any(|p| p.eq_ignore_ascii_case(&program))
