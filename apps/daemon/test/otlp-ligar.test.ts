@@ -8,6 +8,7 @@ import {
   installTelemetry,
   MANAGED_KEYS,
   type TelemetryTarget,
+  telemetryConflicts,
   telemetryEnv,
   telemetryStatus,
   uninstallTelemetry,
@@ -75,20 +76,32 @@ describe("otlp-ligar: the variables", () => {
 });
 
 describe("otlp-ligar: the opt-in in settings.json", () => {
-  test("install merges the keys into env, keeps everything else and backs the file up", () => {
+  test("reading, installing and removing the exporter keys return promises", async () => {
+    const file = settingsFile(ORIGINAL);
+    expect(telemetryStatus(file, TARGET)).toBeInstanceOf(Promise);
+    expect(telemetryConflicts(file)).toBeInstanceOf(Promise);
+    const installing = installTelemetry(file, TARGET);
+    expect(installing).toBeInstanceOf(Promise);
+    await installing;
+    const removing = uninstallTelemetry(file);
+    expect(removing).toBeInstanceOf(Promise);
+    await removing;
+  });
+
+  test("install merges the keys into env, keeps everything else and backs the file up", async () => {
     const file = settingsFile(ORIGINAL);
     const before = readFileSync(file, "utf8");
-    expect(installTelemetry(file, TARGET)).toEqual({ ok: true });
+    expect(await installTelemetry(file, TARGET)).toEqual({ ok: true });
     expect(read(file)).toEqual({
       ...ORIGINAL,
       env: { ...ORIGINAL.env, ...EXPECTED_ENV },
     });
     expect(readFileSync(`${file}.flightdeck-telemetry-backup`, "utf8")).toBe(before);
-    expect(installTelemetry(file, TARGET)).toEqual({ ok: true });
+    expect(await installTelemetry(file, TARGET)).toEqual({ ok: true });
     expect(read(file).env).toEqual({ ...ORIGINAL.env, ...EXPECTED_ENV });
   });
 
-  test("a value of the user's in any managed key is never overwritten: install refuses and names the keys", () => {
+  test("a value of the user's in any managed key is never overwritten: install refuses and names the keys", async () => {
     const mine = {
       ...ORIGINAL,
       env: {
@@ -98,48 +111,50 @@ describe("otlp-ligar: the opt-in in settings.json", () => {
     };
     const file = settingsFile(mine);
     const before = readFileSync(file, "utf8");
-    expect(installTelemetry(file, TARGET)).toEqual({
+    expect(await installTelemetry(file, TARGET)).toEqual({
       ok: false,
       keys: ["OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_LOGS_EXPORTER"],
     });
     expect(readFileSync(file, "utf8")).toBe(before);
     expect(existsSync(`${file}.flightdeck-telemetry-backup`)).toBe(false);
-    expect(telemetryStatus(file, TARGET)).toBe("conflict");
+    expect(await telemetryStatus(file, TARGET)).toBe("conflict");
   });
 
-  test("uninstall takes out only Flightdeck's keys and gives the original back; an absent file is removed again", () => {
+  test("uninstall takes out only Flightdeck's keys and gives the original back; an absent file is removed again", async () => {
     const file = settingsFile(ORIGINAL);
-    installTelemetry(file, TARGET);
-    expect(uninstallTelemetry(file)).toBe(true);
+    await installTelemetry(file, TARGET);
+    expect(await uninstallTelemetry(file)).toBe(true);
     expect(read(file)).toEqual(ORIGINAL);
-    expect(uninstallTelemetry(file)).toBe(false);
+    expect(await uninstallTelemetry(file)).toBe(false);
 
     const fresh = settingsFile();
-    installTelemetry(fresh, TARGET);
+    await installTelemetry(fresh, TARGET);
     expect(existsSync(`${fresh}.flightdeck-telemetry-backup`)).toBe(false);
-    expect(uninstallTelemetry(fresh)).toBe(true);
+    expect(await uninstallTelemetry(fresh)).toBe(true);
     expect(existsSync(fresh)).toBe(false);
-    expect(uninstallTelemetry(fresh)).toBe(false);
+    expect(await uninstallTelemetry(fresh)).toBe(false);
   });
 
-  test("uninstall leaves a user's own exporter alone", () => {
+  test("uninstall leaves a user's own exporter alone", async () => {
     const file = settingsFile({
       env: { OTEL_EXPORTER_OTLP_ENDPOINT: "https://otel.example.com", OTEL_LOGS_EXPORTER: "otlp" },
     });
-    expect(uninstallTelemetry(file)).toBe(false);
+    expect(await uninstallTelemetry(file)).toBe(false);
     expect(read(file).env.OTEL_EXPORTER_OTLP_ENDPOINT).toBe("https://otel.example.com");
   });
 
-  test("status: absent, installed, outdated (another token or port) and conflict", () => {
+  test("status: absent, installed, outdated (another token or port) and conflict", async () => {
     const file = settingsFile(ORIGINAL);
-    expect(telemetryStatus(file, TARGET)).toBe("absent");
-    expect(telemetryStatus(join(tempDir(), "none.json"), TARGET)).toBe("absent");
-    installTelemetry(file, TARGET);
-    expect(telemetryStatus(file, TARGET)).toBe("installed");
-    expect(telemetryStatus(file, { ...TARGET, token: "another-token-0123456789" })).toBe(
+    expect(await telemetryStatus(file, TARGET)).toBe("absent");
+    expect(await telemetryStatus(join(tempDir(), "none.json"), TARGET)).toBe("absent");
+    await installTelemetry(file, TARGET);
+    expect(await telemetryStatus(file, TARGET)).toBe("installed");
+    expect(await telemetryStatus(file, { ...TARGET, token: "another-token-0123456789" })).toBe(
       "outdated",
     );
-    expect(telemetryStatus(file, { ...TARGET, url: "http://127.0.0.1:9999" })).toBe("outdated");
+    expect(await telemetryStatus(file, { ...TARGET, url: "http://127.0.0.1:9999" })).toBe(
+      "outdated",
+    );
   });
 });
 
