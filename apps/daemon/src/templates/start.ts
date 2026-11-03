@@ -112,6 +112,8 @@ export async function startTemplate(
     );
   }
   await mkdir(output, { recursive: true });
+  // What the folders hold now, so what the task makes later can be told apart.
+  const before = await deps.tasks?.prepare([working, output]);
   const filled = template.prompt[language].replace(
     /\{([a-z][a-z0-9_]*)\}/g,
     (_, id: string) => answers.get(id) ?? "",
@@ -122,6 +124,7 @@ export async function startTemplate(
     name: name ?? template.title[language],
     permissionMode: template.planFirst ? "plan" : MODES[template.preset],
   });
+  await deps.tasks?.keep(sessionId, [working, output], before ?? {});
   return {
     sessionId,
     workingFolder: working,

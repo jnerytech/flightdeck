@@ -120,6 +120,7 @@ import { startTelemetry } from "./telemetry/service.ts";
 import { TelemetryStore } from "./telemetry/store.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
+import { TaskTracker } from "./templates/tasks.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -1121,6 +1122,7 @@ export async function startDaemon(
       defaultUser: userInfo().username,
     }),
     terminals,
+    tasks: new TaskTracker({ dir: join(config.dataDir, "tasks") }),
     // The built-in templates and the files of `<dataDir>/templates` (phase 33).
     templates: () =>
       loadTemplates({ dir: join(config.dataDir, "templates"), builtins: BUILTIN_TEMPLATES }),

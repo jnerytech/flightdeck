@@ -1421,6 +1421,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.terminals?.enabled ? ["terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
+            ...(opts.tasks ? ["tasks"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
@@ -1756,10 +1757,18 @@ export function startServer(opts: ServerOptions): RunningServer {
             template,
             language,
             values,
-            { allowedRoots: opts.allowedRoots, create: (payload) => manager.create(payload) },
+            {
+              allowedRoots: opts.allowedRoots,
+              create: (payload) => manager.create(payload),
+              ...(opts.tasks ? { tasks: opts.tasks } : {}),
+            },
             name,
           ),
         );
+      }
+      case "task.results": {
+        if (!opts.tasks) throw featureOff("tasks");
+        return ok(command.type, await opts.tasks.results(command.payload.sessionId));
       }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");
