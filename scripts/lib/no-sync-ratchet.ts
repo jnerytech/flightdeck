@@ -54,6 +54,21 @@ export function syncCallCount(source: string): number {
     .reduce((total, line) => total + (line.match(BLOCKING)?.length ?? 0), 0);
 }
 
+/** Blocking uses per file under `apps/daemon/src` and `apps/desktop/src` of `root` (files with none left out). */
+export function syncCounts(_root: string): Record<string, number> {
+  return {};
+}
+
+/** The baseline entries, one per line, sorted by path. */
+export function renderBaseline(_counts: Record<string, number>): string {
+  return "";
+}
+
+/** `source` (this module's text) with the `SYNC_BASELINE` object replaced by `counts`. */
+export function withBaseline(source: string, _counts: Record<string, number>): string {
+  return source;
+}
+
 export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/actions/run.ts": 3,
   "apps/daemon/src/actions/shell.ts": 3,
