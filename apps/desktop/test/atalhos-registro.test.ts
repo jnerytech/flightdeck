@@ -4,6 +4,7 @@ import {
   type ChordState,
   chordStep,
   type KeyLike,
+  isMac,
   keysLabel,
   NO_CHORD,
   SHORTCUTS,
@@ -123,5 +124,14 @@ describe("atalhos-registro: the chords", () => {
     expect(chordStep(NO_CHORD, key("g", { ctrlKey: true }), 0).consumed).toBe(false);
     expect(chordStep(NO_CHORD, key("g", { metaKey: true }), 0).state).toEqual(NO_CHORD);
     expect(chordStep(NO_CHORD, key("g", { altKey: true }), 0).state).toEqual(NO_CHORD);
+  });
+});
+
+describe("atalhos-registro: the platform", () => {
+  test("a Mac is told by its platform name; anything else, or nothing, is not", () => {
+    expect(isMac({ platform: "MacIntel" })).toBe(true);
+    expect(isMac({ platform: "Win32" })).toBe(false);
+    expect(isMac({})).toBe(false);
+    expect(isMac(undefined)).toBe(false);
   });
 });

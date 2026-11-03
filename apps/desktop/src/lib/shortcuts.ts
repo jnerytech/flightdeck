@@ -80,6 +80,11 @@ export function keysLabel(shortcut: ShortcutDef, mac: boolean): string {
   return mac && shortcut.keys[0] === "Mod" ? keys.join("") : keys.join("+");
 }
 
+/** Whether the system is a Mac, where the shortcuts use ⌘ instead of Ctrl. */
+export function isMac(nav: { platform?: string } | undefined): boolean {
+  return /mac/i.test(nav?.platform ?? "");
+}
+
 /** The part of a key event the matcher reads. */
 export interface KeyLike {
   key: string;
