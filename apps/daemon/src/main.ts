@@ -755,7 +755,7 @@ export async function startDaemon(
     scanner: snippetScanner,
   });
   const askpass = new AskpassBroker({});
-  const sshAskpass = askpassHook({
+  const sshAskpass = await askpassHook({
     broker: askpass,
     dir: sshDir,
     platform: process.platform,

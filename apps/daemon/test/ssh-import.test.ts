@@ -195,13 +195,13 @@ describe("ssh-import", () => {
     });
     const before = snapshot();
     await importer.preview();
-    importer.apply(["vps", "inner"]);
+    await importer.apply(["vps", "inner"]);
     expect(snapshot()).toEqual(before);
   });
 
-  test("aplicar cria só os escolhidos, o jump antes de quem passa por ele, e o IdentityFile vira key-file", () => {
+  test("aplicar cria só os escolhidos, o jump antes de quem passa por ele, e o IdentityFile vira key-file", async () => {
     const { importer, targets } = fixture();
-    const result = importer.apply(["inner", "vps", "work"]);
+    const result = await importer.apply(["inner", "vps", "work"]);
     expect(result.skipped).toEqual([]);
     const names = result.created.map((t) => t.name);
     expect(names.sort()).toEqual(["inner", "vps", "work"]);
@@ -218,19 +218,19 @@ describe("ssh-import", () => {
     ).toEqual(["inner", "vps", "work"]);
   });
 
-  test("o jump que já está cadastrado serve, mesmo sem ser escolhido de novo", () => {
+  test("o jump que já está cadastrado serve, mesmo sem ser escolhido de novo", async () => {
     const { importer, targets } = fixture();
-    importer.apply(["vps"]);
-    const result = importer.apply(["inner"]);
+    await importer.apply(["vps"]);
+    const result = await importer.apply(["inner"]);
     expect(result.skipped).toEqual([]);
     const vps = targets.list().find((t) => t.name === "vps");
     expect(result.created[0]?.jump).toBe(vps?.id ?? "nada");
   });
 
-  test("não cria o que já existe, o que tem um jump que não é destino, vários jumps, ciclo ou valor inválido", () => {
+  test("não cria o que já existe, o que tem um jump que não é destino, vários jumps, ciclo ou valor inválido", async () => {
     const { importer, targets } = fixture();
-    importer.apply(["vps"]);
-    const result = importer.apply([
+    await importer.apply(["vps"]);
+    const result = await importer.apply([
       "vps",
       "far",
       "two",

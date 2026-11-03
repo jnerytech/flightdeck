@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
 import type { FlightdeckError } from "../errors.ts";
@@ -62,8 +62,8 @@ function unquote(value: string): string {
 export class SshImporter {
   constructor(private readonly opts: SshImporterOptions) {}
 
-  preview(): { entries: SshImportEntry[] } {
-    const blocks = this.blocks();
+  async preview(): Promise<{ entries: SshImportEntry[] }> {
+    const blocks = await this.blocks();
     const existing = this.opts.targets.list();
     const aliases = new Set<string>();
     for (const block of blocks) {
@@ -97,8 +97,8 @@ export class SshImporter {
   }
 
   /** Creates the chosen destinos, a jump before whoever goes through it. */
-  apply(aliases: string[]): SshImportResult {
-    const entries = new Map(this.preview().entries.map((entry) => [entry.alias, entry]));
+  async apply(aliases: string[]): Promise<SshImportResult> {
+    const entries = new Map((await this.preview()).entries.map((entry) => [entry.alias, entry]));
     const chosen = new Set(aliases);
     const created: SshImportResult["created"] = [];
     const ids = new Map<string, string>();
@@ -181,9 +181,9 @@ export class SshImporter {
   }
 
   /** The config as blocks in file order; what comes before the first Host applies to all. */
-  private blocks(): Block[] {
+  private async blocks(): Promise<Block[]> {
     const blocks: Block[] = [{ patterns: ["*"], params: new Map() }];
-    for (const directive of this.directives(this.opts.configPath, [])) {
+    for (const directive of await this.directives(this.opts.configPath, [])) {
       if (directive.kind === "host") {
         blocks.push({ patterns: directive.patterns, params: new Map() });
       } else if (directive.kind === "match") {
@@ -197,10 +197,10 @@ export class SshImporter {
   }
 
   /** The directives of a file, with each `Include` expanded in place. */
-  private directives(path: string, stack: string[]): Directive[] {
+  private async directives(path: string, stack: string[]): Promise<Directive[]> {
     let text: string;
     try {
-      text = readFileSync(path, "utf8");
+      text = await readFile(path, "utf8");
     } catch {
       return [];
     }
@@ -218,9 +218,9 @@ export class SshImporter {
         out.push({ kind: "match" });
       } else if (key === "include") {
         if (stack.length >= MAX_INCLUDE_DEPTH) continue;
-        for (const file of this.included(value)) {
+        for (const file of await this.included(value)) {
           if (file !== path && !stack.includes(file)) {
-            out.push(...this.directives(file, [...stack, path]));
+            out.push(...(await this.directives(file, [...stack, path])));
           }
         }
       } else {
@@ -231,7 +231,7 @@ export class SshImporter {
   }
 
   /** The files an `Include` names: `~` and relative paths resolved, a glob in the last part. */
-  private included(value: string): string[] {
+  private async included(value: string): Promise<string[]> {
     const files: string[] = [];
     for (const word of value.split(/\s+/)) {
       const expanded = word.startsWith("~/") ? join(this.opts.home, word.slice(2)) : word;
@@ -241,7 +241,11 @@ export class SshImporter {
         continue;
       }
       const glob = new Bun.Glob(basename(absolute));
-      const names = [...glob.scanSync({ cwd: dirname(absolute), onlyFiles: true })].sort();
+      const names: string[] = [];
+      for await (const name of glob.scan({ cwd: dirname(absolute), onlyFiles: true })) {
+        names.push(name);
+      }
+      names.sort();
       files.push(...names.map((name) => join(dirname(absolute), name)));
     }
     return files;

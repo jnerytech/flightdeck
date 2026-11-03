@@ -1835,9 +1835,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.hostkey.forget":
         return ok(command.type, sshHostKeys().forget(command.payload.targetId));
       case "ssh.import.preview":
-        return ok(command.type, sshImport().preview());
+        return ok(command.type, await sshImport().preview());
       case "ssh.import.apply":
-        return ok(command.type, sshImport().apply(command.payload.aliases));
+        return ok(command.type, await sshImport().apply(command.payload.aliases));
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });
       case "review.add":

@@ -177,7 +177,7 @@ describe("askpass: o script do SSH_ASKPASS", () => {
 
   test("o gancho do conector: o script, o config do daemon e tickets do corretor; se o script não cabe, não há askpass", async () => {
     const { broker, target } = setup();
-    const hook = askpassHook({
+    const hook = await askpassHook({
       broker,
       dir: tempDir(),
       platform: "linux",
@@ -190,7 +190,7 @@ describe("askpass: o script do SSH_ASKPASS", () => {
     expect(ticket).toMatch(/^[0-9a-f]{32}$/);
     broker.watch((frame) => broker.answer(frame.requestId, SECRET));
     expect(await broker.ask(ticket, "p")).toBe(SECRET);
-    const none = askpassHook({
+    const none = await askpassHook({
       broker,
       dir: tempDir(),
       platform: "win32",

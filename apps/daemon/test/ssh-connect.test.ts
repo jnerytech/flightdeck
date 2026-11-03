@@ -639,7 +639,7 @@ ${"x".repeat(500)}`,
         deliver: async () => ({
           identityFile: null,
           env: {},
-          cleanup: () => s.delivered.push({ key: "boom", cleaned: 1 }),
+          cleanup: () => void s.delivered.push({ key: "boom", cleaned: 1 }),
         }),
       },
     });
@@ -732,7 +732,7 @@ describe("ssh-connect: peças", () => {
       run: async () => ({ code: 0, stderr: "" }),
       delivery: {
         kind: "agent",
-        deliver: async () => ({ identityFile: null, env: {}, cleanup: () => cleaned++ }),
+        deliver: async () => ({ identityFile: null, env: {}, cleanup: () => void cleaned++ }),
       },
     });
     await real.connect({ targetId: target.id, cols: 80, rows: 24, privateKey: PRIVATE });
