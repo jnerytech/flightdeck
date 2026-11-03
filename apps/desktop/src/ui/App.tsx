@@ -324,7 +324,7 @@ export function App({ store }: { store: AppStore }) {
                 label={t("shell.breadcrumb")}
                 onGo={go}
               />
-              <NotificationBell store={store} state={state} t={t} go={go} />
+              <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
             </>
           }
           sidebar={(collapsed) => (

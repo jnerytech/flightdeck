@@ -4,20 +4,20 @@ import { NotificationCenter, UnreadBadge } from "@/components/notifications/noti
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import type { T } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../lib/app-store.ts";
 import { type InboxEntry, unreadCount } from "../lib/inbox.ts";
 import type { Route } from "../lib/router.ts";
 
 /** The bell in the top bar: the unread count and the notification center. */
 export function NotificationBell(props: {
   store: AppStore;
-  state: AppState;
+  inbox: InboxEntry[];
   t: T;
   go(route: Route): void;
 }) {
-  const { store, state, t } = props;
+  const { store, inbox, t } = props;
   const [open, setOpen] = useState(false);
-  const unread = unreadCount(state.inbox);
+  const unread = unreadCount(inbox);
   const pick = (entry: InboxEntry) => {
     store.inboxMarkRead(entry.id);
     setOpen(false);
@@ -38,7 +38,7 @@ export function NotificationBell(props: {
         </Button>
       </PopoverTrigger>
       <NotificationCenter
-        entries={state.inbox}
+        entries={inbox}
         unread={unread}
         t={t}
         onPick={pick}
