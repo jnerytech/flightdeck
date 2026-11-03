@@ -64,7 +64,7 @@ export class SnippetUse {
   }
 
   async use(req: UseRequest): Promise<{ text: string; terminal: TerminalInfo | null }> {
-    const snippet = this.opts.snippets.get(req.id);
+    const snippet = await this.opts.snippets.get(req.id);
     const isCommand = snippet.type === "command";
     if (isCommand !== (req.action !== "send")) {
       throw isCommand
@@ -98,7 +98,7 @@ export class SnippetUse {
     } else {
       this.send(req, text);
     }
-    this.opts.snippets.markUsed(req.id);
+    await this.opts.snippets.markUsed(req.id);
     return { text, terminal };
   }
 
@@ -139,7 +139,7 @@ export class SnippetUse {
   }
 
   private async fill(req: Pick<UseRequest, "id" | "values" | "context">) {
-    const snippet = this.opts.snippets.get(req.id);
+    const snippet = await this.opts.snippets.get(req.id);
     const def: SnippetDef = {
       name: snippet.name,
       type: snippet.type,

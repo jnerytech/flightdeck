@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type Snippet,
@@ -119,7 +119,9 @@ export class Snippets {
     this.now = opts.now ?? Date.now;
   }
 
-  list(filter: SnippetFilter): { snippets: Snippet[]; file: SnippetFileInfo | null } {
+  async list(
+    filter: SnippetFilter,
+  ): Promise<{ snippets: Snippet[]; file: SnippetFileInfo | null }> {
     const scope = filter.scope ?? "all";
     const project = filter.projectPath ? this.project(filter.projectPath) : null;
     if (scope === "project" && !project)
@@ -129,7 +131,7 @@ export class Snippets {
     let file: SnippetFileInfo | null = null;
     if (scope !== "host" && project) {
       views.push(...this.rows("project", project).map((row) => this.fromRow(row)));
-      const loaded = this.loadFile(project);
+      const loaded = await this.loadFile(project);
       file = loaded?.info ?? null;
       views.push(
         ...(loaded?.defs ?? []).map((def) => this.fromFile(project, def, loaded as LoadedFile)),
@@ -154,25 +156,25 @@ export class Snippets {
     return { snippets: sorted, file };
   }
 
-  get(id: string): Snippet {
-    const found = this.lookup(id);
+  async get(id: string): Promise<Snippet> {
+    const found = await this.lookup(id);
     if (!found) throw notFound();
     return found;
   }
 
   /** By name: the host's, then the project's. */
-  find(name: string, projectPath?: string): Snippet {
-    const { snippets } = this.list(projectPath ? { projectPath } : {});
+  async find(name: string, projectPath?: string): Promise<Snippet> {
+    const { snippets } = await this.list(projectPath ? { projectPath } : {});
     const found = snippets.find((s) => s.name === name);
     if (!found) throw notFound();
     return found;
   }
 
-  save(input: SnippetSave): Snippet {
+  async save(input: SnippetSave): Promise<Snippet> {
     const { id, scope, target, projectPath, ...fields } = input;
     const def = normalizeSnippet(fields, this.opts.scanner);
     const project = scope === "project" ? this.requireProject(projectPath) : null;
-    const previous = id ? this.lookup(id) : null;
+    const previous = id ? await this.lookup(id) : null;
     if (id && !previous) throw notFound();
     if (previous && (previous.scope !== scope || previous.projectPath !== project)) {
       throw badRequest("to change scope, create another snippet", "snippet_scope_fixed");
@@ -181,7 +183,7 @@ export class Snippets {
     if (previous && (previous.source === "file") !== toFile) {
       throw badRequest("to move a snippet, create another one", "snippet_place_fixed");
     }
-    if (this.nameTaken(scope, project, def.name, previous?.id ?? null)) {
+    if (await this.nameTaken(scope, project, def.name, previous?.id ?? null)) {
       throw new FlightdeckError(
         "invalid_state",
         `a snippet named "${def.name}" already exists in this scope`,
@@ -190,26 +192,28 @@ export class Snippets {
       );
     }
     return toFile
-      ? this.saveToFile(project as string, def, previous)
+      ? await this.saveToFile(project as string, def, previous)
       : this.saveRow(scope, project, def, previous);
   }
 
-  remove(id: string): void {
-    const found = this.get(id);
+  async remove(id: string): Promise<void> {
+    const found = await this.get(id);
     if (found.source === "daemon") {
       this.opts.db.query("DELETE FROM snippets WHERE id = ?").run(id);
     } else {
       const project = found.projectPath as string;
-      const defs = (this.loadFile(project)?.defs ?? []).filter((def) => def.name !== found.name);
-      this.writeFile(project, toYaml(defs));
+      const defs = ((await this.loadFile(project))?.defs ?? []).filter(
+        (def) => def.name !== found.name,
+      );
+      await this.writeFile(project, toYaml(defs));
     }
     this.opts.db.query("DELETE FROM snippet_marks WHERE id = ?").run(id);
   }
 
   /** Trusts the content of the project's versioned file, by the hash the app was shown. */
-  trust(projectPath: string, hash: string): SnippetFileInfo {
+  async trust(projectPath: string, hash: string): Promise<SnippetFileInfo> {
     const project = this.project(projectPath);
-    const loaded = this.loadFile(project);
+    const loaded = await this.loadFile(project);
     if (!loaded)
       throw new FlightdeckError(
         "invalid_state",
@@ -231,20 +235,20 @@ export class Snippets {
     return { ...loaded.info, trusted: true };
   }
 
-  favorite(id: string, favorite: boolean): Snippet {
-    this.get(id);
+  async favorite(id: string, favorite: boolean): Promise<Snippet> {
+    await this.get(id);
     this.opts.db
       .query(
         `INSERT INTO snippet_marks (id, favorite, uses, last_used_at) VALUES (?, ?, 0, NULL)
          ON CONFLICT (id) DO UPDATE SET favorite = excluded.favorite`,
       )
       .run(id, favorite ? 1 : 0);
-    return this.get(id);
+    return await this.get(id);
   }
 
   /** A use of the snippet: counts toward "recent". */
-  markUsed(id: string): void {
-    this.get(id);
+  async markUsed(id: string): Promise<void> {
+    await this.get(id);
     this.opts.db
       .query(
         `INSERT INTO snippet_marks (id, favorite, uses, last_used_at) VALUES (?, 0, 1, ?)
@@ -334,11 +338,11 @@ export class Snippets {
     );
   }
 
-  private lookup(id: string): Snippet | null {
+  private async lookup(id: string): Promise<Snippet | null> {
     const parsed = parseFileId(id);
     if (parsed) {
       const project = this.project(parsed.projectPath);
-      const loaded = this.loadFile(project);
+      const loaded = await this.loadFile(project);
       const def = loaded?.defs.find((d) => d.name === parsed.name);
       return def ? this.fromFile(project, def, loaded as LoadedFile) : null;
     }
@@ -346,27 +350,27 @@ export class Snippets {
     return row ? this.fromRow(row) : null;
   }
 
-  private nameTaken(
+  private async nameTaken(
     scope: "host" | "project",
     project: string | null,
     name: string,
     own: string | null,
-  ): boolean {
+  ): Promise<boolean> {
     const inRows = this.rows(scope, project).some((row) => row.name === name && row.id !== own);
     const inFile = project
-      ? (this.loadFile(project)?.defs ?? []).some(
+      ? ((await this.loadFile(project))?.defs ?? []).some(
           (def) => def.name === name && fileId(project, def.name) !== own,
         )
       : false;
     return inRows || inFile;
   }
 
-  private saveRow(
+  private async saveRow(
     scope: "host" | "project",
     project: string | null,
     def: SnippetDef,
     previous: Snippet | null,
-  ): Snippet {
+  ): Promise<Snippet> {
     const at = new Date(this.now()).toISOString();
     const id = previous?.id ?? ulid(this.now());
     this.opts.db
@@ -387,11 +391,15 @@ export class Snippets {
         $tags: JSON.stringify(def.tags),
         $at: at,
       });
-    return this.get(id);
+    return await this.get(id);
   }
 
-  private saveToFile(project: string, def: SnippetDef, previous: Snippet | null): Snippet {
-    const loaded = this.loadFile(project);
+  private async saveToFile(
+    project: string,
+    def: SnippetDef,
+    previous: Snippet | null,
+  ): Promise<Snippet> {
+    const loaded = await this.loadFile(project);
     if (loaded && loaded.info.errors.length > 0) {
       throw new FlightdeckError(
         "invalid_state",
@@ -406,17 +414,17 @@ export class Snippets {
     defs.splice(at, 0, def);
     const text = toYaml(defs);
     // Every entry, the new one included, went through the secret scan: the repository may be public.
-    this.writeFile(project, text);
+    await this.writeFile(project, text);
     const id = fileId(project, def.name);
     if (previous && previous.id !== id) {
       this.opts.db.query("UPDATE snippet_marks SET id = ? WHERE id = ?").run(id, previous.id);
     }
-    return this.get(id);
+    return await this.get(id);
   }
 
-  private writeFile(project: string, text: string): void {
-    mkdirSync(join(project, ".flightdeck"), { recursive: true });
-    writeFileSync(join(project, ".flightdeck", "snippets.yaml"), text);
+  private async writeFile(project: string, text: string): Promise<void> {
+    await mkdir(join(project, ".flightdeck"), { recursive: true });
+    await writeFile(join(project, ".flightdeck", "snippets.yaml"), text);
   }
 
   /**
@@ -473,10 +481,16 @@ export class Snippets {
   }
 
   /** The versioned file: what it holds that is valid, what is not and why, and whether it is trusted. */
-  private loadFile(project: string): LoadedFile | null {
+  private async loadFile(project: string): Promise<LoadedFile | null> {
     const path = join(project, ".flightdeck", "snippets.yaml");
-    if (!existsSync(path)) return null;
-    const bytes = readFileSync(path);
+    if (
+      !(await stat(path).then(
+        () => true,
+        () => false,
+      ))
+    )
+      return null;
+    const bytes = await readFile(path);
     const hash = createHash("sha256").update(bytes).digest("hex");
     const trusted =
       this.opts.db

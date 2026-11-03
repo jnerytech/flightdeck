@@ -1696,33 +1696,36 @@ export function startServer(opts: ServerOptions): RunningServer {
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
       case "snippets.list":
-        return ok(command.type, snippets().list(command.payload));
+        return ok(command.type, await snippets().list(command.payload));
       case "snippets.save":
-        return ok(command.type, snippets().save(command.payload));
+        return ok(command.type, await snippets().save(command.payload));
       case "snippets.get": {
         const { id, name, projectPath } = command.payload;
         return ok(
           command.type,
-          id ? snippets().get(id) : snippets().find(name as string, projectPath),
+          id ? await snippets().get(id) : await snippets().find(name as string, projectPath),
         );
       }
       case "snippets.remove":
-        snippets().remove(command.payload.id);
+        await snippets().remove(command.payload.id);
         return ok(command.type);
       case "snippets.trust":
         return ok(
           command.type,
-          snippets().trust(command.payload.projectPath, command.payload.hash),
+          await snippets().trust(command.payload.projectPath, command.payload.hash),
         );
       case "snippets.favorite":
-        return ok(command.type, snippets().favorite(command.payload.id, command.payload.favorite));
+        return ok(
+          command.type,
+          await snippets().favorite(command.payload.id, command.payload.favorite),
+        );
       case "snippets.parse":
         return ok(command.type, snippets().parse(command.payload.text));
       case "snippets.importHistory": {
         const { limit, reveal, select } = command.payload;
         const importer = snippetHistory();
-        const done = select ? importer.import(select) : { created: [], skipped: [] };
-        const preview = importer.preview({
+        const done = select ? await importer.import(select) : { created: [], skipped: [] };
+        const preview = await importer.preview({
           ...(limit ? { limit } : {}),
           ...(reveal ? { reveal } : {}),
         });
