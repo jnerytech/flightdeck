@@ -123,9 +123,9 @@ export const Config = z.object({
         .url()
         .nullable()
         .default(RUNNING_COMPILED ? MANIFEST_URL : null),
-      checkIntervalH: z.number().int().min(1).default(24),
+      checkIntervalH: z.number().int().min(1).default(6),
     })
-    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 24 })),
+    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 6 })),
   /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })

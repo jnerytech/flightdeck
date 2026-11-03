@@ -1346,7 +1346,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "daemon.update.check": {
         if (!opts.updates) throw featureOff("updater");
-        return ok(command.type, { available: false, version: null, checkedAt: "" });
+        return ok(command.type, await opts.updates.checkNow());
       }
       case "daemon.shutdown": {
         const shutdown = opts.onShutdown;
