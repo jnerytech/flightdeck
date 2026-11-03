@@ -207,6 +207,13 @@ export class SessionManager {
     // Resolved before anything is created: a missing, untrusted or invalid persona leaves no session.
     const resolved = payload.persona ? this.resolvePersona(payload.persona, cwd) : null;
     const asked = payload.permissionMode ?? this.opts.defaultPermissionMode;
+    if (asked === "bypassPermissions" && !this.bypassAllowed()) {
+      throw new FlightdeckError(
+        "invalid_permission_update",
+        "this host does not allow sessions without permission prompts",
+        "bypass_not_allowed",
+      );
+    }
     // A persona only suggests: it counts when it is less permissive than what was asked for.
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
     const persona = resolved ? snapshotOf(resolved.persona, resolved.hash) : null;
@@ -457,6 +464,7 @@ export class SessionManager {
     const run = this.opts.runtime.start({
       cwd: session.cwd,
       permissionMode: session.permissionMode,
+      allowBypass: this.bypassAllowed(),
       // The session's own id: the Flightdeck MCP it opens knows who is sending (phase 21).
       env: {
         ...buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
@@ -602,6 +610,10 @@ export class SessionManager {
     await run.toggleMcpServer(name, enabled);
   }
 
+  private bypassAllowed(): boolean {
+    return this.opts.allowBypass?.() === true;
+  }
+
   /** Changes the permission mode of a live managed session, for its next tool requests. */
   async setPermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
     const run = this.live.get(sessionId)?.run;
@@ -612,8 +624,12 @@ export class SessionManager {
         "mode_set_not_live",
       );
     }
-    // Never looser than the mode the session started with (which a persona may have narrowed).
-    if (clampPermissionMode(mode, this.get(sessionId).permissionMode) !== mode) {
+    // Never looser than the mode the session started with (which a persona may have narrowed),
+    // unless the person turned the host's switch on: then any mode is theirs to pick.
+    if (
+      !this.bypassAllowed() &&
+      clampPermissionMode(mode, this.get(sessionId).permissionMode) !== mode
+    ) {
       throw new FlightdeckError(
         "invalid_permission_update",
         "a session cannot be made more permissive than the mode it started with",

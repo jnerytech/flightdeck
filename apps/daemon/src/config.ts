@@ -42,7 +42,7 @@ export const Config = z.object({
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),
   /** A session may start in `bypassPermissions`; off until the person turns it on for the host. */
-  allowBypassPermissions: z.boolean().default(true),
+  allowBypassPermissions: z.boolean().default(false),
   /** Cards running at the same time; the rest wait in start order (protects the quota). */
   maxParallelRuns: z.number().int().min(1).default(2),
   /** Legacy (phase 1) path to the `claude` executable; `claude.executablePath` wins. */

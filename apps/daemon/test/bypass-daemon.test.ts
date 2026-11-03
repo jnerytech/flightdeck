@@ -57,7 +57,7 @@ describe("bypass-daemon", () => {
     const { manager, store, project } = newManager({ allowBypass: () => false });
     expect(() =>
       manager.create({ cwd: project, prompt: "go", permissionMode: "bypassPermissions" }),
-    ).toThrow(/bypass/);
+    ).toThrow(/permission prompts/);
     expect(store.listSessions()).toEqual([]);
     // Any other mode is not affected.
     manager.create({ cwd: project, prompt: "go", permissionMode: "acceptEdits" });
@@ -94,8 +94,8 @@ describe("bypass-daemon", () => {
     );
   });
 
-  test("setMode still never loosens a live session to bypass, switch on or off", async () => {
-    const { manager, project } = newManager({ allowBypass: () => true });
+  test("setMode still never loosens a live session to bypass while the switch is off", async () => {
+    const { manager, project } = newManager({ allowBypass: () => false });
     const { sessionId } = manager.create({ cwd: project, prompt: "go", permissionMode: "default" });
     await expect(manager.setPermissionMode(sessionId, "bypassPermissions")).rejects.toThrow();
   });

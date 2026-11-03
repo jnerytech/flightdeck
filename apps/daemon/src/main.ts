@@ -599,6 +599,7 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
+    allowBypass: () => config.allowBypassPermissions,
     baseEnv: env,
     onQuota: (readings) => {
       quota.record(readings);
@@ -965,6 +966,13 @@ export async function startDaemon(
     warmProjectKey: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
+    bypass: {
+      allowed: () => config.allowBypassPermissions,
+      set: (allow) => {
+        config.allowBypassPermissions = allow;
+        updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+      },
+    },
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
