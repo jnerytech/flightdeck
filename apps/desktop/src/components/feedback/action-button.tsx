@@ -33,23 +33,26 @@ export function ActionButton(
     };
     (result as PromiseLike<unknown>).then(done, done);
   };
+  const button = (
+    <Button
+      {...rest}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
+      onClick={handle}
+    >
+      {busy && <Spinner />}
+      {children}
+    </Button>
+  );
+  if (!showReason) return button;
+  // The reason sits under the button, in the button's own block, never as a column beside it.
   return (
-    <>
-      <Button
-        {...rest}
-        disabled={disabled || busy}
-        aria-busy={busy || undefined}
-        aria-describedby={showReason ? reasonId : rest["aria-describedby"]}
-        onClick={handle}
-      >
-        {busy && <Spinner />}
-        {children}
-      </Button>
-      {showReason && (
-        <span id={reasonId} className="text-muted-foreground text-xs">
-          {disabledReason}
-        </span>
-      )}
-    </>
+    <span className="action-with-reason">
+      {button}
+      <span id={reasonId} className="action-reason text-muted-foreground text-xs">
+        {disabledReason}
+      </span>
+    </span>
   );
 }

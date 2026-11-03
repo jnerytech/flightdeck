@@ -2,6 +2,7 @@ import type { FsDirsResult, FsFilesResult } from "@flightdeck/protocol";
 import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -51,6 +52,7 @@ export function FolderPicker(props: {
     code === "forbidden_cwd" ? t("folderPicker.outside", { roots: allowed.join(", ") }) : message;
 
   const opening = useRef(0);
+  const rootCount = allowed.length;
 
   const open = async (path?: string) => {
     const ticket = ++opening.current;
@@ -82,7 +84,7 @@ export function FolderPicker(props: {
   // biome-ignore lint/correctness/useExhaustiveDependencies: `hidden` is the trigger; the rest is read from refs
   useEffect(() => {
     void openRef.current(shown.current);
-  }, [hidden]);
+  }, [hidden, rootCount]);
 
   // A folder is the current one as soon as it is clicked; its listing follows.
   const loading = target !== null;
@@ -153,8 +155,16 @@ export function FolderPicker(props: {
           !error && <p className="text-muted-foreground text-sm">{t("folderPicker.loading")}</p>
         ) : (
           <>
-            {listing.dirs.length === 0 && (
+            {listing.dirs.length === 0 && allowed.length > 0 && (
               <p className="text-muted-foreground text-sm">{t("folderPicker.empty")}</p>
+            )}
+            {listing.dirs.length === 0 && allowed.length === 0 && (
+              <>
+                <p role="status" className="font-medium text-sm">
+                  {t("folderPicker.noRoots")}
+                </p>
+                <AllowedFolders store={store} host={host} />
+              </>
             )}
             {loading && (
               <p role="status" className="text-muted-foreground text-sm">

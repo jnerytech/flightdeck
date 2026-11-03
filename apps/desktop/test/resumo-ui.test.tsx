@@ -227,7 +227,7 @@ describe("resumo-ui", () => {
       await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
-    const managed = d.manager.create({ cwd: d.project, prompt: "oi" });
+    const managed = await d.manager.create({ cwd: d.project, prompt: "oi" });
     await settle(() => d.manager.get(managed.sessionId).claudeSessionId !== null);
     const claudeId = d.manager.get(managed.sessionId).claudeSessionId as string;
     mkdirSync(d.historyRoot, { recursive: true });

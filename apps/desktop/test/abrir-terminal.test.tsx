@@ -307,7 +307,11 @@ describe("abrir-terminal", () => {
     await poll(() => d.board.getCard(card.id).sessionStatus === "idle", 8000);
     const started = d.board.getCard(card.id);
     const cardSession = d.manager.get(started.sessionId ?? "").claudeSessionId;
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "oi",
+      name: "Gerenciada",
+    });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const managed = d.manager.get(sessionId).claudeSessionId;
 

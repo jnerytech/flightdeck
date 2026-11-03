@@ -167,7 +167,7 @@ export class BgService {
       ({ cwd, prompt } = card);
       name ??= card.name;
     }
-    const folder = resolveAllowedCwd(cwd ?? "", start.allowedRoots);
+    const folder = await resolveAllowedCwd(cwd ?? "", start.allowedRoots);
     const result = await runCommand(
       [
         ...start.self,

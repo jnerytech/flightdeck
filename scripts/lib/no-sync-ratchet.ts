@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+
 /**
  * Runtime code never blocks on IO. This counts the synchronous node/Bun calls per file; the test
  * compares them with `SYNC_BASELINE`, which only goes down (a file leaves it at zero).
@@ -35,59 +38,65 @@ const FS_NAMES = [
   "writeFile",
 ];
 const BLOCKING = new RegExp(
-  `\\b(?:(?:${FS_NAMES.join("|")})Sync|execSync|execFileSync|spawnSync)\\s*\\(`,
+  `\\b(?:(?:${FS_NAMES.join("|")})Sync|execSync|execFileSync|spawnSync)\\b`,
   "g",
 );
 
-/** Number of blocking calls in one source file (comment lines are ignored). */
+/** `import ... from "x"` statements, one line or many: a name there is no call. */
+const IMPORTS = /^import\s[^;]*?\sfrom\s+["'][^"']+["'];?[ \t]*$/gms;
+
+/**
+ * Number of blocking uses in one source file: calls (`readFileSync(`, `realpathSync.native(`) and
+ * bare references (`{ exists: existsSync }`). Comment lines and import statements are ignored.
+ */
 export function syncCallCount(source: string): number {
   return source
+    .replace(IMPORTS, "")
     .split("\n")
     .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
     .reduce((total, line) => total + (line.match(BLOCKING)?.length ?? 0), 0);
 }
 
-export const SYNC_BASELINE: Record<string, number> = {
-  "apps/daemon/src/actions/run.ts": 3,
-  "apps/daemon/src/actions/shell.ts": 3,
-  "apps/daemon/src/actions/trust.ts": 4,
-  "apps/daemon/src/board/board.ts": 1,
-  "apps/daemon/src/board/diff.ts": 1,
-  "apps/daemon/src/central/central.ts": 3,
-  "apps/daemon/src/central/external.ts": 1,
-  "apps/daemon/src/central/hooks-install.ts": 6,
-  "apps/daemon/src/central/wrapper.ts": 10,
-  "apps/daemon/src/checkpoints/rewind.ts": 3,
-  "apps/daemon/src/checkpoints/snapshots.ts": 5,
-  "apps/daemon/src/config.ts": 10,
-  "apps/daemon/src/costs/statusline.ts": 2,
-  "apps/daemon/src/costs/usage-indexer.ts": 8,
-  "apps/daemon/src/fs-dirs.ts": 4,
-  "apps/daemon/src/history/indexer.ts": 6,
-  "apps/daemon/src/lock.ts": 7,
-  "apps/daemon/src/main.ts": 3,
-  "apps/daemon/src/maintenance/backup.ts": 12,
-  "apps/daemon/src/maintenance/maintenance.ts": 3,
-  "apps/daemon/src/messaging/endpoints.ts": 1,
-  "apps/daemon/src/paths.ts": 1,
-  "apps/daemon/src/personas/store.ts": 8,
-  "apps/daemon/src/roots.ts": 1,
-  "apps/daemon/src/runtime/claude-sdk-runtime.ts": 1,
-  "apps/daemon/src/service-os.ts": 5,
-  "apps/daemon/src/setup.ts": 5,
-  "apps/daemon/src/snippets/history.ts": 6,
-  "apps/daemon/src/snippets/store.ts": 4,
-  "apps/daemon/src/ssh/askpass.ts": 5,
-  "apps/daemon/src/ssh/connect.ts": 3,
-  "apps/daemon/src/ssh/import.ts": 1,
-  "apps/daemon/src/ssh/key-delivery.ts": 5,
-  "apps/daemon/src/store/event-store.ts": 1,
-  "apps/daemon/src/summary/service.ts": 2,
-  "apps/daemon/src/telemetry/otlp-env.ts": 7,
-  "apps/daemon/src/telemetry/service.ts": 4,
-  "apps/daemon/src/trace/service.ts": 5,
-  "apps/daemon/src/update.ts": 9,
-  "apps/daemon/src/updates/apply.ts": 4,
-  "apps/daemon/src/workflows/check-runner.ts": 2,
-  "apps/daemon/src/wsl.ts": 3,
-};
+/** Blocking uses per file under `apps/daemon/src` and `apps/desktop/src` of `root` (files with none left out). */
+export function syncCounts(root: string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (/\.tsx?$/.test(entry.name)) {
+        const count = syncCallCount(readFileSync(path, "utf8"));
+        if (count > 0) counts[relative(root, path).replaceAll("\\", "/")] = count;
+      }
+    }
+  };
+  for (const dir of ["apps/daemon/src", "apps/desktop/src"]) walk(join(root, dir));
+  return counts;
+}
+
+/** The baseline entries, one per line, sorted by path. */
+export function renderBaseline(counts: Record<string, number>): string {
+  return Object.entries(counts)
+    .sort(([a], [b]) => (a < b ? -1 : Number(a > b)))
+    .map(([path, count]) => `  "${path}": ${count},`)
+    .join("\n");
+}
+
+/** `source` (this module's text) with the `SYNC_BASELINE` object replaced by `counts`. */
+export function withBaseline(source: string, counts: Record<string, number>): string {
+  // The declaration at the start of a line: the same text inside this function does not match.
+  // The formatter keeps an empty object on one line (`{};`), so both shapes are read.
+  const declaration = /^export const SYNC_BASELINE: Record<string, number> = \{(\};)?$/m.exec(
+    source,
+  );
+  if (!declaration) throw new Error("SYNC_BASELINE not found");
+  const head = source.slice(0, declaration.index);
+  const opening = "export const SYNC_BASELINE: Record<string, number> = {";
+  const rest = declaration[1]
+    ? source.slice(declaration.index + declaration[0].length)
+    : source.slice(source.indexOf("\n};", declaration.index) + "\n};".length);
+  const body = renderBaseline(counts);
+  return `${head}${opening}${body ? `\n${body}\n};` : "};"}${rest}`;
+}
+
+export const SYNC_BASELINE: Record<string, number> = {};

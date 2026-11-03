@@ -283,6 +283,110 @@
   }
 }
 
+/* A disabled button and its reason: one block, the reason wrapping under it at a readable width. */
+@utility action-with-reason {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+@utility action-reason {
+  max-width: 18rem;
+}
+
+/* The tab strip: the tabs keep their width and the strip scrolls sideways, with no scrollbar. */
+@utility tab-scroller {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+@utility tab-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  width: max-content;
+}
+@utility tab-tool {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 0.125rem;
+}
+@utility tab-item {
+  flex: 0 0 auto;
+  min-width: 7rem;
+  max-width: 12rem;
+}
+
+/* The card's conversation: it takes the rest of the pane, and scrolls inside itself only. */
+@utility card-chat {
+  flex: 1 1 0;
+  min-height: 24rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+/* A column under a dragged card: it shows where the card would land. */
+@utility drop-over {
+  outline: 2px dashed var(--ring);
+  outline-offset: -2px;
+  background-color: var(--accent);
+}
+
+/* A key of a shortcut, as printed in a list. */
+@utility keycap {
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+}
+
+/* Three dots that rise in turn while Claude works. */
+@utility dots-working {
+  display: inline-flex;
+  gap: 0.2rem;
+  & i {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: dots-working 1.2s ease-in-out infinite;
+  }
+  & i:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  & i:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+@keyframes dots-working {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/*
+ * A dialog sits centered by its own margins over a dimmed page. The vendored component keeps
+ * the CLI's classes (a transform is the part a webview can drop), so these rules sit outside it.
+ */
+[data-slot="dialog-overlay"] {
+  background-color: oklch(0 0 0 / 60%);
+  backdrop-filter: blur(1px);
+}
+[data-slot="dialog-content"] {
+  inset: 0;
+  margin: auto;
+  translate: none;
+  height: fit-content;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
 /* Reduced motion: nothing animates for those who ask. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -293,4 +397,35 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* A vertical list of rows (the check results, the repositories found). */
+@utility check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* One row of such a list: a line of text and, below it, what to do. */
+@utility check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* The first line of a row: the name, then its state. */
+@utility check-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* A form block of the "find my projects" dialog. */
+@utility find-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }

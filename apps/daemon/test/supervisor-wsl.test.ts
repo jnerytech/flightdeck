@@ -47,7 +47,9 @@ describe("supervisor-wsl", () => {
       maxDelayMs: 80,
       onRestart: (_item, delay) => delays.push(delay),
     });
-    supervisor.start();
+    const starting = supervisor.start();
+    expect(starting).toBeInstanceOf(Promise);
+    await starting;
     stops.push(() => supervisor.stop());
     await poll(() => delays.length >= 5, 4000);
     expect(delays.slice(0, 5)).toEqual([10, 20, 40, 80, 80]);
@@ -62,7 +64,7 @@ describe("supervisor-wsl", () => {
       baseDelayMs: 10,
       onRestart: (_item, delay) => delays.push(delay),
     });
-    supervisor.start();
+    await supervisor.start();
     stops.push(() => supervisor.stop());
     const pids = supervisor.pids();
     expect(pids).toHaveLength(1);
@@ -85,7 +87,7 @@ describe("supervisor-wsl", () => {
       onRestart: (_item, delay) => delays.push(delay),
       onHealthy: (item) => healthy.push(item.distro),
     });
-    supervisor.start();
+    await supervisor.start();
     stops.push(() => supervisor.stop());
     await poll(() => healthy.length >= 2, 4000);
     expect(healthy.slice(0, 2)).toEqual(["Ubuntu", "Ubuntu"]);
@@ -102,7 +104,7 @@ describe("supervisor-wsl", () => {
       portAlive: async () => false,
       onRestart: (_item, delay) => delays.push(delay),
     });
-    supervisor.start();
+    await supervisor.start();
     stops.push(() => supervisor.stop());
     await poll(() => delays.length >= 3, 4000);
     expect(delays.slice(0, 3)).toEqual([10, 20, 20]);
@@ -116,7 +118,7 @@ describe("supervisor-wsl", () => {
       file,
       JSON.stringify({ port: 0, token: "t".repeat(32), dataDir: join(dir, "data"), wsl: [ITEM] }),
     );
-    expect(loadConfig(file).wsl).toEqual([ITEM]);
+    expect((await loadConfig(file)).wsl).toEqual([ITEM]);
     const daemon = await startDaemon(
       { command: "start", config: file, runtime: "fake" },
       {},
@@ -137,15 +139,15 @@ describe("supervisor-wsl", () => {
     expect(alive(childPid)).toBe(false);
   });
 
-  test("config sem wsl tem lista vazia; item inválido é recusado", () => {
+  test("config sem wsl tem lista vazia; item inválido é recusado", async () => {
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "t".repeat(32) }));
-    expect(loadConfig(file).wsl).toEqual([]);
+    expect((await loadConfig(file)).wsl).toEqual([]);
     writeFileSync(
       file,
       JSON.stringify({ token: "t".repeat(32), wsl: [{ distro: "", command: "x", port: 1 }] }),
     );
-    expect(() => loadConfig(file)).toThrow();
+    await expect(loadConfig(file)).rejects.toThrow();
   });
 
   test("tcpAlive detecta porta escutando em 127.0.0.1", async () => {

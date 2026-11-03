@@ -34,6 +34,7 @@ are written in Portuguese.
 - [Approvals and always allow](#approvals-and-always-allow)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
+  - [Finding projects](#finding-projects)
   - [Card lifecycle](#card-lifecycle)
   - [PR providers](#pr-providers)
   - [Parallel run limit](#parallel-run-limit)
@@ -272,6 +273,45 @@ Keychain, Secret Service), not in plain text. Then use **+** next to the host to
 session: a folder inside `allowedRoots`, a name, a permission mode and a first prompt. Tool
 requests show up as inline cards with **Approve** and **Deny**. The app reconnects by itself
 (from 1 s to 30 s) and resumes each session from the last event it saw.
+
+#### The first host
+
+With no host yet, the app shows four steps instead of the usual screens: install and start the
+daemon (`flightdeckd setup`), copy the pairing link it prints, paste it and press **Test and
+add**, and then the app opens the host's own page. There you press **Check** in **Check this
+host** and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
+then fills the Board without typing a path.
+
+#### Checking a host
+
+**Check this host** (on the host's page, online hosts with a daemon that announces `doctor.run`)
+asks the daemon to check itself: configuration, allowed folders, service, daemon, Claude Code,
+hooks, Tailscale and the daemon's version against the app's. Every item is **ok**, **warning** or
+**failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
+The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
+with `flightdeckd doctor`.
+### Sessions without permission prompts
+
+By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
+To allow it, open the host's page and use **Sessions without permission prompts → Allow sessions
+without prompts**; the app asks you to confirm and names the host. The choice is saved in the
+host's config (`allowBypassPermissions`) and applies at once. With it on:
+
+- **New session** offers "Bypass permissions: no prompts" in the permission mode list. Picking it
+  asks again every time you press Create session, naming the host and the folder.
+- The mode list in the message box of an open session offers every mode, including Bypass
+  permissions and modes looser than the one the session started with. Switching to Bypass asks
+  each time, naming the host and the session.
+- Sessions started after the switch is on can be switched to Bypass; one that was already running
+  keeps what it started with (the Claude Agent SDK needs to be told at start).
+
+With it off (the default) the daemon refuses to start a session in Bypass, and an open session
+can never be made more permissive than the mode it started with. A persona's permission mode
+still counts when it is stricter. Turning the switch off asks nothing.
+
+A session in Bypass permissions asks for nothing: Claude Code skips the permission prompt for every
+tool, including the ones that otherwise always ask (such as discarding a card through the
+flightdeck MCP server). That is the choice you make when you pick that mode.
 
 ## Service
 
@@ -609,6 +649,23 @@ records:
 When a card starts, the daemon runs `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` and appends `.flightdeck/worktrees/` to the repository's `.git/info/exclude`
 (`.gitignore` is not touched). The session's prompt is the card's description plus the template.
+
+### Finding projects
+
+**Find my projects** (on the **Projects** screen, for hosts that announce `projects.scan` and
+`projects.clone`) has two parts:
+
+- **Scan allowed folders** looks for git repositories under the allowed folders, two levels deep
+  by default, up to 200 repositories. It skips hidden folders, `node_modules`, links and the inside
+  of a repository it already found, and never opens more than 2000 folders. Repositories that are
+  already projects are left out. Tick the ones you want and press **Add selected**.
+- **Clone from an address** runs `git clone` into a folder inside the allowed folders and
+  registers the result as a project. Only `https://`, `ssh://` and `user@host:path` addresses are
+  accepted; an address that starts with a dash, has spaces, points to a local path or uses
+  `file://` or a transport helper is refused, and so is a folder name that is not a plain name or
+  a folder that already exists. git runs with password prompts off and stops after five minutes,
+  so a private repository needs an SSH key or a credential helper already set up on the host.
+  Every refusal says why.
 
 ### Card lifecycle
 
@@ -956,7 +1013,17 @@ config's token. That lets a Claude session create cards and trigger workflows. T
 
 - `list_projects` and `list_workflows`;
 - `create_card` and `start_card` (with `workflow` and `inputs`);
-- `get_card` and `get_run`.
+- `get_card` and `get_run`;
+- `move_card` (to `backlog`, `in_progress`, `waiting`, `review` or `done`, by the same rules as
+  dragging a card in the app), `update_card` (title, description), `comment_card` (appends a
+  dated note to the description) and `finish_card` (`done` completes the card, `discard` throws
+  it away with its worktree and branch).
+
+A session manages only the cards of **its own project**, and its own card when it names none (the
+session runs in a card's worktree); another project's card is refused with the reason. The board
+in the app updates live. `finish_card` with `discard` is irreversible, so it always asks for your
+approval in the session: the automatic approval never takes it, and no "always allow" is offered
+for it.
 
 There is no tool to approve permissions or to answer gates: that stays with you, in the app. To
 register it in Claude Code:
@@ -2233,7 +2300,7 @@ blue, needs you in amber, idle in gray, ended faded, error in red).
   in the palette, without restarting. Dates and times are always shown in local time. The
   vocabulary is in [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Permission modes** are shown with a name and a one-line explanation, never with the technical
-  value; "No questions" warns in red.
+  value; "Bypass permissions" warns in red and is offered only on a host that allows it.
 
 ### Demo mode, screenshots and end-to-end tests
 

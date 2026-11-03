@@ -46,7 +46,7 @@ const ALLOWED = ["Flightdeck", "Ctrl K", "flightdeck://…"];
 
 async function online(language: string) {
   const d = makeDaemon(cleanups);
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
+  const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
   await poll(() => d.manager.get(sessionId).status === "idle");
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
@@ -112,24 +112,11 @@ describe("textos", () => {
       "Planejar: só lê e propõe um plano",
       "Automático: um classificador decide o que segue",
       "Só o permitido: nega o que as regras não liberam",
-      "Sem perguntas: executa tudo, sem pedir aprovação",
     ]);
     const text = main().textContent ?? "";
     for (const technical of ["bypassPermissions", "acceptEdits", "dontAsk"]) {
       expect(text).not.toContain(technical);
     }
-    // The risky one warns, in red.
-    expect(screen.queryByRole("alert")).toBeNull();
-    await act(async () => {
-      fireEvent.change(select, { target: { value: "bypassPermissions" } });
-    });
-    const warning = screen.queryByRole("alert");
-    expect(warning?.textContent).toContain("Sem perguntas");
-    expect(warning?.className ?? "").toContain("text-status-error");
-    await act(async () => {
-      fireEvent.change(select, { target: { value: "plan" } });
-    });
-    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("em inglês, a sessão nova, a conversa e o leitor falam inglês e não mostram termos internos", async () => {
@@ -211,14 +198,7 @@ describe("textos", () => {
     });
     await act(() => Bun.sleep(300));
     const host = main().textContent ?? "";
-    for (const text of [
-      "Information",
-      "Claude Code hooks",
-      "Host name",
-      "Save name",
-      "Reconnect",
-      "Remove host",
-    ]) {
+    for (const text of ["Information", "Claude Code hooks", "Rename", "Reconnect", "Remove host"]) {
       expect(host).toContain(text);
     }
     expect(host).not.toMatch(/Informações|Reconectar|Remover host|Nome do host/);

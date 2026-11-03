@@ -84,6 +84,7 @@ import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
+import { type HostNameError, hostNameError } from "./host-name.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
@@ -279,6 +280,7 @@ export type HostCommandType = Extract<
   | `terminal.${string}`
   | `runenv.${string}`
   | "roots.add"
+  | "host.bypass"
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
@@ -334,6 +336,9 @@ export type HostCommandType = Extract<
   | "files.sessions"
   | "fs.dirs"
   | "fs.files"
+  | "doctor.run"
+  | "projects.scan"
+  | "projects.clone"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
@@ -906,9 +911,13 @@ export class AppStore {
     this.persistHosts();
   }
 
-  renameHost(hostId: string, name: string): void {
-    this.updateHost(hostId, (h) => ({ ...h, name }));
+  /** Saves the app-side display name (trimmed); the error says why a name is refused. */
+  renameHost(hostId: string, name: string): HostNameError | null {
+    const error = hostNameError(name, this.state.hosts, hostId);
+    if (error) return error;
+    this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
+    return null;
   }
 
   /** Drops the connection and opens a new one right away. */
@@ -1340,8 +1349,14 @@ export class AppStore {
             }
             if (s.meta) putMeta(key, s.meta);
           }
-          const lists = { managed: managed?.sessions ?? [], history: history?.sessions ?? [] };
-          const standardNames = standard?.names ?? [];
+          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+          // the one the state holds stays; an empty answer is the only way a list empties.
+          const before = this.state.hub[host.id];
+          const lists = {
+            managed: managed ? managed.sessions : (before?.managed ?? []),
+            history: history ? history.sessions : (before?.history ?? []),
+          };
+          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
           const patch: Partial<AppState> = {};
           if (!sameJson(this.state.hub[host.id], lists)) {
             patch.hub = { ...this.state.hub, [host.id]: lists };

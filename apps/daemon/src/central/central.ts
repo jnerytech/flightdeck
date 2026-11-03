@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { type SnapshotInput, snapshotForHook } from "../checkpoints/snapshots.ts";
@@ -62,6 +62,7 @@ export class Central {
   readonly meta: SessionMetaStore;
   private readonly keys: ProjectKeys;
   private server: Receptor | null = null;
+  private receptorFile: Promise<void> = Promise.resolve();
   private token: string | undefined;
 
   constructor(private readonly opts: CentralOptions) {
@@ -93,38 +94,44 @@ export class Central {
     return this.keys.known(cwd);
   }
 
+  /** Settles once the receptor file is published; the daemon awaits it before it serves. */
+  ready(): Promise<void> {
+    return this.receptorFile;
+  }
+
   receptorUrl(): string | null {
     return this.server?.url ?? null;
   }
 
-  hooksStatus(): HooksStatusResult {
+  async hooksStatus(): Promise<HooksStatusResult> {
     const settingsPath = this.opts.settingsPath();
     return {
-      status: hooksStatus(settingsPath, this.target()),
+      status: await hooksStatus(settingsPath, this.target()),
       settingsPath,
       receptorUrl: this.receptorUrl(),
     };
   }
 
   /** Generates the token once, starts the receptor and writes the hooks with its real port. */
-  hooksInstall(confirm: boolean): HooksStatusResult {
+  async hooksInstall(confirm: boolean): Promise<HooksStatusResult> {
     this.confirm(confirm);
     if (!this.token) {
       const token = generateToken();
-      updateConfigFile(this.opts.configFile, (raw) => ({
+      await updateConfigFile(this.opts.configFile, (raw) => ({
         ...raw,
         hooks: { ...(raw.hooks as object), token },
       }));
       this.token = token;
     }
     if (!this.server) this.listen();
-    installHooks(this.opts.settingsPath(), this.target());
+    await this.receptorFile;
+    await installHooks(this.opts.settingsPath(), this.target());
     return this.hooksStatus();
   }
 
-  hooksUninstall(confirm: boolean): HooksStatusResult {
+  async hooksUninstall(confirm: boolean): Promise<HooksStatusResult> {
     this.confirm(confirm);
-    uninstallHooks(this.opts.settingsPath());
+    await uninstallHooks(this.opts.settingsPath());
     return this.hooksStatus();
   }
 
@@ -133,7 +140,8 @@ export class Central {
     this.external.stop();
     if (this.server) {
       await this.server.stop();
-      rmSync(join(this.opts.dataDir, RECEPTOR_FILE), { force: true });
+      await this.receptorFile.catch(() => {});
+      await rm(join(this.opts.dataDir, RECEPTOR_FILE), { force: true });
       this.server = null;
     }
   }
@@ -157,6 +165,12 @@ export class Central {
   }
 
   /** Starts the receptor and publishes its URL for `flightdeckd claude`. */
+  /** Writes the file `claude` reads to find the receptor; settled by the time `hooksInstall` returns. */
+  private async publishReceptor(url: string): Promise<void> {
+    await mkdir(this.opts.dataDir, { recursive: true });
+    await writeFile(join(this.opts.dataDir, RECEPTOR_FILE), JSON.stringify({ url }));
+  }
+
   private listen(): void {
     const server = startReceptor({
       port: this.opts.hooks.port,
@@ -171,7 +185,8 @@ export class Central {
       },
     });
     this.server = server;
-    mkdirSync(this.opts.dataDir, { recursive: true });
-    writeFileSync(join(this.opts.dataDir, RECEPTOR_FILE), JSON.stringify({ url: server.url }));
+    this.receptorFile = this.publishReceptor(server.url);
+    // A failure surfaces where the file is awaited (hooksInstall); here it must not go unhandled.
+    this.receptorFile.catch(() => {});
   }
 }

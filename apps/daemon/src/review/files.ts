@@ -214,7 +214,7 @@ export class ReviewFiles {
    */
   private async writable(target: string, path: string): Promise<string> {
     const { root } = await this.opts.changes.resolve(target);
-    const realRoot = resolveAllowedCwd(root, this.opts.allowedRoots);
+    const realRoot = await resolveAllowedCwd(root, this.opts.allowedRoots);
     const full = fileInRoot(root, path);
     const real = await realpath(full).catch(() => null);
     if (real && !isInside(realRoot, real)) {

@@ -74,14 +74,14 @@ async function setup(options: { snippets?: boolean; cwd?: "project" | "outside" 
   };
   mkdirSync(join(project, ".flightdeck"), { recursive: true });
   writeFileSync(join(project, ".flightdeck", "snippets.yaml"), SPEC_FILE);
-  snippets.save({
+  await snippets.save({
     scope: "host",
     name: "status",
     type: "command",
     run: "git status",
     tags: ["git"],
   });
-  snippets.save({
+  await snippets.save({
     scope: "project",
     projectPath: project,
     name: "build",
@@ -182,11 +182,11 @@ describe("snippets-mcp", () => {
     await call("get_snippet", { name: "testes-rapidos" });
     await call("get_snippet", { name: "status" });
     expect(
-      snippets
-        .list({ projectPath: project })
-        .snippets.every((s) => s.uses === 0 && s.lastUsedAt === null),
+      (await snippets.list({ projectPath: project })).snippets.every(
+        (s) => s.uses === 0 && s.lastUsedAt === null,
+      ),
     ).toBe(true);
-    expect(snippets.list({ projectPath: project }).file?.trusted).toBe(false);
+    expect((await snippets.list({ projectPath: project })).file?.trusted).toBe(false);
   });
 
   test("sem os snippets no daemon, a ferramenta diz o erro", async () => {

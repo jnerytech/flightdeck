@@ -6,7 +6,9 @@ import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
 
 export interface OpenSessionPersonasOptions {
   /** Resolves a persona (the project's, the host's, the pack's or one from the app). */
-  personas?: { resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona };
+  personas?: {
+    resolve(ref: PersonaRef, ctx: PersonaContext): Promise<ResolvedPersona> | ResolvedPersona;
+  };
   manager: Pick<SessionManager, "get" | "send" | "appliedPersona" | "markPersona">;
   /** Terminal sessions and their channels (phase 5). */
   central?: Pick<Central, "external" | "receptor">;
@@ -66,7 +68,10 @@ export class OpenSessionPersonas {
       );
     }
     const language = request.persona.language ?? "pt-BR";
-    const resolved = this.opts.personas.resolve(request.persona, { projectPath: cwd, language });
+    const resolved = await this.opts.personas.resolve(request.persona, {
+      projectPath: cwd,
+      language,
+    });
     const badge: SessionPersona = {
       id: resolved.persona.id,
       name: resolved.persona.name,

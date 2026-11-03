@@ -5,7 +5,7 @@
  * `--nice` lowers the command's priority. The logic is in `lib/slot.ts`; this file is the real
  * files, clock and processes.
  */
-import { linkSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { linkSync, readdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { constants, setPriority, tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { run, type SlotEnv } from "./lib/slot.ts";
@@ -38,6 +38,10 @@ const env: SlotEnv = {
       }
     },
     remove: (path) => rmSync(path, { force: true }),
+    list: (prefix) =>
+      readdirSync(tmpdir())
+        .map((name) => join(tmpdir(), name))
+        .filter((path) => path.startsWith(prefix)),
   },
   path: LOCK,
   pid: process.pid,
@@ -53,6 +57,13 @@ const env: SlotEnv = {
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   log: (line) => console.error(line),
+  terminate: (pid) => {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      // Already gone.
+    }
+  },
   spawn: (command, nice) => {
     const child = Bun.spawn(command, { stdio: ["inherit", "inherit", "inherit"] });
     if (nice) {

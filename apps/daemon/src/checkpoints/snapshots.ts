@@ -5,7 +5,7 @@
  * only `refs/flightdeck/snapshots/<session>/<n>` points to.
  */
 import type { Database } from "bun:sqlite";
-import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
@@ -93,6 +93,12 @@ interface Row {
   created_at: string;
   repo: string;
 }
+
+const exists = (path: string) =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
 
 const toRow = (r: Row): SnapshotRow => ({
   claudeSessionId: r.claude_session_id,
@@ -273,7 +279,7 @@ export class Snapshots {
       ),
     );
     for (const row of gone) {
-      if (!kept.has(row.ref) && existsSync(row.repo)) {
+      if (!kept.has(row.ref) && (await exists(row.repo))) {
         await git(row.repo, ["update-ref", "-d", row.ref]);
       }
     }
@@ -295,14 +301,14 @@ export class Snapshots {
     let total = 0;
     for (const entry of status.split("\0")) {
       const path = join(repo, entry.slice(3));
-      if (entry.length > 3 && existsSync(path)) total += statSync(path).size;
+      if (entry.length > 3) total += (await stat(path).catch(() => null))?.size ?? 0;
     }
     return total;
   }
 
   /** HEAD plus every change, in a temporary index the user never sees. */
   async currentTree(repo: string): Promise<string> {
-    const dir = mkdtempSync(join(tmpdir(), "fd-snapshot-"));
+    const dir = await mkdtemp(join(tmpdir(), "fd-snapshot-"));
     const env = { GIT_INDEX_FILE: join(dir, "index") };
     try {
       const head = await git(repo, ["rev-parse", "--verify", "-q", "HEAD"]);
@@ -310,7 +316,7 @@ export class Snapshots {
       await must(repo, ["add", "-A"], env);
       return await must(repo, ["write-tree"], env);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      await rm(dir, { recursive: true, force: true });
     }
   }
 }

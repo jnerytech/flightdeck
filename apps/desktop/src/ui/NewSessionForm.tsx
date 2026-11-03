@@ -9,6 +9,7 @@ import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 
 const MODES: PermissionMode[] = [
@@ -19,6 +20,8 @@ const MODES: PermissionMode[] = [
   "dontAsk",
   "bypassPermissions",
 ];
+
+const MODELS = ["opus", "sonnet", "haiku"];
 
 export function joinPath(root: string, sub: string): string {
   const sep = root.includes("\\") ? "\\" : "/";
@@ -70,15 +73,26 @@ export function NewSessionForm(props: {
   useEffect(() => onFolder?.(cwd), [onFolder, cwd]);
   const [name, setName] = useState("");
   const [mode, setMode] = useState<PermissionMode>("default");
+  const [model, setModel] = useState("");
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
-  const submit = () => {
-    if (!root || !prompt.trim() || creating) return;
+  /** Bypass asks again each time the session is created. */
+  const [asking, setAsking] = useState(false);
+  const allowBypass = props.host.hostInfo?.allowBypassPermissions === true;
+  const modes = MODES.filter((m) => allowBypass || m !== "bypassPermissions");
+  const submit = (confirmed = false) => {
+    if (!root || creating) return;
+    if (mode === "bypassPermissions" && !confirmed) {
+      setAsking(true);
+      return;
+    }
+    setAsking(false);
     const done = props.onCreate({
       cwd,
-      prompt: prompt.trim(),
+      ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
       permissionMode: mode,
+      ...(model ? { model } : {}),
       ...(name.trim() ? { name: name.trim() } : {}),
     });
     if (typeof (done as PromiseLike<unknown> | undefined)?.then === "function") {
@@ -88,7 +102,7 @@ export function NewSessionForm(props: {
     }
   };
   return (
-    <Form onSubmit={submit} className="mx-auto p-6">
+    <Form onSubmit={() => submit()} className="mx-auto p-6">
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
       <Field label={t("newSession.folder")}>
         {(control) => (
@@ -147,7 +161,7 @@ export function NewSessionForm(props: {
               value={mode}
               onChange={(e) => setMode(e.target.value as PermissionMode)}
             >
-              {MODES.map((m) => (
+              {modes.map((m) => (
                 <option key={m} value={m}>
                   {t("modes.option", {
                     name: t(`modes.${m}.name` as Key),
@@ -164,22 +178,44 @@ export function NewSessionForm(props: {
           </>
         )}
       </Field>
+      <Field label={t("session.modelLabel")}>
+        {(control) => (
+          <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
+            <option value="">{t("session.modelDefault")}</option>
+            {MODELS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </NativeSelect>
+        )}
+      </Field>
       <Field label={t("newSession.prompt")}>
         {(control) => (
           <Textarea
             {...control}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            placeholder={t("newSession.optional")}
             className="min-h-28"
           />
         )}
       </Field>
       {props.extra}
+      {asking && (
+        <ConfirmDialog
+          destructive
+          message={t("newSession.bypassMessage", { host: props.host.name, folder: cwd })}
+          confirmLabel={t("newSession.bypassConfirm")}
+          onCancel={() => setAsking(false)}
+          onConfirm={() => submit(true)}
+        />
+      )}
       <FormActions
         submit={t("newSession.create")}
         busy={creating}
-        disabled={!root || !prompt.trim()}
-        disabledReason={t(root ? "newSession.needPrompt" : "newSession.needFolder")}
+        disabled={!root}
+        disabledReason={t("newSession.needFolder")}
       />
     </Form>
   );

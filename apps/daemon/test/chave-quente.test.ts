@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Central } from "../src/central/central.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { ProjectKeys } from "../src/central/project-key.ts";
 import { startReceptor } from "../src/central/receptor.ts";
+import { RECEPTOR_FILE } from "../src/central/wrapper.ts";
 import { Names } from "../src/names/names.ts";
 import { type TrackOptions, trackNames, warmKnown } from "../src/names/track.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -32,7 +33,7 @@ function rig(over: Partial<TrackOptions> = {}) {
     ...over,
   };
   const start = () => cleanups.push(trackNames(options));
-  const create = () => ctx.manager.create({ cwd: ctx.repo, prompt: "oi" }).sessionId;
+  const create = async () => (await ctx.manager.create({ cwd: ctx.repo, prompt: "oi" })).sessionId;
   return { ...ctx, external, names, options, start, create };
 }
 
@@ -49,7 +50,7 @@ describe("chave-quente: the project key is looked up before the places that read
       },
     });
     start();
-    const id = create();
+    const id = await create();
     await Bun.sleep(20);
     // Asked again by each summary event of the session; the keys answer them from one lookup.
     expect([...new Set(asked)]).toEqual([manager.get(id).cwd]);
@@ -58,18 +59,18 @@ describe("chave-quente: the project key is looked up before the places that read
     expect(await poll(() => display(names, id))).toBe("repo · geral · 1");
   });
 
-  test("a session whose folder is already known is named on the spot, so the code that reads its name right after creating it finds it", () => {
+  test("a session whose folder is already known is named on the spot, so the code that reads its name right after creating it finds it", async () => {
     const { names, start, create } = rig({ warm: () => undefined });
     start();
-    expect(display(names, create())).toBe("repo · geral · 1");
+    expect(display(names, await create())).toBe("repo · geral · 1");
   });
 
   test("sessions created while the lookup is pending are named in the order they were created", async () => {
     const gate = Promise.withResolvers<void>();
     const { names, start, create } = rig({ warm: () => gate.promise });
     start();
-    const first = create();
-    const second = create();
+    const first = await create();
+    const second = await create();
     await Bun.sleep(20);
     expect([display(names, first), display(names, second)]).toEqual([null, null]);
     gate.resolve();
@@ -86,7 +87,7 @@ describe("chave-quente: the project key is looked up before the places that read
       },
     });
     start();
-    const id = create();
+    const id = await create();
     expect(await poll(() => display(names, id))).toBe("repo · geral · 1");
     expect(asked).toBe(1);
   });
@@ -95,7 +96,7 @@ describe("chave-quente: the project key is looked up before the places that read
     const gate = Promise.withResolvers<void>();
     const asked: string[] = [];
     const { manager, external, create, options } = rig();
-    const id = create();
+    const id = await create();
     external.apply("SessionStart", { session_id: "t1", cwd: "/work/loja" });
     external.apply("SessionStart", { session_id: "t2" });
     const warm = async (cwd: string) => {
@@ -143,6 +144,28 @@ describe("chave-quente: the project key is looked up before the places that read
     expect((await held).status).toBe(200);
     expect(asked).toEqual(["/w/one"]);
     expect(external.get("s1")).not.toBeNull();
+  });
+
+  test("the receptor file is published by the time the hub is ready, so a launch right after the start finds it", async () => {
+    const dir = tempDir();
+    const configFile = join(dir, "config.json");
+    writeFileSync(configFile, "{}");
+    const { manager, store } = newManager();
+    const central = new Central({
+      db: store.db,
+      keys: new ProjectKeys("h", async () => ({ code: 1, stdout: "" })),
+      manager,
+      hooks: { port: 0, token: HOOKS, permissionTimeoutS: 600, staleAfterS: 900 },
+      dataDir: join(dir, "data"),
+      hostName: "h",
+      configFile,
+      selfCommand: ["flightdeckd"],
+      settingsPath: () => join(dir, "settings.json"),
+    });
+    cleanups.push(() => central.stop());
+    await central.ready();
+    const published = JSON.parse(readFileSync(join(dir, "data", RECEPTOR_FILE), "utf8"));
+    expect(published).toEqual({ url: central.receptorUrl() });
   });
 
   test("the hub shares the host's keys: a hook is stored with the key looked up before it", async () => {

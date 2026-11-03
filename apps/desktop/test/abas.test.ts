@@ -61,7 +61,7 @@ describe("abas", () => {
     expect(seen.length).toBeGreaterThanOrEqual(3);
   });
 
-  test("close activates the neighbour; the last tab is replaced by a new home", () => {
+  test("close activates the neighbour; the last tab leaves the area with none", () => {
     const { tabs, ids } = setup();
     tabs.open(hub);
     tabs.open(costs);
@@ -70,8 +70,8 @@ describe("abas", () => {
     tabs.close("t1");
     expect(ids()).toEqual(["t2"]);
     tabs.close("t2");
-    expect(ids()).toEqual(["t4"]);
-    expect(tabs.router.current).toEqual({ name: "home" });
+    expect(ids()).toEqual([]);
+    expect(tabs.router.current).toEqual({ name: "start" });
   });
 
   test("closing a tab that is not active keeps the active one", () => {

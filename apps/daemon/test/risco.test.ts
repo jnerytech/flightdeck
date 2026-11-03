@@ -205,7 +205,7 @@ describe("risco", () => {
 
   test("sessão gerenciada: permission.requested e o pedido aberto levam o risco", async () => {
     const ctx = newManager();
-    const { sessionId } = ctx.manager.create({ cwd: ctx.project, prompt: "[bash]" });
+    const { sessionId } = await ctx.manager.create({ cwd: ctx.project, prompt: "[bash]" });
     const events = record(ctx.manager, sessionId);
     cleanups.push(() => events.unsubscribe());
     const requested = await poll(() => events.find("permission.requested")[0], 3000);

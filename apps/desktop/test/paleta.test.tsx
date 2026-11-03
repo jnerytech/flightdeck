@@ -83,7 +83,11 @@ async function setup() {
   git(repo, "commit", "-q", "-m", "inicial");
   const project = await d.board.addProject({ path: repo, promptTemplate: "" });
   d.board.createCard(project.id, { title: "Ajuste", description: "faça" });
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   writeTranscript(d.historyRoot, "-hist", "hist-1", [
     userLine({
@@ -93,14 +97,14 @@ async function setup() {
       ts: "2026-09-01T10:00:00.000Z",
     }),
   ]);
-  d.history.scan();
+  await d.history.scan();
   // A session opened in the terminal (hooks), live.
   const appA = join(d.root, "app-a");
   mkdirSync(appA);
-  d.central.hooksInstall(true);
+  await d.central.hooksInstall(true);
   await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+    headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
     body: JSON.stringify({ session_id: "ext-1", hook_event_name: "SessionStart", cwd: appA }),
   });
 

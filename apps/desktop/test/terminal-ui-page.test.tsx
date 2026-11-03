@@ -109,7 +109,7 @@ describe("terminal-ui: the terminal screen", () => {
   test("losing the host shows it detached, with Reabrir", async () => {
     const { server } = await setup();
     await settle(() => state("Ao vivo"));
-    server.stop();
+    void server.stop();
     await settle(() => state("Desanexado"));
     expect(state("Desanexado")).not.toBeNull();
     expect(button("Reabrir")).not.toBeNull();

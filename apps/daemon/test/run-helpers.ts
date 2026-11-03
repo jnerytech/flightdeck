@@ -19,7 +19,7 @@ export function fakeRunHost() {
   const refused = new Map<string, string>();
   const ends = new Map<string, (code: number) => void>();
   const host: RunHost = {
-    spawn: (request) => {
+    spawn: async (request) => {
       const why = refused.get(request.argv[0] ?? "");
       if (why !== undefined) throw new Error(why);
       const terminalId = `term-${spawned.length + 1}`;

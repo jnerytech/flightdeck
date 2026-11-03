@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EventEnvelope, SessionEvent } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
+import { type PersonaReader, preparePersonas } from "../src/personas/prepare.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { SessionManager, type SessionManagerOptions } from "../src/sessions/session-manager.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -18,7 +19,25 @@ export function workspace(): { root: string; project: string } {
   return { root, project };
 }
 
-export function newManager(overrides: Partial<SessionManagerOptions> = {}) {
+/**
+ * Starts a session the way the server does: the personas are read first, at the edge, and the
+ * manager takes them as values.
+ */
+export function sessionStarter(manager: SessionManager, personas?: PersonaReader) {
+  return async (
+    payload: Parameters<SessionManager["create"]>[0],
+    extra: { unattended?: boolean } = {},
+  ) =>
+    manager.create(payload, {
+      ...extra,
+      prepared: await preparePersonas(personas, payload.persona, payload.cwd),
+    });
+}
+
+export function newManager(
+  overrides: Partial<SessionManagerOptions> & { personas?: PersonaReader } = {},
+) {
+  const { personas, ...managerOverrides } = overrides;
   const { root, project } = workspace();
   const store = overrides.store ?? new EventStore(":memory:");
   const runtime = (overrides.runtime as FakeRuntime | undefined) ?? new FakeRuntime({ delayMs: 1 });
@@ -29,9 +48,9 @@ export function newManager(overrides: Partial<SessionManagerOptions> = {}) {
     defaultPermissionMode: "default",
     allowApiKey: false,
     baseEnv: {},
-    ...overrides,
+    ...managerOverrides,
   });
-  return { manager, store, runtime, root, project };
+  return { manager, store, runtime, root, project, start: sessionStarter(manager, personas) };
 }
 
 export async function waitFor<T>(

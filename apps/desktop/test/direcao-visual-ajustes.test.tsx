@@ -34,7 +34,7 @@ async function setup(
   options: { language?: string; deadHost?: boolean; projects?: number; waiting?: boolean } = {},
 ) {
   const d = makeDaemon(cleanups);
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
+  const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
   await poll(() => d.manager.get(sessionId).status === "idle");
   if (options.waiting) {
     d.manager.send(sessionId, "[bash]");

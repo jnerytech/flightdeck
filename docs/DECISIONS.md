@@ -2948,3 +2948,88 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   against a local file in WAL mode, are short and indexed, and are measured by `history-perf`. A
   worker would add a message hop to every query and make transactions across calls awkward, so the
   ratchet does not count them and they are an accepted exception.
+- **Tauri: every IO command is async and runs on the blocking pool.** The key and folder dialogs
+  wait for the person inside `spawn_blocking`, the picked key file is read there, and
+  `vault_remove_file` (which does delete a file, so item 1 of the blocking-call audit was wrong to
+  call it state-only) takes the path under the lock and deletes it there. No async command does
+  blocking work inline any more (`ASYNC_INLINE_ALLOWED` is empty). Four commands stay plain `fn`
+  because they only touch the tray or the window, which Tauri wants on the main thread, and do no
+  IO: `tray_set_menu`, `tray_set_status`, `focus_main` and `set_close_to_tray`
+  (`SYNC_COMMANDS_ALLOWED` pins the list). Rust was reviewed by reading: cargo is not on the phase
+  host, so CI's `cargo check` is the compiler check.
+- **The ratchet counts uses, not just calls, and has a command.** `syncCallCount` counts
+  `fooSync(`, `realpathSync.native(` and bare references such as `{ exists: existsSync }`, and
+  skips comments and import statements. After a merge changes the counts, run
+  `bun run no-sync:baseline` (it rewrites `SYNC_BASELINE` from the sources) and read the diff.
+- **The session manager reads no persona file.** Reading a project's personas is asynchronous IO,
+  so it moved out to the edges: whoever starts a session (`session.create`, a card, a workflow
+  step, a team coordinator, a history resume, a fork) calls `preparePersonas` first and hands the
+  resolved persona and the subagents to `SessionManager.create` as values. The session keeps the
+  subagents it opened with (the `sessions.agents` column), so `send` and `resume` reuse them
+  and need no caller to resolve anything. The cost: a change to a persona file, or to the project's
+  subagents switch, applies to new sessions only; a session already open keeps what it opened with.
+- **The path checks are asynchronous, and the baseline is empty.** `resolveAllowedCwd`, `listDirs`,
+  `listFiles`, `isSystemFolder` and `resolveSshPath` answer with promises, and so do the calls that
+  depend on them: `SessionManager.create` and `createResumed`, `TerminalManager.open`, the persona
+  and snippet stores' project lookup, and `RunHost.spawn`. A refusal is now a rejection, so a
+  caller that used `try`/`catch` around a call awaits inside it. `RunManager.start` still answers
+  once the setup is on its way or every process has started, as before; it now waits for that
+  point instead of getting it for free from synchronous spawns. `SYNC_BASELINE` has no file left:
+  the only blocking calls in runtime code are the `bun:sqlite` ones and the four Tauri commands
+  that touch the tray or the window.
+## Fix: bypass permissions, opt-in per host
+
+- `allowBypassPermissions` (config, default `false`) is a per-host switch. The daemon refuses
+  `session.create` in `bypassPermissions` with reason `bypass_not_allowed` while it is off; the
+  check is on the mode asked for (a persona that would clamp it to a stricter one does not
+  rescue a bypass request). `host.bypass { allow, confirm }` sets it: turning on needs
+  `confirm: true` (`bypass_confirm`), turning off needs none. It is limited to the vault
+  transports (loopback, Tailscale) like `roots.add`, writes the config file and is read by
+  `host.info` (`allowBypassPermissions`; absent on an older daemon, where the app offers no bypass).
+- User decision (their machine): with the switch on, `session.setMode` accepts any mode,
+  `bypassPermissions` included, and the "never looser than the start mode" rule applies only
+  while it is off. `SettableMode` gained `bypassPermissions`; the daemon is what refuses it.
+- The Agent SDK only lets a running query switch to `bypassPermissions` if the query was started
+  with `allowDangerouslySkipPermissions: true` (typings of `Options`). The daemon sets it for runs
+  started while the switch is on; it allows the switch and bypasses nothing by itself. A run that
+  was started while the switch was off cannot switch until the session is resumed, and the manual
+  says so. The switch is read at each run start, so a resumed session picks it up.
+- The app asks every time: on the host page (naming the host), at Create session in bypass
+  (host and folder) and in the composer (host and session). The composer offers all modes only
+  on a host that allows it; elsewhere it behaves as before. The mode's label changed from "No
+  questions" to "Bypass permissions" to match Claude Code's own name.
+## Fix: a session manages cards through the flightdeck MCP server
+
+- New MCP tools `move_card`, `update_card`, `comment_card` and `finish_card`, all through one
+  daemon command, `card.manage { as, cwd?, action, ... }`. The daemon finds the project of the
+  session from where it runs (a managed session's own folder, else the `cwd` the MCP server
+  sends) with `Board.projectForCwd`, and the session's own card is the one whose worktree holds
+  that folder: it is the default `cardId`. A card of another project is refused
+  (`card_other_project`), a session outside every project too (`card_scope_unknown`), and a
+  session in a project but not in a card needs the id (`card_id_needed`). The actions reuse the
+  board's own methods (`moveCard`, `updateCard`, `completeCard`, `discardCard`), so the rules and
+  the live `card.updated` are the same as in the app.
+- Cards have no comment thread, so `comment_card` appends a UTC-dated note to the description
+  (`**Note YYYY-MM-DD HH:MM:** text`), keeping the old text.
+- `finish_card` takes `done` or `discard` in one tool, as asked. The permission side keys on the
+  input: with `outcome: "discard"` the risk classifier says high ("never automatic"), and for the
+  tool in any form the broker offers no "always allow" suggestion and `checkUpdates` refuses a
+  rule for it, so the project's saved rules cannot approve it. (Every MCP tool already counts as
+  network access, which the automatic approval never takes.) What a user types into their own
+  Claude Code `settings.json` is theirs to decide and outside what the daemon can enforce.
+- In a session in `bypassPermissions` the SDK skips `canUseTool`, so `finish_card` with `discard`
+  runs there without a prompt. That is the explicit choice of the person who turned bypass on for
+  the host and picked that mode for the session; the manual says so next to the bypass switch.
+## Fixes after the real test of v0.32.0 (fix-uso-032)
+
+- The main window sets `dragDropEnabled: false` in `tauri.conf.json`. On Windows, Tauri's native
+  file drop (on by default) swallows the HTML5 `dragover` and `drop` events in WebView2, so Board
+  cards and tabs could not be dragged with the mouse. The app uses no file drop from Tauri
+  (`onDragDropEvent` is used nowhere), so nothing is lost. A test pins the setting.
+- A Board column under a dragged card gets the `drop-over` outline and tint.
+- The tab strip may be empty: closing the last tab leaves the area on a `start` screen with no
+  strip, and the empty window is kept in the snapshot. Opening a screen that already has a tab
+  focuses that tab (same route, whatever the order of its fields); Ctrl or middle click still
+  opens a new one; duplicates in an older snapshot fold into one.
+- `session.create` takes no first prompt: the session starts idle and the first message begins
+  its first turn. The New session form has a Model select (default, opus, sonnet, haiku).

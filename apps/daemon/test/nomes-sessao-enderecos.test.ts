@@ -58,14 +58,16 @@ describe("nomes-sessao: o apelido endereça a sessão", () => {
     expect(endpoints.sent.map((m) => m.id)).toEqual(["app-geral-2"]);
   });
 
-  test("notify_when_idle e read_session usam o mesmo endereço", () => {
+  test("notify_when_idle e read_session usam o mesmo endereço", async () => {
     const { messaging, endpoints } = host();
     endpoints.transcripts.set("s2", {
       summary: null,
       messages: [{ role: "user", text: "oi" }],
     });
     expect(messaging.inspect(ASKER, "app-geral-2").target.id).toBe("s2");
-    expect(messaging.read(ASKER, "app-geral-2").messages).toEqual([{ role: "user", text: "oi" }]);
+    expect((await messaging.read(ASKER, "app-geral-2")).messages).toEqual([
+      { role: "user", text: "oi" },
+    ]);
   });
 });
 

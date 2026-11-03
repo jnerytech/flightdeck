@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import {
   type McpServerStatus,
   type Options,
@@ -203,7 +203,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
    * one turn and a structured answer. Anything but a clear answer is a question for the user.
    */
   async judgePermission(opts: JudgeOptions): Promise<JudgeResult> {
-    mkdirSync(opts.cwd, { recursive: true });
+    await mkdir(opts.cwd, { recursive: true });
     const prompt = new AsyncQueue<SDKUserMessage>();
     prompt.push({
       type: "user",
@@ -258,6 +258,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     const options: Options = {
       cwd: opts.cwd,
       permissionMode: opts.permissionMode,
+      // Lets the open session switch to bypassPermissions later; it bypasses nothing by itself.
+      ...(opts.allowBypass ? { allowDangerouslySkipPermissions: true } : {}),
       includePartialMessages: true,
       // Phase 12: copies of the files before each change, for rewindFiles.
       enableFileCheckpointing: true,

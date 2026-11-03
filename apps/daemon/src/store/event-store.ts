@@ -1,10 +1,11 @@
 import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   EPHEMERAL_EVENTS,
   type EventEnvelope,
   type PermissionMode,
+  type PersonaAgent,
   SessionEvent,
   type SessionPersona,
   type SessionStatus,
@@ -36,6 +37,8 @@ export interface NewSession {
   model: string | null;
   /** The persona it opens in (phase 20). */
   persona?: PersonaSnapshot | null;
+  /** The subagents it opened with; later runs of the session reuse them. */
+  agents?: Record<string, PersonaAgent>;
 }
 
 interface SessionRow {
@@ -122,8 +125,13 @@ function toPermission(row: PermissionRow): PermissionRecord {
 export class EventStore {
   readonly db: Database;
 
+  /** Opens the database, making its folder first without blocking. */
+  static async open(path: string): Promise<EventStore> {
+    if (path !== ":memory:") await mkdir(dirname(path), { recursive: true });
+    return new EventStore(path);
+  }
+
   constructor(path: string) {
-    if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true, strict: true });
     this.db.exec("PRAGMA journal_mode = WAL;");
     // Under WAL, NORMAL syncs at checkpoints instead of at every commit: a crash of the app or the
@@ -176,6 +184,11 @@ export class EventStore {
         .query("UPDATE sessions SET persona = ? WHERE id = ?")
         .run(JSON.stringify(session.persona), session.id);
     }
+    if (session.agents && Object.keys(session.agents).length > 0) {
+      this.db
+        .query("UPDATE sessions SET agents = ? WHERE id = ?")
+        .run(JSON.stringify(session.agents), session.id);
+    }
     return this.requireSession(session.id);
   }
 
@@ -199,6 +212,14 @@ export class EventStore {
       persona: string | null;
     } | null;
     return row?.persona ? (JSON.parse(row.persona) as PersonaSnapshot) : null;
+  }
+
+  /** The subagents the session opened with; empty for one that had none. */
+  sessionAgents(id: string): Record<string, PersonaAgent> {
+    const row = this.db.query("SELECT agents FROM sessions WHERE id = ?").get(id) as {
+      agents: string | null;
+    } | null;
+    return row?.agents ? (JSON.parse(row.agents) as Record<string, PersonaAgent>) : {};
   }
 
   getSession(id: string): SessionSummary | null {

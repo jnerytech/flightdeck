@@ -1,24 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
-import { SYNC_BASELINE, syncCallCount } from "../lib/no-sync-ratchet.ts";
+import { resolve } from "node:path";
+import {
+  renderBaseline,
+  SYNC_BASELINE,
+  syncCallCount,
+  syncCounts,
+  withBaseline,
+} from "../lib/no-sync-ratchet.ts";
 
 const root = resolve(import.meta.dir, "../..");
-
-function sources(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-    entry.isDirectory()
-      ? sources(join(dir, entry.name))
-      : /\.tsx?$/.test(entry.name)
-        ? [join(dir, entry.name)]
-        : [],
-  );
-}
 
 describe("no-sync: runtime code does not block on IO", () => {
   test("counts fs, child_process and Bun blocking calls, and nothing else", () => {
     const source = [
-      'import { readFileSync } from "node:fs";',
+      "import {",
+      "  existsSync,",
+      "  readFileSync,",
+      '} from "node:fs";',
       "const a = readFileSync(path, 'utf8');",
       "const b = fs.statSync(path);",
       "const c = Bun.spawnSync(['git']);",
@@ -28,19 +26,47 @@ describe("no-sync: runtime code does not block on IO", () => {
       " * writeFileSync(path) in a doc block",
       "this.startPeersSync();",
       "const f = await readFile(path);",
+      "const g = realpathSync.native(path);",
+      "const h = { exists: existsSync, read: readFileSync };",
     ].join("\n");
-    expect(syncCallCount(source)).toBe(5);
+    // Calls, `.native(` calls and bare references count; the import lines do not.
+    expect(syncCallCount(source)).toBe(8);
     expect(syncCallCount("")).toBe(0);
   });
 
   test("the count per file equals the baseline, which only goes down", () => {
-    const counts: Record<string, number> = {};
-    for (const dir of ["apps/daemon/src", "apps/desktop/src"]) {
-      for (const file of sources(join(root, dir))) {
-        const count = syncCallCount(readFileSync(file, "utf8"));
-        if (count > 0) counts[relative(root, file).replaceAll("\\", "/")] = count;
-      }
-    }
-    expect(counts).toEqual(SYNC_BASELINE);
+    expect(syncCounts(root)).toEqual(SYNC_BASELINE);
+  });
+
+  test("the baseline is rendered sorted, one entry per line, and replaced in the module's text", () => {
+    const counts = { "apps/daemon/src/b.ts": 2, "apps/daemon/src/a.ts": 1 };
+    expect(renderBaseline(counts)).toBe(
+      '  "apps/daemon/src/a.ts": 1,\n  "apps/daemon/src/b.ts": 2,',
+    );
+    const source = [
+      "const before = 1;",
+      "export const SYNC_BASELINE: Record<string, number> = {",
+      '  "old.ts": 9,',
+      "};",
+      "const after = 2;",
+    ].join("\n");
+    expect(withBaseline(source, counts)).toBe(
+      [
+        "const before = 1;",
+        "export const SYNC_BASELINE: Record<string, number> = {",
+        '  "apps/daemon/src/a.ts": 1,',
+        '  "apps/daemon/src/b.ts": 2,',
+        "};",
+        "const after = 2;",
+      ].join("\n"),
+    );
+    // The formatter writes an empty object on one line; an empty baseline renders that way too.
+    expect(withBaseline(source, {})).toContain("= {};");
+    const empty =
+      "const a = 1;\nexport const SYNC_BASELINE: Record<string, number> = {};\nconst b = 2;";
+    expect(withBaseline(empty, counts)).toContain(
+      '= {\n  "apps/daemon/src/a.ts": 1,\n  "apps/daemon/src/b.ts": 2,\n};\nconst b = 2;',
+    );
+    expect(withBaseline(empty, {})).toBe(empty);
   });
 });

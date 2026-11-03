@@ -52,7 +52,7 @@ async function setup() {
     ["Sessão Acme", repos.acme],
     ["Sessão Beta", repos.beta],
   ] as const) {
-    const { sessionId } = d.manager.create({ cwd, prompt: "oi", name });
+    const { sessionId } = await d.manager.create({ cwd, prompt: "oi", name });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   const platform = memoryPlatform(false);
@@ -78,8 +78,8 @@ async function setup() {
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await act(async () => store.setClientSelection("acme"));
-  d.central.hooksInstall(true);
-  const token = loadConfig(d.configFile).hooks.token ?? "";
+  await d.central.hooksInstall(true);
+  const token = (await loadConfig(d.configFile)).hooks.token ?? "";
   const hook = (event: string, body: Record<string, unknown> = {}) =>
     fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
       method: "POST",

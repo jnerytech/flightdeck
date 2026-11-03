@@ -207,3 +207,29 @@ describe("desktop: notificações e status", () => {
     expect(statusTone("ended")).toBe("ended");
   });
 });
+
+describe("pergunta-respostas", () => {
+  test("the resolved event's answers reach the card's resolution", () => {
+    let s = applyEnvelope(
+      emptySession(),
+      env(1, {
+        type: "permission.requested",
+        requestId: "r1",
+        toolName: "AskUserQuestion",
+        input: {},
+      }),
+    );
+    s = applyEnvelope(
+      s,
+      env(2, {
+        type: "permission.resolved",
+        requestId: "r1",
+        decision: "allow",
+        answers: { q: "a" },
+      }),
+    );
+    expect(s.items.find((i) => i.kind === "permission")).toMatchObject({
+      resolution: { decision: "allow", answers: { q: "a" } },
+    });
+  });
+});

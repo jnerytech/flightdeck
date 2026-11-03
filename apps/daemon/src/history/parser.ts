@@ -46,9 +46,28 @@ interface Block {
   type?: unknown;
   text?: unknown;
   name?: unknown;
+  input?: unknown;
 }
 
-/** Text of a message's content: text blocks as is, one `[ferramenta Nome]` line per tool call. */
+/** The fields of a tool input that say what the call is about, most telling first. */
+const INPUT_KEYS = ["file_path", "command", "pattern", "path", "url", "description"];
+/** A tool line keeps this many characters of the input. */
+const INPUT_CHARS = 80;
+
+/** `[tool Name] input`: one line per tool call, the input cut to its most telling field. */
+function toolLine(block: Block): string {
+  const input = block.input !== null && typeof block.input === "object" ? block.input : {};
+  const key = INPUT_KEYS.find((k) => typeof (input as Record<string, unknown>)[k] === "string");
+  const flat = key
+    ? String((input as Record<string, unknown>)[key])
+        .replace(/\s+/g, " ")
+        .trim()
+    : "";
+  const cut = flat.length > INPUT_CHARS ? `${flat.slice(0, INPUT_CHARS)}…` : flat;
+  return `[tool ${String(block.name)}]${cut ? ` ${cut}` : ""}`;
+}
+
+/** Text of a message's content: text blocks as is, one `[tool Name] input` line per tool call. */
 function contentText(content: unknown): { text: string; toolResults: number } | null {
   if (typeof content === "string") return { text: content, toolResults: 0 };
   if (!Array.isArray(content)) return null;
@@ -56,7 +75,7 @@ function contentText(content: unknown): { text: string; toolResults: number } | 
   let toolResults = 0;
   for (const block of content as Block[]) {
     if (block?.type === "text" && typeof block.text === "string") parts.push(block.text);
-    else if (block?.type === "tool_use") parts.push(`[ferramenta ${String(block.name)}]`);
+    else if (block?.type === "tool_use") parts.push(toolLine(block));
     else if (block?.type === "tool_result") toolResults++;
   }
   return { text: parts.join("\n"), toolResults };

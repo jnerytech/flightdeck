@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { statSync } from "node:fs";
+import { stat } from "node:fs/promises";
 
 import { type ExternalSession, type ExternalStatus, SessionPersona } from "@flightdeck/protocol";
 
@@ -77,9 +77,9 @@ const toSession = (row: Row): ExternalSession => ({
 });
 
 /** Last modification of a transcript, or 0 when it is unreadable. */
-function mtimeOf(path: string | null): number {
+async function mtimeOf(path: string | null): Promise<number> {
   try {
-    return statSync(path ?? "").mtimeMs;
+    return (await stat(path ?? "")).mtimeMs;
   } catch {
     return 0;
   }
@@ -224,7 +224,7 @@ export class ExternalSessions {
   }
 
   /** Ends sessions with no event and no transcript change for `staleAfterS`. */
-  sweep(): void {
+  async sweep(): Promise<void> {
     const now = this.now();
     const limit = now - this.opts.staleAfterS * 1000;
     const quiet = this.db
@@ -233,7 +233,7 @@ export class ExternalSessions {
       )
       .all(new Date(limit).toISOString());
     for (const row of quiet) {
-      if (mtimeOf(row.transcript_path) >= limit) continue;
+      if ((await mtimeOf(row.transcript_path)) >= limit) continue;
       this.db
         .query(
           `UPDATE external_sessions SET status = 'ended', status_reason = 'stale', ended_at = ?

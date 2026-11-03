@@ -50,13 +50,13 @@ async function setup() {
   });
   cleanups.push(() => server.stop());
   // One session of each kind, all in the same folder.
-  const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+  const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
   const managed = (await poll(() => manager.get(sessionId).claudeSessionId)) ?? "";
   mkdirSync(join(root, "-p"), { recursive: true });
   writeTranscript(root, "-p", "h1", [
     userLine({ uuid: "u1", text: "antiga", cwd: project, ts: "2026-10-01T10:00:00.000Z" }),
   ]);
-  history.scan();
+  await history.scan();
   central.external.apply("SessionStart", { session_id: "e1", cwd: project });
   const client = new FrameClient(server.url);
   cleanups.push(() => client.close());

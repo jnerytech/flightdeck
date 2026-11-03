@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SshTarget, SshTestResult, TerminalInfo } from "@flightdeck/protocol";
 import { envInput, remoteCommand } from "../actions/ssh-command.ts";
@@ -76,14 +76,14 @@ export function processExec(): ExecSsh {
  * The `ssh` to run. On Windows the OpenSSH of the system, which is the one that takes `NUL` and
  * `-F`, when it exists; otherwise whatever the PATH finds.
  */
-export function resolveSshPath(opts: {
+export async function resolveSshPath(opts: {
   platform: NodeJS.Platform;
-  exists: (path: string) => boolean;
+  exists: (path: string) => boolean | Promise<boolean>;
   which: (name: string) => string | null;
-}): string {
+}): Promise<string> {
   if (opts.platform === "win32") {
     const system = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\OpenSSH\\ssh.exe`;
-    if (opts.exists(system)) return system;
+    if (await opts.exists(system)) return system;
   }
   return opts.which("ssh") ?? "ssh";
 }
@@ -131,7 +131,7 @@ interface Plan {
   /** The undo that fires after 60 s. */
   timer?: unknown;
   /** Idempotent: takes the delivered key away and forgets the timer. */
-  release(): void;
+  release(): Promise<void>;
 }
 
 /** What ssh printed, in words for the person. */
@@ -180,19 +180,19 @@ export class SshConnector {
   }): Promise<TerminalInfo> {
     const plan = await this.plan(this.target(req.targetId), req.privateKey, "connect");
     try {
-      const info = this.opts.terminals.open({
+      const info = await this.opts.terminals.open({
         cwd: this.opts.dir,
         command: plan.argv,
         env: plan.env,
         internal: true,
         cols: req.cols,
         rows: req.rows,
-        onExit: () => plan.release(),
+        onExit: () => void plan.release(),
       });
-      plan.timer = this.timers.set(() => plan.release(), DELIVERY_MS);
+      plan.timer = this.timers.set(() => void plan.release(), DELIVERY_MS);
       return info;
     } catch (error) {
-      plan.release();
+      await plan.release();
       throw error;
     }
   }
@@ -212,7 +212,7 @@ export class SshConnector {
       const result = await this.opts.run(plan.argv, plan.env);
       return result.code === 0 ? { ok: true, error: null } : translate(result.stderr, result.code);
     } finally {
-      plan.release();
+      await plan.release();
     }
   }
 
@@ -274,13 +274,13 @@ export class SshConnector {
         timedOut: done.timedOut,
       };
     } finally {
-      plan.release();
+      await plan.release();
     }
   }
 
   /** Takes away every key still delivered. */
-  stop(): void {
-    for (const plan of [...this.active]) plan.release();
+  async stop(): Promise<void> {
+    await Promise.all([...this.active].map((plan) => plan.release()));
   }
 
   private target(id: string): SshTarget {
@@ -344,20 +344,20 @@ export class SshConnector {
     const plan: Plan = {
       argv: [],
       env: {},
-      release: () => {
+      release: async () => {
         if (released) return;
         released = true;
         if (plan.timer !== undefined) this.timers.clear(plan.timer);
         this.active.delete(plan);
-        delivered?.cleanup();
+        await delivered?.cleanup();
       },
     };
     try {
-      const { config, knownHosts } = this.files(members, hops, mode);
+      const { config, knownHosts } = await this.files(members, hops, mode);
       plan.argv = this.argv(target, hops, delivered, { config, knownHosts }, mode, remote);
       plan.env = { ...delivered?.env, ...this.askpassEnv(target, mode) };
     } catch (error) {
-      plan.release();
+      await plan.release();
       throw error;
     }
     this.active.add(plan);
@@ -408,11 +408,11 @@ export class SshConnector {
   }
 
   /** Writes (once) the known_hosts and the ssh config, each named by the hash of its content. */
-  private files(members: SshTarget[], hops: SshTarget[], mode: Mode) {
+  private async files(members: SshTarget[], hops: SshTarget[], mode: Mode) {
     const known = `${members
       .flatMap((m) => knownHostsLines(m.host, m.port, this.opts.targets.pinned(m.id)?.keys ?? []))
       .join("\n")}\n`;
-    const knownHosts = this.named("kh-", known);
+    const knownHosts = await this.named("kh-", known);
     const lines = [
       "Host *",
       `  BatchMode ${mode === "connect" ? "no" : "yes"}`,
@@ -428,15 +428,18 @@ export class SshConnector {
       lines.push(`Host ${hop.host}`, `  IdentityFile ${this.value(hop.secretRef as string)}`);
       lines.push("  IdentitiesOnly yes");
     }
-    const config = this.named("config-", `${lines.join("\n")}\n`);
+    const config = await this.named("config-", `${lines.join("\n")}\n`);
     return { config, knownHosts };
   }
 
-  private named(prefix: string, content: string): string {
-    mkdirSync(this.opts.dir, { recursive: true });
+  private async named(prefix: string, content: string): Promise<string> {
+    await mkdir(this.opts.dir, { recursive: true });
     const hash = createHash("sha256").update(content).digest("hex").slice(0, 16);
     const file = join(this.opts.dir, `${prefix}${hash}`);
-    if (!existsSync(file)) writeFileSync(file, content);
+    // `wx` keeps a file that is already there: the name is the hash of the content.
+    await writeFile(file, content, { flag: "wx" }).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "EEXIST") throw error;
+    });
     return file;
   }
 

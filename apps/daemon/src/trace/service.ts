@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SecretScanner, SessionTrace, TraceExport, TraceNode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
@@ -18,7 +18,7 @@ export interface TraceServiceOptions {
 export class TraceService {
   constructor(private readonly opts: TraceServiceOptions) {}
 
-  get(claudeSessionId: string): SessionTrace {
+  async get(claudeSessionId: string): Promise<SessionTrace> {
     const row = this.opts.db
       .query<{ path: string | null }, [string]>(
         "SELECT file_path AS path FROM history_sessions WHERE claude_session_id = ?",
@@ -31,16 +31,18 @@ export class TraceService {
         "transcript_not_indexed",
         { id: claudeSessionId },
       );
-    if (!row?.path || !existsSync(row.path)) throw missing();
+    const main = row?.path ? await readFile(row.path, "utf8").catch(() => null) : null;
+    if (!row?.path || main === null) throw missing();
     const folder = join(dirname(row.path), claudeSessionId, "subagents");
-    const subagents = existsSync(folder)
-      ? readdirSync(folder)
-          .filter((name) => name.startsWith("agent-") && name.endsWith(".jsonl"))
-          .map((name) => ({
-            id: name.slice("agent-".length, -".jsonl".length),
-            text: readFileSync(join(folder, name), "utf8"),
-          }))
-      : [];
+    const names = (await readdir(folder).catch(() => [] as string[])).filter(
+      (name) => name.startsWith("agent-") && name.endsWith(".jsonl"),
+    );
+    const subagents = await Promise.all(
+      names.map(async (name) => ({
+        id: name.slice("agent-".length, -".jsonl".length),
+        text: await readFile(join(folder, name), "utf8"),
+      })),
+    );
     const prices = new Map(
       this.opts.db
         .query<{ id: string; cost: number | null }, [string]>(
@@ -52,15 +54,15 @@ export class TraceService {
     const times = this.opts.telemetry?.toolDurations(claudeSessionId);
     return buildTrace({
       claudeSessionId,
-      main: readFileSync(row.path, "utf8"),
+      main,
       subagents,
       costOf: (id) => prices.get(id) ?? null,
       ...(times ? { toolMs: (id: string) => times.get(id) ?? null } : {}),
     });
   }
 
-  export(claudeSessionId: string, includeContent: boolean): TraceExport {
-    const trace = this.get(claudeSessionId);
+  async export(claudeSessionId: string, includeContent: boolean): Promise<TraceExport> {
+    const trace = await this.get(claudeSessionId);
     let redacted = 0;
     /** Text leaves only on request, and not when it holds a secret. */
     const keep = (value: string | null): string | null => {

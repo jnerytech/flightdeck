@@ -56,7 +56,7 @@ async function setup() {
     allowedRoots: [],
   });
   cleanups.push(() => {
-    server.stop();
+    void server.stop();
     actions.stop();
     vault.stop();
   });

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   acquire,
+  cancel,
   DEFAULT_MAX_AGE_MS,
   describeHolder,
   POLL_MS,
@@ -25,6 +26,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
   const files = new Map(Object.entries(opts.files ?? {}));
   const logs: string[] = [];
   const sleeps: number[] = [];
+  const terminated: number[] = [];
   const spawned: { command: string[]; nice: boolean }[] = [];
   let time = 5000;
   let handler: ((code: number) => void) | null = null;
@@ -41,6 +43,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
       remove: (p) => {
         files.delete(p);
       },
+      list: (prefix) => [...files.keys()].filter((name) => name.startsWith(prefix)),
     },
     path: PATH,
     pid: 10,
@@ -59,6 +62,9 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
       spawned.push({ command, nice });
       return opts.child ?? { wait: async () => 0, kill: () => {} };
     },
+    terminate: (pid) => {
+      terminated.push(pid);
+    },
     onSignal: (h) => {
       handler = h;
       return () => {
@@ -73,6 +79,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
     logs,
     sleeps,
     spawned,
+    terminated,
     listeners,
     onSleep,
     signal: (code: number) => handler?.(code),
@@ -284,7 +291,7 @@ describe("slot: waiting in the queue", () => {
     let first = true;
     const create = f.env.fs.create;
     f.env.fs.create = (p, d) => {
-      if (first) {
+      if (first && p === PATH) {
         first = false;
         return false;
       }
@@ -383,5 +390,83 @@ describe("slot: running a command", () => {
     expect(f.spawned).toEqual([]);
     expect(f.files.get(PATH)).toBe(held(theirs));
     expect(f.listeners.off).toBe(1);
+  });
+});
+
+const waiter = (pid: number, label: string) =>
+  JSON.stringify({ pid, label, command: "bun run test", startedAt: 2000 } satisfies SlotHolder);
+
+describe("slot: cancel", () => {
+  test("--cancel alone is the cancel; with anything else it is the usage", () => {
+    expect(parseArgs(["--cancel"])).toEqual({ kind: "cancel" });
+    expect(parseArgs(["--", "--cancel"])).toEqual({ kind: "cancel" });
+    expect(parseArgs(["--cancel", "bun"])).toEqual({ kind: "usage" });
+    expect(parseArgs(["--nice", "--cancel"])).toEqual({ kind: "usage" });
+  });
+
+  test("a waiter is recorded while it waits and forgotten when it stops", async () => {
+    const { env, files, onSleep } = fake({ files: { [PATH]: held(theirs) } });
+    let during: string[] = [];
+    onSleep.push((n) => {
+      during = [...files.keys()].filter((name) => name.startsWith(`${PATH}.wait.`));
+      if (n === 1) files.delete(PATH);
+    });
+    expect(await acquire(env, "bun run test", () => false)).toBe(true);
+    expect(during).toEqual([`${PATH}.wait.10`]);
+    expect([...files.keys()].some((name) => name.includes(".wait."))).toBe(false);
+  });
+
+  test("the recorded waiter names this process, label and command", async () => {
+    const { env, files, onSleep } = fake({ files: { [PATH]: held(theirs) } });
+    let recorded: SlotHolder | null = null;
+    onSleep.push(() => {
+      recorded = parseHolder(files.get(`${PATH}.wait.10`) ?? null);
+      files.delete(PATH);
+    });
+    await acquire(env, "bun run e2e", () => false);
+    expect(recorded).toMatchObject({ pid: 10, label: "sonar", command: "bun run e2e" });
+  });
+
+  test("it stops the own label's waiters and holder, never another label's", () => {
+    const { env, files, logs, terminated } = fake({
+      files: {
+        [PATH]: held({ ...mine, pid: 11 }),
+        [`${PATH}.wait.12`]: waiter(12, "sonar"),
+        [`${PATH}.wait.20`]: waiter(20, "kiwi"),
+      },
+    });
+    expect(cancel(env)).toBe(0);
+    expect(terminated.sort()).toEqual([11, 12]);
+    expect(files.has(`${PATH}.wait.20`)).toBe(true);
+    expect(logs.join("\n")).toContain("cancelled sonar: bun run test (pid 12,");
+    expect(logs.join("\n")).not.toContain("kiwi");
+  });
+
+  test("it never stops itself, a dead process or a holder of another label", () => {
+    const { env, files, logs, terminated } = fake({
+      dead: [13],
+      files: {
+        [PATH]: held(theirs),
+        [`${PATH}.wait.10`]: waiter(10, "sonar"),
+        [`${PATH}.wait.13`]: waiter(13, "sonar"),
+      },
+    });
+    expect(cancel(env)).toBe(0);
+    expect(terminated).toEqual([]);
+    expect(files.has(`${PATH}.wait.13`)).toBe(false);
+    expect(logs).toEqual(["nothing to cancel for sonar"]);
+  });
+
+  test("an unreadable waiter file is ignored and removed", () => {
+    const { env, files, terminated } = fake({ files: { [`${PATH}.wait.14`]: "{broken" } });
+    expect(cancel(env)).toBe(0);
+    expect(terminated).toEqual([]);
+    expect(files.has(`${PATH}.wait.14`)).toBe(false);
+  });
+
+  test("run with --cancel cancels", async () => {
+    const { env, logs } = fake();
+    expect(await run(env, ["--cancel"])).toBe(0);
+    expect(logs).toEqual(["nothing to cancel for sonar"]);
   });
 });

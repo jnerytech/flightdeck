@@ -143,7 +143,7 @@ describe("direcao-visual: cabeçalho", () => {
 
   test("o cabeçalho mostra o caminho, o último passo marcado, e um passo de cima volta", async () => {
     const d = makeDaemon(cleanups);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Alpha" });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());

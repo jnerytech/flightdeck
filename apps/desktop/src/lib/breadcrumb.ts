@@ -39,6 +39,7 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
   switch (route.name) {
     case "hub":
     case "home":
+    case "start":
       return path(sessions);
     case "session": {
       const session = state.hosts

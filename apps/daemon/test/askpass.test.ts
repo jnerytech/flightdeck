@@ -142,9 +142,9 @@ describe("askpass: o corretor de pedidos", () => {
 describe("askpass: o script do SSH_ASKPASS", () => {
   const self = ["/usr/bin/bun", "run", "/opt/it's here/bin.ts"];
 
-  test("fora do Windows: um sh que chama flightdeckd askpass com o prompt, executável, sem segredo", () => {
+  test("fora do Windows: um sh que chama flightdeckd askpass com o prompt, executável, sem segredo", async () => {
     const dir = tempDir();
-    const file = writeAskpassScript({ dir, platform: "linux", self });
+    const file = await writeAskpassScript({ dir, platform: "linux", self });
     expect(file).toBe(join(dir, "askpass.sh"));
     expect(readFileSync(file, "utf8")).toBe(
       "#!/bin/sh\nexec '/usr/bin/bun' 'run' '/opt/it'\\''s here/bin.ts' askpass \"$@\"\n",
@@ -152,9 +152,9 @@ describe("askpass: o script do SSH_ASKPASS", () => {
     if (process.platform !== "win32") expect(statSync(file).mode & 0o111).not.toBe(0);
   });
 
-  test("no Windows: um .cmd que repassa o prompt com %*; um caminho com % ou aspas não cabe", () => {
+  test("no Windows: um .cmd que repassa o prompt com %*; um caminho com % ou aspas não cabe", async () => {
     const dir = tempDir();
-    const file = writeAskpassScript({
+    const file = await writeAskpassScript({
       dir,
       platform: "win32",
       self: ["C:\\bun\\bun.exe", "run", "C:\\fd\\bin.ts"],
@@ -164,9 +164,11 @@ describe("askpass: o script do SSH_ASKPASS", () => {
       '@echo off\r\n"C:\\bun\\bun.exe" "run" "C:\\fd\\bin.ts" askpass %*\r\n',
     );
     for (const bad of ["C:\\100%\\bun.exe", 'C:\\a"b\\bun.exe']) {
-      expect(() => writeAskpassScript({ dir, platform: "win32", self: [bad] })).toThrow(/\.cmd/);
+      await expect(writeAskpassScript({ dir, platform: "win32", self: [bad] })).rejects.toThrow(
+        /\.cmd/,
+      );
       try {
-        writeAskpassScript({ dir, platform: "win32", self: [bad] });
+        await writeAskpassScript({ dir, platform: "win32", self: [bad] });
       } catch (error) {
         expect((error as { reason?: string }).reason).toBe("ssh_askpass_cmd_path");
       }
@@ -175,7 +177,7 @@ describe("askpass: o script do SSH_ASKPASS", () => {
 
   test("o gancho do conector: o script, o config do daemon e tickets do corretor; se o script não cabe, não há askpass", async () => {
     const { broker, target } = setup();
-    const hook = askpassHook({
+    const hook = await askpassHook({
       broker,
       dir: tempDir(),
       platform: "linux",
@@ -188,7 +190,7 @@ describe("askpass: o script do SSH_ASKPASS", () => {
     expect(ticket).toMatch(/^[0-9a-f]{32}$/);
     broker.watch((frame) => broker.answer(frame.requestId, SECRET));
     expect(await broker.ask(ticket, "p")).toBe(SECRET);
-    const none = askpassHook({
+    const none = await askpassHook({
       broker,
       dir: tempDir(),
       platform: "win32",
@@ -200,12 +202,14 @@ describe("askpass: o script do SSH_ASKPASS", () => {
 
   test("só reescreve quando muda", async () => {
     const dir = tempDir();
-    const file = writeAskpassScript({ dir, platform: "linux", self });
+    const file = await writeAskpassScript({ dir, platform: "linux", self });
     const mtime = statSync(file).mtimeMs;
     await Bun.sleep(5);
-    expect(writeAskpassScript({ dir, platform: "linux", self })).toBe(file);
+    expect(await writeAskpassScript({ dir, platform: "linux", self })).toBe(file);
     expect(statSync(file).mtimeMs).toBe(mtime);
-    writeAskpassScript({ dir, platform: "linux", self: ["/usr/bin/other"] });
+    const rewriting = writeAskpassScript({ dir, platform: "linux", self: ["/usr/bin/other"] });
+    expect(rewriting).toBeInstanceOf(Promise);
+    await rewriting;
     expect(readFileSync(file, "utf8")).toContain("'/usr/bin/other'");
   });
 });

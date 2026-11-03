@@ -70,7 +70,7 @@ async function setup(stored: unknown = CLIENTS) {
     ["Sessão Beta", repos.beta],
     ["Sessão Solta", repos.solta],
   ] as const) {
-    const { sessionId } = d.manager.create({ cwd, prompt: "oi", name });
+    const { sessionId } = await d.manager.create({ cwd, prompt: "oi", name });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   const platform = memoryPlatform();
@@ -147,8 +147,8 @@ describe("clients-filter: the Sessions screen", () => {
 describe("clients-filter: what a client never hides", () => {
   test("a request waiting in another client's project stays in Needs you", async () => {
     const { d, store, repos } = await setup();
-    d.central.hooksInstall(true);
-    const token = loadConfig(d.configFile).hooks.token ?? "";
+    await d.central.hooksInstall(true);
+    const token = (await loadConfig(d.configFile)).hooks.token ?? "";
     const hook = (event: string, body: Record<string, unknown> = {}) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
