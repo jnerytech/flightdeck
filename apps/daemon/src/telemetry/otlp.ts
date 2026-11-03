@@ -1,5 +1,8 @@
-import { gunzipSync } from "node:zlib";
+import { promisify } from "node:util";
+import { gunzip } from "node:zlib";
 import { tokenMatches } from "../token.ts";
+
+const inflate = promisify(gunzip);
 
 /** One Claude Code event (an OTLP log record) in the shape the daemon keeps. */
 export interface OtlpEvent {
@@ -318,7 +321,7 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
       try {
         body = await readBody(req, max);
         if (req.headers.get("content-encoding") === "gzip") {
-          body = gunzipSync(body, { maxOutputLength: max });
+          body = await inflate(body, { maxOutputLength: max });
         }
       } catch (error) {
         if (error instanceof TooBig || error instanceof RangeError) {
