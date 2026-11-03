@@ -142,7 +142,7 @@ import {
 } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
-import { hasFeature } from "./version.ts";
+import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
@@ -621,6 +621,9 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** The least time between two checks the app starts by itself for one host. */
+const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
+
 const newHostView = (config: HostConfig): HostView => ({
   ...config,
   status: "offline",
@@ -788,6 +791,9 @@ export class AppStore {
   get tabs(): Tabs {
     return this.workspace.tabs;
   }
+
+  /** When the page last asked each host for an update check on its own. */
+  private readonly autoUpdateChecks = new Map<string, number>();
 
   getState = (): AppState => this.state;
 
@@ -2185,10 +2191,35 @@ export class AppStore {
   }
 
   /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
-  async checkDaemonUpdate(_hostId: string): Promise<void> {}
+  async checkDaemonUpdate(hostId: string): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: true, failed: null } }));
+    try {
+      const update = await conn.request("daemon.update.check", {});
+      this.updateHost(hostId, (h) => ({
+        ...h,
+        updateCheck: null,
+        hostInfo: h.hostInfo ? { ...h.hostInfo, update } : h.hostInfo,
+      }));
+    } catch (error) {
+      const failed = describeError(error);
+      this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: false, failed } }));
+    }
+  }
 
   /** The same check, once when the app is newer than the daemon, at most once per 10 minutes. */
-  async autoCheckDaemonUpdate(_hostId: string): Promise<void> {}
+  async autoCheckDaemonUpdate(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const info = host?.hostInfo;
+    if (host?.status !== "online" || !info?.update) return;
+    if (!isNewer(APP_VERSION, info.daemonVersion)) return;
+    const last = this.autoUpdateChecks.get(hostId);
+    const now = this.now();
+    if (last !== undefined && now - last < AUTO_UPDATE_CHECK_MS) return;
+    this.autoUpdateChecks.set(hostId, now);
+    await this.checkDaemonUpdate(hostId);
+  }
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {
     if (envelope.event.type === "session.summary") {

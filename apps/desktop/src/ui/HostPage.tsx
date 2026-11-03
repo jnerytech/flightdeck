@@ -55,6 +55,14 @@ export function HostPage(props: {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
   }, [store, host.id, host.status]);
+  // A daemon older than the app may not have looked for its update since the release: ask it once
+  // (the store keeps this to once per 10 minutes per host).
+  const checkable = host.status === "online" && info?.update !== undefined;
+  const daemonVersion = info?.daemonVersion;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the daemon's version is what makes it worth asking again
+  useEffect(() => {
+    if (checkable) void store.autoCheckDaemonUpdate(host.id);
+  }, [store, host.id, checkable, daemonVersion]);
   const settingsPath = hooks?.settingsPath ?? "~/.claude/settings.json";
   // Hooks came with the central (phase 5): shown for older daemons, hidden when not announced.
   const showHooks = host.status !== "incompatible" && hasFeature(info?.features, "central", true);

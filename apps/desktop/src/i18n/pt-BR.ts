@@ -1539,6 +1539,12 @@ export const ptBR = {
     message:
       "Atualizar o daemon de {host} para {version}? Ele reinicia, e o app reconecta sozinho.",
     confirm: "Atualizar daemon",
+    check: "Verificar atualizações",
+    checking: "verificando…",
+    lastCheck: "Última verificação do daemon: {when}.",
+    lastError: "A verificação falhou: {error}",
+    upToDate: "Nenhuma versão mais nova que {version}.",
+    checkFailed: "A verificação não rodou: {reason}",
   },
   welcome: {
     addHost: "Adicione um host com o endereço e o token do flightdeckd.",

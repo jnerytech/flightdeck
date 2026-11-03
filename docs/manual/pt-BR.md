@@ -2527,9 +2527,15 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - em **Configurações**: **Procurar atualização agora** e **Avisar sobre atualizações** (ligado
     por padrão).
 - **O daemon:**
-  - verifica o `daemon-latest.json` ao subir e a cada `updates.checkIntervalH` (24 h);
+  - verifica o `daemon-latest.json` ao subir, quando pedido e a cada `updates.checkIntervalH`
+    (6 h por padrão);
   - na página do host, o app mostra **Atualizar daemon para X** quando há versão nova, e pede
     confirmação;
+  - a página do host mostra também quando o daemon verificou pela última vez, e o erro dessa
+    verificação se ela falhou, com **Verificar atualizações**: pede ao daemon que olhe o manifesto
+    agora (comando `daemon.update.check`). Quando o app é mais novo que o daemon, a página faz isso
+    sozinha uma vez ao abrir, no máximo a cada 10 minutos por host. Um daemon anterior a esse
+    comando o recusa, e a página diz o motivo; atualize esse à mão com `flightdeckd update`;
   - o daemon baixa o binário do próprio sistema para `<dataDir>/updates/`, confere o sha256 e a
     assinatura, e roda o `flightdeckd update --from` fora do serviço, para sobreviver à própria
     parada: uma tarefa única `Flightdeck\update` no Windows e `systemd-run --user` no Linux;
@@ -2538,7 +2544,7 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 24 } }
+               "checkIntervalH": 6 } }
 ```
 
 Só o `flightdeckd` compilado verifica o GitHub por padrão. Rodando do código-fonte não há binário

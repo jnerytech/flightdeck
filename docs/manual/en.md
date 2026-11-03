@@ -2549,9 +2549,15 @@ signature (see [Installation](#from-the-release-binaries)).
   - an invalid signature or a broken download shows up in the banner, and nothing is installed;
   - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
 - **The daemon:**
-  - checks `daemon-latest.json` on start and every `updates.checkIntervalH` (24 h);
+  - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
+    default);
   - on the host page, the app shows **Update daemon to X** when there is a new version, and asks
     for confirmation;
+  - the host page also shows when the daemon last checked, and the error of that check if it
+    failed, with **Check for updates**: it asks the daemon to look at the manifest now (command
+    `daemon.update.check`). When the app is newer than the daemon, the page does this once by
+    itself when you open it, at most once every 10 minutes per host. A daemon from before this
+    command refuses it, and the page says why; update that one by hand with `flightdeckd update`;
   - the daemon downloads the binary for its own system to `<dataDir>/updates/`, verifies the
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
@@ -2562,7 +2568,7 @@ signature (see [Installation](#from-the-release-binaries)).
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 24 } }
+               "checkIntervalH": 6 } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no

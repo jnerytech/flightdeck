@@ -1540,6 +1540,12 @@ export const en: Dictionary = {
     message:
       "Update the daemon of {host} to {version}? It restarts, and the app reconnects by itself.",
     confirm: "Update daemon",
+    check: "Check for updates",
+    checking: "checking…",
+    lastCheck: "The daemon last checked for updates {when}.",
+    lastError: "That check failed: {error}",
+    upToDate: "No newer version than {version}.",
+    checkFailed: "The check did not run: {reason}",
   },
   welcome: {
     addHost: "Add a host with the flightdeckd address and token.",
