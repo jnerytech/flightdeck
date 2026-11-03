@@ -53,17 +53,20 @@ export type Attempt = { acquired: boolean; holder: SlotHolder | null };
 export const POLL_MS = 2000;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
-export const USAGE = "usage: bun run slot -- [--nice] <command...> | bun run slot -- --status";
+export const USAGE =
+  "usage: bun run slot -- [--nice] <command...> | bun run slot -- --status | bun run slot -- --cancel";
 
 export function parseArgs(argv: string[]): SlotArgs {
   let rest = argv[0] === "--" ? argv.slice(1) : argv;
   let nice = false;
   let asStatus = false;
+  let asCancel = false;
   let maxAgeMs = DEFAULT_MAX_AGE_MS;
   for (;;) {
     const flag = rest[0];
     if (flag === "--nice") nice = true;
     else if (flag === "--status") asStatus = true;
+    else if (flag === "--cancel") asCancel = true;
     else if (flag === "--max-age") {
       const minutes = Number(rest[1]);
       if (!rest[1] || !(minutes > 0)) return { kind: "usage" };
@@ -72,6 +75,8 @@ export function parseArgs(argv: string[]): SlotArgs {
     } else break;
     rest = rest.slice(1);
   }
+  if (asCancel)
+    return rest.length === 0 && !asStatus && !nice ? { kind: "cancel" } : { kind: "usage" };
   if (asStatus) return rest.length === 0 ? { kind: "status", maxAgeMs } : { kind: "usage" };
   return rest.length > 0 ? { kind: "run", nice, maxAgeMs, command: rest } : { kind: "usage" };
 }
@@ -123,12 +128,44 @@ export function tryAcquire(env: SlotEnv, command: string): Attempt {
   return { acquired: env.fs.create(env.path, mine), holder: null };
 }
 
-/** Waits for the slot, naming each new holder once; false when `stopped` ended the wait. */
+function waiterPath(env: SlotEnv, pid: number): string {
+  return `${env.path}.wait.${pid}`;
+}
+
+/**
+ * Waits for the slot while a waiter file says who is waiting (so `--cancel` can find it); false
+ * when `stopped` ended the wait.
+ */
 export async function acquire(
   env: SlotEnv,
   command: string,
   stopped: () => boolean,
   maxAgeMs = DEFAULT_MAX_AGE_MS,
+): Promise<boolean> {
+  const waiting = waiterPath(env, env.pid);
+  env.fs.remove(waiting);
+  env.fs.create(
+    waiting,
+    JSON.stringify({
+      pid: env.pid,
+      label: env.label,
+      command,
+      startedAt: env.now(),
+    } satisfies SlotHolder),
+  );
+  try {
+    return await waitForSlot(env, command, stopped, maxAgeMs);
+  } finally {
+    env.fs.remove(waiting);
+  }
+}
+
+/** Waits for the slot, naming each new holder once. */
+async function waitForSlot(
+  env: SlotEnv,
+  command: string,
+  stopped: () => boolean,
+  maxAgeMs: number,
 ): Promise<boolean> {
   let named = "";
   while (!stopped()) {
@@ -165,9 +202,27 @@ export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   return `${held}; WARNING: older than ${Math.floor(maxAgeMs / 60_000)}m, check if it is stuck`;
 }
 
-/** Stops this label's own waiters and run; stub. */
-export function cancel(_env: SlotEnv): number {
-  return 1;
+/**
+ * Stops the waiters and the run of this label (never this process, never another label). The
+ * wrapper that gets SIGTERM kills its command and gives the slot back. Waiter files of dead
+ * processes or unreadable ones are cleaned up.
+ */
+export function cancel(env: SlotEnv): number {
+  const entries = [env.path, ...env.fs.list(`${env.path}.wait.`)];
+  let stopped = 0;
+  for (const path of entries) {
+    const holder = parseHolder(env.fs.read(path));
+    if (!holder || !env.alive(holder.pid)) {
+      if (path !== env.path) env.fs.remove(path);
+      continue;
+    }
+    if (holder.label !== env.label || holder.pid === env.pid) continue;
+    env.terminate(holder.pid);
+    env.log(`cancelled ${describeHolder(holder, env.now())}`);
+    stopped += 1;
+  }
+  if (stopped === 0) env.log(`nothing to cancel for ${env.label}`);
+  return 0;
 }
 
 /** Runs the command under the slot and returns its exit code (a signal's code when one stopped it). */

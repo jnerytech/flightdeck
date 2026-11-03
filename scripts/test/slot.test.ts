@@ -291,7 +291,7 @@ describe("slot: waiting in the queue", () => {
     let first = true;
     const create = f.env.fs.create;
     f.env.fs.create = (p, d) => {
-      if (first) {
+      if (first && p === PATH) {
         first = false;
         return false;
       }
@@ -438,7 +438,7 @@ describe("slot: cancel", () => {
     expect(cancel(env)).toBe(0);
     expect(terminated.sort()).toEqual([11, 12]);
     expect(files.has(`${PATH}.wait.20`)).toBe(true);
-    expect(logs.join("\n")).toContain("cancelled sonar: bun run test (pid 12)");
+    expect(logs.join("\n")).toContain("cancelled sonar: bun run test (pid 12,");
     expect(logs.join("\n")).not.toContain("kiwi");
   });
 
