@@ -398,3 +398,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* The terminal's find bar: the box, where the match is, and the buttons in one row. */
+@utility terminal-find {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

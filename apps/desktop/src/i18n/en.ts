@@ -1495,6 +1495,12 @@ export const en: Dictionary = {
     end: "End process",
     searchLabel: "Search in the terminal",
     searchHint: "Enter: next · Shift+Enter: previous · Esc: close",
+    matches: "{index} of {count}",
+    noMatches: "No matches",
+    findPrevious: "Previous match",
+    findNext: "Next match",
+    findClose: "Close search",
+    selectAll: "Select all",
   },
   terminal: {
     open: "Open in terminal",

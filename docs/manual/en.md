@@ -2186,9 +2186,12 @@ tab, with no SSH.
   Linux) in its first allowed folder. The panel also lists the live terminals, each with
   **Open**.
 - **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` or the right button's
-  **Copy** / **Paste** menu (`Ctrl+C` goes to the process), search with `Ctrl+Shift+F` (Enter for the next match, Shift+Enter for the previous,
-  Esc to close). Links open in the browser. The font is the system monospace; its size is in
-  Settings (**Terminal font size**, 10 to 24).
+  menu (**Copy**, which needs a selection, **Paste** and **Select all**; `Ctrl+C` goes to the
+  process). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
+  the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
+  closes. Links in the output open in the browser (`http` and `https` only). The font is the
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24).
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
   keeps running on the host) or **End process**. A terminal shown as detached or ended has
