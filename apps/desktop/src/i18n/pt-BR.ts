@@ -1184,7 +1184,6 @@ export const ptBR = {
     mode: "Modo de permissão",
     prompt: "Primeiro prompt",
     create: "Criar sessão",
-    needPrompt: "Escreva o primeiro prompt para criar a sessão",
     needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
   },
   modes: {

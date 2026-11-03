@@ -239,7 +239,8 @@ export class SessionManager {
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
     this.startRun(id);
-    this.deliver(id, payload.prompt);
+    if (payload.prompt === undefined) this.setStatus(id, "idle", "no first prompt");
+    else this.deliver(id, payload.prompt);
     return { sessionId: id };
   }
 

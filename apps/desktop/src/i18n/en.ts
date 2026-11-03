@@ -1184,7 +1184,6 @@ export const en: Dictionary = {
     mode: "Permission mode",
     prompt: "First prompt",
     create: "Create session",
-    needPrompt: "Write the first prompt to create the session",
     needFolder: "This host has no allowed folder: add one in its settings",
   },
   modes: {

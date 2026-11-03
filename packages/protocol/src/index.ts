@@ -385,7 +385,8 @@ export type EffortLevel = z.infer<typeof EffortLevel>;
 
 export const SessionCreatePayload = z.object({
   cwd: z.string().min(1),
-  prompt: z.string().min(1),
+  /** None: the session starts idle and waits for its first message. */
+  prompt: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   permissionMode: PermissionMode.optional(),
   model: z.string().min(1).optional(),
