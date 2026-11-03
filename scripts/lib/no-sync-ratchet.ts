@@ -60,7 +60,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/central/central.ts": 3,
   "apps/daemon/src/central/external.ts": 1,
   "apps/daemon/src/central/hooks-install.ts": 6,
-  "apps/daemon/src/central/project-key.ts": 3,
   "apps/daemon/src/central/wrapper.ts": 10,
   "apps/daemon/src/checkpoints/rewind.ts": 3,
   "apps/daemon/src/checkpoints/snapshots.ts": 5,

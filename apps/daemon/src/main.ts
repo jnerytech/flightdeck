@@ -552,7 +552,7 @@ export async function startDaemon(
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
-  const keys = new ProjectKeys(config.hostName, undefined, options.projectGit);
+  const keys = new ProjectKeys(config.hostName, options.projectGit);
   // The turn is counted when git has answered: a slow git must not stop the daemon meanwhile.
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
@@ -636,7 +636,7 @@ export async function startDaemon(
     db: store.db,
     roots: config.history.roots,
     excludeCwds: historyExcludes(config),
-    projectKey: (cwd) => keys.keyFor(cwd),
+    projectKey: (cwd) => keys.known(cwd),
     warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
     cost: (tokens) => costs.cost(tokens),
     log: (m) => logger.log(m),
@@ -805,14 +805,14 @@ export async function startDaemon(
     rules: new VaultRules(),
     hostName: config.hostName,
     risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
-    projectKey: (id) => keys.keyFor(board.getProject(id).path),
+    projectKey: (id) => keys.known(board.getProject(id).path),
   });
   // Phase 21: messages between sessions, delivered here and carried between hosts by the app.
   const endpoints = new LocalEndpoints({
     manager,
     external: central.external,
     nameOf: (claudeSessionId) => central.meta.get(claudeSessionId).name,
-    projectKey: (cwd) => keys.keyFor(cwd),
+    projectKey: (cwd) => keys.known(cwd),
     cardOf: (sessionId) => board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null,
     sendToLaunch: central.sendToLaunch.bind(central),
     autoApprove,
@@ -877,7 +877,7 @@ export async function startDaemon(
     names,
     manager,
     external: central.external,
-    projectOf: (cwd) => keys.keyFor(keyedPath(cwd)),
+    projectOf: (cwd) => keys.known(keyedPath(cwd)),
     warm: warmKeys,
     cardOf,
     personaOf: (sessionId) => {

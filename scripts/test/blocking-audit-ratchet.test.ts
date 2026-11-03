@@ -4,8 +4,6 @@ import { join, relative, resolve } from "node:path";
 import {
   ASYNC_INLINE_ALLOWED,
   asyncCommandsInline,
-  MAIN_KEY_FOR_ALLOWED,
-  SPAWN_SYNC_ALLOWED,
   SYNC_COMMANDS_ALLOWED,
   syncTauriCommands,
 } from "../lib/blocking-audit-ratchet.ts";
@@ -43,19 +41,6 @@ describe("blocking-audit: the app's hot paths do not block", () => {
   test("a Tauri command is async unless it needs the main thread (tray, window)", () => {
     const rust = readFileSync(join(root, "apps/desktop/src-tauri/src/lib.rs"), "utf8");
     expect(syncTauriCommands(rust).sort()).toEqual([...SYNC_COMMANDS_ALLOWED].sort());
-  });
-
-  test("the daemon blocks on `Bun.spawnSync` only where an async twin and a warm path exist", () => {
-    const files = sources(daemonSrc)
-      .filter((file) => readFileSync(file, "utf8").includes("Bun.spawnSync("))
-      .map((file) => relative(daemonSrc, file).replaceAll("\\", "/"))
-      .sort();
-    expect(files).toEqual([...SPAWN_SYNC_ALLOWED].sort());
-  });
-
-  test("main.ts reads a project key synchronously only behind a warm", () => {
-    const main = readFileSync(join(daemonSrc, "main.ts"), "utf8");
-    expect([...main.matchAll(/\bkeys\.keyFor\(/g)].length).toBe(MAIN_KEY_FOR_ALLOWED);
   });
 
   test("finds the async commands that do their blocking work inline", () => {

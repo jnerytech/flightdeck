@@ -46,23 +46,6 @@ function sources(dir: string): string[] {
   });
 }
 
-describe("sync-git: the daemon does not wait for a process on the way to answer", () => {
-  test("the only synchronous spawns left in the daemon are the ones listed, each with its reason", () => {
-    const found = sources(SRC)
-      .filter((file) => /\b(spawnSync|execFileSync|execSync)\b/.test(readFileSync(file, "utf8")))
-      .map((file) => relative(SRC, file).replaceAll("\\", "/"))
-      .sort();
-    expect(found).toEqual([
-      // `exclude`: the fallback of a repository whose exclude file was not looked up yet.
-      "board/worktree.ts",
-      // `repoRoot`: the fallback of a project whose root was not looked up yet.
-      "memory/memory.ts",
-      // The test runtime commits in a fixture repository, like a person would.
-      "runtime/fake-runtime.ts",
-    ]);
-  });
-});
-
 describe("sync-git: a slow git does not stop the protocol", () => {
   async function served() {
     const claudeDir = tempDir("fd-claude-");

@@ -105,7 +105,7 @@ export interface BoardOptions {
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
-  projectKeys?: { keyFor(path: string): string; resolve?(path: string): Promise<string> };
+  projectKeys?: { known(path: string): string; resolve?(path: string): Promise<string> };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
   worktreeIncludeLimit?: number;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
@@ -1168,7 +1168,7 @@ export class Board {
   private budgetBlocked(projectId: string): boolean {
     if (!this.opts.budgets) return false;
     const { path } = this.getProject(projectId);
-    return this.opts.budgets.blocked(this.opts.projectKeys?.keyFor(path) ?? path);
+    return this.opts.budgets.blocked(this.opts.projectKeys?.known(path) ?? path);
   }
 
   /** A workflow turn about to start over the quota waits for it; `null` when it may go. */
