@@ -88,9 +88,11 @@ function fixture() {
 }
 
 describe("ssh-import", () => {
-  test("lê Host, HostName, User, Port, IdentityFile e ProxyJump, com Include, e só os nomes concretos viram destino", () => {
+  test("lê Host, HostName, User, Port, IdentityFile e ProxyJump, com Include, e só os nomes concretos viram destino", async () => {
     const { importer } = fixture();
-    const { entries } = importer.preview();
+    const previewing = importer.preview();
+    expect(previewing).toBeInstanceOf(Promise);
+    const { entries } = await previewing;
     expect(entries.map((e) => e.alias)).toEqual([
       "looped",
       "work",
@@ -129,9 +131,9 @@ describe("ssh-import", () => {
     });
   });
 
-  test("os curingas viram padrão como no OpenSSH: o primeiro valor vence, na ordem do arquivo", () => {
+  test("os curingas viram padrão como no OpenSSH: o primeiro valor vence, na ordem do arquivo", async () => {
     const { importer } = fixture();
-    const { entries } = importer.preview();
+    const { entries } = await importer.preview();
     const by = (alias: string) => entries.find((e) => e.alias === alias);
     // *.internal comes before db.internal's own block, so its user and port win; the host is
     // db.internal's own.
@@ -149,20 +151,20 @@ describe("ssh-import", () => {
     expect(entries.some((e) => e.user === "nope")).toBe(false);
   });
 
-  test("sem User no arquivo, vale o usuário do sistema; sem arquivo, a prévia é vazia", () => {
+  test("sem User no arquivo, vale o usuário do sistema; sem arquivo, a prévia é vazia", async () => {
     const { importer, config, home } = fixture();
     writeFileSync(config, "Host solo\n  HostName solo.example.com\n");
-    expect(importer.preview().entries).toMatchObject([{ alias: "solo", user: "me" }]);
+    expect((await importer.preview()).entries).toMatchObject([{ alias: "solo", user: "me" }]);
     const none = new SshImporter({
       targets: new SshTargets({ db: new EventStore(":memory:").db }),
       configPath: join(home, ".ssh", "nao-existe"),
       home,
       defaultUser: "me",
     });
-    expect(none.preview()).toEqual({ entries: [] });
+    expect(await none.preview()).toEqual({ entries: [] });
   });
 
-  test("valores entre aspas perdem as aspas", () => {
+  test("valores entre aspas perdem as aspas", async () => {
     const { importer, config } = fixture();
     writeFileSync(
       config,
@@ -170,21 +172,21 @@ describe("ssh-import", () => {
         "\n",
       ),
     );
-    expect(importer.preview().entries).toMatchObject([
+    expect((await importer.preview()).entries).toMatchObject([
       { alias: "quoted", host: "q.example.com", identityFile: "~/.ssh/with space" },
     ]);
   });
 
-  test("a prévia marca os destinos que já existem, pelo nome ou pelo mesmo host, porta e usuário", () => {
+  test("a prévia marca os destinos que já existem, pelo nome ou pelo mesmo host, porta e usuário", async () => {
     const { importer, targets } = fixture();
     targets.save({ name: "vps", host: "outro.example.com", user: "x" });
     targets.save({ name: "meu-work", host: "work.example.com", user: "fallback" });
-    const { entries } = importer.preview();
+    const { entries } = await importer.preview();
     const exists = entries.filter((e) => e.exists).map((e) => e.alias);
     expect(exists).toEqual(["work", "vps"]);
   });
 
-  test("nada é escrito: nem no config, nem nas pastas, nem pela prévia nem pela aplicação", () => {
+  test("nada é escrito: nem no config, nem nas pastas, nem pela prévia nem pela aplicação", async () => {
     const { importer, ssh, config } = fixture();
     const snapshot = () => ({
       config: readFileSync(config, "utf8"),
@@ -192,7 +194,7 @@ describe("ssh-import", () => {
       tree: readdirSync(ssh, { recursive: true }).sort(),
     });
     const before = snapshot();
-    importer.preview();
+    await importer.preview();
     importer.apply(["vps", "inner"]);
     expect(snapshot()).toEqual(before);
   });
