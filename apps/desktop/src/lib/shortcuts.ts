@@ -13,7 +13,7 @@ export type ShortcutAction =
   | "go-costs"
   | "go-settings";
 
-export type ShortcutGroup = "general" | "navigation" | "lists" | "approvals";
+export type ShortcutGroup = "general" | "navigation" | "tabs" | "lists" | "approvals";
 
 /** One shortcut, for the cheat sheet and for the palette's hints. */
 export interface ShortcutDef {
@@ -28,16 +28,56 @@ export interface ShortcutDef {
   group: ShortcutGroup;
 }
 
-export const SHORTCUTS: ShortcutDef[] = [];
+const def = (
+  id: string,
+  group: ShortcutGroup,
+  keys: string[],
+  label: Key,
+  action?: ShortcutAction,
+  chord = false,
+): ShortcutDef => ({
+  id,
+  group,
+  keys,
+  label,
+  ...(action ? { action } : {}),
+  ...(chord ? { chord } : {}),
+});
+
+export const SHORTCUTS: ShortcutDef[] = [
+  def("palette", "general", ["Mod", "K"], "shortcuts.palette", "palette"),
+  def("help", "general", ["?"], "shortcuts.help", "help"),
+  def("next-client", "general", ["Alt", "Shift", "C"], "shortcuts.nextClient", "next-client"),
+  def("back", "navigation", ["Alt", "←"], "shortcuts.back", "back"),
+  def("forward", "navigation", ["Alt", "→"], "shortcuts.forward", "forward"),
+  def("go-sessions", "navigation", ["g", "s"], "shortcuts.goSessions", "go-sessions", true),
+  def("go-needs-you", "navigation", ["g", "n"], "shortcuts.goNeedsYou", "go-needs-you", true),
+  def("go-projects", "navigation", ["g", "p"], "shortcuts.goProjects", "go-projects", true),
+  def("go-costs", "navigation", ["g", "c"], "shortcuts.goCosts", "go-costs", true),
+  def("go-settings", "navigation", ["g", ","], "shortcuts.goSettings", "go-settings", true),
+  def("tab-new", "tabs", ["Mod", "T"], "shortcuts.tabNew"),
+  def("tab-close", "tabs", ["Mod", "W"], "shortcuts.tabClose"),
+  def("tab-next", "tabs", ["Mod", "Tab"], "shortcuts.tabNext"),
+  def("tab-number", "tabs", ["Mod", "1…9"], "shortcuts.tabNumber"),
+  def("list-next", "lists", ["j"], "shortcuts.listNext"),
+  def("list-previous", "lists", ["k"], "shortcuts.listPrevious"),
+  def("list-open", "lists", ["Enter"], "shortcuts.listOpen"),
+  def("approve", "approvals", ["A"], "shortcuts.approve"),
+  def("deny", "approvals", ["N"], "shortcuts.deny"),
+  def("dismiss", "approvals", ["Esc"], "shortcuts.dismiss"),
+];
 
 /** The shortcut that runs `action`, if there is one. */
-export function shortcutOf(_action: ShortcutAction): ShortcutDef | undefined {
-  return undefined;
+export function shortcutOf(action: ShortcutAction): ShortcutDef | undefined {
+  return SHORTCUTS.find((s) => s.action === action);
 }
 
-/** How the keys read: `Ctrl+K`, `⌘K` on a Mac, `g then s` for a chord. */
-export function keysLabel(_def: ShortcutDef, _mac: boolean): string {
-  return "";
+/** How the keys read: `Ctrl+K`, `⌘K` on a Mac, `g p` for a chord. */
+export function keysLabel(shortcut: ShortcutDef, mac: boolean): string {
+  const keys = shortcut.keys.map((k) => (k === "Mod" ? (mac ? "⌘" : "Ctrl") : k));
+  if (shortcut.chord) return keys.join(" ");
+  // On a Mac the modifier sits against its key (⌘K); elsewhere keys are joined with a plus.
+  return mac && shortcut.keys[0] === "Mod" ? keys.join("") : keys.join("+");
 }
 
 /** The part of a key event the matcher reads. */
@@ -68,7 +108,27 @@ export interface ChordResult {
   consumed: boolean;
 }
 
-/** One key press through the go-to chords (`g s`, `g n`, `g p`, `g c`, `,`) and `?`. */
-export function chordStep(state: ChordState, _event: KeyLike, _now: number): ChordResult {
-  return { state, action: null, consumed: false };
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
+/** One key press through the go-to chords (`g s`, `g n`, `g p`, `g c`, `g ,`) and `?`. */
+export function chordStep(state: ChordState, event: KeyLike, now: number): ChordResult {
+  const nothing = { state: NO_CHORD, action: null, consumed: false };
+  if (event.typing || event.ctrlKey || event.metaKey || event.altKey) return nothing;
+  if (MODIFIERS.has(event.key)) return { state, action: null, consumed: false };
+  const waiting =
+    state.pending !== null && now - state.at <= CHORD_TIMEOUT_MS ? state.pending : null;
+  if (waiting !== null) {
+    const second = SHORTCUTS.find(
+      (s) => s.chord && s.action && s.keys[0] === waiting && s.keys[1] === event.key,
+    );
+    if (second?.action) return { state: NO_CHORD, action: second.action, consumed: true };
+  }
+  if (SHORTCUTS.some((s) => s.chord && s.keys[0] === event.key)) {
+    return { state: { pending: event.key, at: now }, action: null, consumed: true };
+  }
+  const single = SHORTCUTS.find(
+    (s) => !s.chord && s.action && s.keys.length === 1 && s.keys[0] === event.key,
+  );
+  if (single?.action) return { state: NO_CHORD, action: single.action, consumed: true };
+  return nothing;
 }
