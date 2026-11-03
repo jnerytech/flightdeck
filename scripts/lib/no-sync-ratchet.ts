@@ -86,7 +86,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/ssh/connect.ts": 3,
   "apps/daemon/src/ssh/import.ts": 1,
   "apps/daemon/src/ssh/key-delivery.ts": 6,
-  "apps/daemon/src/store/event-store.ts": 1,
   "apps/daemon/src/telemetry/otlp-env.ts": 7,
   "apps/daemon/src/telemetry/service.ts": 4,
   "apps/daemon/src/update.ts": 10,

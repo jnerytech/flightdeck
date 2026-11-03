@@ -122,6 +122,11 @@ function toPermission(row: PermissionRow): PermissionRecord {
 export class EventStore {
   readonly db: Database;
 
+  /** Opens the database, making its folder first without blocking. */
+  static async open(path: string): Promise<EventStore> {
+    return new EventStore(path);
+  }
+
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true, strict: true });
