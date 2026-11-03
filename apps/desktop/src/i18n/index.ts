@@ -53,7 +53,7 @@ function entry(dictionary: Dictionary, key: Key): string | Plural {
  * `t(key, vars)`: the text of `key` in `lang` with `{name}` replaced from `vars` (a missing one
  * stays visible). A plural picks its form from `vars.n` through Intl.PluralRules.
  */
-export function translator(lang: Lang): T {
+export function translator(lang: Lang, _mode: "full" | "simple" = "full"): T {
   const rules = new Intl.PluralRules(lang);
   const translate = (key: Key, vars: Vars = {}) => {
     const found = entry(DICTIONARIES[lang], key);
