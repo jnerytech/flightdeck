@@ -40,6 +40,87 @@ export interface PersonInput {
   costLimit?: number | null;
 }
 
+/** A refusal with a reason the app tells in its language. */
+export class RoiSettingsError extends Error {
+  constructor(readonly reason: string) {
+    super(reason);
+  }
+}
+
+const MAX_AMOUNT = 1_000_000;
+/** A token limit is a count, and counts get big. */
+const MAX_TOKENS = 1_000_000_000_000;
+
+const empty = (): RoiSettingsData => ({
+  v: 1,
+  defaultRate: null,
+  clientRates: {},
+  projectRates: {},
+  planPrice: null,
+  countReview: false,
+  reviewCapMinutes: 5,
+  people: [],
+});
+
+const amount = (value: number | null | undefined, reason: string): number | null => {
+  if (value === null || value === undefined) return null;
+  if (!Number.isFinite(value) || value < 0 || value > MAX_AMOUNT)
+    throw new RoiSettingsError(reason);
+  return value;
+};
+
+const isAmount = (v: unknown): v is number =>
+  typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= MAX_AMOUNT;
+const orNull = (v: unknown): v is number | null => v === null || isAmount(v);
+const orNullTokens = (v: unknown): v is number | null =>
+  v === null || (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= MAX_TOKENS);
+const isRates = (v: unknown): v is Record<string, number> =>
+  typeof v === "object" && v !== null && !Array.isArray(v) && Object.values(v).every(isAmount);
+
+function isPerson(v: unknown): v is Person {
+  if (typeof v !== "object" || v === null) return false;
+  const p = v as Record<string, unknown>;
+  return (
+    typeof p.id === "string" &&
+    typeof p.name === "string" &&
+    Array.isArray(p.hostIds) &&
+    p.hostIds.every((h) => typeof h === "string") &&
+    orNullTokens(p.tokenLimit) &&
+    orNull(p.costLimit)
+  );
+}
+
+/** The data when `raw` is a whole, valid one; null otherwise. */
+function parse(raw: unknown): RoiSettingsData | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const d = raw as Record<string, unknown>;
+  const cap = d.reviewCapMinutes;
+  if (
+    d.v !== 1 ||
+    !orNull(d.defaultRate) ||
+    !isRates(d.clientRates) ||
+    !isRates(d.projectRates) ||
+    !orNull(d.planPrice) ||
+    typeof d.countReview !== "boolean" ||
+    typeof cap !== "number" ||
+    !(cap >= 1 && cap <= 60) ||
+    !Array.isArray(d.people) ||
+    !d.people.every(isPerson)
+  ) {
+    return null;
+  }
+  return {
+    v: 1,
+    defaultRate: d.defaultRate,
+    clientRates: d.clientRates,
+    projectRates: d.projectRates,
+    planPrice: d.planPrice,
+    countReview: d.countReview,
+    reviewCapMinutes: cap,
+    people: d.people,
+  };
+}
+
 export class RoiSettings {
   constructor(
     private readonly platform: Pick<Platform, "storage">,
@@ -47,48 +128,152 @@ export class RoiSettings {
   ) {}
 
   data(): RoiSettingsData {
-    void this.platform;
-    void this.options;
+    try {
+      return parse(JSON.parse(this.platform.storage.getItem(ROI_KEY) ?? "null")) ?? empty();
+    } catch {
+      return empty();
+    }
+  }
+
+  private write(data: RoiSettingsData): void {
+    this.platform.storage.setItem(ROI_KEY, JSON.stringify(data));
+    this.options.onChange?.();
+  }
+
+  setDefaultRate(rate: number | null): void {
+    this.write({ ...this.data(), defaultRate: amount(rate, "rate_invalid") });
+  }
+
+  setClientRate(clientId: string, rate: number | null): void {
+    const data = this.data();
+    const value = amount(rate, "rate_invalid");
+    const { [clientId]: _gone, ...rest } = data.clientRates;
+    this.write({ ...data, clientRates: value === null ? rest : { ...rest, [clientId]: value } });
+  }
+
+  setProjectRate(projectKey: string, rate: number | null): void {
+    const data = this.data();
+    const value = amount(rate, "rate_invalid");
+    const { [projectKey]: _gone, ...rest } = data.projectRates;
+    this.write({ ...data, projectRates: value === null ? rest : { ...rest, [projectKey]: value } });
+  }
+
+  setPlanPrice(price: number | null): void {
+    this.write({ ...this.data(), planPrice: amount(price, "price_invalid") });
+  }
+
+  setCountReview(on: boolean): void {
+    this.write({ ...this.data(), countReview: on });
+  }
+
+  setReviewCap(minutes: number): void {
+    if (!Number.isFinite(minutes) || minutes < 1 || minutes > 60) {
+      throw new RoiSettingsError("review_cap_invalid");
+    }
+    this.write({ ...this.data(), reviewCapMinutes: minutes });
+  }
+
+  /** The rate for a project: its own, else its client's, else the app's; null when none is set. */
+  rateFor(projectKey: string, clientId: string | null): number | null {
+    const data = this.data();
+    return (
+      data.projectRates[projectKey] ??
+      (clientId === null ? undefined : data.clientRates[clientId]) ??
+      data.defaultRate
+    );
+  }
+
+  /** The person, checked against the others: a name once, a host in one person only. */
+  private checked(input: PersonInput, others: Person[]): Omit<Person, "id"> {
+    const name = input.name.trim();
+    if (name === "") throw new RoiSettingsError("person_name_empty");
+    if (others.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      throw new RoiSettingsError("person_name_taken");
+    }
+    const hostIds = [...new Set(input.hostIds)];
+    if (hostIds.some((h) => others.some((p) => p.hostIds.includes(h)))) {
+      throw new RoiSettingsError("person_host_taken");
+    }
     return {
-      v: 1,
-      defaultRate: 1,
-      clientRates: {},
-      projectRates: {},
-      planPrice: 1,
-      countReview: true,
-      reviewCapMinutes: 0,
-      people: [],
+      name,
+      hostIds,
+      tokenLimit: amount(input.tokenLimit, "person_limit_invalid", MAX_TOKENS),
+      costLimit: amount(input.costLimit, "person_limit_invalid"),
     };
   }
 
-  setDefaultRate(_rate: number | null): void {}
-  setClientRate(_clientId: string, _rate: number | null): void {}
-  setProjectRate(_projectKey: string, _rate: number | null): void {}
-  setPlanPrice(_price: number | null): void {}
-  setCountReview(_on: boolean): void {}
-  setReviewCap(_minutes: number): void {}
-
-  /** The rate for a project: its own, else its client's, else the app's; null when none is set. */
-  rateFor(_projectKey: string, _clientId: string | null): number | null {
-    return 0;
+  addPerson(input: PersonInput): Person {
+    const data = this.data();
+    const person: Person = {
+      id: (this.options.newId ?? (() => crypto.randomUUID()))(),
+      ...this.checked(input, data.people),
+    };
+    this.write({ ...data, people: [...data.people, person] });
+    return person;
   }
 
-  addPerson(_input: PersonInput): Person {
-    throw new Error("not implemented");
+  updatePerson(id: string, patch: Partial<PersonInput>): Person {
+    const data = this.data();
+    const current = data.people.find((p) => p.id === id);
+    if (!current) throw new RoiSettingsError("person_not_found");
+    const next: Person = {
+      id,
+      ...this.checked(
+        {
+          name: patch.name ?? current.name,
+          hostIds: patch.hostIds ?? current.hostIds,
+          tokenLimit: patch.tokenLimit === undefined ? current.tokenLimit : patch.tokenLimit,
+          costLimit: patch.costLimit === undefined ? current.costLimit : patch.costLimit,
+        },
+        data.people.filter((p) => p.id !== id),
+      ),
+    };
+    this.write({ ...data, people: data.people.map((p) => (p.id === id ? next : p)) });
+    return next;
   }
-  updatePerson(_id: string, _patch: Partial<PersonInput>): Person {
-    throw new Error("not implemented");
+
+  removePerson(id: string): void {
+    const data = this.data();
+    this.write({ ...data, people: data.people.filter((p) => p.id !== id) });
   }
-  removePerson(_id: string): void {}
-  personOf(_hostId: string): Person | null {
-    return { id: "", name: "", hostIds: [], tokenLimit: null, costLimit: null };
+
+  personOf(hostId: string): Person | null {
+    return this.data().people.find((p) => p.hostIds.includes(hostId)) ?? null;
   }
 
   exportJson(): string {
-    return "";
+    return JSON.stringify(this.data());
   }
+
   /** Replaces the rates and the switches and merges the people by id; null when the text is not an export. */
-  importJson(_text: string): { people: number } | null {
-    return { people: -1 };
+  importJson(text: string): { people: number } | null {
+    let incoming: RoiSettingsData | null;
+    try {
+      incoming = parse(JSON.parse(text));
+    } catch {
+      return null;
+    }
+    if (!incoming) return null;
+    const data = this.data();
+    const people = [...data.people];
+    let added = 0;
+    for (const person of incoming.people) {
+      const same = people.findIndex((p) => p.id === person.id && p.name === person.name);
+      if (same >= 0) {
+        people[same] = person;
+        continue;
+      }
+      const clash =
+        people.some((p) => p.name.toLowerCase() === person.name.toLowerCase()) ||
+        person.hostIds.some((h) => people.some((p) => p.hostIds.includes(h)));
+      if (clash) continue;
+      const id = people.some((p) => p.id === person.id)
+        ? (this.options.newId ?? (() => crypto.randomUUID()))()
+        : person.id;
+      people.push({ ...person, id });
+      added += 1;
+    }
+    this.write({ ...incoming, people });
+    return { people: added };
   }
 }
