@@ -27,6 +27,7 @@ import {
   requestShutdown,
   runUpdate,
   stableBinPath,
+  swapBinary,
   type UpdateDeps,
   waitHealthy,
 } from "../src/update.ts";
@@ -579,5 +580,20 @@ describe("update", () => {
     const stable = stableBinPath(home, process.platform);
     previous(stable);
     expect(() => assertBinaryUntouched(guard)).toThrow("binário real do flightdeckd mexido");
+  });
+
+  test("swapBinary puts the new binary in place through a promise and keeps the previous one as .old", async () => {
+    const dir = tempDir();
+    const stable = join(dir, "bin", "flightdeckd");
+    const fresh = join(dir, "fresh");
+    writeFileSync(fresh, "new");
+    const first = swapBinary(fresh, stable);
+    expect(first).toBeInstanceOf(Promise);
+    expect(await first).toBe(false);
+    expect(readFileSync(stable, "utf8")).toBe("new");
+    writeFileSync(fresh, "newer");
+    expect(await swapBinary(fresh, stable)).toBe(true);
+    expect(readFileSync(stable, "utf8")).toBe("newer");
+    expect(readFileSync(`${stable}.old`, "utf8")).toBe("new");
   });
 });
