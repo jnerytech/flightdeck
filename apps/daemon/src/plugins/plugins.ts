@@ -4,14 +4,7 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFile, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -37,10 +30,13 @@ export interface Pin {
   at: string;
 }
 
+/** A store may answer at once (a map in memory) or later (a file). */
+type Later<T> = T | Promise<T>;
+
 export interface PinStore {
-  all(): Record<string, Pin>;
-  set(id: string, pin: Pin): void;
-  delete(id: string): void;
+  all(): Later<Record<string, Pin>>;
+  set(id: string, pin: Pin): Later<void>;
+  delete(id: string): Later<void>;
 }
 
 export interface InstalledPlugin {
@@ -85,7 +81,7 @@ export interface PluginsOptions {
   pins: PinStore;
   clock?: () => number;
   /** Told of every install, update, removal and marketplace change that landed. */
-  record?: (decision: PluginDecision) => void;
+  record?: (decision: PluginDecision) => Later<void>;
 }
 
 export interface PluginDecision {
@@ -223,13 +219,15 @@ export class Plugins {
   async list(): Promise<PluginList> {
     const listed = await this.json(["list", "--json", "--available"]);
     const markets = await this.json(["marketplace", "list", "--json"]);
-    const pins = this.opts.pins.all();
+    const pins = await this.opts.pins.all();
     const installedRaw = Array.isArray(listed)
       ? listed
       : list(isObject(listed) ? listed.installed : []);
     const availableRaw = isObject(listed) ? list(listed.available) : [];
     return {
-      installed: installedRaw.filter(isObject).map((item) => this.installed(item, pins)),
+      installed: await Promise.all(
+        installedRaw.filter(isObject).map((item) => this.installed(item, pins)),
+      ),
       available: availableRaw.filter(isObject).map((item) => ({
         id: text(item.pluginId) ?? "",
         name: text(item.name) ?? "",
@@ -266,7 +264,7 @@ export class Plugins {
     arg(id);
     const found = await this.detail(id);
     if (!pinned) {
-      this.opts.pins.delete(id);
+      await this.opts.pins.delete(id);
       return { ...found, pinned: null };
     }
     const pin: Pin = {
@@ -274,7 +272,7 @@ export class Plugins {
       hash: found.inventory?.hash ?? "",
       at: new Date((this.opts.clock ?? Date.now)()).toISOString(),
     };
-    this.opts.pins.set(id, pin);
+    await this.opts.pins.set(id, pin);
     return { ...found, pinned: pin };
   }
 
@@ -282,7 +280,7 @@ export class Plugins {
   async preview(input: { plugin: string } | { dir: string }): Promise<PluginPreview> {
     arg("dir" in input ? input.dir : input.plugin);
     if ("dir" in input) {
-      const inventory = inspectPlugin(input.dir);
+      const inventory = await inspectPlugin(input.dir);
       return {
         plugin: inventory.manifest?.name ?? basename(input.dir),
         ...(inventory.manifest?.version ? { version: inventory.manifest.version } : {}),
@@ -293,7 +291,7 @@ export class Plugins {
     }
     const dir = await this.sourceDir(input.plugin);
     if (!dir) return { plugin: input.plugin, inventory: null, hash: null, reason: "not-local" };
-    const inventory = inspectPlugin(dir);
+    const inventory = await inspectPlugin(dir);
     return {
       plugin: input.plugin,
       ...(inventory.manifest?.version ? { version: inventory.manifest.version } : {}),
@@ -359,7 +357,7 @@ export class Plugins {
     if (result.outcome !== "ok") return result;
     const checked = await this.verify(name, scope, input.confirmHash);
     if (checked) return checked;
-    this.record("install", name, input.confirmHash);
+    await this.record("install", name, input.confirmHash);
     return result;
   }
 
@@ -369,7 +367,7 @@ export class Plugins {
     acceptCommand?: string;
   }): Promise<ChangeResult> {
     arg(input.plugin);
-    const pin = this.opts.pins.all()[input.plugin];
+    const pin = (await this.opts.pins.all())[input.plugin];
     if (pin)
       throw invalid(
         `${input.plugin} está fixado na versão ${pin.version}; solte antes de atualizar`,
@@ -386,7 +384,7 @@ export class Plugins {
     if (result.outcome !== "ok") return result;
     const checked = await this.verify(input.plugin, "user", input.confirmHash);
     if (checked) return checked;
-    this.record("update", input.plugin, input.confirmHash);
+    await this.record("update", input.plugin, input.confirmHash);
     return result;
   }
 
@@ -405,8 +403,8 @@ export class Plugins {
     ];
     const result = await this.change(input.plugin, args);
     if (result.outcome === "ok") {
-      this.opts.pins.delete(input.plugin);
-      this.record("uninstall", input.plugin);
+      await this.opts.pins.delete(input.plugin);
+      await this.record("uninstall", input.plugin);
     }
     return result;
   }
@@ -426,7 +424,7 @@ export class Plugins {
       "--json",
     ];
     const result = await this.change(input.source, args);
-    if (result.outcome === "ok") this.record("marketplace-add", input.source);
+    if (result.outcome === "ok") await this.record("marketplace-add", input.source);
     return result;
   }
 
@@ -434,7 +432,7 @@ export class Plugins {
     arg(input.name);
     if (!input.confirm) throw invalid("remover um marketplace pede confirm: true");
     const result = await this.change(input.name, ["marketplace", "remove", input.name, "--json"]);
-    if (result.outcome === "ok") this.record("marketplace-remove", input.name);
+    if (result.outcome === "ok") await this.record("marketplace-remove", input.name);
     return result;
   }
 
@@ -475,7 +473,7 @@ export class Plugins {
       found.scope || scope,
       "--json",
     ]);
-    this.record("rollback", found.id, confirmHash);
+    await this.record("rollback", found.id, confirmHash);
     return {
       outcome: "rolled-back",
       message: `o conteúdo instalado de ${found.id} é diferente do que foi mostrado; o plugin foi removido (${undone.outcome})`,
@@ -488,8 +486,12 @@ export class Plugins {
     }
   }
 
-  private record(action: PluginDecision["action"], target: string, hash?: string) {
-    this.opts.record?.({
+  private async record(
+    action: PluginDecision["action"],
+    target: string,
+    hash?: string,
+  ): Promise<void> {
+    await this.opts.record?.({
       action,
       target,
       ...(hash ? { hash } : {}),
@@ -507,7 +509,7 @@ export class Plugins {
     let catalog: unknown;
     try {
       catalog = JSON.parse(
-        readFileSync(join(location, ".claude-plugin", "marketplace.json"), "utf8"),
+        await readFile(join(location, ".claude-plugin", "marketplace.json"), "utf8"),
       );
     } catch {
       throw invalid(`o catálogo do marketplace ${marketplace} não pôde ser lido`);
@@ -519,8 +521,11 @@ export class Plugins {
     const source = text(entry.source);
     if (!source?.startsWith("./")) return null;
     const dir = resolve(location, source);
-    if (!existsSync(dir) || !isInside(realpathSync.native(location), realpathSync.native(dir)))
-      return null;
+    const [realLocation, realDir] = await Promise.all([
+      realpath(location).catch(() => null),
+      realpath(dir).catch(() => null),
+    ]);
+    if (!realLocation || !realDir || !isInside(realLocation, realDir)) return null;
     return dir;
   }
 
@@ -564,12 +569,12 @@ export class Plugins {
     return { outcome: parsed.outcome === "ok" ? "ok" : "failed", message };
   }
 
-  private installed(item: Json, pins: Record<string, Pin>): InstalledPlugin {
+  private async installed(item: Json, pins: Record<string, Pin>): Promise<InstalledPlugin> {
     const id = text(item.id) ?? "";
     const path = text(item.readFromFolder) ?? text(item.installPath) ?? "";
     let inventory: PluginInventory | null = null;
     try {
-      inventory = inspectPlugin(path);
+      inventory = await inspectPlugin(path);
     } catch {
       // A folder that is gone or too big shows no inventory; the CLI's own errors still show.
     }
@@ -633,33 +638,40 @@ export function claudeCli(
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */
-export function pluginDecisionLog(path: string): (decision: PluginDecision) => void {
-  return (decision) => {
-    mkdirSync(dirname(path), { recursive: true });
-    appendFileSync(path, `${JSON.stringify(decision)}\n`);
+export function pluginDecisionLog(path: string): (decision: PluginDecision) => Promise<void> {
+  return async (decision) => {
+    await mkdir(dirname(path), { recursive: true });
+    await appendFile(path, `${JSON.stringify(decision)}\n`);
   };
 }
 
 /** Pins kept in a JSON file; one that cannot be read is no pin at all. */
 export function filePins(path: string): PinStore {
-  const read = (): Record<string, Pin> => {
+  const read = async (): Promise<Record<string, Pin>> => {
     try {
-      const data = JSON.parse(readFileSync(path, "utf8"));
+      const data = JSON.parse(await readFile(path, "utf8"));
       return isObject(data) ? (data as Record<string, Pin>) : {};
     } catch {
       return {};
     }
   };
-  const write = (pins: Record<string, Pin>) => {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, JSON.stringify(pins, null, 2));
+  // Changes go one after the other, so two at once cannot read the same file and lose one.
+  let turn: Promise<unknown> = Promise.resolve();
+  const change = (apply: (pins: Record<string, Pin>) => Record<string, Pin>): Promise<void> => {
+    const done = turn.then(async () => {
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, JSON.stringify(apply(await read()), null, 2));
+    });
+    turn = done.catch(() => {});
+    return done;
   };
   return {
     all: read,
-    set: (id, pin) => write({ ...read(), [id]: pin }),
-    delete: (id) => {
-      const { [id]: _gone, ...rest } = read();
-      write(rest);
-    },
+    set: (id, pin) => change((pins) => ({ ...pins, [id]: pin })),
+    delete: (id) =>
+      change((pins) => {
+        const { [id]: _gone, ...rest } = pins;
+        return rest;
+      }),
   };
 }

@@ -949,27 +949,29 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
       }
       case "mcp.list":
-        return ok(command.type, { servers: mcp().list(projectPath(command.payload.projectId)) });
+        return ok(command.type, {
+          servers: await mcp().list(projectPath(command.payload.projectId)),
+        });
       case "mcp.test": {
         const { projectId, name, confirm } = command.payload;
         return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
       }
       case "mcp.save": {
         const path = projectPath(command.payload.projectId);
-        mcp().save(path, command.payload.server, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().save(path, command.payload.server, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.remove": {
         const path = projectPath(command.payload.projectId);
-        mcp().remove(path, command.payload.name, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().remove(path, command.payload.name, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.toggle": {
         const { projectId, name, enabled, confirm, sessionId } = command.payload;
         const path = projectPath(projectId);
-        mcp().toggle(path, name, enabled, confirm === true);
+        await mcp().toggle(path, name, enabled, confirm === true);
         if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
-        return ok(command.type, { servers: mcp().list(path) });
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
@@ -1202,15 +1204,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
-        return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });
+        return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
       }
       case "agentcfg.read": {
         const { projectId, kind, path, origin } = command.payload;
-        return ok(command.type, agentcfg().read(projectPath(projectId), kind, path, origin));
+        return ok(command.type, await agentcfg().read(projectPath(projectId), kind, path, origin));
       }
       case "agentcfg.write": {
         const { projectId, confirm, ...input } = command.payload;
-        const written = agentcfg().write(projectPath(projectId), {
+        const written = await agentcfg().write(projectPath(projectId), {
           ...input,
           confirm: confirm === true,
         });
@@ -1744,7 +1746,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, personas().subagents({ projectPath, language }));
       }
       case "personas.publishAgent":
-        return ok(command.type, personas().publishAgent(command.payload));
+        return ok(command.type, await personas().publishAgent(command.payload));
       case "personas.resolve": {
         const { ref, projectPath } = command.payload;
         const store = personas();

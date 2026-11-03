@@ -116,9 +116,9 @@ async function code(promise: Promise<unknown> | (() => unknown)): Promise<string
 }
 
 describe("mcp-projeto", () => {
-  test("lista com origem e só leitura; segredos mascarados; abrir a lista não sobe servidor", () => {
+  test("lista com origem e só leitura; segredos mascarados; abrir a lista não sobe servidor", async () => {
     const { config, project, marker } = setup();
-    const list = config.list(project);
+    const list = await config.list(project);
     expect(list.map((s) => [s.name, s.origin, s.readOnly, s.enabled])).toEqual([
       ["eco", "project", false, true],
       ["marcador", "project", false, true],
@@ -141,13 +141,17 @@ describe("mcp-projeto", () => {
     expect(
       await code(() => config.save(project, { name: "novo", command: "bun", args: ["x"] }, false)),
     ).toBe("invalid_state");
-    config.save(project, { name: "novo", command: "bun", args: ["x"], env: { A: "1" } }, true);
+    await config.save(
+      project,
+      { name: "novo", command: "bun", args: ["x"], env: { A: "1" } },
+      true,
+    );
     const saved = json(join(project, ".mcp.json"));
     expect(saved.outra).toBe("chave preservada");
     expect(saved.mcpServers.novo).toEqual({ command: "bun", args: ["x"], env: { A: "1" } });
     // The other servers keep their real secrets.
     expect(saved.mcpServers.eco.env).toEqual({ TOKEN: "segredo" });
-    config.remove(project, "marcador", true);
+    await config.remove(project, "marcador", true);
     expect(Object.keys(json(join(project, ".mcp.json")).mcpServers)).toEqual([
       "eco",
       "mudo",
@@ -179,17 +183,17 @@ describe("mcp-projeto", () => {
     expect(await preview("nao-existe")).toBe("not_found");
   });
 
-  test("ligar e desligar pela lista do settings.local.json, preservando o resto", () => {
+  test("ligar e desligar pela lista do settings.local.json, preservando o resto", async () => {
     const { config, project } = setup();
     const file = join(project, ".claude", "settings.local.json");
-    config.toggle(project, "mudo", true, true);
-    config.toggle(project, "eco", false, true);
+    await config.toggle(project, "mudo", true, true);
+    await config.toggle(project, "eco", false, true);
     expect(json(file)).toEqual({
       permissions: { allow: ["Read"] },
       disabledMcpjsonServers: ["eco"],
       enabledMcpjsonServers: ["mudo"],
     });
-    expect(config.list(project).find((s) => s.name === "eco")?.enabled).toBe(false);
+    expect((await config.list(project)).find((s) => s.name === "eco")?.enabled).toBe(false);
   });
 
   test("testar: sem confirm só mostra o comando exato; com confirm lista as ferramentas; respeita o timeout", async () => {
@@ -223,7 +227,7 @@ describe("mcp-projeto", () => {
       url,
       headers: { Authorization: "Bearer real" },
     };
-    config.save(project, web, true);
+    await config.save(project, web, true);
     expect(await config.test(project, "web", false)).toEqual({ preview: { url } });
     const tested = await config.test(project, "web", true).catch((error: Error) => error.message);
     expect(tested).toEqual({ tools: ["remota"], resources: [] });

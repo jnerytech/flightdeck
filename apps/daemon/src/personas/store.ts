@@ -37,7 +37,7 @@ export interface PersonasOptions {
   /** The personas that come ready, in a language (phase 20's pack). */
   pack?: (language: Language) => PersonaDef[];
   /** The project agent editor (phase 12), which writes `.claude/agents`; the integration plugs it in. */
-  publisher?: { publish(request: AgentPublishRequest): { path: string } };
+  publisher?: { publish(request: AgentPublishRequest): Promise<{ path: string }> };
 }
 
 /** A persona as a project agent file. */
@@ -175,12 +175,12 @@ export class Personas {
   }
 
   /** Writes the persona as the project's agent `persona-<id>`, through the agent editor. */
-  publishAgent(request: {
+  async publishAgent(request: {
     id: string;
     projectPath: string;
     language?: Language;
     confirm: boolean;
-  }): { path: string } {
+  }): Promise<{ path: string }> {
     if (!request.confirm) {
       throw new FlightdeckError(
         "invalid_state",
