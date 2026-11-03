@@ -94,6 +94,13 @@ em vez de depender de cuidado.
   (`void server.stop()` cuts a connection without waiting for it to drain). Do not silence the
   rule with a `biome-ignore`.
 
+- **BDD for the journeys a person reads.** The journeys a non-programmer reads (approval, new
+  session, board, the simple mode of phase 33) are Gherkin scenarios in `pt-BR` and `en`
+  (`scripts/e2e/bdd/features/`, run by `playwright-bdd`, pinned exactly), written to create their
+  own state. Layout, terminal and keyboard journeys stay plain TypeScript
+  (`scripts/e2e/journeys.ts`), and unit tests stay plain `bun test` with behavior titles. The
+  pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
+
 ## Armadilhas conhecidas
 
 - `bun test` esconde as linhas `(pass)` quando `CLAUDECODE` está definida: para mostrar a lista,

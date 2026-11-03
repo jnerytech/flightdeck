@@ -50,7 +50,7 @@
     "slot": "bun run scripts/slot.ts",
     "demo": "bun run scripts/demo.ts",
     "demo:shots": "bun run scripts/demo.ts --shots",
-    "e2e": "playwright test -c scripts/e2e/playwright.config.ts",
+    "e2e": "bddgen -c scripts/e2e/playwright.config.ts && playwright test -c scripts/e2e/playwright.config.ts",
     "ui:lock": "bun run scripts/ui-lock.ts",
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build",
@@ -70,6 +70,7 @@
     "@types/pngjs": "6.0.5",
     "axe-core": "4.10.2",
     "pixelmatch": "8.0.0",
+    "playwright-bdd": "9.2.1",
     "playwright-core": "1.64.1",
     "pngjs": "7.0.0",
     "typescript": "7.0.2"

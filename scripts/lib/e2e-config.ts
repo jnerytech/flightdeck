@@ -49,9 +49,13 @@ export function runnerSettings(
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** The `--grep` for `E2E_ONLY=a,b`: test titles end in the journey name, after the language. */
+/**
+ * The `--grep` for `E2E_ONLY=a,b`: test titles end in the journey name, after the language; a
+ * scenario of a `.feature` file carries it as a tag (`@a`), which Playwright appends to the title.
+ */
 export function grepFor(only: string | undefined): RegExp | undefined {
   const names = (only ?? "").split(",").filter(Boolean);
   if (names.length === 0) return undefined;
-  return new RegExp(`(^| )(${names.map(escapeRegExp).join("|")})$`);
+  const any = names.map(escapeRegExp).join("|");
+  return new RegExp(`(^| )(${any})$|(^| )@(${any})( |$)`);
 }
