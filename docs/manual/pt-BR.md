@@ -34,6 +34,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [Aprovações e permitir sempre](#aprovações-e-permitir-sempre)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
+  - [Achar projetos](#achar-projetos)
   - [Ciclo do card](#ciclo-do-card)
   - [Provedores de PR](#provedores-de-pr)
   - [Limite de execuções paralelas](#limite-de-execuções-paralelas)
@@ -261,6 +262,23 @@ Secret Service), não em texto puro. Depois, use **+** ao lado do host para cria
 dentro dos `allowedRoots`, nome, modo de permissão e primeiro prompt. Pedidos de ferramenta
 aparecem como cards inline, com **Aprovar** e **Negar**. O app reconecta sozinho (de 1 s a 30 s)
 e retoma cada sessão do último evento visto.
+
+#### O primeiro host
+
+Sem nenhum host, o app mostra quatro passos no lugar das telas de sempre: instalar e iniciar o
+daemon (`flightdeckd setup`), copiar o link de pareamento que ele imprime, colar o link e
+apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você aperta
+**Verificar** em **Verificar este host** e libera as pastas de projetos em **Pastas permitidas**.
+Depois, **Achar meus projetos** (em **Projetos**) preenche o Board sem digitar caminho.
+
+#### Verificar um host
+
+**Verificar este host** (na página do host, para hosts online cujo daemon anuncia `doctor.run`)
+pede ao daemon que se confira: configuração, pastas permitidas, serviço, daemon, Claude Code,
+hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, **atenção** ou
+**falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
+O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
+terminal com `flightdeckd doctor`.
 
 ## Serviço
 
@@ -590,6 +608,23 @@ No app, o botão ▦ ao lado do host abre **Projetos de &lt;host&gt;**. Cada pro
 Ao iniciar um card, o daemon roda `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` e acrescenta `.flightdeck/worktrees/` ao `.git/info/exclude` do repositório
 (o `.gitignore` não é tocado). O prompt da sessão é a descrição do card mais o modelo.
+
+### Achar projetos
+
+**Achar meus projetos** (na tela **Projetos**, para hosts que anunciam `projects.scan` e
+`projects.clone`) tem duas partes:
+
+- **Procurar nas pastas permitidas** busca repositórios git dentro das pastas permitidas, em dois
+  níveis por padrão, até 200 repositórios. Pula pastas ocultas, `node_modules`, links e o
+  interior de um repositório já achado, e nunca abre mais de 2000 pastas. Repositórios que já são
+  projetos ficam de fora. Marque os que quiser e aperte **Adicionar selecionados**.
+- **Clonar a partir de um endereço** roda `git clone` numa pasta dentro das pastas permitidas e
+  registra o resultado como projeto. Só entram endereços `https://`, `ssh://` e `usuario@host:caminho`;
+  é recusado o endereço que começa com traço, tem espaços, aponta para um caminho local ou usa
+  `file://` ou um auxiliar de transporte, assim como um nome de pasta que não seja um nome simples
+  ou uma pasta que já exista. O git roda sem pedir senha e para depois de cinco minutos, então um
+  repositório privado precisa de chave SSH ou de um credential helper já configurado no host.
+  Toda recusa diz o motivo.
 
 ### Ciclo do card
 
