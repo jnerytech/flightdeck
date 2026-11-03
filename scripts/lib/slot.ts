@@ -66,16 +66,19 @@ export const RENICE_MS = 5000;
 export const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
-export const USAGE = "usage: bun run slot -- [--nice] <command...> | bun run slot -- --status";
+export const USAGE =
+  "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status";
 
 export function parseArgs(argv: string[]): SlotArgs {
   let rest = argv[0] === "--" ? argv.slice(1) : argv;
   let nice = false;
+  let priority = false;
   let asStatus = false;
   let maxAgeMs = DEFAULT_MAX_AGE_MS;
   for (;;) {
     const flag = rest[0];
     if (flag === "--nice") nice = true;
+    else if (flag === "--priority") priority = true;
     else if (flag === "--status") asStatus = true;
     else if (flag === "--max-age") {
       const minutes = Number(rest[1]);
@@ -86,7 +89,14 @@ export function parseArgs(argv: string[]): SlotArgs {
     rest = rest.slice(1);
   }
   if (asStatus) return rest.length === 0 ? { kind: "status", maxAgeMs } : { kind: "usage" };
-  return rest.length > 0 ? { kind: "run", nice, maxAgeMs, command: rest } : { kind: "usage" };
+  if (rest.length === 0) return { kind: "usage" };
+  return {
+    kind: "run",
+    nice,
+    ...(priority ? { priority: true as const } : {}),
+    maxAgeMs,
+    command: rest,
+  };
 }
 
 export function parseHolder(text: string | null): SlotHolder | null {
@@ -200,7 +210,11 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     }
     try {
       state.child = env.spawn(args.command, args.nice);
+      const finished = { done: false };
+      const lowering = args.priority ? lowerWhile(env, finished) : Promise.resolve();
       const code = await state.child.wait();
+      finished.done = true;
+      await lowering;
       return state.signal ?? code;
     } finally {
       release(env);
@@ -215,6 +229,51 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
  * run with `--priority` gets the CPU. Only raises (a process already at or above it is left), skips
  * the slot's own process tree, and restores nothing. Returns the pids it changed.
  */
-export async function lowerOthers(_env: SlotEnv): Promise<number[]> {
-  return [];
+export async function lowerOthers(env: SlotEnv): Promise<number[]> {
+  if (!env.processes || !env.renice) return [];
+  const all = await env.processes();
+  // The slot's own tree: this process and everything it started.
+  const own = new Set([env.pid]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const p of all) {
+      if (!own.has(p.pid) && own.has(p.ppid)) {
+        own.add(p.pid);
+        grew = true;
+      }
+    }
+  }
+  const lowered: number[] = [];
+  for (const p of all) {
+    if (own.has(p.pid) || p.nice >= NICE_OTHERS || !isBunTest(p.command)) continue;
+    env.renice(p.pid, NICE_OTHERS);
+    lowered.push(p.pid);
+  }
+  return lowered;
+}
+
+/** `bun test ...`, `bun --config=x test ...` or a path to bun: its first plain argument is `test`. */
+function isBunTest(command: string): boolean {
+  const [program, ...args] = command.trim().split(/\s+/);
+  if (
+    !program ||
+    program
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.exe$/, "") !== "bun"
+  )
+    return false;
+  return args.find((arg) => !arg.startsWith("-")) === "test";
+}
+
+/** Lowers the others every `RENICE_MS` until the command is done; a failure only skips a pass. */
+async function lowerWhile(env: SlotEnv, finished: { done: boolean }): Promise<void> {
+  while (!finished.done) {
+    try {
+      await lowerOthers(env);
+    } catch {
+      // Listing or renicing is best effort: the run itself is not affected.
+    }
+    await env.sleep(RENICE_MS);
+  }
 }

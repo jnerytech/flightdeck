@@ -480,6 +480,12 @@ describe("slot: --priority", () => {
       kill: () => {},
     };
     f.env.spawn = () => child;
+    // The fake sleep gives the child's timer a turn, so the loop cannot starve it.
+    const sleep = f.env.sleep;
+    f.env.sleep = async (ms) => {
+      await sleep(ms);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
     f.onSleep.push(() => {
       ticks++;
       // A new test process shows up in the second tick: it is caught in the third.

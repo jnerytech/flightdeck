@@ -2,13 +2,14 @@
 /**
  * `bun run slot -- <command...>`: runs the command once the full-gate slot is free, so the heavy
  * commands (full suite, e2e, shots, smokes, builds) never overlap. `--status` shows the holder,
- * `--nice` lowers the command's priority. The logic is in `lib/slot.ts`; this file is the real
+ * `--nice` lowers the command's priority, `--priority` lowers the other
+ * `bun test` processes of the user while the command runs. The logic is in `lib/slot.ts`; this file is the real
  * files, clock and processes.
  */
 import { linkSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
-import { constants, setPriority, tmpdir } from "node:os";
+import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
-import { run, type SlotEnv } from "./lib/slot.ts";
+import { type ProcessInfo, run, type SlotEnv } from "./lib/slot.ts";
 
 const LOCK = join(tmpdir(), "flightdeck-slot.lock");
 
@@ -25,6 +26,28 @@ function create(path: string, data: string): boolean {
   } finally {
     unlinkSync(staging);
   }
+}
+
+/** The user's processes from `ps`; Windows has none to list, so it renices nothing. */
+async function userProcesses(): Promise<ProcessInfo[]> {
+  const ps = Bun.spawn(["ps", "-u", String(userInfo().uid), "-o", "pid=,ppid=,ni=,args="], {
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  const text = await new Response(ps.stdout).text();
+  const list: ProcessInfo[] = [];
+  for (const line of text.split("\n")) {
+    const match = /^\s*(\d+)\s+(\d+)\s+(-?\d+)\s+(.*)$/.exec(line);
+    if (match) {
+      list.push({
+        pid: Number(match[1]),
+        ppid: Number(match[2]),
+        nice: Number(match[3]),
+        command: match[4] as string,
+      });
+    }
+  }
+  return list;
 }
 
 const env: SlotEnv = {
@@ -64,6 +87,19 @@ const env: SlotEnv = {
     }
     return { wait: () => child.exited, kill: () => child.kill() };
   },
+  ...(process.platform === "win32"
+    ? {}
+    : {
+        processes: userProcesses,
+        renice: (pid: number, nice: number) => {
+          try {
+            // Only up: a process already lower is left as it is.
+            if (getPriority(pid) < nice) setPriority(pid, nice);
+          } catch {
+            // Gone already, or not ours to change.
+          }
+        },
+      }),
   onSignal: (handler) => {
     const onInt = () => handler(130);
     const onTerm = () => handler(143);
