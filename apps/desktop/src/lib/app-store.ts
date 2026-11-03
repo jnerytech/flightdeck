@@ -152,8 +152,6 @@ export interface HostView extends HostConfig {
   info: HelloResult | null;
   /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
   hostInfo: HostInfoResult | null;
-  /** Round trip of the last heartbeat. */
-  latencyMs: number | null;
   /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
   incompatibility: string | null;
   /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
@@ -602,7 +600,6 @@ const newHostView = (config: HostConfig): HostView => ({
   status: "offline",
   info: null,
   hostInfo: null,
-  latencyMs: null,
   incompatibility: null,
   daemonUpdate: null,
   sessions: [],
@@ -809,6 +806,24 @@ export class AppStore {
 
   saveHubFilter(filter: HubFilter): void {
     saveHubFilter(this.platform.storage, filter);
+  }
+
+  /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
+  private readonly latencies = new Map<string, number | null>();
+  private readonly latencyListeners = new Set<() => void>();
+
+  getLatency = (hostId: string): number | null => this.latencies.get(hostId) ?? null;
+
+  /** For the one component that shows a latency; a heartbeat never reaches `subscribe`. */
+  subscribeLatency = (listener: () => void): (() => void) => {
+    this.latencyListeners.add(listener);
+    return () => this.latencyListeners.delete(listener);
+  };
+
+  private setLatency(hostId: string, latencyMs: number | null): void {
+    if (this.getLatency(hostId) === latencyMs) return;
+    this.latencies.set(hostId, latencyMs);
+    for (const listener of [...this.latencyListeners]) listener();
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -1812,7 +1827,7 @@ export class AppStore {
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
       onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
-      onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
+      onPing: () => this.setLatency(config.id, conn.latencyMs),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),

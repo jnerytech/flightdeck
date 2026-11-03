@@ -57,3 +57,8 @@ export function useStoreSlice<K extends keyof AppState>(
     return next;
   });
 }
+
+/** One host's heartbeat latency: it changes with that host's pings and renders nothing else. */
+export function useHostLatency(store: AppStore, hostId: string): number | null {
+  return useSyncExternalStore(store.subscribeLatency, () => store.getLatency(hostId));
+}
