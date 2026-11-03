@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   accountInfo,
+  accountReaders,
   authStatus,
   type IdleQuery,
   normalizePlan,
@@ -353,5 +354,39 @@ describe("conta-leitores: withIdleQuery", () => {
     ).rejects.toThrow("read failed");
     expect(closed).toBe(1);
     expect("pathToClaudeCodeExecutable" in options).toBe(false);
+  });
+});
+
+describe("conta-leitores: accountReaders (what the daemon wires)", () => {
+  const fakeQuery = (calls: string[]) => (params: { options: Record<string, unknown> }) => {
+    calls.push(String(params.options.pathToClaudeCodeExecutable));
+    return {
+      accountInfo: async () => ({ email: "demo@example.com", subscriptionType: "Claude Max" }),
+      usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET: async () => ({
+        subscription_type: "max",
+        rate_limits_available: true,
+        rate_limits: { five_hour: { utilization: 10, resets_at: null } },
+      }),
+      close: () => calls.push("closed"),
+    };
+  };
+
+  test("status runs the CLI's auth status and sdk reads both SDK calls on one query, then closes it", async () => {
+    const calls: string[] = [];
+    const ran: string[][] = [];
+    const readers = accountReaders({
+      claudePath: "/bin/claude",
+      exec: async (cmd) => {
+        ran.push(cmd);
+        return { code: 0, stdout: JSON.stringify({ loggedIn: true, authMethod: "claude.ai" }) };
+      },
+      query: fakeQuery(calls),
+    });
+    expect((await readers.status())?.authMethod).toBe("claude.ai");
+    expect(ran).toEqual([["/bin/claude", "auth", "status", "--json"]]);
+    const sdk = await readers.sdk();
+    expect(sdk.info?.email).toBe("demo@example.com");
+    expect(sdk.usage.windows.map((w) => w.window)).toEqual(["five_hour"]);
+    expect(calls).toEqual(["/bin/claude", "closed"]);
   });
 });
