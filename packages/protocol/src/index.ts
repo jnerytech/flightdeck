@@ -576,6 +576,8 @@ export const Project = z.object({
   personaByColumn: z.partialRecord(BoardColumn, z.string()).default({}),
   /** The personas offered as `persona-<id>` subagents in this project (phase 20). */
   personaSubagents: PersonaSubagentsMode.default("all"),
+  /** Phase 36: the hours a done card is worth when it has no estimate of its own. */
+  defaultHours: z.number().nullable().default(null),
   /**
    * Phase 29: the project key of the folder (the normalized remote, else the folder on this host),
    * the same one sessions and costs carry; absent from a daemon that does not send it.
@@ -666,6 +668,8 @@ export const Card = z.object({
   /** Phase 38: the item of an external board this card follows, and whether it has left that board. */
   externalUrl: z.string().nullable().default(null),
   externalGone: z.boolean().default(false),
+  /** Phase 36: the hours this card is worth, an estimate the person typed. */
+  estimateHours: z.number().nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -1906,6 +1910,8 @@ export const ProjectUpdatePayload = z.object({
   /** The default persona by column; `null` removes the one of a column. */
   personaByColumn: z.partialRecord(BoardColumn, z.string().nullable()).optional(),
   personaSubagents: PersonaSubagentsMode.optional(),
+  /** Phase 36: `null` removes the default. */
+  defaultHours: z.number().min(0).max(1000).nullable().optional(),
 });
 export const CardIdPayload = z.object({ cardId: z.string() });
 /** Phase 6: with `workflow`, the card runs that trusted workflow with `inputs`. */
@@ -2587,6 +2593,8 @@ export const Command = z.discriminatedUnion("type", [
       cardId: z.string(),
       title: z.string().min(1).optional(),
       description: z.string().optional(),
+      /** Phase 36: `null` removes the estimate. */
+      estimateHours: z.number().min(0).max(1000).nullable().optional(),
       ...CardDeps,
     }),
   ),
@@ -3584,6 +3592,17 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Phase 36: what the agents cost and delivered, per project key, for a period and the one before it. */
+  cmd(
+    "roi.summary",
+    z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        projectKey: z.string().min(1).max(500).optional(),
+      })
+      .strict(),
+  ),
   /** Phase 38: board sync with an external board (GitHub Projects first). */
   cmd("boardsync.boards", z.object({}).strict()),
   cmd(
@@ -4149,6 +4168,7 @@ export interface CommandResults {
   "doctor.run": DoctorResult;
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
+  "roi.summary": RoiSummaryResult;
   "boardsync.boards": { boards: BoardSyncBoard[] };
   "boardsync.link": BoardSyncStatus;
   "boardsync.unlink": undefined;

@@ -127,6 +127,7 @@ interface ProjectRow {
   issues: string | null;
   persona_by_column: string | null;
   persona_subagents: PersonaSubagentsMode | null;
+  default_hours: number | null;
 }
 
 function toProject(row: ProjectRow): Project {
@@ -144,6 +145,7 @@ function toProject(row: ProjectRow): Project {
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
+    defaultHours: null,
   };
 }
 
@@ -207,6 +209,7 @@ interface CardRow {
   issue_external: number;
   external_url: string | null;
   external_gone: number;
+  estimate_hours: number | null;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -389,7 +392,10 @@ export class Board {
         { path },
       );
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
-    const project: Omit<Project, "worktreeInclude" | "personaByColumn" | "personaSubagents"> = {
+    const project: Omit<
+      Project,
+      "worktreeInclude" | "personaByColumn" | "personaSubagents" | "defaultHours"
+    > = {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
@@ -525,6 +531,7 @@ export class Board {
       issueExternal: row.issue_external === 1,
       externalUrl: row.external_url,
       externalGone: row.external_gone === 1,
+      estimateHours: null,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],

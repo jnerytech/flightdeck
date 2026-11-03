@@ -88,6 +88,7 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
+import type { RoiSummarizer } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
@@ -147,6 +148,8 @@ export interface ServerOptions {
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
+  /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
+  roi?: RoiSummarizer;
   /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
   boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
