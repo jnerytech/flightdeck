@@ -495,7 +495,11 @@ describe("personas-modelo: pelo protocolo", () => {
   test("host.info announces personas only when the server keeps them, so the app shows the library there", async () => {
     const featuresOf = async (personas: Personas | null) => {
       const { client } = await connect(personas, setup().root);
-      return (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+      return (
+        (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+          (name) => name !== "session.images",
+        ) ?? []
+      );
     };
     expect(await featuresOf(setup().personas)).toContain("personas");
     expect(await featuresOf(null)).not.toContain("personas");

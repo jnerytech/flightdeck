@@ -80,9 +80,11 @@ describe("telemetria-dados: the daemon", () => {
     const client = new FrameClient(daemon.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "telemetry",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("telemetry");
     const timeline = await client.data<{ prompts: Array<{ promptId: string }> }>(
       "telemetry.session",
       { claudeSessionId: "s-1" },

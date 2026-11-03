@@ -497,12 +497,16 @@ describe("memoria: protocolo", () => {
 
   test("host.info anuncia memory só quando a memória está ligada", async () => {
     const on = await served();
-    expect((await on.client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "memory",
-    );
+    expect(
+      (await on.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("memory");
     const off = await served(false);
     expect(
-      (await off.client.data<{ features: string[] }>("host.info", {}))?.features,
+      (await off.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
     ).not.toContain("memory");
     expect(await off.client.request("memory.list", { projectId: off.projectId })).toMatchObject({
       ok: false,
@@ -634,9 +638,11 @@ describe("memoria: o daemon inteiro", () => {
     try {
       const client = new FrameClient(daemon.url);
       await client.request("hello", { token: "memoria-daemon-token-0123456789", client: "t" });
-      expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-        "memory",
-      );
+      expect(
+        (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+          (name) => name !== "session.images",
+        ),
+      ).toContain("memory");
       const project = await client.data<{ id: string }>("project.add", { path: repo });
       const written = await client.data<{ hash: string }>("memory.write", {
         projectId: project?.id,

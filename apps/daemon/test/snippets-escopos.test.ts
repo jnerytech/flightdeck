@@ -571,7 +571,11 @@ describe("snippets-escopos: pelo protocolo", () => {
   test("host.info announces snippets only when the server keeps them, so the app hides the screen elsewhere", async () => {
     const featuresOf = async (snippets: Snippets | null) => {
       const { client } = await connect(snippets, setup().root);
-      return (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+      return (
+        (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+          (name) => name !== "session.images",
+        ) ?? []
+      );
     };
     expect(await featuresOf(setup().snippets)).toContain("snippets");
     expect(await featuresOf(null)).not.toContain("snippets");

@@ -98,26 +98,30 @@ describe("protocolo-compat", () => {
     const plain = new FrameClient(serve().url);
     cleanups.push(() => plain.close());
     await plain.request("hello", { token: TOKEN, client: "t" });
-    expect((await plain.data<{ features: string[] }>("host.info", {}))?.features).toEqual([]);
+    expect(
+      (await plain.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual([]);
     const { board, manager } = newBoard();
     cleanups.push(() => board.stop());
     const full = serve({ manager, board, features: undefined });
     const client = new FrameClient(full.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "workflows",
-      "rules",
-      "arena",
-      "deps",
-    ]);
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["workflows", "rules", "arena", "deps"]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());
     await custom.request("hello", { token: TOKEN, client: "t" });
-    expect((await custom.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "central",
-      "maintenance",
-    ]);
+    expect(
+      (await custom.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["central", "maintenance"]);
   });
 
   test("host.info anuncia checkpoints e agentcfg só quando as peças estão ligadas", async () => {
@@ -131,7 +135,9 @@ describe("protocolo-compat", () => {
       const client = new FrameClient(serve({ features: undefined, ...extra }).url);
       cleanups.push(() => client.close());
       await client.request("hello", { token: TOKEN, client: "t" });
-      return (await client.data<{ features: string[] }>("host.info", {}))?.features;
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      );
     };
     expect(await featuresOf({ snapshots, rewinder, forker })).toEqual(["checkpoints"]);
     expect(await featuresOf({ snapshots, rewinder })).toEqual([]);

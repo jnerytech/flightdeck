@@ -230,9 +230,11 @@ describe("backup", () => {
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "maintenance",
-    ]);
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["maintenance"]);
     const made = await client.data<{ path: string; bytes: number }>("maintenance.backup", {});
     expect(existsSync(made?.path ?? "")).toBe(true);
     expect(await client.data("maintenance.prune", { dryRun: true })).toEqual({

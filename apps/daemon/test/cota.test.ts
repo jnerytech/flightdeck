@@ -289,7 +289,9 @@ describe("cota", () => {
       const client = new FrameClient(server.url);
       cleanups.push(() => client.close());
       await client.request("hello", { token: TOKEN, client: "t" });
-      return (await client.data<{ features: string[] }>("host.info", {}))?.features;
+      return (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      );
     };
     expect(await features(true)).toEqual(["quota"]);
     expect(await features(false)).toEqual([]);

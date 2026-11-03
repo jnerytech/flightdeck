@@ -204,9 +204,11 @@ describe("mudancas", () => {
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
     // The app shows the Mudanças tab for hosts that announce it.
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "review",
-    ]);
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["review"]);
     const got = await client.data<{ files: unknown[] }>("changes.get", { target: "session:h-1" });
     expect(got?.files.length ?? 0).toBe(3);
     expect(await client.data("changes.watch", { target: "session:h-1" })).toBeUndefined();

@@ -1191,12 +1191,16 @@ describe("plugins: protocolo", () => {
 
   test("host.info anuncia plugins só quando o gerenciador está ligado", async () => {
     const on = await served();
-    expect((await on.client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "plugins",
-    );
+    expect(
+      (await on.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("plugins");
     const off = await served(false);
     expect(
-      (await off.client.data<{ features: string[] }>("host.info", {}))?.features,
+      (await off.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
     ).not.toContain("plugins");
     expect(await off.client.request("plugins.list", {})).toMatchObject({
       ok: false,
@@ -1303,9 +1307,11 @@ describe("plugins: protocolo", () => {
     const client = new FrameClient(daemon.url);
     stops.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "plugins",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("plugins");
     await client.data("plugins.pin", { plugin: "deploy-tools@acme", pinned: true });
     expect(
       Object.keys(JSON.parse(readFileSync(join(base, "data", "plugin-pins.json"), "utf8"))),

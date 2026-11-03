@@ -31,7 +31,11 @@ async function features(parts: { messaging?: boolean; teams?: boolean; names?: b
   const client = new FrameClient(server.url);
   cleanups.push(() => client.close());
   await client.request("hello", { token: TOKEN, client: "t" });
-  return (await client.data<{ features: string[] }>("host.info", {}))?.features ?? [];
+  return (
+    (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+      (name) => name !== "session.images",
+    ) ?? []
+  );
 }
 
 describe("recursos-fase21: host.info announces messaging, teams and names", () => {
