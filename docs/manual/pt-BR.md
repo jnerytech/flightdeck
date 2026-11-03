@@ -88,6 +88,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Histórico da cota](#histórico-da-cota)
 - [Clientes: agrupar o trabalho entre hosts e projetos](#clientes-agrupar-o-trabalho-entre-hosts-e-projetos)
 - [Resumo da sessão e webhooks](#resumo-da-sessão-e-webhooks)
+- [Central de notificações](#central-de-notificações)
 - [Abas e terminal embutido](#abas-e-terminal-embutido)
   - [Abas](#abas)
   - [Tela dividida](#tela-dividida)
@@ -1515,6 +1516,24 @@ Segredos de produção ficam em ações `ssh:`.
 Num terminal, uma ação sai mascarada quando roda por `flightdeckd action run` (o que o mod
 `flightdeck` usa): o que ela imprime é o resultado já mascarado pelo daemon. O resto do que
 um terminal mostra não é mascarado.
+
+## Central de notificações
+
+O sino à direita da barra superior guarda toda notificação que o app envia: um pedido que
+precisa de você, uma sessão que terminou, um alerta de orçamento ou de cota, o resultado de um
+PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
+
+- Clique no sino para abrir o painel: mais recentes primeiro, agrupadas por dia (Hoje, Ontem e
+  depois a data).
+- Clique numa entrada para marcá-la como lida e abrir a tela dela (um pedido abre no card dele;
+  um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
+  pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
+  destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
+  navegador quando o card não existe mais.
+- **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
+  (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
+- As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
+  (a janela estava em foco) também não entra nela.
 
 ## Snippets
 

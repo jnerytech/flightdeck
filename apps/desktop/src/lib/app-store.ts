@@ -55,6 +55,7 @@ import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
   AppUpdate,
+  Notification,
   Platform,
   TrayAction,
   TrayStatus,
@@ -87,6 +88,7 @@ import { type ConnectionStatus, HostConnection, RequestError } from "./host-conn
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
+import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -171,6 +173,8 @@ export interface AppState {
   selected: Selection | null;
   error: string | null;
   settings: Settings;
+  /** The notifications the app sent, newest first, kept for the notification center. */
+  inbox: InboxEntry[];
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -726,6 +730,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
+      inbox: [],
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
@@ -832,6 +837,7 @@ export class AppStore {
   };
 
   async init(): Promise<void> {
+    this.update({ inbox: loadInbox(this.platform.storage) });
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.theme.start();
@@ -982,6 +988,39 @@ export class AppStore {
       this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
     } else
       void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+  }
+
+  /** Sends an OS notification and keeps it in the notification center. */
+  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+    const entry: InboxEntry = {
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
+      title: n.title,
+      body: n.body,
+      ...(n.link ? { link: n.link } : {}),
+      ...(route ? { route } : {}),
+      ...(fallbackUrl ? { fallbackUrl } : {}),
+      read: false,
+    };
+    this.setInbox(addEntry(this.state.inbox, entry));
+    void this.platform.notify(n);
+  }
+
+  private setInbox(inbox: InboxEntry[]): void {
+    this.update({ inbox });
+    saveInbox(this.platform.storage, inbox);
+  }
+
+  inboxMarkRead(id: string): void {
+    this.setInbox(markRead(this.state.inbox, id));
+  }
+
+  inboxMarkAllRead(): void {
+    this.setInbox(markAllRead(this.state.inbox));
+  }
+
+  inboxClear(): void {
+    this.setInbox([]);
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
@@ -1840,10 +1879,13 @@ export class AppStore {
       onTeams: (frame) => {
         for (const listener of this.teamListeners) listener(config.id, frame);
         if (frame.reason) {
-          void this.platform.notify({
-            title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
-            body: frame.reason,
-          });
+          this.notifyUser(
+            {
+              title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
+              body: frame.reason,
+            },
+            { name: "teams", host: config.id, team: frame.team.id },
+          );
         }
       },
       onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
@@ -1864,7 +1906,7 @@ export class AppStore {
           text: alert.message,
         };
         this.update({ notices: [...this.state.notices, notice] });
-        void this.platform.notify({
+        this.notifyUser({
           title: this.i18n.t("vaultAudit.alertTitle"),
           body: alert.message,
         });
@@ -2074,7 +2116,7 @@ export class AppStore {
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
-      void this.platform.notify(n);
+      this.notifyUser(n);
     }
   }
 
@@ -2130,7 +2172,7 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      void this.platform.notify({
+      this.notifyUser({
         title: this.i18n.t("notify.externalTitle"),
         body: `${host?.name ?? hostId} · ${frame.toolName}`,
         link: requestLink(hostId, frame.requestId),
@@ -2151,10 +2193,13 @@ export class AppStore {
       const known = window.window === "five_hour" || window.window === "seven_day";
       const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
       const percent = Math.round((window.utilization ?? 0) * 100);
-      void this.platform.notify({
-        title: t("notify.quotaTitle"),
-        body: t("notify.quotaBody", { host: host.name, window: label, percent }),
-      });
+      this.notifyUser(
+        {
+          title: t("notify.quotaTitle"),
+          body: t("notify.quotaBody", { host: host.name, window: label, percent }),
+        },
+        { name: "host", host: hostId },
+      );
     }
   }
 
@@ -2514,14 +2559,17 @@ export class AppStore {
         Math.round(threshold * 100),
         usd(state?.limitUsd ?? 0),
       );
-      void this.platform.notify({
-        title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t("clients.budgetAlert", {
-          name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
-          percent: Math.round(threshold * 100),
-          limit: usd(state?.limitUsd ?? 0),
-        }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("messages.budgetTitle"),
+          body: this.i18n.t("clients.budgetAlert", {
+            name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
+            percent: Math.round(threshold * 100),
+            limit: usd(state?.limitUsd ?? 0),
+          }),
+        },
+        { name: "costs", client: clientId },
+      );
     }
   }
 
@@ -2759,11 +2807,15 @@ export class AppStore {
       watch,
     );
     if (watch.status === "needs_you" && before?.status !== "needs_you") {
-      const title = this.state.cards[key]?.title ?? watch.cardId;
-      void this.platform.notify({
-        title: this.i18n.t("watchUi.notifyTitle"),
-        body: `${title}: ${watch.reason ?? ""}`,
-      });
+      const card = this.state.cards[key];
+      const title = card?.title ?? watch.cardId;
+      this.notifyUser(
+        { title: this.i18n.t("watchUi.notifyTitle"), body: `${title}: ${watch.reason ?? ""}` },
+        card
+          ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
+          : undefined,
+        card?.prUrl,
+      );
     }
   }
 
@@ -2833,7 +2885,7 @@ export class AppStore {
       (a) => a.hostId !== hostId || loopPairKey(a) !== loopPairKey(alert),
     );
     this.update({ loopAlerts: [...others, alert] });
-    void this.platform.notify({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+    this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
   }
 
   /**
@@ -3187,7 +3239,7 @@ export class AppStore {
         },
       },
     };
-    void this.platform.notify({
+    this.notifyUser({
       title: t("vaultApproval.notifyTitle"),
       body: t("vaultApproval.notifyBody", {
         requester,
@@ -3253,15 +3305,22 @@ export class AppStore {
       Math.round(update.threshold * 100),
       usd(update.budget.limitUsd),
     );
-    void this.platform.notify({
-      title: this.i18n.t("messages.budgetTitle"),
-      body: this.i18n.t("messages.budgetBody", {
-        host: host.name,
-        label: budgetLabel(update.budget, this.i18n.t),
-        percent: Math.round(update.threshold * 100),
-        limit: usd(update.budget.limitUsd),
-      }),
-    });
+    this.notifyUser(
+      {
+        title: this.i18n.t("messages.budgetTitle"),
+        body: this.i18n.t("messages.budgetBody", {
+          host: host.name,
+          label: budgetLabel(update.budget, this.i18n.t),
+          percent: Math.round(update.threshold * 100),
+          limit: usd(update.budget.limitUsd),
+        }),
+      },
+      {
+        name: "costs",
+        host: hostId,
+        ...(update.budget.projectKey ? { projectKey: update.budget.projectKey } : {}),
+      },
+    );
   }
 
   private keepBudget(hostId: string, budget: Budget, removed: boolean): void {
@@ -3280,10 +3339,14 @@ export class AppStore {
     const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      void this.platform.notify({
-        title: this.i18n.t("deps.notifyTitle"),
-        body: this.i18n.t("deps.notifyBody", { title: card.title }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("deps.notifyTitle"),
+          body: this.i18n.t("deps.notifyBody", { title: card.title }),
+        },
+        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
+        card.prUrl,
+      );
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });

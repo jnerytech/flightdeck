@@ -18,6 +18,7 @@ import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
 import { preloadMarkdown } from "./Markdown.tsx";
+import { NotificationBell } from "./NotificationBell.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
@@ -323,6 +324,7 @@ export function App({ store }: { store: AppStore }) {
                 label={t("shell.breadcrumb")}
                 onGo={go}
               />
+              <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
             </>
           }
           sidebar={(collapsed) => (

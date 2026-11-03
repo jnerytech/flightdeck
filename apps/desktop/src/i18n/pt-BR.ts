@@ -1127,6 +1127,16 @@ export const ptBR = {
     not_found: "Esse snippet não foi encontrado.",
     secret: "O snippet tem um segredo ({kinds}): guarde-o no cofre, ou transforme em ação.",
   },
+  inbox: {
+    bell: "Notificações",
+    bellUnread: "Notificações, {n} não lidas",
+    title: "Notificações",
+    markAll: "Marcar todas como lidas",
+    clear: "Limpar",
+    empty: "Nenhuma notificação.",
+    today: "Hoje",
+    yesterday: "Ontem",
+  },
   common: {
     cancel: "Cancelar",
     close: "Fechar",

@@ -89,6 +89,7 @@ are written in Portuguese.
   - [Quota history](#quota-history)
 - [Clients: grouping work across hosts and projects](#clients-grouping-work-across-hosts-and-projects)
 - [Session summary and webhooks](#session-summary-and-webhooks)
+- [Notification center](#notification-center)
 - [Tabs and embedded terminal](#tabs-and-embedded-terminal)
   - [Tabs](#tabs)
   - [Split view](#split-view)
@@ -1535,6 +1536,22 @@ read them. Keep production secrets in `ssh:` actions.
 In a terminal, an action is masked when it runs through `flightdeckd action run` (what the
 `flightdeck` mod uses): what it prints is the daemon's masked result. Anything else a
 terminal shows is not masked.
+
+## Notification center
+
+The bell at the right of the top bar keeps every notification the app sends: a request that
+needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
+unblocked. A badge on the bell counts the unread ones.
+
+- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
+- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+  opens the host). A budget alert opens Costs already filtered by its host and project, or by
+  its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
+  result, an unblocked card) opens the PR in your browser when the card is gone.
+- **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
+  (the newest 500) and survives a restart. Esc closes the panel.
+- The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
+  (the window had focus) is not in it either.
 
 ## Snippets
 
