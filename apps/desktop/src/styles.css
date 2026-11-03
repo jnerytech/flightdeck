@@ -326,6 +326,13 @@
   border-radius: 0.5rem;
 }
 
+/* A column under a dragged card: it shows where the card would land. */
+@utility drop-over {
+  outline: 2px dashed var(--ring);
+  outline-offset: -2px;
+  background-color: var(--accent);
+}
+
 /* A key of a shortcut, as printed in a list. */
 @utility keycap {
   border: 1px solid var(--border);
