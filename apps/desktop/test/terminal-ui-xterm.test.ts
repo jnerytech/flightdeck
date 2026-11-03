@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { createXtermScreen, type XtermDeps, type XtermTerminal } from "../src/lib/xterm-screen.ts";
+import { FIND_DECORATIONS } from "../src/lib/terminal-view.ts";
+import {
+  createXtermScreen,
+  type XtermDeps,
+  type XtermSearch,
+  type XtermTerminal,
+} from "../src/lib/xterm-screen.ts";
 
 const THEME = {
   background: "#000000",
@@ -35,6 +41,7 @@ function setup(selection = "", clipboardFails = false) {
     },
     reset: () => void log.push("reset"),
     focus: () => void log.push("focus"),
+    selectAll: () => void log.push("select-all"),
     paste: (text) => void log.push(`paste:${text}`),
     hasSelection: () => selection !== "",
     getSelection: () => selection,
@@ -51,17 +58,27 @@ function setup(selection = "", clipboardFails = false) {
     },
     dispose: () => void log.push("dispose"),
   };
-  const search = {
-    findNext: (text: string) => {
+  const findOptions: unknown[] = [];
+  const found: Array<{ resultIndex: number; resultCount: number }> = [];
+  let announce: (results: { resultIndex: number; resultCount: number }) => void = () => {};
+  const search: XtermSearch = {
+    findNext: (text, options) => {
       log.push(`next:${text}`);
+      findOptions.push(options);
       return text === "hit";
     },
-    findPrevious: (text: string) => {
+    findPrevious: (text, options) => {
       log.push(`prev:${text}`);
+      findOptions.push(options);
       return true;
     },
     clearDecorations: () => void log.push("clear"),
+    onDidChangeResults: (listener) => {
+      announce = listener;
+      return { dispose: () => void searchOff.push(1) };
+    },
   };
+  const searchOff: number[] = [];
   const fit = { fit: () => void log.push("fit") };
   const deps: XtermDeps = {
     terminal: (options) => {
@@ -93,6 +110,7 @@ function setup(selection = "", clipboardFails = false) {
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
     onSearch: () => void searches++,
+    onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
   });
   const press = (key: string, ctrl = true, shift = true) =>
@@ -119,6 +137,10 @@ function setup(selection = "", clipboardFails = false) {
     press,
     constructed: () => constructed,
     searches: () => searches,
+    findOptions,
+    found,
+    announce: (resultIndex: number, resultCount: number) => announce({ resultIndex, resultCount }),
+    searchOff,
     typed: (data: string) => onData(data),
     resized: (cols: number, rows: number) => onResize({ cols, rows }),
   };
@@ -225,5 +247,38 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log).toContain("paste:pasted");
     s.links[0]?.("https://example.com");
     expect(s.linked).toEqual(["https://example.com"]);
+  });
+
+  test("find highlights every match and marks the current one; typing keeps the match", () => {
+    const s = setup();
+    s.screen.find("hit", "next");
+    s.screen.find("hit", "previous");
+    s.screen.find("hi", "next", true);
+    expect(s.findOptions).toEqual([
+      { incremental: false, decorations: FIND_DECORATIONS },
+      { incremental: false, decorations: FIND_DECORATIONS },
+      { incremental: true, decorations: FIND_DECORATIONS },
+    ]);
+    const colors = Object.values(FIND_DECORATIONS);
+    expect(colors.every((color) => /^#[0-9a-f]{6}$/i.test(color))).toBe(true);
+    expect(FIND_DECORATIONS.matchBackground).toBeDefined();
+    expect(FIND_DECORATIONS.activeMatchBackground).toBeDefined();
+    expect(FIND_DECORATIONS.activeMatchBackground).not.toBe(FIND_DECORATIONS.matchBackground);
+  });
+
+  test("the position among the matches is reported, and its listener is released on dispose", () => {
+    const s = setup();
+    s.announce(1, 5);
+    expect(s.found).toEqual([{ resultIndex: 1, resultCount: 5 }]);
+    s.screen.dispose();
+    expect(s.searchOff).toEqual([1]);
+  });
+
+  test("select all and the selection state are there for the menu", () => {
+    const s = setup("abc");
+    expect(s.screen.hasSelection()).toBe(true);
+    s.screen.selectAll();
+    expect(s.log).toContain("select-all");
+    expect(setup().screen.hasSelection()).toBe(false);
   });
 });

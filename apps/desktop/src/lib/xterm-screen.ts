@@ -1,4 +1,4 @@
-import { type TerminalColors, terminalKeyAction } from "./terminal-view.ts";
+import { type FindDecorations, type TerminalColors, terminalKeyAction } from "./terminal-view.ts";
 
 /** The slice of xterm's Terminal the app uses; a fake stands in for it in the tests. */
 export interface XtermTerminal {
@@ -12,6 +12,7 @@ export interface XtermTerminal {
   reset(): void;
   focus(): void;
   paste(text: string): void;
+  selectAll(): void;
   hasSelection(): boolean;
   getSelection(): string;
   onData(listener: (data: string) => void): { dispose(): void };
@@ -20,10 +21,24 @@ export interface XtermTerminal {
   dispose(): void;
 }
 
+export interface XtermFindOptions {
+  /** Keep the current match while the text grows, as typing in a find bar does. */
+  incremental?: boolean;
+  /** Highlights every match and marks the current one. */
+  decorations: FindDecorations;
+}
+
+/** Where the current match sits among all of them; `resultIndex` is -1 past the highlight limit. */
+export interface FindResults {
+  resultIndex: number;
+  resultCount: number;
+}
+
 export interface XtermSearch {
-  findNext(text: string): boolean;
-  findPrevious(text: string): boolean;
+  findNext(text: string, options?: XtermFindOptions): boolean;
+  findPrevious(text: string, options?: XtermFindOptions): boolean;
   clearDecorations(): void;
+  onDidChangeResults(listener: (results: FindResults) => void): { dispose(): void };
 }
 
 /** Builds the xterm pieces; the real ones come from `xterm-deps.ts`, fakes from the tests. */
@@ -43,6 +58,8 @@ export interface XtermScreenOptions {
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /** The matches of the find bar changed (typing, next, previous). */
+  onFindResults?(results: FindResults): void;
   /** A link in the output was clicked. */
   onLink(uri: string): void;
   /** Ctrl+Shift+Space: the snippets (phase 18). */
@@ -56,13 +73,15 @@ export interface XtermScreen {
   fit(): void;
   setTheme(theme: TerminalColors): void;
   setFontSize(size: number): void;
-  find(text: string, direction: "next" | "previous"): boolean;
+  find(text: string, direction: "next" | "previous", incremental?: boolean): boolean;
   clearFind(): void;
   focus(): void;
   /** The selection to the clipboard, as Ctrl+Shift+C does. */
   copy(): void;
   /** The clipboard into the terminal, as Ctrl+Shift+V does. */
   paste(): void;
+  selectAll(): void;
+  hasSelection(): boolean;
   dispose(): void;
 }
 
@@ -131,6 +150,8 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     focus: () => terminal.focus(),
     copy,
     paste,
+    selectAll: () => {},
+    hasSelection: () => false,
     dispose: () => {
       input.dispose();
       size.dispose();

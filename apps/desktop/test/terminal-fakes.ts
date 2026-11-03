@@ -4,6 +4,9 @@ import type { XtermDeps, XtermTerminal } from "../src/lib/xterm-screen.ts";
 export function fakeXterm() {
   const drawn: string[] = [];
   const finds: string[] = [];
+  const findOptions: Array<Record<string, unknown> | undefined> = [];
+  let onResults: (results: { resultIndex: number; resultCount: number }) => void = () => {};
+  let selectedAll = 0;
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
@@ -24,6 +27,9 @@ export function fakeXterm() {
     reset: () => void drawn.push("<reset>"),
     focus: () => {},
     paste: (text) => void pasted.push(text),
+    selectAll: () => {
+      selectedAll++;
+    },
     hasSelection: () => selection !== "",
     getSelection: () => selection,
     onData: (listener) => {
@@ -56,15 +62,21 @@ export function fakeXterm() {
       return {};
     },
     search: () => ({
-      findNext: (text) => {
+      findNext: (text, options) => {
         finds.push(`next:${text}`);
+        findOptions.push(options as Record<string, unknown> | undefined);
         return true;
       },
-      findPrevious: (text) => {
+      findPrevious: (text, options) => {
         finds.push(`prev:${text}`);
+        findOptions.push(options as Record<string, unknown> | undefined);
         return true;
       },
       clearDecorations: () => void finds.push("clear"),
+      onDidChangeResults: (listener) => {
+        onResults = listener;
+        return { dispose: () => {} };
+      },
     }),
     unicode11: () => ({}),
   };
@@ -72,6 +84,10 @@ export function fakeXterm() {
     deps,
     drawn,
     finds,
+    findOptions,
+    foundResults: (resultIndex: number, resultCount: number) =>
+      onResults({ resultIndex, resultCount }),
+    selectedAll: () => selectedAll,
     terminal,
     fonts: () => fonts,
     disposed: () => disposed,
