@@ -28,7 +28,11 @@ const INPUT = {
   ],
 };
 
-type Resolution = { decision: PermissionResolution; message?: string };
+type Resolution = {
+  decision: PermissionResolution;
+  message?: string;
+  answers?: Record<string, string>;
+};
 
 function tree(
   input: Record<string, unknown>,
@@ -98,5 +102,14 @@ describe("pergunta-titulo", () => {
     render(tree({ command: "ls" }, undefined, "Bash"));
     expect(document.body.textContent).toContain("Permission for");
     expect(document.querySelector("[data-risk]")).not.toBeNull();
+  });
+});
+
+describe("pergunta-respostas", () => {
+  test('a reloaded card shows the chosen label from the resolved event, never "approved"', () => {
+    render(tree(INPUT, { decision: "allow", answers: { "Which database?": "Postgres" } }));
+    const summary = document.querySelector("details[data-answered] summary");
+    expect(summary?.textContent).toContain("Postgres");
+    expect(summary?.textContent).not.toContain("approved");
   });
 });

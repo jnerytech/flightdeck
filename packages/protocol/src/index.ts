@@ -335,6 +335,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     message: z.string().optional(),
     /** Phase 13: approved automatically, and why. */
     auto: AutoApproval.optional(),
+    /** AskUserQuestion: question text to the chosen answer; older apps ignore it. */
+    answers: z.record(z.string(), z.string()).optional(),
   }),
   z.object({
     type: z.literal("turn.result"),

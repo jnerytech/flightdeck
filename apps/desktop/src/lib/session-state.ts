@@ -24,7 +24,12 @@ export type ChatItem =
       input: ToolInput;
       /** What the CLI offers to stop asking (phase 7). */
       suggestions?: PermissionUpdate[];
-      resolution?: { decision: PermissionResolution; message?: string; auto?: AutoApproval };
+      resolution?: {
+        decision: PermissionResolution;
+        message?: string;
+        auto?: AutoApproval;
+        answers?: Record<string, string>;
+      };
       /** Phase 13: the risk the daemon judged, and why. */
       risk?: RiskLevel;
       riskReason?: string;
