@@ -237,6 +237,6 @@ export async function reconcileStableBinary(
     if (order > 0) return { outcome: "newer", stableVersion };
   }
   await options.stopService();
-  swapBinary(options.self, options.stable);
+  await swapBinary(options.self, options.stable);
   return { outcome: "replaced", stableVersion };
 }
