@@ -124,6 +124,17 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(0);
   });
 
+  test("account.unwatch stops the pushes and the polling, and is fine when nothing is watched", async () => {
+    const { client, account } = await connect();
+    expect((await client.request("account.unwatch", {})).ok).toBe(true);
+    await client.request("account.watch", {});
+    await poll(() => client.frames.find((f) => f.type === "account.updated"), 3000);
+    expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(1);
+    expect((await client.request("account.unwatch", {})).ok).toBe(true);
+    expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(0);
+    expect((account as unknown as { timer: unknown }).timer).toBeNull();
+  });
+
   test("account.refresh reads now, and a second one right after is refused with the seconds to wait", async () => {
     const { client } = await connect();
     const ok = await client.request("account.refresh", {});
@@ -140,7 +151,7 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
   test("the commands take no fields", async () => {
     const { client } = await connect();
     expect((await client.request("account.get", {})).ok).toBe(true);
-    for (const type of ["account.get", "account.watch", "account.refresh"]) {
+    for (const type of ["account.get", "account.watch", "account.unwatch", "account.refresh"]) {
       const ack = await client.request(type, { extra: 1 });
       expect(ack.ok).toBe(false);
       expect(refusal(ack).code).toBe("bad_request");

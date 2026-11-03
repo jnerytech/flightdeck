@@ -290,6 +290,7 @@ const validCommands: Record<CommandType, unknown> = {
   "quota.watch": {},
   "account.get": {},
   "account.watch": {},
+  "account.unwatch": {},
   "account.refresh": {},
   "usage.summary": { days: 7 },
   "rules.list": { projectId: "p" },
