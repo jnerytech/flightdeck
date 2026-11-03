@@ -47,7 +47,9 @@ describe("supervisor-wsl", () => {
       maxDelayMs: 80,
       onRestart: (_item, delay) => delays.push(delay),
     });
-    supervisor.start();
+    const starting = supervisor.start();
+    expect(starting).toBeInstanceOf(Promise);
+    await starting;
     stops.push(() => supervisor.stop());
     await poll(() => delays.length >= 5, 4000);
     expect(delays.slice(0, 5)).toEqual([10, 20, 40, 80, 80]);
@@ -62,7 +64,7 @@ describe("supervisor-wsl", () => {
       baseDelayMs: 10,
       onRestart: (_item, delay) => delays.push(delay),
     });
-    supervisor.start();
+    await supervisor.start();
     stops.push(() => supervisor.stop());
     const pids = supervisor.pids();
     expect(pids).toHaveLength(1);
@@ -85,7 +87,7 @@ describe("supervisor-wsl", () => {
       onRestart: (_item, delay) => delays.push(delay),
       onHealthy: (item) => healthy.push(item.distro),
     });
-    supervisor.start();
+    await supervisor.start();
     stops.push(() => supervisor.stop());
     await poll(() => healthy.length >= 2, 4000);
     expect(healthy.slice(0, 2)).toEqual(["Ubuntu", "Ubuntu"]);
@@ -102,7 +104,7 @@ describe("supervisor-wsl", () => {
       portAlive: async () => false,
       onRestart: (_item, delay) => delays.push(delay),
     });
-    supervisor.start();
+    await supervisor.start();
     stops.push(() => supervisor.stop());
     await poll(() => delays.length >= 3, 4000);
     expect(delays.slice(0, 3)).toEqual([10, 20, 20]);
