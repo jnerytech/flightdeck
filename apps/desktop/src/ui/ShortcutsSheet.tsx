@@ -28,7 +28,7 @@ export function ShortcutsSheet(props: { store: AppStore; mac: boolean; onClose()
           <X aria-hidden="true" />
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-6">
         {GROUPS.map((group) => (
           <section key={group} className="flex flex-col gap-1">
             <h3 className="font-medium text-muted-foreground text-xs uppercase">

@@ -104,7 +104,7 @@ export function ProjectsOverview(props: {
       )}
       <ul
         aria-label={t("projectsOverview.title")}
-        className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-1 gap-3 @md:grid-cols-2 @xl:grid-cols-3"
       >
         {shown.map((card) => (
           <li key={`${card.hostId}/${card.projectId}`} data-project={card.name}>
