@@ -34,12 +34,12 @@ async function setup(maxParallelRuns?: number, setupScript?: string) {
 const holding = (status: string | null) => status === "awaiting_permission";
 
 describe("fila", () => {
-  test("maxParallelRuns na config: padrão 2, mínimo 1", () => {
+  test("maxParallelRuns na config: padrão 2, mínimo 1", async () => {
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "t".repeat(32) }));
-    expect(loadConfig(file).maxParallelRuns).toBe(2);
+    expect((await loadConfig(file)).maxParallelRuns).toBe(2);
     writeFileSync(file, JSON.stringify({ token: "t".repeat(32), maxParallelRuns: 1 }));
-    expect(loadConfig(file).maxParallelRuns).toBe(1);
+    expect((await loadConfig(file)).maxParallelRuns).toBe(1);
     expect(Config.safeParse({ maxParallelRuns: 0 }).success).toBe(false);
   });
 

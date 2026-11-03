@@ -342,12 +342,12 @@ describe("cota", () => {
     });
   });
 
-  test("quota.pauseAt na config: padrão 0.9, null desliga, fora de 0 a 1 é recusado", () => {
+  test("quota.pauseAt na config: padrão 0.9, null desliga, fora de 0 a 1 é recusado", async () => {
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "t".repeat(32) }));
-    expect(loadConfig(file).quota.pauseAt).toBe(0.9);
+    expect((await loadConfig(file)).quota.pauseAt).toBe(0.9);
     writeFileSync(file, JSON.stringify({ token: "t".repeat(32), quota: { pauseAt: null } }));
-    expect(loadConfig(file).quota.pauseAt).toBeNull();
+    expect((await loadConfig(file)).quota.pauseAt).toBeNull();
     expect(Config.safeParse({ quota: { pauseAt: 1.5 } }).success).toBe(false);
   });
 });

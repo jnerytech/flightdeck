@@ -201,7 +201,7 @@ describe("otlp-ligar: the wrapper", () => {
     });
     cleanups.push(() => receiver.stop());
     writeFileSync(
-      join(loadConfig(file).dataDir, "telemetry.json"),
+      join((await loadConfig(file)).dataDir, "telemetry.json"),
       JSON.stringify({ url: receiver.url }),
     );
     const fake = installFakeClaude([
@@ -238,7 +238,7 @@ describe("otlp-ligar: the wrapper", () => {
   test("a published file that is broken or has no URL is no receiver", async () => {
     for (const content of ["not json", '{"url":5}']) {
       const file = config({ token: TARGET.token });
-      writeFileSync(join(loadConfig(file).dataDir, "telemetry.json"), content);
+      writeFileSync(join((await loadConfig(file)).dataDir, "telemetry.json"), content);
       expect(telemetryKeys(await launch(["-c"], file))).toEqual({});
     }
   });
@@ -288,7 +288,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     const file = config();
     await runCli(["telemetry", "install", "--config", file], deps);
     expect(exitCode).toBe(0);
-    const token = loadConfig(file).telemetry.token ?? "";
+    const token = (await loadConfig(file)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     expect(token).not.toBe("hooks-token-0123456789");
     expect(token).not.toBe("t".repeat(32));
@@ -297,10 +297,10 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     await runCli(["telemetry", "status", "--config", file], deps);
     expect(out.join("\n")).toContain("telemetry: installed");
     await runCli(["telemetry", "install", "--config", file], deps);
-    expect(loadConfig(file).telemetry.token).toBe(token);
+    expect((await loadConfig(file)).telemetry.token).toBe(token);
     await runCli(["telemetry", "uninstall", "--config", file], deps);
     expect(existsSync(settings())).toBe(false);
-    const rotated = loadConfig(file).telemetry.token ?? "";
+    const rotated = (await loadConfig(file)).telemetry.token ?? "";
     expect(rotated.length).toBeGreaterThanOrEqual(16);
     expect(rotated).not.toBe(token);
     await runCli(["telemetry", "status", "--config", file], deps);
@@ -312,7 +312,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     const file = config({ telemetry: { token: "old-token-0123456789abc" } });
     await runCli(["telemetry", "uninstall", "--config", file], deps);
     expect(out.join("\n")).toContain("no Flightdeck telemetry installed");
-    expect(loadConfig(file).telemetry.token).not.toBe("old-token-0123456789abc");
+    expect((await loadConfig(file)).telemetry.token).not.toBe("old-token-0123456789abc");
   });
 
   test("telemetry.port wins over hooks.port + 1", async () => {
@@ -330,7 +330,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
     expect(exitCode).toBe(1);
     expect(out.join("\n")).toContain("OTEL_LOGS_EXPORTER");
     expect(read(settings())).toEqual({ env: { OTEL_LOGS_EXPORTER: "console" } });
-    expect(loadConfig(file).telemetry.token).toBeUndefined();
+    expect((await loadConfig(file)).telemetry.token).toBeUndefined();
     rmSync(settings(), { force: true });
   });
 
@@ -368,7 +368,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
     const got: OtlpEvent[][] = [];
     let purges = 0;
     const service = startTelemetry({
-      config: loadConfig(configFile),
+      config: await loadConfig(configFile),
       configFile,
       log: { error: (m) => errors.push(m) },
       onEvents: (events) => got.push(events),
@@ -389,7 +389,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
 
   test("it makes the token once, listens, publishes its URL for the wrapper and removes it on stop", async () => {
     const { service, dataDir, configFile, got } = setup();
-    const token = loadConfig(configFile).telemetry.token ?? "";
+    const token = (await loadConfig(configFile)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     expect(service.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     expect(read(join(dataDir, "telemetry.json"))).toEqual({ url: service.url });
@@ -402,7 +402,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
   test("a token rotated in the config file takes effect at once, without a restart", async () => {
     const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
     expect((await send(service.url, "first-token-0123456789")).status).toBe(200);
-    updateConfigFile(configFile, (raw) => ({
+    await updateConfigFile(configFile, (raw) => ({
       ...raw,
       telemetry: { port: 0, token: "second-token-0123456789" },
     }));
@@ -418,18 +418,18 @@ describe("otlp-ligar: the daemon's receiver", () => {
     expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
   });
 
-  test("telemetry off: no receiver, no file, no token", () => {
+  test("telemetry off: no receiver, no file, no token", async () => {
     const { service, dataDir, configFile } = setup({ enabled: false, port: 0 });
     expect(service.url).toBeNull();
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
-    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
   });
 
-  test("it follows the hooks: without hooks.token nothing listens, as with the hooks receptor", () => {
+  test("it follows the hooks: without hooks.token nothing listens, as with the hooks receptor", async () => {
     const { service, dataDir, configFile, purges } = setup({ port: 0 }, false);
     expect(service.url).toBeNull();
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
-    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
     expect(purges()).toBe(0);
   });
 

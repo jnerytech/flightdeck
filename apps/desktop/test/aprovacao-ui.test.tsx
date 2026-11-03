@@ -277,7 +277,7 @@ describe("aprovacao-ui", () => {
     const hook = (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({ session_id: "ext-1", hook_event_name: event, cwd: repo, ...body }),
       }).catch(() => undefined);
     await hook("SessionStart", {});
@@ -410,7 +410,7 @@ describe("aprovacao-ui", () => {
     const hook = (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({
           session_id: "ext-m",
           hook_event_name: event,
@@ -452,7 +452,7 @@ describe("aprovacao-ui", () => {
     const hook = (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({
           session_id: "ext-b",
           hook_event_name: event,

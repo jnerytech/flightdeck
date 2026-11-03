@@ -205,7 +205,7 @@ describe("servico", () => {
     await runCli(["service", "install", "--config", file], deps);
     expect(exits).toEqual([0]);
     expect(os.written.has("/home/dev/.config/systemd/user/flightdeckd.service")).toBe(true);
-    expect(loadConfig(file).claude?.executablePath ?? "").toBe("/usr/local/bin/claude");
+    expect((await loadConfig(file)).claude?.executablePath ?? "").toBe("/usr/local/bin/claude");
     expect(out.join("\n")).toContain("serviço flightdeckd habilitado e iniciado");
     expect(out.join("\n")).toContain("daemon do serviço respondendo");
   });

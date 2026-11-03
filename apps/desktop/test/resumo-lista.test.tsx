@@ -109,7 +109,7 @@ describe("resumo-lista", () => {
     ]);
 
     d.central.hooksInstall(true);
-    const hooksToken = loadConfig(d.configFile).hooks.token ?? "";
+    const hooksToken = (await loadConfig(d.configFile)).hooks.token ?? "";
     const receptor = d.central.receptorUrl() ?? "";
     const hook = (session: string, event: string, body: Record<string, unknown>) =>
       fetch(`${receptor}/hooks/${event}`, {

@@ -813,15 +813,15 @@ describe("ssh-connect: peças", () => {
     expect(chooseDelivery({ platform: "darwin", ...common }).kind).toBe("agent");
   });
 
-  test("a config pode apontar o ssh a usar, e um caminho vazio é recusado", () => {
+  test("a config pode apontar o ssh a usar, e um caminho vazio é recusado", async () => {
     const write = (ssh: unknown) => {
       const file = join(tempDir(), "config.json");
       writeFileSync(file, JSON.stringify({ token: "t".repeat(32), ssh }));
       return file;
     };
-    expect(loadConfig(write({ path: "/opt/openssh/ssh" })).ssh.path).toBe("/opt/openssh/ssh");
-    expect(loadConfig(write({})).ssh.path).toBeUndefined();
-    expect(() => loadConfig(write({ path: "" }))).toThrow();
+    expect((await loadConfig(write({ path: "/opt/openssh/ssh" }))).ssh.path).toBe("/opt/openssh/ssh");
+    expect((await loadConfig(write({}))).ssh.path).toBeUndefined();
+    expect(() => await loadConfig(write({ path: "" }))).toThrow();
   });
 
   test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {

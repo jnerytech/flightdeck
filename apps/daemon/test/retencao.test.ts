@@ -237,6 +237,6 @@ describe("retencao", () => {
     expect(done.out).toContain("events: 6");
     const again = await run(["db", "prune", "--config", file]);
     expect(again.out).toContain("events: 0");
-    expect(loadConfig(file).retention.eventsDays).toBe(90);
+    expect((await loadConfig(file)).retention.eventsDays).toBe(90);
   });
 });

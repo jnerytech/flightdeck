@@ -97,7 +97,7 @@ async function setup(platform = memoryPlatform()) {
   ]);
   d.history.scan();
   d.central.hooksInstall(true);
-  const token = loadConfig(d.configFile).hooks.token ?? "";
+  const token = (await loadConfig(d.configFile)).hooks.token ?? "";
   const hook = (session: string, event: string, cwd: string, body: Record<string, unknown> = {}) =>
     fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
       method: "POST",

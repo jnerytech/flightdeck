@@ -161,7 +161,7 @@ describe("terminal-seguranca", () => {
     });
     host = await info();
     expect(host?.features).toContain("terminal");
-    expect(loadConfig(file).terminal.enabled).toBe(true);
+    expect((await loadConfig(file)).terminal.enabled).toBe(true);
     expect(await codeOf("terminal.open", { cwd: project, cols: 80, rows: 24 })).toBe("ok");
     // Turning it off needs no confirmation, and ends what is running.
     expect(await client.data("terminal.settings", { enabled: false })).toMatchObject({
@@ -169,7 +169,7 @@ describe("terminal-seguranca", () => {
     });
     expect(ptys.spawned.map((pty) => pty.killed)).toEqual([true]);
     expect((await info())?.features).not.toContain("terminal");
-    expect(loadConfig(file).terminal.enabled).toBe(false);
+    expect((await loadConfig(file)).terminal.enabled).toBe(false);
     expect(await codeOf("terminal.list", {})).toBe("terminal_disabled");
     expect(logs.filter((line) => /terminal (ligado|desligado)/.test(line))).toHaveLength(2);
   });

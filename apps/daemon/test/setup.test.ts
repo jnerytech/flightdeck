@@ -102,7 +102,7 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
   });
 
   test("the PATH step runs right after the binary is placed, and not when running from source", async () => {
@@ -122,7 +122,7 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(h.out.join("\n")).toContain("is not a folder that exists");
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([good]);
   });
 
   test("~ in a folder answer means the home, and folders already in the config stay", async () => {
@@ -142,13 +142,13 @@ describe("setup", () => {
     const answers = ["", good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([good]);
     const insist = harness({
       answers: [""],
       confirms: { "without project folders": true, hooks: false },
     });
     await runSetup(insist.deps);
-    expect(loadConfig(insist.configFile).allowedRoots).toEqual([]);
+    expect((await loadConfig(insist.configFile)).allowedRoots).toEqual([]);
     expect(insist.calls).toEqual(["binary", "service", "pair"]);
   });
 
@@ -158,7 +158,7 @@ describe("setup", () => {
     const answers = [good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    const config = loadConfig(h.configFile);
+    const config = await loadConfig(h.configFile);
     expect(config.bind).toBe("100.64.0.9");
     expect(config.allowedNetworks).toEqual(["127.0.0.0/8", "::1/128", ...TAILSCALE_NETWORKS]);
   });
@@ -167,7 +167,7 @@ describe("setup", () => {
     const no = harness({ tailscale: "100.64.0.9", confirms: { Tailscale: false } });
     no.dir("code");
     await runSetup(no.deps);
-    expect(loadConfig(no.configFile).bind).toBe("127.0.0.1");
+    expect((await loadConfig(no.configFile)).bind).toBe("127.0.0.1");
     expect(no.asked.find((q) => q.includes("Tailscale"))).toBeDefined();
     expect(no.defaults.get("Tailscale")).toBe(false);
     const none = harness();
@@ -234,8 +234,8 @@ describe("setup", () => {
     h.asked.length = 0;
     await runSetup(h.deps, { yes: true, folders: [a, b] });
     expect(h.asked).toEqual([]);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
-    expect(loadConfig(h.configFile).bind).toBe("127.0.0.1");
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
+    expect((await loadConfig(h.configFile)).bind).toBe("127.0.0.1");
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
   });
 
@@ -355,7 +355,7 @@ describe("setup command", () => {
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has(`${h.dir}/.config/systemd/user/flightdeckd.service`)).toBe(true);
     expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
     expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
@@ -368,7 +368,7 @@ describe("setup command", () => {
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has("C:\\Temp\\flightdeckd-task.xml")).toBe(true);
     const schtasks = h.calls.filter((c) => c[0] === "schtasks").map((c) => c[1]);
     expect(schtasks).toEqual(["/Query", "/Create", "/Run"]);
@@ -484,7 +484,7 @@ describe("setup command", () => {
     await runCli(["setup", "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([join(h.dir, "project")]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([join(h.dir, "project")]);
   });
 
   test("input that ends exits 1 with the way out", async () => {

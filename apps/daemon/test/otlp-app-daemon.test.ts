@@ -45,7 +45,7 @@ function refusal(run: () => unknown): FlightdeckError {
 }
 
 describe("otlp-app: the opt-in for a plain claude, from the daemon", () => {
-  test("install needs the confirmation, writes the keys on hooks.port + 1 with a token of its own, and uninstall rotates it", () => {
+  test("install needs the confirmation, writes the keys on hooks.port + 1 with a token of its own, and uninstall rotates it", async () => {
     const { optIn, configFile, settingsFile } = setup({}, { model: "opus" });
     expect(optIn.status()).toEqual({
       status: "absent",
@@ -60,7 +60,7 @@ describe("otlp-app: the opt-in for a plain claude, from the daemon", () => {
 
     const installed = optIn.install(true);
     expect(installed.status).toBe("installed");
-    const token = loadConfig(configFile).telemetry.token ?? "";
+    const token = (await loadConfig(configFile)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     const env = JSON.parse(readFileSync(settingsFile, "utf8")).env;
     expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBe("http://127.0.0.1:7601");
@@ -72,10 +72,10 @@ describe("otlp-app: the opt-in for a plain claude, from the daemon", () => {
     expect(refusal(() => optIn.uninstall(false)).reason).toBe("telemetry_confirm");
     expect(optIn.uninstall(true).status).toBe("absent");
     expect(JSON.parse(readFileSync(settingsFile, "utf8"))).toEqual({ model: "opus" });
-    expect(loadConfig(configFile).telemetry.token).not.toBe(token);
+    expect((await loadConfig(configFile)).telemetry.token).not.toBe(token);
   });
 
-  test("keys of the user's own are named, and nothing is written, not even the token", () => {
+  test("keys of the user's own are named, and nothing is written, not even the token", async () => {
     const { optIn, configFile, settingsFile } = setup(
       {},
       {
@@ -92,7 +92,7 @@ describe("otlp-app: the opt-in for a plain claude, from the daemon", () => {
     expect(error.reason).toBe("telemetry_owned_keys");
     expect(error.params).toEqual({ keys: "OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_LOGS_EXPORTER" });
     expect(JSON.parse(readFileSync(settingsFile, "utf8")).env.OTEL_LOGS_EXPORTER).toBe("console");
-    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
   });
 
   test("without a fixed port install is refused, and status says there is no receiver URL", () => {
