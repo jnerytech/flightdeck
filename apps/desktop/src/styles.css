@@ -564,3 +564,30 @@
   font-size: 0.75rem;
   line-height: 1.2;
 }
+
+/* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
+@utility header-crumbs {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 24rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility header-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-self: stretch;
+  align-items: flex-end;
+}
+@utility tab-bar {
+  display: flex;
+  height: 2.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0.5rem;
+}

@@ -84,7 +84,7 @@ export function TabBar(props: {
   };
   const activeLabel = active ? title(active, state, store) : "";
   return (
-    <div className="flex h-9 items-end gap-1 border-b px-2">
+    <div className="tab-bar">
       {/* Only tabs (and the presentation wrappers that hold them) in the tablist; the move and pin buttons act on the active tab and sit after it. */}
       <div
         ref={tablist}

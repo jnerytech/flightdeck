@@ -1,5 +1,7 @@
 import { Columns2, Rows2, SquareSplitHorizontal } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+import { useHeaderSlot } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -30,6 +32,9 @@ export function Areas(props: {
   useSyncExternalStore(workspace.subscribe, () => workspace.version);
   const { split, fraction } = workspace;
   const box = useRef<HTMLDivElement>(null);
+  const slot = useHeaderSlot();
+  /** With one area its strip sits in the top bar, on the row of the breadcrumb. */
+  const inHeader = !split && workspace.areas.length === 1 ? slot : null;
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -96,9 +101,18 @@ export function Areas(props: {
             className="flex min-h-0 min-w-0 flex-col"
             onPointerDownCapture={() => workspace.focusArea(i as 0 | 1)}
           >
-            <TabBar store={store} state={state} tabs={area}>
-              {i === 0 && buttons}
-            </TabBar>
+            {inHeader ? (
+              createPortal(
+                <TabBar store={store} state={state} tabs={area}>
+                  {i === 0 && buttons}
+                </TabBar>,
+                inHeader,
+              )
+            ) : (
+              <TabBar store={store} state={state} tabs={area}>
+                {i === 0 && buttons}
+              </TabBar>
+            )}
             {/* Screens that are a Page scroll by themselves; the others scroll here. The area is the
                 container its screens lay out against. */}
             <div className="@container min-h-0 flex-1 overflow-y-auto">
