@@ -111,6 +111,7 @@ async function daemonWithProject(hostName: string, options: { projects?: boolean
         cardId: string | null;
         sessionId: string | null;
         persona: string | null;
+        model: string | null;
       }>;
     }>;
   };
