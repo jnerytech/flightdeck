@@ -32,6 +32,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Como funciona](#como-funciona)
   - [Por que a extensão do VS Code fica de fora](#por-que-a-extensão-do-vs-code-fica-de-fora)
 - [Aprovações e permitir sempre](#aprovações-e-permitir-sempre)
+- [Projetos](#projetos)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
   - [Ciclo do card](#ciclo-do-card)
@@ -547,6 +548,19 @@ Cards rodam em worktrees, e cada worktree tem o próprio `.claude`:
 
 Na tela Projetos, **Editar** mostra a seção **Regras** do projeto, com o botão de remover, que
 pede confirmação e preserva o resto do arquivo.
+
+## Projetos
+
+O item **Projetos** da barra lateral (entre Precisa de você e Board) lista todos os projetos de
+todos os hosts como cartões: nome, host, branch base, sessões ativas, cards em andamento, os que
+precisam de você, a última atividade e quanto custou nos últimos sete dias. O custo aparece como
+um traço quando o host não informa custos. Digite na busca para filtrar por nome, host, branch ou
+pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
+precisa de atenção primeiro.
+
+Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões**, aos
+**Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
+configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 
 ## Board
 

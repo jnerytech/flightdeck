@@ -32,6 +32,7 @@ are written in Portuguese.
   - [How it works](#how-it-works)
   - [Why the VS Code extension is left out](#why-the-vs-code-extension-is-left-out)
 - [Approvals and always allow](#approvals-and-always-allow)
+- [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
   - [Card lifecycle](#card-lifecycle)
@@ -563,6 +564,19 @@ Cards run in worktrees, and each worktree has its own `.claude`:
 
 On the Projects screen, **Edit** shows the project's **Rules** section, with a remove button that
 asks for confirmation and preserves the rest of the file.
+
+## Projects
+
+The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
+host as a card: its name, host, base branch, the live sessions, the cards in progress, the ones
+that need you, the last activity and what it cost over the last seven days. The cost is a dash
+when the host does not report costs. Type in the search box to narrow the list by name, host,
+branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
+needs attention first.
+
+Click a card to open the project's page. It links the project's **Board**, **Sessions**,
+**Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
+settings, where the folder, base branch, setup and personas are edited).
 
 ## Board
 
