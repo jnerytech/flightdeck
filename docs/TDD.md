@@ -50,6 +50,12 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados.
 
+**Antes de entregar uma sessão:** `bun run typecheck`, `bun run lint`, `bun run tdd:audit` e
+`bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
+mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
+indiretamente, um arquivo alterado), e imprime cada um com o motivo. A suíte completa
+(`bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador e no CI.
+
 ## Travas
 
 Os testes provam o comportamento sem tocar em nada real. As travas tornam isso verificável,
