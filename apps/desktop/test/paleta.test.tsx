@@ -216,6 +216,8 @@ describe("paleta", () => {
     await act(async () => {
       fireEvent.click(option as HTMLElement);
     });
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => screen.queryByRole("heading", { name: "Configurações" }) !== null);
     expect(screen.queryByRole("heading", { name: "Configurações" })).not.toBeNull();
     expect(dialog()).toBeNull();
 
@@ -224,21 +226,27 @@ describe("paleta", () => {
     expect(screen.queryByRole("button", { name: "Voltar ao board" })).not.toBeNull();
 
     await choose("Configurações", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Configurações" }) !== null);
     expect(screen.queryByRole("heading", { name: "Configurações" })).not.toBeNull();
 
     await choose("Nova sessão", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Nova sessão em alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Nova sessão em alfa" })).not.toBeNull();
 
     await choose("alfa", "Enter");
+    await settle(() => screen.queryByRole("region", { name: "Hooks do Claude Code" }) !== null);
     expect(screen.queryByRole("region", { name: "Hooks do Claude Code" })).not.toBeNull();
 
     await choose("flamingo", "Tab", "ArrowDown", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Workflows de flamingo" }) !== null);
     expect(screen.queryByRole("heading", { name: "Workflows de flamingo" })).not.toBeNull();
 
     await choose("alfa", "Tab", "ArrowDown", "ArrowDown", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Projetos de alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Projetos de alfa" })).not.toBeNull();
 
     await choose("alfa", "Tab", "ArrowDown", "Enter");
+    await settle(() => screen.queryByRole("heading", { name: "Nova sessão em alfa" }) !== null);
     expect(screen.queryByRole("heading", { name: "Nova sessão em alfa" })).not.toBeNull();
 
     await choose("app-a", "Enter");
