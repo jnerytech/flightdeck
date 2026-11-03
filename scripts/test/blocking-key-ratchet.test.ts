@@ -11,7 +11,10 @@ describe("blocking-key-ratchet: a request handler never reads a project key thro
   });
 
   test("server.ts reads keys synchronously only in `listed`, whose callers warm the cache first", () => {
-    const server = readFileSync(resolve(import.meta.dir, "../../apps/daemon/src/server.ts"), "utf8");
+    const server = readFileSync(
+      resolve(import.meta.dir, "../../apps/daemon/src/server.ts"),
+      "utf8",
+    );
     expect(blockingKeyCalls(server)).toBe(SERVER_ALLOWED);
     // The one read is in `listed`; every dispatch that reaches it awaits `warmKeys` first.
     expect(server).toContain("await warmKeys(");
