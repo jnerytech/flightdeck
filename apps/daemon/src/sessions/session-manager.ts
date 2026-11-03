@@ -9,6 +9,7 @@ import type {
   PersonaSubagents,
   SessionEvent,
   SessionEventOf,
+  SessionImage,
   SessionPersona,
   SessionStatus,
   SessionSummary,
@@ -263,7 +264,7 @@ export class SessionManager {
     return { sessionId: id };
   }
 
-  send(sessionId: string, text: string): { queued: boolean } {
+  send(sessionId: string, text: string, _images?: SessionImage[]): { queued: boolean } {
     const session = this.get(sessionId);
     if (session.status === "ended" || session.status === "error") {
       throw new FlightdeckError(

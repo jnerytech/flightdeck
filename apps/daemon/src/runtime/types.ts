@@ -6,6 +6,7 @@ import type {
   PersonaAgent,
   PersonaFields,
   SessionEvent,
+  SessionImage,
   ToolInput,
 } from "@flightdeck/protocol";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
@@ -78,7 +79,7 @@ export interface AgentRun {
   /** Normalized events; ends when the run is closed and throws if the runtime fails. */
   events: AsyncIterable<RuntimeEvent>;
   /** Next user message; `uuid` names it in the transcript (the turn the SDK rewinds to). */
-  send(text: string, uuid?: string): void;
+  send(text: string, uuid?: string, images?: SessionImage[]): void;
   /** Phase 12: the SDK's file checkpoint back to before the message `userMessageId`. */
   rewindFiles?(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult>;
   /** Phase 12: turns an MCP server of the live session on or off. */

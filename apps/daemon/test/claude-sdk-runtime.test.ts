@@ -212,6 +212,22 @@ describe("ClaudeSdkRuntime", () => {
       message: { role: "user", content: "olá" },
     });
 
+    run.send("veja", "uuid-img", [{ mediaType: "image/png", data: "iVBORw0KGgo=" }]);
+    const withImage = await prompt?.next();
+    expect(withImage?.value).toMatchObject({
+      type: "user",
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "base64", media_type: "image/png", data: "iVBORw0KGgo=" },
+          },
+          { type: "text", text: "veja" },
+        ],
+      },
+    });
+
     await run.interrupt();
     await run.close();
     expect(calls).toEqual(["interrupt", "close"]);

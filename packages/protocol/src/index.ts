@@ -394,6 +394,15 @@ export const SessionCreatePayload = z.object({
   persona: PersonaRef.optional(),
 });
 
+/** What a message may carry as images (stub: the real limits come with the feature). */
+export const SESSION_IMAGE_TYPES: readonly string[] = [];
+export const SESSION_IMAGE_MAX_COUNT = 0;
+export const SESSION_IMAGE_MAX_BYTES = 0;
+export interface SessionImage {
+  mediaType: string;
+  data: string;
+}
+
 export const SessionSendPayload = z.object({ sessionId: z.string(), text: z.string().min(1) });
 export const SessionIdPayload = z.object({ sessionId: z.string() });
 export const SessionSubscribePayload = z.object({
