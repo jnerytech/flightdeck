@@ -1624,9 +1624,11 @@ export class AppStore {
     }
   }
 
-  async send(text: string, _images?: SessionImage[]): Promise<void> {
+  async send(text: string, images?: SessionImage[]): Promise<void> {
     startMeasure("send");
-    await this.onSelected((conn, sessionId) => conn.request("session.send", { sessionId, text }));
+    await this.onSelected((conn, sessionId) =>
+      conn.request("session.send", { sessionId, text, ...(images?.length ? { images } : {}) }),
+    );
     endMeasure("send");
   }
 

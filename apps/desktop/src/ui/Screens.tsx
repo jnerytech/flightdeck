@@ -163,6 +163,7 @@ function ManagedSession(props: {
         session={session}
         actions={store}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        images={hasFeature(host?.hostInfo?.features, "session.images", false)}
         pickPath={(done) =>
           host && (
             <FolderPicker

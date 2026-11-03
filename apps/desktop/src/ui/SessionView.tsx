@@ -1,10 +1,12 @@
-import type {
-  PermissionMode,
-  PermissionUpdate,
-  SessionImage,
-  SettableMode,
+import {
+  type PermissionMode,
+  type PermissionUpdate,
+  SESSION_IMAGE_MAX_BYTES,
+  SESSION_IMAGE_MAX_COUNT,
+  type SessionImage,
+  type SettableMode,
 } from "@flightdeck/protocol";
-import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
+import { ArrowDown, AtSign, BookText, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -24,6 +26,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -148,7 +151,16 @@ const TimelineItem = memo(function TimelineItem(props: {
   const { item } = props;
   switch (item.kind) {
     case "user":
-      return <Message from="user">{item.text}</Message>;
+      return (
+        <Message from="user">
+          {item.text}
+          {item.images ? (
+            <div className="text-muted-foreground text-xs">
+              {props.t("session.imagesSent", { count: String(item.images) })}
+            </div>
+          ) : null}
+        </Message>
+      );
     case "assistant":
       return <AssistantMessage item={item} toolResults={props.toolResults} />;
     case "permission":
@@ -254,15 +266,38 @@ export function SessionView(props: {
   /** The session is being ended: Encerrar is busy until the daemon says so. */
   const [ending, setEnding] = useState(false);
 
+  /** The images waiting to go with the next message, and why the last file was turned away. */
+  const [attached, setAttached] = useState<SessionImage[]>([]);
+  const [refusal, setRefusal] = useState<ImageRefusal | null>(null);
+  const attach = async (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (!props.images || images.length === 0) return;
+    let have = attached.length;
+    const taken: SessionImage[] = [];
+    let turned: ImageRefusal | null = null;
+    for (const file of images) {
+      const why = refuseImage(file, have);
+      if (why) turned = why;
+      else {
+        taken.push(await readImage(file));
+        have++;
+      }
+    }
+    setRefusal(turned);
+    if (taken.length > 0) setAttached((before) => [...before, ...taken]);
+  };
+
   const submit = () => {
     const value = text.trim();
-    if (!value) {
+    if (!value && attached.length === 0) {
       // A click with nothing to send is not dead: the cursor goes where the text is typed.
       box.current?.focus();
       return undefined;
     }
     setText("");
-    return actions.send(value);
+    setAttached([]);
+    setRefusal(null);
+    return actions.send(value, attached.length > 0 ? attached : undefined);
   };
 
   return (
@@ -370,6 +405,36 @@ export function SessionView(props: {
         )}
       </div>
       <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+      {(attached.length > 0 || refusal) && (
+        <div className="composer-images">
+          {attached.map((image, at) => (
+            <div key={`${at}:${image.data.slice(-16)}`} className="composer-image">
+              <img
+                alt={t("session.imageAttached", { n: String(at + 1) })}
+                src={`data:${image.mediaType};base64,${image.data}`}
+                className="composer-thumb"
+              />
+              <IconActionButton
+                label={t("session.imageRemove", { n: String(at + 1) })}
+                onClick={() => setAttached((before) => before.filter((_, i) => i !== at))}
+              >
+                <X aria-hidden="true" />
+              </IconActionButton>
+            </div>
+          ))}
+          {refusal && (
+            <p role="alert" className="text-status-error text-xs">
+              {t(`session.imageRefused.${refusal}`, {
+                max: String(
+                  refusal === "size"
+                    ? SESSION_IMAGE_MAX_BYTES / (1024 * 1024)
+                    : SESSION_IMAGE_MAX_COUNT,
+                ),
+              })}
+            </p>
+          )}
+        </div>
+      )}
       <Composer>
         {props.prompts && (
           <IconActionButton
@@ -433,6 +498,19 @@ export function SessionView(props: {
           className="max-h-40 min-h-9 flex-1 resize-none"
           rows={1}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData?.files ?? []);
+            if (props.images && files.some((file) => file.type.startsWith("image/"))) {
+              e.preventDefault();
+              void attach(files);
+            }
+          }}
+          onDragOver={(e) => props.images && e.preventDefault()}
+          onDrop={(e) => {
+            if (!props.images) return;
+            e.preventDefault();
+            void attach(Array.from(e.dataTransfer?.files ?? []));
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape" && working) void actions.interrupt();
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {

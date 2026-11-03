@@ -117,7 +117,12 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
       };
     case "message.user":
-      return push({ kind: "user", seq, text: event.text });
+      return push({
+        kind: "user",
+        seq,
+        text: event.text,
+        ...(event.images ? { images: event.images } : {}),
+      });
     case "message.assistant":
       return { ...push({ kind: "assistant", seq, blocks: event.blocks }), streaming: "" };
     case "tool.result":
