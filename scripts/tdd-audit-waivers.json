@@ -1,0 +1,17 @@
+[
+  {
+    "hash": "61bbf25301e77114089471138c3420e232ee5640",
+    "scope": "projetos-pagina",
+    "reason": "Fix made while assembling rc/0330: the merged screens used window breakpoints; the guarding test (areas-container) already existed under another scope."
+  },
+  {
+    "hash": "cb3dc8658cd17a5cf82991d160fa14a22682a25d",
+    "scope": "mudancas-ui",
+    "reason": "Fix made while assembling rc/0330: the screens did not pass the refusal reason; the mudancas-ui tests were already red after the merge and are updated in the same commit."
+  },
+  {
+    "hash": "e28af243885bd5d401b2fd1ae489f6c7ae9a1560",
+    "scope": "recusas-recurso",
+    "reason": "Fix made while assembling rc/0330: the account feature was missing from DAEMON_FEATURES; the recusas-recurso test already existed and was red after the merge."
+  }
+]

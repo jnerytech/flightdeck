@@ -3263,3 +3263,16 @@ A daemon that started before a release said nothing about it for up to a day, be
 - **Default interval 6 hours** (`updates.checkIntervalH`), down from 24; an existing config keeps its own value.
 - **The app asks on its own** once when the host page opens, only when the app is newer than the daemon and the daemon checks at all, and the store allows it at most once per 10 minutes per host (a map in memory, so it resets with the app). The page also has **Check for updates** whenever the daemon reports an update status, and it shows when the daemon last checked and the error of that check.
 - **Not covered:** a daemon from before this command (such as the 0.32.0 in the report) refuses `daemon.update.check` as an unknown command, so the page shows why and that host is updated once by hand with `flightdeckd update`; the fix applies to every daemon from this version on. The rate limit lives in the app, not the daemon: the daemon answers each request.
+
+## TDD audit waivers (rc/0330)
+
+While assembling rc/0330, three `fix` commits landed without an earlier `test(<same scope>)` commit: `61bbf253`
+(projetos-pagina), `cb3dc865` (mudancas-ui) and `e28af243` (recusas-recurso). Each repaired a test or a ratchet that the
+merged branches broke only in combination, so the guarding tests already existed, under another scope or in the commit
+itself. The audit counts a test commit only if it comes earlier in `git log --reverse`, so a later `test(...)` commit
+cannot satisfy it, and rc/0330 was already merged elsewhere, so history is not rewritten.
+
+`scripts/tdd-audit-waivers.json` lists the accepted exceptions as `{ hash, scope, reason }`. The rules are strict: a waiver
+matches the full 40-character hash and the scope only; one that matches no violation in the audited range is reported as
+stale and fails the audit, so the list cannot grow silently; and the output prints every waived commit. Nothing else in the
+audit is relaxed. New entries need the maintainer's agreement.
