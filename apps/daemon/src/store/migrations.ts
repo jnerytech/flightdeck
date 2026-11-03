@@ -768,4 +768,51 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE sessions ADD COLUMN agents TEXT;
   `,
+  // Phase 38: a project linked to an external board, the cards' links to its items, and the
+  // log of what a conflict gave up. `local_moved_at` is when the card last changed column here
+  // (a trigger sets it; a sync that settles the card clears it).
+  `
+  CREATE TABLE board_links (
+    project_id      TEXT PRIMARY KEY REFERENCES projects(id),
+    provider        TEXT NOT NULL,
+    board_id        TEXT NOT NULL,
+    board_title     TEXT NOT NULL,
+    status_field_id TEXT NOT NULL,
+    column_map      TEXT NOT NULL,
+    push            INTEGER NOT NULL DEFAULT 0,
+    cursor          TEXT,
+    last_synced_at  TEXT,
+    last_error      TEXT,
+    truncated       INTEGER NOT NULL DEFAULT 0,
+    paused_until    TEXT
+  );
+
+  ALTER TABLE cards ADD COLUMN external_id TEXT;
+  ALTER TABLE cards ADD COLUMN external_url TEXT;
+  ALTER TABLE cards ADD COLUMN external_status TEXT;
+  ALTER TABLE cards ADD COLUMN external_updated_at TEXT;
+  ALTER TABLE cards ADD COLUMN local_moved_at TEXT;
+  ALTER TABLE cards ADD COLUMN external_gone INTEGER NOT NULL DEFAULT 0;
+  CREATE INDEX cards_external ON cards (project_id, external_id);
+
+  CREATE TABLE card_sync_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id    TEXT NOT NULL REFERENCES cards(id),
+    at         TEXT NOT NULL,
+    kind       TEXT NOT NULL,
+    winner     TEXT,
+    lost_value TEXT,
+    lost_at    TEXT,
+    kept_value TEXT,
+    kept_at    TEXT,
+    detail     TEXT
+  );
+  CREATE INDEX card_sync_log_card ON card_sync_log (card_id, id);
+
+  CREATE TRIGGER cards_local_moved AFTER UPDATE OF board_column ON cards
+  WHEN NEW.board_column IS NOT OLD.board_column
+  BEGIN
+    UPDATE cards SET local_moved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
+  END;
+  `,
 ];
