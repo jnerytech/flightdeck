@@ -6,6 +6,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { PersonaPicker } from "@/components/personas/persona-picker";
+import { CardHours } from "@/components/roi/card-hours";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ export const CardDetail = memo(function CardDetail(props: {
   const withArena = hasFeature(host?.hostInfo?.features, "arena", false);
   const withDeps = hasFeature(host?.hostInfo?.features, "deps", false);
   const withSync = hasFeature(host?.hostInfo?.features, "boardsync", false);
+  const withRoi = hasFeature(host?.hostInfo?.features, "roi", false);
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -303,6 +305,7 @@ export const CardDetail = memo(function CardDetail(props: {
             {t("cardUi.saveDescription")}
           </ActionButton>
         </div>
+        {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
         <div className="flex flex-wrap items-center gap-2">
           <NativeSelect
             inline

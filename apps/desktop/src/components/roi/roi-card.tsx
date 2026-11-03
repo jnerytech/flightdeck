@@ -1,5 +1,5 @@
 import type { Project, RoiPeriod } from "@flightdeck/protocol";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
   const [hours, setHours] = useState(
     project.defaultHours === null ? "" : String(project.defaultHours),
   );
+  const hoursId = useId();
+  const rateId = useId();
   const key = project.projectKey ?? project.path;
   const [rateText, setRateText] = useState(() => {
     const own = store.roi.data().projectRates[key];
@@ -60,18 +62,16 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
     return () => clearInterval(timer);
   }, [load]);
 
-  const money = useMemo(() => {
-    const clientId = store.clientScope().clientOf(key);
-    const settings = store.roi.data();
-    return {
-      rate: store.roi.rateFor(key, clientId === UNASSIGNED ? null : clientId),
-      billed: null,
-      planShareUsd: null,
-      countReview: settings.countReview,
-      reviewCapSeconds: settings.reviewCapMinutes * 60,
-    };
-    // `version` changes when the person saves a rate.
-  }, [store, key, version]);
+  // Cheap, and read on every render: saving a rate bumps `version` to render again.
+  const clientId = store.clientScope().clientOf(key);
+  const settings = store.roi.data();
+  const money = {
+    rate: store.roi.rateFor(key, clientId === UNASSIGNED ? null : clientId),
+    billed: null,
+    planShareUsd: null,
+    countReview: settings.countReview,
+    reviewCapSeconds: settings.reviewCapMinutes * 60,
+  };
 
   if (!periods) {
     return (
@@ -214,27 +214,29 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
       <details>
         <summary className="cursor-pointer text-sm">{t("roiUi.settings")}</summary>
         <div className="mt-2 flex flex-wrap items-end gap-4">
-          <label className="flex flex-col gap-1 text-xs">
-            {t("roiUi.defaultHours")}
+          <div className="flex flex-col gap-1 text-xs">
+            <label htmlFor={hoursId}>{t("roiUi.defaultHours")}</label>
             <Input
+              id={hoursId}
               inputMode="decimal"
               className="h-8 w-28"
               value={hours}
               onChange={(e) => setHours(e.target.value)}
             />
-          </label>
+          </div>
           <ActionButton size="sm" variant="outline" onClick={saveHours}>
             {t("roiUi.saveHours")}
           </ActionButton>
-          <label className="flex flex-col gap-1 text-xs">
-            {t("roiUi.projectRate")}
+          <div className="flex flex-col gap-1 text-xs">
+            <label htmlFor={rateId}>{t("roiUi.projectRate")}</label>
             <Input
+              id={rateId}
               inputMode="decimal"
               className="h-8 w-28"
               value={rateText}
               onChange={(e) => setRateText(e.target.value)}
             />
-          </label>
+          </div>
           <Button size="sm" variant="outline" onClick={saveRate}>
             {t("roiUi.saveRate")}
           </Button>
