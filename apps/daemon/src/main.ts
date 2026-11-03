@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
@@ -512,10 +513,15 @@ async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<Cr
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-function terminalInfo(env: Record<string, string | undefined>) {
+async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
   return {
-    flightdeckdPath: existsSync(stable) ? stable : null,
+    flightdeckdPath: (await stat(stable).then(
+      () => true,
+      () => false,
+    ))
+      ? stable
+      : null,
     wslDistro: env.WSL_DISTRO_NAME || null,
   };
 }
@@ -1087,7 +1093,7 @@ export async function startDaemon(
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
     ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
-    terminal: terminalInfo(env),
+    terminal: await terminalInfo(env),
   });
 
   const wsl =
@@ -1215,7 +1221,11 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   };
   const report = await runDoctor({
     config: load,
-    isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+    isDirectory: (path) =>
+      stat(path).then(
+        (info) => info.isDirectory(),
+        () => false,
+      ),
     serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
     healthy: () => waitHealthy(healthUrl(load()), 1_000, 250),
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
