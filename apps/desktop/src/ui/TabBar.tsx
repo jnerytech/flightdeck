@@ -21,7 +21,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
 import { isProd } from "../lib/ssh.ts";
-import { type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
+import { type TabKind, badgePulses, tabBadge, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Record<TabKind, LucideIcon> = {
@@ -151,6 +151,7 @@ export function TabBar(props: {
                     data-badge={badge}
                     className={cn(
                       "shrink-0 rounded-full px-1.5 text-xs",
+                      badgePulses(badge) && "motion-safe:animate-pulse",
                       badge === "needs-you"
                         ? "bg-status-needs-you text-background"
                         : "bg-muted text-muted-foreground",

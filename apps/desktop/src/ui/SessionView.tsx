@@ -1,6 +1,7 @@
 import type { PermissionMode, PermissionUpdate, SettableMode } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { WorkingRow } from "@/components/session/working-row";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
@@ -351,6 +352,14 @@ export function SessionView(props: {
               {session.streaming}
             </Message>
           )}
+          {(session.status === "running" || session.status === "starting") && (
+            <WorkingRow
+              label={t("session.working")}
+              since={session.busySince ?? props.nowMs ?? Date.now()}
+              tool={openTool(session)}
+              {...(props.nowMs !== undefined ? { nowMs: props.nowMs } : {})}
+            />
+          )}
         </Timeline>
         {away && (
           <Button
@@ -459,9 +468,6 @@ export function SessionView(props: {
         />
         {working ? (
           <>
-            <output aria-live="polite" aria-label={t("session.working")} className="sr-only">
-              {t("session.working")}
-            </output>
             <ActionButton
               variant="destructive"
               aria-label={t("session.stopTurn")}
@@ -483,4 +489,18 @@ export function SessionView(props: {
         })}
     </SessionPane>
   );
+}
+
+/** The tool the turn is in: the last one called that has not answered yet. */
+function openTool(session: SessionState): string | null {
+  for (let i = session.items.length - 1; i >= 0; i--) {
+    const item = session.items[i];
+    if (item?.kind !== "assistant") continue;
+    for (let j = item.blocks.length - 1; j >= 0; j--) {
+      const block = item.blocks[j];
+      if (block?.type === "tool_use" && !(block.id in session.toolResults)) return block.name;
+    }
+    return null;
+  }
+  return null;
 }

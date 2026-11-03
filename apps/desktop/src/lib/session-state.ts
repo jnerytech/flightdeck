@@ -109,8 +109,23 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         permissionMode: event.permissionMode,
         ...(event.persona ? { persona: event.persona } : {}),
       };
-    case "session.status":
-      return { ...next, status: event.status, statusReason: event.reason };
+    case "session.status": {
+      const busy = event.status === "starting" || event.status === "running";
+      const waiting = event.status === "awaiting_permission";
+      // The turn's start holds through a permission wait; any other status ends it.
+      const busySince =
+        busy || waiting
+          ? (state.busySince ?? (busy ? Date.parse(envelope.ts) : undefined))
+          : undefined;
+      return {
+        ...next,
+        status: event.status,
+        statusReason: event.reason,
+        ...(busySince !== undefined && !Number.isNaN(busySince)
+          ? { busySince }
+          : { busySince: undefined }),
+      };
+    }
     case "session.init":
       return {
         ...next,

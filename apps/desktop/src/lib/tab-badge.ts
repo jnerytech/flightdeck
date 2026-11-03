@@ -18,8 +18,8 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
 }
 
 /** Whether the badge pulses: a session that is working moves, so a glance at the tabs shows it. */
-export function badgePulses(_badge: TabBadge): boolean {
-  return false;
+export function badgePulses(badge: TabBadge): boolean {
+  return badge === "running";
 }
 
 /** The kind of screen a tab shows, for its icon. */
