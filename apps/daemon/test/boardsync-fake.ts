@@ -6,6 +6,7 @@ import type {
   PullResult,
   StatusField,
 } from "../src/boardsync/provider.ts";
+import { FlightdeckError } from "../src/errors.ts";
 import type { ContractHarness } from "./boardsync-contract.ts";
 
 export const BOARD: ExternalBoard = {
@@ -26,30 +27,82 @@ export const STATUS_FIELD: StatusField = {
   ],
 };
 
+const refuse = (reason: string, params?: Record<string, string>) =>
+  new FlightdeckError("invalid_state", reason, reason, params);
+
 export class FakeProvider implements BoardProvider {
   readonly kind = "fake";
   items: ExternalItem[] = [];
   scope = { read: true, write: true };
   hasStatus = true;
   pageSize = 100;
-  version = 0;
   setStatusCalls: Array<{ itemId: string; optionId: string }> = [];
+  /** What `setStatus` answers as the time of the change. */
   now = () => new Date().toISOString();
+  /** Asked of every call: a test makes the provider fail by throwing here. */
+  beforeCall: (method: string) => void = () => {};
+
+  private check(method: string, boardId?: string) {
+    this.beforeCall(method);
+    if (boardId !== undefined && boardId !== BOARD.id) throw refuse("board_not_found", { boardId });
+  }
 
   async scopes() {
-    return { read: false, write: false };
+    this.beforeCall("scopes");
+    return { ...this.scope };
   }
+
   async listBoards(): Promise<ExternalBoard[]> {
-    return [];
+    this.check("listBoards");
+    return [BOARD];
   }
-  async statusField(): Promise<StatusField | null> {
-    return null;
+
+  async statusField(boardId: string): Promise<StatusField | null> {
+    this.check("statusField", boardId);
+    return this.hasStatus ? STATUS_FIELD : null;
   }
-  async pull(): Promise<PullResult> {
-    return { items: [], cursor: "", notModified: true, truncated: true, redacted: 1 };
+
+  /** The cursor is a digest of the items: the same board gives the same cursor. */
+  private cursorOf(): string {
+    return JSON.stringify(
+      this.items.map((item) => [item.id, item.status, item.updatedAt, item.title]),
+    );
   }
-  async setStatus(): Promise<{ updatedAt: string }> {
-    return { updatedAt: "" };
+
+  async pull(boardId: string, since?: string): Promise<PullResult> {
+    this.check("pull", boardId);
+    const cursor = this.cursorOf();
+    if (since !== undefined && since === cursor) {
+      return { items: [], cursor, notModified: true, truncated: false, redacted: 0 };
+    }
+    const items: ExternalItem[] = [];
+    for (let at = 0; at < this.items.length; at += this.pageSize) {
+      items.push(...this.items.slice(at, at + this.pageSize).map((item) => ({ ...item })));
+    }
+    return {
+      items,
+      cursor,
+      notModified: false,
+      truncated: false,
+      redacted: items.filter((item) => item.content === null).length,
+    };
+  }
+
+  async setStatus(
+    boardId: string,
+    itemId: string,
+    optionId: string,
+  ): Promise<{ updatedAt: string }> {
+    this.check("setStatus", boardId);
+    if (!this.scope.write) throw refuse("board_sync_scope_missing", { scope: "project" });
+    const option = STATUS_FIELD.options.find((candidate) => candidate.id === optionId);
+    const target = this.items.find((candidate) => candidate.id === itemId);
+    if (!option) throw refuse("board_sync_option_not_found", { option: optionId });
+    if (!target) throw refuse("board_not_found", { itemId });
+    this.setStatusCalls.push({ itemId, optionId });
+    target.status = option.name;
+    target.updatedAt = this.now();
+    return { updatedAt: target.updatedAt };
   }
 }
 
@@ -61,7 +114,6 @@ export function fakeHarness(): ContractHarness {
     conditional: true,
     seed: (items) => {
       fake.items = items.map((item) => ({ ...item }));
-      fake.version += 1;
     },
     setScopes: (scopes) => {
       fake.scope = scopes;
