@@ -2115,6 +2115,8 @@ export const TeamMember = z.object({
   name: z.string(),
   role: z.enum(["coordinator", "worker"]),
   persona: z.string().nullable(),
+  /** The model it was asked to run in; null is the persona's own, else the default. */
+  model: z.string().nullable(),
   cardId: z.string().nullable(),
   /** Null while a worker's card waits in the quota queue and has no session yet. */
   sessionId: z.string().nullable(),
@@ -2657,6 +2659,9 @@ export const Command = z.discriminatedUnion("type", [
       workers: z.number().int().min(1).max(8),
       coordinatorPersona: z.string().min(1).optional(),
       workerPersonas: z.array(z.string().min(1)).max(8).optional(),
+      /** The model of the coordinator and of each worker; none or null is the persona's own. */
+      coordinatorModel: z.string().min(1).optional(),
+      workerModels: z.array(z.string().min(1).nullable()).max(8).optional(),
       checks: z.array(z.string().min(1).max(400)).max(10).optional(),
     }),
   ),
@@ -2671,6 +2676,13 @@ export const Command = z.discriminatedUnion("type", [
         .object({ member: z.string().min(1), persona: z.string().min(1).nullable() })
         .optional(),
       addWorkers: z.number().int().min(1).max(8).optional(),
+      /** One more worker with the persona and model asked for (none or null is the default). */
+      addMember: z
+        .object({
+          persona: z.string().min(1).nullable().optional(),
+          model: z.string().min(1).nullable().optional(),
+        })
+        .optional(),
       removeMember: z.string().min(1).optional(),
     }),
   ),

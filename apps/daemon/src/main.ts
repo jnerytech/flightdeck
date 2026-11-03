@@ -849,8 +849,15 @@ export async function startDaemon(
         }
       },
     },
-    startCoordinator: ({ cwd, prompt, name, persona }) =>
-      manager.create({ cwd, prompt, name, ...(persona ? { persona: { id: persona } } : {}) }),
+    startCoordinator: ({ cwd, prompt, name, persona, model }) =>
+      manager.create({
+        cwd,
+        prompt,
+        name,
+        ...(persona ? { persona: { id: persona } } : {}),
+        ...(model ? { model } : {}),
+      }),
+    // The worker's model travels on its card (see `Teams.startWorker`).
     startWorker: (cardId, persona) =>
       board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
     warm: (cwd) => warmKeys(cwd),

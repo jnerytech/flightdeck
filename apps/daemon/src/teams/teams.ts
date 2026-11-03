@@ -52,11 +52,12 @@ export interface TeamsOptions {
     prompt: string;
     name: string;
     persona: string | null;
+    model: string | null;
   }) => {
     sessionId: string;
   };
   /** Starts a worker's card; phase 20 passes the persona on. */
-  startWorker?: (cardId: string, persona: string | null) => Promise<unknown>;
+  startWorker?: (cardId: string, persona: string | null, model: string | null) => Promise<unknown>;
   /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
   warm?: (cwd: string) => Promise<unknown> | undefined;
   /** Tells a running session its persona changed. */
@@ -70,6 +71,9 @@ export interface NewTeam {
   workers: number;
   coordinatorPersona?: string;
   workerPersonas?: string[];
+  /** The model of the coordinator and of each worker; none or null is the persona's own. */
+  coordinatorModel?: string;
+  workerModels?: Array<string | null>;
   checks?: string[];
 }
 
@@ -79,6 +83,8 @@ export interface TeamPatch {
   checks?: string[];
   persona?: { member: string; persona: string | null };
   addWorkers?: number;
+  /** One more worker with the persona and model asked for (none or null is the default). */
+  addMember?: { persona?: string | null; model?: string | null };
   removeMember?: string;
 }
 
@@ -87,6 +93,7 @@ interface StoredMember {
   name: string;
   role: "coordinator" | "worker";
   persona: string | null;
+  model?: string | null;
   cardId: string | null;
   sessionId: string | null;
 }
@@ -113,7 +120,8 @@ const label = (name: string): string => name.slice(0, 24).trimEnd();
 
 const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("bad_request", message, reason, params);
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("invalid_state", message, reason, params);
 const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("not_found", message, reason, params);
 
@@ -178,6 +186,7 @@ export class Teams {
       name: stored.name,
       role: stored.role,
       persona: stored.persona,
+      model: stored.model ?? null,
       cardId: stored.cardId,
       sessionId,
       address: sessionId ? `${this.opts.host}/${sessionId}` : null,
@@ -269,18 +278,21 @@ export class Teams {
     name: string,
     persona: string | null,
     coordinator: string | null,
+    model: string | null = null,
   ): Promise<StoredMember> {
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
       description: workerInstructions(brief, coordinator),
+      // The card's variant is where a card keeps the model its session opens in.
+      ...(model ? { variant: { label: "team", model, effort: null, persona } } : {}),
     });
     // Before the card starts: its session is named with this persona from the first moment.
     if (persona) this.cardPersonas.set(card.id, persona);
     await (this.opts.startWorker
-      ? this.opts.startWorker(card.id, persona)
+      ? this.opts.startWorker(card.id, persona, model)
       : this.opts.board.startCard(card.id));
-    return { name, role: "worker", persona, cardId: card.id, sessionId: null };
+    return { name, role: "worker", persona, model, cardId: card.id, sessionId: null };
   }
 
   async create(input: NewTeam): Promise<TeamInfo> {
@@ -298,6 +310,7 @@ export class Teams {
         (this.opts.personas?.resolve(COORDINATOR_PERSONA) ? COORDINATOR_PERSONA : undefined),
     );
     const workerPersonas = (input.workerPersonas ?? []).map((p) => this.checkPersona(p));
+    const coordinatorModel = input.coordinatorModel ?? null;
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
     const id = ulid((this.opts.clock ?? Date.now)());
@@ -317,8 +330,13 @@ export class Teams {
     });
     const startCoordinator =
       this.opts.startCoordinator ??
-      ((start: { cwd: string; prompt: string; name: string }) =>
-        this.opts.manager.create({ cwd: start.cwd, prompt: start.prompt, name: start.name }));
+      ((start: { cwd: string; prompt: string; name: string; model: string | null }) =>
+        this.opts.manager.create({
+          cwd: start.cwd,
+          prompt: start.prompt,
+          name: start.name,
+          ...(start.model ? { model: start.model } : {}),
+        }));
     const coordinatorName = `${label(name)} · coordenadora`;
     // The session is named as it starts, and its persona is set on that name right below.
     await this.opts.warm?.(project.path);
@@ -327,6 +345,7 @@ export class Teams {
       prompt,
       name: coordinatorName,
       persona: coordinatorPersona,
+      model: coordinatorModel,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
     const address = `${this.opts.host}/${sessionId}`;
@@ -335,12 +354,21 @@ export class Teams {
         name: coordinatorName,
         role: "coordinator",
         persona: coordinatorPersona,
+        model: coordinatorModel,
         cardId: null,
         sessionId,
       },
     ];
     for (const [i, workerName] of workerNames.entries()) {
-      members.push(await this.startWorker(team, workerName, workerPersonas[i] ?? null, address));
+      members.push(
+        await this.startWorker(
+          team,
+          workerName,
+          workerPersonas[i] ?? null,
+          address,
+          input.workerModels?.[i] ?? null,
+        ),
+      );
     }
     this.opts.db
       .query(
@@ -366,7 +394,9 @@ export class Teams {
 
   private open(id: string): Row {
     const row = this.row(id);
-    if (row.state === "closed") throw invalid(`o time ${row.name} está encerrado`);
+    if (row.state === "closed") {
+      throw invalid(`o time ${row.name} está encerrado`, "team_closed", { name: row.name });
+    }
     return row;
   }
 
@@ -443,7 +473,8 @@ export class Teams {
     const found = info.members.find(
       (m) => m.address === who || m.sessionId === who || m.cardId === who || m.name === who,
     );
-    if (!found) throw notFound(`o time não tem o membro ${who}`);
+    if (!found)
+      throw notFound(`o time não tem o membro ${who}`, "team_member_unknown", { member: who });
     return found;
   }
 
@@ -478,6 +509,7 @@ export class Teams {
     count: number,
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
+    spec: { persona: string | null; model: string | null } = { persona: null, model: null },
   ) {
     const members = this.stored(this.row(row.id));
     const taken = members.flatMap((m) => /executora (\d+)$/.exec(m.name)?.[1] ?? []).map(Number);
@@ -493,21 +525,32 @@ export class Teams {
       const added = await this.startWorker(
         team,
         `${label(row.name)} · executora ${number}`,
-        null,
+        spec.persona,
         coordinator?.address ?? null,
+        spec.model,
       );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
-      tellCoordinator(`Entrou uma executora no time: "${added.name}" (card ${added.cardId}).`);
+      const asked = [
+        spec.persona && `persona ${spec.persona}`,
+        spec.model && `modelo ${spec.model}`,
+      ].filter(Boolean);
+      tellCoordinator(
+        `Entrou uma executora no time: "${added.name}" (card ${added.cardId})${
+          asked.length > 0 ? `, com ${asked.join(" e ")}` : ""
+        }.`,
+      );
     }
   }
 
-  /** Takes a worker out of the team and tells it so; the coordinator stays. */
-  private dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
+  /** Stops a worker, takes it out of the team and tells it so; the coordinator stays. */
+  private async dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
     const target = this.find(this.get(row.id), who);
     if (target.role === "coordinator") {
-      throw invalid("a coordenadora não sai do time: encerre o time");
+      throw invalid("a coordenadora não sai do time: encerre o time", "team_coordinator_stays");
     }
+    // Its turn is interrupted; the card stays on the board.
+    if (target.cardId) await this.opts.board.stopCard(target.cardId);
     const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
     this.save(row.id, { members: JSON.stringify(members) });
     if (target.sessionId) {
@@ -541,9 +584,27 @@ export class Teams {
       );
     }
     if (patch.persona) this.changePersona(row, info, patch.persona);
+    if (patch.addWorkers || patch.addMember) {
+      if (row.state === "paused") {
+        throw invalid(
+          `o time ${row.name} está pausado: retome antes de acrescentar`,
+          "team_paused",
+          {
+            name: row.name,
+          },
+        );
+      }
+    }
     if (patch.addWorkers)
       await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
-    if (patch.removeMember) this.dropMember(row, patch.removeMember, tellCoordinator);
+    if (patch.addMember) {
+      const spec = {
+        persona: this.checkPersona(patch.addMember.persona),
+        model: patch.addMember.model ?? null,
+      };
+      await this.addWorkers(row, 1, coordinator, tellCoordinator, spec);
+    }
+    if (patch.removeMember) await this.dropMember(row, patch.removeMember, tellCoordinator);
     return this.changed(row.id);
   }
 

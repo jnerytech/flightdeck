@@ -1783,8 +1783,10 @@ Claude Code sessions can message each other through Flightdeck, on the same host
 
 - **A team** is a coordinator session and its workers. Each worker runs in a card, with its own
   worktree.
-- **Teams** (sidebar) creates a team: the project, the goal, a name, the number of workers and,
-  if you want, the coordinator's persona.
+- **Teams** (sidebar) creates a team: the project, the goal, a name and, if you want, the
+  coordinator's persona and model. The workers are rows: each has its own persona and model, and
+  you add or remove rows (the number of rows is the number of workers, 1 to 8). With no choice,
+  the model is the persona's. Each member's model shows on its line.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
   2. send one task to each worker, and ask to hear when it goes idle;
@@ -1797,7 +1799,9 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;
   - change a member's persona;
-  - add a worker, or take a member out (its card stays on the board);
+  - add a worker, choosing its persona and model (the coordinator is told its name and card);
+  - take a member out: its session is stopped, the coordinator is told, and its card stays on the
+    board;
   - close the team, with a confirmation.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window

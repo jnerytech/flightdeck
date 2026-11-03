@@ -173,6 +173,8 @@ const validCommands: Record<CommandType, unknown> = {
     workers: 2,
     coordinatorPersona: "arquiteto",
     workerPersonas: ["qa", "docs"],
+    coordinatorModel: "opus",
+    workerModels: ["haiku", null],
     checks: ["bun test"],
   },
   "teams.update": {
@@ -181,6 +183,7 @@ const validCommands: Record<CommandType, unknown> = {
     checks: ["bun test"],
     persona: { member: "pc/s2", persona: null },
     addWorkers: 1,
+    addMember: { persona: "qa", model: "haiku" },
     removeMember: "pc/s3",
   },
   "teams.pause": { team: "t1" },

@@ -1767,8 +1767,10 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
 
 - **Um time** é uma sessão coordenadora e as executoras. Cada executora roda num card, com a
   própria worktree.
-- **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome, o número de executoras e,
-  se quiser, a persona da coordenadora.
+- **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome e, se quiser, a persona e o
+  modelo da coordenadora. As executoras são linhas: cada uma tem a sua persona e o seu modelo, e
+  você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). Sem
+  escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
 - **O ciclo da coordenadora:**
   1. quebrar o objetivo em tarefas, cada uma com o que significa "pronto";
   2. mandar uma tarefa para cada executora e pedir um aviso quando ela ficar ociosa;
@@ -1781,7 +1783,9 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   - pausar (STOP a todos os membros) e retomar;
   - mandar uma mensagem a todos;
   - trocar a persona de um membro;
-  - acrescentar uma executora ou tirar um membro (o card fica no board);
+  - acrescentar uma executora, escolhendo a persona e o modelo dela (a coordenadora recebe o aviso
+    com o nome e o card da nova executora);
+  - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time

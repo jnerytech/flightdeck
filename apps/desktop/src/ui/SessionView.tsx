@@ -5,6 +5,7 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
+import { MODELS } from "@/components/personas/model-select";
 import {
   Composer,
   Message,
@@ -27,10 +28,9 @@ import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The permission modes a live session can switch between, and the model aliases it takes. */
+/** The permission modes a live session can switch between. */
 const MODES = ["plan", "default", "acceptEdits"] as const;
 const ALL_MODES = [...MODES, "bypassPermissions"] as const;
-const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
