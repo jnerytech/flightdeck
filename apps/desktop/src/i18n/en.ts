@@ -782,6 +782,7 @@ export const en: Dictionary = {
     usage: "usage",
     quota: "the quota",
     costs: "costs",
+    bypass: "sessions without permission prompts",
     budgets: "budgets",
     quotaHistory: "the quota history",
     changes: "change review",

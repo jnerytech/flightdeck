@@ -237,6 +237,7 @@ export type RefusalParams = Record<string, string | number>;
 
 /** Every host feature a command can find off: the app names each one in both languages. */
 export const DAEMON_FEATURES = [
+  "bypass",
   "history",
   "central",
   "vault",

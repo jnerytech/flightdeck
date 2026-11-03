@@ -778,6 +778,7 @@ export const ptBR = {
     usage: "o uso",
     quota: "a cota",
     costs: "os custos",
+    bypass: "sessões sem pedidos de permissão",
     budgets: "os orçamentos",
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
