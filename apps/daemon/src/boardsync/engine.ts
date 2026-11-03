@@ -196,6 +196,7 @@ export class BoardSync {
       const external = store.externalOf(cardId);
       if (external.externalId && !seen.has(external.externalId) && !external.externalGone) {
         store.setExternal(cardId, { externalGone: true });
+        this.opts.board.announce(cardId);
         report.gone += 1;
       }
     }
@@ -211,6 +212,7 @@ export class BoardSync {
     const external = store.externalOf(cardId);
     if (item.archived !== external.externalGone) {
       store.setExternal(cardId, { externalGone: item.archived });
+      this.opts.board.announce(cardId);
       if (item.archived) report.gone += 1;
     } else if (item.archived) {
       return;
@@ -291,6 +293,7 @@ export class BoardSync {
       externalStatus: null,
       externalUpdatedAt: null,
     });
+    this.opts.board.announce(existing);
     return existing;
   }
 
@@ -316,6 +319,8 @@ export class BoardSync {
     const column = columnOf(link.columnMap, item.status);
     if (column === null) report.unmapped += 1;
     this.settleStatus(card.id, link, item, report, true);
+    // The card was announced when it was made, before it knew the item it follows.
+    board.announce(card.id);
   }
 
   /** Applies the item's status to the card: the move, or the reason it was not made. */

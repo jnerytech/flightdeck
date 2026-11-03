@@ -1835,6 +1835,11 @@ export class Board {
     this.changed(id);
   }
 
+  /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
+  announce(id: string): void {
+    this.changed(id);
+  }
+
   /** Sends the card as it is now to every watcher, and returns it. */
   private changed(id: string): Card {
     const card = this.getCard(id);
