@@ -339,6 +339,7 @@ export type HostCommandType = Extract<
   | "doctor.run"
   | "projects.scan"
   | "projects.clone"
+  | `github.${string}`
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
