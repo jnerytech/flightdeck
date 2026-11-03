@@ -5,6 +5,7 @@ import type {
   PermissionMode,
   PermissionResolution,
   PermissionUpdate,
+  PlainInfo,
   RiskLevel,
   SessionPersona,
   SessionStatus,
@@ -30,6 +31,8 @@ export type ChatItem =
         auto?: AutoApproval;
         answers?: Record<string, string>;
       };
+      /** Phase 33: the request in plain words, in both languages, made by the host. */
+      plain?: PlainInfo;
       /** Phase 13: the risk the daemon judged, and why. */
       risk?: RiskLevel;
       riskReason?: string;
