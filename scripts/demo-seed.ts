@@ -782,7 +782,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await client.call("hooks.install", { confirm: true });
   await client.call("external.watch", {});
   const status = await client.call<{ receptorUrl: string | null }>("hooks.status", {});
-  const hooksToken = loadConfig(alfa.config).hooks.token ?? "";
+  const hooksToken = (await loadConfig(alfa.config)).hooks.token ?? "";
   // A held PermissionRequest waits for the app for as long as the demo runs. Bun's `fetch` gives
   // up on a request after 6 minutes (and has no option to turn that off), which dropped the
   // seeded requests from the queue in a slow e2e run; `node:http` has no such limit.

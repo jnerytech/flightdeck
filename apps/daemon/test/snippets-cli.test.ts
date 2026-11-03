@@ -45,7 +45,7 @@ async function setup() {
     join(project, ".flightdeck", "snippets.yaml"),
     '- name: revisar\n  type: prompt\n  text: "Revise {{file}}"\n',
   );
-  snippets.save({
+  await snippets.save({
     scope: "host",
     name: "status",
     type: "command",

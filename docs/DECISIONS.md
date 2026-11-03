@@ -2882,6 +2882,271 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
+
+## Blocking-call audit
+
+Ranked by frequency × cost on Windows. "Closed" means a ratchet or an earlier fix already holds it.
+
+1. **Tauri sync commands on the main thread** (fixed). Tauri 2 runs a plain `#[tauri::command]`
+   on the main thread. `token_*` and `vault_*` hit the Credential Manager, `terminal_probe` walks
+   `PATH` and `terminal_open` spawns a process. They run once per host at startup and per
+   interaction, so the whole window froze. They are `async fn` now. Only the tray and window
+   commands (`tray_set_menu`, `tray_set_status`, `focus_main`, `set_close_to_tray`) and the
+   state-only `vault_remove_file` stay sync. `scripts/lib/blocking-audit-ratchet.ts` pins that list.
+2. **Sync project key in `session.list`, `history.list`, `messages.*`, `teams.*`** (closed by
+   `history-perf`; ratchet in `blocking-key-ratchet`).
+3. **`keys.keyFor` callbacks in `main.ts`** (closed, audited). Four remain: the usage indexer,
+   the board's budget gate, the actions' project rule and the name tracker. Each folder is warmed
+   first (`warmKeys` of the indexer, `Board.warmProjectKeys` and `registerProject`, `warm` of the
+   name tracker). The ratchet fixes the count at 4, so a new caller needs a conscious change.
+4. **`Bun.spawnSync` in `memory.ts`, `board/worktree.ts`** (closed). Both have an async twin used by
+   the warm path; the sync one runs only for a folder nobody looked up yet. The ratchet lists the
+   four files that may call it (`project-key.ts`, the two above and the test runtime).
+5. **Plugin inspection** (`plugins/inventory.ts`: sync reads of every file to hash a plugin).
+   Linear in the plugin size and capped by `MAX_BYTES`; it runs on install and inspect only. Left.
+6. **Review files, agent config files** (sync reads and writes of one file per request). User
+   initiated, one file at a time. Left.
+7. **History and costs SQL** (unindexed `last_ts` scan, per-session `lastActivity`). Measured in
+   `history-perf`: linear and fine up to 5k sessions. Left.
+8. **Desktop render and effects.** No large `JSON.parse` or unmemoized sort of a large list on a
+   render path: the `JSON.parse` calls decode small effect keys, the sorts run on lists of tens.
+   Nothing to fix.
+9. **Timers and watchers.** `watchFile` on the config (2 s, one `stat`), the messaging sweep (5 min),
+   the PR poll and the automations tick are async or cheap. Nothing to fix.
+
+Not done: a runner that throws on any blocking spawn in tests. `fake-runtime.ts` and the warm
+fallbacks call it on purpose, so the list-based ratchet is the practical guard.
+
+## No blocking IO in runtime code
+
+The maintainer's rule: nothing in the daemon or the app waits on the disk or on a process while the
+event loop (or the window) has other work. `scripts/lib/no-sync-ratchet.ts` counts the fs `*Sync`,
+`execSync`, `execFileSync` and `spawnSync` calls per file in `apps/daemon/src` and
+`apps/desktop/src`; `scripts/test/no-sync-ratchet.test.ts` compares the counts with a baseline that
+only goes down, so a new call fails and a removed call forces the baseline down. Scripts and tests
+are out of scope. This supersedes item 4 of the blocking-call audit: the sync fallbacks of
+`memory.ts` and `board/worktree.ts` are gone, not kept as a cold path.
+
+- **`ProjectKeys.known(cwd)` may answer with a provisional key.** The key of a folder comes from
+  `git` (the remote, else the repository root). `keyFor` ran git synchronously for a folder nobody
+  had looked at. `known` returns the cached key, and for a cold folder it returns the folder's own
+  key once while one async lookup runs in the background, so the next call is right. Callers that
+  need the real key `await resolve(cwd)` first (the receptor, `Board.registerProject`,
+  `warmProjectKeys` and the usage indexer already do). A folder cached as "not a repository" is
+  looked at again, because it may have become one. The cost: one call for a cold, unwarmed folder
+  can group under the folder key instead of the repository key.
+- **A rule accepted in a session is written after the answer.** The permission answer goes back at
+  once; the rule file is written afterwards, one write at a time (`Board` keeps a promise chain, and
+  `Board.rulesWritten()` settles it for tests), so two quick answers cannot read the same file and
+  lose a rule. Before, the answer waited for the write.
+- **Project memory looks up its repository once per project.** `ProjectMemory.dir` is async and
+  keeps one shared promise per project (git can cost 50-150 ms a call on Windows with Defender), so
+  concurrent and later requests reuse it and a cold call still awaits the real answer. A failed
+  lookup is dropped, and a folder that was not a repository is looked at again once it has a `.git`.
+  `warm` is gone. The decision log appends asynchronously and the write or delete that recorded it
+  waits for the line to land.
+- **`bun:sqlite` stays sync.** The store's calls are synchronous by design in `bun:sqlite`; they run
+  against a local file in WAL mode, are short and indexed, and are measured by `history-perf`. A
+  worker would add a message hop to every query and make transactions across calls awkward, so the
+  ratchet does not count them and they are an accepted exception.
+- **Tauri: every IO command is async and runs on the blocking pool.** The key and folder dialogs
+  wait for the person inside `spawn_blocking`, the picked key file is read there, and
+  `vault_remove_file` (which does delete a file, so item 1 of the blocking-call audit was wrong to
+  call it state-only) takes the path under the lock and deletes it there. No async command does
+  blocking work inline any more (`ASYNC_INLINE_ALLOWED` is empty). Four commands stay plain `fn`
+  because they only touch the tray or the window, which Tauri wants on the main thread, and do no
+  IO: `tray_set_menu`, `tray_set_status`, `focus_main` and `set_close_to_tray`
+  (`SYNC_COMMANDS_ALLOWED` pins the list). Rust was reviewed by reading: cargo is not on the phase
+  host, so CI's `cargo check` is the compiler check.
+- **The ratchet counts uses, not just calls, and has a command.** `syncCallCount` counts
+  `fooSync(`, `realpathSync.native(` and bare references such as `{ exists: existsSync }`, and
+  skips comments and import statements. After a merge changes the counts, run
+  `bun run no-sync:baseline` (it rewrites `SYNC_BASELINE` from the sources) and read the diff.
+- **The session manager reads no persona file.** Reading a project's personas is asynchronous IO,
+  so it moved out to the edges: whoever starts a session (`session.create`, a card, a workflow
+  step, a team coordinator, a history resume, a fork) calls `preparePersonas` first and hands the
+  resolved persona and the subagents to `SessionManager.create` as values. The session keeps the
+  subagents it opened with (the `sessions.agents` column), so `send` and `resume` reuse them
+  and need no caller to resolve anything. The cost: a change to a persona file, or to the project's
+  subagents switch, applies to new sessions only; a session already open keeps what it opened with.
+- **The path checks are asynchronous, and the baseline is empty.** `resolveAllowedCwd`, `listDirs`,
+  `listFiles`, `isSystemFolder` and `resolveSshPath` answer with promises, and so do the calls that
+  depend on them: `SessionManager.create` and `createResumed`, `TerminalManager.open`, the persona
+  and snippet stores' project lookup, and `RunHost.spawn`. A refusal is now a rejection, so a
+  caller that used `try`/`catch` around a call awaits inside it. `RunManager.start` still answers
+  once the setup is on its way or every process has started, as before; it now waits for that
+  point instead of getting it for free from synchronous spawns. `SYNC_BASELINE` has no file left:
+  the only blocking calls in runtime code are the `bun:sqlite` ones and the four Tauri commands
+  that touch the tray or the window.
+## Fix: bypass permissions, opt-in per host
+
+- `allowBypassPermissions` (config, default `false`) is a per-host switch. The daemon refuses
+  `session.create` in `bypassPermissions` with reason `bypass_not_allowed` while it is off; the
+  check is on the mode asked for (a persona that would clamp it to a stricter one does not
+  rescue a bypass request). `host.bypass { allow, confirm }` sets it: turning on needs
+  `confirm: true` (`bypass_confirm`), turning off needs none. It is limited to the vault
+  transports (loopback, Tailscale) like `roots.add`, writes the config file and is read by
+  `host.info` (`allowBypassPermissions`; absent on an older daemon, where the app offers no bypass).
+- User decision (their machine): with the switch on, `session.setMode` accepts any mode,
+  `bypassPermissions` included, and the "never looser than the start mode" rule applies only
+  while it is off. `SettableMode` gained `bypassPermissions`; the daemon is what refuses it.
+- The Agent SDK only lets a running query switch to `bypassPermissions` if the query was started
+  with `allowDangerouslySkipPermissions: true` (typings of `Options`). The daemon sets it for runs
+  started while the switch is on; it allows the switch and bypasses nothing by itself. A run that
+  was started while the switch was off cannot switch until the session is resumed, and the manual
+  says so. The switch is read at each run start, so a resumed session picks it up.
+- The app asks every time: on the host page (naming the host), at Create session in bypass
+  (host and folder) and in the composer (host and session). The composer offers all modes only
+  on a host that allows it; elsewhere it behaves as before. The mode's label changed from "No
+  questions" to "Bypass permissions" to match Claude Code's own name.
+## Fix: a session manages cards through the flightdeck MCP server
+
+- New MCP tools `move_card`, `update_card`, `comment_card` and `finish_card`, all through one
+  daemon command, `card.manage { as, cwd?, action, ... }`. The daemon finds the project of the
+  session from where it runs (a managed session's own folder, else the `cwd` the MCP server
+  sends) with `Board.projectForCwd`, and the session's own card is the one whose worktree holds
+  that folder: it is the default `cardId`. A card of another project is refused
+  (`card_other_project`), a session outside every project too (`card_scope_unknown`), and a
+  session in a project but not in a card needs the id (`card_id_needed`). The actions reuse the
+  board's own methods (`moveCard`, `updateCard`, `completeCard`, `discardCard`), so the rules and
+  the live `card.updated` are the same as in the app.
+- Cards have no comment thread, so `comment_card` appends a UTC-dated note to the description
+  (`**Note YYYY-MM-DD HH:MM:** text`), keeping the old text.
+- `finish_card` takes `done` or `discard` in one tool, as asked. The permission side keys on the
+  input: with `outcome: "discard"` the risk classifier says high ("never automatic"), and for the
+  tool in any form the broker offers no "always allow" suggestion and `checkUpdates` refuses a
+  rule for it, so the project's saved rules cannot approve it. (Every MCP tool already counts as
+  network access, which the automatic approval never takes.) What a user types into their own
+  Claude Code `settings.json` is theirs to decide and outside what the daemon can enforce.
+- In a session in `bypassPermissions` the SDK skips `canUseTool`, so `finish_card` with `discard`
+  runs there without a prompt. That is the explicit choice of the person who turned bypass on for
+  the host and picked that mode for the session; the manual says so next to the bypass switch.
+## Fixes after the real test of v0.32.0 (fix-uso-032)
+
+- The main window sets `dragDropEnabled: false` in `tauri.conf.json`. On Windows, Tauri's native
+  file drop (on by default) swallows the HTML5 `dragover` and `drop` events in WebView2, so Board
+  cards and tabs could not be dragged with the mouse. The app uses no file drop from Tauri
+  (`onDragDropEvent` is used nowhere), so nothing is lost. A test pins the setting.
+- A Board column under a dragged card gets the `drop-over` outline and tint.
+- The tab strip may be empty: closing the last tab leaves the area on a `start` screen with no
+  strip, and the empty window is kept in the snapshot. Opening a screen that already has a tab
+  focuses that tab (same route, whatever the order of its fields); Ctrl or middle click still
+  opens a new one; duplicates in an older snapshot fold into one.
+- `session.create` takes no first prompt: the session starts idle and the first message begins
+  its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
+
+## Lazy screens in tests
+
+- `lazyScreen` moved to `apps/desktop/src/ui/lazy-screen.ts`. After `preloadAllScreens()` a lazy
+  screen renders without suspending; production still loads each chunk when its route opens.
+- `apps/desktop/test/dom.ts` (imported by every UI test file) imports `Screens.tsx` and awaits
+  `preloadAllScreens()` once per process, so a test that opens Settings, a host page, the board
+  and so on can assert in the first pass. This ends the class "asserts before the chunk
+  rendered", which no longer depends on the order of the test files.
+- Proof: the six files fixed in `flake-hunt` (`app-updater`, `atalho-global-form`,
+  `direcao-visual-colunas`, `navegacao`, `paleta`, `terminal-ui-rota`) pass 6/6 alone with their
+  `settle` calls removed. The `settle` calls stay: they are harmless and keep each test
+  readable about what it waits for.
+- `nova-sessao-ux` "a session opened with no persona shows none" (CI timeout at 5 s waiting for
+  "Apply"): the persona panel loads over the daemon connection on a slow runner. Both failing
+  runs are older than 56112708, which already gives that wait 10 s and the test 15 s; no
+  further change.
+
+## Blocking-call audit
+
+Ranked by frequency × cost on Windows. "Closed" means a ratchet or an earlier fix already holds it.
+
+1. **Tauri sync commands on the main thread** (fixed). Tauri 2 runs a plain `#[tauri::command]`
+   on the main thread. `token_*` and `vault_*` hit the Credential Manager, `terminal_probe` walks
+   `PATH` and `terminal_open` spawns a process. They run once per host at startup and per
+   interaction, so the whole window froze. They are `async fn` now. Only the tray and window
+   commands (`tray_set_menu`, `tray_set_status`, `focus_main`, `set_close_to_tray`) and the
+   state-only `vault_remove_file` stay sync. `scripts/lib/blocking-audit-ratchet.ts` pins that list.
+2. **Sync project key in `session.list`, `history.list`, `messages.*`, `teams.*`** (closed by
+   `history-perf`; ratchet in `blocking-key-ratchet`).
+3. **`keys.keyFor` callbacks in `main.ts`** (closed, audited). Four remain: the usage indexer,
+   the board's budget gate, the actions' project rule and the name tracker. Each folder is warmed
+   first (`warmKeys` of the indexer, `Board.warmProjectKeys` and `registerProject`, `warm` of the
+   name tracker). The ratchet fixes the count at 4, so a new caller needs a conscious change.
+4. **`Bun.spawnSync` in `memory.ts`, `board/worktree.ts`** (closed). Both have an async twin used by
+   the warm path; the sync one runs only for a folder nobody looked up yet. The ratchet lists the
+   four files that may call it (`project-key.ts`, the two above and the test runtime).
+5. **Plugin inspection** (`plugins/inventory.ts`: sync reads of every file to hash a plugin).
+   Linear in the plugin size and capped by `MAX_BYTES`; it runs on install and inspect only. Left.
+6. **Review files, agent config files** (sync reads and writes of one file per request). User
+   initiated, one file at a time. Left.
+7. **History and costs SQL** (unindexed `last_ts` scan, per-session `lastActivity`). Measured in
+   `history-perf`: linear and fine up to 5k sessions. Left.
+8. **Desktop render and effects.** No large `JSON.parse` or unmemoized sort of a large list on a
+   render path: the `JSON.parse` calls decode small effect keys, the sorts run on lists of tens.
+   Nothing to fix.
+9. **Timers and watchers.** `watchFile` on the config (2 s, one `stat`), the messaging sweep (5 min),
+   the PR poll and the automations tick are async or cheap. Nothing to fix.
+
+Not done: a runner that throws on any blocking spawn in tests. `fake-runtime.ts` and the warm
+fallbacks call it on purpose, so the list-based ratchet is the practical guard.
+
+## Fix: `flightdeckd setup` in WSL
+
+- WSL is detected by `WSL_DISTRO_NAME`, else by "microsoft" in `/proc/version` (`wsl-host.ts`, an
+  injected probe in tests). The host name default becomes "<hostname> (WSL <distro>)" (just
+  "(WSL)" when the distro is unknown). It is a schema default, so it applies when a config is
+  created; a config that already has `hostName` keeps it.
+- Setup moves only the ports still at the Windows defaults (7420, 7421, 7422) up by 10, and writes
+  them to `config.json`. A port the person chose stays, which also makes a second run a no-op.
+  `telemetry.port` is written too (7432) although it would follow `hooks.port + 1`, so the file
+  states every port.
+
+## Notification center
+
+- Every `platform.notify` call in the store now goes through one funnel, `notifyUser`, which keeps
+  an `InboxEntry` (id, time, title, body, an optional request `link` or `route`) before sending the
+  OS notification. The OS side is unchanged.
+- The list is app-side only, in `platform.storage` under `flightdeck.inbox`, newest first and
+  capped at 500. It is loaded at `init`.
+- A notification the app suppresses (the window has focus) is not kept either: the center mirrors
+  what was sent.
+- A click opens the entry's screen: a request link goes through `openRequestLink`; quota alerts
+  carry the host route. Other entries (budgets, PR watch, teams) have no screen yet and only
+  mark as read.
+- Not done: per-entry mark as read without opening, snooze, filters by kind, a daemon-side
+  history. The Linear and GitHub inbox patterns (unread marker, mark all, grouping by time) come
+  from general knowledge, not from fetched pages.
+
+## Fix: notification routes carry params
+
+- The `costs` and `teams` routes take optional params: `costs` has `host`, `projectKey` and
+  `client`; `teams` has `host` and `team`. A route without them opens the screen as before.
+- Budget alerts: a host budget opens Costs for its host and, for a project budget, its project key
+  (a filter); a client budget opens Costs with that client selected. A team alert opens Teams on
+  the alert's host with that team listed first and marked `aria-current`.
+- The screens seed their state from the params and apply them again when they change while the
+  screen is already open, so a second alert on top of the first one still lands. The person can
+  change the host or filters afterwards.
+- A card's entry (PR watch, unblocked card) stores the card's PR link as `fallbackUrl`. A click
+  opens the card route; when the card is no longer in the store, the PR link opens in the browser
+  instead. Without a PR link the route is tried as before. The decision lives in `inboxTarget`.
+
+## Teams: models and members
+
+- **A member's model.** `teams.create` takes `coordinatorModel` and `workerModels` (one entry per
+  worker, `null` for the default); `TeamMember.model` carries it back. No model means the
+  persona's own model, then the runtime's default, because `SessionManager.create` already falls
+  back that way. The coordinator gets it through `startCoordinator`; a worker through its card's
+  `variant.model`, the field the session start already reads, so no migration was needed. The
+  card's `variant` is also what marks an arena variant, but arenas are told apart by `arena_of`,
+  which a team card never has.
+- **The form is rows.** The worker count and the persona checklist became one row per worker (persona
+  and model, add and remove, 1 to 8). The model list is `opus`, `sonnet`, `haiku`, the aliases the
+  session bar already offers (shared as `MODELS`).
+- **Members of a running team.** `teams.update` takes `addMember { persona, model }` next to the
+  older `addWorkers` count, which stays for scripts. The persona is checked before the card is
+  created, so a refusal leaves nothing behind. Removing a worker now interrupts its card
+  (`stopCard`) before it leaves the team; the card stays on the board. A paused team refuses new
+  members (`team_paused`), a closed one every change (`team_closed`), and the coordinator cannot
+  leave (`team_coordinator_stays`); an unknown member is `team_member_unknown`. The coordinator
+  is told through the existing system notice, which now names the persona and model.
+
 ## Phase 32 part 2 — Projects (issue #9)
 
 - **The overview is built from what the app already holds.** `buildProjectCards` takes the online
@@ -2920,3 +3185,81 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - **Not done in this slice:** per-row action menus beyond the Tab actions that already existed
   (copy id, open in split, end), and "switch host" and "open a Settings section" as commands.
 
+## No blocking IO in runtime code
+
+The maintainer's rule: nothing in the daemon or the app waits on the disk or on a process while the
+event loop (or the window) has other work. `scripts/lib/no-sync-ratchet.ts` counts the fs `*Sync`,
+`execSync`, `execFileSync` and `spawnSync` calls per file in `apps/daemon/src` and
+`apps/desktop/src`; `scripts/test/no-sync-ratchet.test.ts` compares the counts with a baseline that
+only goes down, so a new call fails and a removed call forces the baseline down. Scripts and tests
+are out of scope. This supersedes item 4 of the blocking-call audit: the sync fallbacks of
+`memory.ts` and `board/worktree.ts` are gone, not kept as a cold path.
+
+- **`ProjectKeys.known(cwd)` may answer with a provisional key.** The key of a folder comes from
+  `git` (the remote, else the repository root). `keyFor` ran git synchronously for a folder nobody
+  had looked at. `known` returns the cached key, and for a cold folder it returns the folder's own
+  key once while one async lookup runs in the background, so the next call is right. Callers that
+  need the real key `await resolve(cwd)` first (the receptor, `Board.registerProject`,
+  `warmProjectKeys` and the usage indexer already do). A folder cached as "not a repository" is
+  looked at again, because it may have become one. The cost: one call for a cold, unwarmed folder
+  can group under the folder key instead of the repository key.
+- **A rule accepted in a session is written after the answer.** The permission answer goes back at
+  once; the rule file is written afterwards, one write at a time (`Board` keeps a promise chain, and
+  `Board.rulesWritten()` settles it for tests), so two quick answers cannot read the same file and
+  lose a rule. Before, the answer waited for the write.
+- **Project memory looks up its repository once per project.** `ProjectMemory.dir` is async and
+  keeps one shared promise per project (git can cost 50-150 ms a call on Windows with Defender), so
+  concurrent and later requests reuse it and a cold call still awaits the real answer. A failed
+  lookup is dropped, and a folder that was not a repository is looked at again once it has a `.git`.
+  `warm` is gone. The decision log appends asynchronously and the write or delete that recorded it
+  waits for the line to land.
+- **`bun:sqlite` stays sync.** The store's calls are synchronous by design in `bun:sqlite`; they run
+  against a local file in WAL mode, are short and indexed, and are measured by `history-perf`. A
+  worker would add a message hop to every query and make transactions across calls awkward, so the
+  ratchet does not count them and they are an accepted exception.
+
+## Phase 34 — Claude account card
+
+Proof of concept, run on a Linux host (aarch64) on 2026-11-03 with claude 2.1.317 and Agent SDK 0.3.312. The signed-out,
+API-key, gateway and Bedrock cases ran on a throwaway `HOME` and `CLAUDE_CONFIG_DIR`; the real account was never logged out.
+Not run: a WSL host and a Windows host (no such host on this machine), so question 1 stays open for those two.
+
+1. `accountInfo()` works on a prompt-less query (`query({ prompt: <never yields> })`, then `accountInfo()`), claude 2.1.317, SDK 0.3.312, Linux: 0.8–2 s, no prompt, no model call. WSL and Windows are unchecked; the reader keeps `claude auth status --json` as the fallback.
+2. Signed out (throwaway config dir), claude 2.1.317: `claude auth status --json` prints `loggedIn:false, authMethod:"none"` and **exits 1** in about 2 s (`--text`: "Not logged in. Run claude auth login to authenticate."). The SDK's `accountInfo()` returns `{tokenSource:"none", apiProvider:"firstParty"}` (no email) and the usage report returns `rate_limits_available:false`, `rate_limits:null`. Nothing hangs or throws, so signed out = `loggedIn:false` or no email with `tokenSource:"none"`.
+3. Other providers (throwaway config dir), claude 2.1.317: a fake `ANTHROPIC_API_KEY` gives `authMethod:"api_key"`, `apiKeySource:"ANTHROPIC_API_KEY"`; `ANTHROPIC_AUTH_TOKEN` with a base URL gives `authMethod:"oauth_token"`, `tokenSource:"ANTHROPIC_AUTH_TOKEN"`; Bedrock gives `authMethod:"third_party"`, `apiProvider:"bedrock"`. In all three the usage report is `rate_limits_available:false`. **On Bedrock the SDK's `accountInfo()` and usage calls hung past 20 s**, while `auth status` answered in 0.5 s. So `auth status` runs first, and the SDK is asked only when it says `claude.ai`.
+4. Quota cost, claude 2.1.317: ten usage reports in a row on the real account left both windows unchanged (5 h 56 %, 7 d 53 %), and each call made no model request. Whether the June 2026 Agent SDK credit is touched stays unverified (the report carries no credit field here); the card shows the windows as the report gives them.
+5. Call rate, claude 2.1.317: ten reports in a row (about 40 ms each after the first) were never refused or rate limited, and the values did not move, which suggests the server side caches them. The ceiling is unknown; the provisional floors stay (5 min while watched, 30 s for a manual refresh).
+6. `claude auth status --json` shape, claude 2.1.317: the keys are `loggedIn, authMethod, apiProvider, analyticsDisabled, projectsDirectory, configDirectory`, plus `email, orgId, orgName, subscriptionType` when signed in with claude.ai, and `apiKeySource` for an API key. No schema is published, so it is the first, cheap check ("is anyone signed in, and with what") and the SDK's `accountInfo()` only supplies what it lacks; a missing key is `null`, never an error.
+
+Divergences from the spec, phase 34:
+
+- `AccountState.source` is `status | sdk`. The spec's `stream` was dropped: the windows always come from the host's `Quota`, whatever fed it. `AccountState` also carries `stale` and `error` (the reason of the last failed read), which the card needs for its stale and unavailable states.
+- `account.get` reads once when the host was never read; later calls answer from memory.
+- A usage-report failure is soft: the account stays, the windows stay as they were. Only a failed `auth status` (or a missing one with a failed SDK call) marks the read as failed.
+- The SDK is asked only when `auth status` says `claude.ai`, or when there is no status (PoC question 3: Bedrock hangs the SDK calls).
+- New command `account.unwatch`, not in the spec: the app watches only the host whose page is open and has to be able to stop, or the daemon would poll every host the app ever opened.
+- The refresh button is off while its read runs and for 30 s after it (a prop, `cooldownMs`); the 30 s floor is also enforced by the daemon (`account_refresh_too_soon`), so a refresh sooner than 30 s after the page's own first read is refused with the seconds to wait.
+- The card sits above the usage panel; the host page has no quota bars of its own (they live on the Sessions screen), so nothing was replaced.
+- `smoke:conta` runs the server in the smoke's process with the real readers, a fake `claude` on PATH and a fake SDK query: a separate daemon process cannot take a fake SDK loader. The spec's "survives a daemon restart as stale" is not built: the account is kept in memory only, by design (privacy), so after a restart the card shows "Reading the account…" until the first read.
+- The spec's `conta-textos` "no brand misuse" check is a scan of the account texts for "Claude Code" and "Anthropic"; the wording check "Sign in with Claude" covers both dictionaries.
+
+## BDD pilot (issue #20)
+
+Two journeys as Gherkin scenarios run by `playwright-bdd` 9.2.1 (pinned exactly): **Approval** and **New session**, each in `pt-BR` (`# language: pt`) and `en`, under `scripts/e2e/bdd/`. `bddgen` turns them into `@playwright/test` tests (in `scripts/e2e/.features-gen/`, ignored by git) in two projects, `bdd-pt` and `bdd-en`, beside the existing `journeys` project. `bun run e2e` runs `bddgen` first; `E2E_ONLY` matches a scenario's journey tag (`@approval-with-a`, `@new-session`), and `--repeat-each` and `--project` work as before.
+
+Measurements (Pi, load average 12 to 20, so only the ratios mean something):
+
+- **Glue:** `steps.ts` 98 lines and `fixtures.ts` 15, for 4 scenarios in 2 languages; the `.feature` files are 40 lines. The plain journey it replaces in the Approval case is 13 lines of TypeScript. Every step is written once per language (`both({ pt, en }, …)`), so the glue grows with the languages; the UI text still comes from the dictionaries (`c.t`).
+- **Run time:** `bddgen` adds 4.5 s. The BDD scenarios take 47 to 80 s each against 4.5 to 6.8 s for the plain `aprovar-bash-com-a`, but that is not the BDD layer: the scenarios create their own session through the form (the plain journey approves a request the demo seeded), and a session takes 35 to 60 s to start on this loaded machine (the plain `sessao-e-mensagem`, which also waits for a session, takes 37 s). Eight runs (`--repeat-each 2`, both languages) passed. A first attempt failed twice on the 15 s wait for the prompt to show, so the scenarios wait 60 s for a session and the BDD projects have a 180 s test timeout.
+- **Readability:** the scenarios read as the behavior ("Given a session named … is waiting for me to approve a command … Then the request leaves the queue") and the Portuguese ones need no translation of the intent. What costs is the second layer: a step is a sentence in two languages plus a function, and the exact wording has to match between the `.feature` and the glue (`bddgen` fails at once when it does not, which is good).
+
+Not decided here: whether to roll it out to all journeys. Recommendation, to confirm with the maintainer: keep BDD for journeys a non-programmer reads (approval, new session, board), where creating their own state makes them independent of the seeded demo; keep the plain TypeScript journeys for the layout, terminal and keyboard-heavy ones, where the steps would only wrap Playwright calls. Unit tests stay plain `bun test`.
+
+## Daemon update check on request (issue #37)
+
+A daemon that started before a release said nothing about it for up to a day, because it checked its manifest only at boot and every 24 hours, so a host page could warn "different version from the app's" with no update button.
+
+- **`daemon.update.check`** re-runs `UpdateChecker.check()` now and answers the new `UpdateStatus` (also the `update` of the next `host.info`). A check on request moves the next scheduled one to a full interval, so one timer waits at a time. A daemon that does not check (no manifest URL, as when running from source) refuses with the reason `feature_off` (`updater`).
+- **Default interval 6 hours** (`updates.checkIntervalH`), down from 24; an existing config keeps its own value.
+- **The app asks on its own** once when the host page opens, only when the app is newer than the daemon and the daemon checks at all, and the store allows it at most once per 10 minutes per host (a map in memory, so it resets with the app). The page also has **Check for updates** whenever the daemon reports an update status, and it shows when the daemon last checked and the error of that check.
+- **Not covered:** a daemon from before this command (such as the 0.32.0 in the report) refuses `daemon.update.check` as an unknown command, so the page shows why and that host is updated once by hand with `flightdeckd update`; the fix applies to every daemon from this version on. The rate limit lives in the app, not the daemon: the daemon answers each request.

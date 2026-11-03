@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { acquireLock } from "../src/lock.ts";
@@ -13,6 +14,14 @@ import {
   type SetupDeps,
 } from "../src/setup.ts";
 import { stableBinPath } from "../src/update.ts";
+import {
+  defaultHostName,
+  detectWsl,
+  readProcVersion,
+  realWslProbe,
+  WSL_PORT_OFFSET,
+  type WslProbe,
+} from "../src/wsl-host.ts";
 import { tempDir } from "./helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
@@ -102,7 +111,7 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
   });
 
   test("the PATH step runs right after the binary is placed, and not when running from source", async () => {
@@ -122,7 +131,7 @@ describe("setup", () => {
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
     expect(h.out.join("\n")).toContain("is not a folder that exists");
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([good]);
   });
 
   test("~ in a folder answer means the home, and folders already in the config stay", async () => {
@@ -142,13 +151,13 @@ describe("setup", () => {
     const answers = ["", good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([good]);
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([good]);
     const insist = harness({
       answers: [""],
       confirms: { "without project folders": true, hooks: false },
     });
     await runSetup(insist.deps);
-    expect(loadConfig(insist.configFile).allowedRoots).toEqual([]);
+    expect((await loadConfig(insist.configFile)).allowedRoots).toEqual([]);
     expect(insist.calls).toEqual(["binary", "service", "pair"]);
   });
 
@@ -158,7 +167,7 @@ describe("setup", () => {
     const answers = [good, ""];
     h.deps.ask = async () => answers.shift() ?? "";
     await runSetup(h.deps);
-    const config = loadConfig(h.configFile);
+    const config = await loadConfig(h.configFile);
     expect(config.bind).toBe("100.64.0.9");
     expect(config.allowedNetworks).toEqual(["127.0.0.0/8", "::1/128", ...TAILSCALE_NETWORKS]);
   });
@@ -167,7 +176,7 @@ describe("setup", () => {
     const no = harness({ tailscale: "100.64.0.9", confirms: { Tailscale: false } });
     no.dir("code");
     await runSetup(no.deps);
-    expect(loadConfig(no.configFile).bind).toBe("127.0.0.1");
+    expect((await loadConfig(no.configFile)).bind).toBe("127.0.0.1");
     expect(no.asked.find((q) => q.includes("Tailscale"))).toBeDefined();
     expect(no.defaults.get("Tailscale")).toBe(false);
     const none = harness();
@@ -234,8 +243,8 @@ describe("setup", () => {
     h.asked.length = 0;
     await runSetup(h.deps, { yes: true, folders: [a, b] });
     expect(h.asked).toEqual([]);
-    expect(loadConfig(h.configFile).allowedRoots).toEqual([a, b]);
-    expect(loadConfig(h.configFile).bind).toBe("127.0.0.1");
+    expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
+    expect((await loadConfig(h.configFile)).bind).toBe("127.0.0.1");
     expect(h.calls).toEqual(["binary", "hooks", "service", "pair"]);
   });
 
@@ -355,7 +364,7 @@ describe("setup command", () => {
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has(`${h.dir}/.config/systemd/user/flightdeckd.service`)).toBe(true);
     expect(h.out.join("\n")).toContain("daemon do serviço respondendo");
     expect(h.out.join("\n")).toContain("flightdeck://127.0.0.1:");
@@ -368,7 +377,7 @@ describe("setup command", () => {
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([project]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([project]);
     expect(h.written.has("C:\\Temp\\flightdeckd-task.xml")).toBe(true);
     const schtasks = h.calls.filter((c) => c[0] === "schtasks").map((c) => c[1]);
     expect(schtasks).toEqual(["/Query", "/Create", "/Run"]);
@@ -405,7 +414,7 @@ describe("setup command", () => {
     // "real" leaves the probe alone: it runs the stable file, which is not a flightdeckd.
     if (stableVersion !== "real") h.deps.binaryVersion = async () => stableVersion;
     if (holdLock) h.deps.serviceStopTimeoutMs = 50;
-    const lock = holdLock ? acquireLock(h.dir) : null;
+    const lock = holdLock ? await acquireLock(h.dir) : null;
     mkdirSync(join(h.dir, "download"));
     writeFileSync(join(h.dir, "download", "flightdeckd"), "new");
     mkdirSync(join(h.dir, ".flightdeck", "bin"), { recursive: true });
@@ -415,7 +424,7 @@ describe("setup command", () => {
     mkdirSync(project);
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
-    lock?.release();
+    await lock?.release();
     return { ...h, stable, text: h.out.join("\n") };
   }
 
@@ -484,7 +493,7 @@ describe("setup command", () => {
     await runCli(["setup", "--config", h.file], h.deps);
     await h.stop();
     expect(h.exits).toEqual([0]);
-    expect(loadConfig(h.file).allowedRoots).toEqual([join(h.dir, "project")]);
+    expect((await loadConfig(h.file)).allowedRoots).toEqual([join(h.dir, "project")]);
   });
 
   test("input that ends exits 1 with the way out", async () => {
@@ -493,6 +502,25 @@ describe("setup command", () => {
     await h.stop();
     expect(h.exits).toEqual([1]);
     expect(h.out.join("\n")).toContain("--yes --folders");
+  });
+
+  test("in WSL the ports the person did not choose are shifted, and written to config.json", async () => {
+    const h = cliHarness();
+    h.deps.env = { WSL_DISTRO_NAME: "Ubuntu" };
+    const read = () =>
+      JSON.parse(readFileSync(h.file, "utf8")) as {
+        port: number;
+        hooks: { port: number };
+        telemetry: { port?: number };
+      };
+    const chosen = read().port;
+    const project = join(h.dir, "project");
+    mkdirSync(project);
+    await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
+    await h.stop();
+    expect(read().port).toBe(chosen);
+    expect(read().hooks.port).toBe(7431);
+    expect(read().telemetry.port).toBe(7432);
   });
 });
 
@@ -556,25 +584,25 @@ describe("reconcileStableBinary", () => {
 describe("stable binary", () => {
   const platform = "linux";
 
-  test("running from source leaves everything alone", () => {
+  test("running from source leaves everything alone", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
-    expect(installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
+    expect(await installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
       "source",
     );
     expect(existsSync(stable)).toBe(false);
   });
 
-  test("a binary that is already at the stable place stays", () => {
+  test("a binary that is already at the stable place stays", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
     writeFileSync(stable, "daemon");
-    expect(installStableBinary([stable], stable, platform)).toBe("already");
+    expect(await installStableBinary([stable], stable, platform)).toBe("already");
     expect(readFileSync(stable, "utf8")).toBe("daemon");
   });
 
-  test("a stable binary that exists is kept: replacing it is what update does", () => {
+  test("a stable binary that exists is kept: replacing it is what update does", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
@@ -582,16 +610,18 @@ describe("stable binary", () => {
     const other = join(home, "download", "flightdeckd");
     mkdirSync(join(home, "download"));
     writeFileSync(other, "downloaded");
-    expect(installStableBinary([other], stable, platform)).toBe("kept");
+    expect(await installStableBinary([other], stable, platform)).toBe("kept");
     expect(readFileSync(stable, "utf8")).toBe("installed");
   });
 
-  test("the running binary is copied to ~/.flightdeck/bin, executable", () => {
+  test("the running binary is copied to ~/.flightdeck/bin, executable", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     const other = join(home, "flightdeckd");
     writeFileSync(other, "downloaded");
-    expect(installStableBinary([other], stable, platform)).toBe("copied");
+    const copying = installStableBinary([other], stable, platform);
+    expect(copying).toBeInstanceOf(Promise);
+    expect(await copying).toBe("copied");
     expect(readFileSync(stable, "utf8")).toBe("downloaded");
     // Windows has no executable bit: the file runs because of its .exe name.
     if (process.platform !== "win32") expect(statSync(stable).mode & 0o111).not.toBe(0);
@@ -609,5 +639,85 @@ describe("setup: nothing outside its temporary folders", () => {
   test("a harness on another platform's home creates nothing on the real disk", () => {
     harness({ platform: "win32", home: "C:\\Users\\dev" });
     expect(existsSync(join(process.cwd(), "C:\\Users\\dev"))).toBe(false);
+  });
+});
+
+describe("setup: WSL host", () => {
+  const probe = (env: Record<string, string>, version: string | null = null): WslProbe => ({
+    env,
+    procVersion: () => version,
+  });
+  const ports = (file: string) => {
+    const raw = JSON.parse(readFileSync(file, "utf8")) as {
+      port: number;
+      hooks: { port: number };
+      telemetry: { port?: number };
+    };
+    return [raw.port, raw.hooks.port, raw.telemetry.port];
+  };
+
+  test("WSL is told by WSL_DISTRO_NAME first, then by /proc/version", () => {
+    expect(detectWsl(probe({ WSL_DISTRO_NAME: "Ubuntu" }, "Linux (microsoft)"))).toEqual({
+      distro: "Ubuntu",
+    });
+    expect(detectWsl(probe({}, "Linux version 5.15.0-microsoft-standard-WSL2"))).toEqual({
+      distro: null,
+    });
+    expect(detectWsl(probe({}, "Linux version 6.1.0 (Debian)"))).toBeNull();
+    expect(detectWsl(probe({}, null))).toBeNull();
+    expect(detectWsl(probe({ WSL_DISTRO_NAME: "" }, null))).toBeNull();
+  });
+
+  test("the default host name adds the distro inside WSL and is the machine's elsewhere", () => {
+    const machine = hostname();
+    expect(defaultHostName(probe({ WSL_DISTRO_NAME: "Ubuntu" }))).toBe(`${machine} (WSL Ubuntu)`);
+    expect(defaultHostName(probe({}, "microsoft"))).toBe(`${machine} (WSL)`);
+    expect(defaultHostName(probe({}, null))).toBe(machine);
+  });
+
+  test("a new config takes the WSL host name, and the real probe reads the process", async () => {
+    const before = process.env.WSL_DISTRO_NAME;
+    process.env.WSL_DISTRO_NAME = "Debian";
+    try {
+      const file = join(tempDir("fd-wsl-"), "config.json");
+      expect((await loadConfig(file)).hostName).toBe(`${hostname()} (WSL Debian)`);
+    } finally {
+      if (before === undefined) delete process.env.WSL_DISTRO_NAME;
+      else process.env.WSL_DISTRO_NAME = before;
+    }
+  });
+
+  test("/proc/version is read as text, and null when it cannot be read", () => {
+    expect(readProcVersion((path) => `read ${path}`)).toBe("read /proc/version");
+    expect(
+      readProcVersion(() => {
+        throw new Error("ENOENT");
+      }),
+    ).toBeNull();
+    expect(["string", "object"]).toContain(typeof realWslProbe.procVersion());
+  });
+
+  test("setup in WSL moves the ports off the Windows daemon's 7420, 7421 and 7422", async () => {
+    const h = harness();
+    h.deps.wsl = { distro: "Ubuntu" };
+    await runSetup(h.deps);
+    expect(ports(h.configFile)).toEqual([7420 + WSL_PORT_OFFSET, 7421 + WSL_PORT_OFFSET, 7432]);
+    expect((await loadConfig(h.configFile)).hooks.port).toBe(7431);
+  });
+
+  test("a port the person chose stays, and a second run changes nothing", async () => {
+    const h = harness({ config: { port: 9000, hooks: { port: 7421 } } });
+    h.deps.wsl = { distro: null };
+    await runSetup(h.deps);
+    expect(ports(h.configFile)).toEqual([9000, 7431, 7432]);
+    const first = readFileSync(h.configFile, "utf8");
+    await runSetup(h.deps);
+    expect(readFileSync(h.configFile, "utf8")).toBe(first);
+  });
+
+  test("outside WSL the ports stay", async () => {
+    const h = harness();
+    await runSetup(h.deps);
+    expect(ports(h.configFile)).toEqual([7420, 7421, undefined]);
   });
 });

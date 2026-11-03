@@ -74,10 +74,10 @@ export function ProjectsOverview(props: {
       title={t("projectsOverview.title")}
       subtitle={t("projectsOverview.subtitle")}
       toolbar={
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="row-wrap">
           <Input
             type="search"
-            className="w-64"
+            className="search-width"
             aria-label={t("projectsOverview.search")}
             placeholder={t("projectsOverview.searchPlaceholder")}
             value={query}
@@ -102,31 +102,28 @@ export function ProjectsOverview(props: {
       {cards.length > 0 && shown.length === 0 && (
         <EmptyState title={t("projectsOverview.noMatch")} />
       )}
-      <ul
-        aria-label={t("projectsOverview.title")}
-        className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
-      >
+      <ul aria-label={t("projectsOverview.title")} className="card-grid">
         {shown.map((card) => (
           <li key={`${card.hostId}/${card.projectId}`} data-project={card.name}>
             <button
               type="button"
               aria-label={t("projectsOverview.open", { name: card.name, host: card.hostName })}
-              className="flex h-full w-full flex-col gap-2 rounded-lg border bg-card p-4 text-left hover:bg-accent/40 focus-visible:ring-2"
+              className="card-button rounded-lg border bg-card text-left hover:bg-accent/40 focus-visible:ring-2"
               onClick={() => props.onOpen(card)}
             >
-              <span className="flex items-center justify-between gap-2">
+              <span className="row-spread">
                 <span className="truncate font-medium">{card.name}</span>
                 <span className="text-muted-foreground text-xs">{card.hostName}</span>
               </span>
               <span className="text-muted-foreground text-xs">{card.branch}</span>
-              <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+              <span className="facts-wrap text-sm">
                 <span>{t("projectsOverview.live", { n: card.liveSessions })}</span>
                 <span>{t("projectsOverview.inProgress", { n: card.inProgress })}</span>
                 <span className={card.needsYou > 0 ? "font-medium text-status-needs-you" : ""}>
                   {t("projectsOverview.needsYou", { n: card.needsYou })}
                 </span>
               </span>
-              <span className="flex items-center justify-between gap-2 text-muted-foreground text-xs">
+              <span className="row-spread text-muted-foreground text-xs">
                 <span title={card.lastActivity ? store.formatDateTime(card.lastActivity) : ""}>
                   {card.lastActivity
                     ? `${t("projectsOverview.lastActivity")}: ${store.formatWhen(card.lastActivity)}`

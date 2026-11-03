@@ -1,14 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
-import {
-  type ComponentType,
-  lazy,
-  type ReactNode,
-  Suspense,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -39,6 +31,7 @@ import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { HistoryList } from "./HistoryList.tsx";
 import { draftUrl, type HostDraft, HostForm } from "./HostForm.tsx";
+import { lazyScreen } from "./lazy-screen.ts";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
@@ -46,6 +39,7 @@ import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { StartScreen } from "./StartScreen.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
@@ -54,14 +48,6 @@ import { TranscriptReader } from "./TranscriptReader.tsx";
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
  * keeps the entry chunk under its limit; scripts/test/screens-lazy.test.ts lists them).
  */
-function lazyScreen<M extends Record<K, unknown>, K extends keyof M & string>(
-  load: () => Promise<M>,
-  name: K,
-): M[K] {
-  const component = lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
-  return component as unknown as M[K];
-}
-
 const ActionsPage = lazyScreen(() => import("./ActionsPage.tsx"), "ActionsPage");
 const AgentPage = lazyScreen(() => import("./AgentPage.tsx"), "AgentPage");
 const AutoApprovalsPage = lazyScreen(() => import("./AutoApprovalsPage.tsx"), "AutoApprovalsPage");
@@ -205,6 +191,9 @@ function ManagedSession(props: {
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        {...(host?.hostInfo?.allowBypassPermissions === true
+          ? { bypass: { host: host.name } }
+          : {})}
         images={hasFeature(host?.hostInfo?.features, "session.images", false)}
         pickPath={(done) =>
           host && (
@@ -284,8 +273,10 @@ function AddHost(props: {
       url: draftUrl(draft),
       token: draft.token,
     });
-    if (result.ok) props.go({ name: "hub" });
-    else setError(result.error);
+    // The first host opens its own page: that is where it is checked and its folders are chosen.
+    if (result.ok) {
+      props.go(props.empty ? { name: "host", host: result.hostId } : { name: "hub" });
+    } else setError(result.error);
   };
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
@@ -374,6 +365,11 @@ export function Screen(props: ScreenProps) {
             key={hostId}
             store={store}
             hostId={hostId}
+            initial={
+              route.name === "history" && (route.cwd || route.projectKey || route.day)
+                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+                : undefined
+            }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
             density={props.density}
             openId={opened}
@@ -527,6 +523,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     return <ScreenLoading label={label} />;
   }
 
+  if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
   if (route.name === "settings") {
     return (
       <Settings
@@ -559,7 +556,13 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
     case "teams":
-      return <TeamsPage store={store} />;
+      return (
+        <TeamsPage
+          store={store}
+          {...(route.host ? { host: route.host } : {})}
+          {...(route.team ? { team: route.team } : {})}
+        />
+      );
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":
@@ -592,7 +595,15 @@ function routeScreen(props: ScreenProps): ReactNode {
         />
       );
     case "costs":
-      return <CostsPage store={store} onOpenSession={costsOpener(go)} />;
+      return (
+        <CostsPage
+          store={store}
+          onOpenSession={costsOpener(go)}
+          {...(route.host ? { host: route.host } : {})}
+          {...(route.projectKey ? { projectKey: route.projectKey } : {})}
+          {...(route.client ? { client: route.client } : {})}
+        />
+      );
     case "vault":
       return (
         <VaultPage
@@ -683,6 +694,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
+          onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);

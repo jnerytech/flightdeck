@@ -36,8 +36,8 @@ export function renderQr(text: string): Promise<string> {
 }
 
 /** Replaces the token in the config file (atomically), keeping every other field. */
-export function rotateToken(file: string): string {
+export async function rotateToken(file: string): Promise<string> {
   const token = generateToken();
-  updateConfigFile(file, (raw) => ({ ...raw, token }));
+  await updateConfigFile(file, (raw) => ({ ...raw, token }));
   return token;
 }

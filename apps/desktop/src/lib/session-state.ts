@@ -24,7 +24,12 @@ export type ChatItem =
       input: ToolInput;
       /** What the CLI offers to stop asking (phase 7). */
       suggestions?: PermissionUpdate[];
-      resolution?: { decision: PermissionResolution; message?: string; auto?: AutoApproval };
+      resolution?: {
+        decision: PermissionResolution;
+        message?: string;
+        auto?: AutoApproval;
+        answers?: Record<string, string>;
+      };
       /** Phase 13: the risk the daemon judged, and why. */
       risk?: RiskLevel;
       riskReason?: string;
@@ -48,6 +53,8 @@ export interface SessionState {
   lastSeq: number;
   status?: SessionStatus;
   statusReason?: string;
+  /** When the running turn began (ms), kept through a permission wait; none when idle. */
+  busySince?: number;
   cwd?: string;
   model?: string;
   /** The permission mode the session opened with, from `session.created`. */
@@ -107,8 +114,23 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         permissionMode: event.permissionMode,
         ...(event.persona ? { persona: event.persona } : {}),
       };
-    case "session.status":
-      return { ...next, status: event.status, statusReason: event.reason };
+    case "session.status": {
+      const busy = event.status === "starting" || event.status === "running";
+      const waiting = event.status === "awaiting_permission";
+      // The turn's start holds through a permission wait; any other status ends it.
+      const busySince =
+        busy || waiting
+          ? (state.busySince ?? (busy ? Date.parse(envelope.ts) : undefined))
+          : undefined;
+      return {
+        ...next,
+        status: event.status,
+        statusReason: event.reason,
+        ...(busySince !== undefined && !Number.isNaN(busySince)
+          ? { busySince }
+          : { busySince: undefined }),
+      };
+    }
     case "session.init":
       return {
         ...next,
@@ -163,6 +185,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
                   decision: event.decision,
                   ...(event.message ? { message: event.message } : {}),
                   ...(event.auto ? { auto: event.auto } : {}),
+                  ...(event.answers ? { answers: event.answers } : {}),
                 },
               }
             : item,

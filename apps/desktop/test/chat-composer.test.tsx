@@ -84,7 +84,7 @@ describe("chat-composer: the status line", () => {
     view({ model: "claude-opus-5-5", mode: "bypassPermissions" });
     const status = screen.getByRole("group", { name: "Estado da sessão" });
     expect(within(status).getByText("claude-opus-5-5")).toBeTruthy();
-    expect(within(status).getByText("Sem perguntas")).toBeTruthy();
+    expect(within(status).getByText("Ignorar permissões")).toBeTruthy();
     expect(within(status).queryByLabelText("Modo de permissão")).toBeNull();
   });
 

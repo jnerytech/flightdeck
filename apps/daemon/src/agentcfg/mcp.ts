@@ -4,7 +4,7 @@
  * it) is read-only. `.claude/settings.local.json` turns `.mcp.json` servers on and off. Secrets
  * are masked, and "Testar" only starts a server with confirm, after showing the exact command.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -40,12 +40,15 @@ export type McpTestResult =
 
 type Json = Record<string, unknown>;
 
-const readJson = (path: string): Json =>
-  existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as Json) : {};
+/** The JSON object in the file; `{}` when the file is not there (a file that does not parse throws). */
+async function readJson(path: string): Promise<Json> {
+  const text = await readFile(path, "utf8").catch(() => null);
+  return text === null ? {} : (JSON.parse(text) as Json);
+}
 
-function writeJson(path: string, value: Json): void {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+async function writeJson(path: string, value: Json): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 const servers = (value: unknown) => (value ?? {}) as Record<string, McpServerConfig>;
@@ -53,15 +56,22 @@ const servers = (value: unknown) => (value ?? {}) as Record<string, McpServerCon
 const masked = (values?: Record<string, string>) =>
   values ? Object.fromEntries(Object.keys(values).map((k) => [k, MASK])) : undefined;
 
-function confirmed(confirm: boolean, what: string): void {
-  if (!confirm) throw new FlightdeckError("invalid_state", `${what} pede confirm: true`);
+const missing = (name: string) =>
+  new FlightdeckError("not_found", `MCP server ${name} does not exist`, "mcp_server_missing", {
+    name,
+  });
+
+function confirmed(confirm: boolean, what: string, reason: string): void {
+  if (!confirm) {
+    throw new FlightdeckError("invalid_state", `${what} needs confirm: true`, reason);
+  }
 }
 
 export class McpConfig {
   constructor(private readonly opts: { userConfigPath?: string; timeoutMs?: number } = {}) {}
 
-  list(project: string): McpServerView[] {
-    const local = readJson(join(project, ".claude", "settings.local.json"));
+  async list(project: string): Promise<McpServerView[]> {
+    const local = await readJson(join(project, ".claude", "settings.local.json"));
     const disabled = (local.disabledMcpjsonServers ?? []) as string[];
     const view = (
       name: string,
@@ -80,47 +90,55 @@ export class McpConfig {
         enabled: origin !== "project" || !disabled.includes(name),
       };
     };
-    return Object.entries(this.sources(project)).flatMap(([origin, found]) =>
+    return Object.entries(await this.sources(project)).flatMap(([origin, found]) =>
       Object.entries(found).map(([n, c]) => view(n, c, origin as McpServerView["origin"])),
     );
   }
 
   /** Adds or replaces a server in .mcp.json, keeping every other key and server. */
-  save(project: string, server: McpServerConfig & { name: string }, confirm: boolean): void {
-    confirmed(confirm, "gravar no .mcp.json");
-    this.editable(project, server.name, true);
+  async save(
+    project: string,
+    server: McpServerConfig & { name: string },
+    confirm: boolean,
+  ): Promise<void> {
+    confirmed(confirm, "writing to .mcp.json", "mcp_write_confirm");
+    await this.editable(project, server.name, true);
     const { name, ...config } = server;
     const secrets = { ...config.env, ...config.headers };
     if (Object.values(secrets).includes(MASK)) {
       throw new FlightdeckError(
         "invalid_state",
-        "valores de env e headers aparecem mascarados: digite o valor de novo para salvar",
+        "env and header values show masked: type the value again to save",
+        "mcp_masked_values",
       );
     }
     const file = this.projectFile(project);
-    const current = readJson(file);
-    writeJson(file, { ...current, mcpServers: { ...servers(current.mcpServers), [name]: config } });
+    const current = await readJson(file);
+    await writeJson(file, {
+      ...current,
+      mcpServers: { ...servers(current.mcpServers), [name]: config },
+    });
   }
 
-  remove(project: string, name: string, confirm: boolean): void {
-    confirmed(confirm, "remover do .mcp.json");
-    this.editable(project, name, false);
+  async remove(project: string, name: string, confirm: boolean): Promise<void> {
+    confirmed(confirm, "removing from .mcp.json", "mcp_remove_confirm");
+    await this.editable(project, name, false);
     const file = this.projectFile(project);
-    const current = readJson(file);
+    const current = await readJson(file);
     const { [name]: _removed, ...rest } = servers(current.mcpServers);
-    writeJson(file, { ...current, mcpServers: rest });
+    await writeJson(file, { ...current, mcpServers: rest });
   }
 
   /** Moves a .mcp.json server between the enabled and disabled lists of settings.local.json. */
-  toggle(project: string, name: string, enabled: boolean, confirm: boolean): void {
-    confirmed(confirm, "ligar ou desligar um servidor");
-    this.editable(project, name, false);
+  async toggle(project: string, name: string, enabled: boolean, confirm: boolean): Promise<void> {
+    confirmed(confirm, "turning a server on or off", "mcp_toggle_confirm");
+    await this.editable(project, name, false);
     const file = join(project, ".claude", "settings.local.json");
-    const current = readJson(file);
+    const current = await readJson(file);
     const without = (key: string) => ((current[key] ?? []) as string[]).filter((n) => n !== name);
     const on = without("enabledMcpjsonServers");
     const off = without("disabledMcpjsonServers");
-    writeJson(file, {
+    await writeJson(file, {
       ...current,
       disabledMcpjsonServers: enabled ? off : [...off, name],
       enabledMcpjsonServers: enabled ? [...on, name] : on,
@@ -132,7 +150,7 @@ export class McpConfig {
    * With it, starts the server, lists its tools and resources and stops it.
    */
   async test(project: string, name: string, confirm: boolean): Promise<McpTestResult> {
-    const config = this.real(project, name);
+    const config = await this.real(project, name);
     if (!confirm) {
       return config.url
         ? { preview: { url: config.url } }
@@ -158,7 +176,9 @@ export class McpConfig {
           reject(
             new FlightdeckError(
               "invalid_state",
-              `o servidor ${name} não respondeu em ${timeoutMs / 1000} s`,
+              `the server ${name} did not answer in ${timeoutMs / 1000} s`,
+              "mcp_timeout",
+              { name, seconds: timeoutMs / 1000 },
             ),
           ),
         timeoutMs,
@@ -196,38 +216,39 @@ export class McpConfig {
    * Where a project's servers come from, in that order, with their real values. ~/.claude.json
    * keys its projects by absolute path.
    */
-  private sources(
+  private async sources(
     project: string,
-  ): Record<McpServerView["origin"], Record<string, McpServerConfig>> {
-    const user = readJson(this.userConfigPath());
+  ): Promise<Record<McpServerView["origin"], Record<string, McpServerConfig>>> {
+    const user = await readJson(this.userConfigPath());
     const userProject = Object.entries((user.projects ?? {}) as Record<string, Json>).find(
       ([path]) => samePath(path, project),
     )?.[1];
     return {
-      project: servers(readJson(this.projectFile(project)).mcpServers),
+      project: servers((await readJson(this.projectFile(project))).mcpServers),
       user: servers(user.mcpServers),
       "user-project": servers(userProject?.mcpServers),
     };
   }
 
   /** The server's real config (with secrets), wherever it comes from. */
-  private real(project: string, name: string): McpServerConfig {
-    const found = this.sources(project);
+  private async real(project: string, name: string): Promise<McpServerConfig> {
+    const found = await this.sources(project);
     const config = found.project[name] ?? found.user[name] ?? found["user-project"][name];
-    if (!config) throw new FlightdeckError("not_found", `servidor MCP ${name} não existe`);
+    if (!config) throw missing(name);
     return config;
   }
 
   /** Only .mcp.json servers change; `creating` allows a name that does not exist yet. */
-  private editable(project: string, name: string, creating: boolean): void {
-    const found = this.list(project).find((s) => s.name === name);
+  private async editable(project: string, name: string, creating: boolean): Promise<void> {
+    const found = (await this.list(project)).find((s) => s.name === name);
     if (found?.readOnly) {
       throw new FlightdeckError(
         "invalid_state",
-        `o servidor ${name} vem do ~/.claude.json, que o Flightdeck só lê`,
+        `the server ${name} comes from ~/.claude.json, which Flightdeck only reads`,
+        "mcp_server_external",
+        { name },
       );
     }
-    if (!found && !creating)
-      throw new FlightdeckError("not_found", `servidor MCP ${name} não existe`);
+    if (!found && !creating) throw missing(name);
   }
 }

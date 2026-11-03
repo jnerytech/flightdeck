@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { Quota } from "../../daemon/src/quota/quota.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { manualTime } from "../../daemon/test/time-helpers.ts";
@@ -165,7 +165,7 @@ describe("cota-ui", () => {
 
   test("painel de uso do host: últimos 7 dias, por dia e projeto", async () => {
     const { manager, project, store } = await online();
-    const { sessionId } = manager.create({ cwd: project, prompt: "[cost:0.5]" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "[cost:0.5]" });
     await settle(() => manager.get(sessionId).status === "idle");
     await click("Abrir host alfa");
     await settle(() =>
@@ -175,10 +175,12 @@ describe("cota-ui", () => {
     );
     const panel = screen.queryByRole("region", { name: "Uso dos últimos 7 dias" });
     const rows = [...(panel?.querySelectorAll("tbody tr") ?? [])].map((tr) => tr.textContent ?? "");
-    expect(rows).toHaveLength(1);
-    expect(rows[0] ?? "").toContain(project);
+    // The project's header (name and total), then its day.
+    expect(rows).toHaveLength(2);
+    expect(rows[0] ?? "").toContain(basename(project));
     expect(rows[0] ?? "").toContain("US$ 0.50");
-    expect(rows[0] ?? "").toContain("1 turno");
+    expect(rows[1] ?? "").toContain("US$ 0.50");
+    expect(rows[1] ?? "").toContain("1 turno");
     expect(store.getState().hosts).toHaveLength(1);
   });
 

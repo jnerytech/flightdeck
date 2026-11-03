@@ -12,7 +12,8 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
-import { ActivityLine, activityText } from "@/components/session/activity-line";
+import { MODELS } from "@/components/personas/model-select";
+import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
 import {
   Composer,
@@ -23,6 +24,7 @@ import {
   Timeline,
 } from "@/components/session/parts";
 import { SessionStatusLine } from "@/components/session/status-line";
+import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,9 +41,9 @@ import { Markdown } from "./Markdown.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The permission modes a live session can switch between, and the model aliases it takes. */
+/** The permission modes a live session can switch between. */
 const MODES = ["plan", "default", "acceptEdits"] as const;
-const MODELS = ["opus", "sonnet", "haiku"] as const;
+const ALL_MODES = [...MODES, "bypassPermissions"] as const;
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
@@ -245,6 +247,8 @@ interface SessionViewProps {
   images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
+  bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
   pin?: { pinned: boolean; toggle(): void };
   /** Forks the conversation at its latest message; offered on that message only. */
@@ -283,6 +287,9 @@ export function SessionView(props: SessionViewProps) {
   // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
   const at = MODES.indexOf(start as (typeof MODES)[number]);
   const limit = at < 0 ? MODES.length : at + 1;
+  // A host that allows bypass lets the person pick any mode, looser than the start included.
+  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
+  const [bypassAsk, setBypassAsk] = useState(false);
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
   // Typing `/` offers the snippets and the commands of the session together.
@@ -410,11 +417,15 @@ export function SessionView(props: SessionViewProps) {
               value={mode}
               onChange={(e) => {
                 const next = e.target.value as SettableMode;
+                if (next === "bypassPermissions") {
+                  setBypassAsk(true);
+                  return;
+                }
                 setMode(next);
                 void actions.setMode?.(next);
               }}
             >
-              {MODES.slice(0, limit).map((value) => (
+              {offeredModes.map((value) => (
                 <option key={value} value={value}>
                   {t(`modes.${value}.name`)}
                 </option>
@@ -514,6 +525,14 @@ export function SessionView(props: SessionViewProps) {
               {session.streaming}
             </Message>
           )}
+          {(session.status === "running" || session.status === "starting") && (
+            <WorkingRow
+              label={t("session.working")}
+              since={session.busySince ?? props.nowMs ?? Date.now()}
+              tool={openTool(session)}
+              {...(props.nowMs !== undefined ? { nowMs: props.nowMs } : {})}
+            />
+          )}
         </Timeline>
         {away && (
           <Button
@@ -600,14 +619,7 @@ export function SessionView(props: SessionViewProps) {
             )}
           </div>
         )}
-        {working && (
-          <>
-            <ActivityLine activity={activity} t={t} />
-            <output aria-live="polite" aria-label={t("session.working")} className="sr-only">
-              {activityText(activity, t)}
-            </output>
-          </>
-        )}
+        {working && <ActivityLine activity={activity} t={t} />}
         <Composer>
           {props.images && (
             <>
@@ -711,6 +723,19 @@ export function SessionView(props: SessionViewProps) {
             )
           )}
         </Composer>
+        {bypassAsk && props.bypass && (
+          <ConfirmDialog
+            destructive
+            message={t("session.bypassMessage", { host: props.bypass.host, session: props.title })}
+            confirmLabel={t("session.bypassConfirm")}
+            onCancel={() => setBypassAsk(false)}
+            onConfirm={() => {
+              setBypassAsk(false);
+              setMode("bypassPermissions");
+              void actions.setMode?.("bypassPermissions");
+            }}
+          />
+        )}
         <SessionStatusLine
           t={t}
           model={session.model}
@@ -727,4 +752,18 @@ export function SessionView(props: SessionViewProps) {
         })}
     </SessionPane>
   );
+}
+
+/** The tool the turn is in: the last one called that has not answered yet. */
+function openTool(session: SessionState): string | null {
+  for (let i = session.items.length - 1; i >= 0; i--) {
+    const item = session.items[i];
+    if (item?.kind !== "assistant") continue;
+    for (let j = item.blocks.length - 1; j >= 0; j--) {
+      const block = item.blocks[j];
+      if (block?.type === "tool_use" && !(block.id in session.toolResults)) return block.name;
+    }
+    return null;
+  }
+  return null;
 }

@@ -79,7 +79,7 @@ async function connected(options: Parameters<typeof setup>[0] = {}) {
 }
 
 describe("mcp", () => {
-  test("expõe exatamente as dezesseis ferramentas: nenhuma de permissão nem de gate, e dos snippets só ler", async () => {
+  test("expõe exatamente as vinte ferramentas: nenhuma de permissão nem de gate, e dos snippets só ler", async () => {
     const { client, ok } = await connected();
     expect(ok).toBe(true);
     const names = await client.listTools().then(
@@ -87,7 +87,9 @@ describe("mcp", () => {
       () => [],
     );
     expect(names).toEqual([
+      "comment_card",
       "create_card",
+      "finish_card",
       "get_card",
       "get_run",
       "get_snippet",
@@ -96,6 +98,7 @@ describe("mcp", () => {
       "list_sessions",
       "list_snippets",
       "list_workflows",
+      "move_card",
       "notify_when_idle",
       "read_session",
       "run_action",
@@ -103,6 +106,7 @@ describe("mcp", () => {
       "send_to_session",
       "start_card",
       "team_status",
+      "update_card",
     ]);
     expect(names.some((n) => /permission|gate|approve|respond/.test(n))).toBe(false);
   });

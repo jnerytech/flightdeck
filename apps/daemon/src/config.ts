@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { homedir, hostname } from "node:os";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { PricingConfig } from "./costs/pricing.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 import { validRegex } from "./permissions/risk.ts";
 import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
+import { defaultHostName } from "./wsl-host.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
 export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
@@ -25,7 +26,7 @@ export const Config = z.object({
   hostName: z
     .string()
     .min(1)
-    .default(() => hostname()),
+    .default(() => defaultHostName()),
   bind: z.string().min(1).default("127.0.0.1"),
   port: z.number().int().min(0).max(65535).default(7420),
   token: z
@@ -41,6 +42,8 @@ export const Config = z.object({
   runtime: RuntimeKind.default("claude"),
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),
+  /** A session may start in `bypassPermissions`; off until the person turns it on for the host. */
+  allowBypassPermissions: z.boolean().default(false),
   /** Cards running at the same time; the rest wait in start order (protects the quota). */
   maxParallelRuns: z.number().int().min(1).default(2),
   /** Legacy (phase 1) path to the `claude` executable; `claude.executablePath` wins. */
@@ -120,9 +123,9 @@ export const Config = z.object({
         .url()
         .nullable()
         .default(RUNNING_COMPILED ? MANIFEST_URL : null),
-      checkIntervalH: z.number().int().min(1).default(24),
+      checkIntervalH: z.number().int().min(1).default(6),
     })
-    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 24 })),
+    .default(() => ({ manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null, checkIntervalH: 6 })),
   /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
@@ -207,19 +210,23 @@ export function expandHome(path: string): string {
  * Loads and validates the config file, creating it with defaults (and a fresh token) when it
  * does not exist. Paths are returned with `~` expanded.
  */
-export function loadConfig(path: string = defaultConfigPath()): Config {
+export async function loadConfig(path: string = defaultConfigPath()): Promise<Config> {
   const file = resolve(expandHome(path));
   let raw: unknown = {};
-  if (existsSync(file)) {
-    raw = JSON.parse(readFileSync(file, "utf8"));
+  let exists = true;
+  try {
+    raw = JSON.parse(await readFile(file, "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    exists = false;
   }
   const config = Config.parse(raw);
   const hasToken = typeof (raw as { token?: unknown }).token === "string";
-  if (!existsSync(file) || !hasToken) {
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  if (!exists || !hasToken) {
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
     // No-op on Windows (ACLs), restricts to the owner elsewhere.
-    chmodSync(file, 0o600);
+    await chmod(file, 0o600);
   }
   return {
     ...config,
@@ -238,13 +245,13 @@ export function loadConfig(path: string = defaultConfigPath()): Config {
  * Rewrites the raw config file through `update`, keeping fields it does not touch. Writes to a
  * temp file and renames it, so a running daemon never reads a half-written config.
  */
-export function updateConfigFile(
+export async function updateConfigFile(
   file: string,
   update: (raw: Record<string, unknown>) => Record<string, unknown>,
-): void {
-  const raw = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+): Promise<void> {
+  const raw = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
   const tmp = `${file}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(update(raw), null, 2)}\n`, { mode: 0o600 });
-  chmodSync(tmp, 0o600);
-  renameSync(tmp, file);
+  await writeFile(tmp, `${JSON.stringify(update(raw), null, 2)}\n`, { mode: 0o600 });
+  await chmod(tmp, 0o600);
+  await rename(tmp, file);
 }

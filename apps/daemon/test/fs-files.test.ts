@@ -30,9 +30,9 @@ function tree() {
 }
 
 describe("fs-files: listing the files of a folder of a host", () => {
-  test("it lists the files only, sorted, with no hidden ones, no folders and no link out of the roots", () => {
+  test("it lists the files only, sorted, with no hidden ones, no folders and no link out of the roots", async () => {
     const { root } = tree();
-    const listing = listFiles(join(root, "code"), [root]);
+    const listing = await listFiles(join(root, "code"), [root]);
     expect(listing.path).toBe(join(root, "code"));
     expect(listing.files).toEqual([
       { name: "A.ts", path: join(root, "code", "A.ts") },
@@ -40,26 +40,28 @@ describe("fs-files: listing the files of a folder of a host", () => {
     ]);
     expect(listing.truncated).toBe(false);
     expect(
-      listFiles(join(root, "code"), [root], { hidden: true }).files.map((f) => f.name),
+      (await listFiles(join(root, "code"), [root], { hidden: true })).files.map((f) => f.name),
     ).toEqual([".env", "A.ts", "b.ts"]);
   });
 
-  test("it stops at the cap, saying so", () => {
+  test("it stops at the cap, saying so", async () => {
     const { root } = tree();
-    const listing = listFiles(join(root, "code"), [root], { cap: 1 });
+    const listing = await listFiles(join(root, "code"), [root], { cap: 1 });
     expect(listing.files).toHaveLength(1);
     expect(listing.truncated).toBe(true);
   });
 
-  test("the inside of .git and node_modules is never listed", () => {
+  test("the inside of .git and node_modules is never listed", async () => {
     const { root } = tree();
-    expect(listFiles(join(root, "code", ".git"), [root], { hidden: true }).files).toEqual([]);
-    expect(listFiles(join(root, "code", "node_modules"), [root]).files).toEqual([]);
+    expect((await listFiles(join(root, "code", ".git"), [root], { hidden: true })).files).toEqual(
+      [],
+    );
+    expect((await listFiles(join(root, "code", "node_modules"), [root])).files).toEqual([]);
   });
 
-  test("a folder outside the roots is refused like fs.dirs does", () => {
+  test("a folder outside the roots is refused like fs.dirs does", async () => {
     const { root, base } = tree();
-    expect(() => listFiles(base, [root])).toThrow();
+    await expect(listFiles(base, [root])).rejects.toThrow();
   });
 });
 

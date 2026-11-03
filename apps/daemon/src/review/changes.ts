@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
-import { existsSync, watch as fsWatch } from "node:fs";
+import { watch as fsWatch } from "node:fs";
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
@@ -36,6 +37,8 @@ export interface ResolvedTarget {
   base: string | null;
   cardId: string | null;
   claudeSessionId: string | null;
+  /** The card's branch: its position is read from it, never from a `HEAD` that a rebase detaches. */
+  branch?: string;
 }
 
 export interface ChangesResult {
@@ -84,23 +87,58 @@ export class Changes {
 
   async resolve(target: string): Promise<ResolvedTarget> {
     const match = /^(session|card):(.+)$/.exec(target);
-    if (!match) throw new FlightdeckError("bad_request", `alvo inválido: ${target}`);
+    if (!match)
+      throw new FlightdeckError(
+        "bad_request",
+        `invalid target: ${target}`,
+        "review_target_invalid",
+        { target },
+      );
     const [, kind, id] = match as unknown as [string, "session" | "card", string];
     if (kind === "card") {
-      if (!this.opts.board) throw new FlightdeckError("not_found", `card ${id} não existe`);
+      if (!this.opts.board) {
+        throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", {
+          id,
+        });
+      }
       const card = this.opts.board.getCard(id);
-      if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
+      if (!card.worktreePath) {
+        throw new FlightdeckError(
+          "invalid_state",
+          "the card has no worktree yet",
+          "card_no_worktree",
+        );
+      }
       const base = this.opts.board.getProject(card.projectId).baseBranch;
-      return { target, root: card.worktreePath, base, cardId: id, claudeSessionId: null };
+      return {
+        target,
+        root: card.worktreePath,
+        base,
+        cardId: id,
+        claudeSessionId: null,
+        ...(card.branch ? { branch: card.branch } : {}),
+      };
     }
     const row = this.opts.db.query(SESSION_CWD).get({ id }) as { cwd: string } | null;
-    if (!row) throw new FlightdeckError("not_found", `sessão ${id} não existe`);
+    if (!row) {
+      throw new FlightdeckError("not_found", `session ${id} does not exist`, "session_not_found", {
+        id,
+      });
+    }
     // A folder that no longer exists is not a repository either.
-    const top = existsSync(row.cwd)
+    const top = (await stat(row.cwd).then(
+      () => true,
+      () => false,
+    ))
       ? await git(row.cwd, "rev-parse", "--show-toplevel")
       : { code: 1, stdout: "" };
     if (top.code !== 0) {
-      throw new FlightdeckError("invalid_state", `${row.cwd} não está num repositório git`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `${row.cwd} is not in a git repository`,
+        "repo_not_git",
+        { path: row.cwd },
+      );
     }
     return {
       target,
@@ -112,11 +150,11 @@ export class Changes {
   }
 
   async get(target: string): Promise<ChangesResult> {
-    const { root, base } = await this.resolve(target);
+    const { root, base, branch } = await this.resolve(target);
     if (base === null)
       return { target, root, base, files: await workingDiff(root), position: null };
     const { files } = await cardDiff(root, base);
-    return { target, root, base, files, position: await aheadBehind(root, base) };
+    return { target, root, base, files, position: await aheadBehind(root, base, branch) };
   }
 
   /**

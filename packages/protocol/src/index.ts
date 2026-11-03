@@ -36,7 +36,8 @@ export const PermissionMode = z.enum([
 ]);
 export type PermissionMode = z.infer<typeof PermissionMode>;
 /** The modes a live session can be switched to (never one that skips the questions). */
-export const SettableMode = z.enum(["default", "acceptEdits", "plan"]);
+/** `bypassPermissions` is refused by the daemon unless the host's switch is on. */
+export const SettableMode = z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]);
 export type SettableMode = z.infer<typeof SettableMode>;
 
 const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
@@ -339,6 +340,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     message: z.string().optional(),
     /** Phase 13: approved automatically, and why. */
     auto: AutoApproval.optional(),
+    /** AskUserQuestion: question text to the chosen answer; older apps ignore it. */
+    answers: z.record(z.string(), z.string()).optional(),
   }),
   z.object({
     type: z.literal("turn.result"),
@@ -389,7 +392,8 @@ export type EffortLevel = z.infer<typeof EffortLevel>;
 
 export const SessionCreatePayload = z.object({
   cwd: z.string().min(1),
-  prompt: z.string().min(1),
+  /** None: the session starts idle and waits for its first message. */
+  prompt: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   permissionMode: PermissionMode.optional(),
   model: z.string().min(1).optional(),
@@ -448,6 +452,8 @@ const Cursor = z.string().min(1);
 
 export const HistoryListPayload = z.object({
   cwd: z.string().min(1).optional(),
+  /** Every folder and worktree of one project, as `projectKey` names it on the Costs screen. */
+  projectKey: z.string().min(1).optional(),
   from: z.string().min(1).optional(),
   to: z.string().min(1).optional(),
   origin: HistoryOrigin.optional(),
@@ -1205,6 +1211,44 @@ export interface FsFilesResult {
   truncated: boolean;
 }
 
+/** What `projects.scan` answers: the repositories found, never outside the roots. */
+export interface ProjectsScanResult {
+  repos: Array<{ name: string; path: string; root: string }>;
+  /** The scan stopped at its cap of repositories or of folders visited. */
+  truncated: boolean;
+}
+
+/** What `projects.clone` answers: the new repository's folder. */
+export interface ProjectsCloneResult {
+  path: string;
+}
+
+export const DOCTOR_CHECK_IDS = [
+  "config",
+  "folders",
+  "service",
+  "daemon",
+  "claude",
+  "hooks",
+  "tailscale",
+  "version",
+  "templates",
+] as const;
+
+/** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
+export interface DoctorCheckResult {
+  id: (typeof DOCTOR_CHECK_IDS)[number];
+  status: "ok" | "warn" | "fail";
+  detail: string;
+  fix?: string;
+}
+
+/** What `doctor.run` answers. */
+export interface DoctorResult {
+  ok: boolean;
+  checks: DoctorCheckResult[];
+}
+
 /** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
 export interface FsDirsResult {
   /** The folder listed (a real path); null for the list of the allowed roots. */
@@ -1408,6 +1452,47 @@ export const QuotaState = z.object({
   pauseAt: z.number().nullable(),
 });
 export type QuotaState = z.infer<typeof QuotaState>;
+
+// Phase 34: the Claude account the host's own `claude` is signed in to (never a token).
+export const AccountStatus = z.enum([
+  "signed_in",
+  "signed_out",
+  "api_key",
+  "third_party",
+  "unknown",
+]);
+export type AccountStatus = z.infer<typeof AccountStatus>;
+
+export const AccountState = z.object({
+  status: AccountStatus,
+  /** The account's email, shown as text in the card only; `null` when none is known. */
+  name: z.string().nullable(),
+  organization: z.string().nullable(),
+  /** `pro`, `max`, `team`, `enterprise`, `free` or any other plan name the CLI reports. */
+  plan: z.string().nullable(),
+  /** `firstParty`, `bedrock`, ... as the CLI names it. */
+  provider: z.string().nullable(),
+  /** The plan windows now valid on the host, with the age of each reading. */
+  windows: z.array(QuotaWindow),
+  /** When the account was last read (ISO); `null` before the first read. */
+  readAt: z.string().nullable(),
+  /** The last read failed, so everything above is the previous reading. */
+  stale: z.boolean(),
+  /** Why the last read failed (`account_unavailable`), or `null`. */
+  error: z.string().nullable(),
+  /** `status` when only the CLI's status was read, `sdk` when the usage report was too. */
+  source: z.enum(["status", "sdk"]),
+  /** What the person runs on the host to sign in; the app shows it and never runs it for them. */
+  loginCommand: z.literal("claude auth login"),
+});
+export type AccountState = z.infer<typeof AccountState>;
+
+/** Sent after `account.watch` with the host's account after each read and each change of its windows. */
+export const AccountUpdated = z.object({
+  type: z.literal("account.updated"),
+  ...AccountState.shape,
+});
+export type AccountUpdated = z.infer<typeof AccountUpdated>;
 
 /** Usage of the host's managed sessions in one day (host time zone) and project. */
 export const UsageRow = z.object({
@@ -2231,6 +2316,8 @@ export const TeamMember = z.object({
   name: z.string(),
   role: z.enum(["coordinator", "worker"]),
   persona: z.string().nullable(),
+  /** The model it was asked to run in; null is the persona's own, else the default. */
+  model: z.string().nullable(),
   cardId: z.string().nullable(),
   /** Null while a worker's card waits in the quota queue and has no session yet. */
   sessionId: z.string().nullable(),
@@ -2495,6 +2582,8 @@ export const Command = z.discriminatedUnion("type", [
    * loopback and Tailscale.
    */
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
+  /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
+  cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */
   cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
@@ -2531,6 +2620,25 @@ export const Command = z.discriminatedUnion("type", [
     "card.pr.create",
     z.object({ cardId: z.string(), description: z.string().max(8000).optional() }),
   ),
+  /**
+   * A session managing the cards of its own project through the flightdeck MCP server. The daemon
+   * finds the session's project (and its own card) from where it runs; `cardId` defaults to that card.
+   */
+  cmd(
+    "card.manage",
+    z.object({
+      as: SessionIdentity,
+      /** The folder a terminal session runs in; a managed session's own folder wins. */
+      cwd: z.string().optional(),
+      action: z.enum(["move", "update", "comment", "finish"]),
+      cardId: z.string().optional(),
+      column: BoardColumn.optional(),
+      title: z.string().min(1).optional(),
+      description: z.string().optional(),
+      text: z.string().min(1).optional(),
+      outcome: z.enum(["done", "discard"]).optional(),
+    }),
+  ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
   cmd("card.dismissUnblocked", CardIdPayload),
@@ -2554,6 +2662,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("daemon.shutdown", z.object({}).strict()),
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
+  cmd("daemon.update.check", z.object({}).strict()),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -2752,6 +2861,9 @@ export const Command = z.discriminatedUnion("type", [
       workers: z.number().int().min(1).max(8),
       coordinatorPersona: z.string().min(1).optional(),
       workerPersonas: z.array(z.string().min(1)).max(8).optional(),
+      /** The model of the coordinator and of each worker; none or null is the persona's own. */
+      coordinatorModel: z.string().min(1).optional(),
+      workerModels: z.array(z.string().min(1).nullable()).max(8).optional(),
       checks: z.array(z.string().min(1).max(400)).max(10).optional(),
     }),
   ),
@@ -2766,6 +2878,13 @@ export const Command = z.discriminatedUnion("type", [
         .object({ member: z.string().min(1), persona: z.string().min(1).nullable() })
         .optional(),
       addWorkers: z.number().int().min(1).max(8).optional(),
+      /** One more worker with the persona and model asked for (none or null is the default). */
+      addMember: z
+        .object({
+          persona: z.string().min(1).nullable().optional(),
+          model: z.string().min(1).nullable().optional(),
+        })
+        .optional(),
       removeMember: z.string().min(1).optional(),
     }),
   ),
@@ -3076,6 +3195,10 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  cmd("account.get", z.object({}).strict()),
+  cmd("account.watch", z.object({}).strict()),
+  cmd("account.unwatch", z.object({}).strict()),
+  cmd("account.refresh", z.object({}).strict()),
   cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
   /** `permissions.allow` of the project's `.claude/settings.local.json`. */
   cmd("rules.list", z.object({ projectId: z.string() })),
@@ -3496,6 +3619,21 @@ export const Command = z.discriminatedUnion("type", [
   /** The files of a folder inside the allowed roots (not the subfolders: `fs.dirs` has those). */
   cmd("fs.files", z.object({ path: z.string().min(1), hidden: z.boolean().optional() }).strict()),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
+  /** Git repositories inside the allowed roots (bounded depth and count), for "find my projects". */
+  cmd("projects.scan", z.object({ depth: z.number().int().min(1).max(3).optional() }).strict()),
+  /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
+  cmd(
+    "projects.clone",
+    z
+      .object({
+        url: z.string().min(1).max(2048),
+        root: z.string().min(1),
+        name: z.string().min(1).max(100).optional(),
+      })
+      .strict(),
+  ),
+  /** The host checks itself (version, claude, hooks, ports, folders): each failure carries its fix. */
+  cmd("doctor.run", z.object({ appVersion: z.string().max(32).optional() }).strict()),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
@@ -3643,6 +3781,8 @@ export const HostInfoResult = z.object({
   terminal: TerminalSettings.optional(),
   /** Phase 33: the host's default mode and lock; absent before the phase. */
   ui: UiSettings.optional(),
+  /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
+  allowBypassPermissions: z.boolean().optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -3723,6 +3863,10 @@ export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 
 /** The host's allowed folders after `roots.add`. */
 export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
+
+/** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
+export const BypassResult = z.object({ allowBypassPermissions: z.boolean() });
+export type BypassResult = z.infer<typeof BypassResult>;
 export type RootsResult = z.infer<typeof RootsResult>;
 
 export const BoardSettings = z.object({ maxParallelRuns: z.number().int().min(1) });
@@ -3796,6 +3940,7 @@ export interface CommandResults {
   "board.get": BoardResult;
   "board.settings": BoardSettings;
   "roots.add": RootsResult;
+  "host.bypass": BypassResult;
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;
@@ -3805,6 +3950,7 @@ export interface CommandResults {
   "card.diff": CardDiff;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
+  "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
   "card.dismissUnblocked": Card;
@@ -3817,6 +3963,7 @@ export interface CommandResults {
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
+  "daemon.update.check": UpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;
@@ -3928,6 +4075,10 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "account.get": AccountState;
+  "account.watch": undefined;
+  "account.unwatch": undefined;
+  "account.refresh": AccountState;
   "usage.summary": UsageSummary;
   "rules.list": { rules: string[] };
   "rules.remove": { rules: string[] };
@@ -4013,6 +4164,9 @@ export interface CommandResults {
   };
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
+  "doctor.run": DoctorResult;
+  "projects.scan": ProjectsScanResult;
+  "projects.clone": ProjectsCloneResult;
   "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };
@@ -4375,6 +4529,7 @@ export const ServerMessage = z.union([
   RunUpdated,
   RunEnvUpdated,
   QuotaUpdated,
+  AccountUpdated,
   AskpassRequest,
   BudgetUpdated,
   ChangesUpdated,

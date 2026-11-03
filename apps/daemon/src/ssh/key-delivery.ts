@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import type { Exec } from "../exec.ts";
@@ -11,7 +11,7 @@ export interface DeliveredKey {
   /** Variables for that one `ssh` (`SSH_AUTH_SOCK` of its own agent). */
   env: Record<string, string>;
   /** Idempotent: deletes the file or stops the agent. */
-  cleanup(): void;
+  cleanup(): void | Promise<void>;
 }
 
 /**
@@ -43,10 +43,10 @@ export function createFileDelivery(opts: FileDeliveryOptions): KeyDelivery {
   return {
     kind: "file",
     deliver: async (key) => {
-      mkdirSync(opts.dir, { recursive: true });
+      await mkdir(opts.dir, { recursive: true });
       const file = join(opts.dir, `key-${newId()}`);
       // Created empty and restricted first, so the key is never in a file others can read.
-      writeFileSync(file, "", { mode: 0o600 });
+      await writeFile(file, "", { mode: 0o600 });
       if (opts.platform === "win32") {
         const done = await opts.exec([
           "icacls",
@@ -56,7 +56,7 @@ export function createFileDelivery(opts: FileDeliveryOptions): KeyDelivery {
           `${opts.user}:(R,W,D)`,
         ]);
         if (done.code !== 0) {
-          rmSync(file, { force: true });
+          await rm(file, { force: true });
           throw new FlightdeckError(
             "internal",
             "could not restrict the permissions of the key file",
@@ -64,8 +64,8 @@ export function createFileDelivery(opts: FileDeliveryOptions): KeyDelivery {
           );
         }
       }
-      writeFileSync(file, withNewline(key));
-      return { identityFile: file, env: {}, cleanup: () => rmSync(file, { force: true }) };
+      await writeFile(file, withNewline(key));
+      return { identityFile: file, env: {}, cleanup: () => rm(file, { force: true }) };
     },
   };
 }
@@ -141,10 +141,16 @@ type Spawn = (
 
 const SOCKET_LOOKS = 40;
 
+const pathExists = (path: string) =>
+  access(path).then(
+    () => true,
+    () => false,
+  );
+
 /** The real `ssh-agent` and `ssh-add`, over an injectable `spawn`. */
 export function processOps(
   spawn: Spawn = Bun.spawn as unknown as Spawn,
-  exists: (path: string) => boolean = existsSync,
+  exists: (path: string) => boolean | Promise<boolean> = pathExists,
   sleep: (ms: number) => Promise<unknown> = Bun.sleep,
 ): AgentOps {
   return {
@@ -159,7 +165,7 @@ export function processOps(
     },
     waitForSocket: async (sock) => {
       for (let look = 0; look < SOCKET_LOOKS; look++) {
-        if (exists(sock)) return true;
+        if (await exists(sock)) return true;
         await sleep(50);
       }
       return false;

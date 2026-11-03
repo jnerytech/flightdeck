@@ -58,7 +58,7 @@ export function ActionButton(
   // The reason hangs under the button and takes no height, so a row of an input and this button
   // keeps the button as tall as the input and lined up with it.
   return (
-    <span className="action-button-box">
+    <span className="action-with-reason action-button-box">
       {button}
       <span id={reasonId} className="action-reason">
         {disabledReason}

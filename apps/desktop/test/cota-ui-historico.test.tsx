@@ -152,7 +152,7 @@ describe("cota-ui-historico", () => {
       { costs: true },
     );
     // `project` is the board's project here; the plain folder is `<root>/p`.
-    const managed = d.manager.create({ cwd: join(d.root, "p"), prompt: "oi" });
+    const managed = await d.manager.create({ cwd: join(d.root, "p"), prompt: "oi" });
     await settle(() => d.manager.get(managed.sessionId).claudeSessionId !== null);
     spend(d, "kA", T0, 1.25, d.manager.get(managed.sessionId).claudeSessionId as string);
     const card = d.board.createCard(d.project.id, { title: "Somar", description: "x" });

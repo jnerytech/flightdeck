@@ -25,7 +25,7 @@ async function code(promise: Promise<unknown>): Promise<string> {
 async function liveSession() {
   const runtime = new FakeRuntime({ delayMs: 1, mcpServers: ["eco", "outro"] });
   const { manager, project } = newManager({ runtime });
-  const { sessionId } = manager.create({ cwd: project, prompt: "hi" });
+  const { sessionId } = await manager.create({ cwd: project, prompt: "hi" });
   await poll(() => manager.get(sessionId).status === "idle", 3000);
   return { manager, runtime, sessionId };
 }

@@ -35,6 +35,7 @@ are written in Portuguese.
 - [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
+  - [Finding projects](#finding-projects)
   - [Card lifecycle](#card-lifecycle)
   - [PR providers](#pr-providers)
   - [Parallel run limit](#parallel-run-limit)
@@ -81,6 +82,7 @@ are written in Portuguese.
   - [Who may message whom](#who-may-message-whom)
   - [Teams](#teams)
 - [Costs, budgets and quota](#costs-budgets-and-quota)
+  - [The Claude account of a host](#the-claude-account-of-a-host)
   - [Plan quota](#plan-quota)
   - [Quota queue](#quota-queue)
   - [Usage](#usage)
@@ -90,6 +92,7 @@ are written in Portuguese.
   - [Quota history](#quota-history)
 - [Clients: grouping work across hosts and projects](#clients-grouping-work-across-hosts-and-projects)
 - [Session summary and webhooks](#session-summary-and-webhooks)
+- [Notification center](#notification-center)
 - [Tabs and embedded terminal](#tabs-and-embedded-terminal)
   - [Tabs](#tabs)
   - [Split view](#split-view)
@@ -275,6 +278,45 @@ session: a folder inside `allowedRoots`, a name, a permission mode and a first p
 requests show up as inline cards with **Approve** and **Deny**. The app reconnects by itself
 (from 1 s to 30 s) and resumes each session from the last event it saw.
 
+#### The first host
+
+With no host yet, the app shows four steps instead of the usual screens: install and start the
+daemon (`flightdeckd setup`), copy the pairing link it prints, paste it and press **Test and
+add**, and then the app opens the host's own page. There you press **Check** in **Check this
+host** and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
+then fills the Board without typing a path.
+
+#### Checking a host
+
+**Check this host** (on the host's page, online hosts with a daemon that announces `doctor.run`)
+asks the daemon to check itself: configuration, allowed folders, service, daemon, Claude Code,
+hooks, Tailscale and the daemon's version against the app's. Every item is **ok**, **warning** or
+**failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
+The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
+with `flightdeckd doctor`.
+### Sessions without permission prompts
+
+By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
+To allow it, open the host's page and use **Sessions without permission prompts → Allow sessions
+without prompts**; the app asks you to confirm and names the host. The choice is saved in the
+host's config (`allowBypassPermissions`) and applies at once. With it on:
+
+- **New session** offers "Bypass permissions: no prompts" in the permission mode list. Picking it
+  asks again every time you press Create session, naming the host and the folder.
+- The mode list in the message box of an open session offers every mode, including Bypass
+  permissions and modes looser than the one the session started with. Switching to Bypass asks
+  each time, naming the host and the session.
+- Sessions started after the switch is on can be switched to Bypass; one that was already running
+  keeps what it started with (the Claude Agent SDK needs to be told at start).
+
+With it off (the default) the daemon refuses to start a session in Bypass, and an open session
+can never be made more permissive than the mode it started with. A persona's permission mode
+still counts when it is stricter. Turning the switch off asks nothing.
+
+A session in Bypass permissions asks for nothing: Claude Code skips the permission prompt for every
+tool, including the ones that otherwise always ask (such as discarding a card through the
+flightdeck MCP server). That is the choice you make when you pick that mode.
+
 ## Service
 
 ### First run: flightdeckd setup
@@ -369,13 +411,21 @@ flightdeckd service uninstall           # stops the daemon and removes the servi
 The Windows daemon can keep the daemon of each WSL distro running (and the distro awake):
 
 ```json
-"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7421 }]
+"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7430 }]
 ```
 
 Each item becomes `wsl.exe -d <distro> --exec bash -lc "<command>"`, restarted with backoff from
 1 s up to 60 s, logging to `dataDir/logs/wsl-<distro>.log`. The WSL daemon listens on
-`127.0.0.1:7421`, which Windows reaches through `localhost`. If that daemon also receives hooks,
+`127.0.0.1:7430`, which Windows reaches through `localhost`. If that daemon also receives hooks,
 its `hooks.port` must differ from Windows's (see [Claude Code hooks](#claude-code-hooks)).
+
+**Setting up the WSL daemon.** Run `flightdeckd setup` inside the distro. WSL shares `localhost`
+with Windows, so setup detects WSL (`WSL_DISTRO_NAME`, or `/proc/version`) and moves the ports
+that are still at the Windows daemon's defaults up by 10: `port` 7430, `hooks.port` 7431 and
+`telemetry.port` 7432 (Windows keeps 7420, 7421 and 7422). They are written to `config.json`, so
+nobody edits it by hand; a port you set yourself stays, and running setup again changes nothing.
+A new config in WSL also names the host "<hostname> (WSL <distro>)", so the two daemons are easy
+to tell apart in the app.
 
 ## Remote access over Tailscale
 
@@ -431,6 +481,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
   for approval of Write", "idle 12 min ago"). The daemon sends it in the `summary` field of the
   lists.
+- **View:** the two buttons at the start of the toolbar (**List** and **Cards**) switch how the
+  sessions are drawn. A card shows the title (click to open), the project, the host, the status
+  dot, the persona, the cost (on hosts that report it) and the last line (the request and what the
+  session is doing, such as the tool waiting for approval), with the same menu as a row. Cards sit
+  in as many columns as the width allows. The choice is remembered.
 - **Filters:** text, host, origin, state, "Pinned only" and "Show archived". Archived sessions are
   left out by default.
 - **Menu:** rename, pin (pinned sessions go to the top of the group), archive and "Copy command"
@@ -669,6 +724,23 @@ records:
 When a card starts, the daemon runs `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` and appends `.flightdeck/worktrees/` to the repository's `.git/info/exclude`
 (`.gitignore` is not touched). The session's prompt is the card's description plus the template.
+
+### Finding projects
+
+**Find my projects** (on the **Projects** screen, for hosts that announce `projects.scan` and
+`projects.clone`) has two parts:
+
+- **Scan allowed folders** looks for git repositories under the allowed folders, two levels deep
+  by default, up to 200 repositories. It skips hidden folders, `node_modules`, links and the inside
+  of a repository it already found, and never opens more than 2000 folders. Repositories that are
+  already projects are left out. Tick the ones you want and press **Add selected**.
+- **Clone from an address** runs `git clone` into a folder inside the allowed folders and
+  registers the result as a project. Only `https://`, `ssh://` and `user@host:path` addresses are
+  accepted; an address that starts with a dash, has spaces, points to a local path or uses
+  `file://` or a transport helper is refused, and so is a folder name that is not a plain name or
+  a folder that already exists. git runs with password prompts off and stops after five minutes,
+  so a private repository needs an SSH key or a credential helper already set up on the host.
+  Every refusal says why.
 
 ### Card lifecycle
 
@@ -1016,7 +1088,17 @@ config's token. That lets a Claude session create cards and trigger workflows. T
 
 - `list_projects` and `list_workflows`;
 - `create_card` and `start_card` (with `workflow` and `inputs`);
-- `get_card` and `get_run`.
+- `get_card` and `get_run`;
+- `move_card` (to `backlog`, `in_progress`, `waiting`, `review` or `done`, by the same rules as
+  dragging a card in the app), `update_card` (title, description), `comment_card` (appends a
+  dated note to the description) and `finish_card` (`done` completes the card, `discard` throws
+  it away with its worktree and branch).
+
+A session manages only the cards of **its own project**, and its own card when it names none (the
+session runs in a card's worktree); another project's card is refused with the reason. The board
+in the app updates live. `finish_card` with `discard` is irreversible, so it always asks for your
+approval in the session: the automatic approval never takes it, and no "always allow" is offered
+for it.
 
 There is no tool to approve permissions or to answer gates: that stays with you, in the app. To
 register it in Claude Code:
@@ -1079,7 +1161,9 @@ exits with code 3.
 
 - **Per-host history** (🕘 next to the host name): indexed sessions with title, folder, date of
   the last message, origin (`Flightdeck` or `terminal`) and the "possibly in use" badge; filters
-  by folder, period (whole days, in UTC) and origin.
+  by folder, period (whole days, in UTC) and origin. The **List/Cards** buttons (the same choice as
+  the Sessions screen) draw each session as a card with title, folder, host, date, origin, the
+  "possibly in use" badge and, on hosts that report costs, the estimated cost.
 - **Global search** (`Ctrl+K` inside the app, or "Search the history"): it is the last section of
   the [palette](#palette-ctrlk). Enter, with nothing selected, queries every online host in
   parallel and merges the hits by date, with host, folder and a highlighted snippet. A host that
@@ -1555,6 +1639,22 @@ In a terminal, an action is masked when it runs through `flightdeckd action run`
 `flightdeck` mod uses): what it prints is the daemon's masked result. Anything else a
 terminal shows is not masked.
 
+## Notification center
+
+The bell at the right of the top bar keeps every notification the app sends: a request that
+needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
+unblocked. A badge on the bell counts the unread ones.
+
+- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
+- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+  opens the host). A budget alert opens Costs already filtered by its host and project, or by
+  its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
+  result, an unblocked card) opens the PR in your browser when the card is gone.
+- **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
+  (the newest 500) and survives a restart. Esc closes the panel.
+- The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
+  (the window had focus) is not in it either.
+
 ## Snippets
 
 **Snippets** are saved commands and prompts. The **Snippets** screen (sidebar, for hosts that keep
@@ -1785,8 +1885,10 @@ Claude Code sessions can message each other through Flightdeck, on the same host
 
 - **A team** is a coordinator session and its workers. Each worker runs in a card, with its own
   worktree.
-- **Teams** (sidebar) creates a team: the project, the goal, a name, the number of workers and,
-  if you want, the coordinator's persona.
+- **Teams** (sidebar) creates a team: the project, the goal, a name and, if you want, the
+  coordinator's persona and model. The workers are rows: each has its own persona and model, and
+  you add or remove rows (the number of rows is the number of workers, 1 to 8). With no choice,
+  the model is the persona's. Each member's model shows on its line.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
   2. send one task to each worker, and ask to hear when it goes idle;
@@ -1799,13 +1901,47 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;
   - change a member's persona;
-  - add a worker, or take a member out (its card stays on the board);
+  - add a worker, choosing its persona and model (the coordinator is told its name and card);
+  - take a member out: its session is stopped, the coordinator is told, and its card stays on the
+    board;
   - close the team, with a confirmation.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.
 
 ## Costs, budgets and quota
+
+### The Claude account of a host
+
+The host page has an **Account** card, above the usage panel, that shows which Claude account the
+host's own `claude` is signed in to. Flightdeck never signs you in and never sees a token: it asks
+the `claude` already installed on the host (`claude auth status`, plus the account and usage
+reports of the Agent SDK), and Anthropic's terms keep a login out of third-party apps.
+
+#### Which account is this host using?
+
+- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+  two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
+  the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- It is read when you open the page and again every 5 minutes while the page stays open, and at
+  once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
+  reads now; it waits 30 seconds between reads.
+- Each host has its own account. The email is shown on this card only: it is not put in
+  notifications, the window title, the status line or the tray, and the daemon keeps it in memory,
+  never in its database or logs.
+- If a read fails, the card keeps the last reading and says "Could not refresh". If the host is
+  offline, it says so instead of showing an old reading.
+
+#### What if the host is not signed in?
+
+The card says "This host is not signed in to Claude." and shows the command **`claude auth login`**.
+Open the host's terminal (the **Open terminal** button does), run it there, follow the steps, and
+come back: the card updates. **Copy command** copies it. The card has no form and never asks for a
+code or a token.
+
+A host that uses an API key or a cloud provider (Bedrock, Vertex, a gateway) shows "Plan limits do
+not apply": it has no plan windows. If the card says the account could not be read, check that
+`claude` is installed on that host and press **Try again**.
 
 ### Plan quota
 
@@ -1848,6 +1984,14 @@ estimated cost, tokens and turns.
 - **Cost:** it is the difference of the total the SDK reports for each session, never the sum
   turn by turn.
 - **Project:** the same as on the Sessions screen (the `origin` remote, or the repository path).
+- **Grouped by project:** each project is one block with its total (the most expensive first) and
+  its days below, newest first. Dates and costs never wrap.
+- **Hidden:** temp folders (`temp`, `tmp`, `/var/folders`) and agent worktrees
+  (`.claude/worktrees`) are not listed.
+- **Open the sessions:** click a day to open History filtered by that project's folder and that
+  day. A project known by its remote (shared by several folders and worktrees) opens History
+  filtered by the project itself, so every one of its folders is listed; a "Project: name" chip
+  above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
 ### Costs
@@ -2106,7 +2250,7 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
-  the middle button closes any tab. Drag a tab onto another to reorder it.
+  the middle button closes any tab. Drag a tab onto another to reorder it. While dragging, a bar marks where the tab will land. The order is kept between sessions.
 - **Shortcuts:**
 
   | Shortcut | Action |
@@ -2116,7 +2260,8 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
   | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
-  | `Ctrl+Shift+PageUp` / `PageDown` | move the tab left or right |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
+  | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
   In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
@@ -2153,9 +2298,12 @@ tab, with no SSH.
   Linux) in its first allowed folder. The panel also lists the live terminals, each with
   **Open**.
 - **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` or the right button's
-  **Copy** / **Paste** menu (`Ctrl+C` goes to the process), search with `Ctrl+Shift+F` (Enter for the next match, Shift+Enter for the previous,
-  Esc to close). Links open in the browser. The font is the system monospace; its size is in
-  Settings (**Terminal font size**, 10 to 24).
+  menu (**Copy**, which needs a selection, **Paste** and **Select all**; `Ctrl+C` goes to the
+  process). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
+  the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
+  closes. Links in the output open in the browser (`http` and `https` only). The font is the
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24).
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
   keeps running on the host) or **End process**. A terminal shown as detached or ended has
@@ -2298,7 +2446,7 @@ blue, needs you in amber, idle in gray, ended faded, error in red).
   in the palette, without restarting. Dates and times are always shown in local time. The
   vocabulary is in [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Permission modes** are shown with a name and a one-line explanation, never with the technical
-  value; "No questions" warns in red.
+  value; "Bypass permissions" warns in red and is offered only on a host that allows it.
 
 ### Demo mode, screenshots and end-to-end tests
 
@@ -2415,9 +2563,15 @@ signature (see [Installation](#from-the-release-binaries)).
   - an invalid signature or a broken download shows up in the banner, and nothing is installed;
   - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
 - **The daemon:**
-  - checks `daemon-latest.json` on start and every `updates.checkIntervalH` (24 h);
+  - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
+    default);
   - on the host page, the app shows **Update daemon to X** when there is a new version, and asks
     for confirmation;
+  - the host page also shows when the daemon last checked, and the error of that check if it
+    failed, with **Check for updates**: it asks the daemon to look at the manifest now (command
+    `daemon.update.check`). When the app is newer than the daemon, the page does this once by
+    itself when you open it, at most once every 10 minutes per host. A daemon from before this
+    command refuses it, and the page says why; update that one by hand with `flightdeckd update`;
   - the daemon downloads the binary for its own system to `<dataDir>/updates/`, verifies the
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
@@ -2428,7 +2582,7 @@ signature (see [Installation](#from-the-release-binaries)).
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 24 } }
+               "checkIntervalH": 6 } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no

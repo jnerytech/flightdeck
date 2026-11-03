@@ -4,13 +4,17 @@ import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
 import { must } from "./worktree.ts";
 
-/** Commits of `HEAD` (in `worktree`) not in `base`, and of `base` not in `HEAD`. */
+/**
+ * Commits of `ref` (in `worktree`) not in `base`, and of `base` not in `ref`. A card is read by its
+ * branch: `HEAD` is detached on the base while a rebase waits on a conflict.
+ */
 export async function aheadBehind(
   worktree: string,
   base: string,
+  ref = "HEAD",
 ): Promise<{ ahead: number; behind: number }> {
   const counted = must(
-    await git(worktree, "rev-list", "--left-right", "--count", `${base}...HEAD`),
+    await git(worktree, "rev-list", "--left-right", "--count", `${base}...${ref}`),
     "git rev-list",
   );
   const [behind, ahead] = counted.stdout.trim().split(/\s+/).map(Number);

@@ -2,19 +2,25 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
+import { BypassSwitch } from "@/components/hosts/bypass-switch";
+import { HostDoctor } from "@/components/hosts/host-doctor";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { useHostLatency } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import type { HostNameError } from "../lib/host-name.ts";
+import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
+import { HostAccount } from "./HostAccount.tsx";
 import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
+import { RenameHostDialog } from "./RenameHostDialog.tsx";
 import { TelemetrySection } from "./TelemetrySection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
 
@@ -31,14 +37,15 @@ const HOOK_LABELS = {
 export function HostPage(props: {
   store: AppStore;
   host: HostView;
-  onRename(name: string): void;
+  onRename(name: string): HostNameError | null;
   onReconnect(): void;
   onOpenAutoApprovals(): void;
+  onOpenHistory(filter: UsageHistoryTarget): void;
   onRemove(): void;
 }) {
   const t = useT();
   const { host } = props;
-  const [name, setName] = useState(host.name);
+  const [renaming, setRenaming] = useState(false);
   const info = host.hostInfo;
   const { store } = props;
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
@@ -48,6 +55,14 @@ export function HostPage(props: {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
   }, [store, host.id, host.status]);
+  // A daemon older than the app may not have looked for its update since the release: ask it once
+  // (the store keeps this to once per 10 minutes per host).
+  const checkable = host.status === "online" && info?.update !== undefined;
+  const daemonVersion = info?.daemonVersion;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the daemon's version is what makes it worth asking again
+  useEffect(() => {
+    if (checkable) void store.autoCheckDaemonUpdate(host.id);
+  }, [store, host.id, checkable, daemonVersion]);
   const settingsPath = hooks?.settingsPath ?? "~/.claude/settings.json";
   // Hooks came with the central (phase 5): shown for older daemons, hidden when not announced.
   const showHooks = host.status !== "incompatible" && hasFeature(info?.features, "central", true);
@@ -61,7 +76,15 @@ export function HostPage(props: {
     if (result) setHooks(result);
   };
   return (
-    <Page title={host.name} subtitle={host.url}>
+    <Page
+      title={host.name}
+      subtitle={host.url}
+      actions={
+        <Button variant="outline" onClick={() => setRenaming(true)}>
+          {t("hostPage.rename")}
+        </Button>
+      }
+    >
       <div className="flex max-w-3xl flex-col gap-5">
         {host.status === "incompatible" && (
           <InlineNotice>
@@ -77,6 +100,7 @@ export function HostPage(props: {
             </span>
           </InlineNotice>
         )}
+        {hasFeature(info?.features, "account", false) && <HostAccount store={store} host={host} />}
         {(hasFeature(info?.features, "quota", false) ||
           hasFeature(info?.features, "costs", false)) && (
           <UsagePanel
@@ -84,6 +108,7 @@ export function HostPage(props: {
             hostId={host.id}
             online={host.status === "online"}
             costs={hasFeature(info?.features, "costs", false)}
+            onOpenHistory={props.onOpenHistory}
           />
         )}
         <Panel title={t("hostPage.info")}>
@@ -100,17 +125,17 @@ export function HostPage(props: {
               </li>
               <li>{t("hostPage.active", { n: info.activeSessions })}</li>
               <li>{t("hostPage.uptime", { n: info.uptimeSec })}</li>
-              <li>
-                {t("hostPage.latency", {
-                  value: host.latencyMs === null ? "—" : `${host.latencyMs} ms`,
-                })}
-              </li>
+              <HostLatency store={store} hostId={host.id} />
             </ul>
           ) : (
             <p className="text-muted-foreground text-sm">{t("hostPage.unavailable")}</p>
           )}
         </Panel>
         <AllowedFolders store={store} host={host} />
+        <BypassSwitch store={store} host={host} />
+        {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
+          <HostDoctor store={store} host={host} />
+        )}
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
@@ -159,19 +184,14 @@ export function HostPage(props: {
             onCancel={() => setConfirming(null)}
           />
         )}
+        {renaming && (
+          <RenameHostDialog
+            name={host.name}
+            onRename={props.onRename}
+            onClose={() => setRenaming(false)}
+          />
+        )}
         <Panel title={t("hostPage.host")}>
-          <Field label={t("hostPage.nameLabel")}>
-            {(control) => (
-              <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />
-            )}
-          </Field>
-          <Button
-            variant="outline"
-            className="self-start"
-            onClick={() => name.trim() && props.onRename(name.trim())}
-          >
-            {t("hostPage.saveName")}
-          </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={props.onReconnect}>
               {t("hostPage.reconnect")}
@@ -196,4 +216,11 @@ export function HostPage(props: {
       </div>
     </Page>
   );
+}
+
+/** The heartbeat latency line: the only part of the page that renders on a ping. */
+function HostLatency(props: { store: AppStore; hostId: string }) {
+  const t = useT();
+  const latency = useHostLatency(props.store, props.hostId);
+  return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;
 }

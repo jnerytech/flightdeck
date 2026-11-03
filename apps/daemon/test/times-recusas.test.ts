@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { ExternalSessions } from "../src/central/external.ts";
+import type { FlightdeckError } from "../src/errors.ts";
 import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { startServer } from "../src/server.ts";
@@ -114,5 +115,48 @@ describe("times-recusas: every refusal of the teams says why", () => {
     const missing = refusal(await client.request("teams.pause", { team: "nope" }));
     expect(missing.reason).toBe("team_not_found");
     expect(missing.params).toEqual({ id: "nope" });
+  });
+});
+
+describe("times-recusas: the refusals about a team's state", () => {
+  const NEW = { goal: "Implement the login with tests.", workers: 1 };
+  const refused = async (call: () => unknown) => {
+    try {
+      await call();
+    } catch (error) {
+      const { code, reason, params } = error as FlightdeckError;
+      return { code, reason, params };
+    }
+    throw new Error("it did not refuse");
+  };
+
+  test("a session that is not of the team, a close without confirm, the coordinator leaving", async () => {
+    const { teams, project } = await boot();
+    const team = await teams.create({ ...NEW, projectId: project.id, name: "login" });
+    expect(await refused(() => teams.status(team.id, "stranger"))).toEqual({
+      code: "invalid_state",
+      reason: "team_session_foreign",
+      params: { team: "login" },
+    });
+    expect(await refused(() => teams.close(team.id, false))).toEqual({
+      code: "invalid_state",
+      reason: "team_close_confirm",
+      params: { name: "login" },
+    });
+    const coordinator = team.members.find((m) => m.role === "coordinator");
+    expect(
+      await refused(() => teams.update({ team: team.id, removeMember: coordinator?.name })),
+    ).toEqual({ code: "invalid_state", reason: "team_coordinator_stays", params: undefined });
+  });
+
+  test("a team that was closed accepts nothing", async () => {
+    const { teams, project } = await boot();
+    const team = await teams.create({ ...NEW, projectId: project.id, name: "login" });
+    teams.close(team.id, true);
+    expect(await refused(() => teams.pause(team.id))).toEqual({
+      code: "invalid_state",
+      reason: "team_closed",
+      params: { name: "login" },
+    });
   });
 });

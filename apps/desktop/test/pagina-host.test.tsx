@@ -80,6 +80,9 @@ describe("pagina-host", () => {
 
   test("renomear muda a barra lateral e o armazenamento", async () => {
     const { store, items } = await setup();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    });
     fireEvent.change(screen.getByLabelText("Nome do host"), { target: { value: "desktop" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));

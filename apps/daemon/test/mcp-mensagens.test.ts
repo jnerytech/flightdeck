@@ -39,7 +39,7 @@ async function boot(env: Record<string, string> = { FLIGHTDECK_SESSION: "s1" }) 
     allowedRoots: [],
   });
   cleanups.push(() => {
-    server.stop();
+    void server.stop();
     idle.stop();
     base.messaging.stop();
   });

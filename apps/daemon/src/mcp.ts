@@ -1,6 +1,7 @@
 import {
   type Ack,
   type ActionInfo,
+  BoardColumn,
   type CommandPayload,
   type CommandResults,
   type CommandType,
@@ -183,6 +184,43 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   );
   tool("get_card", "Estado de um card.", { cardId: z.string() }, ({ cardId }) =>
     daemon.call("card.get", { cardId }),
+  );
+  // A session managing the cards of its own project: its own card unless it names another.
+  const manage = (args: Omit<CommandPayload<"card.manage">, "as" | "cwd">) =>
+    daemon.call("card.manage", { as: who(), ...(opts.cwd ? { cwd: opts.cwd } : {}), ...args });
+  const cardId = z
+    .string()
+    .optional()
+    .describe("O card; sem ele, o card desta sessão (quando ela roda em um)");
+  tool(
+    "move_card",
+    "Move um card do seu projeto de coluna, pelas mesmas regras do app: backlog, in_progress (Em andamento), waiting (Esperando você), review (Em revisão) ou done (Concluído).",
+    { cardId, column: BoardColumn },
+    ({ cardId, column }) => manage({ action: "move", column, ...(cardId ? { cardId } : {}) }),
+  );
+  tool(
+    "update_card",
+    "Muda o título e/ou a descrição de um card do seu projeto.",
+    { cardId, title: z.string().min(1).optional(), description: z.string().optional() },
+    ({ cardId, title, description }) =>
+      manage({
+        action: "update",
+        ...(cardId ? { cardId } : {}),
+        ...(title ? { title } : {}),
+        ...(description !== undefined ? { description } : {}),
+      }),
+  );
+  tool(
+    "comment_card",
+    "Acrescenta uma nota datada à descrição de um card do seu projeto.",
+    { cardId, text: z.string().min(1) },
+    ({ cardId, text }) => manage({ action: "comment", text, ...(cardId ? { cardId } : {}) }),
+  );
+  tool(
+    "finish_card",
+    "Encerra um card do seu projeto: `done` o conclui (Concluído); `discard` o descarta (fecha as sessões e apaga a worktree e a branch, sem volta). Descartar sempre pede a aprovação do usuário.",
+    { cardId, outcome: z.enum(["done", "discard"]) },
+    ({ cardId, outcome }) => manage({ action: "finish", outcome, ...(cardId ? { cardId } : {}) }),
   );
   tool(
     "get_run",

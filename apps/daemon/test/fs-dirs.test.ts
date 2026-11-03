@@ -22,9 +22,9 @@ function tree() {
 const names = (listing: { dirs: Array<{ name: string }> }) => listing.dirs.map((d) => d.name);
 
 describe("fs-dirs: listing the folders of a host", () => {
-  test("without a path it lists the allowed roots, and leaves out one that is gone", () => {
+  test("without a path it lists the allowed roots, and leaves out one that is gone", async () => {
     const { root, base } = tree();
-    const listing = listDirs(undefined, [root, join(base, "gone")]);
+    const listing = await listDirs(undefined, [root, join(base, "gone")]);
     expect(listing).toEqual({
       path: null,
       parent: null,
@@ -33,38 +33,38 @@ describe("fs-dirs: listing the folders of a host", () => {
     });
   });
 
-  test("a folder lists its subfolders only: no files, no hidden ones, sorted", () => {
+  test("a folder lists its subfolders only: no files, no hidden ones, sorted", async () => {
     const { root } = tree();
-    const listing = listDirs(join(root, "code"), [root]);
+    const listing = await listDirs(join(root, "code"), [root]);
     expect(listing.path).toBe(join(root, "code"));
     expect(names(listing)).toEqual(["app", "lib"]);
     expect(listing.dirs[0]?.path).toBe(join(root, "code", "app"));
   });
 
-  test("hidden folders show only when asked", () => {
+  test("hidden folders show only when asked", async () => {
     const { root } = tree();
-    expect(names(listDirs(join(root, "code"), [root], { hidden: true }))).toEqual([
+    expect(names(await listDirs(join(root, "code"), [root], { hidden: true }))).toEqual([
       ".git",
       "app",
       "lib",
     ]);
   });
 
-  test("the parent is the folder above, and null at a root", () => {
+  test("the parent is the folder above, and null at a root", async () => {
     const { root } = tree();
-    expect(listDirs(join(root, "code"), [root]).parent).toBe(root);
-    expect(listDirs(root, [root]).parent).toBeNull();
+    expect((await listDirs(join(root, "code"), [root])).parent).toBe(root);
+    expect((await listDirs(root, [root])).parent).toBeNull();
   });
 
-  test("more subfolders than the cap come back cut, and say so", () => {
+  test("more subfolders than the cap come back cut, and say so", async () => {
     const { root } = tree();
-    const listing = listDirs(join(root, "code"), [root], { cap: 1 });
+    const listing = await listDirs(join(root, "code"), [root], { cap: 1 });
     expect(names(listing)).toEqual(["app"]);
     expect(listing.truncated).toBe(true);
-    expect(listDirs(join(root, "code"), [root], { cap: 2 }).truncated).toBe(false);
+    expect((await listDirs(join(root, "code"), [root], { cap: 2 })).truncated).toBe(false);
   });
 
-  test("a path outside the roots is refused: absolute, with .., or a sibling that shares the name's start", () => {
+  test("a path outside the roots is refused: absolute, with .., or a sibling that shares the name's start", async () => {
     const { root, outside, base } = tree();
     mkdirSync(join(base, "root-evil"));
     for (const path of [
@@ -74,37 +74,43 @@ describe("fs-dirs: listing the folders of a host", () => {
       join(base, "root-evil"),
       "/",
     ]) {
-      expect(() => listDirs(path, [root])).toThrow(/outside allowedRoots/);
+      await expect(listDirs(path, [root])).rejects.toThrow(/outside allowedRoots/);
     }
   });
 
-  test("a folder that does not exist, or a file, is refused", () => {
+  test("a folder that does not exist, or a file, is refused", async () => {
     const { root } = tree();
-    expect(() => listDirs(join(root, "nope"), [root])).toThrow(/does not exist/);
-    expect(() => listDirs(join(root, "code", "notes.txt"), [root])).toThrow(/does not exist/);
+    await expect(listDirs(join(root, "nope"), [root])).rejects.toThrow(/does not exist/);
+    await expect(listDirs(join(root, "code", "notes.txt"), [root])).rejects.toThrow(
+      /does not exist/,
+    );
   });
 
-  test("a symlink out of the roots is neither listed nor followed", () => {
+  test("a symlink out of the roots is neither listed nor followed", async () => {
     const { root, outside } = tree();
     symlinkSync(outside, join(root, "code", "escape"));
-    expect(names(listDirs(join(root, "code"), [root]))).toEqual(["app", "lib"]);
-    expect(() => listDirs(join(root, "code", "escape"), [root])).toThrow(/outside allowedRoots/);
-    expect(() => listDirs(join(root, "code", "escape", "secret"), [root])).toThrow(
+    expect(names(await listDirs(join(root, "code"), [root]))).toEqual(["app", "lib"]);
+    await expect(listDirs(join(root, "code", "escape"), [root])).rejects.toThrow(
+      /outside allowedRoots/,
+    );
+    await expect(listDirs(join(root, "code", "escape", "secret"), [root])).rejects.toThrow(
       /outside allowedRoots/,
     );
   });
 
-  test("a symlink to a folder inside the roots is listed under its real path", () => {
+  test("a symlink to a folder inside the roots is listed under its real path", async () => {
     const { root } = tree();
     symlinkSync(join(root, "other"), join(root, "code", "shortcut"));
-    const listing = listDirs(join(root, "code"), [root]);
+    const listing = await listDirs(join(root, "code"), [root]);
     expect(listing.dirs.find((d) => d.name === "shortcut")?.path).toBe(join(root, "other"));
   });
 
-  test("a root that is itself reached through a link is compared by real path", () => {
+  test("a root that is itself reached through a link is compared by real path", async () => {
     const { base, root } = tree();
     symlinkSync(root, join(base, "link-to-root"));
-    const listing = listDirs(join(base, "link-to-root", "code"), [join(base, "link-to-root")]);
+    const listing = await listDirs(join(base, "link-to-root", "code"), [
+      join(base, "link-to-root"),
+    ]);
     expect(listing.path).toBe(join(root, "code"));
     expect(listing.parent).toBe(root);
   });
@@ -193,6 +199,6 @@ describe("fs-dirs: the fs.dirs command", () => {
     });
     stops.push(() => bare.stop());
     const none = await ask(bare, "host.info", {});
-    expect(none?.ok && (none.data as { features: string[] }).features).toEqual([]);
+    expect(none?.ok && (none.data as { features: string[] }).features).toEqual(["session.images"]);
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Phase 9: the daemon checks its release manifest (`daemon-latest.json`) at boot and every
+ * Phase 9: the daemon checks its release manifest (`daemon-latest.json`) at boot, on request and every
  * `checkIntervalH`, and `host.info` reports what it found. A failed check is only an error in
  * the status: the daemon keeps running.
  */
@@ -58,7 +58,16 @@ export class UpdateChecker {
     return this.manifest;
   }
 
+  /** Checks right now, whatever the interval says, and returns what was found. */
+  async checkNow(): Promise<UpdateStatus> {
+    await this.check();
+    return this.last as UpdateStatus;
+  }
+
   private async check(): Promise<void> {
+    // One timer waits at a time: a check made on request moves the next one to a full interval.
+    if (this.timer) this.timers.clear(this.timer);
+    this.timer = null;
     const checkedAt = new Date(this.now()).toISOString();
     try {
       const manifest = await this.download();

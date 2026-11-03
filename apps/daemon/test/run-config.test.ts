@@ -185,8 +185,8 @@ describe("run-config: confiança pelo hash", () => {
       errors: [],
       config: null,
     });
-    await expect(configs.resolve(project)).rejects.toThrow("sem .flightdeck/run.yaml");
-    await expect(configs.trust(project, "x")).rejects.toThrow("sem .flightdeck/run.yaml");
+    await expect(configs.resolve(project)).rejects.toThrow("no .flightdeck/run.yaml");
+    await expect(configs.trust(project, "x")).rejects.toThrow("no .flightdeck/run.yaml");
   });
 
   test("o arquivo existe, vale e ainda não é confiado: o hash vem, a execução é recusada", async () => {
@@ -197,12 +197,12 @@ describe("run-config: confiança pelo hash", () => {
     expect(info.trusted).toBe(false);
     expect(info.errors).toEqual([]);
     expect(info.config?.ports).toEqual(["web", "api"]);
-    await expect(configs.resolve(project)).rejects.toThrow("não confiado");
+    await expect(configs.resolve(project)).rejects.toThrow("is not trusted");
   });
 
   test("confiar no hash revisado libera a execução; um hash velho é recusado", async () => {
     const { configs, project } = await projectWith(EXAMPLE);
-    await expect(configs.trust(project, "hash-velho")).rejects.toThrow("mudou");
+    await expect(configs.trust(project, "hash-velho")).rejects.toThrow("changed");
     const trusted = await configs.trust(project, sha256(EXAMPLE));
     expect(trusted.trusted).toBe(true);
     expect((await configs.resolve(project)).run.map((p) => p.name)).toEqual(["web", "api"]);
@@ -216,7 +216,7 @@ describe("run-config: confiança pelo hash", () => {
     const info = await configs.info(project);
     expect(info.hash).toBe(sha256(changed));
     expect(info.trusted).toBe(false);
-    await expect(configs.resolve(project)).rejects.toThrow("não confiado");
+    await expect(configs.resolve(project)).rejects.toThrow("is not trusted");
     await configs.trust(project, sha256(changed));
     expect((await configs.info(project)).trusted).toBe(true);
   });
@@ -226,8 +226,8 @@ describe("run-config: confiança pelo hash", () => {
     const info = await configs.info(project);
     expect(info.errors).toEqual(["run.0.cmd: precisa ser uma lista de textos"]);
     expect(info.config).toBeNull();
-    await expect(configs.trust(project, info.hash ?? "")).rejects.toThrow("erros de validação");
-    await expect(configs.resolve(project)).rejects.toThrow("erros de validação");
+    await expect(configs.trust(project, info.hash ?? "")).rejects.toThrow("validation errors");
+    await expect(configs.resolve(project)).rejects.toThrow("validation errors");
   });
 
   test("só vale o arquivo do ramo-base: um escrito na worktree do agente não é lido", async () => {

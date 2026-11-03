@@ -25,6 +25,5 @@ test("a workflow from a daemon that sends no issues shows its error texts as the
   await act(async () => {
     render(<WorkflowsPage store={store as never} hostId="h1" projectId="p1" projectName="app" />);
   });
-  await act(() => Bun.sleep(20));
-  expect(screen.queryByText("steps.0.id is required")).not.toBeNull();
+  expect(await screen.findByText("steps.0.id is required")).toBeTruthy();
 });

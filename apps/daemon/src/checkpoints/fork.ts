@@ -4,7 +4,9 @@
  * comes from this phase). It opens as a resumed managed session, or as the command that opens it
  * in the terminal. The files can be rewound to the turn first.
  */
+
 import { FlightdeckError } from "../errors.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { Rewinder } from "./rewind.ts";
@@ -33,12 +35,19 @@ export class Forker {
       runtime: AgentRuntime;
       manager: Pick<SessionManager, "createResumed">;
       rewinder?: Rewinder;
+      /** Reads the personas for the forked session; none when absent. */
+      preparePersonas?: Prepare;
     },
   ) {}
 
   async fork(request: ForkRequest): Promise<ForkResult> {
     const fork = this.opts.runtime.forkSession;
-    if (!fork) throw new FlightdeckError("invalid_state", "este runtime não bifurca sessões");
+    if (!fork)
+      throw new FlightdeckError(
+        "invalid_state",
+        "this runtime does not fork sessions",
+        "fork_unsupported",
+      );
     if (request.rewindTurn !== undefined) {
       await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true);
     }
@@ -53,10 +62,12 @@ export class Forker {
     if (request.open === "terminal") {
       return { claudeSessionId, command: `flightdeckd claude --resume ${claudeSessionId}` };
     }
-    const { sessionId } = this.opts.manager.createResumed({
+    const { agents } = await (this.opts.preparePersonas ?? withoutPersonas)(undefined, request.cwd);
+    const { sessionId } = await this.opts.manager.createResumed({
       cwd: request.cwd,
       claudeSessionId,
       name: null,
+      agents,
     });
     return { claudeSessionId, sessionId };
   }

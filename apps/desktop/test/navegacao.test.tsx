@@ -77,7 +77,11 @@ async function setup() {
   git(repo, "commit", "-q", "-m", "inicial");
   const project = await d.board.addProject({ path: repo, promptTemplate: "" });
   const card = d.board.createCard(project.id, { title: "Ajuste", description: "faça" });
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Pedinte" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "[bash]",
+    name: "Pedinte",
+  });
   await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
@@ -135,6 +139,8 @@ describe("navegacao", () => {
   test("abrir um pedido fecha Configurações (sem beco sem saída); Alt+←, Alt+→, botões do mouse e Voltar", async () => {
     await setup();
     await click("Configurações");
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
     await sidebar.queueItem("alfa · Pedinte: Bash");
@@ -274,10 +280,10 @@ describe("navegacao", () => {
 
   test("continuar no Flightdeck uma sessão do terminal abre a conversa gerenciada", async () => {
     const d = makeDaemon(cleanups);
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+      headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
       body: JSON.stringify({
         session_id: "ext-1",
         hook_event_name: "SessionStart",
@@ -287,7 +293,7 @@ describe("navegacao", () => {
     writeTranscript(d.historyRoot, "-p", "ext-1", [
       userLine({ uuid: "u1", text: "Do terminal", cwd: d.project, ts: "2026-09-01T10:00:00.000Z" }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
@@ -318,8 +324,8 @@ describe("navegacao", () => {
         ts: "2026-09-01T10:00:00.000Z",
       }),
     ]);
-    d.history.scan();
-    const { sessionId } = d.manager.create({
+    await d.history.scan();
+    const { sessionId } = await d.manager.create({
       cwd: d.project,
       prompt: "olá do começo",
       name: "Cedo",
@@ -361,7 +367,7 @@ describe("navegacao", () => {
         ts: "2026-09-01T10:00:00.000Z",
       }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const url = d.listen().url;
     const mem = memoryPlatform();
     const secrets = new Map<string, string>();
@@ -373,7 +379,12 @@ describe("navegacao", () => {
     store.router.push({ name: "reader", target: { hostId: "h-fixo", claudeSessionId: "hist-2" } });
     render(<App store={store} />);
     // While the saved hosts load and connect, the screen says so (its name may not be known yet).
-    const status = screen.queryByRole("status")?.getAttribute("aria-label") ?? "";
+    // The tab strip's own position announcement is a status too: pick the loading one.
+    const status =
+      screen
+        .queryAllByRole("status")
+        .map((el) => el.getAttribute("aria-label") ?? "")
+        .find((label) => /^(Carregando…|Conectando a alfa…)$/.test(label)) ?? "";
     expect(status).toMatch(/^(Carregando…|Conectando a alfa…)$/);
     await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("Leitura cedo"));
     expect(screen.queryByRole("main")?.textContent ?? "").toContain("Leitura cedo");
@@ -398,11 +409,11 @@ describe("navegacao", () => {
 
   test("o nome dado a uma sessão do terminal chega pelo external.updated, sem carregar a lista de sessões", async () => {
     const d = makeDaemon(cleanups);
-    d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    await d.central.hooksInstall(true);
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({
           session_id: "ext-n",
           hook_event_name: event,

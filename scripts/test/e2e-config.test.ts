@@ -62,6 +62,14 @@ describe("E2E_ONLY", () => {
     expect(grep.test("en voltar-arquivos-extra")).toBe(false);
   });
 
+  test("a scenario carries its journey as a tag, which matches too", () => {
+    const grep = grepFor("approval-with-a,new-session") as RegExp;
+    expect(grep.test("Approving a request Approve with the A key @approval-with-a")).toBe(true);
+    expect(grep.test("Nova sessão Criar @smoke @new-session")).toBe(true);
+    expect(grep.test("Approving a request Approve @approval-with-a-extra")).toBe(false);
+    expect(grep.test("Approving a request mentions new-session in the text")).toBe(false);
+  });
+
   test("a name is matched literally", () => {
     const grep = grepFor("a.b") as RegExp;
     expect(grep.test("en a.b")).toBe(true);

@@ -28,7 +28,6 @@ function bigState(store: Store, n: number) {
     status: "online",
     info: null,
     hostInfo: null,
-    latencyMs: null,
     incompatibility: null,
     daemonUpdate: null,
     sessions: [],

@@ -68,14 +68,13 @@ const view = (session: SessionState) =>
   );
 
 describe("chat-atividade: the line above the message box", () => {
-  test("while a turn runs it names the activity and the time, and the live region names it too", () => {
+  test("while a turn runs it names the activity and the time, and the live region names the tool", () => {
     view(withTool("Bash"));
     const line = screen.getByTestId("activity");
     expect(line.textContent).toContain("Executando um comando");
     expect(line.textContent).toContain("0 s");
-    expect(screen.getByRole("status", { name: "Trabalhando…" }).textContent).toBe(
-      "Executando um comando",
-    );
+    // The live region is the conversation's working row, which names the tool the turn is in.
+    expect(screen.getByRole("status", { name: "Trabalhando…" }).textContent).toContain("Bash");
   });
 
   test("the time keeps counting", async () => {

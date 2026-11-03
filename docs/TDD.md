@@ -50,6 +50,12 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados.
 
+**Antes de entregar uma sessão:** `bun run typecheck`, `bun run lint`, `bun run tdd:audit` e
+`bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
+mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
+indiretamente, um arquivo alterado), e imprime cada um com o motivo. A suíte completa
+(`bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador e no CI.
+
 ## Travas
 
 Os testes provam o comportamento sem tocar em nada real. As travas tornam isso verificável,
@@ -76,7 +82,24 @@ em vez de depender de cuidado.
 - **The slot for the heavy runs.** The full suite, `demo:shots`, `e2e`, the smokes and the builds
   run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
-  flaky. Area tests, typecheck and lint do not need the slot.
+  flaky. Area tests, typecheck and lint do not need the slot. A full gate that must not be
+  disturbed by the sessions' area tests runs with `--priority` (`bun run slot -- --priority bun run
+  test`): while it runs, the slot raises the niceness of the other `bun test` processes of the
+  same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
+  process tree, restores nothing (those processes finish niced) and does nothing on Windows.
+- **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
+  `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a
+  test that call races the next line (an assertion runs before the work, a cleanup before the
+  stop). Await the call. When the test means to leave it alone, say so with `void`
+  (`void server.stop()` cuts a connection without waiting for it to drain). Do not silence the
+  rule with a `biome-ignore`.
+
+- **BDD for the journeys a person reads.** The journeys a non-programmer reads (approval, new
+  session, board, the simple mode of phase 33) are Gherkin scenarios in `pt-BR` and `en`
+  (`scripts/e2e/bdd/features/`, run by `playwright-bdd`, pinned exactly), written to create their
+  own state. Layout, terminal and keyboard journeys stay plain TypeScript
+  (`scripts/e2e/journeys.ts`), and unit tests stay plain `bun test` with behavior titles. The
+  pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
 
 ## Armadilhas conhecidas
 

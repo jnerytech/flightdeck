@@ -9,6 +9,8 @@ export type Route =
   | { name: "home" }
   /** `project`: the hub shows only the sessions of that project, with a chip to clear it. */
   | { name: "hub"; project?: { hostId: string; projectKey: string; name: string } }
+  /** What an area with no tab shows: where to begin. Never kept as a tab. */
+  | { name: "start" }
   /** The requests waiting for the user (phase 10). */
   | { name: "needs-you" }
   | { name: "session"; host: string; id: string; focus?: string }
@@ -17,7 +19,7 @@ export type Route =
   | { name: "external"; host: string; claudeSessionId: string }
   /** A transcript; `list: "history"` when it was opened from a host's history list. */
   | { name: "reader"; target: ReaderTarget; list?: "history" }
-  | { name: "history"; host: string }
+  | { name: "history"; host: string; cwd?: string; projectKey?: string; day?: string }
   | { name: "host"; host: string }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
@@ -48,8 +50,8 @@ export type Route =
   /** A card's running app, in a frame (phase 24); only loopback addresses open. */
   | { name: "preview"; url: string; title: string }
   | { name: "settings" }
-  /** The Custos screen (phase 8, track A). */
-  | { name: "costs" }
+  /** The Custos screen (phase 8, track A). A budget alert opens it for its `host`, `projectKey` or `client`. */
+  | { name: "costs"; host?: string; projectKey?: string; client?: string }
   /** The ssh destinos of the host that keeps them (phase 15). */
   /** `connect`: the destino to connect to as soon as the screen opens (from the palette). */
   | { name: "connections"; connect?: string }
@@ -63,8 +65,8 @@ export type Route =
   | { name: "plugins" }
   /** Phase 21: the messages between sessions. */
   | { name: "conversations" }
-  /** Phase 21: the teams of a host. */
-  | { name: "teams" }
+  /** Phase 21: the teams of a host; `team` is the one an alert is about. */
+  | { name: "teams"; host?: string; team?: string }
   /** The vault (phase 16): secrets, their use and the encrypted backup. */
   | {
       name: "vault";
@@ -128,6 +130,7 @@ export class Router {
 }
 
 const NAMES: Record<Route["name"], true> = {
+  start: true,
   home: true,
   hub: true,
   "needs-you": true,

@@ -38,7 +38,7 @@ function codeOf(fn: () => unknown): Promise<string> {
 }
 
 /** Managed sessions, external ones with a channel, and the personas of the host. */
-function setup(options: { personas?: boolean } = {}) {
+async function setup(options: { personas?: boolean } = {}) {
   const { root, project } = workspace();
   const store = new EventStore(":memory:");
   const personas = new Personas({
@@ -47,8 +47,8 @@ function setup(options: { personas?: boolean } = {}) {
     scanner,
     pack: packPersonas,
   });
-  personas.save({ scope: "host", persona: SECURITY });
-  personas.save({
+  await personas.save({ scope: "host", persona: SECURITY });
+  await personas.save({
     scope: "host",
     persona: { ...SECURITY, id: "doc", name: "Doc", body: "Escreva docs." },
   });
@@ -91,8 +91,8 @@ function setup(options: { personas?: boolean } = {}) {
   };
 }
 
-async function idleSession(s: ReturnType<typeof setup>, persona?: { id: string }) {
-  const { sessionId } = s.manager.create({
+async function idleSession(s: Awaited<ReturnType<typeof setup>>, persona?: { id: string }) {
+  const { sessionId } = await s.start({
     cwd: s.project,
     prompt: "oi",
     ...(persona ? { persona } : {}),
@@ -104,7 +104,7 @@ async function idleSession(s: ReturnType<typeof setup>, persona?: { id: string }
 
 describe("personas-sessao-aberta: gerenciada", () => {
   test("aplicar manda a mensagem de troca de papel com o corpo, registra na linha do tempo e põe o selo", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId, events } = await idleSession(s);
     const done = await s.switcher.apply({ sessionId, persona: { id: "seg" } });
     expect(done.persona).toMatchObject({ id: "seg", name: "Revisor de segurança" });
@@ -123,7 +123,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
   });
 
   test("numa sessão aberta a persona é instrução da conversa: nada reinicia, e reabrir a sessão não a põe no system prompt", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s);
     await s.switcher.apply({ sessionId, persona: { id: "seg" } });
     expect(s.runtime.starts).toHaveLength(1);
@@ -138,7 +138,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
   });
 
   test("voltar ao normal manda a mensagem de saída do papel, registra e tira o selo; sem persona aplicada, é recusado", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId, events } = await idleSession(s);
     expect(await codeOf(() => s.switcher.clear({ sessionId }))).toBe("invalid_state");
     await s.switcher.apply({ sessionId, persona: { id: "seg" } });
@@ -159,7 +159,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
   });
 
   test("numa sessão aberta com uma persona, aplicar outra troca o selo e voltar ao normal devolve o da abertura", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s, { id: "doc" });
     expect(s.manager.get(sessionId).persona).toMatchObject({ id: "doc" });
     await s.switcher.apply({ sessionId, persona: { id: "seg" } });
@@ -170,7 +170,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
   });
 
   test("a persona do pacote vale no idioma pedido, e a do app vale inteira", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s);
     const english = await s.switcher.apply({ sessionId, persona: { id: "qa", language: "en" } });
     expect(english.text).toMatch(/^From now on, act as "QA \/ testing"/);
@@ -186,7 +186,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
   });
 
   test("não aplica, e não registra nada, quando a sessão não existe ou terminou, ou a persona não vale", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId, events } = await idleSession(s);
     expect(
       await codeOf(() => s.switcher.apply({ sessionId: "nada", persona: { id: "seg" } })),
@@ -219,7 +219,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
   });
 
   test("uma persona versionada sem confiança não é aplicada", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s);
     const { mkdirSync, writeFileSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -237,7 +237,7 @@ describe("personas-sessao-aberta: gerenciada", () => {
 
 describe("personas-sessao-aberta: do terminal controlável", () => {
   test("aplicar vai pelo canal, põe o selo na sessão e a mensagem de saída o tira", async () => {
-    const s = setup();
+    const s = await setup();
     const done = await s.switcher.apply({ claudeSessionId: "claude-1", persona: { id: "seg" } });
     expect(s.sentToChannel).toEqual([["L1", done.text]]);
     expect(done.text).toContain("Procure injeção e segredos expostos.");
@@ -258,7 +258,7 @@ describe("personas-sessao-aberta: do terminal controlável", () => {
   });
 
   test("o selo avisa quem acompanha as sessões e sobrevive a um novo processo do daemon", async () => {
-    const s = setup();
+    const s = await setup();
     const seen: Array<string | null> = [];
     s.external.onChange((session) => seen.push(session.persona?.id ?? null));
     await s.switcher.apply({ claudeSessionId: "claude-1", persona: { id: "seg" } });
@@ -270,7 +270,7 @@ describe("personas-sessao-aberta: do terminal controlável", () => {
   });
 
   test("sem canal, ou uma sessão que não existe, não aplica nem registra", async () => {
-    const s = setup();
+    const s = await setup();
     expect(
       await codeOf(() => s.switcher.apply({ claudeSessionId: "claude-2", persona: { id: "seg" } })),
     ).toBe("invalid_state");
@@ -287,7 +287,7 @@ describe("personas-sessao-aberta: do terminal controlável", () => {
 });
 
 describe("personas-sessao-aberta: pelo protocolo", () => {
-  async function connect(s: ReturnType<typeof setup> | null, root: string) {
+  async function connect(s: Awaited<ReturnType<typeof setup>> | null, root: string) {
     const server = startServer({
       manager: s?.manager ?? newManager().manager,
       ...(s ? { personaSessions: s.switcher } : {}),
@@ -307,7 +307,7 @@ describe("personas-sessao-aberta: pelo protocolo", () => {
   }
 
   test("session.applyPersona e session.clearPersona, para a gerenciada e para a do terminal", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s);
     const { client, codeOfCall } = await connect(s, s.root);
     expect(
@@ -358,7 +358,7 @@ describe("personas-sessao-aberta: pelo protocolo", () => {
 
 describe("personas-sessao-aberta: o que falta no host", () => {
   test("a mensagem de saída também vem em inglês", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s);
     await s.switcher.apply({ sessionId, persona: { id: "qa", language: "en" } });
     await waitFor(() => s.manager.get(sessionId).status === "idle", { label: "ociosa" });
@@ -367,7 +367,7 @@ describe("personas-sessao-aberta: o que falta no host", () => {
   });
 
   test("sem o cadastro de personas, ou sem as sessões de terminal, o serviço diz o que falta", async () => {
-    const s = setup();
+    const s = await setup();
     const { sessionId } = await idleSession(s);
     const bare = new OpenSessionPersonas({ manager: s.manager });
     expect(await codeOf(() => bare.apply({ sessionId, persona: { id: "seg" } }))).toBe(

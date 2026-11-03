@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
   acquire,
+  cancel,
   DEFAULT_MAX_AGE_MS,
   describeHolder,
+  lowerOthers,
   POLL_MS,
+  type ProcessInfo,
   parseArgs,
   parseHolder,
+  RENICE_MS,
   release,
   run,
   type SlotChild,
@@ -25,6 +29,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
   const files = new Map(Object.entries(opts.files ?? {}));
   const logs: string[] = [];
   const sleeps: number[] = [];
+  const terminated: number[] = [];
   const spawned: { command: string[]; nice: boolean }[] = [];
   let time = 5000;
   let handler: ((code: number) => void) | null = null;
@@ -41,6 +46,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
       remove: (p) => {
         files.delete(p);
       },
+      list: (prefix) => [...files.keys()].filter((name) => name.startsWith(prefix)),
     },
     path: PATH,
     pid: 10,
@@ -59,6 +65,9 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
       spawned.push({ command, nice });
       return opts.child ?? { wait: async () => 0, kill: () => {} };
     },
+    terminate: (pid) => {
+      terminated.push(pid);
+    },
     onSignal: (h) => {
       handler = h;
       return () => {
@@ -73,6 +82,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
     logs,
     sleeps,
     spawned,
+    terminated,
     listeners,
     onSleep,
     signal: (code: number) => handler?.(code),
@@ -284,7 +294,7 @@ describe("slot: waiting in the queue", () => {
     let first = true;
     const create = f.env.fs.create;
     f.env.fs.create = (p, d) => {
-      if (first) {
+      if (first && p === PATH) {
         first = false;
         return false;
       }
@@ -383,5 +393,202 @@ describe("slot: running a command", () => {
     expect(f.spawned).toEqual([]);
     expect(f.files.get(PATH)).toBe(held(theirs));
     expect(f.listeners.off).toBe(1);
+  });
+});
+
+const waiter = (pid: number, label: string) =>
+  JSON.stringify({ pid, label, command: "bun run test", startedAt: 2000 } satisfies SlotHolder);
+
+describe("slot: cancel", () => {
+  test("--cancel alone is the cancel; with anything else it is the usage", () => {
+    expect(parseArgs(["--cancel"])).toEqual({ kind: "cancel" });
+    expect(parseArgs(["--", "--cancel"])).toEqual({ kind: "cancel" });
+    expect(parseArgs(["--cancel", "bun"])).toEqual({ kind: "usage" });
+    expect(parseArgs(["--nice", "--cancel"])).toEqual({ kind: "usage" });
+  });
+
+  test("a waiter is recorded while it waits and forgotten when it stops", async () => {
+    const { env, files, onSleep } = fake({ files: { [PATH]: held(theirs) } });
+    let during: string[] = [];
+    onSleep.push((n) => {
+      during = [...files.keys()].filter((name) => name.startsWith(`${PATH}.wait.`));
+      if (n === 1) files.delete(PATH);
+    });
+    expect(await acquire(env, "bun run test", () => false)).toBe(true);
+    expect(during).toEqual([`${PATH}.wait.10`]);
+    expect([...files.keys()].some((name) => name.includes(".wait."))).toBe(false);
+  });
+
+  test("the recorded waiter names this process, label and command", async () => {
+    const { env, files, onSleep } = fake({ files: { [PATH]: held(theirs) } });
+    let recorded: SlotHolder | null = null;
+    onSleep.push(() => {
+      recorded = parseHolder(files.get(`${PATH}.wait.10`) ?? null);
+      files.delete(PATH);
+    });
+    await acquire(env, "bun run e2e", () => false);
+    expect(recorded).toMatchObject({ pid: 10, label: "sonar", command: "bun run e2e" });
+  });
+
+  test("it stops the own label's waiters and holder, never another label's", () => {
+    const { env, files, logs, terminated } = fake({
+      files: {
+        [PATH]: held({ ...mine, pid: 11 }),
+        [`${PATH}.wait.12`]: waiter(12, "sonar"),
+        [`${PATH}.wait.20`]: waiter(20, "kiwi"),
+      },
+    });
+    expect(cancel(env)).toBe(0);
+    expect(terminated.sort()).toEqual([11, 12]);
+    expect(files.has(`${PATH}.wait.20`)).toBe(true);
+    expect(logs.join("\n")).toContain("cancelled sonar: bun run test (pid 12,");
+    expect(logs.join("\n")).not.toContain("kiwi");
+  });
+
+  test("it never stops itself, a dead process or a holder of another label", () => {
+    const { env, files, logs, terminated } = fake({
+      dead: [13],
+      files: {
+        [PATH]: held(theirs),
+        [`${PATH}.wait.10`]: waiter(10, "sonar"),
+        [`${PATH}.wait.13`]: waiter(13, "sonar"),
+      },
+    });
+    expect(cancel(env)).toBe(0);
+    expect(terminated).toEqual([]);
+    expect(files.has(`${PATH}.wait.13`)).toBe(false);
+    expect(logs).toEqual(["nothing to cancel for sonar"]);
+  });
+
+  test("an unreadable waiter file is ignored and removed", () => {
+    const { env, files, terminated } = fake({ files: { [`${PATH}.wait.14`]: "{broken" } });
+    expect(cancel(env)).toBe(0);
+    expect(terminated).toEqual([]);
+    expect(files.has(`${PATH}.wait.14`)).toBe(false);
+  });
+
+  test("run with --cancel cancels", async () => {
+    const { env, logs } = fake();
+    expect(await run(env, ["--cancel"])).toBe(0);
+    expect(logs).toEqual(["nothing to cancel for sonar"]);
+  });
+});
+
+const proc = (pid: number, ppid: number, nice: number, command: string): ProcessInfo => ({
+  pid,
+  ppid,
+  nice,
+  command,
+});
+
+/** A process list with the slot's own tree (10 > 11 > 12) and other sessions' processes. */
+const table = (): ProcessInfo[] => [
+  proc(10, 1, 0, "bun scripts/slot.ts -- bun run test"),
+  proc(11, 10, 0, "bun run test"),
+  proc(12, 11, 0, "bun test --coverage"),
+  proc(30, 1, 0, "bun --config=bunfig.area.toml test apps/daemon/test/a.test.ts"),
+  proc(31, 1, 10, "/home/u/.bun/bin/bun test apps/daemon/test/b.test.ts"),
+  proc(32, 1, 15, "bun test c"),
+  proc(33, 1, 19, "bun test d"),
+  proc(40, 1, 0, "node vite"),
+  proc(41, 1, 0, "bun run lint"),
+  proc(42, 1, 0, "bun x biome check"),
+];
+
+/** An env whose process table is live: reniced entries change, so a second pass finds them done. */
+function withProcesses(list: ProcessInfo[], extra: Parameters<typeof fake>[0] = {}) {
+  const f = fake(extra);
+  const calls: Array<[number, number]> = [];
+  let listed = 0;
+  f.env.processes = async () => {
+    listed++;
+    return list.map((p) => ({ ...p }));
+  };
+  f.env.renice = (pid, nice) => {
+    calls.push([pid, nice]);
+    const target = list.find((p) => p.pid === pid);
+    if (target) target.nice = nice;
+  };
+  return { ...f, calls, listed: () => listed };
+}
+
+describe("slot: --priority", () => {
+  test("--priority is read before the command, with --nice or without", () => {
+    expect(parseArgs(["--priority", "bun", "run", "test"])).toEqual({
+      kind: "run",
+      nice: false,
+      priority: true,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
+      command: ["bun", "run", "test"],
+    });
+    expect(parseArgs(["--nice", "--priority", "--", "bun"])).toEqual({
+      kind: "run",
+      nice: true,
+      priority: true,
+      maxAgeMs: DEFAULT_MAX_AGE_MS,
+      command: ["--", "bun"],
+    });
+  });
+
+  test("it raises the niceness of the other bun test processes, and only those", async () => {
+    const f = withProcesses(table());
+    expect(await lowerOthers(f.env)).toEqual([30, 31]);
+    expect(f.calls).toEqual([
+      [30, 15],
+      [31, 15],
+    ]);
+  });
+
+  test("a process already at 15 or more is never lowered, and a second pass changes nothing", async () => {
+    const f = withProcesses(table());
+    await lowerOthers(f.env);
+    f.calls.length = 0;
+    expect(await lowerOthers(f.env)).toEqual([]);
+    expect(f.calls).toEqual([]);
+  });
+
+  test("a platform that cannot list or renice processes is left alone", async () => {
+    const f = fake();
+    expect(await lowerOthers(f.env)).toEqual([]);
+  });
+
+  test("a run with --priority lowers the others while the command runs, every RENICE_MS", async () => {
+    const list = table();
+    let ticks = 0;
+    const f = withProcesses(list);
+    const child: SlotChild = {
+      wait: async () => {
+        // Bounded: with no renicing loop the ticks never come and the command just ends.
+        for (let i = 0; i < 50 && ticks < 3; i++) await new Promise((r) => setTimeout(r, 0));
+        return 0;
+      },
+      kill: () => {},
+    };
+    f.env.spawn = () => child;
+    // The fake sleep gives the child's timer a turn, so the loop cannot starve it.
+    const sleep = f.env.sleep;
+    f.env.sleep = async (ms) => {
+      await sleep(ms);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+    f.onSleep.push(() => {
+      ticks++;
+      // A new test process shows up in the second tick: it is caught in the third.
+      if (ticks === 2) list.push(proc(50, 1, 0, "bun test e"));
+    });
+    expect(await run(f.env, ["--priority", "bun", "run", "test"])).toBe(0);
+    expect(f.calls).toEqual([
+      [30, 15],
+      [31, 15],
+      [50, 15],
+    ]);
+    expect(f.sleeps.filter((ms) => ms === RENICE_MS).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a run without --priority never reads the process list", async () => {
+    const f = withProcesses(table());
+    expect(await run(f.env, ["bun", "run", "test"])).toBe(0);
+    expect(f.listed()).toBe(0);
+    expect(f.calls).toEqual([]);
   });
 });

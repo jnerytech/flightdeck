@@ -84,9 +84,11 @@ describe("carga-inicial", () => {
     expect(during?.initialLoad).toEqual({ state: "running", filesDone: 1, filesTotal: 3 });
     // Partial entries would look like divergences: none until the load ends.
     expect(during?.divergences).toEqual([]);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "costs",
-    ]);
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["costs"]);
     gate.release();
     await indexer.idle();
     const after = await client.data<Status>("costs.status", {});
@@ -114,7 +116,9 @@ describe("carga-inicial", () => {
   test("sem pausa injetada, a carga cede o laço de eventos entre arquivos", async () => {
     const { indexer } = setup({ pause: undefined });
     indexer.start();
-    expect(indexer.status()).toEqual({ state: "running", filesDone: 1, filesTotal: 3 });
+    // Nothing is read on the caller's turn: the first file waits for the files and the disk.
+    expect(indexer.status().state).toBe("running");
+    expect(indexer.status().filesDone).toBeLessThan(3);
     await indexer.idle();
     expect(indexer.status()).toEqual({ state: "done", filesDone: 3, filesTotal: 3 });
   });
@@ -204,8 +208,10 @@ describe("carga-inicial", () => {
     );
     expect(await client.data("costs.reprice", {})).toEqual({ entries: 6 });
     expect(await models()).toEqual([]);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "costs",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("costs");
   });
 });

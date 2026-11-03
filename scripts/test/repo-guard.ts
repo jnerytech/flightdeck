@@ -7,6 +7,19 @@ export interface RepoGuard {
   root: string;
   head: string;
   status: string;
+  /** The `core.*` entries of the repository's config, `core.bare` among them. */
+  config: string;
+}
+
+/** The `core.*` lines of the config: branches and remotes change when other worktrees do. */
+function coreConfig(root: string): string | null {
+  const all = git(root, "config", "--local", "--list");
+  return all === null
+    ? null
+    : all
+        .split("\n")
+        .filter((line) => line.startsWith("core."))
+        .join("\n");
 }
 
 function git(root: string, ...args: string[]): string | null {
@@ -18,7 +31,23 @@ function git(root: string, ...args: string[]): string | null {
 export function installRepoGuard(root: string): RepoGuard | null {
   const head = git(root, "rev-parse", "HEAD");
   const status = git(root, "status", "--porcelain", "--untracked-files=all");
-  return head === null || status === null ? null : { root, head, status };
+  const config = coreConfig(root);
+  return head === null || status === null || config === null
+    ? null
+    : { root, head, status, config };
+}
+
+/** What differs between two config listings, with `core.bare` called out by name. */
+function configChanges(before: string, after: string): string[] {
+  const was = new Set(before.split("\n"));
+  const is = new Set(after.split("\n"));
+  const lines = [
+    ...[...is].filter((line) => line !== "" && !was.has(line)).map((line) => `+ ${line}`),
+    ...[...was].filter((line) => line !== "" && !is.has(line)).map((line) => `- ${line}`),
+  ];
+  if (lines.length === 0) return [];
+  const bare = lines.some((line) => line.includes("core.bare")) ? " (core.bare changed)" : "";
+  return [`git config of the repository changed${bare}:`, ...lines.map((line) => `  ${line}`)];
 }
 
 /** Throws when the repository's head or working tree is not what it was. */
@@ -29,7 +58,9 @@ export function assertRepoUntouched(guard: RepoGuard | null): void {
   const before = new Set(guard.status.split("\n"));
   const changed = status.split("\n").filter((line) => line !== "" && !before.has(line));
   const gone = guard.status.split("\n").filter((line) => line !== "" && !status.includes(line));
+  const config = coreConfig(guard.root) ?? "";
   const problems = [
+    ...configChanges(guard.config, config),
     ...(head !== guard.head ? [`head ${guard.head.slice(0, 8)} -> ${head?.slice(0, 8)}`] : []),
     ...changed,
     ...gone.map((line) => `(was) ${line}`),

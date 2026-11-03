@@ -23,6 +23,7 @@ import { useMinLoading } from "@/hooks/use-min-loading";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -176,6 +177,8 @@ export const BoardView = memo(function BoardView(props: {
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(false);
+  /** The column a dragged card is over. */
+  const [over, setOver] = useState<string | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
   const withDeps = hasFeature(
@@ -341,9 +344,19 @@ export const BoardView = memo(function BoardView(props: {
             <section
               key={id}
               aria-label={t(`kanban.columns.${id}` as Key)}
-              className="flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2"
+              className={cn(
+                "flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2",
+                over === id && "drop-over",
+              )}
               onDragOver={(e) => e.preventDefault()}
-              onDrop={() => drop(id)}
+              onDragEnter={() => setOver(id)}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+              }}
+              onDrop={() => {
+                setOver(null);
+                drop(id);
+              }}
             >
               <h3 className="px-1 font-medium text-muted-foreground text-xs">
                 {t(`kanban.columns.${id}` as Key)}
@@ -377,7 +390,10 @@ export const BoardView = memo(function BoardView(props: {
                       onDragStart={() => {
                         dragging.current = card.id;
                       }}
-                      onDropOn={() => drop(id, card.id)}
+                      onDropOn={() => {
+                        setOver(null);
+                        drop(id, card.id);
+                      }}
                     />
                   ))}
               </ul>

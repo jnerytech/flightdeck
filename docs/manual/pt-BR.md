@@ -35,6 +35,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [Projetos](#projetos)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
+  - [Achar projetos](#achar-projetos)
   - [Ciclo do card](#ciclo-do-card)
   - [Provedores de PR](#provedores-de-pr)
   - [Limite de execuções paralelas](#limite-de-execuções-paralelas)
@@ -80,6 +81,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Quem pode falar com quem](#quem-pode-falar-com-quem)
   - [Times](#times)
 - [Custos, orçamentos e cota](#custos-orçamentos-e-cota)
+  - [A conta do Claude de um host](#a-conta-do-claude-de-um-host)
   - [Cota do plano](#cota-do-plano)
   - [Fila por cota](#fila-por-cota)
   - [Uso](#uso)
@@ -89,6 +91,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Histórico da cota](#histórico-da-cota)
 - [Clientes: agrupar o trabalho entre hosts e projetos](#clientes-agrupar-o-trabalho-entre-hosts-e-projetos)
 - [Resumo da sessão e webhooks](#resumo-da-sessão-e-webhooks)
+- [Central de notificações](#central-de-notificações)
 - [Abas e terminal embutido](#abas-e-terminal-embutido)
   - [Abas](#abas)
   - [Tela dividida](#tela-dividida)
@@ -264,6 +267,45 @@ dentro dos `allowedRoots`, nome, modo de permissão e primeiro prompt. Pedidos d
 aparecem como cards inline, com **Aprovar** e **Negar**. O app reconecta sozinho (de 1 s a 30 s)
 e retoma cada sessão do último evento visto.
 
+#### O primeiro host
+
+Sem nenhum host, o app mostra quatro passos no lugar das telas de sempre: instalar e iniciar o
+daemon (`flightdeckd setup`), copiar o link de pareamento que ele imprime, colar o link e
+apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você aperta
+**Verificar** em **Verificar este host** e libera as pastas de projetos em **Pastas permitidas**.
+Depois, **Achar meus projetos** (em **Projetos**) preenche o Board sem digitar caminho.
+
+#### Verificar um host
+
+**Verificar este host** (na página do host, para hosts online cujo daemon anuncia `doctor.run`)
+pede ao daemon que se confira: configuração, pastas permitidas, serviço, daemon, Claude Code,
+hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, **atenção** ou
+**falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
+O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
+terminal com `flightdeckd doctor`.
+### Sessões sem pedidos de permissão
+
+Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
+perguntar). Para permitir, abra a página do host e use **Sessões sem pedidos de permissão →
+Permitir sessões sem pedidos**; o app pede confirmação e cita o host. A escolha fica na config do
+host (`allowBypassPermissions`) e vale na hora. Com ela ligada:
+
+- **Sessão nova** oferece "Ignorar permissões: sem pedidos de permissão" na lista de modos. Ao
+  escolher, o app pergunta de novo a cada Criar sessão, citando o host e a pasta.
+- A lista de modos na caixa de mensagem de uma sessão aberta oferece todos os modos, inclusive
+  Ignorar permissões e modos mais soltos que o de início. Mudar para Ignorar permissões pergunta
+  a cada vez, citando o host e a sessão.
+- Sessões iniciadas depois de ligar podem ser mudadas para Ignorar permissões; uma que já rodava
+  mantém o que tinha ao começar (o Claude Agent SDK precisa saber disso no início).
+
+Com ela desligada (o padrão) o daemon recusa iniciar uma sessão em Ignorar permissões, e uma
+sessão aberta nunca fica mais permissiva que o modo em que começou. O modo de permissão de uma
+persona continua valendo quando é mais estrito. Desligar não pergunta nada.
+
+Uma sessão em Ignorar permissões não pede nada: o Claude Code pula o pedido de permissão de toda
+ferramenta, inclusive as que de outro modo sempre perguntam (como descartar um card pelo servidor
+MCP do flightdeck). Essa é a escolha que você faz ao escolher esse modo.
+
 ## Serviço
 
 ### Primeira execução: flightdeckd setup
@@ -355,13 +397,21 @@ flightdeckd service uninstall           # para o daemon e remove o serviço
 O daemon do Windows pode manter o daemon de cada distro WSL rodando (e a distro acordada):
 
 ```json
-"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7421 }]
+"wsl": [{ "distro": "Ubuntu", "command": "~/.local/bin/flightdeckd start", "port": 7430 }]
 ```
 
 Cada item vira `wsl.exe -d <distro> --exec bash -lc "<command>"`, reiniciado com backoff de 1 s
 até 60 s, com log em `dataDir/logs/wsl-<distro>.log`. O daemon do WSL escuta em
-`127.0.0.1:7421`, que o Windows alcança por `localhost`. Se esse daemon também recebe hooks, o
+`127.0.0.1:7430`, que o Windows alcança por `localhost`. Se esse daemon também recebe hooks, o
 `hooks.port` dele precisa ser diferente do do Windows (veja [Hooks do Claude Code](#hooks-do-claude-code)).
+
+**Configurando o daemon do WSL.** Rode `flightdeckd setup` dentro da distro. O WSL compartilha o
+`localhost` com o Windows, então o setup detecta o WSL (`WSL_DISTRO_NAME`, ou `/proc/version`) e
+sobe em 10 as portas que ainda estão nos padrões do daemon do Windows: `port` 7430, `hooks.port`
+7431 e `telemetry.port` 7432 (o Windows fica com 7420, 7421 e 7422). Elas são gravadas no
+`config.json`, então ninguém precisa editá-lo à mão; uma porta que você mesmo definiu fica como
+está, e rodar o setup de novo não muda nada. Uma config nova no WSL também chama o host de
+"<hostname> (WSL <distro>)", para distinguir os dois daemons no app.
 
 ## Acesso remoto pela Tailscale
 
@@ -416,6 +466,11 @@ histórico.
 - **Resumo:** abaixo, uma linha tirada do transcript, sem IA: "Pedido: <primeira linha do último
   prompt, até 80 caracteres>" e o que a sessão faz agora ("rodando Bash", "esperando aprovação de
   Write", "ociosa há 12 min"). O daemon manda isso no campo `summary` das listas.
+- **Visualização:** os dois botões no início da barra (**Lista** e **Cartões**) trocam o jeito de
+  desenhar as sessões. O cartão mostra o título (clique para abrir), o projeto, o host, a bolinha de
+  estado, a persona, o custo (nos hosts que informam) e a última linha (o pedido e o que a sessão
+  faz, como a ferramenta esperando aprovação), com o mesmo menu de uma linha. Os cartões ocupam
+  quantas colunas a largura permitir. A escolha fica guardada.
 - **Filtros:** texto, host, origem, estado, "Só fixadas" e "Mostrar arquivadas". As arquivadas
   ficam fora por padrão.
 - **Menu:** renomear, fixar (as fixadas vão para o topo do grupo), arquivar e "Copiar comando"
@@ -652,6 +707,23 @@ No app, o botão ▦ ao lado do host abre **Projetos de &lt;host&gt;**. Cada pro
 Ao iniciar um card, o daemon roda `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` e acrescenta `.flightdeck/worktrees/` ao `.git/info/exclude` do repositório
 (o `.gitignore` não é tocado). O prompt da sessão é a descrição do card mais o modelo.
+
+### Achar projetos
+
+**Achar meus projetos** (na tela **Projetos**, para hosts que anunciam `projects.scan` e
+`projects.clone`) tem duas partes:
+
+- **Procurar nas pastas permitidas** busca repositórios git dentro das pastas permitidas, em dois
+  níveis por padrão, até 200 repositórios. Pula pastas ocultas, `node_modules`, links e o
+  interior de um repositório já achado, e nunca abre mais de 2000 pastas. Repositórios que já são
+  projetos ficam de fora. Marque os que quiser e aperte **Adicionar selecionados**.
+- **Clonar a partir de um endereço** roda `git clone` numa pasta dentro das pastas permitidas e
+  registra o resultado como projeto. Só entram endereços `https://`, `ssh://` e `usuario@host:caminho`;
+  é recusado o endereço que começa com traço, tem espaços, aponta para um caminho local ou usa
+  `file://` ou um auxiliar de transporte, assim como um nome de pasta que não seja um nome simples
+  ou uma pasta que já exista. O git roda sem pedir senha e para depois de cinco minutos, então um
+  repositório privado precisa de chave SSH ou de um credential helper já configurado no host.
+  Toda recusa diz o motivo.
 
 ### Ciclo do card
 
@@ -999,7 +1071,17 @@ deixa uma sessão do Claude criar cards e disparar workflows. Ferramentas:
 
 - `list_projects` e `list_workflows`;
 - `create_card` e `start_card` (com `workflow` e `inputs`);
-- `get_card` e `get_run`.
+- `get_card` e `get_run`;
+- `move_card` (para `backlog`, `in_progress`, `waiting`, `review` ou `done`, pelas mesmas regras de
+  arrastar um card no app), `update_card` (título, descrição), `comment_card` (acrescenta uma
+  nota datada à descrição) e `finish_card` (`done` conclui o card, `discard` o descarta com a
+  worktree e a branch).
+
+Uma sessão gerencia só os cards do **próprio projeto**, e o próprio card quando não cita nenhum
+(a sessão roda na worktree de um card); o card de outro projeto é recusado com o motivo. O quadro
+no app atualiza ao vivo. `finish_card` com `discard` não tem volta, então sempre pede a sua
+aprovação na sessão: a aprovação automática nunca o aprova, e não se oferece "permitir sempre"
+para ele.
 
 Não há ferramenta para aprovar permissões nem para responder gates: isso fica só com você, no
 app. Para registrar no Claude Code:
@@ -1062,7 +1144,9 @@ código 3.
 
 - **Histórico por host** (🕘 ao lado do nome do host): sessões indexadas com título, pasta, data
   da última mensagem, origem (`Flightdeck` ou `terminal`) e o selo "possivelmente em uso";
-  filtros por pasta, período (dias inteiros, em UTC) e origem.
+  filtros por pasta, período (dias inteiros, em UTC) e origem. Os botões **Lista/Cartões** (a mesma
+  escolha da tela Sessões) desenham cada sessão como um cartão com título, pasta, host, data,
+  origem, o selo "possivelmente em uso" e, nos hosts que informam custos, o custo estimado.
 - **Busca global** (`Ctrl+K` dentro do app, ou "Buscar no histórico"): é a última seção da
   [paleta](#paleta-ctrlk). Enter, sem nada escolhido, consulta todos os hosts online em paralelo
   e junta os acertos por data, com host, pasta e trecho destacado. Host offline, ou que não
@@ -1537,6 +1621,24 @@ Num terminal, uma ação sai mascarada quando roda por `flightdeckd action run` 
 `flightdeck` usa): o que ela imprime é o resultado já mascarado pelo daemon. O resto do que
 um terminal mostra não é mascarado.
 
+## Central de notificações
+
+O sino à direita da barra superior guarda toda notificação que o app envia: um pedido que
+precisa de você, uma sessão que terminou, um alerta de orçamento ou de cota, o resultado de um
+PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
+
+- Clique no sino para abrir o painel: mais recentes primeiro, agrupadas por dia (Hoje, Ontem e
+  depois a data).
+- Clique numa entrada para marcá-la como lida e abrir a tela dela (um pedido abre no card dele;
+  um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
+  pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
+  destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
+  navegador quando o card não existe mais.
+- **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
+  (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
+- As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
+  (a janela estava em foco) também não entra nela.
+
 ## Snippets
 
 **Snippets** são comandos e prompts salvos. A tela **Snippets** (barra lateral, para hosts que os
@@ -1769,8 +1871,10 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
 
 - **Um time** é uma sessão coordenadora e as executoras. Cada executora roda num card, com a
   própria worktree.
-- **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome, o número de executoras e,
-  se quiser, a persona da coordenadora.
+- **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome e, se quiser, a persona e o
+  modelo da coordenadora. As executoras são linhas: cada uma tem a sua persona e o seu modelo, e
+  você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). Sem
+  escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
 - **O ciclo da coordenadora:**
   1. quebrar o objetivo em tarefas, cada uma com o que significa "pronto";
   2. mandar uma tarefa para cada executora e pedir um aviso quando ela ficar ociosa;
@@ -1783,13 +1887,49 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   - pausar (STOP a todos os membros) e retomar;
   - mandar uma mensagem a todos;
   - trocar a persona de um membro;
-  - acrescentar uma executora ou tirar um membro (o card fica no board);
+  - acrescentar uma executora, escolhendo a persona e o modelo dela (a coordenadora recebe o aviso
+    com o nome e o card da nova executora);
+  - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
   retoma e avisa.
 
 ## Custos, orçamentos e cota
+
+### A conta do Claude de um host
+
+A página do host tem um cartão **Conta**, acima do painel de consumo, que mostra em qual conta do
+Claude o próprio `claude` do host está conectado. O Flightdeck nunca faz o seu login e nunca vê um
+token: ele pergunta ao `claude` já instalado no host (`claude auth status`, mais os relatórios de
+conta e de uso do Agent SDK), e os termos da Anthropic não permitem login dentro de apps de
+terceiros.
+
+#### Qual conta este host está usando?
+
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+  barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
+  mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
+  as informa.
+- Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
+  que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
+  fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.
+- Cada host tem a sua conta. O e-mail aparece só neste cartão: não vai para notificações, título
+  da janela, linha de status nem bandeja, e o daemon o guarda só na memória, nunca no banco nem nos
+  logs.
+- Se uma leitura falha, o cartão mantém a última e avisa "Não foi possível atualizar". Se o host
+  está offline, ele diz isso em vez de mostrar uma leitura antiga.
+
+#### E se o host não estiver conectado?
+
+O cartão diz "Este host não está conectado ao Claude." e mostra o comando **`claude auth login`**.
+Abra o terminal do host (o botão **Abrir terminal** faz isso), rode o comando lá, siga os passos e
+volte: o cartão se atualiza. **Copiar comando** copia. O cartão não tem formulário e nunca pede um
+código ou um token.
+
+Um host que usa chave de API ou um provedor de nuvem (Bedrock, Vertex, um gateway) mostra "Os
+limites do plano não se aplicam": ele não tem janelas de plano. Se o cartão disser que não foi
+possível ler a conta, confira se o `claude` está instalado nesse host e aperte **Tentar de novo**.
 
 ### Cota do plano
 
@@ -1830,6 +1970,14 @@ tokens e turnos.
 - **Custo:** é a diferença do total que o SDK informa para cada sessão, nunca a soma turno a
   turno.
 - **Projeto:** o mesmo da tela Sessões (o remoto `origin`, ou o caminho do repositório).
+- **Agrupado por projeto:** cada projeto é um bloco com o total (o mais caro primeiro) e seus
+  dias abaixo, do mais novo ao mais antigo. Datas e custos nunca quebram de linha.
+- **Ocultos:** pastas temporárias (`temp`, `tmp`, `/var/folders`) e worktrees de agentes
+  (`.claude/worktrees`) não aparecem.
+- **Abrir as sessões:** clique num dia para abrir o Histórico filtrado pela pasta desse projeto e
+  por esse dia. Um projeto conhecido pelo remoto (compartilhado por várias pastas e worktrees)
+  abre o Histórico filtrado pelo próprio projeto, então todas as pastas dele aparecem; uma ficha
+  "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
 ### Custos
@@ -2090,7 +2238,7 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
 - **A barra:** cada aba mostra o ícone do tipo e o título, e um selo quando uma sessão nela
   precisa de você, está rodando ou respondeu sem nenhuma aba mostrando (**Não lida**). **Fixar**
   deixa a aba à esquerda, só com o ícone. Os botões de fixar, mover e fechar, depois das abas,
-  agem na aba ativa; o botão do meio fecha qualquer aba. Arraste uma aba sobre outra para reordenar.
+  agem na aba ativa; o botão do meio fecha qualquer aba. Arraste uma aba sobre outra para reordenar. Durante o arrasto, uma barra marca onde a aba vai cair. A ordem fica guardada entre as sessões.
 - **Atalhos:**
 
   | Atalho | Ação |
@@ -2100,7 +2248,8 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   | `Ctrl+Shift+T` | reabre a última fechada (guarda as últimas 20) |
   | `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima e anterior |
   | `Ctrl+1`…`Ctrl+9` | vai para aquela aba (`Ctrl+9` é a última) |
-  | `Ctrl+Shift+PageUp` / `PageDown` | move a aba para a esquerda ou a direita |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move a aba ativa para a esquerda ou a direita |
+  | `Ctrl+Shift+←` / `→` (numa aba com o foco) | move essa aba para a esquerda ou a direita; o leitor de tela ouve a nova posição |
   | `Ctrl+\` | divide a tela ou junta as áreas |
 
   Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W` e `Ctrl+Shift+T`: lá, use os
@@ -2134,11 +2283,14 @@ numa aba, sem SSH.
 - **Abrir:** **Novo terminal** na página do host, ou **Novo terminal em <host>** na paleta, abre o
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
-- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu **Copiar** /
-  **Colar** do botão direito (`Ctrl+C` vai para o processo),
-  buscar com `Ctrl+Shift+F` (Enter para a próxima, Shift+Enter para a anterior, Esc fecha). Links
-  abrem no navegador. A fonte é a monoespaçada do sistema; o tamanho fica nas Configurações
-  (**Tamanho da fonte do terminal**, de 10 a 24).
+- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu do botão direito
+  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**; `Ctrl+C` vai para o
+  processo). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
+  vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
+  busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
+  monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
+  10 a 24).
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
   continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
@@ -2273,7 +2425,7 @@ vermelho).
   Configurações ou na paleta, sem reiniciar. Datas e horas saem sempre em hora local. O
   vocabulário está em [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Modos de permissão** aparecem com nome e uma linha de explicação, nunca com o valor técnico;
-  o "Sem perguntas" avisa em vermelho.
+  o "Ignorar permissões" avisa em vermelho e só aparece em um host que o permite.
 
 ### Modo demonstração, prints e testes de ponta a ponta
 
@@ -2390,9 +2542,15 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - em **Configurações**: **Procurar atualização agora** e **Avisar sobre atualizações** (ligado
     por padrão).
 - **O daemon:**
-  - verifica o `daemon-latest.json` ao subir e a cada `updates.checkIntervalH` (24 h);
+  - verifica o `daemon-latest.json` ao subir, quando pedido e a cada `updates.checkIntervalH`
+    (6 h por padrão);
   - na página do host, o app mostra **Atualizar daemon para X** quando há versão nova, e pede
     confirmação;
+  - a página do host mostra também quando o daemon verificou pela última vez, e o erro dessa
+    verificação se ela falhou, com **Verificar atualizações**: pede ao daemon que olhe o manifesto
+    agora (comando `daemon.update.check`). Quando o app é mais novo que o daemon, a página faz isso
+    sozinha uma vez ao abrir, no máximo a cada 10 minutos por host. Um daemon anterior a esse
+    comando o recusa, e a página diz o motivo; atualize esse à mão com `flightdeckd update`;
   - o daemon baixa o binário do próprio sistema para `<dataDir>/updates/`, confere o sha256 e a
     assinatura, e roda o `flightdeckd update --from` fora do serviço, para sobreviver à própria
     parada: uma tarefa única `Flightdeck\update` no Windows e `systemd-run --user` no Linux;
@@ -2401,7 +2559,7 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 24 } }
+               "checkIntervalH": 6 } }
 ```
 
 Só o `flightdeckd` compilado verifica o GitHub por padrão. Rodando do código-fonte não há binário

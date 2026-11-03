@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
+import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
@@ -33,6 +34,7 @@ import type { SidebarGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { RenameHostDialog } from "./RenameHostDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
 
 const ITEM =
@@ -160,6 +162,7 @@ export function Sidebar(props: {
   onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
   onNewSession(hostId: string): void;
   onRemoveHost(hostId: string): void;
+  onRenameHost(hostId: string, name: string): HostNameError | null;
   onOpenSearch(): void;
   /** The next navigation opens a new tab ("Abrir em nova aba"). */
   onNewTab(): void;
@@ -189,6 +192,7 @@ export function Sidebar(props: {
   };
   /** The host whose removal is being confirmed. */
   const [removing, setRemoving] = useState<HostView | null>(null);
+  const [renaming, setRenaming] = useState<HostView | null>(null);
   const icon = "size-4 shrink-0";
   const needHost = (build: (hostId: string) => Route) => () => {
     if (navHost) go(build(navHost.id));
@@ -470,6 +474,9 @@ export function Sidebar(props: {
                             </DropdownMenuItem>
                           </>
                         )}
+                        <DropdownMenuItem onSelect={() => setRenaming(host)}>
+                          {t("hostPage.rename")}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setRemoving(host)}>
                           {t("sidebar.removeHost")}
                         </DropdownMenuItem>
@@ -534,6 +541,13 @@ export function Sidebar(props: {
           onClick={props.onToggleTheme}
         />
       </div>
+      {renaming && (
+        <RenameHostDialog
+          name={renaming.name}
+          onRename={(name) => props.onRenameHost(renaming.id, name)}
+          onClose={() => setRenaming(null)}
+        />
+      )}
       {removing && (
         <ConfirmDialog
           message={t("sidebar.removeConfirm", { host: removing.name })}

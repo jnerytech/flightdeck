@@ -162,9 +162,7 @@ export function GlobalSearch(props: {
                 <span>{item.label}</span>{" "}
                 <span className="truncate text-muted-foreground text-xs">{item.detail}</span>
                 {item.shortcut && (
-                  <kbd className="ml-auto shrink-0 rounded border bg-muted px-1.5 font-mono text-xs">
-                    {item.shortcut}
-                  </kbd>
+                  <kbd className="keycap ml-auto shrink-0 bg-muted font-mono">{item.shortcut}</kbd>
                 )}
               </button>
             ))}

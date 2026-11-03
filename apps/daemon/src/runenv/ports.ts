@@ -112,7 +112,12 @@ export class CardPorts {
         .run(cardId, start);
       return start;
     }
-    throw new FlightdeckError("invalid_state", `sem bloco de ${BLOCK_SIZE} portas livres`);
+    throw new FlightdeckError(
+      "invalid_state",
+      `no free block of ${BLOCK_SIZE} ports`,
+      "run_ports_exhausted",
+      { size: BLOCK_SIZE },
+    );
   }
 
   private async blockFree(start: number): Promise<boolean> {

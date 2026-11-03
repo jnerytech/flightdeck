@@ -1,4 +1,5 @@
 import type {
+  AccountState,
   AskpassRequest,
   BgList,
   BgSession,
@@ -56,6 +57,7 @@ import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
   AppUpdate,
+  Notification,
   Platform,
   TrayAction,
   TrayStatus,
@@ -85,8 +87,18 @@ import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
+import { type HostNameError, hostNameError } from "./host-name.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
+import {
+  type HubFilter,
+  type HubView,
+  hubRows,
+  loadHubFilter,
+  loadHubView,
+  saveHubFilter,
+  saveHubView,
+} from "./hub.ts";
+import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -131,7 +143,7 @@ import {
 } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
-import { hasFeature } from "./version.ts";
+import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
@@ -154,12 +166,12 @@ export interface HostView extends HostConfig {
   info: HelloResult | null;
   /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
   hostInfo: HostInfoResult | null;
-  /** Round trip of the last heartbeat. */
-  latencyMs: number | null;
   /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
   incompatibility: string | null;
   /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
   daemonUpdate: { target: string; failed: string | null } | null;
+  /** The daemon's update check asked for from the app: running, or why it did not run. */
+  updateCheck: { busy: boolean; failed: string | null } | null;
   sessions: SidebarSession[];
 }
 
@@ -175,6 +187,8 @@ export interface AppState {
   selected: Selection | null;
   error: string | null;
   settings: Settings;
+  /** The notifications the app sent, newest first, kept for the notification center. */
+  inbox: InboxEntry[];
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -194,6 +208,8 @@ export interface AppState {
   meta: Record<string, SessionMeta>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
+  /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
+  account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
@@ -282,6 +298,7 @@ export type HostCommandType = Extract<
   | `terminal.${string}`
   | `runenv.${string}`
   | "roots.add"
+  | "host.bypass"
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
@@ -301,6 +318,7 @@ export type HostCommandType = Extract<
   | `gate.${string}`
   | `maintenance.${string}`
   | `quota.${string}`
+  | `account.${string}`
   | `usage.${string}`
   | `rules.${string}`
   | `costs.${string}`
@@ -337,6 +355,9 @@ export type HostCommandType = Extract<
   | "files.sessions"
   | "fs.dirs"
   | "fs.files"
+  | "doctor.run"
+  | "projects.scan"
+  | "projects.clone"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
@@ -601,14 +622,17 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** The least time between two checks the app starts by itself for one host. */
+const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
+
 const newHostView = (config: HostConfig): HostView => ({
   ...config,
   status: "offline",
   info: null,
   hostInfo: null,
-  latencyMs: null,
   incompatibility: null,
   daemonUpdate: null,
+  updateCheck: null,
   sessions: [],
 });
 
@@ -711,6 +735,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      account: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -735,6 +760,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
+      inbox: [],
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
@@ -766,6 +792,9 @@ export class AppStore {
   get tabs(): Tabs {
     return this.workspace.tabs;
   }
+
+  /** When the page last asked each host for an update check on its own. */
+  private readonly autoUpdateChecks = new Map<string, number>();
 
   getState = (): AppState => this.state;
 
@@ -817,12 +846,40 @@ export class AppStore {
     saveHubFilter(this.platform.storage, filter);
   }
 
+  /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
+  private readonly latencies = new Map<string, number | null>();
+  private readonly latencyListeners = new Set<() => void>();
+
+  getLatency = (hostId: string): number | null => this.latencies.get(hostId) ?? null;
+
+  /** For the one component that shows a latency; a heartbeat never reaches `subscribe`. */
+  subscribeLatency = (listener: () => void): (() => void) => {
+    this.latencyListeners.add(listener);
+    return () => this.latencyListeners.delete(listener);
+  };
+
+  private setLatency(hostId: string, latencyMs: number | null): void {
+    if (this.getLatency(hostId) === latencyMs) return;
+    this.latencies.set(hostId, latencyMs);
+    for (const listener of [...this.latencyListeners]) listener();
+  }
+
+  /** How the hub draws its sessions: lines or cards. */
+  hubView(): HubView {
+    return loadHubView(this.platform.storage);
+  }
+
+  saveHubView(view: HubView): void {
+    saveHubView(this.platform.storage, view);
+  }
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
 
   async init(): Promise<void> {
+    this.update({ inbox: loadInbox(this.platform.storage) });
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.theme.start();
@@ -835,6 +892,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      account: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -914,9 +972,13 @@ export class AppStore {
     this.persistHosts();
   }
 
-  renameHost(hostId: string, name: string): void {
-    this.updateHost(hostId, (h) => ({ ...h, name }));
+  /** Saves the app-side display name (trimmed); the error says why a name is refused. */
+  renameHost(hostId: string, name: string): HostNameError | null {
+    const error = hostNameError(name, this.state.hosts, hostId);
+    if (error) return error;
+    this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
+    return null;
   }
 
   /** Drops the connection and opens a new one right away. */
@@ -996,6 +1058,39 @@ export class AppStore {
       this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
     } else
       void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+  }
+
+  /** Sends an OS notification and keeps it in the notification center. */
+  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+    const entry: InboxEntry = {
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
+      title: n.title,
+      body: n.body,
+      ...(n.link ? { link: n.link } : {}),
+      ...(route ? { route } : {}),
+      ...(fallbackUrl ? { fallbackUrl } : {}),
+      read: false,
+    };
+    this.setInbox(addEntry(this.state.inbox, entry));
+    void this.platform.notify(n);
+  }
+
+  private setInbox(inbox: InboxEntry[]): void {
+    this.update({ inbox });
+    saveInbox(this.platform.storage, inbox);
+  }
+
+  inboxMarkRead(id: string): void {
+    this.setInbox(markRead(this.state.inbox, id));
+  }
+
+  inboxMarkAllRead(): void {
+    this.setInbox(markAllRead(this.state.inbox));
+  }
+
+  inboxClear(): void {
+    this.setInbox([]);
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
@@ -1441,8 +1536,14 @@ export class AppStore {
             }
             if (s.meta) putMeta(key, s.meta);
           }
-          const lists = { managed: managed?.sessions ?? [], history: history?.sessions ?? [] };
-          const standardNames = standard?.names ?? [];
+          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+          // the one the state holds stays; an empty answer is the only way a list empties.
+          const before = this.state.hub[host.id];
+          const lists = {
+            managed: managed ? managed.sessions : (before?.managed ?? []),
+            history: history ? history.sessions : (before?.history ?? []),
+          };
+          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
           const patch: Partial<AppState> = {};
           if (!sameJson(this.state.hub[host.id], lists)) {
             patch.hub = { ...this.state.hub, [host.id]: lists };
@@ -1903,7 +2004,7 @@ export class AppStore {
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
       onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
-      onPing: () => this.updateHost(config.id, (h) => ({ ...h, latencyMs: conn.latencyMs })),
+      onPing: () => this.setLatency(config.id, conn.latencyMs),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
@@ -1916,10 +2017,13 @@ export class AppStore {
       onTeams: (frame) => {
         for (const listener of this.teamListeners) listener(config.id, frame);
         if (frame.reason) {
-          void this.platform.notify({
-            title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
-            body: frame.reason,
-          });
+          this.notifyUser(
+            {
+              title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
+              body: frame.reason,
+            },
+            { name: "teams", host: config.id, team: frame.team.id },
+          );
         }
       },
       onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
@@ -1940,7 +2044,7 @@ export class AppStore {
           text: alert.message,
         };
         this.update({ notices: [...this.state.notices, notice] });
-        void this.platform.notify({
+        this.notifyUser({
           title: this.i18n.t("vaultAudit.alertTitle"),
           body: alert.message,
         });
@@ -1948,6 +2052,8 @@ export class AppStore {
       onRunUpdated: (run) => this.onRun(config.id, run),
       onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
+      onAccountUpdated: (state) =>
+        this.update({ account: { ...this.state.account, [config.id]: state } }),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
       onTerminal: (frame) => {
         for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
@@ -2094,6 +2200,37 @@ export class AppStore {
     );
   }
 
+  /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
+  async checkDaemonUpdate(hostId: string): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: true, failed: null } }));
+    try {
+      const update = await conn.request("daemon.update.check", {});
+      this.updateHost(hostId, (h) => ({
+        ...h,
+        updateCheck: null,
+        hostInfo: h.hostInfo ? { ...h.hostInfo, update } : h.hostInfo,
+      }));
+    } catch (error) {
+      const failed = describeError(error);
+      this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: false, failed } }));
+    }
+  }
+
+  /** The same check, once when the app is newer than the daemon, at most once per 10 minutes. */
+  async autoCheckDaemonUpdate(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const info = host?.hostInfo;
+    if (host?.status !== "online" || !info?.update) return;
+    if (!isNewer(APP_VERSION, info.daemonVersion)) return;
+    const last = this.autoUpdateChecks.get(hostId);
+    const now = this.now();
+    if (last !== undefined && now - last < AUTO_UPDATE_CHECK_MS) return;
+    this.autoUpdateChecks.set(hostId, now);
+    await this.checkDaemonUpdate(hostId);
+  }
+
   private onEvent(hostId: string, envelope: EventEnvelope): void {
     if (envelope.event.type === "session.summary") {
       this.onSummary(hostId, envelope.event);
@@ -2153,7 +2290,7 @@ export class AppStore {
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
-      void this.platform.notify(n);
+      this.notifyUser(n);
     }
   }
 
@@ -2209,7 +2346,7 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      void this.platform.notify({
+      this.notifyUser({
         title: this.i18n.t("notify.externalTitle"),
         body: `${host?.name ?? hostId} · ${frame.toolName}`,
         link: requestLink(hostId, frame.requestId),
@@ -2230,11 +2367,33 @@ export class AppStore {
       const known = window.window === "five_hour" || window.window === "seven_day";
       const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
       const percent = Math.round((window.utilization ?? 0) * 100);
-      void this.platform.notify({
-        title: t("notify.quotaTitle"),
-        body: t("notify.quotaBody", { host: host.name, window: label, percent }),
-      });
+      this.notifyUser(
+        {
+          title: t("notify.quotaTitle"),
+          body: t("notify.quotaBody", { host: host.name, window: label, percent }),
+        },
+        { name: "host", host: hostId },
+      );
     }
+  }
+
+  /** Starts the host's account stream while its card is on screen; returns the function that ends it. */
+  watchAccount(hostId: string): () => void {
+    const conn = this.connections.get(hostId);
+    conn?.watchAccount(true);
+    // What the host already knows comes at once; its first read follows through the stream.
+    void conn?.request("account.get", {}).then(
+      (state) => this.update({ account: { ...this.state.account, [hostId]: state } }),
+      () => {},
+    );
+    return () => conn?.watchAccount(false);
+  }
+
+  /** Asks the host to read its account again now; `false` when it refused (the banner says why). */
+  async refreshAccount(hostId: string): Promise<boolean> {
+    const state = await this.hostCommand(hostId, "account.refresh", {});
+    if (state) this.update({ account: { ...this.state.account, [hostId]: state } });
+    return state !== null;
   }
 
   /** Creates a budget or changes the one with `input.id`; the list follows the answer. */
@@ -2593,14 +2752,17 @@ export class AppStore {
         Math.round(threshold * 100),
         usd(state?.limitUsd ?? 0),
       );
-      void this.platform.notify({
-        title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t("clients.budgetAlert", {
-          name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
-          percent: Math.round(threshold * 100),
-          limit: usd(state?.limitUsd ?? 0),
-        }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("messages.budgetTitle"),
+          body: this.i18n.t("clients.budgetAlert", {
+            name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
+            percent: Math.round(threshold * 100),
+            limit: usd(state?.limitUsd ?? 0),
+          }),
+        },
+        { name: "costs", client: clientId },
+      );
     }
   }
 
@@ -2838,11 +3000,15 @@ export class AppStore {
       watch,
     );
     if (watch.status === "needs_you" && before?.status !== "needs_you") {
-      const title = this.state.cards[key]?.title ?? watch.cardId;
-      void this.platform.notify({
-        title: this.i18n.t("watchUi.notifyTitle"),
-        body: `${title}: ${watch.reason ?? ""}`,
-      });
+      const card = this.state.cards[key];
+      const title = card?.title ?? watch.cardId;
+      this.notifyUser(
+        { title: this.i18n.t("watchUi.notifyTitle"), body: `${title}: ${watch.reason ?? ""}` },
+        card
+          ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
+          : undefined,
+        card?.prUrl,
+      );
     }
   }
 
@@ -2912,7 +3078,7 @@ export class AppStore {
       (a) => a.hostId !== hostId || loopPairKey(a) !== loopPairKey(alert),
     );
     this.update({ loopAlerts: [...others, alert] });
-    void this.platform.notify({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+    this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
   }
 
   /**
@@ -3266,7 +3432,7 @@ export class AppStore {
         },
       },
     };
-    void this.platform.notify({
+    this.notifyUser({
       title: t("vaultApproval.notifyTitle"),
       body: t("vaultApproval.notifyBody", {
         requester,
@@ -3332,15 +3498,22 @@ export class AppStore {
       Math.round(update.threshold * 100),
       usd(update.budget.limitUsd),
     );
-    void this.platform.notify({
-      title: this.i18n.t("messages.budgetTitle"),
-      body: this.i18n.t("messages.budgetBody", {
-        host: host.name,
-        label: budgetLabel(update.budget, this.i18n.t),
-        percent: Math.round(update.threshold * 100),
-        limit: usd(update.budget.limitUsd),
-      }),
-    });
+    this.notifyUser(
+      {
+        title: this.i18n.t("messages.budgetTitle"),
+        body: this.i18n.t("messages.budgetBody", {
+          host: host.name,
+          label: budgetLabel(update.budget, this.i18n.t),
+          percent: Math.round(update.threshold * 100),
+          limit: usd(update.budget.limitUsd),
+        }),
+      },
+      {
+        name: "costs",
+        host: hostId,
+        ...(update.budget.projectKey ? { projectKey: update.budget.projectKey } : {}),
+      },
+    );
   }
 
   private keepBudget(hostId: string, budget: Budget, removed: boolean): void {
@@ -3359,10 +3532,14 @@ export class AppStore {
     const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      void this.platform.notify({
-        title: this.i18n.t("deps.notifyTitle"),
-        body: this.i18n.t("deps.notifyBody", { title: card.title }),
-      });
+      this.notifyUser(
+        {
+          title: this.i18n.t("deps.notifyTitle"),
+          body: this.i18n.t("deps.notifyBody", { title: card.title }),
+        },
+        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
+        card.prUrl,
+      );
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });

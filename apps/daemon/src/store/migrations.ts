@@ -763,4 +763,9 @@ export const MIGRATIONS: readonly string[] = [
     UPDATE workflow_runs SET status_reason_key = NULL, status_reason_params = NULL WHERE id = NEW.id;
   END;
   `,
+  // A session keeps the subagents (the personas as `persona-<id>`) it opened with, so a run that
+  // reattaches later does not read the persona files again.
+  `
+  ALTER TABLE sessions ADD COLUMN agents TEXT;
+  `,
 ];

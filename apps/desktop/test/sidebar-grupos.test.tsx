@@ -37,6 +37,7 @@ function setup(features: string[] = ALL, platform = memoryPlatform(false, "en").
       onOpenProjectScreen={() => {}}
       onNewSession={() => {}}
       onRemoveHost={() => {}}
+      onRenameHost={() => null}
       onOpenSearch={() => {}}
       onNewTab={() => {}}
       onToggleTheme={() => {}}

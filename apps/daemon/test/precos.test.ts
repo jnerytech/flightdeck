@@ -167,7 +167,7 @@ describe("precos", () => {
       models: { "claude-mystery-9": { input: M, output: 0, cacheRead: 0 } },
       fastMultiplier: { "claude-opus-5-5": 1 },
     });
-    expect(costs.reprice()).toEqual({ entries: 5 });
+    expect(await costs.reprice()).toEqual({ entries: 5 });
     const after = costById(db);
     expect(after.msg_A ?? 0).toBeCloseTo(0.0037, 12);
     expect(after.msg_B ?? 0).toBeCloseTo(0.00044, 12);
@@ -230,9 +230,11 @@ describe("precos", () => {
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toEqual([
-      "costs",
-    ]);
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toEqual(["costs"]);
     expect(await client.data("costs.reprice", {})).toEqual({ entries: 5 });
     // Without an indexer there is no load to wait for.
     expect(await client.data("costs.status", {})).toEqual({

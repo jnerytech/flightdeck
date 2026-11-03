@@ -51,9 +51,11 @@ const payload = {
 describe("webhook-protocolo", () => {
   test("the host announces webhook and webhook.send answers with the status only", async () => {
     const { client, posted } = await served(true);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "webhook",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("webhook");
     const result = WebhookSendResult.parse(await client.data("webhook.send", payload));
     expect(result).toEqual({ status: 200, retryAfterMs: null, refused: null });
     expect(posted).toEqual([{ url: URL_SECRET, body: '{"text":"hi"}' }]);

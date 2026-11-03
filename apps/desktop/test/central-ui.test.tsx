@@ -98,11 +98,11 @@ async function setup() {
   const beta = makeDaemon(cleanups);
   const repoA = clone(alfa.root);
   const repoB = clone(beta.root);
-  const { sessionId } = alfa.manager.create({ cwd: repoA, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await alfa.manager.create({ cwd: repoA, prompt: "oi", name: "Gerenciada" });
   // Idle before the terminal session acts, so its last activity is older (fixed order).
   await poll(() => alfa.manager.get(sessionId).status === "idle");
-  alfa.central.hooksInstall(true);
-  const hooksToken = loadConfig(alfa.configFile).hooks.token ?? "";
+  await alfa.central.hooksInstall(true);
+  const hooksToken = (await loadConfig(alfa.configFile)).hooks.token ?? "";
   const receptor = alfa.central.receptorUrl() ?? "";
   const hook = (event: string, body: Record<string, unknown>) =>
     fetch(`${receptor}/hooks/${event}`, {
@@ -116,12 +116,12 @@ async function setup() {
   writeTranscript(alfa.historyRoot, "-repo", "ext-1", [
     userLine({ uuid: "x1", text: "rode os testes", cwd: repoA, ts: new Date().toISOString() }),
   ]);
-  alfa.history.scan();
+  await alfa.history.scan();
   const old = writeTranscript(beta.historyRoot, "-repo", "hist-1", [
     userLine({ uuid: "u1", text: "Do histórico", cwd: repoB, ts: "2026-09-01T10:00:00.000Z" }),
   ]);
   utimesSync(old, new Date(Date.now() - 3_600_000), new Date(Date.now() - 3_600_000));
-  beta.history.scan();
+  await beta.history.scan();
 
   const mem = memoryPlatform();
   const copied: string[] = [];

@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
@@ -234,7 +234,7 @@ class FakeRun implements AgentRun {
       if (text.includes("[fail]")) throw new Error("falha simulada do runtime");
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[bash]")) await this.bashCall(abort.signal);
-      if (text.includes("[commit]")) this.commit(text);
+      if (text.includes("[commit]")) await this.commit(text);
       for (const [, cost] of text.matchAll(/\[cost:(\d+(?:\.\d+)?)\]/g)) {
         const total = this.costs.get(this.claudeSessionId) ?? 0;
         this.costs.set(this.claudeSessionId, total + Number(cost));
@@ -262,21 +262,23 @@ class FakeRun implements AgentRun {
   }
 
   /** Writes `fake-<n>.txt` in the cwd and commits it, like an agent working on a card. */
-  private commit(text: string): void {
+  private async commit(text: string): Promise<void> {
     const file = `fake-${++this.commits}.txt`;
-    writeFileSync(join(this.opts.cwd, file), `${text}\n`);
+    await writeFile(join(this.opts.cwd, file), `${text}\n`);
     for (const args of [
       ["add", file],
       ["commit", "-q", "-m", `fake: ${text}`],
     ]) {
-      const git = Bun.spawnSync([whichOnPath("git") ?? "git", ...args], {
+      const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
         cwd: this.opts.cwd,
         // The daemon's current environment, not the one it started with (see board/command.ts).
         env: process.env,
+        stdin: "ignore",
         stdout: "ignore",
         stderr: "pipe",
       });
-      if (git.exitCode !== 0) throw new Error(`git ${args[0]}: ${git.stderr.toString().trim()}`);
+      const [error, code] = await Promise.all([new Response(git.stderr).text(), git.exited]);
+      if (code !== 0) throw new Error(`git ${args[0]}: ${error.trim()}`);
     }
   }
 

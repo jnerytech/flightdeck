@@ -43,7 +43,7 @@ function ledgerSetup() {
     );
   };
   const open = async (cwd: string, prompt: string) => {
-    const { sessionId } = ctx.manager.create({ cwd, prompt });
+    const { sessionId } = await ctx.manager.create({ cwd, prompt });
     await poll(() => ctx.manager.get(sessionId).status === "idle", 3000);
     return sessionId;
   };

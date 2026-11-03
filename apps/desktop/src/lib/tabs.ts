@@ -23,6 +23,11 @@ interface Closed {
   pinned: boolean;
 }
 
+/** The route as a string that does not depend on the order of its fields. */
+const routeKey = (route: Route): string => JSON.stringify(route, Object.keys(route).sort());
+
+const START: Route = { name: "start" };
+
 let counter = 0;
 const randomId = () => `tab-${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
@@ -41,30 +46,33 @@ export class Tabs {
   private readonly unwatch = new Map<string, () => void>();
 
   constructor(
-    initial: Route = { name: "home" },
+    initial: Route | null = { name: "home" },
     private readonly newId: () => string = randomId,
   ) {
-    const first = this.add(initial, 0, false);
-    first.preview = true;
-    this.activeId = first.id;
-    // The facade follows whichever tab is active, so `store.router` keeps meaning "where I am".
-    const active = () => this.active.router;
+    if (initial) {
+      const first = this.add(initial, 0, false);
+      first.preview = true;
+      this.activeId = first.id;
+    }
+    // The facade follows whichever tab is active, so `store.router` keeps meaning "where I am";
+    // with no tab it is on the start screen, and a push opens the first tab.
+    const active = () => (this.tabs.length === 0 ? null : this.active.router);
     this.router = {
       get current() {
-        return active().current;
+        return active()?.current ?? START;
       },
       get canBack() {
-        return active().canBack;
+        return active()?.canBack ?? false;
       },
       get canForward() {
-        return active().canForward;
+        return active()?.canForward ?? false;
       },
       push: (route) => {
-        if (this.newTab) this.open(route);
-        else active().push(route);
+        if (this.newTab || this.tabs.length === 0) this.open(route);
+        else active()?.push(route);
       },
-      back: () => active().back(),
-      forward: () => active().forward(),
+      back: () => active()?.back(),
+      forward: () => active()?.forward(),
       subscribe: this.subscribe,
     };
   }
@@ -75,6 +83,20 @@ export class Tabs {
     active: number,
     newId?: () => string,
   ): Tabs {
+    if (entries.length === 0) return new Tabs(null, newId);
+    // One tab per screen: a duplicate from an older snapshot folds into the first (a pin wins).
+    const kept: typeof entries = [];
+    const slot = new Map<string, number>();
+    const activeKey = routeKey((entries[active] ?? (entries[0] as (typeof entries)[0])).route);
+    for (const entry of entries) {
+      const at = slot.get(routeKey(entry.route));
+      if (at === undefined) {
+        slot.set(routeKey(entry.route), kept.length);
+        kept.push({ ...entry });
+      } else if (entry.pinned) (kept[at] as (typeof kept)[0]).pinned = true;
+    }
+    entries = kept;
+    active = slot.get(activeKey) as number;
     const [first, ...rest] = entries as [
       { route: Route; pinned: boolean; preview?: boolean },
       ...typeof entries,
@@ -124,6 +146,13 @@ export class Tabs {
       this.open(route);
       return;
     }
+    const key = routeKey(route);
+    const existing = this.tabs.find((tab) => routeKey(tab.router.current) === key);
+    if (existing) {
+      this.activeId = existing.id;
+      this.emit();
+      return;
+    }
     const preview = this.tabs.find((tab) => tab.preview && !tab.pinned);
     if (preview) {
       this.activeId = preview.id;
@@ -149,7 +178,7 @@ export class Tabs {
     this.unwatch.get(id)?.();
     this.unwatch.delete(id);
     this.tabs = this.tabs.filter((other) => other.id !== id);
-    if (this.tabs.length === 0) this.activeId = this.add({ name: "home" }, 0, false).id;
+    if (this.tabs.length === 0) this.activeId = "";
     else if (this.activeId === id) {
       this.activeId = (this.tabs[Math.min(index, this.tabs.length - 1)] as Tab).id;
     }
@@ -185,7 +214,7 @@ export class Tabs {
 
   /** Ctrl+1…8 go to that tab, Ctrl+9 and any number past the end to the last. */
   goto(n: number): void {
-    if (n < 1) return;
+    if (n < 1 || this.tabs.length === 0) return;
     this.activeId = (this.tabs[Math.min(n, 9, this.tabs.length) - 1] as Tab).id;
     this.emit();
   }
@@ -259,6 +288,7 @@ export class Tabs {
   }
 
   private step(by: number): void {
+    if (this.tabs.length === 0) return;
     const index = this.tabs.findIndex((tab) => tab.id === this.activeId);
     this.activeId = (this.tabs[(index + by + this.tabs.length) % this.tabs.length] as Tab).id;
     this.emit();

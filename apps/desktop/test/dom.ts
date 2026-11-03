@@ -39,3 +39,11 @@ export function liveScreen<T extends object>(within: (element: HTMLElement) => T
     get: (_target, key) => (within(document.body) as Record<PropertyKey, unknown>)[key],
   });
 }
+
+// Lazy screens load their chunk when a route opens; a test that clicks into one and asserts at
+// once would race that load (and pass or fail by file order, whichever test cached it first).
+// Every UI test file imports this module, so the screens are loaded here, once, before any test.
+registerDom();
+const { preloadAllScreens } = await import("../src/ui/lazy-screen.ts");
+await import("../src/ui/Screens.tsx");
+await preloadAllScreens();

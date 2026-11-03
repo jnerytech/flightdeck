@@ -52,6 +52,23 @@ export function terminalTheme(theme: Theme): TerminalColors {
   return COLORS[theme];
 }
 
+/** The colors xterm paints find matches with (it reads #RRGGBB only). */
+export interface FindDecorations {
+  matchBackground?: string;
+  matchBorder?: string;
+  matchOverviewRuler: string;
+  activeMatchBackground?: string;
+  activeMatchBorder?: string;
+  activeMatchColorOverviewRuler: string;
+}
+
+export const FIND_DECORATIONS: FindDecorations = {
+  matchBackground: "#8a6d1c",
+  matchOverviewRuler: "#8a6d1c",
+  activeMatchBackground: "#c2571a",
+  activeMatchColorOverviewRuler: "#c2571a",
+};
+
 export const TERMINAL_FONT_KEY = "flightdeck.terminal-font";
 export const TERMINAL_FONT_MIN = 10;
 export const TERMINAL_FONT_MAX = 24;

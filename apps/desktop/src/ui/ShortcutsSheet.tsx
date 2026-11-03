@@ -11,13 +11,13 @@ export function ShortcutsSheet(props: { store: AppStore; mac: boolean; onClose()
   return (
     <dialog
       open
-      className="fixed top-16 left-1/2 z-50 m-0 flex max-h-[80vh] w-[min(42rem,92vw)] -translate-x-1/2 flex-col gap-4 overflow-y-auto rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg"
+      className="fixed top-16 left-1/2 z-50 sheet-box -translate-x-1/2 overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-lg"
       aria-label={t("shortcuts.title")}
       onKeyDown={(e) => {
         if (e.key === "Escape") props.onClose();
       }}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="row-spread">
         <h2 className="font-semibold text-lg">{t("shortcuts.title")}</h2>
         <Button
           variant="ghost"
@@ -28,20 +28,18 @@ export function ShortcutsSheet(props: { store: AppStore; mac: boolean; onClose()
           <X aria-hidden="true" />
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="shortcut-grid">
         {GROUPS.map((group) => (
-          <section key={group} className="flex flex-col gap-1">
+          <section key={group} className="stack-tight">
             <h3 className="font-medium text-muted-foreground text-xs uppercase">
               {t(`shortcuts.groups.${group}`)}
             </h3>
-            <dl className="flex flex-col gap-1 text-sm">
+            <dl className="stack-tight text-sm">
               {SHORTCUTS.filter((s) => s.group === group).map((s) => (
-                <div key={s.id} className="flex items-baseline justify-between gap-3">
+                <div key={s.id} className="shortcut-row">
                   <dt>{t(s.label)}</dt>
                   <dd>
-                    <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs">
-                      {keysLabel(s, props.mac)}
-                    </kbd>
+                    <kbd className="keycap bg-muted font-mono">{keysLabel(s, props.mac)}</kbd>
                   </dd>
                 </div>
               ))}

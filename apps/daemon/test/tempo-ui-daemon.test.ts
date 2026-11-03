@@ -193,9 +193,11 @@ describe("tempo-ui: over the protocol", () => {
 
   test("host.info announces it, and the two commands answer", async () => {
     const client = await served(true);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "telemetry",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("telemetry");
     const session = await client.data<{ prompts: unknown[] }>("telemetry.session", {
       claudeSessionId: "s-1",
     });
@@ -205,9 +207,11 @@ describe("tempo-ui: over the protocol", () => {
 
   test("a host without it refuses the commands and does not announce it", async () => {
     const client = await served(false);
-    expect((await client.data<{ features: string[] }>("host.info", {}))?.features).not.toContain(
-      "telemetry",
-    );
+    expect(
+      (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).not.toContain("telemetry");
     const ack = await client.request("telemetry.session", { claudeSessionId: "s-1" });
     expect(ack.ok).toBe(false);
   });

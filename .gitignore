@@ -23,4 +23,5 @@ apps/desktop/screenshots/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 playwright-report/
+.features-gen/
 test-results/

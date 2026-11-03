@@ -45,12 +45,16 @@ interface WireCard {
 describe("deps-protocol: over the wire", () => {
   test("a host with a board announces deps, and one without does not", async () => {
     const on = await serve();
-    expect((await on.client.data<{ features: string[] }>("host.info", {}))?.features).toContain(
-      "deps",
-    );
+    expect(
+      (await on.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
+    ).toContain("deps");
     const off = await serve(false);
     expect(
-      (await off.client.data<{ features: string[] }>("host.info", {}))?.features,
+      (await off.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
+        (name) => name !== "session.images",
+      ),
     ).not.toContain("deps");
   });
 

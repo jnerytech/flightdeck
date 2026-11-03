@@ -92,21 +92,20 @@ export function ProjectPage(props: {
       title={project.name}
       subtitle={`${host?.name ?? hostId} · ${project.baseBranch} · ${project.path}`}
     >
-      <ul
-        aria-label={project.name}
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
-        data-slot="project-destinations"
-      >
+      <ul aria-label={project.name} className="card-grid" data-slot="project-destinations">
         {destinations.map(({ key, label, hint, icon: Icon, route }) => (
           <li key={key}>
             <button
               type="button"
               aria-label={t(label)}
-              className="flex h-full w-full items-start gap-3 rounded-lg border bg-card p-4 text-left hover:bg-accent/40 focus-visible:ring-2"
+              className="card-link rounded-lg border bg-card text-left hover:bg-accent/40 focus-visible:ring-2"
               onClick={() => props.go(route)}
             >
-              <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
-              <span className="flex flex-col gap-0.5">
+              <Icon
+                aria-hidden="true"
+                className="icon-nudge size-5 shrink-0 text-muted-foreground"
+              />
+              <span className="stack-hair">
                 <span className="font-medium">{t(label)}</span>
                 <span className="text-muted-foreground text-sm">{t(hint)}</span>
               </span>

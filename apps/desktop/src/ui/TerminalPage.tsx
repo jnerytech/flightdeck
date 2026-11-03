@@ -18,7 +18,12 @@ import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
-import { createXtermScreen, type XtermDeps, type XtermScreen } from "../lib/xterm-screen.ts";
+import {
+  createXtermScreen,
+  type FindResults,
+  type XtermDeps,
+  type XtermScreen,
+} from "../lib/xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 export function TerminalPage(props: {
@@ -43,7 +48,10 @@ export function TerminalPage(props: {
   const [needle, setNeedle] = useState("");
   const [closing, setClosing] = useState(false);
   /** Where the right button opened the copy and paste menu. */
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; canCopy: boolean } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  /** Where the current match sits among all of them, as xterm reports it. */
+  const [results, setResults] = useState<FindResults | null>(null);
   const [picking, setPicking] = useState(false);
   const [launchId, setLaunchId] = useState<string | null>(null);
   const appState = useStoreState(store);
@@ -75,6 +83,7 @@ export function TerminalPage(props: {
         onInput: (data) => session.current?.input(data),
         onResize: (cols, rows) => session.current?.resize(cols, rows),
         onSearch: () => setSearching(true),
+        onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
       });
@@ -122,7 +131,11 @@ export function TerminalPage(props: {
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [menu]);
-  const fromMenu = (action: "copy" | "paste") => {
+  // The menu takes the focus, on the first thing it can do.
+  useEffect(() => {
+    if (menu) menuRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+  }, [menu]);
+  const fromMenu = (action: "copy" | "paste" | "selectAll") => {
     setMenu(null);
     screen.current?.[action]();
     screen.current?.focus();
@@ -138,9 +151,17 @@ export function TerminalPage(props: {
   };
   const stopSearch = () => {
     setSearching(false);
+    setResults(null);
     screen.current?.clearFind();
     screen.current?.focus();
   };
+  const findStatus = (found: FindResults) =>
+    found.resultCount > 0
+      ? t("terminalUi.matches", {
+          index: String(Math.max(found.resultIndex, 0) + 1),
+          count: String(found.resultCount),
+        })
+      : t("terminalUi.noMatches");
   const status =
     state.state === "ended"
       ? t("terminalUi.state.ended", { code: String(state.exitCode) })
@@ -180,20 +201,44 @@ export function TerminalPage(props: {
       }
       toolbar={
         searching && (
-          <Input
-            type="search"
-            autoFocus
-            aria-label={t("terminalUi.searchLabel")}
-            title={t("terminalUi.searchHint")}
-            value={needle}
-            onChange={(e) => setNeedle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") stopSearch();
-              else if (e.key === "Enter") {
-                screen.current?.find(needle, e.shiftKey ? "previous" : "next");
-              }
-            }}
-          />
+          <div className="terminal-find">
+            <Input
+              type="search"
+              autoFocus
+              aria-label={t("terminalUi.searchLabel")}
+              title={t("terminalUi.searchHint")}
+              value={needle}
+              onChange={(e) => {
+                setNeedle(e.target.value);
+                if (e.target.value === "") {
+                  setResults(null);
+                  screen.current?.clearFind();
+                } else screen.current?.find(e.target.value, "next", true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") stopSearch();
+                else if (e.key === "Enter") {
+                  screen.current?.find(needle, e.shiftKey ? "previous" : "next");
+                }
+              }}
+            />
+            <span role="status" className="text-xs text-muted-foreground">
+              {needle !== "" && results && findStatus(results)}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => screen.current?.find(needle, "previous")}
+            >
+              {t("terminalUi.findPrevious")}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => screen.current?.find(needle, "next")}>
+              {t("terminalUi.findNext")}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={stopSearch}>
+              {t("terminalUi.findClose")}
+            </Button>
+          </div>
         )
       }
     >
@@ -205,11 +250,16 @@ export function TerminalPage(props: {
         className="min-h-80 w-full flex-1"
         onContextMenu={(e) => {
           e.preventDefault();
-          setMenu({ x: e.clientX, y: e.clientY });
+          setMenu({
+            x: e.clientX,
+            y: e.clientY,
+            canCopy: screen.current?.hasSelection() ?? false,
+          });
         }}
       />
       {menu && (
         <div
+          ref={menuRef}
           role="menu"
           aria-label={t("terminalUi.title")}
           tabIndex={-1}
@@ -223,6 +273,7 @@ export function TerminalPage(props: {
             variant="ghost"
             size="sm"
             className="justify-start"
+            disabled={!menu.canCopy}
             onClick={() => fromMenu("copy")}
           >
             {t("terminalUi.copy")}
@@ -234,6 +285,14 @@ export function TerminalPage(props: {
             onClick={() => fromMenu("paste")}
           >
             {t("terminalUi.paste")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start"
+            onClick={() => fromMenu("selectAll")}
+          >
+            {t("terminalUi.selectAll")}
           </Button>
         </div>
       )}

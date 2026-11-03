@@ -297,7 +297,7 @@ describe("protocolo-board", () => {
     const listed = await client.data<{ maxParallelRuns: number }>("project.list", {});
     expect(listed?.maxParallelRuns).toBe(1);
     await client.data("board.settings", { maxParallelRuns: 4 });
-    expect(loadConfig(file).maxParallelRuns).toBe(4);
+    expect((await loadConfig(file)).maxParallelRuns).toBe(4);
   });
 
   test("exemplos do protocolo", () => {

@@ -118,6 +118,27 @@ function shots(ids: DemoIds): Shot[] {
     { name: "sessao", route: { name: "session", host: ALFA, id: ids.idleSession } },
     // The form with its Criar sessão off and the reason beside it.
     { name: "nova-sessao", route: { name: "new-session", host: ALFA } },
+    // The folder dialog over the form: centered, with the page dimmed behind it.
+    {
+      name: "pasta-escolher",
+      route: { name: "new-session", host: ALFA },
+      async prepare(page) {
+        await page.getByRole("button", { name: /^(Procurar|Browse)/ }).click();
+        await page.getByRole("dialog").waitFor();
+      },
+    },
+    // The tab strip with twenty tabs: it scrolls, keeps each width and offers the menu of all.
+    {
+      name: "abas-muitas",
+      route: { name: "hub" },
+      async prepare(page) {
+        for (let i = 0; i < 20; i++) {
+          await page.keyboard.press("Control+t");
+          await page.keyboard.press("Escape");
+        }
+        await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
+      },
+    },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
     {
       name: "card",

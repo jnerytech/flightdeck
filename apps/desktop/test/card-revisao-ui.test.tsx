@@ -340,10 +340,14 @@ describe("card-revisao-ui", () => {
     await click("Enviar ao agente (3)");
     await settle(() => body().includes("3 comentários enviados ao agente."));
     expect(body()).toContain("3 comentários enviados ao agente.");
-    const sent = ctx.eventStore.db
-      .query("SELECT payload FROM events WHERE session_id = ? AND payload LIKE ?")
-      .all(ctx.sessionId, "%Comentários do PR%");
-    expect(sent.length).toBeGreaterThan(0);
+    // The session writes the message into its history when the runtime takes it, which on a slow
+    // disk is after the app has been told it went.
+    const sentRows = () =>
+      ctx.eventStore.db
+        .query("SELECT payload FROM events WHERE session_id = ? AND payload LIKE ?")
+        .all(ctx.sessionId, "%Comentários do PR%");
+    await settle(() => sentRows().length > 0);
+    expect(sentRows().length).toBeGreaterThan(0);
     // Nothing goes back to GitHub.
     expect(
       gh

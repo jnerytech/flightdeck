@@ -287,6 +287,104 @@
   }
 }
 
+/* A disabled button and its reason: one block, the reason wrapping under it at a readable width. */
+@utility action-with-reason {
+  display: inline-flex;
+}
+
+/* The tab strip: the tabs keep their width and the strip scrolls sideways, with no scrollbar. */
+@utility tab-scroller {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+@utility tab-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  width: max-content;
+}
+@utility tab-tool {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 0.125rem;
+}
+@utility tab-item {
+  flex: 0 0 auto;
+  min-width: 7rem;
+  max-width: 12rem;
+}
+
+/* The card's conversation: it takes the rest of the pane, and scrolls inside itself only. */
+@utility card-chat {
+  flex: 1 1 0;
+  min-height: 24rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+/* A column under a dragged card: it shows where the card would land. */
+@utility drop-over {
+  outline: 2px dashed var(--ring);
+  outline-offset: -2px;
+  background-color: var(--accent);
+}
+
+/* A key of a shortcut, as printed in a list. */
+@utility keycap {
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+}
+
+/* Three dots that rise in turn while Claude works. */
+@utility dots-working {
+  display: inline-flex;
+  gap: 0.2rem;
+  & i {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: dots-working 1.2s ease-in-out infinite;
+  }
+  & i:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  & i:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+@keyframes dots-working {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/*
+ * A dialog sits centered by its own margins over a dimmed page. The vendored component keeps
+ * the CLI's classes (a transform is the part a webview can drop), so these rules sit outside it.
+ */
+[data-slot="dialog-overlay"] {
+  background-color: oklch(0 0 0 / 60%);
+  backdrop-filter: blur(1px);
+}
+[data-slot="dialog-content"] {
+  inset: 0;
+  margin: auto;
+  translate: none;
+  height: fit-content;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
 /* Reduced motion: nothing animates for those who ask. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -321,6 +419,44 @@
   display: flex;
   width: 100%;
   align-items: center;
+  gap: 0.5rem;
+}
+
+/* The terminal's find bar: the box, where the match is, and the buttons in one row. */
+@utility terminal-find {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* A vertical list of rows (the check results, the repositories found). */
+@utility check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* One row of such a list: a line of text and, below it, what to do. */
+@utility check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* The first line of a row: the name, then its state. */
+@utility check-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* A form block of the "find my projects" dialog. */
+@utility find-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 
@@ -497,12 +633,214 @@
   }
 }
 
+/* The `?` sheet of shortcuts: the box, its groups and their rows. */
+@utility sheet-box {
+  margin: 0;
+  display: flex;
+  max-height: 80vh;
+  width: min(42rem, 92vw);
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+@utility shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.5rem;
+}
+@utility stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility shortcut-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* A line of controls, with a gap: spread to both ends, or wrapping. */
+@utility row-spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility row-end-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+@utility form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@utility legend-tight {
+  margin-bottom: 0.25rem;
+}
+@utility search-width {
+  width: 16rem;
+}
+
+/* Cards of the Projects overview and of a project page: one column, two and three as the area grows. */
+@utility card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  @container (min-width: 28rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @container (min-width: 36rem) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@utility card-button {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+@utility card-link {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+@utility facts-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+@utility icon-nudge {
+  margin-top: 0.125rem;
+}
+@utility stack-hair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* The chip that says the hub is filtered, with its clear button. */
+@utility filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-block: 0.125rem;
+  padding-right: 0.25rem;
+  padding-left: 0.75rem;
+}
+
+/* The account card: a command to copy, a pill, a meter line and its footer. */
+@utility code-chip {
+  width: fit-content;
+  padding-inline: 0.5rem;
+  padding-block: 0.25rem;
+}
+@utility pill {
+  padding-inline: 0.5rem;
+}
+@utility row-gap2 {
+  display: flex;
+  gap: 0.5rem;
+}
+@utility meter-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility row-baseline-spread {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility row-wrap-loose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+@utility meter-height {
+  height: 0.5rem;
+}
+
+:root {
+  /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
+  --weight-strong: 600;
+  --weight-label: 500;
+  --weight-text: 400;
+  /* The motion tokens as plain variables (the theme's are inlined into utilities, not emitted). */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* The app's background sits a step under the panels (neutral-50 against white). */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.2 0.01 270);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.01 270);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.01 270);
+  /* The single accent: the primary button, the focus ring and the active item. */
+  --brand: oklch(0.55 0.2 275);
+  --primary: var(--brand);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.003 270);
+  --secondary-foreground: oklch(0.2 0.01 270);
+  --muted: oklch(0.955 0.003 270);
+  --muted-foreground: oklch(0.5 0.01 270);
+  --accent: oklch(0.945 0.004 270);
+  --accent-foreground: oklch(0.2 0.01 270);
+  --destructive: oklch(0.55 0.22 27);
+  --border: oklch(0 0 0 / 6%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: var(--brand);
+  --sidebar: oklch(0.965 0.002 270);
+  --sidebar-foreground: oklch(0.2 0.01 270);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.93 0.004 270);
+  --sidebar-accent-foreground: oklch(0.2 0.01 270);
+  --sidebar-border: oklch(0 0 0 / 6%);
+  --sidebar-ring: var(--brand);
+  /* Session states, as a dot (8 px) and as text on the background, AA in both themes. */
+  --status-running: oklch(0.5 0.16 255);
+  --status-needs-you: oklch(0.52 0.15 55);
+  --status-idle: oklch(0.5 0.01 270);
+  --status-ended: oklch(0.54 0 0);
+  --status-error: oklch(0.5 0.2 27);
+  --status-risk: oklch(0.5 0.2 330);
+  /* A client's color, as a dot; the same in both themes, never the only sign of the client. */
+  --client-indigo: oklch(0.62 0.15 275);
+  --client-emerald: oklch(0.62 0.15 160);
+  --client-amber: oklch(0.7 0.15 80);
+  --client-rose: oklch(0.62 0.17 15);
+  --client-sky: oklch(0.64 0.12 230);
+  --client-violet: oklch(0.6 0.16 305);
+  --client-teal: oklch(0.6 0.1 190);
+  --client-orange: oklch(0.68 0.16 50);
+}
+
 /* The sidebar's main block and its folding groups. */
 @utility sidebar-nav {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
 }
+
 @utility sidebar-group {
   display: flex;
   min-width: 0;
@@ -512,6 +850,7 @@
   padding: 0;
   margin: 0;
 }
+
 @utility sidebar-group-title {
   display: flex;
   height: 1.5rem;
@@ -538,18 +877,6 @@
   position: relative;
   display: inline-flex;
 }
-@utility action-reason {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1;
-  margin-top: 0.125rem;
-  width: max-content;
-  max-width: 20rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
 
 /* A form row and its help line: the reason a button is disabled sits under the first field. */
 @utility field-row-wrap {
@@ -557,12 +884,14 @@
   flex-direction: column;
   gap: 0.25rem;
 }
+
 @utility field-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
+
 @utility field-help {
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
@@ -578,6 +907,7 @@
   align-items: center;
   gap: 0.5rem;
 }
+
 @utility header-tabs {
   display: flex;
   min-width: 0;
@@ -585,6 +915,7 @@
   align-self: stretch;
   align-items: flex-end;
 }
+
 @utility tab-bar {
   display: flex;
   height: 2.25rem;
@@ -595,6 +926,7 @@
   border-bottom: 1px solid var(--color-border);
   padding: 0 0.5rem;
 }
+
 @utility field-row-end {
   align-items: flex-end;
 }
@@ -606,6 +938,7 @@
   gap: 1.5rem;
   align-items: start;
 }
+
 @utility settings-side {
   position: sticky;
   top: 0;
@@ -613,6 +946,7 @@
   flex-direction: column;
   gap: 0.5rem;
 }
+
 @utility settings-rail {
   display: flex;
   flex-direction: column;
@@ -622,12 +956,14 @@
     color: var(--color-accent-foreground);
   }
 }
+
 @utility settings-sections {
   display: flex;
   max-width: 42rem;
   flex-direction: column;
   gap: 1.25rem;
 }
+
 @utility settings-section {
   &:focus-visible {
     outline: 2px solid var(--color-ring);
@@ -641,8 +977,23 @@
 [data-slot="button"][data-variant="destructive"] {
   font-weight: var(--weight-strong);
 }
+
 [data-slot="button"][data-variant="outline"],
 [data-slot="button"][data-variant="secondary"],
 [data-slot="button"][data-variant="ghost"] {
   font-weight: var(--weight-label);
+}
+
+/* A disabled button's reason hangs under it without adding height to the row (issue #38). */
+@utility action-reason {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  margin-top: 0.125rem;
+  width: max-content;
+  max-width: 20rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
 }

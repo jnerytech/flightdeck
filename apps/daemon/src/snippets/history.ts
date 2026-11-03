@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from "node:fs";
+import { open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Snippet, SnippetHistoryCandidate } from "@flightdeck/protocol";
 import { hasControl, type SecretScanner } from "./model.ts";
@@ -69,19 +69,22 @@ const TRIVIAL = new Set([
 const IMPORT_TAG = "histórico";
 
 /** The text of a history file, from its end if it is large; `null` when there is no such file. */
-function readHistory(path: string): string | null {
-  if (!existsSync(path)) return null;
-  const size = statSync(path).size;
+async function readHistory(path: string): Promise<string | null> {
+  const size = await stat(path).then(
+    (info) => info.size,
+    () => null,
+  );
+  if (size === null) return null;
   let text: string;
   if (size <= MAX_BYTES) {
-    text = readFileSync(path, "utf8");
+    text = await readFile(path, "utf8");
   } else {
     const buffer = Buffer.alloc(MAX_BYTES);
-    const fd = openSync(path, "r");
+    const file = await open(path, "r");
     try {
-      readSync(fd, buffer, 0, MAX_BYTES, size - MAX_BYTES);
+      await file.read(buffer, 0, MAX_BYTES, size - MAX_BYTES);
     } finally {
-      closeSync(fd);
+      await file.close();
     }
     // The cut fell in the middle of a line: that one is not a command.
     text = buffer.toString("utf8");
@@ -139,6 +142,14 @@ interface Entry {
   shells: Shell[];
 }
 
+/** A name for a snippet that none of `taken` has: `base`, else `base-2`, `base-3`... */
+function freeName(taken: Snippet[], base: string): string {
+  const names = new Set(taken.map((s) => s.name));
+  let name = base;
+  for (let n = 2; names.has(name); n++) name = `${base.slice(0, 60)}-${n}`;
+  return name;
+}
+
 /**
  * Import from the shell history (phase 18). The histories are only read, never written. Every
  * line is scanned for secrets before anyone sees it: a flagged line is hidden and can never be
@@ -148,11 +159,11 @@ interface Entry {
 export class HistoryImporter {
   constructor(private readonly opts: HistoryImporterOptions) {}
 
-  preview(options: { limit?: number; reveal?: boolean }): {
+  async preview(options: { limit?: number; reveal?: boolean }): Promise<{
     candidates: SnippetHistoryCandidate[];
     sources: Array<{ shell: string; found: boolean }>;
-  } {
-    const { entries, sources } = this.read();
+  }> {
+    const { entries, sources } = await this.read();
     const candidates = entries.slice(0, options.limit ?? DEFAULT_LIMIT).map((entry) => {
       const flagged = this.opts.scanner.scan(entry.command);
       const hidden = flagged.length > 0 && options.reveal !== true;
@@ -170,8 +181,11 @@ export class HistoryImporter {
   }
 
   /** Makes the chosen lines snippets of the host; says why the others were not. */
-  import(ids: string[]): { created: Snippet[]; skipped: Array<{ id: string; reason: string }> } {
-    const { entries } = this.read();
+  async import(
+    ids: string[],
+  ): Promise<{ created: Snippet[]; skipped: Array<{ id: string; reason: string }> }> {
+    const { entries } = await this.read();
+    const taken = await this.taken();
     const byId = new Map(entries.map((entry) => [idOf(entry.command), entry]));
     const created: Snippet[] = [];
     const skipped: Array<{ id: string; reason: string }> = [];
@@ -182,43 +196,39 @@ export class HistoryImporter {
         skip("não está no histórico");
       } else if (this.opts.scanner.scan(entry.command).length > 0) {
         skip("marcada como segredo");
-      } else if (this.taken().some((s) => s.run === entry.command)) {
+      } else if (taken.some((s) => s.run === entry.command)) {
         skip("já existe um snippet com este comando");
       } else {
         // Plain, one line, scanned and with a free name: the checks of a snippet cannot fail now.
-        created.push(
-          this.opts.snippets.save({
-            scope: "host",
-            name: this.freeName(slug(entry.command)),
-            type: "command",
-            run: entry.command,
-            tags: [IMPORT_TAG],
-          }),
-        );
+        const saved = await this.opts.snippets.save({
+          scope: "host",
+          name: freeName(taken, slug(entry.command)),
+          type: "command",
+          run: entry.command,
+          tags: [IMPORT_TAG],
+        });
+        created.push(saved);
+        taken.push(saved);
       }
     }
     return { created, skipped };
   }
 
-  private taken(): Snippet[] {
-    return this.opts.snippets.list({ scope: "host" }).snippets;
-  }
-
-  private freeName(base: string): string {
-    const names = new Set(this.taken().map((s) => s.name));
-    let name = base;
-    for (let n = 2; names.has(name); n++) name = `${base.slice(0, 60)}-${n}`;
-    return name;
+  private async taken(): Promise<Snippet[]> {
+    return (await this.opts.snippets.list({ scope: "host" })).snippets;
   }
 
   /** Every eligible command of every history, most used first. */
-  private read(): { entries: Entry[]; sources: Array<{ shell: string; found: boolean }> } {
+  private async read(): Promise<{
+    entries: Entry[];
+    sources: Array<{ shell: string; found: boolean }>;
+  }> {
     const counts = new Map<string, Entry>();
     const sources: Array<{ shell: string; found: boolean }> = [];
     for (const { key, shell } of SOURCES) {
       const path = this.opts.sources[key];
       if (path === undefined) continue;
-      const text = readHistory(path);
+      const text = await readHistory(path);
       sources.push({ shell, found: text !== null });
       for (const command of parseHistory(shell, text ?? "").filter(eligible)) {
         const entry = counts.get(command) ?? { command, count: 0, shells: [] };

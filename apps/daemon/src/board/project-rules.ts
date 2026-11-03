@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { PermissionRule } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
@@ -14,12 +14,17 @@ export function ruleString(rule: PermissionRule): string {
 }
 
 /** The file as an object; `{}` without it. A file that is not a JSON object is never rewritten. */
-function read(repo: string): Settings {
+async function read(repo: string): Promise<Settings> {
   const file = join(repo, LOCAL_SETTINGS);
-  if (!existsSync(file)) return {};
+  let text: string;
+  try {
+    text = await readFile(file, "utf8");
+  } catch {
+    return {};
+  }
   let value: unknown = null;
   try {
-    value = JSON.parse(readFileSync(file, "utf8"));
+    value = JSON.parse(text);
   } catch {
     // Falls through to the refusal below.
   }
@@ -39,35 +44,35 @@ const allowOf = (settings: Settings): string[] => {
   return Array.isArray(allow) ? allow.filter((r): r is string => typeof r === "string") : [];
 };
 
-function write(repo: string, settings: Settings, allow: string[]): void {
+async function write(repo: string, settings: Settings, allow: string[]): Promise<void> {
   const file = join(repo, LOCAL_SETTINGS);
-  mkdirSync(dirname(file), { recursive: true });
+  await mkdir(dirname(file), { recursive: true });
   const next = { ...settings, permissions: { ...settings.permissions, allow } };
-  writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`);
+  await writeFile(file, `${JSON.stringify(next, null, 2)}\n`);
 }
 
 /** `permissions.allow` of the repository's settings.local.json; empty without the file. */
-export function readRules(repo: string): string[] {
-  return allowOf(read(repo));
+export async function readRules(repo: string): Promise<string[]> {
+  return allowOf(await read(repo));
 }
 
 /** Adds rules to `permissions.allow`, without duplicates and keeping every other key. */
-export function addRules(repo: string, rules: string[]): void {
-  const settings = read(repo);
+export async function addRules(repo: string, rules: string[]): Promise<void> {
+  const settings = await read(repo);
   const allow = allowOf(settings);
   const added = [...new Set(rules)].filter((rule) => !allow.includes(rule));
-  if (added.length > 0) write(repo, settings, [...allow, ...added]);
+  if (added.length > 0) await write(repo, settings, [...allow, ...added]);
 }
 
 /** Removes one rule from `permissions.allow`, keeping the rest of the file. */
-export function removeRule(repo: string, rule: string): string[] {
-  const settings = read(repo);
+export async function removeRule(repo: string, rule: string): Promise<string[]> {
+  const settings = await read(repo);
   const allow = allowOf(settings);
   if (!allow.includes(rule))
     throw new FlightdeckError("not_found", `rule ${rule} does not exist`, "rule_not_found", {
       rule,
     });
   const remaining = allow.filter((r) => r !== rule);
-  write(repo, settings, remaining);
+  await write(repo, settings, remaining);
   return remaining;
 }

@@ -12,7 +12,7 @@ import { ACOES_ACTION, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts"
 import { ensureOnline } from "../lib/e2e-online.ts";
 
 const ALFA = "demo-alfa";
-const WAIT = 15_000;
+export const WAIT = 15_000;
 
 export type Context = {
   page: Page;
@@ -23,7 +23,7 @@ export type Context = {
 };
 
 /** Opens a screen of the demo; `prefs` stores the theme and language like the prints do. */
-async function open(c: Context, route: Route, prefs = true) {
+export async function open(c: Context, route: Route, prefs = true) {
   const query = new URLSearchParams({ route: JSON.stringify(route) });
   if (prefs) {
     query.set("lang", c.lang);
@@ -55,7 +55,7 @@ async function demoHostsOnline(c: Context): Promise<boolean> {
   return true;
 }
 
-async function waitFor(check: () => Promise<boolean>, what: string, timeout = WAIT) {
+export async function waitFor(check: () => Promise<boolean>, what: string, timeout = WAIT) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     if (await check()) return;

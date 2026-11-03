@@ -64,7 +64,7 @@ export class SnippetUse {
   }
 
   async use(req: UseRequest): Promise<{ text: string; terminal: TerminalInfo | null }> {
-    const snippet = this.opts.snippets.get(req.id);
+    const snippet = await this.opts.snippets.get(req.id);
     const isCommand = snippet.type === "command";
     if (isCommand !== (req.action !== "send")) {
       throw isCommand
@@ -88,7 +88,7 @@ export class SnippetUse {
     } else if (req.action === "run") {
       const cwd = req.context?.cwd;
       if (!cwd) throw badRequest("running needs the cwd", "snippet_cwd_needed");
-      terminal = this.terminals().open({
+      terminal = await this.terminals().open({
         cwd,
         cols: req.cols ?? DEFAULT_COLS,
         rows: req.rows ?? DEFAULT_ROWS,
@@ -98,7 +98,7 @@ export class SnippetUse {
     } else {
       this.send(req, text);
     }
-    this.opts.snippets.markUsed(req.id);
+    await this.opts.snippets.markUsed(req.id);
     return { text, terminal };
   }
 
@@ -139,7 +139,7 @@ export class SnippetUse {
   }
 
   private async fill(req: Pick<UseRequest, "id" | "values" | "context">) {
-    const snippet = this.opts.snippets.get(req.id);
+    const snippet = await this.opts.snippets.get(req.id);
     const def: SnippetDef = {
       name: snippet.name,
       type: snippet.type,
@@ -159,7 +159,7 @@ export class SnippetUse {
 
   /** The branch checked out in `cwd`; `null` when it is not a repository or HEAD is detached. */
   private async branchOf(cwd: string): Promise<string | null> {
-    const dir = resolveAllowedCwd(cwd, this.opts.allowedRoots);
+    const dir = await resolveAllowedCwd(cwd, this.opts.allowedRoots);
     const { code, stdout } = await this.opts.exec([
       "git",
       "-C",

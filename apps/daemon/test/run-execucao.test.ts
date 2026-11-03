@@ -222,7 +222,7 @@ describe("run-execucao: os processos", () => {
   test("um card sem worktree ou com o run.yaml não confiado é recusado, sem reservar nada", async () => {
     const s = setup();
     s.noWorktree.add("card-a");
-    await expect(s.manager.start("card-a")).rejects.toThrow("card ainda sem worktree");
+    await expect(s.manager.start("card-a")).rejects.toThrow("has no worktree");
     s.failing.add("proj");
     await expect(s.manager.start("card-b")).rejects.toThrow("não confiado");
     expect(s.ports.blockOf("card-a")).toBeNull();
@@ -290,7 +290,7 @@ describe("run-execucao: o modo não concorrente", () => {
     const s = setup(runConfig({ exclusive: true, setup: null }));
     await s.manager.start("card-a");
     await expect(s.manager.start("card-b")).rejects.toThrow(
-      "outro card está rodando neste projeto (modo não concorrente)",
+      "another card is running in this project (non-concurrent mode)",
     );
     expect(s.ports.blockOf("card-b")).toBeNull();
     await s.manager.stop("card-a");

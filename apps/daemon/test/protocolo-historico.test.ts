@@ -130,7 +130,7 @@ describe("protocolo-historico", () => {
   test("history.list pagina com cursor, mais recente primeiro, com filtros", async () => {
     const { root } = fixtures();
     const index = indexer(root);
-    index.scan();
+    await index.scan();
     const client = await connect(serve(index).url);
 
     const first = await client.data<Listed>("history.list", { limit: 2 });
@@ -173,7 +173,7 @@ describe("protocolo-historico", () => {
   test("history.get pagina as mensagens normalizadas com cursor nos dois sentidos", async () => {
     const { root } = fixtures();
     const index = indexer(root);
-    index.scan();
+    await index.scan();
     const client = await connect(serve(index).url);
 
     const page1 = await client.data<Got>("history.get", { claudeSessionId: "s-new", limit: 2 });
@@ -223,7 +223,7 @@ describe("protocolo-historico", () => {
   test("history.search pela rede: acerto traz o cursor que abre o leitor nele", async () => {
     const { root } = fixtures();
     const index = indexer(root);
-    index.scan();
+    await index.scan();
     const client = await connect(serve(index).url);
     const result = await client.data<{ hits: Array<Record<string, unknown>> }>("history.search", {
       query: "segunda",
@@ -253,7 +253,7 @@ describe("protocolo-historico", () => {
     // The watcher is the fast path; a long interval would hide a broken fallback, so use both
     // here and a watcher-only setup below.
     const index = indexer(root, { scanIntervalMs: 30 });
-    index.scan();
+    await index.scan();
     index.start();
     const client = await connect(serve(index).url);
     expect(await client.request("history.watch", {})).toMatchObject({ ok: true });

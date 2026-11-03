@@ -77,6 +77,24 @@ describe("merge-local", () => {
     expect((await changes.get(`card:${ctx.cardId}`)).position).toEqual({ ahead: 2, behind: 1 });
   });
 
+  test("the position holds while a rebase waits on a conflict: it reads the card's branch, not the detached HEAD", async () => {
+    const ctx = await ready();
+    commit(ctx.worktree, "README.md", "# do card\n");
+    commit(ctx.repo, "README.md", "# da base\n");
+    const changes = new Changes({ db: ctx.store.db, board: ctx.board });
+    const target = `card:${ctx.cardId}`;
+    expect((await changes.get(target)).position).toEqual({ ahead: 1, behind: 1 });
+    // What a reader sees in the middle of "Atualizar com a base": the rebase stopped on the
+    // conflict, HEAD detached on the base (a slow disk, as on Windows, widens this window).
+    const stopped = await Bun.spawn(["git", "-C", ctx.worktree, "rebase", "main"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited;
+    expect(stopped).not.toBe(0);
+    expect((await changes.get(target)).position).toEqual({ ahead: 1, behind: 1 });
+    git(ctx.worktree, "rebase", "--abort");
+  });
+
   test("atualizar com a base: rebase que preserva a mudança não commitada; conflito aborta e deixa como estava", async () => {
     const ctx = await ready();
     commit(ctx.worktree, "a.txt", "a\n");

@@ -79,7 +79,7 @@ export function MessagingRulesSection(props: {
       policy: { ...rules.policy, ...patch },
     });
     if (!result.ok) {
-      setError(refusalText(result.code, result.message, t));
+      setError(refusalText(result.code, result.message, t, result));
       return false;
     }
     setError(null);
