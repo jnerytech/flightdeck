@@ -2997,6 +2997,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("quota.watch", z.object({}).strict()),
   cmd("account.get", z.object({}).strict()),
   cmd("account.watch", z.object({}).strict()),
+  cmd("account.unwatch", z.object({}).strict()),
   cmd("account.refresh", z.object({}).strict()),
   cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
   /** `permissions.allow` of the project's `.claude/settings.local.json`. */
@@ -3826,6 +3827,7 @@ export interface CommandResults {
   "quota.watch": undefined;
   "account.get": AccountState;
   "account.watch": undefined;
+  "account.unwatch": undefined;
   "account.refresh": AccountState;
   "usage.summary": UsageSummary;
   "rules.list": { rules: string[] };

@@ -1844,6 +1844,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type);
       }
+      case "account.unwatch":
+        account();
+        ws.data.unwatchAccount?.();
+        ws.data.unwatchAccount = undefined;
+        return ok(command.type);
       case "account.refresh":
         return ok(command.type, await account().refresh());
       case "runenv.config":
