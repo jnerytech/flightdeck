@@ -212,6 +212,8 @@ export const en: Dictionary = {
     settings: "Hours and rate",
     defaultHours: "Hours per card (default for this project)",
     saveHours: "Save hours",
+    cardHours: "Estimated hours for this card",
+    cardHoursSave: "Save the card's hours",
     projectRate: "Hourly rate for this project",
     saveRate: "Save rate",
     cardHours: "Estimated hours of this card",
