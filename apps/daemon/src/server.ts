@@ -1086,7 +1086,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { sessions: messaging().sessions(command.payload.as) });
       case "messages.read": {
         const { as, session, last } = command.payload;
-        return ok(command.type, messaging().read(as, session, last));
+        return ok(command.type, await messaging().read(as, session, last));
       }
       case "messages.relay":
         return ok(command.type, messaging().relay(command.payload.message));

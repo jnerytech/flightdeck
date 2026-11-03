@@ -227,7 +227,7 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     for (const message of read?.messages ?? []) {
       expect(new TextEncoder().encode(message.text).length).toBeLessThanOrEqual(8 * 1024 + 8);
     }
-    expect(await endpoints.read(a, 50)?.messages.length).toBeLessThanOrEqual(20);
+    expect((await endpoints.read(a, 50))?.messages.length).toBeLessThanOrEqual(20);
     expect(await endpoints.read("fantasma", 3)).toBeNull();
   });
 });
@@ -264,7 +264,7 @@ describe("mensagens-entrega: o adaptador", () => {
       cwd: project,
       transcript_path: join(tempDir(), "nao-existe.jsonl"),
     });
-    expect(await endpoints.read("T1", 5)?.messages).toEqual([]);
+    expect((await endpoints.read("T1", 5))?.messages).toEqual([]);
   });
 
   test("a mudança de estado vira ouvinte uma vez por transição: o fim do turno gerenciado, o Stop do terminal e o soltar do ouvinte", async () => {

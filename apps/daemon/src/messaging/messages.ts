@@ -355,7 +355,7 @@ export class Messaging {
   }
 
   /** `read_session`: the summary and the last messages of a session this one may see. */
-  read(as: SessionIdentity, address: string, last = 10): ReadSessionResult {
+  async read(as: SessionIdentity, address: string, last = 10): Promise<ReadSessionResult> {
     const { info } = this.inspect(as, address);
     if (!info) {
       throw new FlightdeckError(
@@ -363,7 +363,7 @@ export class Messaging {
         "a sessão é de outro host: o read_session só lê sessões deste host",
       );
     }
-    const read = this.opts.endpoints.read(info.id, last);
+    const read = await this.opts.endpoints.read(info.id, last);
     if (!read) throw notFound(`sessão ${address} não encontrada`);
     return read;
   }
