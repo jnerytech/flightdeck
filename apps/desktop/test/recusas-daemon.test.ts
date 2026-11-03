@@ -342,6 +342,14 @@ const REASONS = [
   "claude_not_found",
   "plugin_dir_missing",
   "plugin_too_many_files",
+  "project_no_issues",
+  "project_no_origin",
+  "remote_not_github",
+  "remote_not_azure",
+  "issue_id_invalid",
+  "issue_not_this_project",
+  "issue_other_repo",
+  "issue_has_card",
 ];
 
 const cleanups: Array<() => unknown> = [];
