@@ -117,7 +117,13 @@ import {
 } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
-import { loadChoices, type ModeAnswer, saveChoice, type UiMode } from "./simple-mode.ts";
+import {
+  effectiveMode,
+  loadChoices,
+  type ModeAnswer,
+  saveChoice,
+  type UiMode,
+} from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
@@ -365,6 +371,10 @@ export type HostCommandType = Extract<
   | `snapshots.${string}`
   | `rewind.${string}`
   | "session.fork"
+  | "ui.set"
+  | "template.list"
+  | "template.start"
+  | "task.results"
   | `mcp.${string}`
   | `agentcfg.${string}`
   | `issues.${string}`
@@ -1155,16 +1165,23 @@ export class AppStore {
   }
 
   /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
-  uiMode(_hostId: string): ModeAnswer {
-    return { mode: "full", canSwitch: true };
+  uiMode(hostId: string): ModeAnswer {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
-  setUiChoice(_hostId: string, _mode: UiMode | null): void {}
+  setUiChoice(hostId: string, mode: UiMode | null): void {
+    saveChoice(this.platform.storage, hostId, mode);
+    this.update({ uiChoices: loadChoices(this.platform.storage) });
+  }
 
   /** Changes the host's default mode and lock (full mode's Settings of that host). */
-  async setHostUi(_hostId: string, _patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
-    return false;
+  async setHostUi(hostId: string, patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
+    const ui = await this.hostCommand(hostId, "ui.set", { ...patch, confirm: true });
+    if (!ui) return false;
+    this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
+    return true;
   }
 
   /** How many tiles the project page shows; kept across starts. */
