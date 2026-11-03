@@ -970,7 +970,7 @@ export class AppStore {
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
-  private notifyUser(n: Notification, route?: Route): void {
+  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
@@ -978,6 +978,7 @@ export class AppStore {
       body: n.body,
       ...(n.link ? { link: n.link } : {}),
       ...(route ? { route } : {}),
+      ...(fallbackUrl ? { fallbackUrl } : {}),
       read: false,
     };
     this.setInbox(addEntry(this.state.inbox, entry));
@@ -1856,7 +1857,7 @@ export class AppStore {
               title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }),
               body: frame.reason,
             },
-            { name: "teams" },
+            { name: "teams", host: config.id, team: frame.team.id },
           );
         }
       },
@@ -2540,7 +2541,7 @@ export class AppStore {
             limit: usd(state?.limitUsd ?? 0),
           }),
         },
-        { name: "costs" },
+        { name: "costs", client: clientId },
       );
     }
   }
@@ -2786,6 +2787,7 @@ export class AppStore {
         card
           ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
           : undefined,
+        card?.prUrl,
       );
     }
   }
@@ -3286,7 +3288,11 @@ export class AppStore {
           limit: usd(update.budget.limitUsd),
         }),
       },
-      { name: "costs" },
+      {
+        name: "costs",
+        host: hostId,
+        ...(update.budget.projectKey ? { projectKey: update.budget.projectKey } : {}),
+      },
     );
   }
 
@@ -3312,6 +3318,7 @@ export class AppStore {
           body: this.i18n.t("deps.notifyBody", { title: card.title }),
         },
         { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
+        card.prUrl,
       );
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };

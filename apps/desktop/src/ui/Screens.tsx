@@ -515,7 +515,13 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "needs-you":
       return <NeedsYou store={store} state={state} go={go} onOpenRequest={props.onOpenRequest} />;
     case "teams":
-      return <TeamsPage store={store} />;
+      return (
+        <TeamsPage
+          store={store}
+          {...(route.host ? { host: route.host } : {})}
+          {...(route.team ? { team: route.team } : {})}
+        />
+      );
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":
@@ -529,7 +535,15 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "connections":
       return <ConnectionsPage store={store} go={go} connect={route.connect} />;
     case "costs":
-      return <CostsPage store={store} onOpenSession={costsOpener(go)} />;
+      return (
+        <CostsPage
+          store={store}
+          onOpenSession={costsOpener(go)}
+          {...(route.host ? { host: route.host } : {})}
+          {...(route.projectKey ? { projectKey: route.projectKey } : {})}
+          {...(route.client ? { client: route.client } : {})}
+        />
+      );
     case "vault":
       return (
         <VaultPage

@@ -195,6 +195,8 @@ function Team(props: {
   hostId: string;
   team: TeamInfo;
   status: TeamStatus | null;
+  /** The team an alert opened. */
+  focused: boolean;
   onChanged(team: TeamInfo): void;
 }) {
   const { store, hostId, team } = props;
@@ -214,7 +216,8 @@ function Team(props: {
   return (
     <li
       aria-label={t("teamsUi.row", { name: team.name })}
-      className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm"
+      {...(props.focused ? { "aria-current": "true" as const } : {})}
+      className={`flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm${props.focused ? " ring-2 ring-ring" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <strong>{team.name}</strong>
@@ -349,14 +352,23 @@ function Team(props: {
 const TEAMSPAGE_KEYS = ["hosts"] as const;
 
 /** Phase 21: the teams of a host, a new one, and the controls of each. */
-export const TeamsPage = memo(function TeamsPage(props: { store: AppStore }) {
+export const TeamsPage = memo(function TeamsPage(props: {
+  store: AppStore;
+  /** An alert opens the host and the team it is about; the team is listed first. */
+  host?: string;
+  team?: string;
+}) {
   const { store } = props;
   const state = useStoreSlice(store, TEAMSPAGE_KEYS);
   const { t } = store.i18n;
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "teams", false),
   );
-  const [hostId, setHostId] = useState("");
+  const [hostId, setHostId] = useState(props.host ?? "");
+  // A later alert opens another host while the screen is already up.
+  useEffect(() => {
+    if (props.host) setHostId(props.host);
+  }, [props.host]);
   const host = hosts.find((h) => h.id === hostId) ?? hosts[0];
   const current = host?.id ?? "";
   const [teams, setTeams] = useState<TeamInfo[]>([]);
@@ -431,16 +443,19 @@ export const TeamsPage = memo(function TeamsPage(props: { store: AppStore }) {
         />
       )}
       <ul aria-label={t("teamsUi.list")} className="flex max-w-3xl flex-col gap-3">
-        {teams.map((team) => (
-          <Team
-            key={team.id}
-            store={store}
-            hostId={current}
-            team={team}
-            status={statuses[team.id] ?? null}
-            onChanged={() => void load()}
-          />
-        ))}
+        {[...teams]
+          .sort((a, b) => Number(b.id === props.team) - Number(a.id === props.team))
+          .map((team) => (
+            <Team
+              key={team.id}
+              store={store}
+              hostId={current}
+              team={team}
+              status={statuses[team.id] ?? null}
+              focused={team.id === props.team}
+              onChanged={() => void load()}
+            />
+          ))}
       </ul>
     </Page>
   );

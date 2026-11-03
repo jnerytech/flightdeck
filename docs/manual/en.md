@@ -1504,7 +1504,9 @@ unblocked. A badge on the bell counts the unread ones.
 
 - Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
 - Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
-  opens the host).
+  opens the host). A budget alert opens Costs already filtered by its host and project, or by
+  its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
+  result, an unblocked card) opens the PR in your browser when the card is gone.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent

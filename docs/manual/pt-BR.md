@@ -1485,7 +1485,10 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 - Clique no sino para abrir o painel: mais recentes primeiro, agrupadas por dia (Hoje, Ontem e
   depois a data).
 - Clique numa entrada para marcá-la como lida e abrir a tela dela (um pedido abre no card dele;
-  um alerta de cota abre o host).
+  um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
+  pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
+  destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
+  navegador quando o card não existe mais.
 - **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
   (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
 - As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada

@@ -32,9 +32,13 @@ export function inboxTarget(
   entry: InboxEntry,
   cardExists: (route: Extract<Route, { name: "card" }>) => boolean,
 ): InboxTarget | null {
-  void entry;
-  void cardExists;
-  return null;
+  if (entry.link) return { kind: "link", link: entry.link };
+  const { route } = entry;
+  if (!route) return null;
+  if (route.name === "card" && entry.fallbackUrl && !cardExists(route)) {
+    return { kind: "url", url: entry.fallbackUrl };
+  }
+  return { kind: "route", route };
 }
 
 export type InboxDay = "today" | "yesterday" | string;
