@@ -1105,6 +1105,16 @@ export const en: Dictionary = {
     not_found: "That snippet was not found.",
     secret: "The snippet has a secret ({kinds}): keep it in the vault, or turn it into an action.",
   },
+  inbox: {
+    bell: "Notifications",
+    bellUnread: "Notifications, {n} unread",
+    title: "Notifications",
+    markAll: "Mark all as read",
+    clear: "Clear",
+    empty: "No notifications.",
+    today: "Today",
+    yesterday: "Yesterday",
+  },
   common: {
     cancel: "Cancel",
     close: "Close",
