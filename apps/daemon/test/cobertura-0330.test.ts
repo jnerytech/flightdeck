@@ -3,7 +3,15 @@
  * other than "missing", a file that is not there, a helper nobody passed an override to.
  */
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { withIdleQuery } from "../src/account/readers.ts";
 import { excludeLocalSettingsAsync, freshBase } from "../src/board/worktree.ts";
@@ -17,7 +25,7 @@ import { packPersonas } from "../src/personas/pack.ts";
 import { Personas } from "../src/personas/store.ts";
 import { inspectPlugin } from "../src/plugins/inventory.ts";
 import { filePins } from "../src/plugins/plugins.ts";
-import { cloneRepo, gitRunner } from "../src/project-find.ts";
+import { cloneRepo, gitRunner, scanRepos } from "../src/project-find.ts";
 import { SecretScanner } from "../src/snippets/model.ts";
 import { processOps } from "../src/ssh/key-delivery.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -229,6 +237,23 @@ describe("cobertura-0330: project finder, ssh agent", () => {
     expect(Date.now() - started).toBeLessThan(4_000);
   });
 
+  test("a scan skips a folder it cannot read and still finds the others", async () => {
+    const root = tempDir("fd-cob-scan-");
+    for (const name of ["a/.git", "locked/inner/.git", "b/.git"])
+      mkdirSync(join(root, name), { recursive: true });
+    chmodSync(join(root, "locked"), 0o000);
+    cleanups.push(() => chmodSync(join(root, "locked"), 0o755));
+    const found = await scanRepos([root]);
+    expect(found.repos.map((r) => r.name)).toEqual(expect.arrayContaining(["a", "b"]));
+  });
+
+  test("a scan stops after opening 2000 folders and says it was cut short", async () => {
+    const root = tempDir("fd-cob-scan-many-");
+    for (let i = 0; i < 2_100; i += 1) mkdirSync(join(root, `d${i}`));
+    const found = await scanRepos([root]);
+    expect(found.truncated).toBe(true);
+  });
+
   test("the real ssh-agent helper looks for its socket on disk", async () => {
     const dir = tempDir("fd-cob-agent-");
     const sock = join(dir, "agent.sock");
@@ -266,6 +291,41 @@ describe("cobertura-0330: central", () => {
     expect((await central.hooksInstall(true)).status).toBe("installed");
     expect((await central.hooksStatus()).status).toBe("installed");
     expect((await central.hooksUninstall(true)).status).toBe("absent");
+  });
+
+  test("a hook from a session the host does not run is checked against the sessions it does", async () => {
+    const dir = tempDir("fd-cob-central-hook-");
+    const configFile = join(dir, "config.json");
+    writeFileSync(configFile, "{}");
+    const { manager, store, project } = newManager();
+    await manager.create({ cwd: project, prompt: "hi" });
+    const central = new Central({
+      db: store.db,
+      keys: new ProjectKeys("h", async () => ({ code: 1, stdout: "" })),
+      manager,
+      hooks: {
+        port: 0,
+        token: "central-token-0123456789abcdef",
+        permissionTimeoutS: 600,
+        staleAfterS: 900,
+      },
+      dataDir: join(dir, "data"),
+      hostName: "h",
+      configFile,
+      selfCommand: ["flightdeckd"],
+      settingsPath: () => join(dir, "settings.json"),
+    });
+    cleanups.push(() => central.stop());
+    const response = await fetch(`${central.receptorUrl()}/hooks/Stop`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer central-token-0123456789abcdef",
+      },
+      body: JSON.stringify({ session_id: "not-managed-here" }),
+    });
+    expect(response.status).toBe(200);
+    expect(central.external.get("not-managed-here")).toBeDefined();
   });
 
   test("a receptor file that cannot be written does not crash the daemon, and stopping settles", async () => {

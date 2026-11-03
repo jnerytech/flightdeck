@@ -145,6 +145,15 @@ describe("reverter-editar", () => {
     expect(readdirSync(join(dataDir, "review-trash"))).toHaveLength(1);
   });
 
+  test("uma entrada quebrada na lixeira não impede o revert seguinte", async () => {
+    const { files, repo, dataDir } = setup();
+    mkdirSync(join(dataDir, "review-trash"), { recursive: true });
+    symlinkSync(join(dataDir, "nao-existe"), join(dataDir, "review-trash", "quebrada"));
+    writeFileSync(join(repo, "a.txt"), "mudado\n");
+    await files.revert("session:s-1", "a.txt", true);
+    expect(contentOf(join(repo, "a.txt"))).toBe("original\n");
+  });
+
   test("editar: lê com hash, grava só com o hash esperado; arquivo que mudou é conflito", async () => {
     const { files, repo } = setup();
     expect(await files.read("session:s-1", "a.txt")).toEqual({
