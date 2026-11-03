@@ -170,23 +170,30 @@ describe("tdd-audit", () => {
       expect(otherScope.output).toContain(`  ${HASH_A}  a  fix sem commit test(a) anterior`);
     });
 
-    test("a waiver for a commit outside the range, or one that needs none, is stale and fails", () => {
-      const outside = run(
-        ["test(a): t", "feat(a): f"],
-        [HASH_A, HASH_B],
-        [{ hash: "c".repeat(40), scope: "a", reason: "r" }],
-      );
-      expect(outside.code).toBe(1);
-      expect(outside.output).toContain(
-        `  ${"c".repeat(40)}  a  stale waiver: not a violation in the audited range`,
-      );
+    test("a waiver for a commit inside the range that is not a violation is stale and fails", () => {
       const needless = run(
         ["test(a): t", "feat(a): f"],
         [HASH_A, HASH_B],
         [{ hash: HASH_B, scope: "a", reason: "r" }],
       );
       expect(needless.code).toBe(1);
-      expect(needless.output).toContain("stale waiver");
+      expect(needless.output).toContain(
+        `  ${HASH_B}  a  stale waiver: the commit is in the audited range and is not a violation`,
+      );
+    });
+
+    test("a waiver for a commit outside the range is ignored and shown as a note", () => {
+      const outside = run(
+        ["test(a): t", "feat(a): f"],
+        [HASH_A, HASH_B],
+        [{ hash: "c".repeat(40), scope: "a", reason: "r" }],
+      );
+      expect(outside).toEqual({
+        code: 0,
+        output: ["TDD AUDIT OK", `  ignored  ${"c".repeat(40)}  a  outside the audited range`].join(
+          "\n",
+        ),
+      });
     });
 
     test("a failing audit still prints the waived commits", () => {
