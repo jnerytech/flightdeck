@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -106,6 +107,10 @@ describe("app-updater", () => {
     const mem = setup({ available: null });
     const store = await start(mem);
     await click("Configurações");
+    // Settings is a lazy screen: its chunk may still be loading when the click returns.
+    await settle(
+      () => screen.queryByRole("button", { name: "Procurar atualização agora" }) !== null,
+    );
     await click("Procurar atualização agora");
     expect(mem.calls).toEqual(["check", "check"]);
     await waitFor(() => expect(text()).toContain("Você está na versão mais recente"));
