@@ -197,7 +197,8 @@ describe("times: criar", () => {
       manager.get(
         (member.cardId ? board.getCard(member.cardId).sessionId : member.sessionId) as string,
       ).model;
-    expect(team.members.map(modelOf)).toEqual(["opus", "haiku", null]);
+    // The fake runtime reports its own model for the session nobody asked a model for.
+    expect(team.members.map(modelOf)).toEqual(["opus", "haiku", "fake-model"]);
     // The model is kept with the team, so a later reading shows it too.
     expect(teams.get(team.id).members.map((m) => m.model)).toEqual(["opus", "haiku", null]);
   });
