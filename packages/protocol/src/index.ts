@@ -2649,6 +2649,13 @@ export const Command = z.discriminatedUnion("type", [
         .object({ member: z.string().min(1), persona: z.string().min(1).nullable() })
         .optional(),
       addWorkers: z.number().int().min(1).max(8).optional(),
+      /** One more worker with the persona and model asked for (none or null is the default). */
+      addMember: z
+        .object({
+          persona: z.string().min(1).nullable().optional(),
+          model: z.string().min(1).nullable().optional(),
+        })
+        .optional(),
       removeMember: z.string().min(1).optional(),
     }),
   ),

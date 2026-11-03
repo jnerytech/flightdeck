@@ -120,7 +120,8 @@ const label = (name: string): string => name.slice(0, 24).trimEnd();
 
 const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("bad_request", message, reason, params);
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("invalid_state", message, reason, params);
 const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("not_found", message, reason, params);
 
@@ -393,7 +394,9 @@ export class Teams {
 
   private open(id: string): Row {
     const row = this.row(id);
-    if (row.state === "closed") throw invalid(`o time ${row.name} está encerrado`);
+    if (row.state === "closed") {
+      throw invalid(`o time ${row.name} está encerrado`, "team_closed", { name: row.name });
+    }
     return row;
   }
 
@@ -470,7 +473,8 @@ export class Teams {
     const found = info.members.find(
       (m) => m.address === who || m.sessionId === who || m.cardId === who || m.name === who,
     );
-    if (!found) throw notFound(`o time não tem o membro ${who}`);
+    if (!found)
+      throw notFound(`o time não tem o membro ${who}`, "team_member_unknown", { member: who });
     return found;
   }
 
@@ -505,6 +509,7 @@ export class Teams {
     count: number,
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
+    spec: { persona: string | null; model: string | null } = { persona: null, model: null },
   ) {
     const members = this.stored(this.row(row.id));
     const taken = members.flatMap((m) => /executora (\d+)$/.exec(m.name)?.[1] ?? []).map(Number);
@@ -520,21 +525,32 @@ export class Teams {
       const added = await this.startWorker(
         team,
         `${label(row.name)} · executora ${number}`,
-        null,
+        spec.persona,
         coordinator?.address ?? null,
+        spec.model,
       );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
-      tellCoordinator(`Entrou uma executora no time: "${added.name}" (card ${added.cardId}).`);
+      const asked = [
+        spec.persona && `persona ${spec.persona}`,
+        spec.model && `modelo ${spec.model}`,
+      ].filter(Boolean);
+      tellCoordinator(
+        `Entrou uma executora no time: "${added.name}" (card ${added.cardId})${
+          asked.length > 0 ? `, com ${asked.join(" e ")}` : ""
+        }.`,
+      );
     }
   }
 
-  /** Takes a worker out of the team and tells it so; the coordinator stays. */
-  private dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
+  /** Stops a worker, takes it out of the team and tells it so; the coordinator stays. */
+  private async dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
     const target = this.find(this.get(row.id), who);
     if (target.role === "coordinator") {
-      throw invalid("a coordenadora não sai do time: encerre o time");
+      throw invalid("a coordenadora não sai do time: encerre o time", "team_coordinator_stays");
     }
+    // Its turn is interrupted; the card stays on the board.
+    if (target.cardId) await this.opts.board.stopCard(target.cardId);
     const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
     this.save(row.id, { members: JSON.stringify(members) });
     if (target.sessionId) {
@@ -568,9 +584,27 @@ export class Teams {
       );
     }
     if (patch.persona) this.changePersona(row, info, patch.persona);
+    if (patch.addWorkers || patch.addMember) {
+      if (row.state === "paused") {
+        throw invalid(
+          `o time ${row.name} está pausado: retome antes de acrescentar`,
+          "team_paused",
+          {
+            name: row.name,
+          },
+        );
+      }
+    }
     if (patch.addWorkers)
       await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
-    if (patch.removeMember) this.dropMember(row, patch.removeMember, tellCoordinator);
+    if (patch.addMember) {
+      const spec = {
+        persona: this.checkPersona(patch.addMember.persona),
+        model: patch.addMember.model ?? null,
+      };
+      await this.addWorkers(row, 1, coordinator, tellCoordinator, spec);
+    }
+    if (patch.removeMember) await this.dropMember(row, patch.removeMember, tellCoordinator);
     return this.changed(row.id);
   }
 
