@@ -870,6 +870,29 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    plugin_arg_refused: "O valor {value} foi recusado: seria lido como uma opção.",
+    plugin_not_installed: "{id} não está instalado.",
+    marketplace_missing: "O marketplace {marketplace} não existe.",
+    plugin_not_in_marketplace: "{id} não está no marketplace.",
+    marketplace_update_failed: "Não deu para atualizar o marketplace {marketplace}: {why}",
+    plugin_preview_unavailable_update:
+      "O conteúdo de {id} não pode ser mostrado antes de atualizar.",
+    plugin_validate_refused: "O validador de plugins recusou: {errors}",
+    plugin_preview_unavailable_install:
+      "O conteúdo de {name} não pode ser mostrado antes de instalar.",
+    plugin_pinned: "{id} está fixado na versão {version}: solte antes de atualizar.",
+    plugin_remove_confirm: "Remover um plugin pede a sua confirmação.",
+    marketplace_add_confirm: "Adicionar um marketplace pede a sua confirmação.",
+    marketplace_remove_confirm: "Remover um marketplace pede a sua confirmação.",
+    plugin_content_changed: "O conteúdo mudou desde que foi mostrado: veja a prévia de novo.",
+    marketplace_catalog_unreadable: "O catálogo do marketplace {marketplace} não pôde ser lido.",
+    plugin_command_mismatch: "Só se aceita o comando que foi mostrado: peça de novo para ver.",
+    plugins_stopped: "O gerenciador de plugins foi parado.",
+    plugin_cli_failed: "claude plugin {command} falhou: {why}",
+    plugin_cli_not_json: "claude plugin {command} não devolveu JSON.",
+    claude_not_found: "O claude não foi encontrado no PATH deste host.",
+    plugin_dir_missing: "A pasta {dir} não existe.",
+    plugin_too_many_files: "O plugin tem arquivos demais (mais de {max}).",
     team_quota_until:
       "A cota do plano está acima do limite até {until}: crie o time depois, senão ele nasce parado.",
     team_quota_over:

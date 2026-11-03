@@ -874,6 +874,29 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    plugin_arg_refused: "The value {value} is refused: it would read as an option.",
+    plugin_not_installed: "{id} is not installed.",
+    marketplace_missing: "The marketplace {marketplace} does not exist.",
+    plugin_not_in_marketplace: "{id} is not in the marketplace.",
+    marketplace_update_failed: "The marketplace {marketplace} could not be refreshed: {why}",
+    plugin_preview_unavailable_update: "The content of {id} cannot be shown before updating.",
+    plugin_validate_refused: "The plugin validator refused it: {errors}",
+    plugin_preview_unavailable_install: "The content of {name} cannot be shown before installing.",
+    plugin_pinned: "{id} is pinned at version {version}: release it before updating.",
+    plugin_remove_confirm: "Removing a plugin needs your confirmation.",
+    marketplace_add_confirm: "Adding a marketplace needs your confirmation.",
+    marketplace_remove_confirm: "Removing a marketplace needs your confirmation.",
+    plugin_content_changed: "The content changed since it was shown: look at the preview again.",
+    marketplace_catalog_unreadable:
+      "The catalog of the marketplace {marketplace} could not be read.",
+    plugin_command_mismatch:
+      "Only the command that was shown can be accepted: ask to see it again.",
+    plugins_stopped: "The plugin manager was stopped.",
+    plugin_cli_failed: "claude plugin {command} failed: {why}",
+    plugin_cli_not_json: "claude plugin {command} did not answer JSON.",
+    claude_not_found: "claude was not found on this host's PATH.",
+    plugin_dir_missing: "The folder {dir} does not exist.",
+    plugin_too_many_files: "The plugin has too many files (more than {max}).",
     team_quota_until:
       "The plan quota is over its limit until {until}: create the team later, or it would start paused.",
     team_quota_over:

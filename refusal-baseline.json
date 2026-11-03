@@ -1,14 +1,12 @@
 {
+  "apps/daemon/src/issues/providers.ts": 1,
+  "apps/daemon/src/issues/issues.ts": 7,
+  "apps/daemon/src/updates/apply.ts": 2,
   "apps/daemon/src/bg/service.ts": 1,
   "apps/daemon/src/central/central.ts": 1,
-  "apps/daemon/src/issues/issues.ts": 7,
-  "apps/daemon/src/issues/providers.ts": 1,
+  "apps/daemon/src/server.ts": 4,
   "apps/daemon/src/messaging/endpoints.ts": 3,
   "apps/daemon/src/messaging/idle.ts": 1,
   "apps/daemon/src/messaging/messages.ts": 6,
-  "apps/daemon/src/permissions/permission-broker.ts": 1,
-  "apps/daemon/src/plugins/inventory.ts": 2,
-  "apps/daemon/src/plugins/plugins.ts": 19,
-  "apps/daemon/src/server.ts": 4,
-  "apps/daemon/src/updates/apply.ts": 2
+  "apps/daemon/src/permissions/permission-broker.ts": 1
 }

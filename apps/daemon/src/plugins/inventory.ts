@@ -89,6 +89,8 @@ async function filesUnder(root: string): Promise<{ files: string[]; links: strin
         throw new FlightdeckError(
           "bad_request",
           `plugin com arquivos demais (mais de ${MAX_FILES})`,
+          "plugin_too_many_files",
+          { max: MAX_FILES },
         );
       }
     }
@@ -341,7 +343,8 @@ async function serversOf(reading: Reading, manifestJson: Json | null): Promise<P
 }
 
 export async function inspectPlugin(dir: string): Promise<PluginInventory> {
-  if (!(await exists(dir))) throw new FlightdeckError("not_found", `${dir} não existe`);
+  if (!(await exists(dir)))
+    throw new FlightdeckError("not_found", `${dir} não existe`, "plugin_dir_missing", { dir });
   const reading: Reading = { root: await realpath(resolve(dir)), problems: [] };
   const { root } = reading;
 
