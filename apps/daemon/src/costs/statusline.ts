@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { type Ack, PROTOCOL_VERSION, parseServerMessage } from "@flightdeck/protocol";
 import { Config } from "../config.ts";
 import { daemonUrl } from "../mcp.ts";
@@ -50,9 +50,10 @@ export function statuslineText(data: StatuslineData): string {
 }
 
 /** The config as it is on disk; `null` when there is none or it does not parse. Never writes. */
-export function readConfig(file: string): Config | null {
-  if (!existsSync(file)) return null;
-  const parsed = Config.safeParse(JSON.parse(readFileSync(file, "utf8")));
+export async function readConfig(file: string): Promise<Config | null> {
+  const text = await readFile(file, "utf8").catch(() => null);
+  if (text === null) return null;
+  const parsed = Config.safeParse(JSON.parse(text));
   return parsed.success ? parsed.data : null;
 }
 
@@ -97,7 +98,7 @@ export async function runStatusline(opts: {
     timer = setTimeout(() => resolve(""), opts.timeoutMs ?? STATUSLINE_TIMEOUT_MS);
   });
   const work = (async () => {
-    const config = readConfig(opts.configFile);
+    const config = await readConfig(opts.configFile);
     if (!config) return "";
     const input = JSON.parse((await new Response(opts.stdin).text()) || "{}");
     const id = typeof input.session_id === "string" ? input.session_id : undefined;

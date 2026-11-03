@@ -55,7 +55,7 @@ describe("statusline", () => {
     const missing = readConfig(join(dir, "none.json"));
     expect(missing).toBeInstanceOf(Promise);
     expect(await missing).toBeNull();
-    writeFileSync(join(dir, "bad.json"), "{}");
+    writeFileSync(join(dir, "bad.json"), JSON.stringify({ port: "not a port" }));
     expect(await readConfig(join(dir, "bad.json"))).toBeNull();
   });
 
