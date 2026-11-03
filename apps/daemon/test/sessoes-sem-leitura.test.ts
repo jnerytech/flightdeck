@@ -64,4 +64,27 @@ describe("sessoes-sem-leitura: the session manager reads no persona file", () =>
     }
     expect(reason).toBe("personas_off");
   });
+
+  test("send and resume read the personas zero more times: only the start asks the reader", async () => {
+    let reads = 0;
+    const reader = {
+      resolve: async () => {
+        reads++;
+        throw new Error("not used");
+      },
+      subagents: async () => {
+        reads++;
+        return { agents: { "persona-seg": AGENT } };
+      },
+    };
+    const { manager, runtime, start, project } = newManager({ personas: reader });
+    const { sessionId } = await start({ cwd: project, prompt: "hi" });
+    expect(reads).toBe(1);
+    await waitFor(() => runtime.starts.length > 0);
+    await manager.close(sessionId);
+    await manager.resume(sessionId);
+    await waitFor(() => runtime.starts.length > 1);
+    expect(runtime.starts[1]?.agents).toEqual({ "persona-seg": AGENT });
+    expect(reads).toBe(1);
+  });
 });

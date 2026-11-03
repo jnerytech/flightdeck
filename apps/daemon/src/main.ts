@@ -1,3 +1,4 @@
+import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { createHash } from "node:crypto";
 import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
@@ -613,7 +614,6 @@ export async function startDaemon(
         ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
         ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
       }),
-    personas: personaStore,
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   const history = new HistoryIndexer({
@@ -646,7 +646,9 @@ export async function startDaemon(
   budgets.start();
   history.onChange(() => usageIndex.request());
   usageIndex.start();
+  const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
+    preparePersonas: prepare,
     db: store.db,
     manager,
     quota,
@@ -839,16 +841,21 @@ export async function startDaemon(
     quota,
     names,
     personas: {
-      resolve: (id) => {
+      resolve: async (id) => {
         try {
-          return { id, name: personaStore.resolve({ id }, {}).persona.name };
+          return { id, name: (await personaStore.resolve({ id }, {})).persona.name };
         } catch {
           return null;
         }
       },
     },
-    startCoordinator: ({ cwd, prompt, name, persona }) =>
-      manager.create({ cwd, prompt, name, ...(persona ? { persona: { id: persona } } : {}) }),
+    startCoordinator: async ({ cwd, prompt, name, persona }) => {
+      const ref = persona ? { id: persona } : undefined;
+      return manager.create(
+        { cwd, prompt, name, ...(ref ? { persona: ref } : {}) },
+        { prepared: await prepare(ref, cwd) },
+      );
+    },
     startWorker: (cardId, persona) =>
       board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
     warm: (cwd) => warmKeys(cwd),
@@ -1061,7 +1068,7 @@ export async function startDaemon(
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
-    forker: new Forker({ runtime, manager, rewinder }),
+    forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
     mcp: new McpConfig(),
     agentcfg,
     // Phase 26: the project's auto memory; its writes are recorded by name and hash only.

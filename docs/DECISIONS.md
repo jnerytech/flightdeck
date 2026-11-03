@@ -2957,3 +2957,10 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   IO: `tray_set_menu`, `tray_set_status`, `focus_main` and `set_close_to_tray`
   (`SYNC_COMMANDS_ALLOWED` pins the list). Rust was reviewed by reading: cargo is not on the phase
   host, so CI's `cargo check` is the compiler check.
+- **The session manager reads no persona file.** Reading a project's personas is asynchronous IO,
+  so it moved out to the edges: whoever starts a session (`session.create`, a card, a workflow
+  step, a team coordinator, a history resume, a fork) calls `preparePersonas` first and hands the
+  resolved persona and the subagents to `SessionManager.create` as values. The session keeps the
+  subagents it opened with (the `sessions.agents` column), so `send` and `resume` reuse them
+  and need no caller to resolve anything. The cost: a change to a persona file, or to the project's
+  subagents switch, applies to new sessions only; a session already open keeps what it opened with.

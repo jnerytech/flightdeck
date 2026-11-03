@@ -1,3 +1,4 @@
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import { stat } from "node:fs/promises";
 import type { Database } from "bun:sqlite";
 import { basename, join, resolve } from "node:path";
@@ -83,6 +84,8 @@ export const DEFAULT_PROMPT_TEMPLATE =
 export interface BoardOptions {
   db: Database;
   manager: SessionManager;
+  /** Reads the personas for a session about to open; none when absent. */
+  preparePersonas?: Prepare;
   allowedRoots: readonly string[];
   /** 2 when absent. */
   maxParallelRuns?: number;
@@ -287,6 +290,7 @@ export class Board {
     this.workflows = new WorkflowEngine({
       db: opts.db,
       manager: opts.manager,
+      ...(opts.preparePersonas ? { preparePersonas: opts.preparePersonas } : {}),
       host: {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
@@ -1293,6 +1297,8 @@ export class Board {
         "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
       )
       .get(runId);
+    const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
+    const prepared = await (this.opts.preparePersonas ?? withoutPersonas)(personaRef, worktree);
     const { sessionId } = this.opts.manager.create(
       {
         cwd: worktree,
@@ -1300,9 +1306,9 @@ export class Board {
         name: card.title,
         ...(variant?.model ? { model: variant.model } : {}),
         ...(variant?.effort ? { effort: variant.effort } : {}),
-        ...(run?.persona ? { persona: JSON.parse(run.persona) as PersonaRef } : {}),
+        ...(personaRef ? { persona: personaRef } : {}),
       },
-      { unattended: run?.fix_prompt != null },
+      { unattended: run?.fix_prompt != null, prepared },
     );
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);

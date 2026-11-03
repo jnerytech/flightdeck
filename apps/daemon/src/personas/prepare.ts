@@ -1,3 +1,4 @@
+import { FlightdeckError } from "../errors.ts";
 import type { PersonaAgent } from "@flightdeck/protocol";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
 
@@ -15,10 +16,35 @@ export interface PersonaReader {
   subagents(ctx: PersonaContext): Promise<{ agents: Record<string, PersonaAgent> }>;
 }
 
+/**
+ * Reads, at the edge, what a new session needs from the personas. The session manager takes the
+ * result as values and reads no persona file itself. A persona asked for on a host without the
+ * persona store is refused.
+ */
 export async function preparePersonas(
-  _reader: PersonaReader | undefined,
-  _ref: PersonaRef | undefined,
-  _cwd: string,
+  reader: PersonaReader | undefined,
+  ref: PersonaRef | undefined,
+  cwd: string,
 ): Promise<PreparedPersonas> {
-  return { persona: null, agents: {} };
+  if (!reader) {
+    if (ref) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "personas unavailable on this host",
+        "personas_off",
+      );
+    }
+    return { persona: null, agents: {} };
+  }
+  const persona = ref
+    ? await reader.resolve(ref, { projectPath: cwd, language: ref.language })
+    : null;
+  const { agents } = await reader.subagents({ projectPath: cwd });
+  return { persona, agents };
 }
+
+/** How a caller that starts sessions reads the personas for one; the host's store, else none. */
+export type Prepare = (ref: PersonaRef | undefined, cwd: string) => Promise<PreparedPersonas>;
+
+/** For a host without the persona store (and for callers that were not given one). */
+export const withoutPersonas: Prepare = (ref, cwd) => preparePersonas(undefined, ref, cwd);

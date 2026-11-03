@@ -86,6 +86,7 @@ import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import { preparePersonas } from "./personas/prepare.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
 import type { SnippetUse } from "./snippets/use.ts";
@@ -857,7 +858,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           const cwd = resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
           await opts.warmProjectKey(cwd);
         }
-        return ok(command.type, manager.create(command.payload));
+        const prepared = await preparePersonas(
+          opts.personas,
+          command.payload.persona,
+          command.payload.cwd,
+        );
+        return ok(command.type, manager.create(command.payload, { prepared }));
       }
       case "session.send":
         return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
@@ -1414,11 +1420,13 @@ export function startServer(opts: ServerOptions): RunningServer {
             "session_maybe_active",
           );
         }
+        const { agents } = await preparePersonas(opts.personas, undefined, session.cwd);
         return ok(
           command.type,
           manager.createResumed({
             cwd: session.cwd,
             claudeSessionId,
+            agents,
             name: name ?? session.title,
             ...(permissionMode ? { permissionMode } : {}),
           }),
@@ -1732,9 +1740,9 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { ...preview, ...done });
       }
       case "personas.list":
-        return ok(command.type, personas().list(command.payload));
+        return ok(command.type, await personas().list(command.payload));
       case "personas.save":
-        return ok(command.type, personas().save(command.payload));
+        return ok(command.type, await personas().save(command.payload));
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1746,7 +1754,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await personaSessions().clear(command.payload));
       case "personas.subagents": {
         const { projectPath, language } = command.payload;
-        return ok(command.type, personas().subagents({ projectPath, language }));
+        return ok(command.type, await personas().subagents({ projectPath, language }));
       }
       case "personas.publishAgent":
         return ok(command.type, await personas().publishAgent(command.payload));
@@ -1754,11 +1762,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { ref, projectPath } = command.payload;
         const store = personas();
         try {
-          return ok(command.type, store.resolve(ref, { projectPath, language: ref.language }));
+          return ok(
+            command.type,
+            await store.resolve(ref, { projectPath, language: ref.language }),
+          );
         } catch (error) {
           // A folder the daemon does not allow has no personas of its own: the host's and the pack's apply.
           if (projectPath && error instanceof FlightdeckError && error.code === "forbidden_cwd") {
-            return ok(command.type, store.resolve(ref, { language: ref.language }));
+            return ok(command.type, await store.resolve(ref, { language: ref.language }));
           }
           throw error;
         }
@@ -1769,12 +1780,20 @@ export function startServer(opts: ServerOptions): RunningServer {
           personas().reset(command.payload.id, { language: command.payload.language }),
         );
       case "personas.remove":
-        personas().remove(command.payload.scope, command.payload.id, command.payload.projectPath);
+        await personas().remove(
+          command.payload.scope,
+          command.payload.id,
+          command.payload.projectPath,
+        );
         return ok(command.type);
       case "personas.trust":
         return ok(
           command.type,
-          personas().trust(command.payload.projectPath, command.payload.id, command.payload.hash),
+          await personas().trust(
+            command.payload.projectPath,
+            command.payload.id,
+            command.payload.hash,
+          ),
         );
       case "snippets.render":
         return ok(command.type, await snippetUse().render(command.payload));
