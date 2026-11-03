@@ -203,13 +203,20 @@ export function CheckField(props: {
  * An ActionButton inside says why it is disabled there (aligned with the first field), not under
  * itself.
  */
-export function FieldRow(props: { children: ReactNode; className?: string }) {
+export function FieldRow(props: {
+  children: ReactNode;
+  className?: string;
+  /** `end` lines the controls up by their bottom edges (fields with labels above them). */
+  align?: "end";
+}) {
   const id = useId();
   const [reason, setReason] = useState<string | null>(null);
   return (
     <FieldRowContext.Provider value={{ id, setReason }}>
       <div className="field-row-wrap">
-        <div className={cn("field-row", props.className)}>{props.children}</div>
+        <div className={cn("field-row", props.align === "end" && "field-row-end", props.className)}>
+          {props.children}
+        </div>
         {reason && (
           <p id={id} className="field-help">
             {reason}

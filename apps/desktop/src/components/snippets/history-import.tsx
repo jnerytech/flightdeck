@@ -1,6 +1,7 @@
 import type { SnippetHistoryCandidate } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -129,7 +130,7 @@ export function HistoryImport(props: { store: AppStore; hostId: string; onImport
           ))}
         </ul>
       )}
-      <div className="flex flex-wrap items-end gap-2">
+      <FieldRow align="end">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-target`}>{t("snippets.history.target")}</label>
           <select
@@ -154,7 +155,7 @@ export function HistoryImport(props: { store: AppStore; hostId: string; onImport
             {t("snippets.history.reveal")}
           </Button>
         )}
-      </div>
+      </FieldRow>
       {message && <p role="status">{message}</p>}
     </div>
   );
