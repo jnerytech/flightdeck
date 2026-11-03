@@ -19,6 +19,9 @@ const detailOf = (result: GhResult) =>
     .shift()
     ?.slice(0, 300) ?? "";
 
+const LIST_LIMIT = 50;
+const SEARCH_LIMIT = 30;
+
 export interface GithubRepo {
   /** `owner/name`. */
   name: string;
@@ -56,8 +59,61 @@ export class Github {
     }
   }
 
-  async repos(_query?: string): Promise<GithubRepo[]> {
-    return [{ name: "", description: "", private: true, url: "", updatedAt: "" }];
+  /** Needs the `repo` scope when gh says which scopes it has (a fine-grained token does not). */
+  private async withRepoScope(): Promise<void> {
+    const status = await this.signedIn();
+    if (status.scopes.length > 0 && !status.scopes.includes("repo")) {
+      throw refuse("gh_scope_missing", "the GitHub login lacks the repo scope", { scope: "repo" });
+    }
+  }
+
+  /** The person's repos, or a search with `query` (one argument after `--`, never a flag). */
+  async repos(query?: string): Promise<GithubRepo[]> {
+    if (query !== undefined && (query.length > 100 || [...query].some((c) => c < " "))) {
+      throw refuse("query_invalid", "the search text is too long or has control characters");
+    }
+    await this.withRepoScope();
+    const search = query !== undefined && query.trim() !== "";
+    const result = await this.opts.gh(
+      search
+        ? [
+            "search",
+            "repos",
+            "--json",
+            "fullName,description,isPrivate,url,updatedAt",
+            "--limit",
+            String(SEARCH_LIMIT),
+            "--",
+            query,
+          ]
+        : [
+            "repo",
+            "list",
+            "--json",
+            "nameWithOwner,description,isPrivate,url,updatedAt",
+            "--limit",
+            String(LIST_LIMIT),
+          ],
+    );
+    if (!result || result.code !== 0) {
+      const detail = result ? detailOf(result) : "";
+      throw refuse("repos_failed", `gh could not list the repos: ${detail}`, { detail });
+    }
+    const rows = JSON.parse(result.stdout || "[]") as Array<{
+      nameWithOwner?: string;
+      fullName?: string;
+      description: string | null;
+      isPrivate: boolean;
+      url: string;
+      updatedAt: string;
+    }>;
+    return rows.map((row) => ({
+      name: row.nameWithOwner ?? row.fullName ?? "",
+      description: row.description ?? "",
+      private: row.isPrivate,
+      url: row.url,
+      updatedAt: row.updatedAt,
+    }));
   }
 
   async issues(_repo: string): Promise<Issue[]> {
