@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { TELEMETRY_FILE } from "../central/wrapper.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
@@ -23,9 +23,11 @@ export interface TelemetryService {
 const HOUR_MS = 3_600_000;
 
 /** The token as the config file has it right now, so a rotation takes effect without a restart. */
-function currentToken(configFile: string): string | undefined {
+async function currentToken(configFile: string): Promise<string | undefined> {
   try {
-    const raw = JSON.parse(readFileSync(configFile, "utf8")) as { telemetry?: { token?: unknown } };
+    const raw = JSON.parse(await readFile(configFile, "utf8")) as {
+      telemetry?: { token?: unknown };
+    };
     return typeof raw.telemetry?.token === "string" ? raw.telemetry.token : undefined;
   } catch {
     return undefined;
@@ -56,9 +58,9 @@ export async function startTelemetry(opts: TelemetryOptions): Promise<TelemetryS
       token: () => currentToken(configFile),
       onEvents: opts.onEvents,
     });
-    mkdirSync(config.dataDir, { recursive: true });
+    await mkdir(config.dataDir, { recursive: true });
     const file = join(config.dataDir, TELEMETRY_FILE);
-    writeFileSync(file, JSON.stringify({ url: receiver.url }));
+    await writeFile(file, JSON.stringify({ url: receiver.url }));
     // The retention runs only while the receiver does, so an idle daemon keeps no timer for it.
     opts.purge?.();
     const timer = opts.purge ? setInterval(opts.purge, opts.purgeEveryMs ?? HOUR_MS) : null;
@@ -67,7 +69,7 @@ export async function startTelemetry(opts: TelemetryOptions): Promise<TelemetryS
       url: receiver.url,
       stop: async () => {
         if (timer) clearInterval(timer);
-        rmSync(file, { force: true });
+        await rm(file, { force: true });
         await receiver.stop();
       },
     };

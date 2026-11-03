@@ -15,7 +15,7 @@ export interface OtlpReceiverOptions {
   /** 0 picks a free port (tests and smokes). */
   port: number;
   /** The receiver's own token, read on every request; none installed means every request is refused. */
-  token: () => string | null | undefined;
+  token: () => string | null | undefined | Promise<string | null | undefined>;
   /** Largest body, before and after gunzip, in bytes. */
   maxBytes?: number;
   onEvents: (events: OtlpEvent[]) => void;
@@ -303,7 +303,7 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
     hostname: "127.0.0.1",
     port: opts.port,
     async fetch(req) {
-      const token = opts.token();
+      const token = await opts.token();
       if (!token || !tokenMatches(`Bearer ${token}`, req.headers.get("authorization") ?? "")) {
         return new Response("unauthorized", { status: 401 });
       }

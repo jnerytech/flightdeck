@@ -40,10 +40,10 @@ export class TelemetryOptIn {
     const url = port === 0 ? null : `http://127.0.0.1:${port}`;
     const token = (await loadConfig(this.opts.configFile)).telemetry.token ?? "";
     return {
-      status: telemetryStatus(file, { url: url ?? "", token }),
+      status: await telemetryStatus(file, { url: url ?? "", token }),
       settingsPath: file,
       receiverUrl: url,
-      conflicts: telemetryConflicts(file),
+      conflicts: await telemetryConflicts(file),
     };
   }
 
@@ -58,7 +58,7 @@ export class TelemetryOptIn {
         "telemetry_port",
       );
     }
-    const conflicts = telemetryConflicts(file);
+    const conflicts = await telemetryConflicts(file);
     if (conflicts.length > 0) {
       throw new FlightdeckError(
         "invalid_state",
@@ -71,13 +71,13 @@ export class TelemetryOptIn {
       await this.setToken(generateToken());
     }
     const token = (await loadConfig(this.opts.configFile)).telemetry.token ?? "";
-    installTelemetry(file, { url: `http://127.0.0.1:${port}`, token });
+    await installTelemetry(file, { url: `http://127.0.0.1:${port}`, token });
     return this.status();
   }
 
   async uninstall(confirm: boolean): Promise<TelemetryOptInStatus> {
     this.confirm(confirm);
-    uninstallTelemetry(this.opts.settingsPath());
+    await uninstallTelemetry(this.opts.settingsPath());
     // The token that was written into settings.json stops working, wherever a copy is left.
     await this.setToken(generateToken());
     return this.status();
