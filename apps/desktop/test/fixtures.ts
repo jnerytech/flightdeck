@@ -101,6 +101,8 @@ export function daemon(
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
+    /** The host's default mode and lock (phase 33), kept in this daemon's memory. */
+    ui?: { mode: "full" | "simple"; locked: boolean };
     /** The review of changes (phase 11: `changes.*`, `review.*`, `file.*`, `files.sessions`); on unless `false`. */
     review?: boolean;
     /** Replaces the recursive `fs.watch` of the changes review (to know when a watch is in place). */
@@ -380,6 +382,7 @@ export function daemon(
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
       ...firstRunOptions,
+      ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {

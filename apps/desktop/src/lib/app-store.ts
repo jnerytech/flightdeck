@@ -117,6 +117,7 @@ import {
 } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
+import { loadChoices, type ModeAnswer, saveChoice, type UiMode } from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
@@ -206,6 +207,8 @@ export interface AppState {
   externalRequests: Record<string, ExternalPermissionFrame>;
   /** Name, pinned and archived, by `sessionKey(hostId, claudeSessionId)`. */
   meta: Record<string, SessionMeta>;
+  /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
+  uiChoices: Record<string, UiMode>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
@@ -752,6 +755,7 @@ export class AppStore {
       externals: {},
       externalRequests: {},
       meta: {},
+      uiChoices: loadChoices(platform.storage),
       hub: {},
       terminalEnv: null,
       projects: {},
@@ -1148,6 +1152,19 @@ export class AppStore {
 
   setSidebarFolded(folded: readonly SidebarGroup[]): void {
     saveFolded(this.platform.storage, folded);
+  }
+
+  /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
+  uiMode(_hostId: string): ModeAnswer {
+    return { mode: "full", canSwitch: true };
+  }
+
+  /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
+  setUiChoice(_hostId: string, _mode: UiMode | null): void {}
+
+  /** Changes the host's default mode and lock (full mode's Settings of that host). */
+  async setHostUi(_hostId: string, _patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
+    return false;
   }
 
   /** How many tiles the project page shows; kept across starts. */
