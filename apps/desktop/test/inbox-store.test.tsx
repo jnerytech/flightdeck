@@ -46,11 +46,11 @@ async function setup() {
       ...extra,
     })) as { id: string };
   const a = await make("A");
-  await make("B", { blockedBy: [a.id] });
+  const b = await make("B", { blockedBy: [a.id] });
   await store.hostCommand(hostId, "board.watch", {});
   await store.hostCommand(hostId, "card.move", { cardId: a.id, column: "done" });
   await settle(() => store.getState().inbox.length > 0);
-  return { store, phone };
+  return { store, phone, hostId, projectId: project?.id as string, b };
 }
 
 describe("inbox-store", () => {
@@ -61,6 +61,16 @@ describe("inbox-store", () => {
     expect(entry?.body).toContain("B");
     expect(phone.notifications.some((n) => n.title === "Card desbloqueado")).toBe(true);
     expect(phone.items.get("flightdeck.inbox")).toContain("Card desbloqueado");
+  });
+
+  test("an unblocked card's entry opens that card", async () => {
+    const { store, hostId, projectId, b } = await setup();
+    expect(store.getState().inbox[0]?.route).toEqual({
+      name: "card",
+      host: hostId,
+      projectId,
+      cardId: b.id,
+    });
   });
 
   test("mark one, mark all and clear change the list and what is saved", async () => {
