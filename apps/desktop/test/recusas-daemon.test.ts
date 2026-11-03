@@ -362,6 +362,12 @@ const REASONS = [
   "messaging_no_route",
   "messaging_read_other_host",
   "messaging_policy_invalid",
+  "autoapprove_resume_confirm",
+  "terminal_enable_confirm",
+  "central_confirm",
+  "permission_request_closed",
+  "update_needs_service",
+  "update_signature_failed",
 ];
 
 const cleanups: Array<() => unknown> = [];
