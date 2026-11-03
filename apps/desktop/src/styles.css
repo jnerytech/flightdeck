@@ -398,3 +398,9 @@
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
 }
+
+/* Assistant text: plain on the page, in a readable measure and with room between the lines. */
+@utility message-prose {
+  max-width: 48rem;
+  line-height: 1.65;
+}

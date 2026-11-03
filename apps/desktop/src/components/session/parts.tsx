@@ -69,7 +69,7 @@ export function Message(props: {
         "message-hover max-w-full break-words text-sm",
         props.from === "user"
           ? "self-end whitespace-pre-wrap rounded-lg bg-secondary px-3 py-2"
-          : "flex flex-col gap-2",
+          : "message-prose flex flex-col gap-2",
         props.className,
       )}
     >
