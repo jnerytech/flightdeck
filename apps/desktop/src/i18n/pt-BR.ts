@@ -2699,6 +2699,16 @@ export const ptBR = {
       webhooks: "webhook url avisar eventos http",
     },
   },
+  simple: {
+    yes: "Sim, pode continuar",
+    no: "Não",
+    holdHint: "Segure para dizer sim: isto é difícil de desfazer.",
+    needsFullTitle: "Isto precisa de alguém com acesso total",
+    needsFullText: "A tarefa parou. Alguém com acesso total precisa olhar.",
+    openFull: "Abrir no modo completo",
+    copyMessage: "Copiar uma mensagem para o administrador",
+    adminMessage: "Uma tarefa espera por alguém com acesso total: {what}",
+  },
   tiles: {
     title: "Sessões lado a lado",
     hint: "Alt+setas movem entre os blocos.",

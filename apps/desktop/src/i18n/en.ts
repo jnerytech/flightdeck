@@ -2695,6 +2695,16 @@ export const en: Dictionary = {
       webhooks: "webhook url notify events http",
     },
   },
+  simple: {
+    yes: "Yes, go ahead",
+    no: "No, don't",
+    holdHint: "Hold to say yes: this one is hard to undo.",
+    needsFullTitle: "This needs someone with full access",
+    needsFullText: "The task paused. Someone with full access has to look at it.",
+    openFull: "Open in full mode",
+    copyMessage: "Copy a message for the administrator",
+    adminMessage: "A task is waiting for someone with full access: {what}",
+  },
   tiles: {
     title: "Sessions side by side",
     hint: "Alt+arrows move between the tiles.",
