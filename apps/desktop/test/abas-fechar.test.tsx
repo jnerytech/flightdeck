@@ -43,7 +43,9 @@ describe("abas: o × de cada aba", () => {
       // the screen reader get Delete (announced on the tab).
       expect(close.getAttribute("aria-hidden")).toBe("true");
       expect(close.getAttribute("tabindex")).toBe("-1");
-      expect(tab(title).getAttribute("aria-keyshortcuts")).toBe("Delete");
+      expect(tab(title).getAttribute("aria-keyshortcuts")).toBe(
+        "Delete Control+Shift+ArrowLeft Control+Shift+ArrowRight",
+      );
       expect(close.className).toContain("size-6");
     }
   });
