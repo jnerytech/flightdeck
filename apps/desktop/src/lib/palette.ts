@@ -5,6 +5,7 @@ import { UNASSIGNED } from "./clients.ts";
 import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
 import { basename } from "./paths.ts";
+import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
 import { hasFeature } from "./version.ts";
 
@@ -70,6 +71,9 @@ export interface PaletteSection {
 /** A PR link of Azure DevOps (`/pullrequest/<n>`) or GitHub (`/pull/<n>`). */
 const PR_LINK = /^https?:\/\/\S+\/(?:pullrequest|pull)\/\d+(?:[/?#]\S*)?$/;
 
+/** How many recent entries the palette shows. */
+const RECENTS_SHOWN = 5;
+
 const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission", "idle"]);
 
 /**
@@ -80,7 +84,14 @@ const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_perm
 export function paletteSections(
   state: AppState,
   query: string,
-  options: { costs: boolean; t: T; globalSnippets?: AppSnippet[]; recents?: string[] },
+  options: {
+    costs: boolean;
+    t: T;
+    globalSnippets?: AppSnippet[];
+    recents?: string[];
+    /** A request waits for the person: the approve and deny commands show. */
+    waiting?: boolean;
+  },
 ): PaletteSection[] {
   const { t } = options;
   const online = state.hosts.filter((h) => h.status === "online");
@@ -207,13 +218,18 @@ export function paletteSections(
     label: string,
     target: PaletteTarget,
     detail = t("palette.actionDetail"),
-  ): PaletteItem => ({
-    id,
-    label,
-    detail,
-    target,
-    actions: [],
-  });
+    shortcut?: ShortcutAction | string,
+  ): PaletteItem => {
+    // A registry action shows its keys; the approve and deny commands show their one key.
+    const keys = shortcut
+      ? (() => {
+          const def = shortcutOf(shortcut as ShortcutAction);
+          return def ? keysLabel(def, false) : shortcut;
+        })()
+      : undefined;
+    return { id, label, detail, target, actions: [], ...(keys ? { shortcut: keys } : {}) };
+  };
+  const waiting = options.waiting === true;
   const actions = [
     ...online.map((host) =>
       action(`new:${host.id}`, t("palette.newSessionIn", { host: host.name }), {
@@ -238,10 +254,46 @@ export function paletteSections(
           hostId: host.id,
         }),
       ),
+    action("go:hub", t("palette.goSessions"), { kind: "go", to: "hub" }, undefined, "go-sessions"),
+    action(
+      "go:needs-you",
+      t("palette.goNeedsYou"),
+      { kind: "go", to: "needs-you" },
+      undefined,
+      "go-needs-you",
+    ),
+    action(
+      "go:all-projects",
+      t("palette.goProjects"),
+      { kind: "go", to: "all-projects" },
+      undefined,
+      "go-projects",
+    ),
+    ...(waiting
+      ? [
+          action(
+            "decide:approve",
+            t("palette.approveOldest"),
+            { kind: "decide-oldest", decision: "approve" },
+            undefined,
+            "A",
+          ),
+          action(
+            "decide:deny",
+            t("palette.denyOldest"),
+            { kind: "decide-oldest", decision: "deny" },
+            undefined,
+            "N",
+          ),
+        ]
+      : []),
     action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
     action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
-    ...(options.costs ? [action("costs", t("palette.goCosts"), { kind: "costs" })] : []),
-    action("settings", t("palette.goSettings"), { kind: "settings" }),
+    ...(options.costs
+      ? [action("costs", t("palette.goCosts"), { kind: "costs" }, undefined, "go-costs")]
+      : []),
+    action("settings", t("palette.goSettings"), { kind: "settings" }, undefined, "go-settings"),
+    action("shortcuts", t("palette.showShortcuts"), { kind: "shortcuts" }, undefined, "help"),
     action("clients", t("clients.manageShort"), { kind: "clients" }),
     ...((state.clientList ?? []).length === 0
       ? []
@@ -324,8 +376,18 @@ export function paletteSections(
     { title: t("palette.sectionSnippets"), items: snippets },
     { title: t("palette.sectionActions"), items: actions },
   ].map((section) => ({ ...section, items: section.items.filter(matches) }));
+  // With nothing typed, what was used lately comes first (an entry that is gone is dropped).
+  const everything = filtered.flatMap((section) => section.items);
+  const recent =
+    needle === ""
+      ? (options.recents ?? [])
+          .flatMap((id) => everything.find((item) => item.id === id) ?? [])
+          .slice(0, RECENTS_SHOWN)
+      : [];
   // The link is the query itself, so it is not filtered by it.
-  return [{ title: t("palette.sectionLink"), items: prLink }, ...filtered].filter(
-    (section) => section.items.length > 0,
-  );
+  return [
+    { title: t("palette.sectionLink"), items: prLink },
+    { title: t("palette.sectionRecent"), items: recent },
+    ...filtered,
+  ].filter((section) => section.items.length > 0);
 }

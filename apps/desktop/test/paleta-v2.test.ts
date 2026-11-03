@@ -3,31 +3,19 @@ import { translator } from "../src/i18n/index.ts";
 import type { AppState } from "../src/lib/app-store.ts";
 import { paletteSections } from "../src/lib/palette.ts";
 
-const state = (pending = false) =>
+const state = () =>
   ({
     hosts: [
       {
         id: "h1",
         name: "alfa",
         status: "online",
-        sessions: [
-          {
-            id: "s1",
-            name: "Alpha",
-            cwd: "/p/alpha",
-            status: "idle",
-            pendingPermissions: pending
-              ? [{ requestId: "r1", toolName: "Bash", createdAt: "2026-11-02T10:00:00Z" }]
-              : [],
-          },
-        ],
+        sessions: [{ id: "s1", name: "Alpha", cwd: "/p/alpha", status: "idle" }],
       },
     ],
     sessions: {},
     hub: {},
     externals: {},
-    externalRequests: {},
-    runs: {},
     meta: {},
     cards: {},
     projects: {},
@@ -35,10 +23,12 @@ const state = (pending = false) =>
   }) as unknown as AppState;
 
 const en = translator("en");
-const sections = (s: AppState, query = "", recents?: string[]) =>
-  paletteSections(s, query, { costs: true, t: en, ...(recents ? { recents } : {}) });
-const items = (s: AppState, query = "") => sections(s, query).flatMap((section) => section.items);
-const item = (s: AppState, label: string) => items(s).find((i) => i.label === label);
+const sections = (s: AppState, query = "", recents?: string[], waiting = false) =>
+  paletteSections(s, query, { costs: true, t: en, waiting, ...(recents ? { recents } : {}) });
+const items = (s: AppState, query = "", waiting = false) =>
+  sections(s, query, undefined, waiting).flatMap((section) => section.items);
+const item = (s: AppState, label: string, waiting = false) =>
+  items(s, "", waiting).find((i) => i.label === label);
 
 describe("paleta-v2: commands with their shortcut", () => {
   test("the go-to commands name their screen and carry the keys of the registry", () => {
@@ -75,12 +65,12 @@ describe("paleta-v2: commands with their shortcut", () => {
   test("approve and deny the oldest request show only while one waits, with A and N", () => {
     expect(item(state(), "Approve the oldest request")).toBeUndefined();
     expect(item(state(), "Deny the oldest request")).toBeUndefined();
-    const waiting = state(true);
-    expect(item(waiting, "Approve the oldest request")).toMatchObject({
+    const waiting = state();
+    expect(item(waiting, "Approve the oldest request", true)).toMatchObject({
       target: { kind: "decide-oldest", decision: "approve" },
       shortcut: "A",
     });
-    expect(item(waiting, "Deny the oldest request")).toMatchObject({
+    expect(item(waiting, "Deny the oldest request", true)).toMatchObject({
       target: { kind: "decide-oldest", decision: "deny" },
       shortcut: "N",
     });

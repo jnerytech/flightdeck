@@ -605,6 +605,13 @@ export const ptBR = {
     noPrMatch: "Nenhum card ou sessão tem esse PR",
     actionsOf: "Ações de {label}",
     sectionActions: "Ações",
+    sectionRecent: "Recentes",
+    goSessions: "Ir para Sessões",
+    goNeedsYou: "Ir para Precisa de você",
+    goProjects: "Ir para Projetos",
+    approveOldest: "Aprovar o pedido mais antigo",
+    denyOldest: "Negar o pedido mais antigo",
+    showShortcuts: "Mostrar os atalhos de teclado",
   },
   time: {
     now: "agora",

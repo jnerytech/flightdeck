@@ -100,6 +100,7 @@ are written in Portuguese.
   - [Tray](#tray)
   - [Open in terminal](#open-in-terminal)
   - [Palette Ctrl+K](#palette-ctrlk)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
   - [Global shortcut](#global-shortcut)
 - [Interface](#interface)
   - [Design and navigation](#design-and-navigation)
@@ -2201,6 +2202,19 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
+- With nothing typed, a **Recent** section comes first with the last five entries you opened
+  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+  keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
+  **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
+  command shows its keys at the right.
+
+### Keyboard shortcuts
+
+`?` (outside text fields) opens a sheet with every shortcut, by group. The go-to chords press `g`
+and then a letter within about a second and a half: `g s` Sessions, `g n` Needs you, `g p`
+Projects, `g c` Costs, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
+forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
+`A`/`N` on a request. None of them fires while you type in a field.
 
 ### Global shortcut
 

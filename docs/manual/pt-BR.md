@@ -99,6 +99,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Bandeja](#bandeja)
   - [Abrir no terminal](#abrir-no-terminal)
   - [Paleta Ctrl+K](#paleta-ctrlk)
+  - [Atalhos de teclado](#atalhos-de-teclado)
   - [Atalho global](#atalho-global)
 - [Interface](#interface)
   - [Desenho e navegação](#desenho-e-navegação)
@@ -2173,6 +2174,19 @@ Configurações) e, depois de Enter, **Histórico**.
 - **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
   Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
 - **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
+- Sem nada digitado, uma seção **Recentes** vem primeiro, com as cinco últimas entradas que você
+  abriu (guardadas entre execuções). **Ações** também tem **Ir para Sessões / Precisa de você /
+  Projetos**, **Mostrar os atalhos de teclado** e, enquanto um pedido espera por você, **Aprovar o
+  pedido mais antigo** e **Negar o pedido mais antigo** (um pedido de risco alto é aberto para ser
+  segurado, como na bandeja). Cada comando mostra suas teclas à direita.
+
+### Atalhos de teclado
+
+`?` (fora dos campos de texto) abre uma folha com todos os atalhos, por grupo. Os atalhos de ir
+para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões, `g n` Precisa de
+você, `g p` Projetos, `g c` Custos, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
+`Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
+`j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 
 ### Atalho global
 

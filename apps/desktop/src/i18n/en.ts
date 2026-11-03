@@ -608,6 +608,13 @@ export const en: Dictionary = {
     noPrMatch: "No card or session has this PR",
     actionsOf: "Actions of {label}",
     sectionActions: "Actions",
+    sectionRecent: "Recent",
+    goSessions: "Go to Sessions",
+    goNeedsYou: "Go to Needs you",
+    goProjects: "Go to Projects",
+    approveOldest: "Approve the oldest request",
+    denyOldest: "Deny the oldest request",
+    showShortcuts: "Show the keyboard shortcuts",
   },
   time: {
     now: "just now",
