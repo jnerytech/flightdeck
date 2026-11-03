@@ -1725,8 +1725,10 @@ Claude Code sessions can message each other through Flightdeck, on the same host
 
 - **A team** is a coordinator session and its workers. Each worker runs in a card, with its own
   worktree.
-- **Teams** (sidebar) creates a team: the project, the goal, a name, the number of workers and,
-  if you want, the coordinator's persona.
+- **Teams** (sidebar) creates a team: the project, the goal, a name and, if you want, the
+  coordinator's persona and model. The workers are rows: each has its own persona and model, and
+  you add or remove rows (the number of rows is the number of workers, 1 to 8). With no choice,
+  the model is the persona's. Each member's model shows on its line.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
   2. send one task to each worker, and ask to hear when it goes idle;
