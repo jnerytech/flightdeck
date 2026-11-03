@@ -71,6 +71,8 @@ export function TabBar(props: {
     refocusTab.current = false;
     tablist.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   });
+  // No tab, no strip: the area shows the start screen alone.
+  if (tabs.tabs.length === 0) return null;
   const shift = (id: string, delta: -1 | 1) => {
     tabs.shift(id, delta);
     refocusTab.current = !tabs.canShift(id, delta);

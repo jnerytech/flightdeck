@@ -440,6 +440,18 @@ export const ptBR = {
     collapse: "Recolher barra lateral",
     expand: "Mostrar barra lateral",
   },
+  start: {
+    title: "Nada aberto",
+    subtitle: "Escolha uma tela na barra lateral ou comece por aqui.",
+    recent: "Sessões recentes",
+    shortcuts: "Atalhos",
+    shortcut: {
+      search: "Buscar",
+      newTab: "Nova aba",
+      reopen: "Reabrir a aba fechada",
+      split: "Dividir a janela",
+    },
+  },
   sidebar: {
     sessions: "Sessões",
     openSessions: "Abrir Sessões",

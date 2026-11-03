@@ -283,6 +283,14 @@
   }
 }
 
+/* A key of a shortcut, as printed in a list. */
+@utility keycap {
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+}
+
 /* Three dots that rise in turn while Claude works. */
 .dots-working {
   display: inline-flex;

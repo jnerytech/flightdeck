@@ -444,6 +444,18 @@ export const en: Dictionary = {
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
   },
+  start: {
+    title: "Nothing open",
+    subtitle: "Pick a screen in the sidebar, or begin here.",
+    recent: "Recent sessions",
+    shortcuts: "Shortcuts",
+    shortcut: {
+      search: "Search",
+      newTab: "New tab",
+      reopen: "Reopen the closed tab",
+      split: "Split the window",
+    },
+  },
   sidebar: {
     sessions: "Sessions",
     openSessions: "Open Sessions",

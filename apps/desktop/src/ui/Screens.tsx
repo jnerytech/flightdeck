@@ -38,6 +38,7 @@ import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { StartScreen } from "./StartScreen.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
@@ -486,6 +487,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     return <ScreenLoading label={label} />;
   }
 
+  if (route.name === "start") return <StartScreen store={store} state={state} go={go} />;
   if (route.name === "settings") {
     return (
       <Settings

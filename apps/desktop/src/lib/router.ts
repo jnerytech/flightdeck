@@ -8,6 +8,8 @@ export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
   | { name: "hub" }
+  /** What an area with no tab shows: where to begin. Never kept as a tab. */
+  | { name: "start" }
   /** The requests waiting for the user (phase 10). */
   | { name: "needs-you" }
   | { name: "session"; host: string; id: string; focus?: string }
@@ -123,6 +125,7 @@ export class Router {
 }
 
 const NAMES: Record<Route["name"], true> = {
+  start: true,
   home: true,
   hub: true,
   "needs-you": true,
