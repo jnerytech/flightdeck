@@ -1664,7 +1664,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await boardsync().setPush(projectId, push, confirm));
       }
       case "boardsync.status":
-        return ok(command.type, boardsync().status(command.payload.projectId));
+        return ok(command.type, await boardsync().status(command.payload.projectId));
       case "boardsync.syncNow":
         return ok(command.type, await boardsync().syncNow(command.payload.projectId));
       case "boardsync.log":

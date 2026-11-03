@@ -64,7 +64,7 @@ export class BoardSyncService {
     });
     loop.watch(input.projectId);
     await loop.syncNow(input.projectId);
-    return this.status(input.projectId);
+    return await this.status(input.projectId);
   }
 
   unlink(projectId: string): void {
@@ -84,7 +84,7 @@ export class BoardSyncService {
     }
     checkMap(columnMap, field.options);
     store.update(projectId, { columnMap });
-    return this.status(projectId);
+    return await this.status(projectId);
   }
 
   async setPush(projectId: string, push: boolean, confirm: boolean): Promise<BoardSyncStatus> {
@@ -97,10 +97,13 @@ export class BoardSyncService {
     return this.status(projectId);
   }
 
-  status(projectId: string): BoardSyncStatus {
+  async status(projectId: string): Promise<BoardSyncStatus> {
     const link = this.opts.store.get(projectId);
     if (!link) return { linked: false };
+    // The options are asked of the provider each time: the board's owner may rename them.
+    const field = await this.opts.provider.statusField(link.boardId).catch(() => null);
     return {
+      statusOptions: field?.options.map((option) => option.name) ?? [],
       linked: true,
       provider: link.provider,
       boardId: link.boardId,
@@ -124,7 +127,7 @@ export class BoardSyncService {
       const reason = store.get(projectId)?.lastError ?? "board_sync_failed";
       throw refuse(reason, `the board could not be synced: ${reason}`);
     }
-    return { status: this.status(projectId), report };
+    return { status: await this.status(projectId), report };
   }
 
   log(cardId: string): SyncLogEntry[] {
