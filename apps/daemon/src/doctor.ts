@@ -9,6 +9,8 @@ export interface DoctorDeps {
   tailscaleIp(): Promise<string | null>;
   hooks(): "installed" | "absent" | "outdated";
   claudePath(): string | null;
+  /** Template files the host could not load (phase 33); absent when it has no templates. */
+  templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
 }
 
 export interface DoctorCheck {

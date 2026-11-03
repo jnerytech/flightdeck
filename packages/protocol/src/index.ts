@@ -887,6 +887,17 @@ export const Template = z
   });
 export type Template = z.infer<typeof Template>;
 
+/** A template file the host could not load, and why (the doctor shows it too). */
+export const TemplateProblem = z.object({ file: z.string(), reason: z.string() });
+export type TemplateProblem = z.infer<typeof TemplateProblem>;
+
+/** The built-in templates and the host's own, and the files that did not load. */
+export const TemplateListResult = z.object({
+  templates: z.array(Template),
+  problems: z.array(TemplateProblem),
+});
+export type TemplateListResult = z.infer<typeof TemplateListResult>;
+
 /** Whether the host's terminals are on, how many at most and which shell they open. */
 export const TerminalSettings = z.object({
   enabled: z.boolean(),
@@ -3191,6 +3202,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("terminal.list", z.object({}).strict()),
   /** Turns the host's terminals on (asks for `confirm`) or off (ends the live ones). */
   cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
+  cmd("template.list", z.object({}).strict()),
   cmd(
     "ui.set",
     z
@@ -3937,6 +3949,7 @@ export interface CommandResults {
   "terminal.list": { terminals: TerminalInfo[] };
   "terminal.settings": TerminalSettings;
   "ui.set": UiSettings;
+  "template.list": TemplateListResult;
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;

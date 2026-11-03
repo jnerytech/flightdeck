@@ -99,6 +99,7 @@ import type { SummaryService } from "./summary/service.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
+import type { LoadedTemplates } from "./templates/files.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
@@ -247,6 +248,8 @@ export interface ServerOptions {
   sessionFiles?: SessionFiles;
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
+  /** The templates behind `template.list` (phase 33): the built-ins and the host's own files. */
+  templates?: () => Promise<LoadedTemplates>;
   /** The host's default mode and lock (phase 33); changed by `ui.set`, which `onUiSettings` keeps. */
   ui?: UiSettings;
   onUiSettings?: (ui: UiSettings) => void | Promise<void>;
