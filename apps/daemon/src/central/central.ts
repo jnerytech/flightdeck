@@ -94,6 +94,11 @@ export class Central {
     return this.keys.known(cwd);
   }
 
+  /** Settles once the receptor file is published; the daemon awaits it before it serves. */
+  ready(): Promise<void> {
+    return Promise.resolve();
+  }
+
   receptorUrl(): string | null {
     return this.server?.url ?? null;
   }
