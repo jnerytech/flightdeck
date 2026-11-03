@@ -49,6 +49,18 @@ describe("isolamento: a test must not write into the repository", () => {
     expect(() => assertRepoUntouched(c)).toThrow(/head/i);
   });
 
+  test("a changed repository config is reported, and core.bare by name", () => {
+    const edited = repo();
+    const a = installRepoGuard(edited);
+    git(edited, "config", "user.name", "someone else");
+    expect(() => assertRepoUntouched(a)).toThrow(/config/);
+
+    const bare = repo();
+    const b = installRepoGuard(bare);
+    git(bare, "config", "core.bare", "true");
+    expect(() => assertRepoUntouched(b)).toThrow(/core\.bare/);
+  });
+
   test("a folder that is not a repository has nothing to guard", () => {
     const loose = realTempDir("fd-repo-guard-none-");
     expect(installRepoGuard(loose)).toBeNull();
