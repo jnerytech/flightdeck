@@ -22,12 +22,48 @@ export interface DoneRow {
   approx: boolean;
 }
 
-/** The first time a card is done writes its row; a later return to Concluído adds nothing. */
-export function recordDone(_db: Database, _cardId: string, _via: DoneVia, _at: string): void {}
+interface Row {
+  card_id: string;
+  project_id: string;
+  done_at: string;
+  via: DoneVia;
+  pr_url: string | null;
+  card_created_at: string;
+  fix_rounds: number;
+  fix_cost_usd: number;
+  approx: number;
+}
 
-export function readDone(_db: Database, _cardId: string): DoneRow | null {
-  return null;
+/** The first time a card is done writes its row; a later return to Concluído adds nothing. */
+export function recordDone(db: Database, cardId: string, via: DoneVia, at: string): void {
+  db.query(
+    `INSERT OR IGNORE INTO card_done
+       (card_id, project_id, done_at, via, pr_url, card_created_at, fix_rounds, fix_cost_usd)
+     SELECT c.id, c.project_id, ?, ?, c.pr_url, c.created_at,
+            (SELECT COUNT(*) FROM pr_watch_rounds WHERE card_id = c.id),
+            (SELECT COALESCE(SUM(cost_usd), 0) FROM pr_watch_rounds WHERE card_id = c.id)
+     FROM cards c WHERE c.id = ?`,
+  ).run(at, via, cardId);
+}
+
+export function readDone(db: Database, cardId: string): DoneRow | null {
+  const row = db.query<Row, [string]>("SELECT * FROM card_done WHERE card_id = ?").get(cardId);
+  return row
+    ? {
+        cardId: row.card_id,
+        projectId: row.project_id,
+        doneAt: row.done_at,
+        via: row.via,
+        prUrl: row.pr_url,
+        cardCreatedAt: row.card_created_at,
+        fixRounds: row.fix_rounds,
+        fixCostUsd: row.fix_cost_usd,
+        approx: row.approx === 1,
+      }
+    : null;
 }
 
 /** A discarded card has no row. */
-export function forgetDone(_db: Database, _cardId: string): void {}
+export function forgetDone(db: Database, cardId: string): void {
+  db.query("DELETE FROM card_done WHERE card_id = ?").run(cardId);
+}

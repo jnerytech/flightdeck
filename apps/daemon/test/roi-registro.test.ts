@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { Board } from "../src/board/board.ts";
 import type { PrProvider } from "../src/board/pr.ts";
 import { readDone } from "../src/roi/done-log.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
@@ -12,11 +13,8 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function setup(prProvider?: PrProvider) {
-  const ctx = newBoard({
-    prPollIntervalMs: 30,
-    ...(prProvider ? { prProvider: () => prProvider } : {}),
-  });
+async function setup() {
+  const ctx = newBoard();
   cleanups.push(() => ctx.board.stop());
   const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
   const card = ctx.board.createCard(project.id, { title: "A card", description: "" });
@@ -57,7 +55,7 @@ describe("roi-registro: the done-log", () => {
   });
 
   test("a merged PR is how merged, with the PR and the fix rounds and what they cost", async () => {
-    const s = await setup(mergedProvider());
+    const s = await setup();
     s.db
       .query("UPDATE cards SET pr_url = ?, pr_state = 'open', board_column = 'review' WHERE id = ?")
       .run("https://github.com/acme/app/pull/9", s.card.id);
@@ -72,7 +70,16 @@ describe("roi-registro: the done-log", () => {
         )
         .run(`r${n}`, s.card.id, n, cost, "2026-10-02T10:00:00Z");
     }
-    await cardWhen(s.board, s.card.id, (c) => c.column === "done");
+    // A board that starts with an open PR polls it: the provider says it was merged.
+    const polling = new Board({
+      db: s.db,
+      manager: s.manager,
+      allowedRoots: [s.root],
+      prProvider: () => mergedProvider(),
+      prPollIntervalMs: 30,
+    });
+    cleanups.push(() => polling.stop());
+    await cardWhen(polling, s.card.id, (c) => c.column === "done");
     expect(readDone(s.db, s.card.id)).toMatchObject({
       via: "merged",
       prUrl: "https://github.com/acme/app/pull/9",

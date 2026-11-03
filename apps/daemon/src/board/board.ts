@@ -24,6 +24,7 @@ import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
+import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
@@ -1668,7 +1669,7 @@ export class Board {
   async completeCard(id: string, confirm: boolean): Promise<Card> {
     if (!confirm)
       throw new FlightdeckError("invalid_state", "confirm completing the card", "complete_confirm");
-    this.place(id, { type: "moved", column: "done" });
+    this.place(id, { type: "moved", column: "done" }, "completed");
     await this.finish(id);
     return this.getCard(id);
   }
@@ -1701,6 +1702,7 @@ export class Board {
     const holdingUp = this.blockingOf(id);
     const heldBy = this.blockersOf(id);
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
+    forgetDone(this.db, id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
     const discarded = { ...last, worktreePath: null, branch: null, discarded: true };
     this.emit(discarded);
@@ -1826,12 +1828,17 @@ export class Board {
 
   // -- internals ------------------------------------------------------------
 
-  private place(id: string, event: BoardEvent): void {
+  private place(id: string, event: BoardEvent, via?: DoneVia): void {
     const card = this.getCard(id);
     const next = nextColumn({ column: card.column, locked: card.columnLocked }, event);
     this.db
       .query("UPDATE cards SET board_column = ?, column_locked = ?, updated_at = ? WHERE id = ?")
       .run(next.column, next.locked ? 1 : 0, now(), id);
+    // The first time a card is done is the fact the ROI view counts delivered work by.
+    if (next.column === "done" && card.column !== "done") {
+      const how = via ?? (event.type === "pr" && event.state === "merged" ? "merged" : "moved");
+      recordDone(this.db, id, how, now());
+    }
     this.changed(id);
   }
 

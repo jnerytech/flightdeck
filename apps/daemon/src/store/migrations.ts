@@ -815,4 +815,23 @@ export const MIGRATIONS: readonly string[] = [
     UPDATE cards SET local_moved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
   END;
   `,
+  // Phase 36: the done-log. One row when a card is first done; the cards already in Concluído get an
+  // approximate one from their last update. Facts only: no rate, no price, no value.
+  `
+  CREATE TABLE card_done (
+    card_id         TEXT PRIMARY KEY,
+    project_id      TEXT NOT NULL,
+    done_at         TEXT NOT NULL,
+    via             TEXT NOT NULL,
+    pr_url          TEXT,
+    card_created_at TEXT NOT NULL,
+    fix_rounds      INTEGER NOT NULL DEFAULT 0,
+    fix_cost_usd    REAL NOT NULL DEFAULT 0,
+    approx          INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX card_done_project ON card_done (project_id, done_at);
+
+  INSERT INTO card_done (card_id, project_id, done_at, via, pr_url, card_created_at, approx)
+  SELECT id, project_id, updated_at, 'moved', pr_url, created_at, 1 FROM cards WHERE board_column = 'done';
+  `,
 ];
