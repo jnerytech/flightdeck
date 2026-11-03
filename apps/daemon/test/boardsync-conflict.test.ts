@@ -104,7 +104,7 @@ describe("board-conflict: the newest change wins, the loser is logged", () => {
     await s.sync.syncProject(s.project.id);
     s.provider.items = [item(1, { status: "In Review", updatedAt: T("14:00:00") })];
     await s.sync.syncProject(s.project.id);
-    s.provider.items = [item(1, { status: "In Review", updatedAt: T("14:00:00"), title: "New" })];
+    s.provider.items = [item(1, { status: "In Review", updatedAt: T("15:00:00"), title: "New" })];
     await s.sync.syncProject(s.project.id);
     const kinds = s.store.logOf(s.card).map((entry) => entry.kind);
     expect(kinds).toContain("conflict");

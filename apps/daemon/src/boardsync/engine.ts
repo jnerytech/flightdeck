@@ -9,7 +9,7 @@ import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { columnOf } from "./map.ts";
 import type { BoardProvider, ExternalItem } from "./provider.ts";
-import type { BoardLink, BoardSyncStore } from "./store.ts";
+import type { BoardLink, BoardSyncStore, CardExternal } from "./store.ts";
 
 export interface SyncReport {
   created: number;
@@ -49,6 +49,9 @@ const zero = (): SyncReport => ({
   truncated: false,
   notModified: false,
 });
+
+/** Changes this close in time are a tie. */
+const TIE_MS = 2000;
 
 /** The title a card gets when the token could not see the item. */
 const RESTRICTED_TITLE = "Restricted item";
@@ -163,7 +166,49 @@ export class BoardSync {
       if (changedAtProvider) store.setExternal(cardId, { externalUpdatedAt: item.updatedAt });
       return;
     }
+    if (external.localMovedAt !== null && this.conflicts(cardId, link, item, external, report)) {
+      return;
+    }
     this.settleStatus(cardId, link, item, report);
+  }
+
+  /**
+   * The card moved here and the item changed there since the last sync. Both ending in the same
+   * column is no conflict. Otherwise the later change wins and the loser is written to the log.
+   * Answers true when this side kept the card as it is (so the provider's status is not applied).
+   */
+  private conflicts(
+    cardId: string,
+    link: BoardLink,
+    item: ExternalItem,
+    external: CardExternal,
+    report: SyncReport,
+  ): boolean {
+    const { board, store } = this.opts;
+    const column = columnOf(link.columnMap, item.status);
+    const card = board.getCard(cardId);
+    // A status the map does not know cannot be applied: the local move stands.
+    if (column === null) return false;
+    if (column === card.column) return false;
+    const localAt = external.localMovedAt as string;
+    const gap = Date.parse(item.updatedAt) - Date.parse(localAt);
+    const winner: "local" | "external" =
+      Math.abs(gap) <= TIE_MS ? (link.push ? "local" : "external") : gap > 0 ? "external" : "local";
+    report.conflicts += 1;
+    store.addLog(cardId, {
+      at: this.iso(),
+      kind: "conflict",
+      winner,
+      lostValue: winner === "external" ? card.column : item.status,
+      lostAt: winner === "external" ? localAt : item.updatedAt,
+      keptValue: winner === "external" ? item.status : card.column,
+      keptAt: winner === "external" ? item.updatedAt : localAt,
+      detail: null,
+    });
+    if (winner === "external") return false;
+    // This side keeps the card: what the provider said is now known, the mark stays for the push.
+    store.setExternal(cardId, { externalStatus: item.status, externalUpdatedAt: item.updatedAt });
+    return true;
   }
 
   /** An existing card made from the same issue is linked to the item instead of a duplicate. */
