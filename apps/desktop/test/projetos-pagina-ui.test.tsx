@@ -67,7 +67,7 @@ describe("projetos-pagina-ui: the project page", () => {
     for (const name of links) fireEvent.click(screen.getByRole("button", { name }));
     expect(went).toEqual([
       { name: "board", host: "h1", projectId: "p1" },
-      { name: "hub" },
+      { name: "hub", project: { hostId: "h1", projectKey: "host:h1:/work/api", name: "api" } },
       { name: "workflows", host: "h1", projectId: "p1", projectName: "api" },
       { name: "costs" },
       { name: "projects", host: "h1" },

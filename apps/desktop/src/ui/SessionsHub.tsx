@@ -65,6 +65,8 @@ export function SessionsHub(props: {
   /** Whether the row is the session open on the right. */
   isOpen(row: HubRow): boolean;
   density: Density;
+  /** Only this project's sessions, with a chip that clears it (from the project page). */
+  project?: { hostId: string; projectKey: string; name: string } | undefined;
 }) {
   const { store, state } = props;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());

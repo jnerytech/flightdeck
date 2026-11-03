@@ -7,7 +7,8 @@ import type { ActionSeed } from "./snippets.ts";
 export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
-  | { name: "hub" }
+  /** `project`: the hub shows only the sessions of that project, with a chip to clear it. */
+  | { name: "hub"; project?: { hostId: string; projectKey: string; name: string } }
   /** The requests waiting for the user (phase 10). */
   | { name: "needs-you" }
   | { name: "session"; host: string; id: string; focus?: string }
