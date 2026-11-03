@@ -117,6 +117,13 @@ export class Account {
     };
   }
 
+  /** The last reading; the first call on a host that was never read reads it once. */
+  get(): Promise<AccountState> {
+    return this.last.readAt === null && this.last.error === null
+      ? this.readNow()
+      : Promise.resolve(this.state());
+  }
+
   /** A managed session ended a turn: its stream has just refreshed the windows, so read again. */
   turnEnded(): void {
     if (this.watchers.size > 0) void this.readNow();

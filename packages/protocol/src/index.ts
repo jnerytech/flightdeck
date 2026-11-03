@@ -1321,6 +1321,13 @@ export const AccountState = z.object({
 });
 export type AccountState = z.infer<typeof AccountState>;
 
+/** Sent after `account.watch` with the host's account after each read and each change of its windows. */
+export const AccountUpdated = z.object({
+  type: z.literal("account.updated"),
+  ...AccountState.shape,
+});
+export type AccountUpdated = z.infer<typeof AccountUpdated>;
+
 /** Usage of the host's managed sessions in one day (host time zone) and project. */
 export const UsageRow = z.object({
   /** `YYYY-MM-DD`. */
@@ -2988,6 +2995,9 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  cmd("account.get", z.object({}).strict()),
+  cmd("account.watch", z.object({}).strict()),
+  cmd("account.refresh", z.object({}).strict()),
   cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
   /** `permissions.allow` of the project's `.claude/settings.local.json`. */
   cmd("rules.list", z.object({ projectId: z.string() })),
@@ -3814,6 +3824,9 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "account.get": AccountState;
+  "account.watch": undefined;
+  "account.refresh": AccountState;
   "usage.summary": UsageSummary;
   "rules.list": { rules: string[] };
   "rules.remove": { rules: string[] };
@@ -4258,6 +4271,7 @@ export const ServerMessage = z.union([
   RunUpdated,
   RunEnvUpdated,
   QuotaUpdated,
+  AccountUpdated,
   AskpassRequest,
   BudgetUpdated,
   ChangesUpdated,

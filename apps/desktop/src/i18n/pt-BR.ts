@@ -758,6 +758,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    account: "a conta do Claude",
     history: "o histórico",
     central: "a central de sessões",
     vault: "o cofre",
@@ -807,6 +808,9 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    account_refresh_too_soon: "A conta foi lida há pouco: tente de novo em {waitSeconds} s.",
+    account_unavailable:
+      "A conta do Claude deste host não pôde ser lida. Confira se o `claude` está instalado lá e tente de novo.",
     ssh_hostkey_exists:
       "Já há uma chave de servidor guardada para este destino: esqueça-a antes de trocar.",
     ssh_hostkey_mismatch: "Confirme o fingerprint que acabou de ser mostrado: verifique de novo.",

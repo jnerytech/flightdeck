@@ -762,6 +762,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    account: "the Claude account",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
@@ -811,6 +812,9 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    account_refresh_too_soon: "The account was read a moment ago: try again in {waitSeconds} s.",
+    account_unavailable:
+      "This host's Claude account could not be read. Check that `claude` is installed there, then try again.",
     ssh_hostkey_exists:
       "A server key is already saved for this destination: forget it before replacing it.",
     ssh_hostkey_mismatch: "Confirm the fingerprint that was just shown: check it again.",

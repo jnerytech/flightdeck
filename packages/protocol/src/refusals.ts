@@ -3,6 +3,8 @@
 
 /** Every reason of the daemon outside the snippet model: the app has a text for each, in both languages. */
 export const DAEMON_REASONS = [
+  "account_refresh_too_soon",
+  "account_unavailable",
   "cwd_missing",
   "cwd_outside_roots",
   "request_invalid",
