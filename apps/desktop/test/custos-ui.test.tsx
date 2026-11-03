@@ -130,6 +130,13 @@ describe("custos-ui", () => {
     expect(errors.filter((line) => line.includes("same key"))).toEqual([]);
   });
 
+  test("a fourth tile of the strip names the model that spent the most, with its cost", async () => {
+    await online();
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
+    expect(text("Modelo principal")).toBe("claude-opus-5-5 · US$ 3.50");
+  });
+
   test("tela Custos: período, totais, economia do cache, gráfico por dia empilhado por projeto, quebras e o aviso de estimativa", async () => {
     await online();
     await click("Custos");
