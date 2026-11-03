@@ -3,6 +3,7 @@ import { closeSync, openSync, readdirSync, readSync, statSync, watch } from "nod
 import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { promptText } from "../transcript-text.ts";
 import { type HistoryRecord, parseLines } from "./parser.ts";
 import { lastTool, requestLine } from "./session-line.ts";
 
@@ -221,6 +222,29 @@ export class HistoryIndexer {
       this.db.run(
         "CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(text, content='history_messages')",
       );
+    }
+    this.repairTitles();
+  }
+
+  /**
+   * A title an older daemon stored from a harness wrapper (`<system-reminder>…`) is taken again
+   * from the session's own messages: the first one with real text, else none.
+   */
+  private repairTitles(): void {
+    const stale = this.db
+      .query("SELECT claude_session_id AS id FROM history_sessions WHERE title LIKE '<%'")
+      .all() as Array<{ id: string }>;
+    for (const { id } of stale) {
+      const users = this.db
+        .query(
+          "SELECT text FROM history_messages WHERE claude_session_id = ? AND kind = 'message' AND role = 'user' ORDER BY rowid",
+        )
+        .all(id) as Array<{ text: string }>;
+      const first = users.map((u) => promptText(u.text)).find((text) => text !== null);
+      const title = first == null ? null : Array.from(first).slice(0, TITLE_CHARS).join("");
+      this.db
+        .query("UPDATE history_sessions SET title = ? WHERE claude_session_id = ?")
+        .run(title, id);
     }
   }
 
@@ -724,11 +748,14 @@ export class HistoryIndexer {
       .query("SELECT title FROM history_sessions WHERE claude_session_id = ?")
       .get(claudeSessionId) as { title: string | null } | null;
     const summary = records.filter((r) => r.kind === "summary").at(-1)?.text;
-    const firstUser = records.find((r) => r.kind === "message" && r.role === "user")?.text;
+    const firstUser = records
+      .filter((r) => r.kind === "message" && r.role === "user")
+      .map((r) => promptText(r.text))
+      .find((text) => text !== null);
     const title =
       summary ??
       existing?.title ??
-      (firstUser === undefined ? null : Array.from(firstUser).slice(0, TITLE_CHARS).join(""));
+      (firstUser == null ? null : Array.from(firstUser).slice(0, TITLE_CHARS).join(""));
     const totals = this.db
       .query(
         `SELECT MIN(ts) AS first, MAX(ts) AS last, COALESCE(SUM(kind = 'message'), 0) AS count

@@ -4,6 +4,7 @@
  */
 import type { Database } from "bun:sqlite";
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
+import { promptText } from "../transcript-text.ts";
 
 export interface PendingQuestion {
   kind: "permission" | "question";
@@ -33,23 +34,6 @@ const FILE_TOOLS: Record<string, string> = {
   Write: "file_path",
   NotebookEdit: "notebook_path",
 };
-
-/** Text the harness puts in a user turn: commands and reminders are not something the person asked. */
-const WRAPPER = /^\s*<(?:command-|local-command|system-reminder)/;
-
-function userText(content: unknown): string | null {
-  const text =
-    typeof content === "string"
-      ? content
-      : Array.isArray(content)
-        ? content
-            .map((block) => obj(block))
-            .filter((block) => block.type === "text" && typeof block.text === "string")
-            .map((block) => block.text as string)
-            .join("\n")
-        : "";
-  return text.trim() === "" || WRAPPER.test(text) ? null : text.trim();
-}
 
 /** Hard limits, in characters. */
 const LIMITS = { asked: 280, done: 480, question: 280 } as const;
@@ -82,7 +66,7 @@ export function buildSummary(input: SummaryInput): SessionRecap {
     if (entry.isSidechain === true) continue;
     const message = obj(entry.message);
     if (entry.type === "user") {
-      asked ??= userText(message.content);
+      asked ??= promptText(message.content);
     } else if (entry.type === "assistant" && Array.isArray(message.content)) {
       const text: string[] = [];
       for (const block of message.content.map((item) => obj(item))) {
