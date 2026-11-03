@@ -105,6 +105,8 @@ async function openSession(ctx: Awaited<ReturnType<typeof setup>>, cwd = ctx.rep
 }
 
 const openChanges = async () => {
+  // The tab comes with the session list, which now waits for the project keys of its folders.
+  await settle(() => screen.queryByRole("button", { name: "Mudanças" }) !== null);
   await click("Mudanças");
   await settle(() => screen.queryByRole("region", { name: "Mudanças" }) !== null);
 };

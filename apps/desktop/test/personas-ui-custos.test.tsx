@@ -36,7 +36,7 @@ function spend(d: ReturnType<typeof makeDaemon>, id: string, session: string, co
 describe("personas-ui: costs", () => {
   test("Custos breaks the cost down by persona, by its name, and the rest as Sem persona", async () => {
     const d = makeDaemon(cleanups, { costs: true, personas: true });
-    const { sessionId } = await d.manager.create({
+    const { sessionId } = await d.start({
       cwd: d.project,
       prompt: "oi",
       persona: { id: "qa" },

@@ -24,6 +24,7 @@ import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
 import { packPersonas } from "../../daemon/src/personas/pack.ts";
+import { preparePersonas } from "../../daemon/src/personas/prepare.ts";
 import { agentPublisher } from "../../daemon/src/personas/publish.ts";
 import { Personas } from "../../daemon/src/personas/store.ts";
 import { claudeCli, filePins, Plugins } from "../../daemon/src/plugins/plugins.ts";
@@ -219,7 +220,14 @@ export function daemon(
   const plugins = options.plugins
     ? new Plugins({ cli: claudeCli(), pins: filePins(join(root, "plugin-pins.json")) })
     : undefined;
-  const board = new Board({ db: store.db, manager, allowedRoots: roots, quota });
+  const board = new Board({
+    db: store.db,
+    manager,
+    allowedRoots: roots,
+    quota,
+    // Like main.ts: the personas are read at the edge, before a session exists.
+    preparePersonas: (ref, cwd) => preparePersonas(personaStore, ref, cwd),
+  });
   cleanups.push(() => board.stop());
   const runHost = options.runenv ? fakeRunHost() : undefined;
   const runConfigs = new RunConfigs({ db: store.db });
@@ -454,6 +462,11 @@ export function daemon(
     ptys,
     runHost,
     actions,
+    /** Opens a session the way `session.create` does: the persona is read first, then handed over. */
+    start: async (payload: Parameters<SessionManager["create"]>[0]) =>
+      manager.create(payload, {
+        prepared: await preparePersonas(personaStore, payload.persona, payload.cwd),
+      }),
     gitCalls,
     doctorAsked,
   };

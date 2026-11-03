@@ -161,6 +161,8 @@ describe("direcao-visual: barra lateral", () => {
   test("Fixadas lista as sessões fixadas; sem nenhuma, a seção não aparece", async () => {
     const { store } = await setup();
     expect(inAside().queryByRole("button", { name: "Fixadas" })).toBeNull();
+    // The list waits for the project keys of its folders now: the row is not there at once.
+    await settle(() => hubRows(store.getState()).some((r) => r.title === "Gerenciada"));
     const row = hubRows(store.getState()).find((r) => r.title === "Gerenciada");
     await act(async () => {
       await store.setMeta(row?.hostId as string, row?.claudeSessionId as string, { pinned: true });

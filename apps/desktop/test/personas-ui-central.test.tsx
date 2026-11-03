@@ -66,7 +66,7 @@ describe("personas-ui: the central", () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
     const { d, repo } = await personasHost(cleanups, store);
-    const { sessionId } = await d.manager.create({
+    const { sessionId } = await d.start({
       cwd: repo,
       prompt: "oi",
       name: "Com persona",
@@ -84,7 +84,7 @@ describe("personas-ui: the central", () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
     const { d, repo } = await personasHost(cleanups, store);
-    const qa = await d.manager.create({
+    const qa = await d.start({
       cwd: repo,
       prompt: "oi",
       name: "Em QA",
