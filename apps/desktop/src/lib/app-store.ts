@@ -1340,8 +1340,14 @@ export class AppStore {
             }
             if (s.meta) putMeta(key, s.meta);
           }
-          const lists = { managed: managed?.sessions ?? [], history: history?.sessions ?? [] };
-          const standardNames = standard?.names ?? [];
+          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+          // the one the state holds stays; an empty answer is the only way a list empties.
+          const before = this.state.hub[host.id];
+          const lists = {
+            managed: managed ? managed.sessions : (before?.managed ?? []),
+            history: history ? history.sessions : (before?.history ?? []),
+          };
+          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
           const patch: Partial<AppState> = {};
           if (!sameJson(this.state.hub[host.id], lists)) {
             patch.hub = { ...this.state.hub, [host.id]: lists };
