@@ -75,4 +75,23 @@ describe("historico-titulo: the title of a session in the History", () => {
     });
     expect(recap.asked).toBe("Add a retry");
   });
+
+  test("a title the index stored before this fix is rebuilt from the session's own messages", () => {
+    const root = projectsRoot();
+    writeTranscript(root, "-t", "s-t", [
+      said("u1", "<system-reminder>The user named this session.</system-reminder>"),
+      said("u2", "Fix the login redirect"),
+    ]);
+    const store = new EventStore(":memory:");
+    const first = new HistoryIndexer({ db: store.db, roots: [root] });
+    cleanups.push(() => first.stop());
+    first.scan();
+    // What an older daemon stored: the raw first record.
+    store.db.run(
+      "UPDATE history_sessions SET title = '<system-reminder>The user named this session.</system-reminder>'",
+    );
+    const second = new HistoryIndexer({ db: store.db, roots: [root] });
+    cleanups.push(() => second.stop());
+    expect(second.list({}).sessions[0]?.title).toBe("Fix the login redirect");
+  });
 });
