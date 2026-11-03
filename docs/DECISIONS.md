@@ -2977,3 +2977,59 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   point instead of getting it for free from synchronous spawns. `SYNC_BASELINE` has no file left:
   the only blocking calls in runtime code are the `bun:sqlite` ones and the four Tauri commands
   that touch the tray or the window.
+## Fix: bypass permissions, opt-in per host
+
+- `allowBypassPermissions` (config, default `false`) is a per-host switch. The daemon refuses
+  `session.create` in `bypassPermissions` with reason `bypass_not_allowed` while it is off; the
+  check is on the mode asked for (a persona that would clamp it to a stricter one does not
+  rescue a bypass request). `host.bypass { allow, confirm }` sets it: turning on needs
+  `confirm: true` (`bypass_confirm`), turning off needs none. It is limited to the vault
+  transports (loopback, Tailscale) like `roots.add`, writes the config file and is read by
+  `host.info` (`allowBypassPermissions`; absent on an older daemon, where the app offers no bypass).
+- User decision (their machine): with the switch on, `session.setMode` accepts any mode,
+  `bypassPermissions` included, and the "never looser than the start mode" rule applies only
+  while it is off. `SettableMode` gained `bypassPermissions`; the daemon is what refuses it.
+- The Agent SDK only lets a running query switch to `bypassPermissions` if the query was started
+  with `allowDangerouslySkipPermissions: true` (typings of `Options`). The daemon sets it for runs
+  started while the switch is on; it allows the switch and bypasses nothing by itself. A run that
+  was started while the switch was off cannot switch until the session is resumed, and the manual
+  says so. The switch is read at each run start, so a resumed session picks it up.
+- The app asks every time: on the host page (naming the host), at Create session in bypass
+  (host and folder) and in the composer (host and session). The composer offers all modes only
+  on a host that allows it; elsewhere it behaves as before. The mode's label changed from "No
+  questions" to "Bypass permissions" to match Claude Code's own name.
+## Fix: a session manages cards through the flightdeck MCP server
+
+- New MCP tools `move_card`, `update_card`, `comment_card` and `finish_card`, all through one
+  daemon command, `card.manage { as, cwd?, action, ... }`. The daemon finds the project of the
+  session from where it runs (a managed session's own folder, else the `cwd` the MCP server
+  sends) with `Board.projectForCwd`, and the session's own card is the one whose worktree holds
+  that folder: it is the default `cardId`. A card of another project is refused
+  (`card_other_project`), a session outside every project too (`card_scope_unknown`), and a
+  session in a project but not in a card needs the id (`card_id_needed`). The actions reuse the
+  board's own methods (`moveCard`, `updateCard`, `completeCard`, `discardCard`), so the rules and
+  the live `card.updated` are the same as in the app.
+- Cards have no comment thread, so `comment_card` appends a UTC-dated note to the description
+  (`**Note YYYY-MM-DD HH:MM:** text`), keeping the old text.
+- `finish_card` takes `done` or `discard` in one tool, as asked. The permission side keys on the
+  input: with `outcome: "discard"` the risk classifier says high ("never automatic"), and for the
+  tool in any form the broker offers no "always allow" suggestion and `checkUpdates` refuses a
+  rule for it, so the project's saved rules cannot approve it. (Every MCP tool already counts as
+  network access, which the automatic approval never takes.) What a user types into their own
+  Claude Code `settings.json` is theirs to decide and outside what the daemon can enforce.
+- In a session in `bypassPermissions` the SDK skips `canUseTool`, so `finish_card` with `discard`
+  runs there without a prompt. That is the explicit choice of the person who turned bypass on for
+  the host and picked that mode for the session; the manual says so next to the bypass switch.
+## Fixes after the real test of v0.32.0 (fix-uso-032)
+
+- The main window sets `dragDropEnabled: false` in `tauri.conf.json`. On Windows, Tauri's native
+  file drop (on by default) swallows the HTML5 `dragover` and `drop` events in WebView2, so Board
+  cards and tabs could not be dragged with the mouse. The app uses no file drop from Tauri
+  (`onDragDropEvent` is used nowhere), so nothing is lost. A test pins the setting.
+- A Board column under a dragged card gets the `drop-over` outline and tint.
+- The tab strip may be empty: closing the last tab leaves the area on a `start` screen with no
+  strip, and the empty window is kept in the snapshot. Opening a screen that already has a tab
+  focuses that tab (same route, whatever the order of its fields); Ctrl or middle click still
+  opens a new one; duplicates in an older snapshot fold into one.
+- `session.create` takes no first prompt: the session starts idle and the first message begins
+  its first turn. The New session form has a Model select (default, opus, sonnet, haiku).

@@ -50,6 +50,7 @@ import type { McpConfig } from "./agentcfg/mcp.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
+import { manageCard } from "./board/manage.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
@@ -132,6 +133,8 @@ export interface ServerOptions {
   port: number;
   token: string;
   allowedRoots: readonly string[];
+  /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
+  bypass?: { allowed(): boolean; set(allow: boolean): void };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -1385,6 +1388,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.terminals?.enabled ? ["terminal"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
+          ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });
@@ -1479,6 +1483,20 @@ export function startServer(opts: ServerOptions): RunningServer {
             opts.rootsPlatform,
           ),
         });
+      }
+      case "host.bypass": {
+        requireVaultTransport(ws.data.origin, "host.bypass", opts.log);
+        const { allow, confirm } = command.payload;
+        if (!opts.bypass) throw featureOff("bypass");
+        if (allow && confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "allowing sessions without permission prompts needs confirm: true",
+            "bypass_confirm",
+          );
+        }
+        opts.bypass.set(allow);
+        return ok(command.type, { allowBypassPermissions: allow });
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
@@ -1955,6 +1973,23 @@ export function startServer(opts: ServerOptions): RunningServer {
               ? {}
               : { description: command.payload.description }),
           }),
+        );
+      case "card.manage":
+        return ok(
+          command.type,
+          await manageCard(
+            {
+              board: board(),
+              cwdOf: (sessionId) => {
+                try {
+                  return manager.get(sessionId).cwd;
+                } catch {
+                  return null;
+                }
+              },
+            },
+            command.payload,
+          ),
         );
       case "card.complete": {
         const { cardId, confirm } = command.payload;

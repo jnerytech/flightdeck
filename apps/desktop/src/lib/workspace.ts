@@ -14,7 +14,7 @@ export interface WorkspaceSnapshot {
  * Screens that are not kept between starts: the host form (it can hold a token) and the preview
  * (its address may belong to another program by then).
  */
-const NOT_KEPT: ReadonlySet<string> = new Set(["add-host", "preview"]);
+const NOT_KEPT: ReadonlySet<string> = new Set(["add-host", "preview", "start"]);
 
 /** Where the window's layout is kept. */
 export const WORKSPACE_KEY = "flightdeck.workspace";
@@ -75,6 +75,10 @@ export class Workspace {
       .slice(0, 2)
       .map((area) => restoreArea(area, newId))
       .filter((area): area is Tabs => area !== null);
+    // Two areas never hold an empty one: that is the split with its last tab closed.
+    if (areas.length === 2 && areas.some((area) => area.tabs.length === 0)) {
+      areas.splice(0, 2, ...areas.filter((area) => area.tabs.length > 0));
+    }
     if (areas.length === 0) return new Workspace({ name: "home" }, newId);
     let split: Orientation | null = null;
     if (areas.length === 2) split = data.split === "horizontal" ? "horizontal" : "vertical";
@@ -106,7 +110,11 @@ export class Workspace {
             ),
           };
         })
-        .filter((area) => area.tabs.length > 0),
+        // The one area with no tab is kept empty; a window of screens that are not kept is not.
+        .filter(
+          (area) =>
+            area.tabs.length > 0 || (this.areas.length === 1 && this.tabs.tabs.length === 0),
+        ),
       split: this.split,
       focus: this.focus,
       fraction: this.fraction,
@@ -194,7 +202,14 @@ export class Workspace {
     this.unwatch.set(
       area,
       area.subscribe(() => {
-        if (!this.moving) this.emit();
+        if (this.moving) return;
+        // The last tab of the second area closed: the area goes, the window is one again.
+        if (this.areas.length === 2 && area.tabs.length === 0) {
+          this.detach(area);
+          this.split = null;
+          this.focus = 0;
+        }
+        this.emit();
       }),
     );
   }
@@ -214,6 +229,7 @@ export class Workspace {
 /** One stored area, or null when nothing in it can be used. */
 function restoreArea(stored: unknown, newId?: () => string): Tabs | null {
   const area = (stored ?? {}) as { tabs?: unknown; active?: unknown };
+  if (Array.isArray(area.tabs) && area.tabs.length === 0) return new Tabs(null, newId);
   const entries = (Array.isArray(area.tabs) ? area.tabs : [])
     .map((tab: { route?: { name?: unknown }; pinned?: unknown; preview?: unknown } | null) => ({
       route: tab?.route as Route,

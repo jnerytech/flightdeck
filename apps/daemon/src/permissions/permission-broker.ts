@@ -10,7 +10,7 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
-import { checkUpdates } from "./permission-updates.ts";
+import { alwaysAsks, checkUpdates } from "./permission-updates.ts";
 import type { Risk } from "./risk.ts";
 
 export interface BrokerHooks {
@@ -21,6 +21,18 @@ export interface BrokerHooks {
   classify(sessionId: string, toolName: string, input: ToolInput): Risk;
   /** Phase 13: the automatic approval's decision; null without it. */
   autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
+}
+
+/** The `answers` of an answered AskUserQuestion, when every one is a string. */
+function chosenAnswers(
+  input: Record<string, unknown> | undefined,
+): Record<string, string> | undefined {
+  const answers = input?.answers;
+  if (!answers || typeof answers !== "object") return undefined;
+  const entries = Object.entries(answers);
+  return entries.every(([, value]) => typeof value === "string")
+    ? (answers as Record<string, string>)
+    : undefined;
 }
 
 interface Pending {
@@ -56,8 +68,10 @@ export class PermissionBroker {
     toolName: string,
     input: ToolInput,
     signal: AbortSignal,
-    suggestions: PermissionUpdate[] = [],
+    offered: PermissionUpdate[] = [],
   ): Promise<PermissionDecision> {
+    // A tool that always asks gets no "always allow" to pick.
+    const suggestions = alwaysAsks(toolName) ? [] : offered;
     if (signal.aborted) return Promise.resolve({ behavior: "deny", message: "cancelado" });
     const id = ulid();
     this.store.createPermission({ id, sessionId, toolName, input });
@@ -110,11 +124,18 @@ export class PermissionBroker {
       // Refused updates leave the request open, before anything is applied.
       const updates = payload.updatedPermissions ?? [];
       checkUpdates(updates, pending);
-      this.finish(payload.requestId, "allow", payload.message, {
-        behavior: "allow",
-        ...(payload.updatedInput ? { updatedInput: payload.updatedInput } : {}),
-        ...(updates.length > 0 ? { updatedPermissions: updates } : {}),
-      });
+      this.finish(
+        payload.requestId,
+        "allow",
+        payload.message,
+        {
+          behavior: "allow",
+          ...(payload.updatedInput ? { updatedInput: payload.updatedInput } : {}),
+          ...(updates.length > 0 ? { updatedPermissions: updates } : {}),
+        },
+        undefined,
+        pending.toolName === "AskUserQuestion" ? chosenAnswers(payload.updatedInput) : undefined,
+      );
     } else {
       const message = payload.message ?? "Negado pelo usuário";
       this.finish(payload.requestId, "deny", message, { behavior: "deny", message });
@@ -153,6 +174,7 @@ export class PermissionBroker {
     message?: string,
     result: PermissionDecision = { behavior: "deny", message: "cancelado" },
     auto?: AutoApproval,
+    answers?: Record<string, string>,
   ): void {
     const pending = this.open.get(id);
     if (!pending) return;
@@ -166,6 +188,7 @@ export class PermissionBroker {
       decision,
       ...(message !== undefined ? { message } : {}),
       ...(auto ? { auto } : {}),
+      ...(answers ? { answers } : {}),
     });
     this.hooks.onPendingChange(pending.sessionId, this.pendingCount(pending.sessionId));
     pending.resolve(result);

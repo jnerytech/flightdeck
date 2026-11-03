@@ -239,6 +239,10 @@ export class RiskClassifier {
       if (toolName.endsWith("__run_with_secret")) {
         return [["high", "comando livre com segredo no ambiente"]];
       }
+      // A session throwing its own card away: the worktree and the branch go with it.
+      if (toolName.endsWith("__finish_card") && input.outcome === "discard") {
+        return [["high", "descarta o card, a worktree e a branch"]];
+      }
       return /delete|drop|destroy/i.test(toolName)
         ? [["high", "ferramenta MCP destrutiva"]]
         : [["medium", "ferramenta MCP"]];

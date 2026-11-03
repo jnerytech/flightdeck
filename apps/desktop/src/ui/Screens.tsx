@@ -38,6 +38,7 @@ import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { StartScreen } from "./StartScreen.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
@@ -163,6 +164,9 @@ function ManagedSession(props: {
         session={session}
         actions={store}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        {...(host?.hostInfo?.allowBypassPermissions === true
+          ? { bypass: { host: host.name } }
+          : {})}
         pickPath={(done) =>
           host && (
             <FolderPicker
@@ -490,6 +494,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     return <ScreenLoading label={label} />;
   }
 
+  if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
   if (route.name === "settings") {
     return (
       <Settings

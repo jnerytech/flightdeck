@@ -43,6 +43,9 @@ export function isProjectRule(
 type AddRules = Extract<PermissionUpdate, { type: "addRules" }>;
 
 /** A rule must be for the request's own tool, with a one-line content of bounded size. */
+/** Tools that always ask: no "always allow" is offered for them and no rule may be saved. */
+export const alwaysAsks = (toolName: string): boolean => toolName.endsWith("__finish_card");
+
 function checkRule(rule: AddRules["rules"][number], toolName: string): void {
   if (rule.toolName !== toolName) refuse(`a regra é de outra ferramenta (${rule.toolName})`);
   const content = rule.ruleContent;
@@ -75,6 +78,9 @@ export function checkUpdates(
   const suggested = new Set(request.suggestions.map(canonical));
   for (const update of updates) {
     checkDestinationAndMode(update);
+    if (update.type === "addRules" && update.rules.some((rule) => alwaysAsks(rule.toolName))) {
+      refuse("esta ferramenta sempre pergunta: nenhuma regra a libera");
+    }
     if (suggested.has(canonical(update))) continue;
     if (!isProjectRule(update))
       refuse("não é uma das sugestões do pedido nem uma regra do projeto");

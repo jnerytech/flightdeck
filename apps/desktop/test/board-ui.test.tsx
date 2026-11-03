@@ -207,6 +207,16 @@ describe("board-ui", () => {
     expect(column("Backlog")).toEqual(["C", "B"]);
     const moved = board.listProjects()[0];
     expect(board.getBoard(moved?.id ?? "").columns[3]?.cards.map((c) => c.title)).toEqual(["A"]);
+    // A column lights up while a card is over it and goes back when the card leaves or drops.
+    const over = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.dragEnter(over);
+    });
+    expect(over.className).toContain("drop-over");
+    await act(async () => {
+      fireEvent.dragLeave(over);
+    });
+    expect(over.className).not.toContain("drop-over");
     // Dropping without dragging anything does nothing.
     await act(async () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
@@ -374,6 +384,11 @@ describe("board-ui", () => {
     expect(screen.queryByRole("list", { name: "Execuções" })?.textContent ?? "").toContain("#1");
     await settle(() => (screen.queryByRole("log")?.textContent ?? "").includes("Echo:"));
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("crie e commite [commit]");
+    // The card's conversation fills its pane like the session screen: no fixed box, no narrow column.
+    const chat = screen.queryByRole("log", { name: "Conversa do card" }) as HTMLElement;
+    expect(chat.className).toContain("card-chat");
+    expect(chat.className).not.toContain("h-[32rem]");
+    expect(chat.closest(".max-w-4xl")).toBeNull();
     expect(cardItem("Detalhe")).toBeNull();
 
     await type("Ajuste", "mais um [commit]");

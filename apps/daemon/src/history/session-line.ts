@@ -12,9 +12,9 @@ export function requestLine(text: string): string {
   return first.length > REQUEST_MAX ? `${first.slice(0, REQUEST_MAX - 1)}…` : first;
 }
 
-/** The last `[ferramenta X]` of an assistant message, as the indexer stores tool calls. */
+/** The last tool line of an assistant message: `[tool X] input`, or the older `[ferramenta X]`. */
 export function lastTool(text: string): string | null {
-  const calls = [...text.matchAll(/^\[ferramenta (.+)\]$/gm)];
+  const calls = [...text.matchAll(/^\[(?:tool|ferramenta) (\S+)\](?: .*)?$/gm)];
   return calls.at(-1)?.[1] ?? null;
 }
 

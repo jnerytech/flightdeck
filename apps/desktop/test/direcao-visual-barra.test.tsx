@@ -139,6 +139,7 @@ describe("direcao-visual: barra lateral", () => {
       "Histórico",
       "Projetos",
       "Nova sessão",
+      "Renomear",
       "Remover host",
     ]);
     await act(async () => {

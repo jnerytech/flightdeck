@@ -258,6 +258,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     const options: Options = {
       cwd: opts.cwd,
       permissionMode: opts.permissionMode,
+      // Lets the open session switch to bypassPermissions later; it bypasses nothing by itself.
+      ...(opts.allowBypass ? { allowDangerouslySkipPermissions: true } : {}),
       includePartialMessages: true,
       // Phase 12: copies of the files before each change, for rewindFiles.
       enableFileCheckpointing: true,

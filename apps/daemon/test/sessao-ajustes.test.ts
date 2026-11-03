@@ -111,15 +111,20 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
     expect(info?.features).toContain("session.settings");
   });
 
-  test("the command takes only default, acceptEdits and plan: never bypassPermissions, dontAsk or auto", () => {
+  test("the command takes default, acceptEdits, plan and bypassPermissions (the daemon refuses it unless the host allows): never dontAsk or auto", () => {
     const parse = (permissionMode: string) =>
       Command.safeParse({
         id: "1",
         type: "session.setMode",
         payload: { sessionId: "s", permissionMode },
       }).success;
-    expect(["default", "acceptEdits", "plan"].map(parse)).toEqual([true, true, true]);
-    expect(["bypassPermissions", "dontAsk", "auto"].map(parse)).toEqual([false, false, false]);
+    expect(["default", "acceptEdits", "plan", "bypassPermissions"].map(parse)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(["dontAsk", "auto"].map(parse)).toEqual([false, false]);
   });
 
   test("a session never goes looser than the mode it started with", async () => {
