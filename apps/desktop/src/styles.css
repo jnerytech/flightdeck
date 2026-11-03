@@ -546,3 +546,21 @@
   font-size: 0.75rem;
   line-height: 1.2;
 }
+
+/* A form row and its help line: the reason a button is disabled sits under the first field. */
+@utility field-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility field-help {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}

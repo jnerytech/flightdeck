@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -22,7 +23,7 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
           <li key={root}>{root}</li>
         ))}
       </ul>
-      <div className="flex flex-wrap items-center gap-2">
+      <FieldRow>
         <Input
           aria-label={t("hostPage.rootsInput")}
           placeholder={t("hostPage.rootsPlaceholder")}
@@ -50,7 +51,7 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
         >
           {t("toast.allowRoot")}
         </ActionButton>
-      </div>
+      </FieldRow>
       {asking && (
         <ConfirmDialog
           message={t("toast.allowRootMessage", { host: host.name, folder: folder.trim() })}
