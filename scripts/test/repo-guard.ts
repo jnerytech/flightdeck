@@ -7,8 +7,19 @@ export interface RepoGuard {
   root: string;
   head: string;
   status: string;
-  /** The repository's own config (`git config --local --list`), `core.bare` among it. */
+  /** The `core.*` entries of the repository's config, `core.bare` among them. */
   config: string;
+}
+
+/** The `core.*` lines of the config: branches and remotes change when other worktrees do. */
+function coreConfig(root: string): string | null {
+  const all = git(root, "config", "--local", "--list");
+  return all === null
+    ? null
+    : all
+        .split("\n")
+        .filter((line) => line.startsWith("core."))
+        .join("\n");
 }
 
 function git(root: string, ...args: string[]): string | null {
@@ -20,7 +31,7 @@ function git(root: string, ...args: string[]): string | null {
 export function installRepoGuard(root: string): RepoGuard | null {
   const head = git(root, "rev-parse", "HEAD");
   const status = git(root, "status", "--porcelain", "--untracked-files=all");
-  const config = git(root, "config", "--local", "--list");
+  const config = coreConfig(root);
   return head === null || status === null || config === null
     ? null
     : { root, head, status, config };
@@ -47,7 +58,7 @@ export function assertRepoUntouched(guard: RepoGuard | null): void {
   const before = new Set(guard.status.split("\n"));
   const changed = status.split("\n").filter((line) => line !== "" && !before.has(line));
   const gone = guard.status.split("\n").filter((line) => line !== "" && !status.includes(line));
-  const config = git(guard.root, "config", "--local", "--list") ?? "";
+  const config = coreConfig(guard.root) ?? "";
   const problems = [
     ...configChanges(guard.config, config),
     ...(head !== guard.head ? [`head ${guard.head.slice(0, 8)} -> ${head?.slice(0, 8)}`] : []),
