@@ -1118,7 +1118,7 @@ export async function startDaemon(
           ...(options.wslCommand ? { command: options.wslCommand } : {}),
         })
       : null;
-  wsl?.start();
+  await wsl?.start();
 
   // `pair --rotate` runs in another process: follow the token in the config file.
   const onConfigChange = async () => {
