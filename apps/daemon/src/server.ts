@@ -51,6 +51,7 @@ import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
 import { manageCard } from "./board/manage.ts";
+import type { BoardSyncService } from "./boardsync/service.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
@@ -146,6 +147,8 @@ export interface ServerOptions {
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
+  /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
+  boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
   findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */

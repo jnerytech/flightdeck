@@ -1101,6 +1101,58 @@ export interface ProjectsCloneResult {
   path: string;
 }
 
+/** Phase 38: where a project's board sync stands. `linked: false` carries nothing else. */
+export interface BoardSyncStatus {
+  linked: boolean;
+  provider?: string;
+  boardId?: string;
+  boardTitle?: string;
+  columnMap?: Partial<Record<string, BoardColumn>>;
+  /** Local moves are sent to the board. */
+  push?: boolean;
+  lastSyncedAt?: string | null;
+  lastError?: string | null;
+  pausedUntil?: string | null;
+  /** The board has more items than one pull reads. */
+  truncated?: boolean;
+}
+
+/** One board of the external provider. */
+export interface BoardSyncBoard {
+  id: string;
+  title: string;
+  owner: string;
+  number: number;
+  url: string;
+}
+
+/** What one sync did. */
+export interface BoardSyncReport {
+  created: number;
+  moved: number;
+  updated: number;
+  conflicts: number;
+  unmapped: number;
+  gone: number;
+  skipped: number;
+  pushed: number;
+  redacted: number;
+  truncated: boolean;
+  notModified: boolean;
+}
+
+/** One line of a card's sync log: a conflict, a skipped move, a push that failed. */
+export interface BoardSyncLogEntry {
+  at: string;
+  kind: string;
+  winner: "local" | "external" | null;
+  lostValue: string | null;
+  lostAt: string | null;
+  keptValue: string | null;
+  keptAt: string | null;
+  detail: string | null;
+}
+
 /** Phase 37: whether the host's `gh` is signed in to GitHub. Never a token. */
 export interface GithubStatusResult {
   installed: boolean;
