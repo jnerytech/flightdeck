@@ -42,6 +42,7 @@ import { Changes, type WatchFn } from "../../daemon/src/review/changes.ts";
 import { ReviewComments } from "../../daemon/src/review/comments.ts";
 import { ReviewFiles } from "../../daemon/src/review/files.ts";
 import { SessionFiles } from "../../daemon/src/review/session-files.ts";
+import { RoiSummarizer } from "../../daemon/src/roi/summary.ts";
 import { RunConfigs } from "../../daemon/src/runenv/config.ts";
 import { RunManager } from "../../daemon/src/runenv/manager.ts";
 import { CardPorts } from "../../daemon/src/runenv/ports.ts";
@@ -150,6 +151,8 @@ export function daemon(
     github?: boolean | { gh?: GhRunner };
     /** Board sync with an external board (phase 38), over an in-memory provider the test controls. */
     boardsync?: boolean;
+    /** What the agents cost and delivered, per project (phase 36). */
+    roi?: boolean;
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
   } = {},
@@ -386,6 +389,9 @@ export function daemon(
       })
     : undefined;
   if (githubService) cleanups.push(() => githubService.loginCancel());
+  const roiSummarizer = options.roi
+    ? new RoiSummarizer({ db: store.db, keyOf: (path) => keys.known(path) })
+    : undefined;
   /** Phase 38: board sync over the in-memory provider; the loop is never started. */
   const boardProvider = new FakeProvider();
   const boardSyncStore = new BoardSyncStore(store.db);
@@ -448,6 +454,7 @@ export function daemon(
       ...firstRunOptions,
       ...(githubService ? { github: githubService } : {}),
       ...(boardSyncService ? { boardsync: boardSyncService } : {}),
+      ...(roiSummarizer ? { roi: roiSummarizer } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {
@@ -552,6 +559,7 @@ export function daemon(
     gitCalls,
     boardProvider,
     boardSyncStore,
+    keys,
     doctorAsked,
   };
 }

@@ -30,6 +30,7 @@ import type {
   Project,
   QuotaState,
   RiskLevel,
+  RoiSummaryResult,
   RuleIssue,
   RunConfigInfo,
   RunState,
@@ -107,6 +108,7 @@ import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
+import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
 import {
   applyEnvelope,
@@ -707,6 +709,7 @@ export class AppStore {
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
+    this.roi = new RoiSettings(platform);
     this.clientBudgetsSeen = JSON.stringify(this.clients.budgets());
     this.webhooks = new Webhooks({
       platform,
@@ -2633,8 +2636,21 @@ export class AppStore {
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
   readonly globalPersonas: GlobalPersonas;
+  /**
+   * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
+   * that cannot be reached, is left out; the card says how many answered.
+   */
+  async roiSummaries(
+    _from: string,
+    _to: string,
+  ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
+    return [];
+  }
+
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
+  /** Phase 36: the rates, the plan price and the people, kept by the app. */
+  readonly roi: RoiSettings;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;

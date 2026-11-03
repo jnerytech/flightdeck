@@ -8,6 +8,7 @@ import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { AddProject } from "@/components/projects/add-project";
+import { RoiCard } from "@/components/roi/roi-card";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,6 +188,11 @@ export const BoardView = memo(function BoardView(props: {
     "deps",
     false,
   );
+  const withRoi = hasFeature(
+    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "roi",
+    false,
+  );
   const withSync = hasFeature(
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "boardsync",
@@ -333,6 +339,7 @@ export const BoardView = memo(function BoardView(props: {
       }
     >
       <div className="flex flex-col gap-4">
+        {withRoi && project && <RoiCard store={store} hostId={hostId} project={project} />}
         {loading && <LoadingState label={t("states.loadingBoard")} shape="columns" />}
         {!loading && project && all.length === 0 && (
           <EmptyState
