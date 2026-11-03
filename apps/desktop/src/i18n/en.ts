@@ -1113,6 +1113,9 @@ export const en: Dictionary = {
     close: "Close",
   },
   session: {
+    bypassMessage:
+      'On {host}, "{session}" will run everything without asking you first, from now on, until you change the mode back. It can edit and delete files and run commands.',
+    bypassConfirm: "Switch to bypass",
     modeLabel: "Permission mode",
     modelLabel: "Model",
     modelDefault: "Default model",
@@ -1163,6 +1166,10 @@ export const en: Dictionary = {
     project: "Always in this project",
   },
   newSession: {
+    bypassTitle: "Start without permission prompts?",
+    bypassMessage:
+      "On {host}, Claude will run everything in {folder} without asking you first: it can edit and delete files and run commands. Nothing stops it once it starts.",
+    bypassConfirm: "Start without prompts",
     title: "New session on {host}",
     folder: "Folder",
     subfolder: "Subfolder",
@@ -1197,11 +1204,11 @@ export const en: Dictionary = {
       description: "denies what the rules do not allow",
     },
     bypassPermissions: {
-      name: "No questions",
-      description: "runs everything, without asking for approval",
+      name: "Bypass permissions",
+      description: "no prompts",
     },
     bypassWarning:
-      "No questions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
+      "Bypass permissions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
   },
   diff: {
     changedFiles: "Changed files",
@@ -2577,6 +2584,15 @@ export const en: Dictionary = {
     rootsList: "Allowed folders of this host",
     rootsInput: "Folder to allow",
     rootsNeeded: "Type the folder to allow.",
+    bypassTitle: "Sessions without permission prompts",
+    bypassHint:
+      "When on, a session of this host can start in, or be switched to, Bypass permissions: Claude then runs everything without asking you. Each time, the app asks you to confirm. Sessions already running keep what they started with.",
+    bypassOff: "Off on this host.",
+    bypassOn: "On: sessions can run without permission prompts.",
+    bypassAllow: "Allow sessions without prompts",
+    bypassAllowMessage:
+      "Allow sessions on {host} to run without permission prompts? Claude could then edit and delete files and run commands in any allowed folder without asking. Only do this on a machine and in folders you accept that risk for.",
+    bypassTurnOff: "Turn off",
     rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",
     nameLabel: "Host name",

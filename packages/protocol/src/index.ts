@@ -36,7 +36,8 @@ export const PermissionMode = z.enum([
 ]);
 export type PermissionMode = z.infer<typeof PermissionMode>;
 /** The modes a live session can be switched to (never one that skips the questions). */
-export const SettableMode = z.enum(["default", "acceptEdits", "plan"]);
+/** `bypassPermissions` is refused by the daemon unless the host's switch is on. */
+export const SettableMode = z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]);
 export type SettableMode = z.infer<typeof SettableMode>;
 
 const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);

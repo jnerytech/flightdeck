@@ -109,6 +109,10 @@ describe("bypass-ui: the New session form", () => {
         target: { value: "bypassPermissions" },
       });
     });
+    // The risky one warns, in red.
+    const warning = screen.getByRole("alert");
+    expect(warning.textContent).toContain("Bypass permissions");
+    expect(warning.className).toContain("text-status-error");
     await fillPrompt();
     await press("Create session");
     let dialog = screen.getByRole("alertdialog");
@@ -135,21 +139,23 @@ describe("bypass-ui: the New session form", () => {
 describe("bypass-ui: the open session", () => {
   const view = (bypass: { host: string } | undefined, calls: string[], start = "plan") => {
     render(
-      <SessionView
-        title="refactor"
-        t={translator("en")}
-        session={{ ...emptySession(), status: "idle", permissionMode: start as never }}
-        actions={{
-          send: async () => {},
-          interrupt: async () => {},
-          close: async () => {},
-          resume: async () => {},
-          respond: async () => {},
-          setMode: async (mode) => void calls.push(mode),
-        }}
-        settings
-        {...(bypass ? { bypass } : {})}
-      />,
+      <TContext.Provider value={translator("en")}>
+        <SessionView
+          title="refactor"
+          t={translator("en")}
+          session={{ ...emptySession(), status: "idle", permissionMode: start as never }}
+          actions={{
+            send: async () => {},
+            interrupt: async () => {},
+            close: async () => {},
+            resume: async () => {},
+            respond: async () => {},
+            setMode: async (mode) => void calls.push(mode),
+          }}
+          settings
+          {...(bypass ? { bypass } : {})}
+        />
+      </TContext.Provider>,
     );
   };
   const select = () => screen.getByLabelText("Permission mode");

@@ -2,6 +2,7 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
+import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -111,6 +112,7 @@ export function HostPage(props: {
           )}
         </Panel>
         <AllowedFolders store={store} host={host} />
+        <BypassSwitch store={store} host={host} />
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>

@@ -333,7 +333,12 @@ export function daemon(
       fsDirs: true,
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
-      bypass: { allowed: () => bypass, set: (allow) => void (bypass = allow) },
+      bypass: {
+        allowed: () => bypass,
+        set: (allow) => {
+          bypass = allow;
+        },
+      },
       manager,
       history,
       board,

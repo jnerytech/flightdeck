@@ -9,6 +9,7 @@ import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 
 const MODES: PermissionMode[] = [
@@ -73,8 +74,17 @@ export function NewSessionForm(props: {
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
-  const submit = () => {
+  /** Bypass asks again each time the session is created. */
+  const [asking, setAsking] = useState(false);
+  const allowBypass = props.host.hostInfo?.allowBypassPermissions === true;
+  const modes = MODES.filter((m) => allowBypass || m !== "bypassPermissions");
+  const submit = (confirmed = false) => {
     if (!root || !prompt.trim() || creating) return;
+    if (mode === "bypassPermissions" && !confirmed) {
+      setAsking(true);
+      return;
+    }
+    setAsking(false);
     const done = props.onCreate({
       cwd,
       prompt: prompt.trim(),
@@ -88,7 +98,7 @@ export function NewSessionForm(props: {
     }
   };
   return (
-    <Form onSubmit={submit} className="mx-auto p-6">
+    <Form onSubmit={() => submit()} className="mx-auto p-6">
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
       <Field label={t("newSession.folder")}>
         {(control) => (
@@ -147,7 +157,7 @@ export function NewSessionForm(props: {
               value={mode}
               onChange={(e) => setMode(e.target.value as PermissionMode)}
             >
-              {MODES.map((m) => (
+              {modes.map((m) => (
                 <option key={m} value={m}>
                   {t("modes.option", {
                     name: t(`modes.${m}.name` as Key),
@@ -175,6 +185,15 @@ export function NewSessionForm(props: {
         )}
       </Field>
       {props.extra}
+      {asking && (
+        <ConfirmDialog
+          destructive
+          message={t("newSession.bypassMessage", { host: props.host.name, folder: cwd })}
+          confirmLabel={t("newSession.bypassConfirm")}
+          onCancel={() => setAsking(false)}
+          onConfirm={() => submit(true)}
+        />
+      )}
       <FormActions
         submit={t("newSession.create")}
         busy={creating}

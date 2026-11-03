@@ -1112,6 +1112,9 @@ export const ptBR = {
     close: "Fechar",
   },
   session: {
+    bypassMessage:
+      'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
+    bypassConfirm: "Mudar para ignorar permissões",
     modeLabel: "Modo de permissão",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
@@ -1163,6 +1166,10 @@ export const ptBR = {
     project: "Sempre neste projeto",
   },
   newSession: {
+    bypassTitle: "Começar sem pedidos de permissão?",
+    bypassMessage:
+      "Em {host}, o Claude vai executar tudo em {folder} sem perguntar antes: pode editar e apagar arquivos e rodar comandos. Nada o para depois que começa.",
+    bypassConfirm: "Começar sem pedidos",
     title: "Nova sessão em {host}",
     folder: "Pasta",
     subfolder: "Subpasta",
@@ -1197,11 +1204,11 @@ export const ptBR = {
       description: "nega o que as regras não liberam",
     },
     bypassPermissions: {
-      name: "Sem perguntas",
-      description: "executa tudo, sem pedir aprovação",
+      name: "Ignorar permissões",
+      description: "sem pedidos de permissão",
     },
     bypassWarning:
-      "Sem perguntas: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
+      "Ignorar permissões: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
   },
   diff: {
     changedFiles: "Arquivos alterados",
@@ -2583,6 +2590,15 @@ export const ptBR = {
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
     rootsNeeded: "Digite a pasta a permitir.",
+    bypassTitle: "Sessões sem pedidos de permissão",
+    bypassHint:
+      "Quando ligado, uma sessão deste host pode começar em, ou ser mudada para, Ignorar permissões: o Claude passa a executar tudo sem perguntar. A cada vez, o app pede a sua confirmação. Sessões que já rodam mantêm o que tinham ao começar.",
+    bypassOff: "Desligado neste host.",
+    bypassOn: "Ligado: as sessões podem rodar sem pedidos de permissão.",
+    bypassAllow: "Permitir sessões sem pedidos",
+    bypassAllowMessage:
+      "Permitir que as sessões em {host} rodem sem pedidos de permissão? O Claude poderá editar e apagar arquivos e rodar comandos em qualquer pasta permitida sem perguntar. Só faça isso numa máquina e em pastas em que você aceite esse risco.",
+    bypassTurnOff: "Desligar",
     rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",
     nameLabel: "Nome do host",
