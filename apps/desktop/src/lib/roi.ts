@@ -61,27 +61,123 @@ export interface Figures {
   derivation: Array<{ key: string; vars: Record<string, string | number> }>;
 }
 
+const money2 = (n: number) => n.toFixed(2);
+
+const SUMMED = [
+  "costUsd",
+  "tokens",
+  "cards",
+  "planned",
+  "unplanned",
+  "prsMerged",
+  "plannedPrs",
+  "unplannedPrs",
+  "issuesResolved",
+  "fixRounds",
+  "fixCostUsd",
+  "hours",
+  "cardsWithoutEstimate",
+  "decisions",
+  "waitedSeconds",
+  "outsideCardsUsd",
+  "approxCards",
+] as const;
+
 /** Adds the figures of the same project on several hosts; weeks add by position. */
-export function mergePeriods(_periods: readonly RoiPeriod[]): RoiPeriod {
-  return { ...EMPTY_PERIOD, cards: 99 };
+export function mergePeriods(periods: readonly RoiPeriod[]): RoiPeriod {
+  const merged: RoiPeriod = { ...EMPTY_PERIOD, weeks: [] };
+  for (const period of periods) {
+    for (const key of SUMMED) merged[key] += period[key];
+    period.weeks.forEach((week, i) => {
+      const at = merged.weeks[i];
+      if (!at) {
+        merged.weeks[i] = { ...week };
+        return;
+      }
+      at.costUsd += week.costUsd;
+      at.tokens += week.tokens;
+      at.cards += week.cards;
+      at.planned += week.planned;
+      at.unplanned += week.unplanned;
+      at.prsMerged += week.prsMerged;
+    });
+  }
+  return merged;
 }
 
-export function figures(_period: RoiPeriod, _money: RoiMoney): Figures {
+export function figures(period: RoiPeriod, money: RoiMoney): Figures {
+  const agentsCostUsd = period.costUsd;
+  const planShareUsd = money.planShareUsd ?? 0;
+  // Each decision counts at most the cap: the totals give the most it can come to.
+  const reviewSeconds = Math.min(period.waitedSeconds, period.decisions * money.reviewCapSeconds);
+  const reviewCostUsd =
+    money.countReview && money.rate !== null ? (reviewSeconds / 3600) * money.rate : 0;
+  const costUsd = agentsCostUsd + planShareUsd + reviewCostUsd;
+  const hoursValue = money.rate === null ? null : period.hours * money.rate;
+  const valueUsd =
+    hoursValue === null && money.billed === null ? null : (hoursValue ?? 0) + (money.billed ?? 0);
+  const roi = costUsd > 0 && valueUsd !== null ? (valueUsd - costUsd) / costUsd : null;
+  const costPerCard = period.cards > 0 ? costUsd / period.cards : null;
+  const costPerPr = period.prsMerged > 0 ? costUsd / period.prsMerged : null;
+  const derivation: Figures["derivation"] = [
+    {
+      key: "roiUi.derive.cost",
+      vars: {
+        total: money2(costUsd),
+        agents: money2(agentsCostUsd),
+        plan: money2(planShareUsd),
+        review: money2(reviewCostUsd),
+      },
+    },
+  ];
+  if (costPerCard !== null) {
+    derivation.push({
+      key: "roiUi.derive.costPerCard",
+      vars: { cost: money2(costUsd), n: period.cards, each: money2(costPerCard) },
+    });
+  }
+  if (costPerPr !== null) {
+    derivation.push({
+      key: "roiUi.derive.costPerPr",
+      vars: { cost: money2(costUsd), n: period.prsMerged, each: money2(costPerPr) },
+    });
+  }
+  derivation.push({ key: "roiUi.derive.hours", vars: { hours: period.hours } });
+  if (period.cardsWithoutEstimate > 0) {
+    derivation.push({ key: "roiUi.derive.noEstimate", vars: { n: period.cardsWithoutEstimate } });
+  }
+  if (valueUsd !== null) {
+    derivation.push({
+      key: "roiUi.derive.value",
+      vars: {
+        hours: period.hours,
+        rate: money2(money.rate ?? 0),
+        billed: money2(money.billed ?? 0),
+        value: money2(valueUsd),
+      },
+    });
+  }
+  if (roi !== null && valueUsd !== null) {
+    derivation.push({
+      key: "roiUi.derive.roi",
+      vars: { value: money2(valueUsd), cost: money2(costUsd), roi: roi.toFixed(1) },
+    });
+  }
   return {
-    agentsCostUsd: 99,
-    planShareUsd: 99,
-    reviewCostUsd: 99,
-    costUsd: 99,
-    cards: 99,
-    prsMerged: 99,
-    costPerCard: 99,
-    costPerPr: 99,
-    hours: 99,
-    valueUsd: 99,
-    roi: 99,
-    reworkShare: 99,
-    fixRoundsPerPr: 99,
-    derivation: [],
+    agentsCostUsd,
+    planShareUsd,
+    reviewCostUsd,
+    costUsd,
+    cards: period.cards,
+    prsMerged: period.prsMerged,
+    costPerCard,
+    costPerPr,
+    hours: period.hours,
+    valueUsd,
+    roi,
+    reworkShare: costUsd > 0 ? period.fixCostUsd / costUsd : null,
+    fixRoundsPerPr: period.prsMerged > 0 ? period.fixRounds / period.prsMerged : null,
+    derivation,
   };
 }
 
@@ -97,23 +193,67 @@ export interface Comparison {
   costPerItemMoved: "lower" | "higher" | "same" | null;
 }
 
+/** Changes inside this share count as no change. */
+const SAME = 0.05;
+
 /** Did the team deliver more: the counts of cards done in the period against the one before. */
-export function compare(_current: RoiPeriod, _previous: RoiPeriod): Comparison {
+export function compare(current: RoiPeriod, previous: RoiPeriod): Comparison {
+  const costPerItem = current.cards > 0 ? current.costUsd / current.cards : null;
+  const previousCostPerItem = previous.cards > 0 ? previous.costUsd / previous.cards : null;
+  let costPerItemMoved: Comparison["costPerItemMoved"] = null;
+  if (costPerItem !== null && previousCostPerItem !== null) {
+    const ratio =
+      previousCostPerItem === 0 ? 0 : (costPerItem - previousCostPerItem) / previousCostPerItem;
+    costPerItemMoved = Math.abs(ratio) <= SAME ? "same" : ratio < 0 ? "lower" : "higher";
+  }
+  if (current.cards === 0 && previous.cards === 0) {
+    return {
+      verdict: "none",
+      deltaPercent: null,
+      costPerItem,
+      previousCostPerItem,
+      costPerItemMoved,
+    };
+  }
+  if (previous.cards === 0) {
+    return {
+      verdict: "more",
+      deltaPercent: null,
+      costPerItem,
+      previousCostPerItem,
+      costPerItemMoved,
+    };
+  }
+  const change = (current.cards - previous.cards) / previous.cards;
+  const verdict: Verdict = Math.abs(change) <= SAME ? "same" : change > 0 ? "more" : "fewer";
   return {
-    verdict: "none",
-    deltaPercent: 0,
-    costPerItem: 0,
-    previousCostPerItem: 0,
-    costPerItemMoved: "same",
+    verdict,
+    deltaPercent: Math.round(change * 100),
+    costPerItem,
+    previousCostPerItem,
+    costPerItemMoved,
   };
 }
 
 /** The dictionary key and variables of the headline sentence. */
 export function headline(
-  _current: RoiPeriod,
-  _previous: RoiPeriod,
+  current: RoiPeriod,
+  previous: RoiPeriod,
 ): { key: string; vars: Record<string, string | number> } {
-  return { key: "", vars: {} };
+  const c = compare(current, previous);
+  if (c.verdict === "none")
+    return { key: "roiUi.headline.none", vars: { cost: money2(current.costUsd) } };
+  return {
+    key: `roiUi.headline.${c.verdict}`,
+    vars: {
+      n: current.cards,
+      planned: current.planned,
+      unplanned: current.unplanned,
+      cost: money2(current.costUsd),
+      previous: previous.cards,
+      moved: c.costPerItemMoved ?? "none",
+    },
+  };
 }
 
 export type { RoiWeek };
