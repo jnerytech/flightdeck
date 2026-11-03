@@ -1,7 +1,6 @@
 import type { PermissionMode, PermissionUpdate, SettableMode } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, Square } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { WorkingRow } from "@/components/session/working-row";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
@@ -13,6 +12,7 @@ import {
   SessionPane,
   Timeline,
 } from "@/components/session/parts";
+import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

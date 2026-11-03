@@ -21,7 +21,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
 import { isProd } from "../lib/ssh.ts";
-import { type TabKind, badgePulses, tabBadge, tabKind } from "../lib/tab-badge.ts";
+import { badgePulses, type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Record<TabKind, LucideIcon> = {
