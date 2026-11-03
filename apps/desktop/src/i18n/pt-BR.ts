@@ -870,6 +870,15 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    project_no_issues:
+      "Este projeto não tem integração de issues: configure nas definições do projeto.",
+    project_no_origin: "Este projeto não tem o remoto origin.",
+    remote_not_github: "O remoto {url} não é do GitHub.",
+    remote_not_azure: "O remoto {url} não é do Azure DevOps.",
+    issue_id_invalid: "{id} não é um id de issue válido: só dígitos.",
+    issue_not_this_project: "{issue} não é uma issue do {provider} deste projeto.",
+    issue_other_repo: "{issue} é de outro repositório que o do projeto.",
+    issue_has_card: "A issue {ref} já tem o card {card}.",
     plugin_arg_refused: "O valor {value} foi recusado: seria lido como uma opção.",
     plugin_not_installed: "{id} não está instalado.",
     marketplace_missing: "O marketplace {marketplace} não existe.",

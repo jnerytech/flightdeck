@@ -1,6 +1,4 @@
 {
-  "apps/daemon/src/issues/providers.ts": 1,
-  "apps/daemon/src/issues/issues.ts": 7,
   "apps/daemon/src/updates/apply.ts": 2,
   "apps/daemon/src/bg/service.ts": 1,
   "apps/daemon/src/central/central.ts": 1,

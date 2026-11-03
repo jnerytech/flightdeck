@@ -3,6 +3,14 @@
 
 /** Every reason of the daemon outside the snippet model: the app has a text for each, in both languages. */
 export const DAEMON_REASONS = [
+  "project_no_issues",
+  "project_no_origin",
+  "remote_not_github",
+  "remote_not_azure",
+  "issue_id_invalid",
+  "issue_not_this_project",
+  "issue_other_repo",
+  "issue_has_card",
   "plugin_arg_refused",
   "plugin_not_installed",
   "marketplace_missing",
