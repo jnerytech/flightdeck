@@ -49,5 +49,11 @@ describe("abrir-resultado-tauri: what the webview may ask of the opener plugin",
     for (const kind of ["exe", "bat", "cmd", "lnk", "url", "sh", "ps1", "html", "js", "docm"]) {
       expect(list).not.toMatch(new RegExp(`"${kind}"`));
     }
+    // Pages that run script in a browser, and data some systems open in one.
+    for (const kind of ["svg", "json"]) {
+      expect(list).not.toMatch(new RegExp(`"${kind}"`));
+    }
+    // explorer.exe cannot open the \\?\ form canonicalize gives.
+    expect(source).toContain("dunce::simplified");
   });
 });

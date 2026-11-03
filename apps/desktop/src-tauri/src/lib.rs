@@ -274,6 +274,11 @@ fn check_result_text(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The text checks without the list of extensions (what showing a file or folder needs).
+fn check_path_text(path: &str) -> Result<(), String> {
+    check_result_text(path)
+}
+
 /// Whether two spellings of a path are the same place (case blind on Windows, `\\?\` ignored).
 fn same_path(real: &std::path::Path, given: &std::path::Path) -> bool {
     let norm = |path: &std::path::Path| {
@@ -327,9 +332,12 @@ mod open_result_tests {
 
     #[test]
     fn a_document_on_a_drive_or_under_the_root_passes_the_text_checks() {
-        assert!(check_result_text("C:\\Users\\ana\\Reports\\Q3.DOCX").is_ok());
-        assert!(check_result_text("D:/work/a.pdf").is_ok());
-        assert!(check_result_text("/home/ana/Reports/a.md").is_ok());
+        if cfg!(windows) {
+            assert!(check_result_text("C:\\Users\\ana\\Reports\\Q3.DOCX").is_ok());
+            assert!(check_result_text("D:/work/a.pdf").is_ok());
+        } else {
+            assert!(check_result_text("/home/ana/Reports/a.md").is_ok());
+        }
     }
 
     #[test]
@@ -338,6 +346,14 @@ mod open_result_tests {
             "\\\\server\\share\\a.pdf",
             "//server/share/a.pdf",
             "\\\\?\\UNC\\server\\share\\a.pdf",
+            "/\\server\\share\\a.pdf",
+            "/\\attacker\\share\\a.pdf",
+            "/\\.\\pipe\\x.pdf",
+            "/\\.\\C:\\a.pdf",
+            "\\\\.\\C:\\a.pdf",
+            "\\\\?\\C:\\a.pdf",
+            "C:\\x\\report.pdf.",
+            "C:\\x\\report.pdf ",
             "C:\\work\\a.pdf:evil.exe",
             "C:work\\a.pdf",
             "relative/a.pdf",
@@ -351,12 +367,22 @@ mod open_result_tests {
     }
 
     #[test]
+    fn a_folder_may_be_shown_but_not_opened() {
+        // Reveal skips the list of extensions, never the other checks.
+        let root = if cfg!(windows) { "C:\\work\\folder" } else { "/work/folder" };
+        assert!(check_path_text(root).is_ok());
+        assert!(check_result_text(root).is_err());
+        assert!(check_path_text("/\\server\\share\\folder").is_err());
+    }
+
+    #[test]
     fn programs_scripts_shortcuts_pages_and_macro_documents_are_refused() {
         for kind in [
             "exe", "bat", "cmd", "lnk", "url", "sh", "ps1", "html", "htm", "js", "vbs", "docm",
-            "xlsm", "scr", "msi", "jar", "app", "desktop", "reg", "dll",
+            "xlsm", "scr", "msi", "jar", "app", "desktop", "reg", "dll", "svg", "json",
         ] {
             let path = format!("/home/ana/Reports/report.{kind}");
+            // The extension is the only check that can fail here, whatever the platform.
             assert!(check_result_text(&path).is_err(), "{kind} should be refused");
         }
         assert!(check_result_text("/home/ana/Reports/noextension").is_err());
@@ -391,6 +417,42 @@ mod open_result_tests {
         std::os::unix::fs::symlink(&dir, &way).unwrap();
         assert!(checked_result(way.join("a.pdf").to_str().unwrap()).is_err());
         let _ = std::fs::remove_file(&way);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn on_windows_a_directory_a_short_name_and_a_junction_are_refused_on_disk() {
+        use std::process::Command;
+        let base = std::env::temp_dir().join(format!("fd-open-result-{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        // The runner's temp path is an 8.3 one: spell it out in full first.
+        let dir = dunce::canonicalize(&base).unwrap();
+        let file = dir.join("a-long-document-name.pdf");
+        std::fs::write(&file, b"x").unwrap();
+        assert!(checked_result(file.to_str().unwrap()).is_ok());
+        let folder = dir.join("x.pdf");
+        std::fs::create_dir_all(&folder).unwrap();
+        assert!(checked_result(folder.to_str().unwrap()).is_err());
+        // The 8.3 spelling of the file is another spelling of the same place: refused.
+        let short = Command::new("cmd")
+            .args(["/C", &format!("for %I in (\"{}\") do @echo %~sI", file.display())])
+            .output()
+            .unwrap();
+        let short = String::from_utf8_lossy(&short.stdout).trim().to_string();
+        if !short.is_empty() && !same_path(std::path::Path::new(&short), &file) {
+            assert!(checked_result(&short).is_err(), "{short} should be refused");
+        }
+        // A junction on the way is refused too.
+        let junction = dir.join("junction");
+        let made = Command::new("cmd")
+            .args(["/C", "mklink", "/J", junction.to_str().unwrap(), dir.to_str().unwrap()])
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "mklink /J failed");
+        let through = junction.join("a-long-document-name.pdf");
+        assert!(checked_result(through.to_str().unwrap()).is_err());
+        let _ = Command::new("cmd").args(["/C", "rmdir", junction.to_str().unwrap()]).output();
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

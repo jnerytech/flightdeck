@@ -58,4 +58,13 @@ describe("abrir-resultado: opening what a task made, through the platform", () =
     expect(await store.revealPath(hostId, "relative/a.docx")).toBe(false);
     expect(calls).toEqual([]);
   });
+
+  test("Given a path with two leading separators, Then it is refused (on Windows both are UNC)", async () => {
+    const { store, hostId, calls } = await setup(true);
+    for (const path of ["/\\attacker\\share\\a.pdf", "\\\\.\\pipe\\x.pdf", "//server/a.pdf"]) {
+      expect(await store.openPath(hostId, path)).toBe(false);
+      expect(await store.revealPath(hostId, path)).toBe(false);
+    }
+    expect(calls).toEqual([]);
+  });
 });
