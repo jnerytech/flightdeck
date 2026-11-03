@@ -144,7 +144,9 @@ describe("desktop: interface", () => {
     await act(async () => {
       fireEvent.click(dialog.getByRole("button", { name: "Escolher esta pasta" }));
     });
-    expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toMatch(/^@\/.* $/);
+    expect((screen.getByLabelText("Mensagem") as HTMLTextAreaElement).value).toMatch(
+      /^@(\/|[A-Za-z]:\\).* $/,
+    ); // an absolute path of the host: POSIX or Windows
   });
 
   test("o modo e o modelo de uma sessão viva mudam pela barra e chegam ao runtime", async () => {

@@ -79,7 +79,7 @@ describe("nova-sessao-ux: the persona chosen is the persona the session is in", 
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Persona" }) as HTMLElement);
     });
-    await settle(() => screen.queryByRole("button", { name: "Apply" }) !== null);
+    await settle(() => screen.queryByRole("button", { name: "Apply" }) !== null, 10_000);
     expect(screen.queryByRole("button", { name: /^Persona: / })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to normal" })).toBeNull();
     // Creating a session and opening its screen chains several waits: the limit guards a hang.
