@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import * as crypto from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import {
   decodeLogs,
@@ -97,6 +99,31 @@ describe("otlp-receptor: what it refuses, before anything is decoded", () => {
     expect(get.status).toBe(405);
     expect((await post(server, "/v1/traces", "{}")).status).toBe(404);
     expect((await post(server, "/", "{}")).status).toBe(404);
+  });
+
+  test("a gzipped body goes through the async decompressor with the size cap, and the source never inflates synchronously", async () => {
+    const calls: Array<{ length: number; max: number | undefined }> = [];
+    const server: OtlpReceiver = startOtlpReceiver({
+      port: 0,
+      token: () => TOKEN,
+      maxBytes: 5_000,
+      inflate: async (body, options) => {
+        calls.push({ length: body.length, max: options.maxOutputLength });
+        return Buffer.from(JSON.stringify(jsonLogs(RECORDS)));
+      },
+      onEvents: () => {},
+    });
+    stops.push(server.stop);
+    const body = gzipSync(Buffer.from("anything"));
+    const response = await post(server, "/v1/logs", body, {
+      "content-encoding": "gzip",
+      "content-type": "application/json",
+    });
+    expect(response.status).toBe(200);
+    expect(calls).toEqual([{ length: body.length, max: 5_000 }]);
+    expect(readFileSync(join(import.meta.dir, "../src/telemetry/otlp.ts"), "utf8")).not.toContain(
+      "gunzipSync",
+    );
   });
 
   test("a body over the limit is 413: declared, streamed without a length, or inflated by gzip", async () => {

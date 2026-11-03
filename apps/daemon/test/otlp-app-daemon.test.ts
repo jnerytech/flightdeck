@@ -34,9 +34,9 @@ type Ack = Record<string, unknown>;
 const why = (ack: Ack) =>
   (ack.error ?? {}) as { reason?: string; params?: Record<string, string | number> };
 
-function refusal(run: () => unknown): FlightdeckError {
+async function refusal(run: () => unknown): Promise<FlightdeckError> {
   try {
-    run();
+    await run();
   } catch (error) {
     if (error instanceof FlightdeckError) return error;
     throw error;
@@ -45,37 +45,37 @@ function refusal(run: () => unknown): FlightdeckError {
 }
 
 describe("otlp-app: the opt-in for a plain claude, from the daemon", () => {
-  test("install needs the confirmation, writes the keys on hooks.port + 1 with a token of its own, and uninstall rotates it", () => {
+  test("install needs the confirmation, writes the keys on hooks.port + 1 with a token of its own, and uninstall rotates it", async () => {
     const { optIn, configFile, settingsFile } = setup({}, { model: "opus" });
-    expect(optIn.status()).toEqual({
+    expect(await optIn.status()).toEqual({
       status: "absent",
       settingsPath: settingsFile,
       receiverUrl: "http://127.0.0.1:7601",
       conflicts: [],
     });
-    const asked = refusal(() => optIn.install(false));
+    const asked = await refusal(() => optIn.install(false));
     expect(asked.code).toBe("invalid_state");
     expect(asked.reason).toBe("telemetry_confirm");
     expect(JSON.parse(readFileSync(settingsFile, "utf8"))).toEqual({ model: "opus" });
 
-    const installed = optIn.install(true);
+    const installed = await optIn.install(true);
     expect(installed.status).toBe("installed");
-    const token = loadConfig(configFile).telemetry.token ?? "";
+    const token = (await loadConfig(configFile)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     const env = JSON.parse(readFileSync(settingsFile, "utf8")).env;
     expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBe("http://127.0.0.1:7601");
     expect(env.OTEL_EXPORTER_OTLP_HEADERS).toBe(`Authorization=Bearer ${token}`);
     expect(Object.keys(env).filter((k) => k.startsWith("OTEL_LOG_"))).toEqual([]);
     expect(existsSync(`${settingsFile}.flightdeck-telemetry-backup`)).toBe(true);
-    expect(optIn.status().status).toBe("installed");
+    expect((await optIn.status()).status).toBe("installed");
 
-    expect(refusal(() => optIn.uninstall(false)).reason).toBe("telemetry_confirm");
-    expect(optIn.uninstall(true).status).toBe("absent");
+    expect((await refusal(() => optIn.uninstall(false))).reason).toBe("telemetry_confirm");
+    expect((await optIn.uninstall(true)).status).toBe("absent");
     expect(JSON.parse(readFileSync(settingsFile, "utf8"))).toEqual({ model: "opus" });
-    expect(loadConfig(configFile).telemetry.token).not.toBe(token);
+    expect((await loadConfig(configFile)).telemetry.token).not.toBe(token);
   });
 
-  test("keys of the user's own are named, and nothing is written, not even the token", () => {
+  test("keys of the user's own are named, and nothing is written, not even the token", async () => {
     const { optIn, configFile, settingsFile } = setup(
       {},
       {
@@ -85,22 +85,22 @@ describe("otlp-app: the opt-in for a plain claude, from the daemon", () => {
         },
       },
     );
-    const status = optIn.status();
+    const status = await optIn.status();
     expect(status.status).toBe("conflict");
     expect(status.conflicts).toEqual(["OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_LOGS_EXPORTER"]);
-    const error = refusal(() => optIn.install(true));
+    const error = await refusal(() => optIn.install(true));
     expect(error.reason).toBe("telemetry_owned_keys");
     expect(error.params).toEqual({ keys: "OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_LOGS_EXPORTER" });
     expect(JSON.parse(readFileSync(settingsFile, "utf8")).env.OTEL_LOGS_EXPORTER).toBe("console");
-    expect(loadConfig(configFile).telemetry.token).toBeUndefined();
+    expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
   });
 
-  test("without a fixed port install is refused, and status says there is no receiver URL", () => {
+  test("without a fixed port install is refused, and status says there is no receiver URL", async () => {
     const { optIn } = setup({ hooks: { port: 0 } });
-    expect(optIn.status().receiverUrl).toBeNull();
-    expect(refusal(() => optIn.install(true)).reason).toBe("telemetry_port");
+    expect((await optIn.status()).receiverUrl).toBeNull();
+    expect((await refusal(() => optIn.install(true))).reason).toBe("telemetry_port");
     const { optIn: fixed } = setup({ hooks: { port: 0 }, telemetry: { port: 7700 } });
-    expect(fixed.status().receiverUrl).toBe("http://127.0.0.1:7700");
+    expect((await fixed.status()).receiverUrl).toBe("http://127.0.0.1:7700");
   });
 });
 

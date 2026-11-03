@@ -187,6 +187,8 @@ describe("hooks-install", () => {
   });
 });
 
+describe("hooks-install: status without blocking", () => {});
+
 describe("hooks-install: CLI", () => {
   const out: string[] = [];
   let exitCode: number | null = null;
@@ -219,7 +221,7 @@ describe("hooks-install: CLI", () => {
     const file = config();
     await runCli(["hooks", "install", "--config", file], deps);
     expect(exitCode).toBe(0);
-    const token = loadConfig(file).hooks.token ?? "";
+    const token = (await loadConfig(file)).hooks.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     expect(read(settings).hooks.Stop[0].hooks[0]).toEqual({
       type: "http",
@@ -230,7 +232,7 @@ describe("hooks-install: CLI", () => {
     await runCli(["hooks", "status", "--config", file], deps);
     expect(out.join("\n")).toContain("hooks: instalados");
     await runCli(["hooks", "install", "--config", file], deps);
-    expect(loadConfig(file).hooks.token).toBe(token);
+    expect((await loadConfig(file)).hooks.token).toBe(token);
     await runCli(["hooks", "uninstall", "--config", file], deps);
     expect(read(settings)).toEqual({});
     await runCli(["hooks", "status", "--config", file], deps);

@@ -277,7 +277,7 @@ describe("navegacao", () => {
     await d.central.hooksInstall(true);
     await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+      headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
       body: JSON.stringify({
         session_id: "ext-1",
         hook_event_name: "SessionStart",
@@ -399,10 +399,10 @@ describe("navegacao", () => {
   test("o nome dado a uma sessão do terminal chega pelo external.updated, sem carregar a lista de sessões", async () => {
     const d = makeDaemon(cleanups);
     await d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({
           session_id: "ext-n",
           hook_event_name: event,

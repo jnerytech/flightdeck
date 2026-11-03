@@ -50,7 +50,7 @@ describe("telemetria-dados: the daemon", () => {
     const { daemon, dataDir, file } = await boot({ telemetry: { port: 0 } });
     const url = published(dataDir)?.url ?? "";
     expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
-    const token = loadConfig(file).telemetry.token ?? "";
+    const token = (await loadConfig(file)).telemetry.token ?? "";
     const res = await fetch(`${url}/v1/logs`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
@@ -95,7 +95,7 @@ describe("telemetria-dados: the daemon", () => {
   test("the retention purge deletes what is older than telemetry.retentionDays when the daemon starts", async () => {
     const first = await boot({ telemetry: { port: 0, retentionDays: 1 } });
     const url = published(first.dataDir)?.url ?? "";
-    const token = loadConfig(first.file).telemetry.token ?? "";
+    const token = (await loadConfig(first.file)).telemetry.token ?? "";
     const send = (timeMs: number, id: string) =>
       fetch(`${url}/v1/logs`, {
         method: "POST",

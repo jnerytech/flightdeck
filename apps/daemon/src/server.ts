@@ -10,6 +10,7 @@ import {
   CommandHeader,
   type CommandResults,
   type CommandType,
+  type DoctorResult,
   type EventEnvelope,
   type ExternalPermissionFrame,
   type ExternalSession,
@@ -74,6 +75,7 @@ import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
 import type { Plugins } from "./plugins/plugins.ts";
+import { cloneRepo, type GitRunner, scanRepos, spawnGit } from "./project-find.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
@@ -131,11 +133,17 @@ export interface ServerOptions {
   token: string;
   allowedRoots: readonly string[];
   /** Keeps the allowed folders in the config file after `roots.add`. */
-  persistRoots?: (roots: readonly string[]) => void;
+  persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
+  /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
+  doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
+  findProjects?: boolean;
+  /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
+  git?: GitRunner;
   /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
   sessionSettings?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
@@ -250,7 +258,7 @@ export interface ServerOptions {
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
   /** Called after `terminal.settings` changes whether terminals are on (the config keeps it). */
-  onTerminalSettings?: (enabled: boolean) => void;
+  onTerminalSettings?: (enabled: boolean) => void | Promise<void>;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
   claude?: { path: string | null; version(): Promise<string | null> };
   /** What "Abrir no terminal" needs from `host.info` (phase 8). */
@@ -401,6 +409,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
     ...(opts.sessionSettings ? ["session.settings"] : []),
+    ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -936,11 +946,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { claudeSessionId, ...meta });
       }
       case "maintenance.status":
-        return ok(command.type, maintenance().status());
+        return ok(command.type, await maintenance().status());
       case "maintenance.backup":
-        return ok(command.type, maintenance().backupNow());
+        return ok(command.type, await maintenance().backupNow());
       case "maintenance.prune":
-        return ok(command.type, maintenance().prune(command.payload.dryRun === true));
+        return ok(command.type, await maintenance().prune(command.payload.dryRun === true));
       case "snapshots.list":
         return ok(command.type, {
           // A terminal turn's uuid is found in the indexed transcript, when it can be told.
@@ -1461,7 +1471,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
         return ok(command.type, {
-          allowedRoots: addAllowedRoot(
+          allowedRoots: await addAllowedRoot(
             opts.allowedRoots as string[],
             path,
             confirm === true,
@@ -1472,7 +1482,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
-        if (maxParallelRuns !== undefined) board().setMaxParallelRuns(maxParallelRuns);
+        if (maxParallelRuns !== undefined) await board().setMaxParallelRuns(maxParallelRuns);
         return ok(command.type, { maxParallelRuns: board().maxParallelRuns });
       }
       case "board.watch": {
@@ -1527,7 +1537,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "costs.status":
         return ok(command.type, costs().status());
       case "costs.reprice":
-        return ok(command.type, costs().reprice());
+        return ok(command.type, await costs().reprice());
       case "costs.summary":
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
@@ -1555,11 +1565,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
       }
       case "telemetry.status":
-        return ok(command.type, optIn().status());
+        return ok(command.type, await optIn().status());
       case "telemetry.install":
-        return ok(command.type, optIn().install(command.payload.confirm === true));
+        return ok(command.type, await optIn().install(command.payload.confirm === true));
       case "telemetry.uninstall":
-        return ok(command.type, optIn().uninstall(command.payload.confirm === true));
+        return ok(command.type, await optIn().uninstall(command.payload.confirm === true));
       case "telemetry.summary":
         return ok(command.type, telemetry().summary());
       case "costs.session":
@@ -1596,6 +1606,20 @@ export function startServer(opts: ServerOptions): RunningServer {
           listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
+      case "projects.scan": {
+        if (!opts.findProjects) throw featureOff("projects.scan");
+        const { depth } = command.payload;
+        return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
+      }
+      case "projects.clone":
+        if (!opts.findProjects) throw featureOff("projects.clone");
+        return ok(
+          command.type,
+          await cloneRepo(command.payload, opts.allowedRoots, opts.git ?? spawnGit),
+        );
+      case "doctor.run":
+        if (!opts.doctor) throw featureOff("doctor.run");
+        return ok(command.type, await opts.doctor(command.payload.appVersion));
       case "fs.files": {
         const { path, hidden } = command.payload;
         return ok(
@@ -1666,7 +1690,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           );
         }
         manager.setEnabled(enabled);
-        opts.onTerminalSettings?.(enabled);
+        await opts.onTerminalSettings?.(enabled);
         return ok(command.type, manager.settings());
       }
       case "pr.comments":
@@ -1835,9 +1859,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "ssh.hostkey.forget":
         return ok(command.type, sshHostKeys().forget(command.payload.targetId));
       case "ssh.import.preview":
-        return ok(command.type, sshImport().preview());
+        return ok(command.type, await sshImport().preview());
       case "ssh.import.apply":
-        return ok(command.type, sshImport().apply(command.payload.aliases));
+        return ok(command.type, await sshImport().apply(command.payload.aliases));
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });
       case "review.add":

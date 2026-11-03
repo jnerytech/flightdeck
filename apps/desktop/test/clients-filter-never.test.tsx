@@ -79,7 +79,7 @@ async function setup() {
   await settle(() => store.getState().hosts[0]?.status === "online");
   await act(async () => store.setClientSelection("acme"));
   await d.central.hooksInstall(true);
-  const token = loadConfig(d.configFile).hooks.token ?? "";
+  const token = (await loadConfig(d.configFile)).hooks.token ?? "";
   const hook = (event: string, body: Record<string, unknown> = {}) =>
     fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
       method: "POST",

@@ -100,7 +100,7 @@ async function setup() {
   await d.central.hooksInstall(true);
   await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+    headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
     body: JSON.stringify({ session_id: "ext-1", hook_event_name: "SessionStart", cwd: appA }),
   });
 

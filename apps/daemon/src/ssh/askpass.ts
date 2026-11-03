@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AskpassRequest, SshTarget } from "@flightdeck/protocol";
 import { readConfig } from "../costs/statusline.ts";
@@ -159,11 +159,11 @@ const quoteForSh = (word: string) => `'${word.replaceAll("'", `'\\''`)}'`;
  * The program `SSH_ASKPASS` points to: ssh runs it with the prompt as its only argument, and it
  * calls `flightdeckd askpass`. It holds no secret, only this daemon's own command line.
  */
-export function writeAskpassScript(opts: {
+export async function writeAskpassScript(opts: {
   dir: string;
   platform: NodeJS.Platform;
   self: string[];
-}): string {
+}): Promise<string> {
   const win = opts.platform === "win32";
   let text: string;
   if (win) {
@@ -178,10 +178,11 @@ export function writeAskpassScript(opts: {
   } else {
     text = `#!/bin/sh\nexec ${opts.self.map(quoteForSh).join(" ")} askpass "$@"\n`;
   }
-  mkdirSync(opts.dir, { recursive: true });
+  await mkdir(opts.dir, { recursive: true });
   const file = join(opts.dir, win ? "askpass.cmd" : "askpass.sh");
-  if (!existsSync(file) || readFileSync(file, "utf8") !== text) writeFileSync(file, text);
-  if (!win) chmodSync(file, 0o755);
+  const current = await readFile(file, "utf8").catch(() => null);
+  if (current !== text) await writeFile(file, text);
+  if (!win) await chmod(file, 0o755);
   return file;
 }
 
@@ -213,15 +214,19 @@ export async function runAskpass(opts: {
  * What the connector needs for passwords and passphrases; `undefined` (no askpass, and ssh falls
  * back to asking in its terminal) when the script cannot be written for this host.
  */
-export function askpassHook(opts: {
+export async function askpassHook(opts: {
   broker: AskpassBroker;
   dir: string;
   platform: NodeJS.Platform;
   self: string[];
   configFile: string;
-}): AskpassHook | undefined {
+}): Promise<AskpassHook | undefined> {
   try {
-    const script = writeAskpassScript({ dir: opts.dir, platform: opts.platform, self: opts.self });
+    const script = await writeAskpassScript({
+      dir: opts.dir,
+      platform: opts.platform,
+      self: opts.self,
+    });
     return {
       script,
       configFile: opts.configFile,

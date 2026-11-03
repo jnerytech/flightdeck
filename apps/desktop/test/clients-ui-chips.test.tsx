@@ -70,7 +70,7 @@ async function setup(clients: unknown[] = TWO, waiting = true) {
   await settle(() => screen.queryByRole("listitem", { name: "Sessão Solta" }) !== null);
   if (waiting) {
     await d.central.hooksInstall(true);
-    const token = loadConfig(d.configFile).hooks.token ?? "";
+    const token = (await loadConfig(d.configFile)).hooks.token ?? "";
     const hook = (event: string, body: Record<string, unknown> = {}) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",

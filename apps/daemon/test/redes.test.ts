@@ -57,14 +57,14 @@ describe("redes", () => {
     expect(ipInNetworks("lixo", ["0.0.0.0/0"])).toBe(false);
   });
 
-  test("padrão é só loopback; CIDR inválido é recusado na config", () => {
+  test("padrão é só loopback; CIDR inválido é recusado na config", async () => {
     expect(DEFAULT_ALLOWED_NETWORKS).toEqual(["127.0.0.0/8", "::1/128"]);
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "t".repeat(32) }));
-    expect(loadConfig(file).allowedNetworks).toEqual(["127.0.0.0/8", "::1/128"]);
+    expect((await loadConfig(file)).allowedNetworks).toEqual(["127.0.0.0/8", "::1/128"]);
     for (const bad of ["10.0.0.0", "10.0.0.0/33", "300.0.0.0/8", "::1/129", "x/8"]) {
       writeFileSync(file, JSON.stringify({ token: "t".repeat(32), allowedNetworks: [bad] }));
-      expect(() => loadConfig(file)).toThrow();
+      await expect(loadConfig(file)).rejects.toThrow();
     }
   });
 

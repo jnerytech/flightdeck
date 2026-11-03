@@ -50,9 +50,12 @@ const open = (path: string) => {
 };
 
 describe("backup", () => {
-  test("VACUUM INTO com o banco aberto: arquivo íntegro, mesma user_version, só para o dono", () => {
+  test("VACUUM INTO com o banco aberto: arquivo íntegro, mesma user_version, só para o dono", async () => {
     const { dataDir, store } = liveDb();
-    const info = backupNow(store.db, join(dataDir, "backups"), NOW);
+    const taking = backupNow(store.db, join(dataDir, "backups"), NOW);
+    expect(taking).toBeInstanceOf(Promise);
+    expect(listBackups(join(dataDir, "backups"))).toBeInstanceOf(Promise);
+    const info = await taking;
     expect(info.path).toBe(join(dataDir, "backups", "flightdeck-20261030-120000.db"));
     expect(info.at).toBe(new Date(NOW).toISOString());
     expect(info.bytes).toBe(statSync(info.path).size);
@@ -64,31 +67,31 @@ describe("backup", () => {
     // An explicit destination is used as is (and replaced when it exists).
     const out = join(tempDir(), "manual.db");
     writeFileSync(out, "velho");
-    expect(backupNow(store.db, join(dataDir, "backups"), NOW, out).path).toBe(out);
+    expect((await backupNow(store.db, join(dataDir, "backups"), NOW, out)).path).toBe(out);
     expect(open(out).query("PRAGMA integrity_check").get()).toEqual({ integrity_check: "ok" });
   });
 
-  test("mantém só os últimos keep", () => {
+  test("mantém só os últimos keep", async () => {
     const { dataDir, store } = liveDb();
     const dir = join(dataDir, "backups");
-    for (let i = 0; i < 9; i++) backupNow(store.db, dir, NOW + i * DAY);
+    for (let i = 0; i < 9; i++) await backupNow(store.db, dir, NOW + i * DAY);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "outro-arquivo.txt"), "fica");
-    expect(keepLast(dir, 7)).toHaveLength(2);
+    expect(await keepLast(dir, 7)).toHaveLength(2);
     // Newest first: 7 Nov back to 1 Nov; 30 and 31 Oct went.
-    expect(listBackups(dir).map((b) => b.path.slice(dir.length + 1))).toEqual(
+    expect((await listBackups(dir)).map((b) => b.path.slice(dir.length + 1))).toEqual(
       [7, 6, 5, 4, 3, 2, 1].map(
         (day) => `flightdeck-202611${String(day).padStart(2, "0")}-120000.db`,
       ),
     );
     expect(existsSync(join(dir, "outro-arquivo.txt"))).toBe(true);
-    expect(listBackups(join(dataDir, "nao-existe"))).toEqual([]);
+    expect(await listBackups(join(dataDir, "nao-existe"))).toEqual([]);
   });
 
-  test("backup diário com o daemon: no boot só se o último tem mais de 24 h; status reúne tudo", () => {
+  test("backup diário com o daemon: no boot só se o último tem mais de 24 h; status reúne tudo", async () => {
     const { dataDir, store } = liveDb();
     let now = NOW;
-    const intervals: Array<() => void> = [];
+    const intervals: Array<() => unknown> = [];
     const make = () =>
       new Maintenance({
         db: store.db,
@@ -97,7 +100,7 @@ describe("backup", () => {
         backup: { enabled: true, keep: 2 },
         now: () => now,
         timers: {
-          setInterval: (fn: () => void) => {
+          setInterval: (fn: () => unknown) => {
             intervals.push(fn);
             return 1 as unknown as ReturnType<typeof setInterval>;
           },
@@ -105,18 +108,18 @@ describe("backup", () => {
         },
       });
     const first = make();
-    first.start();
+    await first.start();
     expect(backupFiles(dataDir)).toHaveLength(1);
     // A restart an hour later does not back up again.
     now += 3_600_000;
-    make().start();
+    await make().start();
     expect(backupFiles(dataDir)).toHaveLength(1);
     now += DAY;
-    intervals[0]?.();
+    await intervals[0]?.();
     now += DAY;
-    intervals[0]?.();
+    await intervals[0]?.();
     expect(backupFiles(dataDir)).toHaveLength(2);
-    const status = first.status();
+    const status = await first.status();
     expect(status.dbBytes).toBeGreaterThan(0);
     expect(status.backups).toHaveLength(2);
     expect(status.lastBackup?.at).toBe(new Date(now).toISOString());
@@ -129,39 +132,39 @@ describe("backup", () => {
       backup: { enabled: false, keep: 7 },
       now: () => now,
     });
-    disabled.start();
+    await disabled.start();
     disabled.stop();
-    expect(disabled.status().backups).toEqual([]);
-    expect(disabled.status().lastBackup).toBeNull();
+    expect((await disabled.status()).backups).toEqual([]);
+    expect((await disabled.status()).lastBackup).toBeNull();
   });
 
-  test("restauração: recusa com o daemon rodando, confere integridade e user_version e guarda o .before-restore", () => {
+  test("restauração: recusa com o daemon rodando, confere integridade e user_version e guarda o .before-restore", async () => {
     const { dataDir, store } = liveDb();
-    const good = backupNow(store.db, join(dataDir, "backups"), NOW).path;
+    const good = (await backupNow(store.db, join(dataDir, "backups"), NOW)).path;
     store.db.query("UPDATE sessions SET name = 'depois do backup'").run();
     // The daemon is running: its lock is held.
-    const lock = acquireLock(dataDir);
-    cleanups.push(() => lock?.release());
-    const refuse = (file: string) => {
+    const lock = await acquireLock(dataDir);
+    cleanups.push(async () => lock?.release());
+    const refuse = async (file: string) => {
       try {
-        restoreBackup({ file, dataDir });
+        await restoreBackup({ file, dataDir });
         return "restaurou";
       } catch (error) {
         return (error as Error).message;
       }
     };
-    expect(refuse(good)).toContain("pare o daemon");
-    lock?.release();
+    expect(await refuse(good)).toContain("pare o daemon");
+    await lock?.release();
     store.close();
     const broken = join(tempDir(), "quebrado.db");
     writeFileSync(broken, "isto não é sqlite");
-    expect(refuse(broken)).toContain("integridade");
+    expect(await refuse(broken)).toContain("integridade");
     const future = join(tempDir(), "futuro.db");
     const db = new Database(future);
     db.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`);
     db.close();
-    expect(refuse(future)).toContain("mais nova");
-    const result = restoreBackup({ file: good, dataDir });
+    expect(await refuse(future)).toContain("mais nova");
+    const result = await restoreBackup({ file: good, dataDir });
     expect(result.beforeRestore).toBe(join(dataDir, "flightdeck.db.before-restore"));
     const restored = new EventStore(join(dataDir, "flightdeck.db"));
     expect(restored.getSession("s1")?.name).toBe("guardada");

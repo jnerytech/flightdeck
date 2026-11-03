@@ -148,7 +148,7 @@ describe("clients-filter: what a client never hides", () => {
   test("a request waiting in another client's project stays in Needs you", async () => {
     const { d, store, repos } = await setup();
     await d.central.hooksInstall(true);
-    const token = loadConfig(d.configFile).hooks.token ?? "";
+    const token = (await loadConfig(d.configFile)).hooks.token ?? "";
     const hook = (event: string, body: Record<string, unknown> = {}) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",

@@ -89,11 +89,11 @@ describe("exclusoes", () => {
     },
   );
 
-  test("config: history.roots padrão em ~/.claude/projects e ~ expandido nas exclusões", () => {
+  test("config: history.roots padrão em ~/.claude/projects e ~ expandido nas exclusões", async () => {
     const dir = tempDir();
     const file = join(dir, "config.json");
     writeFileSync(file, JSON.stringify({ history: { excludeCwds: ["~/privado", "/abs"] } }));
-    const config = loadConfig(file);
+    const config = await loadConfig(file);
     expect(config.history).toEqual({
       roots: [join(testHome(), ".claude", "projects")],
       excludeCwds: [join(testHome(), "privado"), "/abs"],

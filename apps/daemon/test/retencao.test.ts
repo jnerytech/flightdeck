@@ -145,46 +145,46 @@ describe("retencao", () => {
     expect(eventsOf("old")).toBe(2);
   });
 
-  test("roda no boot e a cada 24 h com relógio e agendador injetados, e guarda a última limpeza", () => {
+  test("roda no boot e a cada 24 h com relógio e agendador injetados, e guarda a última limpeza", async () => {
     const { db, eventsOf } = fixture();
     const dataDir = tempDir();
     let now = NOW;
-    const intervals: Array<{ fn: () => void; ms: number }> = [];
+    const intervals: Array<{ fn: () => unknown; ms: number }> = [];
     const maintenance = new Maintenance({
       db,
       dataDir,
       retention: POLICY,
       now: () => now,
       timers: {
-        setInterval: (fn: () => void, ms: number) => {
+        setInterval: (fn: () => unknown, ms: number) => {
           intervals.push({ fn, ms });
           return 1 as unknown as ReturnType<typeof setInterval>;
         },
         clearInterval: () => {},
       },
     });
-    maintenance.start();
+    await maintenance.start();
     cleanups.push(() => maintenance.stop());
     expect(eventsOf("old")).toBe(0);
     expect(intervals.map((i) => i.ms)).toEqual([DAY]);
-    expect(maintenance.lastPrune()).toMatchObject({
+    expect(await maintenance.lastPrune()).toMatchObject({
       at: new Date(NOW).toISOString(),
       dryRun: false,
     });
     // A day later "recent" is still recent; 81 days later it goes.
     now += 81 * DAY;
-    intervals[0]?.fn();
+    await intervals[0]?.fn();
     expect(eventsOf("recent")).toBe(0);
-    expect(maintenance.lastPrune()?.counts.events).toBe(2);
+    expect((await maintenance.lastPrune())?.counts.events).toBe(2);
     expect(existsSync(join(dataDir, "maintenance.json"))).toBe(true);
-    expect(maintenance.prune(true)).toEqual({
+    expect(await maintenance.prune(true)).toEqual({
       events: 0,
       permission_requests: 0,
       external_sessions: 0,
       usage_entries: 0,
       quota_samples: 0,
     });
-    expect(maintenance.lastPrune()?.dryRun).toBe(true);
+    expect((await maintenance.lastPrune())?.dryRun).toBe(true);
   });
 
   test("retention na config: padrões 90, 30 e 400 dias", () => {
@@ -238,6 +238,6 @@ describe("retencao", () => {
     expect(done.out).toContain("events: 6");
     const again = await run(["db", "prune", "--config", file]);
     expect(again.out).toContain("events: 0");
-    expect(loadConfig(file).retention.eventsDays).toBe(90);
+    expect((await loadConfig(file)).retention.eventsDays).toBe(90);
   });
 });

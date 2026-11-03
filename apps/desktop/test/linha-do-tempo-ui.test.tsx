@@ -401,10 +401,10 @@ describe("linha-do-tempo-ui", () => {
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "inicial");
     await d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${loadConfig(d.configFile).hooks.token}` },
+        headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
         body: JSON.stringify({ session_id: "ext-1", hook_event_name: event, cwd: repo, ...body }),
       });
     await hook("SessionStart", {});

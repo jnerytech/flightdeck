@@ -84,8 +84,8 @@ describe("desligar", () => {
     expect(await client.request("daemon.shutdown", {})).toMatchObject({ ok: true });
     await until(() => exits.length > 0, "o daemon sair");
     expect(exits).toEqual([0]);
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     expect(lock).not.toBeNull();
-    lock?.release();
+    await lock?.release();
   });
 });

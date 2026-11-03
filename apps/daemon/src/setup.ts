@@ -1,4 +1,4 @@
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { access, chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, posix, resolve, win32 } from "node:path";
 import { loadConfig, updateConfigFile } from "./config.ts";
 import { compareVersions, swapBinary } from "./update.ts";
@@ -13,7 +13,7 @@ export interface SetupDeps {
   home: string;
   /** Which platform's paths the answers are: only Windows writes its roots with forward slashes. */
   platform: NodeJS.Platform;
-  isDirectory(path: string): boolean;
+  isDirectory(path: string): boolean | Promise<boolean>;
   tailscaleIp(): Promise<string | null>;
   /** Puts the running binary at its stable place; false when running from source. */
   installBinary(): Promise<boolean>;
@@ -47,17 +47,21 @@ const sameRoot = (deps: SetupDeps, a: string, b: string) => {
 };
 
 /** The roots as the file has them (`loadConfig` resolves them to native paths). */
-function storedRoots(file: string): string[] {
-  const roots = (JSON.parse(readFileSync(file, "utf8")) as { allowedRoots?: unknown }).allowedRoots;
+async function storedRoots(file: string): Promise<string[]> {
+  const roots = (JSON.parse(await readFile(file, "utf8")) as { allowedRoots?: unknown })
+    .allowedRoots;
   return Array.isArray(roots)
     ? roots.filter((root): root is string => typeof root === "string")
     : [];
 }
 
 /** The absolute path of a folder answer, or why it cannot be one. */
-function checkFolder(deps: SetupDeps, answer: string): { path: string; error?: string } {
+async function checkFolder(
+  deps: SetupDeps,
+  answer: string,
+): Promise<{ path: string; error?: string }> {
   const path = expandHome(answer, deps);
-  return deps.isDirectory(path)
+  return (await deps.isDirectory(path))
     ? { path }
     : { path, error: `${path} is not a folder that exists: type the path of a folder.` };
 }
@@ -76,7 +80,7 @@ async function askFolders(deps: SetupDeps, current: string[]): Promise<string[]>
       await deps.ask("Project folder Flightdeck may start sessions in (empty answer to finish): ")
     ).trim();
     if (answer) {
-      const { path, error } = checkFolder(deps, answer);
+      const { path, error } = await checkFolder(deps, answer);
       if (error) deps.log.error(error);
       else add(deps, roots, path);
       continue;
@@ -126,10 +130,10 @@ export function createPrompt(
 }
 
 /** The folders of `--yes` mode: the ones given plus the config's, each one checked. */
-function yesFolders(deps: SetupDeps, current: string[], given: string[]): string[] {
+async function yesFolders(deps: SetupDeps, current: string[], given: string[]): Promise<string[]> {
   const roots = [...current];
   for (const answer of given) {
-    const { path, error } = checkFolder(deps, answer);
+    const { path, error } = await checkFolder(deps, answer);
     if (error) throw new Error(error);
     add(deps, roots, path);
   }
@@ -139,10 +143,10 @@ function yesFolders(deps: SetupDeps, current: string[], given: string[]): string
 
 /** `flightdeckd setup`: the first run, step by step. */
 export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Promise<void> {
-  const config = loadConfig(deps.configFile);
-  const current = storedRoots(deps.configFile);
+  const config = await loadConfig(deps.configFile);
+  const current = await storedRoots(deps.configFile);
   // Checked before anything is installed: a bad answer on the command line changes nothing.
-  const given = options.yes ? yesFolders(deps, current, options.folders ?? []) : null;
+  const given = options.yes ? await yesFolders(deps, current, options.folders ?? []) : null;
   if (await deps.installBinary()) await deps.addToPath();
   else deps.log.log("Running from source: the binary stays where it is.");
   const roots = given ?? (await askFolders(deps, current));
@@ -153,7 +157,7 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
       `Tailscale found (${tailscale}). Use Flightdeck from other devices over Tailscale?`,
       false,
     ));
-  updateConfigFile(deps.configFile, (raw) => ({
+  await updateConfigFile(deps.configFile, (raw) => ({
     ...raw,
     allowedRoots: roots,
     ...(remote
@@ -184,20 +188,26 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
  * Puts the running binary at the stable place (`~/.flightdeck/bin`). A binary already there is
  * kept: replacing it is what `update` does, with the service stopped.
  */
-export function installStableBinary(
+export async function installStableBinary(
   self: string[],
   stable: string,
   platform: string,
-): "source" | "already" | "kept" | "copied" {
+): Promise<"source" | "already" | "kept" | "copied"> {
   const exe = self[0] as string;
   if (self.length !== 1) return "source";
   const same = (a: string, b: string) =>
     platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
   if (same(resolve(exe), resolve(stable))) return "already";
-  if (existsSync(stable)) return "kept";
-  mkdirSync(dirname(stable), { recursive: true });
-  copyFileSync(exe, stable);
-  chmodSync(stable, 0o755);
+  if (
+    await access(stable).then(
+      () => true,
+      () => false,
+    )
+  )
+    return "kept";
+  await mkdir(dirname(stable), { recursive: true });
+  await copyFile(exe, stable);
+  await chmod(stable, 0o755);
   return "copied";
 }
 
@@ -227,6 +237,6 @@ export async function reconcileStableBinary(
     if (order > 0) return { outcome: "newer", stableVersion };
   }
   await options.stopService();
-  swapBinary(options.self, options.stable);
+  await swapBinary(options.self, options.stable);
   return { outcome: "replaced", stableVersion };
 }

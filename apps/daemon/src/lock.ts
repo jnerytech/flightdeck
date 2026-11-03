@@ -1,10 +1,10 @@
-import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdir, open, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export const LOCK_FILE = "flightdeckd.lock";
 
 export interface Lock {
-  release(): void;
+  release(): Promise<void>;
 }
 
 function isAlive(pid: number): boolean {
@@ -20,30 +20,30 @@ function isAlive(pid: number): boolean {
  * Takes the per-`dataDir` lock: a file holding the owner's pid. A lock whose pid is no longer
  * running (or is unreadable) is taken over. Returns `null` when another live process holds it.
  */
-export function acquireLock(dataDir: string): Lock | null {
-  mkdirSync(dataDir, { recursive: true });
+export async function acquireLock(dataDir: string): Promise<Lock | null> {
+  await mkdir(dataDir, { recursive: true });
   const path = join(dataDir, LOCK_FILE);
   try {
-    closeSync(openSync(path, "wx"));
+    await (await open(path, "wx")).close();
   } catch {
-    const owner = Number.parseInt(readFileSync(path, "utf8"), 10);
+    const owner = Number.parseInt(await readFile(path, "utf8"), 10);
     if (Number.isInteger(owner) && owner > 0 && isAlive(owner)) return null;
   }
-  writeFileSync(path, String(process.pid));
+  await writeFile(path, String(process.pid));
   let held = true;
   return {
-    release() {
+    async release() {
       if (!held) return;
       held = false;
-      unlinkSync(path);
+      await unlink(path);
     },
   };
 }
 
 /** The pid written in the lock of `dataDir`, or null without a readable one. */
-export function readLockPid(dataDir: string): number | null {
+export async function readLockPid(dataDir: string): Promise<number | null> {
   try {
-    const pid = Number.parseInt(readFileSync(join(dataDir, LOCK_FILE), "utf8"), 10);
+    const pid = Number.parseInt(await readFile(join(dataDir, LOCK_FILE), "utf8"), 10);
     return Number.isInteger(pid) && pid > 0 ? pid : null;
   } catch {
     return null;

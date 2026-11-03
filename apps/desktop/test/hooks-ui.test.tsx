@@ -66,7 +66,7 @@ describe("hooks-ui", () => {
     const url = central.receptorUrl() ?? "";
     expect(url).toMatch(/^http:\/\/127\.0\.0\.1:[1-9]\d*$/);
     expect(settings.hooks.Stop[0].hooks[0].url).toBe(`${url}/hooks/Stop`);
-    const token = loadConfig(configFile).hooks.token ?? "";
+    const token = (await loadConfig(configFile)).hooks.token ?? "";
     expect(settings.hooks.Stop[0].hooks[0].headers).toEqual({ Authorization: `Bearer ${token}` });
   });
 
