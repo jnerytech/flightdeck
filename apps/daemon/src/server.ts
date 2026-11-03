@@ -122,6 +122,8 @@ export interface ServerOptions {
   manager: SessionManager;
   /** Looks up the project of a folder before a session is created in it (without blocking). */
   warmProjectKey?: (cwd: string) => Promise<unknown>;
+  /** The project key of a folder, asked without blocking: `history.list` filters by it. */
+  projectKeyOf?: (cwd: string) => Promise<string>;
   hostName: string;
   bind: string;
   port: number;

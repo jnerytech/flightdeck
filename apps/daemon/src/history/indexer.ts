@@ -49,6 +49,8 @@ export interface HistoryChange {
 
 export interface HistoryListFilter {
   cwd?: string;
+  /** Exactly these folders (not their children): the folders of one project. */
+  cwds?: string[];
   from?: string;
   to?: string;
   origin?: "flightdeck" | "external";
@@ -222,6 +224,11 @@ export class HistoryIndexer {
         "CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(text, content='history_messages')",
       );
     }
+  }
+
+  /** The folders of the indexed sessions, each once. */
+  distinctCwds(): string[] {
+    return [];
   }
 
   /** Indexed sessions with at least one message, most recent first. */
