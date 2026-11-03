@@ -997,3 +997,32 @@
   font-size: 0.75rem;
   line-height: 1.2;
 }
+
+/* Simple mode (phase 33): the question card. */
+@utility question-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--color-status-needs-you);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 1rem;
+  margin: 0;
+  &:focus-within {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+@utility question-card-title {
+  font-size: 1rem;
+  font-weight: var(--weight-strong);
+}
+@utility question-card-note {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+@utility question-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
