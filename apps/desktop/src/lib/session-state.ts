@@ -172,6 +172,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
           ...(event.suggestions ? { suggestions: event.suggestions } : {}),
           ...(event.risk ? { risk: event.risk } : {}),
           ...(event.riskReason ? { riskReason: event.riskReason } : {}),
+          ...(event.plain ? { plain: event.plain } : {}),
           at: envelope.ts,
         }),
         pending: [...state.pending, event.requestId],
