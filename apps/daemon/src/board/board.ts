@@ -1,5 +1,5 @@
+import { stat } from "node:fs/promises";
 import type { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import {
   type Arena,
@@ -134,7 +134,8 @@ function toProject(row: ProjectRow): Project {
     prProvider: row.pr_provider,
     setupScript: row.setup_script,
     promptTemplate: row.prompt_template,
-    worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
+    // The file answer needs IO: `forWire` fills it in where a project leaves for the app.
+    worktreeInclude: false,
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
@@ -337,16 +338,18 @@ export class Board {
   }
 
   /**
-   * Phase 29: the project with its key, for the wire. The key is asked without blocking (`resolve`
+   * Phase 29: the project as it leaves for the app: its key and whether it has a `.worktreeinclude`. The key is asked without blocking (`resolve`
    * answers from a cache and asks git once per folder); a host without it sends none.
    */
   async forWire(project: Project): Promise<Project> {
-    return project;
-  }
-
-  async withKey(project: Project): Promise<Project> {
-    const projectKey = await this.opts.projectKeys?.resolve?.(project.path);
-    return projectKey ? { ...project, projectKey } : project;
+    const [projectKey, worktreeInclude] = await Promise.all([
+      this.opts.projectKeys?.resolve?.(project.path),
+      stat(join(project.path, WORKTREE_INCLUDE)).then(
+        () => true,
+        () => false,
+      ),
+    ]);
+    return { ...project, worktreeInclude, ...(projectKey ? { projectKey } : {}) };
   }
 
   getProject(id: string): Project {
@@ -410,7 +413,7 @@ export class Board {
     // The key of the project is looked up now, without waiting for git, so the budget check and
     // the vault find it cached when a card starts.
     await this.opts.projectKeys?.resolve?.(path);
-    return this.getProject(project.id);
+    return await this.forWire(this.getProject(project.id));
   }
 
   updateProject(id: string, patch: ProjectPatch): Project {
