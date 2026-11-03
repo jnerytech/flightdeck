@@ -98,6 +98,24 @@ export function saveHubFilter(
   storage.setItem(HUB_FILTER_KEY, JSON.stringify(kept));
 }
 
+/** How the hub draws its sessions: one line each, or one card each. */
+export type HubView = "list" | "cards";
+
+/** Where the hub's view is kept. */
+export const HUB_VIEW_KEY = "flightdeck.hubView";
+
+/** The stored view; anything unreadable is the list. */
+export function loadHubView(storage: { getItem(key: string): string | null }): HubView {
+  return storage.getItem(HUB_VIEW_KEY) === "cards" ? "cards" : "list";
+}
+
+export function saveHubView(
+  storage: { setItem(key: string, value: string): void },
+  view: HubView,
+): void {
+  storage.setItem(HUB_VIEW_KEY, view);
+}
+
 export interface HubGroup {
   key: string;
   /** Repository name (or folder) shown on the group. */

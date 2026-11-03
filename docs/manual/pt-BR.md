@@ -446,6 +446,11 @@ histórico.
 - **Resumo:** abaixo, uma linha tirada do transcript, sem IA: "Pedido: <primeira linha do último
   prompt, até 80 caracteres>" e o que a sessão faz agora ("rodando Bash", "esperando aprovação de
   Write", "ociosa há 12 min"). O daemon manda isso no campo `summary` das listas.
+- **Visualização:** os dois botões no início da barra (**Lista** e **Cartões**) trocam o jeito de
+  desenhar as sessões. O cartão mostra o título (clique para abrir), o projeto, o host, a bolinha de
+  estado, a persona, o custo (nos hosts que informam) e a última linha (o pedido e o que a sessão
+  faz, como a ferramenta esperando aprovação), com o mesmo menu de uma linha. Os cartões ocupam
+  quantas colunas a largura permitir. A escolha fica guardada.
 - **Filtros:** texto, host, origem, estado, "Só fixadas" e "Mostrar arquivadas". As arquivadas
   ficam fora por padrão.
 - **Menu:** renomear, fixar (as fixadas vão para o topo do grupo), arquivar e "Copiar comando"
@@ -1042,7 +1047,9 @@ código 3.
 
 - **Histórico por host** (🕘 ao lado do nome do host): sessões indexadas com título, pasta, data
   da última mensagem, origem (`Flightdeck` ou `terminal`) e o selo "possivelmente em uso";
-  filtros por pasta, período (dias inteiros, em UTC) e origem.
+  filtros por pasta, período (dias inteiros, em UTC) e origem. Os botões **Lista/Cartões** (a mesma
+  escolha da tela Sessões) desenham cada sessão como um cartão com título, pasta, host, data,
+  origem, o selo "possivelmente em uso" e, nos hosts que informam custos, o custo estimado.
 - **Busca global** (`Ctrl+K` dentro do app, ou "Buscar no histórico"): é a última seção da
   [paleta](#paleta-ctrlk). Enter, sem nada escolhido, consulta todos os hosts online em paralelo
   e junta os acertos por data, com host, pasta e trecho destacado. Host offline, ou que não
@@ -2100,7 +2107,7 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
 - **A barra:** cada aba mostra o ícone do tipo e o título, e um selo quando uma sessão nela
   precisa de você, está rodando ou respondeu sem nenhuma aba mostrando (**Não lida**). **Fixar**
   deixa a aba à esquerda, só com o ícone. Os botões de fixar, mover e fechar, depois das abas,
-  agem na aba ativa; o botão do meio fecha qualquer aba. Arraste uma aba sobre outra para reordenar.
+  agem na aba ativa; o botão do meio fecha qualquer aba. Arraste uma aba sobre outra para reordenar. Durante o arrasto, uma barra marca onde a aba vai cair. A ordem fica guardada entre as sessões.
 - **Atalhos:**
 
   | Atalho | Ação |
@@ -2110,7 +2117,8 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   | `Ctrl+Shift+T` | reabre a última fechada (guarda as últimas 20) |
   | `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima e anterior |
   | `Ctrl+1`…`Ctrl+9` | vai para aquela aba (`Ctrl+9` é a última) |
-  | `Ctrl+Shift+PageUp` / `PageDown` | move a aba para a esquerda ou a direita |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move a aba ativa para a esquerda ou a direita |
+  | `Ctrl+Shift+←` / `→` (numa aba com o foco) | move essa aba para a esquerda ou a direita; o leitor de tela ouve a nova posição |
   | `Ctrl+\` | divide a tela ou junta as áreas |
 
   Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W` e `Ctrl+Shift+T`: lá, use os

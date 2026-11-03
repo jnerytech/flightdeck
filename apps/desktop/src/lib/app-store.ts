@@ -87,7 +87,15 @@ import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
+import {
+  type HubFilter,
+  type HubView,
+  hubRows,
+  loadHubFilter,
+  loadHubView,
+  saveHubFilter,
+  saveHubView,
+} from "./hub.ts";
 import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
@@ -829,6 +837,15 @@ export class AppStore {
     if (this.getLatency(hostId) === latencyMs) return;
     this.latencies.set(hostId, latencyMs);
     for (const listener of [...this.latencyListeners]) listener();
+  }
+
+  /** How the hub draws its sessions: lines or cards. */
+  hubView(): HubView {
+    return loadHubView(this.platform.storage);
+  }
+
+  saveHubView(view: HubView): void {
+    saveHubView(this.platform.storage, view);
   }
 
   subscribe = (listener: () => void): (() => void) => {

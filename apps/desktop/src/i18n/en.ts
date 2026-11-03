@@ -507,6 +507,9 @@ export const en: Dictionary = {
     release: "Free the pair",
   },
   hub: {
+    view: "View",
+    viewList: "List",
+    viewCards: "Cards",
     pick: "Choose a session to see the conversation.",
     resize: "Resize the list",
     back: "Back to the list",
@@ -1443,6 +1446,8 @@ export const en: Dictionary = {
   tabs: {
     openInNew: "Open in new tab",
     moveToOther: "Move tab {title} to the other area",
+    position: "Tab position",
+    moved: "Tab {title} moved to position {n} of {total}",
     moveLeft: "Move tab {title} left",
     moveRight: "Move tab {title} right",
     split: "Split the screen",

@@ -461,6 +461,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
   for approval of Write", "idle 12 min ago"). The daemon sends it in the `summary` field of the
   lists.
+- **View:** the two buttons at the start of the toolbar (**List** and **Cards**) switch how the
+  sessions are drawn. A card shows the title (click to open), the project, the host, the status
+  dot, the persona, the cost (on hosts that report it) and the last line (the request and what the
+  session is doing, such as the tool waiting for approval), with the same menu as a row. Cards sit
+  in as many columns as the width allows. The choice is remembered.
 - **Filters:** text, host, origin, state, "Pinned only" and "Show archived". Archived sessions are
   left out by default.
 - **Menu:** rename, pin (pinned sessions go to the top of the group), archive and "Copy command"
@@ -1061,7 +1066,9 @@ exits with code 3.
 
 - **Per-host history** (🕘 next to the host name): indexed sessions with title, folder, date of
   the last message, origin (`Flightdeck` or `terminal`) and the "possibly in use" badge; filters
-  by folder, period (whole days, in UTC) and origin.
+  by folder, period (whole days, in UTC) and origin. The **List/Cards** buttons (the same choice as
+  the Sessions screen) draw each session as a card with title, folder, host, date, origin, the
+  "possibly in use" badge and, on hosts that report costs, the estimated cost.
 - **Global search** (`Ctrl+K` inside the app, or "Search the history"): it is the last section of
   the [palette](#palette-ctrlk). Enter, with nothing selected, queries every online host in
   parallel and merges the hits by date, with host, folder and a highlighted snippet. A host that
@@ -2116,7 +2123,7 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
-  the middle button closes any tab. Drag a tab onto another to reorder it.
+  the middle button closes any tab. Drag a tab onto another to reorder it. While dragging, a bar marks where the tab will land. The order is kept between sessions.
 - **Shortcuts:**
 
   | Shortcut | Action |
@@ -2126,7 +2133,8 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
   | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
-  | `Ctrl+Shift+PageUp` / `PageDown` | move the tab left or right |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
+  | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
   In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
