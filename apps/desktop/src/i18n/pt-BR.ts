@@ -2340,6 +2340,14 @@ export const ptBR = {
       "Confiar no workflow {name}? Ele poderá rodar estes comandos na worktree dos cards: {commands}.",
     none: "nenhum",
   },
+  projectPage: {
+    notHere: "Este projeto não está neste host.",
+    sessionsHint: "As sessões de todos os projetos",
+    boardHint: "Cards por coluna, do backlog ao concluído",
+    workflowsHint: "Os workflows do projeto e suas execuções",
+    costsHint: "Quanto as sessões custaram",
+    settingsHint: "Pasta, branch base, setup, personas e regras",
+  },
   projectsOverview: {
     title: "Projetos",
     subtitle: "Todos os projetos de todos os hosts, com o que está rodando em cada um.",

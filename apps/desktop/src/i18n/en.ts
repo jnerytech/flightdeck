@@ -2334,6 +2334,14 @@ export const en: Dictionary = {
       "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees: {commands}.",
     none: "none",
   },
+  projectPage: {
+    notHere: "This project is not on this host.",
+    sessionsHint: "The sessions of every project",
+    boardHint: "Cards by column, from backlog to done",
+    workflowsHint: "The project's workflows and their runs",
+    costsHint: "What the sessions cost",
+    settingsHint: "Folder, base branch, setup, personas and rules",
+  },
   projectsOverview: {
     title: "Projects",
     subtitle: "Every project of every host, with what is running in it.",
