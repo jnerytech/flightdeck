@@ -1,10 +1,11 @@
 /**
- * The default timeout of a test, in ms. It guards against a hang, it is not a time budget: the
- * Windows runners of CI are slow enough that a test which takes 1 s elsewhere can pass 5 s there.
- * Nothing may depend on it being short.
+ * The default timeout of a test, in ms. It guards against a hang, it is not a time budget: a UI
+ * test's first render loads the lazy screens inside the test, and a loaded runner (a Windows CI
+ * job, a Pi running several sessions) passes bun's 5 s with nothing wrong. Nothing may depend on
+ * it being short, and no file should need its own bump for a slow first render.
  */
-export function defaultTestTimeoutMs(platform: NodeJS.Platform): number {
-  return platform === "win32" ? 15_000 : 5_000;
+export function defaultTestTimeoutMs(_platform: NodeJS.Platform): number {
+  return 15_000;
 }
 
 /** The `bun` arguments of the full suite. */
