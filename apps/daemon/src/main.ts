@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { Account } from "./account/account.ts";
+import { accountReaders } from "./account/readers.ts";
 import { Actions } from "./actions/actions.ts";
 import { runActionCli, runSnippetCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
@@ -501,6 +503,8 @@ interface CreatedRuntime {
   runtime: AgentRuntime;
   /** What `host.info` reports about `claude`; only the real runtime has one. */
   claude?: { path: string | null; version(): Promise<string | null> };
+  /** What the account card reads (phase 34); only the real runtime has a `claude` to ask. */
+  accountReaders?: ReturnType<typeof accountReaders>;
 }
 
 async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<CreatedRuntime> {
@@ -508,7 +512,16 @@ async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<Cr
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
   const runtime = new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
   const path = runtime.claudePath ?? null;
-  return { runtime, claude: { path, version: claudeVersionProbe(path, spawnExec) } };
+  const { query } = await import("@anthropic-ai/claude-agent-sdk");
+  return {
+    runtime,
+    claude: { path, version: claudeVersionProbe(path, spawnExec) },
+    accountReaders: accountReaders({
+      claudePath: path,
+      exec: spawnExec,
+      query: query as unknown as Parameters<typeof accountReaders>[0]["query"],
+    }),
+  };
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
@@ -548,10 +561,12 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
-  const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
+  const { runtime, claude, accountReaders: readers } = await createRuntime(runtimeKind, claudePath);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
+  // Phase 34: who the host's own `claude` is signed in to, for the account card.
+  const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, undefined, options.projectGit);
   // The turn is counted when git has answered: a slow git must not stop the daemon meanwhile.
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
@@ -604,7 +619,10 @@ export async function startDaemon(
       quota.record(readings);
       quotaHistory.sample(readings);
     },
-    onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
+    onTurn: (sessionId, cwd, turn) => {
+      usage.record(sessionId, cwd, turn);
+      account?.turnEnded();
+    },
     onTurnEdge: (edge) =>
       snapshots.enqueue({
         cwd: edge.cwd,
@@ -1083,6 +1101,7 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
+    ...(account ? { account } : {}),
     ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
     terminal: terminalInfo(env),
   });

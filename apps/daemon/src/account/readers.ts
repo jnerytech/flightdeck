@@ -1,6 +1,7 @@
 import { FlightdeckError } from "../errors.ts";
 import type { Exec } from "../exec.ts";
 import type { QuotaReading } from "../runtime/types.ts";
+import type { AccountReaders } from "./account.ts";
 
 /** What `claude auth status --json` says; a missing key is `null`. */
 export interface AuthStatus {
@@ -193,4 +194,16 @@ export async function withIdleQuery<T>(
   } finally {
     query.close?.();
   }
+}
+
+/** The readers a daemon with the real runtime hands to the `Account`. */
+export function accountReaders(deps: IdleQueryDeps & { exec: Exec }): AccountReaders {
+  return {
+    status: () => authStatus({ claudePath: deps.claudePath, exec: deps.exec }),
+    sdk: () =>
+      withIdleQuery(deps, async (query) => ({
+        info: await accountInfo(query),
+        usage: await usageReport(query),
+      })),
+  };
 }
