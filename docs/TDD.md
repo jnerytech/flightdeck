@@ -56,6 +56,18 @@ mudou desde o merge-base com `main` (os arquivos de teste alterados e os que imp
 indiretamente, um arquivo alterado), e imprime cada um com o motivo. A suíte completa
 (`bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador e no CI.
 
+**Which function is not covered.** Bun's coverage (`bun run test`) counts functions per file but
+does not name them, so a file at 94% function coverage does not say which function is missing.
+`bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` does: it runs the tests that reach the
+files (the same selection as `test:related`; `--tests` names them by hand, which a hub file that
+hundreds of tests reach needs) and prints, per file, `N of M functions never called` followed by
+`file:line  name` for each one (methods and arrows have no name in istanbul's map, so they show their
+source line). The files are instrumented in memory by `istanbul-lib-instrument`, through a
+`Bun.plugin` in a preload that only this command passes: the sources on disk are never written, and
+only the files listed are instrumented. Limits: it follows the test process only (a function that
+runs in a spawned child counts as not called), and istanbul skips private `#methods`. Use it before
+hand-off on the files you changed, to close a function gap without bisecting.
+
 ## Travas
 
 Os testes provam o comportamento sem tocar em nada real. As travas tornam isso verificável,
