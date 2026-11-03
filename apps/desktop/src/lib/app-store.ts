@@ -340,6 +340,7 @@ export type HostCommandType = Extract<
   | "projects.scan"
   | "projects.clone"
   | `github.${string}`
+  | `boardsync.${string}`
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`

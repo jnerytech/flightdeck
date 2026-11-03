@@ -137,11 +137,12 @@ for (const [lang, t] of [
 
     test("the mapping editor lists the board's statuses with a column each, and saves a change", async () => {
       const page = await linked(lang, t);
+      const dialog = within(screen.getByRole("dialog"));
       for (const status of ["Todo", "In Progress", "In Review", "Done"]) {
-        expect(screen.queryByLabelText(status)).not.toBeNull();
+        expect(dialog.queryByLabelText(status)).not.toBeNull();
       }
       await act(async () => {
-        fireEvent.change(screen.queryByLabelText("In Review") as HTMLElement, {
+        fireEvent.change(dialog.queryByLabelText("In Review") as HTMLElement, {
           target: { value: "waiting" },
         });
       });
@@ -191,6 +192,7 @@ for (const [lang, t] of [
         id: string;
       };
       page.d.boardSyncStore.setExternal(row.id, { externalGone: true });
+      page.d.board.announce(row.id);
       page.d.boardSyncStore.addLog(row.id, {
         at: "2026-10-02T12:00:00Z",
         kind: "conflict",
@@ -211,7 +213,7 @@ for (const [lang, t] of [
       });
       await settle(() => screen.queryByRole("button", { name: t.boardSyncUi.openItem }) !== null);
       expect(screen.queryByText(t.boardSyncUi.gone)).not.toBeNull();
-      expect(screen.queryByText(t.boardSyncUi.log)).not.toBeNull();
+      await settle(() => screen.queryByText(t.boardSyncUi.log) !== null);
       await settle(() => document.body.textContent?.includes("Done") === true);
       await click(t.boardSyncUi.openItem);
       expect(page.opened).toEqual(["https://github.com/acme/app/issues/1"]);

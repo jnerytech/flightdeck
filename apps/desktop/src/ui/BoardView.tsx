@@ -1,6 +1,7 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
+import { BoardSyncControl } from "@/components/board/board-sync";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -186,6 +187,11 @@ export const BoardView = memo(function BoardView(props: {
     "deps",
     false,
   );
+  const withSync = hasFeature(
+    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+    "boardsync",
+    false,
+  );
   const withIssues = hasFeature(
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "issues",
@@ -306,6 +312,7 @@ export const BoardView = memo(function BoardView(props: {
               {t("deps.filter")}
             </Button>
           )}
+          {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
           {withIssues && (
             <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
               <ListTodo aria-hidden="true" />
