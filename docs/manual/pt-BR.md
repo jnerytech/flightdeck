@@ -262,6 +262,25 @@ dentro dos `allowedRoots`, nome, modo de permissão e primeiro prompt. Pedidos d
 aparecem como cards inline, com **Aprovar** e **Negar**. O app reconecta sozinho (de 1 s a 30 s)
 e retoma cada sessão do último evento visto.
 
+### Sessões sem pedidos de permissão
+
+Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
+perguntar). Para permitir, abra a página do host e use **Sessões sem pedidos de permissão →
+Permitir sessões sem pedidos**; o app pede confirmação e cita o host. A escolha fica na config do
+host (`allowBypassPermissions`) e vale na hora. Com ela ligada:
+
+- **Sessão nova** oferece "Ignorar permissões: sem pedidos de permissão" na lista de modos. Ao
+  escolher, o app pergunta de novo a cada Criar sessão, citando o host e a pasta.
+- A lista de modos na caixa de mensagem de uma sessão aberta oferece todos os modos, inclusive
+  Ignorar permissões e modos mais soltos que o de início. Mudar para Ignorar permissões pergunta
+  a cada vez, citando o host e a sessão.
+- Sessões iniciadas depois de ligar podem ser mudadas para Ignorar permissões; uma que já rodava
+  mantém o que tinha ao começar (o Claude Agent SDK precisa saber disso no início).
+
+Com ela desligada (o padrão) o daemon recusa iniciar uma sessão em Ignorar permissões, e uma
+sessão aberta nunca fica mais permissiva que o modo em que começou. O modo de permissão de uma
+persona continua valendo quando é mais estrito. Desligar não pergunta nada.
+
 ## Serviço
 
 ### Primeira execução: flightdeckd setup
@@ -2198,7 +2217,7 @@ vermelho).
   Configurações ou na paleta, sem reiniciar. Datas e horas saem sempre em hora local. O
   vocabulário está em [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Modos de permissão** aparecem com nome e uma linha de explicação, nunca com o valor técnico;
-  o "Sem perguntas" avisa em vermelho.
+  o "Ignorar permissões" avisa em vermelho e só aparece em um host que o permite.
 
 ### Modo demonstração, prints e testes de ponta a ponta
 

@@ -273,6 +273,25 @@ session: a folder inside `allowedRoots`, a name, a permission mode and a first p
 requests show up as inline cards with **Approve** and **Deny**. The app reconnects by itself
 (from 1 s to 30 s) and resumes each session from the last event it saw.
 
+### Sessions without permission prompts
+
+By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
+To allow it, open the host's page and use **Sessions without permission prompts → Allow sessions
+without prompts**; the app asks you to confirm and names the host. The choice is saved in the
+host's config (`allowBypassPermissions`) and applies at once. With it on:
+
+- **New session** offers "Bypass permissions: no prompts" in the permission mode list. Picking it
+  asks again every time you press Create session, naming the host and the folder.
+- The mode list in the message box of an open session offers every mode, including Bypass
+  permissions and modes looser than the one the session started with. Switching to Bypass asks
+  each time, naming the host and the session.
+- Sessions started after the switch is on can be switched to Bypass; one that was already running
+  keeps what it started with (the Claude Agent SDK needs to be told at start).
+
+With it off (the default) the daemon refuses to start a session in Bypass, and an open session
+can never be made more permissive than the mode it started with. A persona's permission mode
+still counts when it is stricter. Turning the switch off asks nothing.
+
 ## Service
 
 ### First run: flightdeckd setup
@@ -2225,7 +2244,7 @@ blue, needs you in amber, idle in gray, ended faded, error in red).
   in the palette, without restarting. Dates and times are always shown in local time. The
   vocabulary is in [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Permission modes** are shown with a name and a one-line explanation, never with the technical
-  value; "No questions" warns in red.
+  value; "Bypass permissions" warns in red and is offered only on a host that allows it.
 
 ### Demo mode, screenshots and end-to-end tests
 
