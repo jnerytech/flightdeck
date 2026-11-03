@@ -103,6 +103,7 @@ import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
+import { manageCard } from "./board/manage.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
@@ -1891,6 +1892,23 @@ export function startServer(opts: ServerOptions): RunningServer {
               ? {}
               : { description: command.payload.description }),
           }),
+        );
+      case "card.manage":
+        return ok(
+          command.type,
+          await manageCard(
+            {
+              board: board(),
+              cwdOf: (sessionId) => {
+                try {
+                  return manager.get(sessionId).cwd;
+                } catch {
+                  return null;
+                }
+              },
+            },
+            command.payload,
+          ),
         );
       case "card.complete": {
         const { cardId, confirm } = command.payload;

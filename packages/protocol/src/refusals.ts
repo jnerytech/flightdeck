@@ -5,6 +5,10 @@
 export const DAEMON_REASONS = [
   "bypass_not_allowed",
   "bypass_confirm",
+  "card_scope_unknown",
+  "card_other_project",
+  "card_id_needed",
+  "card_manage_args",
   "cwd_missing",
   "cwd_outside_roots",
   "request_invalid",

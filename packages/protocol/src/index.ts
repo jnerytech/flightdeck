@@ -2412,6 +2412,25 @@ export const Command = z.discriminatedUnion("type", [
     "card.pr.create",
     z.object({ cardId: z.string(), description: z.string().max(8000).optional() }),
   ),
+  /**
+   * A session managing the cards of its own project through the flightdeck MCP server. The daemon
+   * finds the session's project (and its own card) from where it runs; `cardId` defaults to that card.
+   */
+  cmd(
+    "card.manage",
+    z.object({
+      as: SessionIdentity,
+      /** The folder a terminal session runs in; a managed session's own folder wins. */
+      cwd: z.string().optional(),
+      action: z.enum(["move", "update", "comment", "finish"]),
+      cardId: z.string().optional(),
+      column: BoardColumn.optional(),
+      title: z.string().min(1).optional(),
+      description: z.string().optional(),
+      text: z.string().min(1).optional(),
+      outcome: z.enum(["done", "discard"]).optional(),
+    }),
+  ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
   cmd("card.dismissUnblocked", CardIdPayload),
@@ -3667,6 +3686,7 @@ export interface CommandResults {
   "card.diff": CardDiff;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
+  "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
   "card.dismissUnblocked": Card;
