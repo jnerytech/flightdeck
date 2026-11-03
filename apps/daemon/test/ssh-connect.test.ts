@@ -819,9 +819,11 @@ describe("ssh-connect: peças", () => {
       writeFileSync(file, JSON.stringify({ token: "t".repeat(32), ssh }));
       return file;
     };
-    expect((await loadConfig(write({ path: "/opt/openssh/ssh" }))).ssh.path).toBe("/opt/openssh/ssh");
+    expect((await loadConfig(write({ path: "/opt/openssh/ssh" }))).ssh.path).toBe(
+      "/opt/openssh/ssh",
+    );
     expect((await loadConfig(write({}))).ssh.path).toBeUndefined();
-    expect(() => await loadConfig(write({ path: "" }))).toThrow();
+    await expect(loadConfig(write({ path: "" }))).rejects.toThrow();
   });
 
   test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {

@@ -115,7 +115,7 @@ describe("fila", () => {
     expect(await cardWhen(board, b.id, (x) => holding(x.sessionStatus))).not.toBeNull();
     expect(board.getCard(c.id).queued).toBe(true);
     expect(board.maxParallelRuns).toBe(2);
-    board.setMaxParallelRuns(3);
+    await board.setMaxParallelRuns(3);
     expect(board.maxParallelRuns).toBe(3);
     expect(await cardWhen(board, c.id, (x) => x.sessionId !== null)).not.toBeNull();
   });

@@ -32,8 +32,8 @@ describe("ask-question-flow", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
-    d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    await d.central.hooksInstall(true);
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },

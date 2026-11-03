@@ -108,7 +108,7 @@ describe("resumo-lista", () => {
       userLine({ uuid: "m1", text: "corrija o build\ncom calma", cwd: d.project, ts }),
     ]);
 
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     const hooksToken = (await loadConfig(d.configFile)).hooks.token ?? "";
     const receptor = d.central.receptorUrl() ?? "";
     const hook = (session: string, event: string, body: Record<string, unknown>) =>

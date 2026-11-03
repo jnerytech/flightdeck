@@ -400,8 +400,8 @@ describe("linha-do-tempo-ui", () => {
     writeFileSync(join(repo, "README.md"), "# repo\n");
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "inicial");
-    d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    await d.central.hooksInstall(true);
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },

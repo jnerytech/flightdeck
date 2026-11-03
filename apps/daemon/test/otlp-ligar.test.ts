@@ -350,7 +350,7 @@ describe("otlp-ligar: flightdeckd telemetry", () => {
 });
 
 describe("otlp-ligar: the daemon's receiver", () => {
-  function setup(telemetry: Record<string, unknown> = { port: 0 }, hooks = true) {
+  async function setup(telemetry: Record<string, unknown> = { port: 0 }, hooks = true) {
     const dir = tempDir();
     const dataDir = join(dir, "data");
     mkdirSync(dataDir, { recursive: true });
@@ -367,7 +367,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
     const errors: string[] = [];
     const got: OtlpEvent[][] = [];
     let purges = 0;
-    const service = startTelemetry({
+    const service = await startTelemetry({
       config: await loadConfig(configFile),
       configFile,
       log: { error: (m) => errors.push(m) },
@@ -388,7 +388,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
     });
 
   test("it makes the token once, listens, publishes its URL for the wrapper and removes it on stop", async () => {
-    const { service, dataDir, configFile, got } = setup();
+    const { service, dataDir, configFile, got } = await setup();
     const token = (await loadConfig(configFile)).telemetry.token ?? "";
     expect(token.length).toBeGreaterThanOrEqual(16);
     expect(service.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
@@ -400,7 +400,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
   });
 
   test("a token rotated in the config file takes effect at once, without a restart", async () => {
-    const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
+    const { service, configFile } = await setup({ port: 0, token: "first-token-0123456789" });
     expect((await send(service.url, "first-token-0123456789")).status).toBe(200);
     await updateConfigFile(configFile, (raw) => ({
       ...raw,
@@ -411,7 +411,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
   });
 
   test("a config file that cannot be read leaves no valid token: every request is refused", async () => {
-    const { service, configFile } = setup({ port: 0, token: "first-token-0123456789" });
+    const { service, configFile } = await setup({ port: 0, token: "first-token-0123456789" });
     writeFileSync(configFile, "not json");
     expect((await send(service.url, "first-token-0123456789")).status).toBe(401);
     writeFileSync(configFile, JSON.stringify({ telemetry: { token: 5 } }));
@@ -419,14 +419,14 @@ describe("otlp-ligar: the daemon's receiver", () => {
   });
 
   test("telemetry off: no receiver, no file, no token", async () => {
-    const { service, dataDir, configFile } = setup({ enabled: false, port: 0 });
+    const { service, dataDir, configFile } = await setup({ enabled: false, port: 0 });
     expect(service.url).toBeNull();
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
     expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
   });
 
   test("it follows the hooks: without hooks.token nothing listens, as with the hooks receptor", async () => {
-    const { service, dataDir, configFile, purges } = setup({ port: 0 }, false);
+    const { service, dataDir, configFile, purges } = await setup({ port: 0 }, false);
     expect(service.url).toBeNull();
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);
     expect((await loadConfig(configFile)).telemetry.token).toBeUndefined();
@@ -434,7 +434,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
   });
 
   test("the retention purge runs at start and then on a timer, only while the receiver listens", async () => {
-    const { service, purges } = setup();
+    const { service, purges } = await setup();
     expect(purges()).toBe(1);
     await Bun.sleep(100);
     expect(purges()).toBeGreaterThanOrEqual(3);
@@ -447,7 +447,7 @@ describe("otlp-ligar: the daemon's receiver", () => {
   test("a port that is taken is logged and the daemon carries on without the receiver", async () => {
     const taken = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("") });
     cleanups.push(() => taken.stop(true));
-    const { service, dataDir, errors, purges } = setup({ port: taken.port });
+    const { service, dataDir, errors, purges } = await setup({ port: taken.port });
     expect(service.url).toBeNull();
     expect(errors.join("\n")).toContain(`${taken.port}`);
     expect(existsSync(join(dataDir, "telemetry.json"))).toBe(false);

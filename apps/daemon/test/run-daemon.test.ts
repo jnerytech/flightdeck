@@ -35,9 +35,9 @@ describe("run-daemon: a configuração do host", () => {
   test("run.portBase começa em 41000, aceita uma faixa em que o bloco de 10 cabe e recusa o resto", async () => {
     expect((await loadConfig(write({}))).run.portBase).toBe(41000);
     expect((await loadConfig(write({ run: { portBase: 52000 } }))).run.portBase).toBe(52000);
-    expect(() => await loadConfig(write({ run: { portBase: 80 } }))).toThrow();
-    expect(() => await loadConfig(write({ run: { portBase: 65530 } }))).toThrow();
-    expect(() => await loadConfig(write({ run: { portBase: 41000.5 } }))).toThrow();
+    await expect(loadConfig(write({ run: { portBase: 80 } }))).rejects.toThrow();
+    await expect(loadConfig(write({ run: { portBase: 65530 } }))).rejects.toThrow();
+    await expect(loadConfig(write({ run: { portBase: 41000.5 } }))).rejects.toThrow();
   });
 });
 

@@ -274,7 +274,7 @@ describe("navegacao", () => {
 
   test("continuar no Flightdeck uma sessão do terminal abre a conversa gerenciada", async () => {
     const d = makeDaemon(cleanups);
-    d.central.hooksInstall(true);
+    await d.central.hooksInstall(true);
     await fetch(`${d.central.receptorUrl()}/hooks/SessionStart`, {
       method: "POST",
       headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
@@ -398,8 +398,8 @@ describe("navegacao", () => {
 
   test("o nome dado a uma sessão do terminal chega pelo external.updated, sem carregar a lista de sessões", async () => {
     const d = makeDaemon(cleanups);
-    d.central.hooksInstall(true);
-    const hook = (event: string, body: object) =>
+    await d.central.hooksInstall(true);
+    const hook = async (event: string, body: object) =>
       fetch(`${d.central.receptorUrl()}/hooks/${event}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${(await loadConfig(d.configFile)).hooks.token}` },
