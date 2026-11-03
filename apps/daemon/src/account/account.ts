@@ -1,6 +1,6 @@
 import type { AccountState, AccountStatus } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import type { Quota } from "../quota/quota.ts";
+import type { Quota, Timers } from "../quota/quota.ts";
 import type { AccountInfoReading, AuthStatus, UsageReading } from "./readers.ts";
 
 /** What the service asks; the daemon wires the real ones, tests wire fakes. */
@@ -14,9 +14,20 @@ export interface AccountOptions {
   readers: AccountReaders;
   /** Milliseconds now. */
   now?: () => number;
+  timers?: Timers;
 }
 
 const LOGIN_COMMAND = "claude auth login";
+
+/** While somebody watches, the account is read this often (the stream only covers turns). */
+export const POLL_MS = 5 * 60_000;
+/** A person's refresh is refused when the last read started less than this ago. */
+export const REFRESH_FLOOR_MS = 30_000;
+
+const realTimers: Timers = {
+  set: (fn, ms) => setTimeout(fn, ms),
+  clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
 
 /** The empty reading a host has before the first read. */
 const EMPTY: AccountState = {
@@ -65,10 +76,17 @@ function statusOfInfo(info: AccountInfoReading | null): AccountStatus {
  */
 export class Account {
   private readonly now: () => number;
+  private readonly timers: Timers;
   private last: AccountState = EMPTY;
+  private readonly watchers = new Set<(state: AccountState) => void>();
+  private inflight: Promise<AccountState> | null = null;
+  private lastStart: number | null = null;
+  private timer: unknown = null;
+  private stopQuota: (() => void) | null = null;
 
   constructor(private readonly opts: AccountOptions) {
     this.now = opts.now ?? Date.now;
+    this.timers = opts.timers ?? realTimers;
   }
 
   /** The last reading, with the windows still valid now. */
@@ -77,8 +95,61 @@ export class Account {
     return { ...this.last, windows: shows ? this.opts.quota.windows() : [] };
   }
 
-  /** Reads the account once now. A failed read keeps the previous one and marks it stale. */
-  async readNow(): Promise<AccountState> {
+  /**
+   * Gets the state after each read and each change of the windows. The first watcher starts the
+   * reading (once now, then every 5 minutes); the last one to leave stops it.
+   */
+  watch(listener: (state: AccountState) => void): () => void {
+    this.watchers.add(listener);
+    if (this.watchers.size === 1) {
+      this.stopQuota = this.opts.quota.watch(() => {
+        // A read records its windows and then pushes once, itself.
+        if (this.inflight === null) this.notify();
+      });
+      void this.readNow();
+    }
+    return () => {
+      this.watchers.delete(listener);
+      if (this.watchers.size > 0) return;
+      this.stopQuota?.();
+      this.stopQuota = null;
+      this.disarm();
+    };
+  }
+
+  /** A managed session ended a turn: its stream has just refreshed the windows, so read again. */
+  turnEnded(): void {
+    if (this.watchers.size > 0) void this.readNow();
+  }
+
+  /** A person asked for a read now; refused when the last one started under 30 seconds ago. */
+  async refresh(): Promise<AccountState> {
+    if (this.inflight !== null) return this.inflight;
+    if (this.lastStart !== null) {
+      const wait = REFRESH_FLOOR_MS - (this.now() - this.lastStart);
+      if (wait > 0) {
+        const waitSeconds = Math.ceil(wait / 1000);
+        throw new FlightdeckError(
+          "invalid_state",
+          `The account was read a moment ago: wait ${waitSeconds} s`,
+          "account_refresh_too_soon",
+          { waitSeconds },
+        );
+      }
+    }
+    return this.readNow();
+  }
+
+  /** Reads the account once now; a read already running is the one everybody gets. */
+  readNow(): Promise<AccountState> {
+    this.inflight ??= this.run().finally(() => {
+      this.inflight = null;
+    });
+    return this.inflight;
+  }
+
+  private async run(): Promise<AccountState> {
+    this.lastStart = this.now();
     try {
       this.last = await this.read();
     } catch (error) {
@@ -89,7 +160,33 @@ export class Account {
         error: reason ?? "account_unavailable",
       };
     }
-    return this.state();
+    this.arm();
+    // Pushed before the read counts as finished, so the quota's own push stays quiet.
+    const state = this.state();
+    this.notify(state);
+    return state;
+  }
+
+  /** The next poll, while somebody watches. */
+  private arm(): void {
+    this.disarm();
+    if (this.watchers.size === 0) return;
+    this.timer = this.timers.set(() => void this.readNow(), POLL_MS);
+  }
+
+  private disarm(): void {
+    if (this.timer !== null) this.timers.clear(this.timer);
+    this.timer = null;
+  }
+
+  private notify(state = this.state()): void {
+    for (const watcher of this.watchers) {
+      try {
+        watcher(state);
+      } catch {
+        // A broken watcher must not stop the others.
+      }
+    }
   }
 
   private async read(): Promise<AccountState> {
