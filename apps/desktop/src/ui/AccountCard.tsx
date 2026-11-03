@@ -25,7 +25,7 @@ export interface AccountCardProps {
 const WINDOWS = ["five_hour", "seven_day", "seven_day_opus", "seven_day_sonnet"] as const;
 
 const METER =
-  "h-2 w-full [&::-webkit-meter-bar]:h-2 [&::-webkit-meter-bar]:rounded-full [&::-webkit-meter-bar]:border-0 [&::-webkit-meter-bar]:bg-muted";
+  "meter-height w-full [&::-webkit-meter-bar]:h-2 [&::-webkit-meter-bar]:rounded-full [&::-webkit-meter-bar]:border-0 [&::-webkit-meter-bar]:bg-muted";
 const METER_COLOR: Record<QuotaWindow["status"], string> = {
   allowed:
     "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-running [&::-moz-meter-bar]:bg-status-running",
@@ -76,10 +76,8 @@ export function AccountCard(props: AccountCardProps) {
       <>
         <p className="font-medium text-sm">{t("account.signedOut.title")}</p>
         <p className="text-muted-foreground text-sm">{t("account.signedOut.steps")}</p>
-        <code className="w-fit rounded bg-muted px-2 py-1 font-mono text-sm">
-          {state.loginCommand}
-        </code>
-        <div className="flex gap-2">
+        <code className="code-chip rounded bg-muted font-mono text-sm">{state.loginCommand}</code>
+        <div className="row-gap2">
           <Button type="button" variant="outline" size="sm" onClick={props.onCopy}>
             {props.copied ? t("account.copied") : t("account.copy")}
           </Button>
@@ -111,10 +109,10 @@ export function AccountCard(props: AccountCardProps) {
     const plan = state.plan;
     body = (
       <>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="row-wrap">
           {state.name && <span className="font-medium text-sm">{state.name}</span>}
           {plan && (
-            <span className="rounded-full border px-2 text-xs">
+            <span className="pill rounded-full border text-xs">
               {PLANS.includes(plan) ? t(`account.plans.${plan}` as Key) : plan}
             </span>
           )}
@@ -137,9 +135,9 @@ export function AccountCard(props: AccountCardProps) {
               key={reading.window}
               data-window={reading.window}
               data-status={reading.status}
-              className="flex flex-col gap-1"
+              className="meter-line"
             >
-              <div className="flex items-baseline justify-between gap-2">
+              <div className="row-baseline-spread">
                 <span className="text-sm">{label}</span>
                 <span className={cn("font-medium text-sm", PERCENT_COLOR[reading.status])}>
                   {`${percent}%`}
@@ -169,7 +167,7 @@ export function AccountCard(props: AccountCardProps) {
           );
         })}
         {state.stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
-        <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
+        <div className="row-wrap-loose text-muted-foreground text-xs">
           {state.readAt && (
             <span>
               {t("account.lastRead", { ago: formatAgo(now - Date.parse(state.readAt), t) })}

@@ -105,11 +105,11 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
         value={model}
         onChange={setModel}
       />
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1">{t("teamsUi.workersLegend")}</legend>
+      <fieldset className="form-stack">
+        <legend className="legend-tight">{t("teamsUi.workersLegend")}</legend>
         {rows.map((row, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a row has no identity besides its number
-          <div key={i} className="flex flex-wrap items-end gap-2">
+          <div key={i} className="row-end-wrap">
             <PersonaPicker
               store={store}
               hostId={hostId}
@@ -243,7 +243,7 @@ function NewMember(props: {
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
   return (
-    <div className="flex flex-wrap items-end gap-2">
+    <div className="row-end-wrap">
       <PersonaPicker
         store={store}
         hostId={props.hostId}

@@ -634,3 +634,148 @@
     cursor: pointer;
   }
 }
+
+/* The `?` sheet of shortcuts: the box, its groups and their rows. */
+@utility sheet-box {
+  margin: 0;
+  display: flex;
+  max-height: 80vh;
+  width: min(42rem, 92vw);
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+@utility shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.5rem;
+}
+@utility stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility shortcut-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* A line of controls, with a gap: spread to both ends, or wrapping. */
+@utility row-spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility row-end-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+@utility form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@utility legend-tight {
+  margin-bottom: 0.25rem;
+}
+@utility search-width {
+  width: 16rem;
+}
+
+/* Cards of the Projects overview and of a project page: one column, two and three as the area grows. */
+@utility card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  @container (min-width: 28rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @container (min-width: 36rem) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@utility card-button {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+@utility card-link {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+@utility facts-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+@utility icon-nudge {
+  margin-top: 0.125rem;
+}
+@utility stack-hair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* The chip that says the hub is filtered, with its clear button. */
+@utility filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-block: 0.125rem;
+  padding-right: 0.25rem;
+  padding-left: 0.75rem;
+}
+
+/* The account card: a command to copy, a pill, a meter line and its footer. */
+@utility code-chip {
+  width: fit-content;
+  padding-inline: 0.5rem;
+  padding-block: 0.25rem;
+}
+@utility pill {
+  padding-inline: 0.5rem;
+}
+@utility row-gap2 {
+  display: flex;
+  gap: 0.5rem;
+}
+@utility meter-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility row-baseline-spread {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility row-wrap-loose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+@utility meter-height {
+  height: 0.5rem;
+}

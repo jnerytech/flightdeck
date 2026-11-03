@@ -380,7 +380,7 @@ export function SessionsHub(props: {
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
         {only && (
-          <div className="flex items-center gap-1 self-start rounded-full border bg-muted/40 py-0.5 pr-1 pl-3 text-xs">
+          <div className="filter-chip self-start rounded-full border bg-muted/40 text-xs">
             <span>{t("hub.projectFilter", { name: only.name })}</span>
             <Button
               variant="ghost"
