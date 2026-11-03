@@ -93,9 +93,4 @@ export function withBaseline(source: string, counts: Record<string, number>): st
   return `${source.slice(0, start)}\n${body}${body ? "\n" : ""}${source.slice(end + 1)}`;
 }
 
-export const SYNC_BASELINE: Record<string, number> = {
-  "apps/daemon/src/fs-dirs.ts": 6,
-  "apps/daemon/src/main.ts": 1,
-  "apps/daemon/src/paths.ts": 2,
-  "apps/daemon/src/roots.ts": 2,
-};
+export const SYNC_BASELINE: Record<string, number> = {};

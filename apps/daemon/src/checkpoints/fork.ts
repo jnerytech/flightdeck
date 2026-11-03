@@ -58,7 +58,7 @@ export class Forker {
       return { claudeSessionId, command: `flightdeckd claude --resume ${claudeSessionId}` };
     }
     const { agents } = await (this.opts.preparePersonas ?? withoutPersonas)(undefined, request.cwd);
-    const { sessionId } = this.opts.manager.createResumed({
+    const { sessionId } = await this.opts.manager.createResumed({
       cwd: request.cwd,
       claudeSessionId,
       name: null,

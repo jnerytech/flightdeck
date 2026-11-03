@@ -28,19 +28,20 @@ function rig(over: Partial<TrackOptions> = {}) {
     cleanups.push(stop);
     return stop;
   };
-  const create = (name: string | null = null) =>
-    ctx.manager.create({ cwd: ctx.repo, prompt: "oi", ...(name ? { name } : {}) }).sessionId;
+  const create = async (name: string | null = null) =>
+    (await ctx.manager.create({ cwd: ctx.repo, prompt: "oi", ...(name ? { name } : {}) }))
+      .sessionId;
   return { ...ctx, external, names, start, create };
 }
 
 const display = (names: Names, id: string) => names.get(id)?.display ?? null;
 
 describe("nomes-sessao: as origens", () => {
-  test("a sessão do app ganha nome ao ser criada, com o nome da pasta do projeto", () => {
+  test("a sessão do app ganha nome ao ser criada, com o nome da pasta do projeto", async () => {
     const { names, start, create } = rig();
     start();
-    const first = create("Corrigir login");
-    const second = create();
+    const first = await create("Corrigir login");
+    const second = await create();
     expect(display(names, first)).toBe("repo · geral · 1");
     expect(display(names, second)).toBe("repo · geral · 2");
     expect(names.resolve("repo-geral-2")).toBe(second);
@@ -79,16 +80,16 @@ describe("nomes-sessao: as origens", () => {
     expect(display(names, ranB?.sessionId as string)).toBe("repo · geral · card 2");
   });
 
-  test("a persona que a sessão já tem entra no nome", () => {
+  test("a persona que a sessão já tem entra no nome", async () => {
     const { names, start, create } = rig({ personaOf: () => "revisor" });
     start();
-    expect(display(names, create())).toBe("repo · revisor · 1");
+    expect(display(names, await create())).toBe("repo · revisor · 1");
   });
 
-  test("as sessões que já existiam quando o rastreio começa ganham nome, na ordem em que nasceram", () => {
+  test("as sessões que já existiam quando o rastreio começa ganham nome, na ordem em que nasceram", async () => {
     const { names, external, start, create } = rig();
-    const first = create();
-    const second = create();
+    const first = await create();
+    const second = await create();
     external.apply("SessionStart", { session_id: "t1", cwd: "/work/loja" });
     expect(names.list()).toHaveLength(0);
     start();
@@ -97,7 +98,7 @@ describe("nomes-sessao: as origens", () => {
     expect(display(names, "t1")).toBe("loja · geral · 1");
   });
 
-  test("um erro ao nomear não derruba o evento da sessão: ele se aplica e o próximo evento nomeia", () => {
+  test("um erro ao nomear não derruba o evento da sessão: ele se aplica e o próximo evento nomeia", async () => {
     let fail = true;
     const { names, external, start, create } = rig({
       personaOf: () => {
@@ -106,7 +107,7 @@ describe("nomes-sessao: as origens", () => {
       },
     });
     start();
-    create();
+    await create();
     expect(() =>
       external.apply("SessionStart", { session_id: "t1", cwd: "/work/loja" }),
     ).not.toThrow();
@@ -117,12 +118,12 @@ describe("nomes-sessao: as origens", () => {
     expect(display(names, "t1")).toBe("loja · geral · 1");
   });
 
-  test("parado, o rastreio não nomeia mais nada", () => {
+  test("parado, o rastreio não nomeia mais nada", async () => {
     const { names, external, start, create } = rig();
     const stop = start();
-    const before = create();
+    const before = await create();
     stop();
-    create();
+    await create();
     external.apply("SessionStart", { session_id: "t1", cwd: "/work/loja" });
     expect(names.list().map((n) => n.id)).toEqual([before]);
   });

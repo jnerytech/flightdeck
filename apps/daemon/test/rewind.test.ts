@@ -119,7 +119,7 @@ describe("rewind", () => {
     cleanups.push(() => store.close());
     const { repo } = gitRepo();
     const { manager } = newManager({ store, runtime, allowedRoots: [dirname(repo)] });
-    const { sessionId } = manager.create({ cwd: repo, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: repo, prompt: "oi" });
     await poll(() => manager.get(sessionId).status === "idle", 3000);
     const claude = manager.get(sessionId).claudeSessionId as string;
     const snapshots = new Snapshots({ db: store.db });
@@ -151,7 +151,7 @@ describe("rewind", () => {
     const { manager, project } = newManager({
       onTurnEdge: (edge) => edges.push({ kind: edge.kind, turnUuid: edge.turnUuid }),
     });
-    const { sessionId } = manager.create({ cwd: project, prompt: "um" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "um" });
     await poll(() => manager.get(sessionId).status === "idle", 3000);
     manager.send(sessionId, "dois");
     await poll(() => edges.length === 4, 3000);

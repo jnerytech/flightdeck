@@ -98,7 +98,7 @@ async function setup() {
   const beta = makeDaemon(cleanups);
   const repoA = clone(alfa.root);
   const repoB = clone(beta.root);
-  const { sessionId } = alfa.manager.create({ cwd: repoA, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await alfa.manager.create({ cwd: repoA, prompt: "oi", name: "Gerenciada" });
   // Idle before the terminal session acts, so its last activity is older (fixed order).
   await poll(() => alfa.manager.get(sessionId).status === "idle");
   await alfa.central.hooksInstall(true);

@@ -26,7 +26,11 @@ const settle = waiter(4000);
 /** One host with a managed session; `waiting` leaves it asking for Bash. */
 async function setup(options: { waiting?: boolean; costs?: boolean } = {}) {
   const d = makeDaemon(cleanups, { costs: options.costs ?? false });
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   if (options.waiting) {
     d.manager.send(sessionId, "[bash]");

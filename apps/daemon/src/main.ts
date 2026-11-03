@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, unwatchFile, watchFile } from "node:fs";
+import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
@@ -52,6 +52,7 @@ import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
+import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { runMessageCli } from "./messaging/cli.ts";
 import { LocalEndpoints } from "./messaging/endpoints.ts";
@@ -776,7 +777,7 @@ export async function startDaemon(
     dir: sshDir,
     sshPath:
       config.ssh.path ??
-      resolveSshPath({ platform: process.platform, exists: existsSync, which: whichOnPath }),
+      (await resolveSshPath({ platform: process.platform, exists, which: whichOnPath })),
     run: processRun(),
     exec: processExec(),
     ...(sshAskpass ? { askpass: sshAskpass } : {}),

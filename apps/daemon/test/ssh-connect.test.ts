@@ -826,17 +826,21 @@ describe("ssh-connect: peças", () => {
     await expect(loadConfig(write({ path: "" }))).rejects.toThrow();
   });
 
-  test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {
+  test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", async () => {
     const system32 = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\OpenSSH\\ssh.exe`;
     const both = { exists: (path: string) => path === system32, which: () => "/x/ssh" };
-    expect(resolveSshPath({ platform: "win32", ...both })).toBe(system32);
+    expect(await resolveSshPath({ platform: "win32", ...both })).toBe(system32);
     expect(
-      resolveSshPath({ platform: "win32", exists: () => false, which: () => "C:\\Git\\ssh.exe" }),
+      await resolveSshPath({
+        platform: "win32",
+        exists: () => false,
+        which: () => "C:\\Git\\ssh.exe",
+      }),
     ).toBe("C:\\Git\\ssh.exe");
-    expect(resolveSshPath({ platform: "linux", ...both })).toBe("/x/ssh");
-    expect(resolveSshPath({ platform: "linux", exists: () => false, which: () => null })).toBe(
-      "ssh",
-    );
+    expect(await resolveSshPath({ platform: "linux", ...both })).toBe("/x/ssh");
+    expect(
+      await resolveSshPath({ platform: "linux", exists: () => false, which: () => null }),
+    ).toBe("ssh");
   });
 
   test("rodar o ssh sem terminal: o ambiente se soma ao do processo, a saída é descartada e o stderr é lido", async () => {

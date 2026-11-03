@@ -779,7 +779,7 @@ export class WorkflowEngine {
     const { title } = this.host.card(run.card_id);
     const persona = action.persona ? { id: action.persona } : undefined;
     const prepared = await this.preparePersonas(persona, worktree);
-    const { sessionId } = this.manager.create(
+    const { sessionId } = await this.manager.create(
       {
         cwd: worktree,
         prompt,

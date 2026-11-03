@@ -245,7 +245,7 @@ describe("cota", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect((await client.request("quota.watch", {})).ok).toBe(true);
     const resets = Math.floor(Date.now() / 1000) + 3600;
-    const { sessionId } = manager.create({
+    const { sessionId } = await manager.create({
       cwd: project,
       prompt: `oi [ratelimit:five_hour=0.95@${resets}]`,
     });

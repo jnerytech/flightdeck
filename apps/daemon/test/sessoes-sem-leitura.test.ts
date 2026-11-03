@@ -29,7 +29,7 @@ const prepared = (): PreparedPersonas =>
 describe("sessoes-sem-leitura: the session manager reads no persona file", () => {
   test("create takes the resolved persona and the subagents, and the run opens with them", async () => {
     const { manager, runtime, project } = newManager();
-    const { sessionId } = manager.create(
+    const { sessionId } = await manager.create(
       { cwd: project, prompt: "hi", persona: { id: "seg" } },
       { prepared: prepared() },
     );
@@ -41,7 +41,7 @@ describe("sessoes-sem-leitura: the session manager reads no persona file", () =>
   test("a session reattached after a restart keeps the subagents it opened with", async () => {
     const store = new EventStore(":memory:");
     const first = newManager({ store });
-    const { sessionId } = first.manager.create(
+    const { sessionId } = await first.manager.create(
       { cwd: first.project, prompt: "hi" },
       { prepared: { persona: null, agents: { "persona-seg": AGENT } } },
     );
@@ -58,7 +58,7 @@ describe("sessoes-sem-leitura: the session manager reads no persona file", () =>
     const { manager, project } = newManager();
     let reason: string | undefined;
     try {
-      manager.create({ cwd: project, prompt: "hi", persona: { id: "seg" } });
+      await manager.create({ cwd: project, prompt: "hi", persona: { id: "seg" } });
     } catch (error) {
       reason = (error as { reason?: string }).reason;
     }

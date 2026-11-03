@@ -109,8 +109,8 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
 
   test("a sessão gerenciada ociosa recebe a mensagem como uma mensagem do usuário, e a ocupada enfileira até o fim do turno", async () => {
     const { manager, project, messaging, endpoints } = setup();
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
-    const b = manager.create({ cwd: project, prompt: "segunda" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
+    const b = (await manager.create({ cwd: project, prompt: "segunda" })).sessionId;
     await waitFor(() => manager.get(a).status === "idle" && manager.get(b).status === "idle");
     expect(endpoints.list().find((e) => e.id === b)).toMatchObject({
       kind: "managed",
@@ -137,8 +137,8 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
 
   test("uma mensagem nunca responde um pedido de permissão: o pedido continua aberto depois dela", async () => {
     const { manager, project, messaging, store } = setup();
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
-    const b = manager.create({ cwd: project, prompt: "crie [tool]" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
+    const b = (await manager.create({ cwd: project, prompt: "crie [tool]" })).sessionId;
     await waitFor(() => manager.get(b).status === "awaiting_permission");
     expect(manager.pendingPermissions(b)).toHaveLength(1);
 
@@ -150,10 +150,10 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     expect(store.db.query("SELECT COUNT(*) AS n FROM session_messages").get()).toEqual({ n: 2 });
   });
 
-  test("a sessão de um card recebe como as outras, e o terminal controlável pelo canal", () => {
+  test("a sessão de um card recebe como as outras, e o terminal controlável pelo canal", async () => {
     const { manager, project, messaging, endpoints, cards, writes, terminal } = setup();
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
-    const card = manager.create({ cwd: project, prompt: "do card" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
+    const card = (await manager.create({ cwd: project, prompt: "do card" })).sessionId;
     cards.set(card, "card-1");
     terminal("T1", "launch-1");
     expect(endpoints.list().find((e) => e.id === card)?.kind).toBe("card");
@@ -171,9 +171,9 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     expect(writes[0]?.[1]).toContain("pelo canal");
   });
 
-  test("o terminal sem canal é o claude puro: recusado com o motivo, e ele aparece no list_sessions como não recebe", () => {
+  test("o terminal sem canal é o claude puro: recusado com o motivo, e ele aparece no list_sessions como não recebe", async () => {
     const { manager, project, messaging, terminal, endpoints } = setup();
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
     terminal("P1", "launch-2", false);
     expect(endpoints.list().find((e) => e.id === "P1")).toMatchObject({
       kind: "plain",
@@ -187,9 +187,9 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     });
   });
 
-  test("o terminal esperando permissão segura a mensagem até o hook seguir, sem escrever no canal", () => {
+  test("o terminal esperando permissão segura a mensagem até o hook seguir, sem escrever no canal", async () => {
     const { manager, project, messaging, external, writes, terminal } = setup();
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
     terminal("T1", "launch-1");
     external.apply("PermissionRequest", { session_id: "T1", cwd: project });
     messaging.send({ as: { session: a }, to: "T1", text: "aprove" });
@@ -199,16 +199,16 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     expect(messaging.list({})[0]?.status).toBe("delivered");
   });
 
-  test("a marca de terceiros do remetente (aprovação suspensa) vai para o texto e suspende o destino e o card dele", () => {
+  test("a marca de terceiros do remetente (aprovação suspensa) vai para o texto e suspende o destino e o card dele", async () => {
     const { manager, project, messaging, suspended, cards } = setup();
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
-    const card = manager.create({ cwd: project, prompt: "do card" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
+    const card = (await manager.create({ cwd: project, prompt: "do card" })).sessionId;
     cards.set(card, "card-1");
     suspended.set(a, "issue de terceiros");
     messaging.send({ as: { session: a }, to: card, text: "veja a issue" });
     expect([...suspended.keys()].sort()).toEqual([a, card, "card:card-1"].sort());
     // A sender whose card is the suspended one is marked too.
-    const other = manager.create({ cwd: project, prompt: "outra" }).sessionId;
+    const other = (await manager.create({ cwd: project, prompt: "outra" })).sessionId;
     cards.set(other, "card-2");
     suspended.set("card:card-2", "issue de terceiros");
     messaging.send({ as: { session: other }, to: a, text: "olha" });
@@ -217,7 +217,7 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
 
   test("read devolve o resumo e as últimas mensagens, até 20, cortadas em 8 KB; sessão que não existe é null", async () => {
     const { manager, project, endpoints } = setup(1);
-    const a = manager.create({ cwd: project, prompt: "pergunta um" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "pergunta um" })).sessionId;
     await waitFor(() => manager.get(a).status === "idle");
     await waitFor(() => manager.get(a).status === "idle", { timeoutMs: 12_000 });
     await waitFor(() => manager.get(a).status === "idle");
@@ -273,7 +273,7 @@ describe("mensagens-entrega: o adaptador", () => {
     const states: Array<[string, string]> = [];
     const offIdle = endpoints.onIdle((id) => idles.push(id));
     const offState = endpoints.onState((id, state) => states.push([id, state]));
-    const a = manager.create({ cwd: project, prompt: "um" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "um" })).sessionId;
     await waitFor(() => idles.includes(a));
     expect(states.filter(([id]) => id === a).map(([, s]) => s)).toEqual(["running", "idle"]);
 
@@ -295,7 +295,7 @@ describe("mensagens-entrega: o adaptador", () => {
     const idles: string[] = [];
     endpoints.onIdle((id) => idles.push(id));
     endpoints.stop();
-    const a = manager.create({ cwd: project, prompt: "um" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "um" })).sessionId;
     await waitFor(() => manager.get(a).status === "idle");
     expect(idles).toEqual([]);
   });
@@ -309,7 +309,7 @@ describe("mensagens-entrega: o gerenciador e o hub", () => {
     });
     const delivered: string[] = [];
     manager.onUserMessage((_id, text) => delivered.push(text));
-    const a = manager.create({ cwd: project, prompt: "primeira" }).sessionId;
+    const a = (await manager.create({ cwd: project, prompt: "primeira" })).sessionId;
     await waitFor(() => manager.get(a).status === "idle");
     expect(delivered).toEqual(["primeira"]);
   });

@@ -33,7 +33,7 @@ function rig(over: Partial<TrackOptions> = {}) {
     ...over,
   };
   const start = () => cleanups.push(trackNames(options));
-  const create = () => ctx.manager.create({ cwd: ctx.repo, prompt: "oi" }).sessionId;
+  const create = async () => (await ctx.manager.create({ cwd: ctx.repo, prompt: "oi" })).sessionId;
   return { ...ctx, external, names, options, start, create };
 }
 
@@ -50,7 +50,7 @@ describe("chave-quente: the project key is looked up before the places that read
       },
     });
     start();
-    const id = create();
+    const id = await create();
     await Bun.sleep(20);
     // Asked again by each summary event of the session; the keys answer them from one lookup.
     expect([...new Set(asked)]).toEqual([manager.get(id).cwd]);
@@ -59,18 +59,18 @@ describe("chave-quente: the project key is looked up before the places that read
     expect(await poll(() => display(names, id))).toBe("repo · geral · 1");
   });
 
-  test("a session whose folder is already known is named on the spot, so the code that reads its name right after creating it finds it", () => {
+  test("a session whose folder is already known is named on the spot, so the code that reads its name right after creating it finds it", async () => {
     const { names, start, create } = rig({ warm: () => undefined });
     start();
-    expect(display(names, create())).toBe("repo · geral · 1");
+    expect(display(names, await create())).toBe("repo · geral · 1");
   });
 
   test("sessions created while the lookup is pending are named in the order they were created", async () => {
     const gate = Promise.withResolvers<void>();
     const { names, start, create } = rig({ warm: () => gate.promise });
     start();
-    const first = create();
-    const second = create();
+    const first = await create();
+    const second = await create();
     await Bun.sleep(20);
     expect([display(names, first), display(names, second)]).toEqual([null, null]);
     gate.resolve();
@@ -87,7 +87,7 @@ describe("chave-quente: the project key is looked up before the places that read
       },
     });
     start();
-    const id = create();
+    const id = await create();
     expect(await poll(() => display(names, id))).toBe("repo · geral · 1");
     expect(asked).toBe(1);
   });
@@ -96,7 +96,7 @@ describe("chave-quente: the project key is looked up before the places that read
     const gate = Promise.withResolvers<void>();
     const asked: string[] = [];
     const { manager, external, create, options } = rig();
-    const id = create();
+    const id = await create();
     external.apply("SessionStart", { session_id: "t1", cwd: "/work/loja" });
     external.apply("SessionStart", { session_id: "t2" });
     const warm = async (cwd: string) => {

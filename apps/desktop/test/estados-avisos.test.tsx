@@ -292,7 +292,11 @@ describe("estados-avisos", () => {
     });
 
     const alfa = makeDaemon(cleanups);
-    const { sessionId } = alfa.manager.create({ cwd: alfa.project, prompt: "oi", name: "Viva" });
+    const { sessionId } = await alfa.manager.create({
+      cwd: alfa.project,
+      prompt: "oi",
+      name: "Viva",
+    });
     const closed = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response("") });
     const deadUrl = `ws://127.0.0.1:${closed.port}/v1/ws`;
     closed.stop(true);
@@ -420,7 +424,7 @@ describe("estados-avisos", () => {
 
   test("encerrar a sessão e remover o host pedem confirmação com o verbo certo; cancelar não faz nada", async () => {
     const { d, store, hostId } = await online();
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
     await settle(() => d.manager.get(sessionId).status === "idle");
     await act(async () => store.router.push({ name: "session", host: hostId, id: sessionId }));
     await settle(() => screen.queryByRole("button", { name: "Encerrar" }) !== null);

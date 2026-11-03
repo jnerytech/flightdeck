@@ -2968,3 +2968,12 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   subagents it opened with (the `sessions.agents` column), so `send` and `resume` reuse them
   and need no caller to resolve anything. The cost: a change to a persona file, or to the project's
   subagents switch, applies to new sessions only; a session already open keeps what it opened with.
+- **The path checks are asynchronous, and the baseline is empty.** `resolveAllowedCwd`, `listDirs`,
+  `listFiles`, `isSystemFolder` and `resolveSshPath` answer with promises, and so do the calls that
+  depend on them: `SessionManager.create` and `createResumed`, `TerminalManager.open`, the persona
+  and snippet stores' project lookup, and `RunHost.spawn`. A refusal is now a rejection, so a
+  caller that used `try`/`catch` around a call awaits inside it. `RunManager.start` still answers
+  once the setup is on its way or every process has started, as before; it now waits for that
+  point instead of getting it for free from synchronous spawns. `SYNC_BASELINE` has no file left:
+  the only blocking calls in runtime code are the `bun:sqlite` ones and the four Tauri commands
+  that touch the tray or the window.

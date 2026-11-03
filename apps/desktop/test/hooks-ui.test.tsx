@@ -119,7 +119,7 @@ describe("hooks-ui", () => {
     );
     expect((await fetch(`${central.receptorUrl()}/health`)).status).toBe(200);
     // Its receptor feeds the external sessions and skips the daemon's own sessions.
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi" });
     const managed = await poll(() => d.manager.get(sessionId).claudeSessionId);
     for (const id of ["externa", managed ?? ""]) {
       await fetch(`${central.receptorUrl()}/hooks/UserPromptSubmit`, {

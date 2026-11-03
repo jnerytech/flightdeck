@@ -50,7 +50,7 @@ async function setup() {
   });
   cleanups.push(() => server.stop());
   // One session of each kind, all in the same folder.
-  const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+  const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
   const managed = (await poll(() => manager.get(sessionId).claudeSessionId)) ?? "";
   mkdirSync(join(root, "-p"), { recursive: true });
   writeTranscript(root, "-p", "h1", [

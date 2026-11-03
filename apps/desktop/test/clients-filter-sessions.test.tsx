@@ -70,7 +70,7 @@ async function setup(stored: unknown = CLIENTS) {
     ["Sessão Beta", repos.beta],
     ["Sessão Solta", repos.solta],
   ] as const) {
-    const { sessionId } = d.manager.create({ cwd, prompt: "oi", name });
+    const { sessionId } = await d.manager.create({ cwd, prompt: "oi", name });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   const platform = memoryPlatform();

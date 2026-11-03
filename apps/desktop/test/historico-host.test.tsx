@@ -46,7 +46,7 @@ async function setup() {
   ]);
   utimesSync(old, anHourAgo(), anHourAgo());
   utimesSync(elsewhere, anHourAgo(), anHourAgo());
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi" });
+  const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi" });
   const managed = await waitFor(() => d.manager.get(sessionId).claudeSessionId);
   writeTranscript(d.historyRoot, "-p", managed, [
     userLine({

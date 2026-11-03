@@ -100,7 +100,11 @@ describe("resumo-lista", () => {
     const appB = join(d.root, "app-b");
     mkdirSync(appA);
     mkdirSync(appB);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "oi",
+      name: "Gerenciada",
+    });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const managed = d.manager.get(sessionId);
     const ts = new Date().toISOString();
@@ -184,7 +188,7 @@ describe("resumo-lista", () => {
 
   test("a linha da sessão gerenciada acompanha o estado ao vivo, sem esperar a lista", async () => {
     const d = makeDaemon(cleanups);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);

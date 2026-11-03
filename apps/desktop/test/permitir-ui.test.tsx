@@ -60,7 +60,7 @@ async function online() {
 /** A managed session asking for a permission, open in the app. */
 async function asking(prompt: string) {
   const ctx = await online();
-  const { sessionId } = ctx.manager.create({ cwd: ctx.project, prompt });
+  const { sessionId } = await ctx.manager.create({ cwd: ctx.project, prompt });
   const events = record(ctx.manager, sessionId);
   cleanups.push(() => events.unsubscribe());
   await poll(() => events.find("permission.requested")[0], 3000);
@@ -227,7 +227,7 @@ describe("permitir-ui", () => {
         store.getState().hosts[0]?.hostInfo !== undefined,
     );
     const hostId = store.getState().hosts[0]?.id ?? "";
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash] y" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "[bash] y" });
     await poll(() => d.eventStore.pendingPermissions(sessionId).length > 0, 3000);
     await act(async () => store.select(hostId, sessionId));
     await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);

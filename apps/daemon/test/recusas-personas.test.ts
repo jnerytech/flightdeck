@@ -152,7 +152,7 @@ describe("recusas-personas: the store and the open sessions say why", () => {
       (await refused(() => open.apply({ claudeSessionId: "c", persona: { id: "x" } }))).reason,
     ).toBe("terminal_sessions_off");
     const plain = new OpenSessionPersonas({ manager, personas: undefined } as never);
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     expect((await refused(() => plain.apply({ sessionId, persona: { id: "x" } }))).reason).toBe(
       "personas_off",
     );

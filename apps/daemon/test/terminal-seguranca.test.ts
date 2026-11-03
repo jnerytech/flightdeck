@@ -77,7 +77,7 @@ describe("terminal-seguranca", () => {
     expect(terminalEnabled("127.0.0.1", false)).toBe(false);
   });
 
-  test("desligado, todo comando de terminal é recusado com terminal_disabled; ligar e desligar são registrados e desligar encerra os terminais", () => {
+  test("desligado, todo comando de terminal é recusado com terminal_disabled; ligar e desligar são registrados e desligar encerra os terminais", async () => {
     const { root, project } = workspace();
     const ptys = fakePtys();
     const logs: string[] = [];
@@ -91,9 +91,9 @@ describe("terminal-seguranca", () => {
     });
     cleanups.push(() => manager.stop());
     const sink = fakeSink();
-    const code = (fn: () => unknown) => {
+    const code = async (fn: () => unknown) => {
       try {
-        fn();
+        await fn();
         return "ok";
       } catch (error) {
         return (error as { code?: string }).code ?? "sem código";
@@ -101,24 +101,26 @@ describe("terminal-seguranca", () => {
     };
     expect(manager.enabled).toBe(false);
     expect(manager.settings()).toEqual({ enabled: false, max: 10, shell: "zsh" });
-    expect([
-      code(() => manager.open({ cwd: project, cols: 80, rows: 24 })),
-      code(() => manager.write("t", "x")),
-      code(() => manager.resize("t", 1, 1)),
-      code(() => manager.attach("t", sink)),
-      code(() => manager.detach("t", sink)),
-      code(() => manager.close("t", true)),
-      code(() => manager.list()),
-    ]).toEqual(Array(7).fill("terminal_disabled"));
+    expect(
+      await Promise.all<string>([
+        code(() => manager.open({ cwd: project, cols: 80, rows: 24 })),
+        code(() => manager.write("t", "x")),
+        code(() => manager.resize("t", 1, 1)),
+        code(() => manager.attach("t", sink)),
+        code(() => manager.detach("t", sink)),
+        code(() => manager.close("t", true)),
+        code(() => manager.list()),
+      ]),
+    ).toEqual(Array(7).fill("terminal_disabled"));
     expect(ptys.spawned).toEqual([]);
     // A connection closing is not a command: it never fails.
-    expect(code(() => manager.detachAll(sink))).toBe("ok");
+    expect(await code(() => manager.detachAll(sink))).toBe("ok");
     manager.setEnabled(true);
     expect(manager.enabled).toBe(true);
-    manager.open({ cwd: project, cols: 80, rows: 24 });
+    await manager.open({ cwd: project, cols: 80, rows: 24 });
     manager.setEnabled(false);
     expect(ptys.spawned.map((pty) => pty.killed)).toEqual([true]);
-    expect(code(() => manager.list())).toBe("terminal_disabled");
+    expect(await code(() => manager.list())).toBe("terminal_disabled");
     manager.setEnabled(true);
     expect(manager.list()).toEqual([]);
     expect(logs.filter((line) => /ligado|desligado/.test(line))).toEqual([

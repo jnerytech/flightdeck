@@ -865,7 +865,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
         if (opts.warmProjectKey) {
-          const cwd = resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
+          const cwd = await resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
           await opts.warmProjectKey(cwd);
         }
         const prepared = await preparePersonas(
@@ -873,7 +873,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.payload.persona,
           command.payload.cwd,
         );
-        return ok(command.type, manager.create(command.payload, { prepared }));
+        return ok(command.type, await manager.create(command.payload, { prepared }));
       }
       case "session.send":
         return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
@@ -1433,7 +1433,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { agents } = await preparePersonas(opts.personas, undefined, session.cwd);
         return ok(
           command.type,
-          manager.createResumed({
+          await manager.createResumed({
             cwd: session.cwd,
             claudeSessionId,
             agents,
@@ -1603,7 +1603,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { path, hidden } = command.payload;
         return ok(
           command.type,
-          listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
+          await listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
       case "projects.scan": {
@@ -1624,7 +1624,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { path, hidden } = command.payload;
         return ok(
           command.type,
-          listFiles(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
+          await listFiles(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
       case "session.files":
@@ -1645,7 +1645,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cwd, command: argv, claude, cols, rows } = command.payload;
         return ok(
           command.type,
-          terminals().open({
+          await terminals().open({
             cwd,
             ...(argv ? { command: argv } : {}),
             ...(claude ? { claude } : {}),

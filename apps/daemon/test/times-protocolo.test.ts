@@ -185,7 +185,7 @@ describe("mcp-mensagens: team_status", () => {
     await whenChanged(board, () =>
       team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
     );
-    const outsider = manager.create({ cwd: project.path, prompt: "outra coisa" }).sessionId;
+    const outsider = (await manager.create({ cwd: project.path, prompt: "outra coisa" })).sessionId;
     const asMember = await mcp(team.coordinator as string, teams, server);
     const seen = await asMember({ team: team.id });
     expect(seen.data).toMatchObject({ team: { id: team.id, goal: "Faça o login." }, messages: 0 });

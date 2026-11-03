@@ -76,14 +76,14 @@ export function processExec(): ExecSsh {
  * The `ssh` to run. On Windows the OpenSSH of the system, which is the one that takes `NUL` and
  * `-F`, when it exists; otherwise whatever the PATH finds.
  */
-export function resolveSshPath(opts: {
+export async function resolveSshPath(opts: {
   platform: NodeJS.Platform;
   exists: (path: string) => boolean | Promise<boolean>;
   which: (name: string) => string | null;
-}): string {
+}): Promise<string> {
   if (opts.platform === "win32") {
     const system = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\OpenSSH\\ssh.exe`;
-    if (opts.exists(system)) return system;
+    if (await opts.exists(system)) return system;
   }
   return opts.which("ssh") ?? "ssh";
 }
@@ -180,7 +180,7 @@ export class SshConnector {
   }): Promise<TerminalInfo> {
     const plan = await this.plan(this.target(req.targetId), req.privateKey, "connect");
     try {
-      const info = this.opts.terminals.open({
+      const info = await this.opts.terminals.open({
         cwd: this.opts.dir,
         command: plan.argv,
         env: plan.env,

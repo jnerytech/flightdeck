@@ -77,7 +77,11 @@ async function setup() {
   git(repo, "commit", "-q", "-m", "inicial");
   const project = await d.board.addProject({ path: repo, promptTemplate: "" });
   const card = d.board.createCard(project.id, { title: "Ajuste", description: "faça" });
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Pedinte" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "[bash]",
+    name: "Pedinte",
+  });
   await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
@@ -319,7 +323,7 @@ describe("navegacao", () => {
       }),
     ]);
     await d.history.scan();
-    const { sessionId } = d.manager.create({
+    const { sessionId } = await d.manager.create({
       cwd: d.project,
       prompt: "olá do começo",
       name: "Cedo",

@@ -31,7 +31,7 @@ async function setup() {
   const d = makeDaemon(cleanups);
   const names = ["Alpha", "Beta"];
   for (const name of names) {
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   // One finished transcript of the terminal, for the history.

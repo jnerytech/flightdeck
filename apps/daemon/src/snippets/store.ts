@@ -123,7 +123,7 @@ export class Snippets {
     filter: SnippetFilter,
   ): Promise<{ snippets: Snippet[]; file: SnippetFileInfo | null }> {
     const scope = filter.scope ?? "all";
-    const project = filter.projectPath ? this.project(filter.projectPath) : null;
+    const project = filter.projectPath ? await this.project(filter.projectPath) : null;
     if (scope === "project" && !project)
       throw badRequest("the project scope needs projectPath", "scope_project_path");
     const views: Snippet[] = [];
@@ -173,7 +173,7 @@ export class Snippets {
   async save(input: SnippetSave): Promise<Snippet> {
     const { id, scope, target, projectPath, ...fields } = input;
     const def = normalizeSnippet(fields, this.opts.scanner);
-    const project = scope === "project" ? this.requireProject(projectPath) : null;
+    const project = scope === "project" ? await this.requireProject(projectPath) : null;
     const previous = id ? await this.lookup(id) : null;
     if (id && !previous) throw notFound();
     if (previous && (previous.scope !== scope || previous.projectPath !== project)) {
@@ -212,7 +212,7 @@ export class Snippets {
 
   /** Trusts the content of the project's versioned file, by the hash the app was shown. */
   async trust(projectPath: string, hash: string): Promise<SnippetFileInfo> {
-    const project = this.project(projectPath);
+    const project = await this.project(projectPath);
     const loaded = await this.loadFile(project);
     if (!loaded)
       throw new FlightdeckError(
@@ -259,13 +259,13 @@ export class Snippets {
 
   // -- storage -------------------------------------------------------------------------------
 
-  private project(path: string): string {
+  private async project(path: string): Promise<string> {
     return resolveAllowedCwd(path, this.opts.allowedRoots);
   }
 
-  private requireProject(path: string | undefined): string {
+  private async requireProject(path: string | undefined): Promise<string> {
     if (!path) throw badRequest("a project snippet needs projectPath", "snippet_project_path");
-    return this.project(path);
+    return await this.project(path);
   }
 
   private rows(scope: "host" | "project", project: string | null): Row[] {
@@ -341,7 +341,7 @@ export class Snippets {
   private async lookup(id: string): Promise<Snippet | null> {
     const parsed = parseFileId(id);
     if (parsed) {
-      const project = this.project(parsed.projectPath);
+      const project = await this.project(parsed.projectPath);
       const loaded = await this.loadFile(project);
       const def = loaded?.defs.find((d) => d.name === parsed.name);
       return def ? this.fromFile(project, def, loaded as LoadedFile) : null;

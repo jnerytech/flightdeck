@@ -104,7 +104,7 @@ export class Personas {
     project: PersonaProjectInfo | null;
   }> {
     const scope = filter.scope ?? "all";
-    const project = filter.projectPath ? this.project(filter.projectPath) : null;
+    const project = filter.projectPath ? await this.project(filter.projectPath) : null;
     if (scope === "project" && !project)
       throw badRequest("the project scope needs projectPath", "scope_project_path");
     const personas: Persona[] = [];
@@ -141,7 +141,7 @@ export class Personas {
         .run({ $id: persona.id, $data: JSON.stringify(persona), $at: at });
       return this.hostViews().find((view) => view.id === persona.id) as Persona;
     }
-    const project = this.requireProject(request.projectPath);
+    const project = await this.requireProject(request.projectPath);
     const source = serializePersona(persona);
     await mkdir(this.dir(project), { recursive: true });
     await writeFile(this.file(project, persona.id), source);
@@ -156,7 +156,7 @@ export class Personas {
    * out, and does not stand in for another of the same id.
    */
   async subagents(ctx: PersonaContext): Promise<PersonaSubagents> {
-    const project = this.optionalProject(ctx.projectPath);
+    const project = await this.optionalProject(ctx.projectPath);
     const mode = project ? this.subagentsMode(project) : "all";
     if (mode === "none") return { agents: {}, untrusted: [] };
     const loaded = project ? await this.loadProject(project) : null;
@@ -192,7 +192,7 @@ export class Personas {
         "persona_publisher_off",
       );
     }
-    const projectPath = this.project(request.projectPath);
+    const projectPath = await this.project(request.projectPath);
     const { persona } = await this.resolve(
       { id: request.id },
       { projectPath, language: request.language },
@@ -219,7 +219,7 @@ export class Personas {
       if (done.changes === 0) throw notFound();
       return;
     }
-    const project = this.requireProject(projectPath);
+    const project = await this.requireProject(projectPath);
     const file = this.file(project, id);
     await rm(file).catch((error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") throw notFound();
@@ -232,7 +232,7 @@ export class Personas {
 
   /** Trusts the versioned persona as it is now, by the hash the app was shown. */
   async trust(projectPath: string, id: string, hash: string): Promise<Persona> {
-    const project = this.project(projectPath);
+    const project = await this.project(projectPath);
     const current = (await this.loadProject(project))?.views.find((view) => view.id === id);
     if (!current) throw notFound();
     if (current.hash !== hash) {
@@ -279,7 +279,7 @@ export class Personas {
 
   // -- storage -------------------------------------------------------------------------------
 
-  private project(path: string): string {
+  private async project(path: string): Promise<string> {
     return resolveAllowedCwd(path, this.opts.allowedRoots);
   }
 
@@ -297,19 +297,19 @@ export class Personas {
   }
 
   /** A folder the daemon does not allow has no personas of its own. */
-  private optionalProject(path: string | undefined): string | null {
+  private async optionalProject(path: string | undefined): Promise<string | null> {
     if (!path) return null;
     try {
-      return this.project(path);
+      return await this.project(path);
     } catch {
       // resolveAllowedCwd only ever refuses with forbidden_cwd.
       return null;
     }
   }
 
-  private requireProject(path: string | undefined): string {
+  private async requireProject(path: string | undefined): Promise<string> {
     if (!path) throw badRequest("a project persona needs projectPath", "persona_project_path");
-    return this.project(path);
+    return await this.project(path);
   }
 
   private dir(project: string): string {
@@ -323,7 +323,7 @@ export class Personas {
 
   private async find(id: string, ctx: PersonaContext): Promise<Persona | null> {
     if (ctx.projectPath) {
-      const project = this.project(ctx.projectPath);
+      const project = await this.project(ctx.projectPath);
       const inProject = (await this.loadProject(project))?.views.find((view) => view.id === id);
       if (inProject) return inProject;
     }

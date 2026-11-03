@@ -83,7 +83,11 @@ async function setup() {
   git(repo, "commit", "-q", "-m", "inicial");
   const project = await d.board.addProject({ path: repo, promptTemplate: "" });
   d.board.createCard(project.id, { title: "Ajuste", description: "faça" });
-  const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: d.project,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   writeTranscript(d.historyRoot, "-hist", "hist-1", [
     userLine({

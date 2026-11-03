@@ -94,7 +94,7 @@ async function setup(features?: string[], baseDelayMs = 60_000) {
 
 /** Opens the managed session working in `cwd` (its Claude id is known once the first turn ran). */
 async function openSession(ctx: Awaited<ReturnType<typeof setup>>, cwd = ctx.repo) {
-  const { sessionId } = ctx.manager.create({ cwd, prompt: "oi", name: "Revisão" });
+  const { sessionId } = await ctx.manager.create({ cwd, prompt: "oi", name: "Revisão" });
   const claudeId = await poll(() => ctx.manager.get(sessionId).claudeSessionId);
   await poll(() => ctx.manager.get(sessionId).status === "idle");
   await act(async () => {

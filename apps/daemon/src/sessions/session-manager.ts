@@ -189,11 +189,11 @@ export class SessionManager {
    * `unattended` (phase 22) marks a session Flightdeck opens by itself, with no person in it:
    * it never gets to use `run_with_secret`, which is for a person to approve each time.
    */
-  create(
+  async create(
     payload: CommandPayload<"session.create">,
     extra: { unattended?: boolean; prepared?: PreparedPersonas } = {},
-  ): { sessionId: string } {
-    const cwd = resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
+  ): Promise<{ sessionId: string }> {
+    const cwd = await resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const id = ulid();
     // Resolved by the caller before anything is created, so a missing, untrusted or invalid
     // persona leaves no session. The manager reads no persona file itself.
@@ -240,15 +240,15 @@ export class SessionManager {
    * Turns a transcript started elsewhere into a managed session: the run starts with `resume`
    * on that Claude session and waits, idle, for the first message.
    */
-  createResumed(opts: {
+  async createResumed(opts: {
     cwd: string;
     claudeSessionId: string;
     name: string | null;
     permissionMode?: PermissionMode;
     /** The subagents the session opens with, read by the caller. */
     agents?: PreparedPersonas["agents"];
-  }): { sessionId: string } {
-    const cwd = resolveAllowedCwd(opts.cwd, this.opts.allowedRoots);
+  }): Promise<{ sessionId: string }> {
+    const cwd = await resolveAllowedCwd(opts.cwd, this.opts.allowedRoots);
     const id = ulid();
     const permissionMode = opts.permissionMode ?? this.opts.defaultPermissionMode;
     this.store.createSession({

@@ -255,7 +255,11 @@ describe("aprovacao-ui", () => {
     const project = await d.board.addProject({ path: repo, promptTemplate: "" });
     const card = d.board.createCard(project.id, { title: "Testar", description: "[bash]" });
     await d.board.startCard(card.id);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Pedinte" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "[bash]",
+      name: "Pedinte",
+    });
     await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
     const requestId = d.manager.pendingPermissions(sessionId)[0]?.requestId ?? "";
 

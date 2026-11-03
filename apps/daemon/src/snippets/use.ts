@@ -88,7 +88,7 @@ export class SnippetUse {
     } else if (req.action === "run") {
       const cwd = req.context?.cwd;
       if (!cwd) throw badRequest("running needs the cwd", "snippet_cwd_needed");
-      terminal = this.terminals().open({
+      terminal = await this.terminals().open({
         cwd,
         cols: req.cols ?? DEFAULT_COLS,
         rows: req.rows ?? DEFAULT_ROWS,
@@ -159,7 +159,7 @@ export class SnippetUse {
 
   /** The branch checked out in `cwd`; `null` when it is not a repository or HEAD is detached. */
   private async branchOf(cwd: string): Promise<string | null> {
-    const dir = resolveAllowedCwd(cwd, this.opts.allowedRoots);
+    const dir = await resolveAllowedCwd(cwd, this.opts.allowedRoots);
     const { code, stdout } = await this.opts.exec([
       "git",
       "-C",

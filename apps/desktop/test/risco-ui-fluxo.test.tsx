@@ -49,7 +49,7 @@ function trayPlatform() {
 async function waitingHigh() {
   const d = makeDaemon(cleanups, { risk });
   const server = d.listen();
-  const created = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "s-risco" });
+  const created = await d.manager.create({ cwd: d.project, prompt: "[bash]", name: "s-risco" });
   await waitFor(() => d.manager.get(created.sessionId).status === "awaiting_permission");
   const tray = trayPlatform();
   const store = new AppStore(tray.mem.platform, { baseDelayMs: 10 });

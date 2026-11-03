@@ -17,7 +17,7 @@ const origins = (db: EventStore["db"]) =>
 describe("origem", () => {
   test("transcript de uma sessão gerenciada recebe origem flightdeck; os outros external", async () => {
     const { manager, store, project } = newManager();
-    const { sessionId } = manager.create({ cwd: project, prompt: "oi" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     const managed = await poll(() => manager.get(sessionId).claudeSessionId);
     expect(managed).not.toBeNull();
 

@@ -244,7 +244,7 @@ describe("custos-ui", () => {
 
   test("top sessões abrem a sessão; modelo sem preço e tabela desatualizada aparecem", async () => {
     const { d, store } = await online();
-    const managed = d.manager.create({ cwd: d.project, prompt: "oi" });
+    const managed = await d.manager.create({ cwd: d.project, prompt: "oi" });
     await settle(() => d.manager.get(managed.sessionId).claudeSessionId !== null);
     const claudeId = d.manager.get(managed.sessionId).claudeSessionId as string;
     spend(d, { day: "2026-10-15", key: "kA", cost: 9, session: claudeId });

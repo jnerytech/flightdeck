@@ -85,7 +85,11 @@ async function setup(platform = memoryPlatform()) {
     clone(d.root, "repo-run"),
     clone(d.root, "repo-ask"),
   ];
-  const { sessionId } = d.manager.create({ cwd: one as string, prompt: "oi", name: "Gerenciada" });
+  const { sessionId } = await d.manager.create({
+    cwd: one as string,
+    prompt: "oi",
+    name: "Gerenciada",
+  });
   await poll(() => d.manager.get(sessionId).status === "idle");
   writeTranscript(d.historyRoot, "-old", "hist-1", [
     userLine({

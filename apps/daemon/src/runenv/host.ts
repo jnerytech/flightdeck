@@ -43,12 +43,12 @@ export function terminalRunHost(
 ): RunHost {
   const treeKill = options.treeKill ?? killTree;
   return {
-    spawn: (request) => {
+    spawn: async (request) => {
       let end!: (exitCode: number) => void;
       const exited = new Promise<number>((resolve) => {
         end = resolve;
       });
-      const { terminalId } = manager.open({
+      const { terminalId } = await manager.open({
         cwd: request.cwd,
         command: request.argv,
         env: request.env,

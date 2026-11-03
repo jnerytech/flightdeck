@@ -357,7 +357,7 @@ describe("snippets-uso: pelo protocolo", () => {
       text: "echo oi",
       fields: [{ name: "msg", special: false }],
     });
-    const { terminalId } = s.terminals.open({ cwd: s.project, cols: 80, rows: 24 });
+    const { terminalId } = await s.terminals.open({ cwd: s.project, cols: 80, rows: 24 });
     expect(
       await client.data("snippets.use", {
         id: snippet.id,

@@ -367,7 +367,7 @@ export class Board {
 
   /** Registers a git repository that lives inside `allowedRoots`. */
   async addProject(input: NewProject): Promise<Project> {
-    const path = resolveAllowedCwd(input.path, this.opts.allowedRoots);
+    const path = await resolveAllowedCwd(input.path, this.opts.allowedRoots);
     const top = await git(path, "rev-parse", "--show-toplevel");
     if (top.code !== 0) {
       throw new FlightdeckError(
@@ -1299,7 +1299,7 @@ export class Board {
       .get(runId);
     const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
     const prepared = await (this.opts.preparePersonas ?? withoutPersonas)(personaRef, worktree);
-    const { sessionId } = this.opts.manager.create(
+    const { sessionId } = await this.opts.manager.create(
       {
         cwd: worktree,
         prompt: run?.fix_prompt ?? prompt,

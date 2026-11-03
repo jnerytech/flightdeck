@@ -122,7 +122,7 @@ describe("fila", () => {
 
   test("sessões fora de cards não contam no limite", async () => {
     const { board, card, manager, root } = await setup(1);
-    const loose = manager.create({ cwd: root, prompt: "[tool]" });
+    const loose = await manager.create({ cwd: root, prompt: "[tool]" });
     const a = card("Card");
     await board.startCard(a.id);
     expect(await cardWhen(board, a.id, (x) => x.sessionId !== null)).not.toBeNull();

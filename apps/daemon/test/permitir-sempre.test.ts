@@ -30,7 +30,7 @@ const BASH_SUGGESTIONS: PermissionUpdate[] = [
 /** A managed session asking for a permission (`[tool]` Write or `[bash]` Bash). */
 async function asking(prompt: string) {
   const ctx = newManager();
-  const { sessionId } = ctx.manager.create({ cwd: ctx.project, prompt });
+  const { sessionId } = await ctx.manager.create({ cwd: ctx.project, prompt });
   const events = record(ctx.manager, sessionId);
   cleanups.push(() => events.unsubscribe());
   const requested = await poll(() => events.find("permission.requested")[0], 3000);

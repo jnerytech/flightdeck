@@ -55,7 +55,7 @@ async function setup(options: { checkpoints?: boolean; git?: boolean } = {}) {
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "inicial");
   }
-  const { sessionId } = d.manager.create({ cwd: repo, prompt: "oi", name: "Alpha" });
+  const { sessionId } = await d.manager.create({ cwd: repo, prompt: "oi", name: "Alpha" });
   await poll(() => d.manager.get(sessionId).status === "idle");
   await d.snapshots?.idle();
   const claudeSessionId = d.manager.get(sessionId).claudeSessionId as string;
