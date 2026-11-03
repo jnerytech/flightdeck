@@ -421,6 +421,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
+    ...(opts.boardsync ? ["boardsync"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -558,6 +559,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  function boardsync(): BoardSyncService {
+    if (!opts.boardsync) throw featureOff("boardsync");
+    return opts.boardsync;
   }
 
   function github(): GithubService {
@@ -1641,6 +1647,28 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { depth } = command.payload;
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
+      case "boardsync.boards":
+        return ok(command.type, { boards: await boardsync().boards() });
+      case "boardsync.link":
+        return ok(command.type, await boardsync().link(command.payload));
+      case "boardsync.unlink":
+        boardsync().unlink(command.payload.projectId);
+        return ok(command.type);
+      case "boardsync.setMap":
+        return ok(
+          command.type,
+          await boardsync().setMap(command.payload.projectId, command.payload.columnMap),
+        );
+      case "boardsync.setPush": {
+        const { projectId, push, confirm } = command.payload;
+        return ok(command.type, await boardsync().setPush(projectId, push, confirm));
+      }
+      case "boardsync.status":
+        return ok(command.type, boardsync().status(command.payload.projectId));
+      case "boardsync.syncNow":
+        return ok(command.type, await boardsync().syncNow(command.payload.projectId));
+      case "boardsync.log":
+        return ok(command.type, { entries: boardsync().log(command.payload.cardId) });
       case "github.status":
         return ok(command.type, await github().status());
       case "github.login.start":

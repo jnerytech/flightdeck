@@ -3520,6 +3520,35 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Phase 38: board sync with an external board (GitHub Projects first). */
+  cmd("boardsync.boards", z.object({}).strict()),
+  cmd(
+    "boardsync.link",
+    z
+      .object({
+        projectId: z.string().min(1),
+        boardId: z.string().min(1).max(200),
+        columnMap: z.record(z.string().min(1).max(200), BoardColumn).optional(),
+      })
+      .strict(),
+  ),
+  cmd("boardsync.unlink", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd(
+    "boardsync.setMap",
+    z
+      .object({
+        projectId: z.string().min(1),
+        columnMap: z.record(z.string().min(1).max(200), BoardColumn),
+      })
+      .strict(),
+  ),
+  cmd(
+    "boardsync.setPush",
+    z.object({ projectId: z.string().min(1), push: z.boolean(), confirm: z.boolean() }).strict(),
+  ),
+  cmd("boardsync.status", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd("boardsync.syncNow", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd("boardsync.log", z.object({ cardId: z.string().min(1) }).strict()),
   /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
   cmd(
     "projects.clone",
@@ -4056,6 +4085,14 @@ export interface CommandResults {
   "doctor.run": DoctorResult;
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
+  "boardsync.boards": { boards: BoardSyncBoard[] };
+  "boardsync.link": BoardSyncStatus;
+  "boardsync.unlink": undefined;
+  "boardsync.setMap": BoardSyncStatus;
+  "boardsync.setPush": BoardSyncStatus;
+  "boardsync.status": BoardSyncStatus;
+  "boardsync.syncNow": { status: BoardSyncStatus; report: BoardSyncReport };
+  "boardsync.log": { entries: BoardSyncLogEntry[] };
   "github.status": GithubStatusResult;
   "github.login.start": GithubLoginResult;
   "github.login.cancel": undefined;
