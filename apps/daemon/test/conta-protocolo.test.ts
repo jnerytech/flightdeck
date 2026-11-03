@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { AccountState, AccountUpdated } from "@flightdeck/protocol";
 import { Account, type AccountReaders } from "../src/account/account.ts";
 import type { AuthStatus } from "../src/account/readers.ts";
+import { startDaemon } from "../src/main.ts";
 import { Quota } from "../src/quota/quota.ts";
 import { startServer } from "../src/server.ts";
-import { newManager, poll } from "./helpers.ts";
+import { newManager, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "account-token-0123456789abcdef";
@@ -157,5 +160,47 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     const { client } = await connect();
     const info = await client.request("host.info", {});
     expect((info.data as { features: string[] }).features).toContain("account");
+  });
+});
+
+describe("conta-protocolo: the daemon wires the account to its real runtime", () => {
+  async function daemonWith(runtime: "fake" | "claude") {
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        // Nonexistent path: the real readers fail to start it (docs/TDD.md).
+        claude: { executablePath: "/nao/existe/claude" },
+      }),
+    );
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => daemon.stop());
+    const client = new FrameClient(daemon.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    return client;
+  }
+
+  test("with the claude runtime the host has the account feature, and a claude that cannot run reads as unavailable", async () => {
+    const client = await daemonWith("claude");
+    const info = await client.request("host.info", {});
+    expect((info.data as { features: string[] }).features).toContain("account");
+    const ack = await client.request("account.get", {});
+    expect(ack.ok).toBe(true);
+    expect(ack.data).toMatchObject({ status: "unknown", error: "account_unavailable" });
+  });
+
+  test("with the fake runtime the host has no account, so no test ever asks a real claude", async () => {
+    const client = await daemonWith("fake");
+    const info = await client.request("host.info", {});
+    expect((info.data as { features: string[] }).features).not.toContain("account");
   });
 });
