@@ -27,6 +27,12 @@ export type PaletteTarget =
   | { kind: "switch-language" }
   | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" }
+  /** A screen with no host: Sessions, Needs you or the Projects overview. */
+  | { kind: "go"; to: "hub" | "needs-you" | "all-projects" }
+  /** The `?` sheet of shortcuts. */
+  | { kind: "shortcuts" }
+  /** Answers the oldest request waiting for the person (a high-risk one is opened instead). */
+  | { kind: "decide-oldest"; decision: "approve" | "deny" }
   /** Phase 29: the Clients screen, and a switch of the client the screens show. */
   | { kind: "clients" }
   | { kind: "switch-client"; clientId: string }
@@ -50,6 +56,8 @@ export interface PaletteItem {
   target: PaletteTarget;
   /** Tab: what else can be done with it. */
   actions: PaletteAction[];
+  /** The keys that do the same, as the sheet shows them (`g p`, `?`). */
+  shortcut?: string;
   /** More text the query also matches, besides the label (a snippet's tags and content). */
   keywords?: string;
 }
@@ -72,7 +80,7 @@ const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_perm
 export function paletteSections(
   state: AppState,
   query: string,
-  options: { costs: boolean; t: T; globalSnippets?: AppSnippet[] },
+  options: { costs: boolean; t: T; globalSnippets?: AppSnippet[]; recents?: string[] },
 ): PaletteSection[] {
   const { t } = options;
   const online = state.hosts.filter((h) => h.status === "online");

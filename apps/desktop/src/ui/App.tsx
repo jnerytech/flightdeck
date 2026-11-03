@@ -34,7 +34,9 @@ type InPlace =
   | "start-card"
   | "snippet"
   | "pull-link"
-  | "switch-client";
+  | "switch-client"
+  | "shortcuts"
+  | "decide-oldest";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -73,6 +75,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "settings" };
     case "costs":
       return { name: "costs" };
+    case "go":
+      return { name: target.to };
     case "connect-ssh":
       return { name: "connections", connect: target.targetId };
     case "clients":
@@ -312,6 +316,8 @@ export function App({ store }: { store: AppStore }) {
       });
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
+    } else if (target.kind === "shortcuts" || target.kind === "decide-oldest") {
+      return;
     } else go(paletteRoute(target));
   };
 

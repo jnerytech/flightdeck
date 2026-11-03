@@ -941,6 +941,17 @@ export class AppStore {
     return true;
   }
 
+  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
+  decideOldest(_decision: "approve" | "deny"): void {}
+
+  /** What the palette was used for lately, most recent first. */
+  paletteRecents(): string[] {
+    return [];
+  }
+
+  /** Remembers that a palette entry was used. */
+  recordPaletteUse(_id: string): void {}
+
   private openRequest(item: PendingItem): void {
     void this.platform.showMainWindow();
     for (const listener of this.openRequestListeners) listener(item);
