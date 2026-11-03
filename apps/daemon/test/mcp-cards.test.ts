@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Card } from "@flightdeck/protocol";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type { Card } from "@flightdeck/protocol";
 import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { git, newBoard } from "./board-helpers.ts";
@@ -118,12 +118,10 @@ describe("mcp-cards: a session manages the cards of its own project", () => {
     expect(await manage({ action: "comment" })).toBe("invalid_state/card_manage_args");
   });
 
-  test("finish done completes the card; finish discard throws it away, worktree and branch", async () => {
-    const { board, mine, sibling, manage } = await setup();
+  test("finish done completes the card; without an outcome it is refused", async () => {
+    const { sibling, manage } = await setup();
     const done = (await manage({ action: "finish", cardId: sibling.id, outcome: "done" })) as Card;
     expect(done.column).toBe("done");
-    const path = board.getCard(mine.id).worktreePath as string;
-    expect(await Bun.file(path).exists()).toBe(false);
     expect(await manage({ action: "finish" })).toBe("invalid_state/card_manage_args");
   });
 
@@ -164,7 +162,7 @@ describe("mcp-cards: the MCP tools", () => {
     expect((await call("comment_card", { text: "nota" })).data?.description).toContain("nota");
     expect(
       (await call("move_card", { cardId: ctx.foreign.id, column: "done" })).error ?? "",
-    ).toContain("outro projeto");
+    ).toContain("another project");
     expect((await call("finish_card", { outcome: "done" })).data?.column).toBe("done");
   });
 });

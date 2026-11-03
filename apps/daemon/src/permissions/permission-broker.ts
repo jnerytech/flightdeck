@@ -10,7 +10,7 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
-import { checkUpdates } from "./permission-updates.ts";
+import { alwaysAsks, checkUpdates } from "./permission-updates.ts";
 import type { Risk } from "./risk.ts";
 
 export interface BrokerHooks {
@@ -56,8 +56,10 @@ export class PermissionBroker {
     toolName: string,
     input: ToolInput,
     signal: AbortSignal,
-    suggestions: PermissionUpdate[] = [],
+    offered: PermissionUpdate[] = [],
   ): Promise<PermissionDecision> {
+    // A tool that always asks gets no "always allow" to pick.
+    const suggestions = alwaysAsks(toolName) ? [] : offered;
     if (signal.aborted) return Promise.resolve({ behavior: "deny", message: "cancelado" });
     const id = ulid();
     this.store.createPermission({ id, sessionId, toolName, input });

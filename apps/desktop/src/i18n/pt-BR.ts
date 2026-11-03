@@ -1078,6 +1078,11 @@ export const ptBR = {
     bypass_not_allowed:
       "Este host não permite sessões sem pedidos de permissão. Ative antes nas configurações do host.",
     bypass_confirm: "Ativar sessões sem pedidos de permissão precisa da sua confirmação.",
+    card_scope_unknown:
+      "Esta sessão não roda em um projeto deste host, então não pode gerenciar cards.",
+    card_id_needed: "Esta sessão não está em um card: diga qual card.",
+    card_other_project: "Esse card é de outro projeto que não o desta sessão.",
+    card_manage_args: "Falta algo que essa ação no card precisa.",
     transcript_not_indexed: "O transcript {id} não está indexado neste host.",
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",

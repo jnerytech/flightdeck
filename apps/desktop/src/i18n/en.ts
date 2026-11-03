@@ -1079,6 +1079,11 @@ export const en: Dictionary = {
     bypass_not_allowed:
       "This host does not allow sessions without permission prompts. Turn it on in the host's settings first.",
     bypass_confirm: "Turning on sessions without permission prompts needs your confirmation.",
+    card_scope_unknown:
+      "This session does not run in a project of this host, so it cannot manage cards.",
+    card_id_needed: "This session is not in a card: name which card.",
+    card_other_project: "That card belongs to another project than this session's.",
+    card_manage_args: "That card action is missing something it needs.",
     transcript_not_indexed: "The transcript {id} is not indexed on this host.",
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
