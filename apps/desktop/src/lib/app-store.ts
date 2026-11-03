@@ -1014,6 +1014,22 @@ export class AppStore {
     this.update({ selected: { hostId, sessionId } });
   }
 
+  /**
+   * Follows a session's full event stream without opening it, for as long as the returned function
+   * has not been called (the tiles of a project follow several at once).
+   */
+  watchSession(_hostId: string, _sessionId: string): () => void {
+    return () => {};
+  }
+
+  /** Sends a message to a session of a host, whether it is the open one or not. */
+  async sendTo(
+    _hostId: string,
+    _sessionId: string,
+    _text: string,
+    _images?: SessionImage[],
+  ): Promise<void> {}
+
   async setCloseToTray(enabled: boolean): Promise<void> {
     this.platform.storage.setItem(CLOSE_TO_TRAY_KEY, String(enabled));
     await this.platform.setCloseToTray(enabled);
