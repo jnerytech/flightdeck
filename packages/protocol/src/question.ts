@@ -214,25 +214,6 @@ export function plainQuestion(request: QuestionRequest, language: QuestionLangua
   };
 }
 
-/** The request in both languages, with what simple mode does with it: one source for every client. */
-export function plainInfo(_input: QuestionPolicyInput): {
-  kind: QuestionKind;
-  sentence: { en: string; "pt-BR": string };
-  consequence: { en: string; "pt-BR": string };
-  reversible: boolean;
-  outcome: "ask" | "needs_full_access";
-  hold: boolean;
-} {
-  return {
-    kind: "run",
-    sentence: { en: "", "pt-BR": "" },
-    consequence: { en: "", "pt-BR": "" },
-    reversible: true,
-    outcome: "ask",
-    hold: false,
-  };
-}
-
 export interface QuestionPolicyInput extends QuestionRequest {
   /** The request opens the vault. */
   vault?: boolean;
@@ -258,5 +239,20 @@ export function questionPolicy(input: QuestionPolicyInput): QuestionPolicy {
     hold: input.risk === "high",
     allowForSession: false,
     escapeDenies: true,
+  };
+}
+
+/** The request in both languages, with what simple mode does with it: one source for every client. */
+export function plainInfo(input: QuestionPolicyInput) {
+  const en = plainQuestion(input, "en");
+  const ptBr = plainQuestion(input, "pt-BR");
+  const policy = questionPolicy(input);
+  return {
+    kind: en.kind,
+    sentence: { en: en.sentence, "pt-BR": ptBr.sentence },
+    consequence: { en: en.consequence, "pt-BR": ptBr.consequence },
+    reversible: en.reversible,
+    outcome: policy.outcome,
+    hold: policy.hold,
   };
 }

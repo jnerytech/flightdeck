@@ -1,3 +1,5 @@
+import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import type {
   CommandPayload,
   EffortLevel,
@@ -12,7 +14,9 @@ import type {
   SessionPersona,
   SessionStatus,
   SessionSummary,
+  ToolInput,
 } from "@flightdeck/protocol";
+import { plainInfo } from "@flightdeck/protocol";
 import { summarizeInput } from "../central/external-permissions.ts";
 import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
@@ -118,6 +122,8 @@ export class SessionManager {
       emit: (sessionId, event) => this.emit(sessionId, event),
       onPendingChange: (sessionId, pending) => this.onPendingChange(sessionId, pending),
       classify: (sessionId, toolName, input) => this.classify(sessionId, toolName, input),
+      plain: (sessionId, toolName, input, risk) =>
+        this.plainOf(sessionId, toolName, input, risk.level),
       ...(opts.autoApprove
         ? {
             autoDecide: (request: AutoApproveRequest) =>
@@ -150,6 +156,40 @@ export class SessionManager {
     return !Object.keys(env).some((k) =>
       (API_KEY_VARS as readonly string[]).includes(k.toUpperCase()),
     );
+  }
+
+  /**
+   * The request in plain words (phase 33). Only the host can say whether a file is already there,
+   * and whether the request goes to the vault, so the wording is made here and sent with it.
+   */
+  private async plainOf(
+    sessionId: string,
+    toolName: string,
+    input: ToolInput,
+    risk: "low" | "medium" | "high",
+  ) {
+    const key = "file_path" in input ? "file_path" : "notebook_path";
+    const path = input[key];
+    let fileExists: boolean | undefined;
+    let worded: ToolInput = input;
+    if (typeof path === "string") {
+      // A relative path is the session's folder's: worded with the folder it really is in.
+      const absolute = resolve(this.get(sessionId).cwd, path);
+      worded = { ...input, [key]: absolute };
+      fileExists = await stat(absolute).then(
+        () => true,
+        () => false,
+      );
+    }
+    const command = typeof input.command === "string" ? input.command : "";
+    return plainInfo({
+      toolName,
+      input: worded,
+      risk,
+      ...(fileExists === undefined ? {} : { fileExists }),
+      // A request that names the vault is for someone with full access.
+      vault: /\bvault\b/i.test(toolName) || /\bflightdeckd?\s+vault\b/i.test(command),
+    });
   }
 
   list(): SessionSummary[] {
