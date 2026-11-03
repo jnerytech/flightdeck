@@ -598,6 +598,9 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
+/** How many used palette entries are kept (the palette shows five). */
+const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
@@ -983,6 +986,33 @@ export class AppStore {
     if (item) this.openRequest(item);
     else void this.platform.showMainWindow();
     return true;
+  }
+
+  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
+  decideOldest(decision: "approve" | "deny"): void {
+    const item = needsYou(this.state)[0];
+    if (item) this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+  }
+
+  /** What the palette was used for lately, most recent first. */
+  paletteRecents(): string[] {
+    try {
+      const stored = JSON.parse(this.platform.storage.getItem(PALETTE_RECENTS_KEY) ?? "[]");
+      return Array.isArray(stored)
+        ? stored.filter((id): id is string => typeof id === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
+  recordPaletteUse(id: string): void {
+    const next = [id, ...this.paletteRecents().filter((other) => other !== id)].slice(
+      0,
+      PALETTE_RECENTS_KEPT,
+    );
+    this.platform.storage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(next));
   }
 
   private openRequest(item: PendingItem): void {

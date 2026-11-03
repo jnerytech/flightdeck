@@ -32,6 +32,7 @@ are written in Portuguese.
   - [How it works](#how-it-works)
   - [Why the VS Code extension is left out](#why-the-vs-code-extension-is-left-out)
 - [Approvals and always allow](#approvals-and-always-allow)
+- [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
   - [Card lifecycle](#card-lifecycle)
@@ -100,6 +101,7 @@ are written in Portuguese.
   - [Tray](#tray)
   - [Open in terminal](#open-in-terminal)
   - [Palette Ctrl+K](#palette-ctrlk)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
   - [Global shortcut](#global-shortcut)
 - [Interface](#interface)
   - [Design and navigation](#design-and-navigation)
@@ -600,6 +602,19 @@ Cards run in worktrees, and each worktree has its own `.claude`:
 
 On the Projects screen, **Edit** shows the project's **Rules** section, with a remove button that
 asks for confirmation and preserves the rest of the file.
+
+## Projects
+
+The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
+host as a card: its name, host, base branch, the live sessions, the cards in progress, the ones
+that need you, the last activity and what it cost over the last seven days. The cost is a dash
+when the host does not report costs. Type in the search box to narrow the list by name, host,
+branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
+needs attention first.
+
+Click a card to open the project's page. It links the project's **Board**, **Sessions**,
+**Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
+settings, where the folder, base branch, setup and personas are edited).
 
 ## Board
 
@@ -2265,6 +2280,19 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
+- With nothing typed, a **Recent** section comes first with the last five entries you opened
+  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+  keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
+  **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
+  command shows its keys at the right.
+
+### Keyboard shortcuts
+
+`?` (outside text fields) opens a sheet with every shortcut, by group. The go-to chords press `g`
+and then a letter within about a second and a half: `g s` Sessions, `g n` Needs you, `g p`
+Projects, `g c` Costs, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
+forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
+`A`/`N` on a request. None of them fires while you type in a field.
 
 ### Global shortcut
 

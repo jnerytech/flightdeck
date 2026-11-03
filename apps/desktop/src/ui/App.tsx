@@ -1,6 +1,6 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
@@ -11,14 +11,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
+import { typing } from "../lib/keys.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
+import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
 import { preloadMarkdown } from "./Markdown.tsx";
 import { NotificationBell } from "./NotificationBell.tsx";
+import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
@@ -32,7 +35,9 @@ type InPlace =
   | "start-card"
   | "snippet"
   | "pull-link"
-  | "switch-client";
+  | "switch-client"
+  | "shortcuts"
+  | "decide-oldest";
 
 /** The screen of a palette target that opens one. */
 function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
@@ -71,6 +76,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "settings" };
     case "costs":
       return { name: "costs" };
+    case "go":
+      return { name: target.to };
     case "connect-ssh":
       return { name: "connections", connect: target.targetId };
     case "clients":
@@ -110,6 +117,9 @@ export function App({ store }: { store: AppStore }) {
   const { router } = store;
   const route = useSyncExternalStore(router.subscribe, () => router.current);
   const { t } = store.i18n;
+  // The `?` sheet, and the first key of a go-to chord waiting for its second.
+  const [help, setHelp] = useState(false);
+  const chord = useRef<ChordState>(NO_CHORD);
 
   // The header's path names the project of a board, a card or workflows: load the host's projects
   // when the screen was opened without passing through them (a link, a card of the queue).
@@ -187,6 +197,26 @@ export function App({ store }: { store: AppStore }) {
   // Alt+←/→ and the mouse's back and forward buttons walk the history.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The go-to chords and `?` (never while typing in a field).
+      const step = chordStep(
+        chord.current,
+        {
+          key: e.key,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          altKey: e.altKey,
+          typing: typing(e.target),
+        },
+        Date.now(),
+      );
+      chord.current = step.state;
+      if (step.consumed) e.preventDefault();
+      if (step.action === "help") setHelp(true);
+      else if (step.action === "go-sessions") router.push({ name: "hub" });
+      else if (step.action === "go-needs-you") router.push({ name: "needs-you" });
+      else if (step.action === "go-projects") router.push({ name: "all-projects" });
+      else if (step.action === "go-costs") router.push({ name: "costs" });
+      else if (step.action === "go-settings") router.push({ name: "settings" });
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         store.openSearch();
@@ -287,7 +317,9 @@ export function App({ store }: { store: AppStore }) {
       });
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
-    } else go(paletteRoute(target));
+    } else if (target.kind === "shortcuts") setHelp(true);
+    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
+    else go(paletteRoute(target));
   };
 
   return (
@@ -377,6 +409,13 @@ export function App({ store }: { store: AppStore }) {
               store={store}
               choice={state.snippetChoice}
               onClose={() => store.chooseSnippet(null)}
+            />
+          )}
+          {help && (
+            <ShortcutsSheet
+              store={store}
+              mac={isMac(typeof navigator === "undefined" ? undefined : navigator)}
+              onClose={() => setHelp(false)}
             />
           )}
           {state.searchOpen && (

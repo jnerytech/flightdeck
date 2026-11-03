@@ -32,6 +32,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Como funciona](#como-funciona)
   - [Por que a extensão do VS Code fica de fora](#por-que-a-extensão-do-vs-code-fica-de-fora)
 - [Aprovações e permitir sempre](#aprovações-e-permitir-sempre)
+- [Projetos](#projetos)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
   - [Ciclo do card](#ciclo-do-card)
@@ -99,6 +100,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Bandeja](#bandeja)
   - [Abrir no terminal](#abrir-no-terminal)
   - [Paleta Ctrl+K](#paleta-ctrlk)
+  - [Atalhos de teclado](#atalhos-de-teclado)
   - [Atalho global](#atalho-global)
 - [Interface](#interface)
   - [Desenho e navegação](#desenho-e-navegação)
@@ -584,6 +586,19 @@ Cards rodam em worktrees, e cada worktree tem o próprio `.claude`:
 
 Na tela Projetos, **Editar** mostra a seção **Regras** do projeto, com o botão de remover, que
 pede confirmação e preserva o resto do arquivo.
+
+## Projetos
+
+O item **Projetos** da barra lateral (entre Precisa de você e Board) lista todos os projetos de
+todos os hosts como cartões: nome, host, branch base, sessões ativas, cards em andamento, os que
+precisam de você, a última atividade e quanto custou nos últimos sete dias. O custo aparece como
+um traço quando o host não informa custos. Digite na busca para filtrar por nome, host, branch ou
+pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
+precisa de atenção primeiro.
+
+Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões** (a lista, filtrada pelo projeto: um chip "Projeto: nome" com × limpa o filtro), aos
+**Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
+configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 
 ## Board
 
@@ -2239,6 +2254,19 @@ Configurações) e, depois de Enter, **Histórico**.
 - **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
   Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
 - **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
+- Sem nada digitado, uma seção **Recentes** vem primeiro, com as cinco últimas entradas que você
+  abriu (guardadas entre execuções). **Ações** também tem **Ir para Sessões / Precisa de você /
+  Projetos**, **Mostrar os atalhos de teclado** e, enquanto um pedido espera por você, **Aprovar o
+  pedido mais antigo** e **Negar o pedido mais antigo** (um pedido de risco alto é aberto para ser
+  segurado, como na bandeja). Cada comando mostra suas teclas à direita.
+
+### Atalhos de teclado
+
+`?` (fora dos campos de texto) abre uma folha com todos os atalhos, por grupo. Os atalhos de ir
+para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões, `g n` Precisa de
+você, `g p` Projetos, `g c` Custos, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
+`Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
+`j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 
 ### Atalho global
 

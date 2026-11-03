@@ -3050,3 +3050,42 @@ fallbacks call it on purpose, so the list-based ratchet is the practical guard.
   members (`team_paused`), a closed one every change (`team_closed`), and the coordinator cannot
   leave (`team_coordinator_stays`); an unknown member is `team_member_unknown`. The coordinator
   is told through the existing system notice, which now names the persona and model.
+
+## Phase 32 part 2 — Projects (issue #9)
+
+- **The overview is built from what the app already holds.** `buildProjectCards` takes the online
+  hosts' projects, the Sessions hub rows (live sessions are the running and needs-you rows with the
+  project's key on that host), the board cards the app has seen (in progress), and each host's last
+  seven days from `costs.summary`. Opening the screen runs the palette's load, so a card count
+  is as fresh as that load; a project whose board was never fetched counts zero cards.
+- **Cost is "—", not zero, when the host cannot say.** A host without the `costs` feature is not
+  asked, and a host that has not answered yet shows the dash until it does. A host that answers
+  with no row for the project shows US$ 0.00.
+- **"Needs you" on a card counts sessions, not cards.** The waiting column is a state of the card,
+  and its session already counts as a session that needs you, so counting both would show the same
+  request twice.
+- **The project page links, it does not summarise.** Board, Sessions, Workflows, Costs and
+  Settings open the existing screens. Sessions opens the hub filtered to the project (a `project` param on
+  the `hub` route and a chip that clears it; the choice lives in the list, so opening a session
+  keeps it, and a different project from the route replaces it) and Settings opens the host's project settings, where the project is edited. The page
+  is a grid of destinations so the tiles of issue #8 add a section beside it later.
+- **Offline hosts are left out of the overview**, like the other cross-host lists: their projects
+  are not known until they reconnect.
+
+## Phase 32 part 2 — palette v2 and shortcuts (issue #9)
+
+- **One registry for the shortcuts** (`lib/shortcuts.ts`). The `?` sheet, the palette's hints and
+  the matcher read the same list, so a key is never described in one place and bound in another.
+  Shortcuts a screen handles itself (`j`/`k`/`Enter`, `A`/`N`) are listed too, with no action.
+- **Go-to chords are `g` then a letter**, within 1.5 s, and never while typing in a field or with
+  Ctrl, Alt or ⌘ held (so they cannot clash with the browser or the OS, which `Ctrl`/`Alt`
+  letters would). `Shift` alone keeps a chord pending. Not verified on the real Windows build
+  (WebView2); only plain letters are used, which it does not reserve.
+- **Recents are the ids of the last palette entries used**, kept in the app's storage (12, five
+  shown, only with nothing typed). An id that no longer exists is dropped when shown. An action
+  picked from the Tab list is not recorded as a recent.
+- **Approve/deny the oldest request** reuse the tray's rule: a high-risk request is opened to be
+  held instead of approved from a command. The commands show only while a request waits.
+- **Not done in this slice:** per-row action menus beyond the Tab actions that already existed
+  (copy id, open in split, end), and "switch host" and "open a Settings section" as commands.
+

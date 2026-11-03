@@ -194,6 +194,13 @@ export function Sidebar(props: {
         />
         <NavButton
           collapsed={collapsed}
+          icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+          active={here === "projects"}
+          label={t("sidebar.projects")}
+          onClick={() => go({ name: "all-projects" })}
+        />
+        <NavButton
+          collapsed={collapsed}
           icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
           active={here === "board"}
           label={t("sidebar.board")}
