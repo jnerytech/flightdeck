@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { statuslineText } from "../src/costs/statusline.ts";
+import { readConfig, statuslineText } from "../src/costs/statusline.ts";
 import { runCli, startDaemon } from "../src/main.ts";
 import { tempDir, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -50,6 +50,15 @@ function config(dir: string, port: number) {
 }
 
 describe("statusline", () => {
+  test("the config is read without blocking: a missing file and a bad one are null, a good one parses", async () => {
+    const dir = tempDir("fd-statusline-");
+    const missing = readConfig(join(dir, "none.json"));
+    expect(missing).toBeInstanceOf(Promise);
+    expect(await missing).toBeNull();
+    writeFileSync(join(dir, "bad.json"), "{}");
+    expect(await readConfig(join(dir, "bad.json"))).toBeNull();
+  });
+
   test("a linha: janelas da cota, custo de hoje e da sessão", () => {
     const windows = [
       { window: "five_hour", utilization: 0.35 },
