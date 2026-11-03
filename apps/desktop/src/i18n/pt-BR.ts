@@ -393,6 +393,8 @@ export const ptBR = {
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",
+    askTitle: "Claude pergunta",
+    planTitle: "Claude propõe um plano",
     approve: "Aprovar",
     question: { send: "Enviar respostas", other: "Outra" },
     plan: { approve: "Aprovar plano", keep: "Continuar planejando" },

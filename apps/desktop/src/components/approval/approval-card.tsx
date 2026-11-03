@@ -130,6 +130,12 @@ function RiskSeal({ risk, reason, t }: { risk: RiskLevel; reason?: string | unde
   );
 }
 
+/** The answers a request already carries (the tool's input after it was answered), if any. */
+function savedAnswers(input: Record<string, unknown>): Record<string, string> | null {
+  const saved = input.answers;
+  return saved && typeof saved === "object" ? (saved as Record<string, string>) : null;
+}
+
 /** "Aprovado automaticamente (regra): motivo": who decided, and why. */
 function autoLine(auto: AutoApproval, t: T): string {
   const by =
@@ -187,7 +193,8 @@ export function ApprovalCard(props: {
       : null;
   const [picks, setPicks] = useState<Record<string, AskPick>>({});
   const answers = questions ? buildAnswers(questions, picks) : null;
-  const high = request.risk === "high";
+  const asks = questions !== null || plan !== null;
+  const high = request.risk === "high" && !asks;
   const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
   const deny = () => {
     const message = reason.trim();
@@ -205,6 +212,32 @@ export function ApprovalCard(props: {
     else if (e.key === "Escape") e.currentTarget.blur();
   };
 
+  if (questions && resolution) {
+    const given = answers ?? savedAnswers(request.input);
+    const outcome = t(`approval.resolved.${resolution.decision}` as Key);
+    return (
+      <details
+        data-answered
+        data-request-id={request.requestId}
+        className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
+      >
+        <summary className="cursor-pointer">
+          {questions
+            .map((q) => `${q.header || q.question}: ${given?.[q.question] ?? outcome}`)
+            .join(" · ")}
+        </summary>
+        <dl className="mt-2 flex flex-col gap-1">
+          {questions.map((q) => (
+            <div key={q.question}>
+              <dt className="text-muted-foreground text-xs">{q.question}</dt>
+              <dd>{given?.[q.question] ?? outcome}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+    );
+  }
+
   return (
     <fieldset
       aria-label={t("approval.label", { tool: request.toolName })}
@@ -219,10 +252,20 @@ export function ApprovalCard(props: {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span>
-          {t("approval.title")} <strong>{request.toolName}</strong>
+          {questions ? (
+            <strong>{t("approval.askTitle")}</strong>
+          ) : plan !== null ? (
+            <strong>{t("approval.planTitle")}</strong>
+          ) : (
+            <>
+              {t("approval.title")} <strong>{request.toolName}</strong>
+            </>
+          )}
         </span>
         <span className="flex items-baseline gap-2">
-          {request.risk && <RiskSeal risk={request.risk} reason={request.riskReason} t={t} />}
+          {request.risk && !asks && (
+            <RiskSeal risk={request.risk} reason={request.riskReason} t={t} />
+          )}
           {age && <span className="text-muted-foreground text-xs">{age}</span>}
         </span>
       </div>
