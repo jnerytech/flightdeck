@@ -51,3 +51,24 @@ test("a rule can write to stderr, as gh does for a login's one-time code", async
     fake.restore();
   }
 });
+
+test("a rule can hold the process after it wrote, until it is killed or the delay passes", async () => {
+  const env: Record<string, string | undefined> = { ...process.env };
+  const fake = installFakeCli(
+    "gh",
+    [{ args: ["auth", "login"], stderr: "code\n", delayMs: 400 }],
+    env,
+  );
+  try {
+    const started = Date.now();
+    const proc = Bun.spawn(["gh", "auth", "login"], {
+      env: env as Record<string, string>,
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    await proc.exited;
+    expect(Date.now() - started).toBeGreaterThanOrEqual(350);
+  } finally {
+    fake.restore();
+  }
+});
