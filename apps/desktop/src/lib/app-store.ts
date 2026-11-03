@@ -115,6 +115,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
+import type { TileCount } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -1043,6 +1044,13 @@ export class AppStore {
       this.connections.get(hostId)?.unsubscribe(sessionId);
     };
   }
+
+  /** How many tiles the project page shows; kept across starts. */
+  tileCount(): TileCount {
+    return 2;
+  }
+
+  setTileCount(_count: TileCount): void {}
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
   async sendTo(
