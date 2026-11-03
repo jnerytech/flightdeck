@@ -1,5 +1,7 @@
 import { loopbackOnly } from "./pairing.ts";
 
+type HooksState = "installed" | "absent" | "outdated";
+
 export interface DoctorDeps {
   /** The config; throws with the cause when it cannot be read. */
   config(): { bind: string; port: number; allowedRoots: string[] };
@@ -7,7 +9,7 @@ export interface DoctorDeps {
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
   tailscaleIp(): Promise<string | null>;
-  hooks(): "installed" | "absent" | "outdated";
+  hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
 }
 
@@ -85,7 +87,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         ),
   );
 
-  const hooks = deps.hooks();
+  const hooks = await deps.hooks();
   checks.push(
     hooks === "installed"
       ? check("hooks", "ok", "installed")

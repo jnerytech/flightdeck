@@ -162,7 +162,7 @@ export async function stopServiceDaemon(
 }
 
 /** Hooks pointing somewhere else than the stable binary are written again; absent ones stay so. */
-function updateHooks(deps: UpdateDeps, config: Config): void {
+async function updateHooks(deps: UpdateDeps, config: Config): Promise<void> {
   const target: HookTarget = {
     command: [deps.stableBin],
     url: `http://127.0.0.1:${config.hooks.port}`,
@@ -170,8 +170,8 @@ function updateHooks(deps: UpdateDeps, config: Config): void {
     permissionTimeoutS: config.hooks.permissionTimeoutS,
     platform: deps.ctx.platform as NodeJS.Platform,
   };
-  if (hooksStatus(deps.settingsPath, target) !== "outdated") return;
-  installHooks(deps.settingsPath, target);
+  if ((await hooksStatus(deps.settingsPath, target)) !== "outdated") return;
+  await installHooks(deps.settingsPath, target);
   deps.log.log(`hooks reinstalados apontando para ${deps.stableBin}`);
 }
 
@@ -265,7 +265,7 @@ export async function runUpdate(
     log.log(`serviço reinstalado apontando para ${stableBin}`);
     for (const line of result.instructions) log.error(line);
   }
-  updateHooks(deps, config);
+  await updateHooks(deps, config);
 
   if (installed === null) {
     log.log(`flightdeckd ${deps.currentVersion} → ${version} instalado em ${stableBin}`);

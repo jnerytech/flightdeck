@@ -1314,11 +1314,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return;
       }
       case "hooks.status":
-        return ok(command.type, central().hooksStatus());
+        return ok(command.type, await central().hooksStatus());
       case "hooks.install":
-        return ok(command.type, central().hooksInstall(command.payload.confirm === true));
+        return ok(command.type, await central().hooksInstall(command.payload.confirm === true));
       case "hooks.uninstall":
-        return ok(command.type, central().hooksUninstall(command.payload.confirm === true));
+        return ok(command.type, await central().hooksUninstall(command.payload.confirm === true));
       case "external.list": {
         const { external, meta } = central();
         const sessions = external

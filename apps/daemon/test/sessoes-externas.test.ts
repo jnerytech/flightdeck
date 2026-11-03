@@ -113,10 +113,10 @@ describe("sessoes-externas", () => {
     expect(registry.get("s1")).toMatchObject({ status: "ended", statusReason: "stale" });
   });
 
-  test("a varredura roda no intervalo dado, com timers injetáveis", () => {
+  test("a varredura roda no intervalo dado, com timers injetáveis", async () => {
     const { registry, start, tick } = setup(1);
     start();
-    let callback: (() => void) | null = null;
+    let callback: (() => unknown) | null = null;
     let cleared = false;
     registry.start(60_000, {
       setInterval: (fn: () => void) => {
@@ -128,7 +128,7 @@ describe("sessoes-externas", () => {
       },
     });
     tick(5_000);
-    (callback as (() => void) | null)?.();
+    await (callback as (() => unknown) | null)?.();
     expect(registry.get("s1")?.status).toBe("ended");
     registry.stop();
     expect(cleared).toBe(true);

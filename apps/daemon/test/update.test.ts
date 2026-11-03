@@ -464,7 +464,7 @@ describe("update", () => {
       permissionTimeoutS: 600,
       platform: "win32" as const,
     };
-    installHooks(withHooks.settingsPath, target);
+    await installHooks(withHooks.settingsPath, target);
     expect(await update(withHooks.deps, fakeBinary("0.8.0"))).toBe(0);
     const settings = JSON.parse(readFileSync(withHooks.settingsPath, "utf8"));
     expect(settings.hooks.SessionStart).toEqual(
