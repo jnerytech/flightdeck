@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { Profiler } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -22,14 +23,21 @@ afterEach(async () => {
 });
 const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 8000 });
 const text = () => document.body.textContent ?? "";
+/** How many times the app committed a render: an idle app must not keep adding to it. */
+let commits = 0;
 
 async function setup() {
   const d = makeDaemon(cleanups, {});
-  const server = d.listen(0, 20);
+  const server = d.listen(0);
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
-  render(<App store={store} />);
+  commits = 0;
+  render(
+    <Profiler id="app" onRender={() => commits++}>
+      <App store={store} />
+    </Profiler>,
+  );
   await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
   await act(() => store.addHost({ name: "wsl", url: server.url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
@@ -118,4 +126,17 @@ describe("host-renomear", () => {
     // The body no longer has a name field of its own.
     await waitFor(() => expect(field()).toBeNull());
   }, 15_000);
+});
+
+describe("host-renomear: the app is quiet while nothing happens", () => {
+  // A daemon pinging every 20 ms made the app commit dozens of renders a second. React's `act`
+  // only settles when the queue is empty, so on a slow runner (or after a heavy file in the same
+  // process) it waited seconds for a gap and the menu clicks of the rename tests ran out of time.
+  test("two online hosts, left alone for 700 ms, commit almost no renders", async () => {
+    await setup();
+    await act(() => Bun.sleep(100));
+    const before = commits;
+    await act(() => Bun.sleep(700));
+    expect(commits - before).toBeLessThanOrEqual(3);
+  });
 });
