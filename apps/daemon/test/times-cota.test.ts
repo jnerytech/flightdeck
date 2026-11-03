@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { ExternalSessions } from "../src/central/external.ts";
+import { FlightdeckError } from "../src/errors.ts";
 import { LocalEndpoints } from "../src/messaging/endpoints.ts";
 import { Messaging } from "../src/messaging/messages.ts";
 import { Quota } from "../src/quota/quota.ts";
@@ -129,15 +130,30 @@ describe("times-cota: a pausa e a retomada pela cota do plano", () => {
     const project = ctx.board.listProjects()[0];
     reading(0.95, clock.at + 2 * HOUR);
     let error = "";
+    let why: FlightdeckError | undefined;
     try {
       await teams.create({ projectId: project?.id as string, goal: "x", workers: 1 });
     } catch (e) {
       error = `${(e as { code?: string }).code}: ${(e as Error).message}`;
+      why = e as FlightdeckError;
     }
+    expect(why?.reason).toBe("team_quota_until");
+    expect(why?.params).toEqual({ until: new Date(clock.at + 2 * HOUR).toISOString() });
     expect(error).toContain("invalid_state");
     expect(error).toContain("cota");
     expect(error).toContain(new Date(clock.at + 2 * HOUR).toISOString());
     expect(teams.list()).toEqual([]);
+  });
+
+  test("com a cota acima do limite e sem hora de reinício, a recusa diz só que está acima", async () => {
+    const { teams, ctx, quota } = await setup();
+    const project = ctx.board.listProjects()[0];
+    quota.record([{ window: "five_hour", utilization: 0.95, status: "allowed", resetsAt: null }]);
+    const why = await teams
+      .create({ projectId: project?.id as string, goal: "x", workers: 1 })
+      .catch((e: FlightdeckError) => e);
+    expect(why).toBeInstanceOf(FlightdeckError);
+    expect((why as FlightdeckError).reason).toBe("team_quota_over");
   });
 
   test("um time encerrado não é pausado nem retomado pela cota, e parar o serviço solta a assinatura", async () => {

@@ -240,7 +240,9 @@ export class Teams {
   status(id: string, asker?: string): TeamStatus {
     const team = this.get(id);
     if (asker !== undefined && !team.members.some((m) => m.sessionId === asker)) {
-      throw invalid(`esta sessão não é do time ${team.name}`);
+      throw invalid(`esta sessão não é do time ${team.name}`, "team_session_foreign", {
+        team: team.name,
+      });
     }
     const messages = this.opts.messaging
       .list({ team: id, days: 365, limit: 1000 })
@@ -304,9 +306,10 @@ export class Teams {
     const blocked = this.opts.quota?.blocked();
     if (blocked) {
       const until = blocked.until ? new Date(blocked.until).toISOString() : "o próximo reinício";
-      throw invalid(
-        `a cota do plano está acima do limite até ${until}: crie o time depois, senão ele nasce parado`,
-      );
+      const message = `a cota do plano está acima do limite até ${until}: crie o time depois, senão ele nasce parado`;
+      throw blocked.until
+        ? invalid(message, "team_quota_until", { until })
+        : invalid(message, "team_quota_over");
     }
     // The spec's coordinator is the pack's `coordenador` (phase 20) when none is asked for.
     const coordinatorPersona = await this.checkPersona(
@@ -465,7 +468,11 @@ export class Teams {
   close(id: string, confirm: boolean): TeamInfo {
     const row = this.row(id);
     if (row.state === "closed") return this.get(id);
-    if (!confirm) throw invalid(`encerrar o time ${row.name} pede confirm: true`);
+    if (!confirm) {
+      throw invalid(`encerrar o time ${row.name} pede confirm: true`, "team_close_confirm", {
+        name: row.name,
+      });
+    }
     const before = this.get(id);
     this.save(id, { state: "closed", paused_by: null });
     this.notify(before, `O time "${row.name}" foi encerrado: não há mais tarefas para este time.`);

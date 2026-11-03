@@ -215,7 +215,7 @@ describe("mcp-projeto", () => {
       () => "respondeu",
       (error: Error) => error.message,
     );
-    expect(timedOut).toBe("o servidor mudo não respondeu em 0.3 s");
+    expect(timedOut).toBe("the server mudo did not answer in 0.3 s");
   });
 
   test("testar um servidor http: manda os headers reais e lista as ferramentas; sem recursos, lista vazia", async () => {

@@ -69,14 +69,24 @@ export class Rewinder {
       .list(claudeSessionId)
       .reverse()
       .find((s) => s.kind === "safety");
-    if (!safety) throw new FlightdeckError("not_found", "nenhuma volta para desfazer nesta sessão");
+    if (!safety)
+      throw new FlightdeckError("not_found", "no rewind to undo in this session", "rewind_nothing");
     return this.restore(safety);
   }
 
   private allowed(claudeSessionId: string, confirm: boolean): void {
-    if (!confirm) throw new FlightdeckError("invalid_state", "voltar arquivos pede confirm: true");
+    if (!confirm)
+      throw new FlightdeckError(
+        "invalid_state",
+        "rewinding files needs confirm: true",
+        "rewind_confirm",
+      );
     if (this.opts.sessions.busy(claudeSessionId)) {
-      throw new FlightdeckError("invalid_state", "a sessão está num turno: pare-a antes de voltar");
+      throw new FlightdeckError(
+        "invalid_state",
+        "the session is in a turn: stop it before rewinding",
+        "rewind_turn_running",
+      );
     }
   }
 
@@ -84,14 +94,25 @@ export class Rewinder {
     const row = this.opts.snapshots
       .list(claudeSessionId)
       .find((s) => s.n === n && s.kind === "before");
-    if (!row) throw new FlightdeckError("not_found", `turno ${n} sem snapshot nesta sessão`);
+    if (!row)
+      throw new FlightdeckError(
+        "not_found",
+        `turn ${n} has no snapshot in this session`,
+        "snapshot_missing",
+        { n },
+      );
     return row;
   }
 
   private async safety(claudeSessionId: string, repo: string): Promise<void> {
     const result = await this.opts.snapshots.take({ cwd: repo, claudeSessionId, kind: "safety" });
     if ("skipped" in result) {
-      throw new FlightdeckError("invalid_state", `sem snapshot de segurança: ${result.skipped}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `no safety snapshot: ${result.skipped}`,
+        "rewind_no_safety_snapshot",
+        { why: result.skipped },
+      );
     }
   }
 

@@ -88,6 +88,7 @@ const validCommands: Record<CommandType, unknown> = {
   "maintenance.prune": { dryRun: true },
   "daemon.shutdown": {},
   "daemon.update.apply": { confirm: true },
+  "daemon.update.check": {},
   "snapshots.list": { claudeSessionId: "c1" },
   "snapshots.files": { claudeSessionId: "c", n: 3 },
   "mcp.status": { sessionId: "s1" },
