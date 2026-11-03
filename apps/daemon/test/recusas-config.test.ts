@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { AgentConfig } from "../src/agentcfg/files.ts";
-import { McpConfig } from "../src/agentcfg/mcp.ts";
+import { MASK, McpConfig } from "../src/agentcfg/mcp.ts";
 import { Forker } from "../src/checkpoints/fork.ts";
 import { Rewinder } from "../src/checkpoints/rewind.ts";
 import { Snapshots } from "../src/checkpoints/snapshots.ts";
@@ -154,7 +154,7 @@ describe("recusas-config: the MCP servers", () => {
     const { project, config } = setup();
     expect(
       await refused(() =>
-        config.save(project, { name: "eco", command: "x", env: { TOKEN: "••••••••" } }, true),
+        config.save(project, { name: "eco", command: "x", env: { TOKEN: MASK } }, true),
       ),
     ).toMatchObject({ code: "invalid_state", reason: "mcp_masked_values" });
     expect(await refused(() => config.remove(project, "nada", true))).toEqual({

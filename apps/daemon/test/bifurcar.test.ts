@@ -75,7 +75,7 @@ describe("bifurcar", () => {
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toBe("este runtime não bifurca sessões");
+    expect(message).toBe("this runtime does not fork sessions");
   });
 
   test("protocolo: session.fork", async () => {
