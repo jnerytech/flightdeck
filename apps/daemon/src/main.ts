@@ -552,7 +552,7 @@ export async function startDaemon(
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = acquireLock(config.dataDir);
   if (!lock) throw new AlreadyRunningError(config.dataDir);
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
   const { runtime, claude } = await createRuntime(runtimeKind, claudePath);
   // The plan quota is the host's: every managed session feeds it (phase 7).
@@ -1429,7 +1429,7 @@ async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
   if (!lock) {
     throw new AlreadyRunningError(config.dataDir, "pare o daemon antes de reconstruir o índice");
   }
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
     const history = new HistoryIndexer({
       db: store.db,
@@ -1530,9 +1530,9 @@ function runTelemetry(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
-function runBackup(args: CliArgs, deps: CliDeps): void {
+async function runBackup(args: CliArgs, deps: CliDeps): Promise<void> {
   const config = loadConfig(configPath(args));
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
     const info = new Maintenance({
       db: store.db,
@@ -1605,9 +1605,9 @@ function runRestore(args: CliArgs, deps: CliDeps): void {
 }
 
 /** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
-function runPrune(args: CliArgs, deps: CliDeps): void {
+async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
   const config = loadConfig(configPath(args));
-  const store = new EventStore(join(config.dataDir, "flightdeck.db"));
+  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
     const maintenance = new Maintenance({
       db: store.db,
@@ -1665,7 +1665,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
   try {
     const args = parseArgs(argv);
     if (args.command === "backup") {
-      runBackup(args, deps);
+      await runBackup(args, deps);
       deps.exit(0);
       return null;
     }
@@ -1679,7 +1679,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "db") {
-      runPrune(args, deps);
+      await runPrune(args, deps);
       deps.exit(0);
       return null;
     }

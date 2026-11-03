@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   EPHEMERAL_EVENTS,
@@ -124,11 +124,11 @@ export class EventStore {
 
   /** Opens the database, making its folder first without blocking. */
   static async open(path: string): Promise<EventStore> {
+    if (path !== ":memory:") await mkdir(dirname(path), { recursive: true });
     return new EventStore(path);
   }
 
   constructor(path: string) {
-    if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true, strict: true });
     this.db.exec("PRAGMA journal_mode = WAL;");
     // Under WAL, NORMAL syncs at checkpoints instead of at every commit: a crash of the app or the

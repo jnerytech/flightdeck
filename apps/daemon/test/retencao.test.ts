@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Config, loadConfig } from "../src/config.ts";
 import { parseArgs, runCli } from "../src/main.ts";
@@ -210,6 +210,7 @@ describe("retencao", () => {
   test("flightdeckd db prune [--dry-run] imprime as contagens por tabela", async () => {
     const dir = tempDir();
     const dataDir = join(dir, "data");
+    mkdirSync(dataDir, { recursive: true });
     const { store } = fixture(join(dataDir, "flightdeck.db"));
     store.close();
     const file = join(dir, "config.json");
