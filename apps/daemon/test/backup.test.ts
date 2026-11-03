@@ -91,7 +91,7 @@ describe("backup", () => {
   test("backup diário com o daemon: no boot só se o último tem mais de 24 h; status reúne tudo", async () => {
     const { dataDir, store } = liveDb();
     let now = NOW;
-    const intervals: Array<() => void> = [];
+    const intervals: Array<() => unknown> = [];
     const make = () =>
       new Maintenance({
         db: store.db,
@@ -100,7 +100,7 @@ describe("backup", () => {
         backup: { enabled: true, keep: 2 },
         now: () => now,
         timers: {
-          setInterval: (fn: () => void) => {
+          setInterval: (fn: () => unknown) => {
             intervals.push(fn);
             return 1 as unknown as ReturnType<typeof setInterval>;
           },
@@ -115,9 +115,9 @@ describe("backup", () => {
     await make().start();
     expect(backupFiles(dataDir)).toHaveLength(1);
     now += DAY;
-    intervals[0]?.();
+    await intervals[0]?.();
     now += DAY;
-    intervals[0]?.();
+    await intervals[0]?.();
     expect(backupFiles(dataDir)).toHaveLength(2);
     const status = await first.status();
     expect(status.dbBytes).toBeGreaterThan(0);

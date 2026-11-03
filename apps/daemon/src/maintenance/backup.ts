@@ -1,13 +1,5 @@
 import { Database } from "bun:sqlite";
-import {
-  chmodSync,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-  statSync,
-} from "node:fs";
+import { chmod, copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { acquireLock } from "../lock.ts";
 import { MIGRATIONS } from "../store/migrations.ts";
@@ -33,33 +25,42 @@ function backupName(now: number): string {
  * `VACUUM INTO` a consistent copy, safe with the daemon running (WAL). Owner-only file (0600
  * outside Windows). `out` replaces the automatic name in `dir`.
  */
-export function backupNow(db: Database, dir: string, now: number, out?: string): BackupInfo {
+export async function backupNow(
+  db: Database,
+  dir: string,
+  now: number,
+  out?: string,
+): Promise<BackupInfo> {
   const path = out ?? join(dir, backupName(now));
-  mkdirSync(dirname(path), { recursive: true });
-  rmSync(path, { force: true });
+  await mkdir(dirname(path), { recursive: true });
+  await rm(path, { force: true });
   db.query("VACUUM INTO ?").run(path);
-  chmodSync(path, 0o600);
-  return { path, at: new Date(now).toISOString(), bytes: statSync(path).size };
+  await chmod(path, 0o600);
+  return { path, at: new Date(now).toISOString(), bytes: (await stat(path)).size };
 }
 
 /** The automatic backups in `dir`, newest first. */
-export function listBackups(dir: string): BackupInfo[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .flatMap((name) => {
+export async function listBackups(dir: string): Promise<BackupInfo[]> {
+  const names = await readdir(dir).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+  const found = await Promise.all(
+    names.map(async (name) => {
       const m = NAME.exec(name);
       if (!m) return [];
       const path = join(dir, name);
       const at = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}.000Z`;
-      return [{ path, at, bytes: statSync(path).size }];
-    })
-    .sort((a, b) => b.at.localeCompare(a.at));
+      return [{ path, at, bytes: (await stat(path)).size }];
+    }),
+  );
+  return found.flat().sort((a, b) => b.at.localeCompare(a.at));
 }
 
 /** Deletes all but the newest `keep` automatic backups; returns what went. */
-export function keepLast(dir: string, keep: number): string[] {
-  const old = listBackups(dir).slice(keep);
-  for (const backup of old) rmSync(backup.path, { force: true });
+export async function keepLast(dir: string, keep: number): Promise<string[]> {
+  const old = (await listBackups(dir)).slice(keep);
+  await Promise.all(old.map((backup) => rm(backup.path, { force: true })));
   return old.map((backup) => backup.path);
 }
 
@@ -105,15 +106,20 @@ export async function restoreBackup(opts: {
     checkBackup(opts.file);
     const current = join(opts.dataDir, "flightdeck.db");
     const beforeRestore = `${current}.before-restore`;
-    if (existsSync(current)) {
+    if (
+      await stat(current).then(
+        () => true,
+        () => false,
+      )
+    ) {
       // Fold the WAL into the file first, so the copy is the whole database.
       const db = new Database(current);
       db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
       db.close();
-      copyFileSync(current, beforeRestore);
+      await copyFile(current, beforeRestore);
     }
-    copyFileSync(opts.file, current);
-    for (const suffix of ["-wal", "-shm"]) rmSync(`${current}${suffix}`, { force: true });
+    await copyFile(opts.file, current);
+    for (const suffix of ["-wal", "-shm"]) await rm(`${current}${suffix}`, { force: true });
     return { beforeRestore };
   } finally {
     await lock.release();

@@ -1,11 +1,11 @@
 import type { Database } from "bun:sqlite";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type BackupInfo, backupNow, keepLast, listBackups } from "./backup.ts";
 import { type PruneCounts, prune, type RetentionPolicy } from "./retention.ts";
 
 export interface MaintenanceTimers {
-  setInterval(fn: () => void, ms: number): ReturnType<typeof setInterval>;
+  setInterval(fn: () => unknown, ms: number): ReturnType<typeof setInterval>;
   clearInterval(id: ReturnType<typeof setInterval>): void;
 }
 
@@ -55,8 +55,8 @@ export class Maintenance {
     this.timers = opts.timers ?? globalThis;
   }
 
-  start(): void {
-    this.daily();
+  async start(): Promise<void> {
+    await this.daily();
     this.timer = this.timers.setInterval(() => this.daily(), DAY_MS);
   }
 
@@ -66,32 +66,32 @@ export class Maintenance {
   }
 
   /** Applies the retention policy now (or only counts) and records it as the last cleanup. */
-  prune(dryRun: boolean): PruneCounts {
+  async prune(dryRun: boolean): Promise<PruneCounts> {
     const at = this.now();
     const counts = prune(this.opts.db, this.opts.retention, { now: at, dryRun });
-    this.save({ lastPrune: { at: new Date(at).toISOString(), dryRun, counts } });
+    await this.save({ lastPrune: { at: new Date(at).toISOString(), dryRun, counts } });
     return counts;
   }
 
   /** A backup now (into `out`, or the backups folder keeping the last `backup.keep`). */
-  backupNow(out?: string): BackupInfo {
-    const info = backupNow(this.opts.db, this.backupsDir, this.now(), out);
-    if (!out) keepLast(this.backupsDir, this.opts.backup?.keep ?? DEFAULT_KEEP);
+  async backupNow(out?: string): Promise<BackupInfo> {
+    const info = await backupNow(this.opts.db, this.backupsDir, this.now(), out);
+    if (!out) await keepLast(this.backupsDir, this.opts.backup?.keep ?? DEFAULT_KEEP);
     return info;
   }
 
-  status(): MaintenanceStatus {
+  async status(): Promise<MaintenanceStatus> {
     const db = this.opts.db;
     const count = (table: string) =>
       (db.query(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
     const { page_count } = db.query("PRAGMA page_count").get() as { page_count: number };
     const { page_size } = db.query("PRAGMA page_size").get() as { page_size: number };
-    const backups = listBackups(this.backupsDir);
+    const backups = await listBackups(this.backupsDir);
     return {
       dbBytes: page_count * page_size,
       lastBackup: backups[0] ?? null,
       backups,
-      lastPrune: this.lastPrune(),
+      lastPrune: await this.lastPrune(),
       counts: {
         sessions: count("sessions"),
         events: count("events"),
@@ -100,17 +100,17 @@ export class Maintenance {
     };
   }
 
-  lastPrune(): LastPrune | null {
-    return this.state().lastPrune ?? null;
+  async lastPrune(): Promise<LastPrune | null> {
+    return (await this.state()).lastPrune ?? null;
   }
 
   /** Retention, then a backup when enabled and the last one is a day old (or missing). */
-  private daily(): void {
-    this.prune(false);
+  private async daily(): Promise<void> {
+    await this.prune(false);
     void this.opts.snapshots?.prune({ perSession: 50, days: 30 });
-    const last = listBackups(this.backupsDir)[0];
+    const last = (await listBackups(this.backupsDir))[0];
     const due = !last || this.now() - Date.parse(last.at) >= DAY_MS;
-    if (this.opts.backup?.enabled && due) this.backupNow();
+    if (this.opts.backup?.enabled && due) await this.backupNow();
   }
 
   private get backupsDir(): string {
@@ -121,11 +121,16 @@ export class Maintenance {
     return join(this.opts.dataDir, STATE_FILE);
   }
 
-  private state(): State {
-    return existsSync(this.file) ? (JSON.parse(readFileSync(this.file, "utf8")) as State) : {};
+  private async state(): Promise<State> {
+    try {
+      return JSON.parse(await readFile(this.file, "utf8")) as State;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+      throw error;
+    }
   }
 
-  private save(patch: State): void {
-    writeFileSync(this.file, JSON.stringify({ ...this.state(), ...patch }, null, 2));
+  private async save(patch: State): Promise<void> {
+    await writeFile(this.file, JSON.stringify({ ...(await this.state()), ...patch }, null, 2));
   }
 }

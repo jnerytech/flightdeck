@@ -940,11 +940,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { claudeSessionId, ...meta });
       }
       case "maintenance.status":
-        return ok(command.type, maintenance().status());
+        return ok(command.type, await maintenance().status());
       case "maintenance.backup":
-        return ok(command.type, maintenance().backupNow());
+        return ok(command.type, await maintenance().backupNow());
       case "maintenance.prune":
-        return ok(command.type, maintenance().prune(command.payload.dryRun === true));
+        return ok(command.type, await maintenance().prune(command.payload.dryRun === true));
       case "snapshots.list":
         return ok(command.type, {
           // A terminal turn's uuid is found in the indexed transcript, when it can be told.

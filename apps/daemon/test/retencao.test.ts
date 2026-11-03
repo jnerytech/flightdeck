@@ -149,14 +149,14 @@ describe("retencao", () => {
     const { db, eventsOf } = fixture();
     const dataDir = tempDir();
     let now = NOW;
-    const intervals: Array<{ fn: () => void; ms: number }> = [];
+    const intervals: Array<{ fn: () => unknown; ms: number }> = [];
     const maintenance = new Maintenance({
       db,
       dataDir,
       retention: POLICY,
       now: () => now,
       timers: {
-        setInterval: (fn: () => void, ms: number) => {
+        setInterval: (fn: () => unknown, ms: number) => {
           intervals.push({ fn, ms });
           return 1 as unknown as ReturnType<typeof setInterval>;
         },
@@ -173,7 +173,7 @@ describe("retencao", () => {
     });
     // A day later "recent" is still recent; 81 days later it goes.
     now += 81 * DAY;
-    intervals[0]?.fn();
+    await intervals[0]?.fn();
     expect(eventsOf("recent")).toBe(0);
     expect((await maintenance.lastPrune())?.counts.events).toBe(2);
     expect(existsSync(join(dataDir, "maintenance.json"))).toBe(true);

@@ -690,7 +690,7 @@ export async function startDaemon(
     backup: config.backup,
     snapshots,
   });
-  maintenance.start();
+  await maintenance.start();
   // Checked in the background: a slow or unreachable release server never delays the boot.
   const updates = config.updates.manifestUrl
     ? new UpdateChecker({
@@ -1550,7 +1550,7 @@ async function runBackup(args: CliArgs, deps: CliDeps): Promise<void> {
   const config = await loadConfig(configPath(args));
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   try {
-    const info = new Maintenance({
+    const info = await new Maintenance({
       db: store.db,
       dataDir: config.dataDir,
       retention: config.retention,
@@ -1631,7 +1631,7 @@ async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
       retention: config.retention,
       ...(deps.now ? { now: deps.now } : {}),
     });
-    const counts = maintenance.prune(args.dryRun === true);
+    const counts = await maintenance.prune(args.dryRun === true);
     deps.log.log(args.dryRun ? "simulação da limpeza (nada foi apagado):" : "limpeza feita:");
     for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
   } finally {
