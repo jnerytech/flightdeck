@@ -7,6 +7,7 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { useHostLatency } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import type { HostNameError } from "../lib/host-name.ts";
@@ -109,11 +110,7 @@ export function HostPage(props: {
               </li>
               <li>{t("hostPage.active", { n: info.activeSessions })}</li>
               <li>{t("hostPage.uptime", { n: info.uptimeSec })}</li>
-              <li>
-                {t("hostPage.latency", {
-                  value: host.latencyMs === null ? "—" : `${host.latencyMs} ms`,
-                })}
-              </li>
+              <HostLatency store={store} hostId={host.id} />
             </ul>
           ) : (
             <p className="text-muted-foreground text-sm">{t("hostPage.unavailable")}</p>
@@ -201,4 +198,11 @@ export function HostPage(props: {
       </div>
     </Page>
   );
+}
+
+/** The heartbeat latency line: the only part of the page that renders on a ping. */
+function HostLatency(props: { store: AppStore; hostId: string }) {
+  const t = useT();
+  const latency = useHostLatency(props.store, props.hostId);
+  return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;
 }
