@@ -8,6 +8,7 @@ import { Automations } from "../../daemon/src/automations/automations.ts";
 import type { BgService } from "../../daemon/src/bg/service.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
+import { ProjectKeys } from "../../daemon/src/central/project-key.ts";
 import { Forker } from "../../daemon/src/checkpoints/fork.ts";
 import { Rewinder } from "../../daemon/src/checkpoints/rewind.ts";
 import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
@@ -237,8 +238,11 @@ export function daemon(
   const settingsFile = join(root, "claude-home", "settings.json");
   const configFile = join(root, "config.json");
   writeFileSync(configFile, JSON.stringify({ token: TOKEN }));
+  // Shared with the server like the real daemon does: listings look the keys up before they read them.
+  const keys = new ProjectKeys("h1");
   const central = new Central({
     ...(snapshots ? { snapshots } : {}),
+    keys,
     db: store.db,
     manager,
     hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
@@ -369,6 +373,7 @@ export function daemon(
       quota,
       usage,
       central,
+      warmProjectKey: (cwd) => keys.resolve(cwd),
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),

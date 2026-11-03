@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Central } from "../src/central/central.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { ProjectKeys } from "../src/central/project-key.ts";
 import { startReceptor } from "../src/central/receptor.ts";
+import { RECEPTOR_FILE } from "../src/central/wrapper.ts";
 import { Names } from "../src/names/names.ts";
 import { type TrackOptions, trackNames, warmKnown } from "../src/names/track.ts";
 import { EventStore } from "../src/store/event-store.ts";
@@ -143,6 +144,28 @@ describe("chave-quente: the project key is looked up before the places that read
     expect((await held).status).toBe(200);
     expect(asked).toEqual(["/w/one"]);
     expect(external.get("s1")).not.toBeNull();
+  });
+
+  test("the receptor file is published by the time the hub is ready, so a launch right after the start finds it", async () => {
+    const dir = tempDir();
+    const configFile = join(dir, "config.json");
+    writeFileSync(configFile, "{}");
+    const { manager, store } = newManager();
+    const central = new Central({
+      db: store.db,
+      keys: new ProjectKeys("h", async () => ({ code: 1, stdout: "" })),
+      manager,
+      hooks: { port: 0, token: HOOKS, permissionTimeoutS: 600, staleAfterS: 900 },
+      dataDir: join(dir, "data"),
+      hostName: "h",
+      configFile,
+      selfCommand: ["flightdeckd"],
+      settingsPath: () => join(dir, "settings.json"),
+    });
+    cleanups.push(() => central.stop());
+    await central.ready();
+    const published = JSON.parse(readFileSync(join(dir, "data", RECEPTOR_FILE), "utf8"));
+    expect(published).toEqual({ url: central.receptorUrl() });
   });
 
   test("the hub shares the host's keys: a hook is stored with the key looked up before it", async () => {

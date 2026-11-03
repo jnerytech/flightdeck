@@ -513,10 +513,15 @@ async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<Cr
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-function terminalInfo(env: Record<string, string | undefined>) {
+async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
   return {
-    flightdeckdPath: existsSync(stable) ? stable : null,
+    flightdeckdPath: (await stat(stable).then(
+      () => true,
+      () => false,
+    ))
+      ? stable
+      : null,
     wslDistro: env.WSL_DISTRO_NAME || null,
   };
 }
@@ -963,6 +968,8 @@ export async function startDaemon(
   board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
+  // The wrapper finds the receptor through this file: nothing is served before it is there.
+  await central.ready();
   const server = startServer({
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
@@ -1108,7 +1115,7 @@ export async function startDaemon(
     allowedNetworks: config.allowedNetworks,
     ...(claude ? { claude } : {}),
     ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
-    terminal: terminalInfo(env),
+    terminal: await terminalInfo(env),
   });
 
   const wsl =
