@@ -3273,6 +3273,7 @@ itself. The audit counts a test commit only if it comes earlier in `git log --re
 cannot satisfy it, and rc/0330 was already merged elsewhere, so history is not rewritten.
 
 `scripts/tdd-audit-waivers.json` lists the accepted exceptions as `{ hash, scope, reason }`. The rules are strict: a waiver
-matches the full 40-character hash and the scope only; one that matches no violation in the audited range is reported as
-stale and fails the audit, so the list cannot grow silently; and the output prints every waived commit. Nothing else in the
-audit is relaxed. New entries need the maintainer's agreement.
+matches the full 40-character hash and the scope only; one whose commit is inside the audited range but is not a
+violation is reported as stale and fails the audit, so the list cannot grow silently; one whose commit is outside the
+range (a later release audits from a newer tag) is ignored and shown as an `ignored` note; and the output prints every
+waived commit. Nothing else in the audit is relaxed. New entries need the maintainer's agreement.

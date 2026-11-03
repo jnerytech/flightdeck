@@ -121,19 +121,23 @@ export function runAudit({ since, git, readFile, waivers = [] }: AuditDeps): {
   const waived = waivers.filter((w) =>
     found.some((v) => v.commit === w.hash && v.scope === w.scope),
   );
+  const inRange = new Set(commits.map((c) => c.hash));
   const stale: Violation[] = waivers
-    .filter((w) => !waived.includes(w))
+    .filter((w) => !waived.includes(w) && inRange.has(w.hash))
     .map((w) => ({
       commit: w.hash,
       scope: w.scope,
-      reason: "stale waiver: not a violation in the audited range",
+      reason: "stale waiver: the commit is in the audited range and is not a violation",
     }));
+  const ignored = waivers
+    .filter((w) => !inRange.has(w.hash))
+    .map((w) => `  ignored  ${w.hash}  ${w.scope}  outside the audited range`);
   const open = found.filter((v) => !waived.some((w) => w.hash === v.commit && w.scope === v.scope));
   const violations = [...open, ...stale, ...findForbiddenMarkers(files)];
   const waivedLines = waived.map((w) => `  waived  ${w.hash}  ${w.scope}  ${w.reason}`);
   if (violations.length === 0) {
     const head = waived.length === 0 ? "TDD AUDIT OK" : `TDD AUDIT OK (${waived.length} waived)`;
-    return { code: 0, output: [head, ...waivedLines].join("\n") };
+    return { code: 0, output: [head, ...waivedLines, ...ignored].join("\n") };
   }
   return {
     code: 1,
@@ -141,6 +145,7 @@ export function runAudit({ since, git, readFile, waivers = [] }: AuditDeps): {
       `TDD AUDIT FAIL: ${violations.length} violação(ões)`,
       ...violations.map((v) => `  ${v.commit}  ${v.scope}  ${v.reason}`),
       ...(waived.length === 0 ? [] : [`${waived.length} waived:`, ...waivedLines]),
+      ...ignored,
     ].join("\n"),
   };
 }
