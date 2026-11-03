@@ -95,7 +95,7 @@ async function setup(platform = memoryPlatform()) {
       ts: "2026-09-01T10:00:00.000Z",
     }),
   ]);
-  d.history.scan();
+  await d.history.scan();
   await d.central.hooksInstall(true);
   const token = loadConfig(d.configFile).hooks.token ?? "";
   const hook = (session: string, event: string, cwd: string, body: Record<string, unknown> = {}) =>

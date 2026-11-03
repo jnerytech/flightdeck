@@ -30,14 +30,14 @@ describe("origem", () => {
     expect(origins(store.db)).toEqual({ [managed ?? ""]: "flightdeck", "de-fora": "external" });
   });
 
-  test("transcript indexado antes do session.init passa a flightdeck na próxima varredura", () => {
+  test("transcript indexado antes do session.init passa a flightdeck na próxima varredura", async () => {
     const store = new EventStore(":memory:");
     const root = projectsRoot();
     const path = writeTranscript(root, "-p", "cedo", [
       userLine({ uuid: "u1", text: "x", cwd: "/p" }),
     ]);
     const indexer = new HistoryIndexer({ db: store.db, roots: [root] });
-    indexer.scan();
+    await indexer.scan();
     expect(origins(store.db)).toEqual({ cedo: "external" });
 
     store.createSession({
@@ -50,12 +50,12 @@ describe("origem", () => {
     });
     store.updateSession("S1", { claudeSessionId: "cedo" });
     // No new bytes in the file: the pass still refreshes the origin.
-    expect(indexer.scan()).toEqual([]);
+    expect(await indexer.scan()).toEqual([]);
     expect(origins(store.db)).toEqual({ cedo: "flightdeck" });
 
     // And new lines keep it.
     appendRaw(path, `${userLine({ uuid: "u2", text: "y", cwd: "/p" })}\n`);
-    indexer.scan();
+    await indexer.scan();
     expect(origins(store.db)).toEqual({ cedo: "flightdeck" });
   });
 });

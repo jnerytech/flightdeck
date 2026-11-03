@@ -56,11 +56,23 @@ describe("historico-assincrono: a pass in the background does not hold the event
     expect(pauses).toBeGreaterThanOrEqual(11);
   });
 
+  test("scan, rebuild and get read the files without blocking: each returns a promise", async () => {
+    const { root } = corpus();
+    const { indexer: index } = indexer(root);
+    const scanned = index.scan();
+    expect(scanned).toBeInstanceOf(Promise);
+    await scanned;
+    expect(index.get(SMALL_A)).toBeInstanceOf(Promise);
+    const rebuilt = index.rebuild();
+    expect(rebuilt).toBeInstanceOf(Promise);
+    expect((await rebuilt).sessions).toBe(3);
+  });
+
   test("the slices add up to what a whole pass indexes, and the result names each file once", async () => {
     const { root, big } = corpus();
     const whole = indexer(root);
     const sliced = indexer(root, { sliceBytes: SLICE });
-    const expected = whole.indexer.scan();
+    const expected = await whole.indexer.scan();
     const results = await sliced.indexer.scanAsync();
     expect(results.map((r) => [r.claudeSessionId, r.added, r.reset]).sort()).toEqual(
       expected.map((r) => [r.claudeSessionId, r.added, r.reset]).sort(),

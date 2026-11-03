@@ -156,7 +156,7 @@ describe("estados-avisos", () => {
         ts: "2026-09-01T10:00:00.000Z",
       }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const mem = memoryPlatform();
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);

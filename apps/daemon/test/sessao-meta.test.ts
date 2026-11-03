@@ -56,7 +56,7 @@ async function setup() {
   writeTranscript(root, "-p", "h1", [
     userLine({ uuid: "u1", text: "antiga", cwd: project, ts: "2026-10-01T10:00:00.000Z" }),
   ]);
-  history.scan();
+  await history.scan();
   central.external.apply("SessionStart", { session_id: "e1", cwd: project });
   const client = new FrameClient(server.url);
   cleanups.push(() => client.close());

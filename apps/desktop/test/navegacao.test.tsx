@@ -287,7 +287,7 @@ describe("navegacao", () => {
     writeTranscript(d.historyRoot, "-p", "ext-1", [
       userLine({ uuid: "u1", text: "Do terminal", cwd: d.project, ts: "2026-09-01T10:00:00.000Z" }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
@@ -318,7 +318,7 @@ describe("navegacao", () => {
         ts: "2026-09-01T10:00:00.000Z",
       }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const { sessionId } = d.manager.create({
       cwd: d.project,
       prompt: "olá do começo",
@@ -361,7 +361,7 @@ describe("navegacao", () => {
         ts: "2026-09-01T10:00:00.000Z",
       }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const url = d.listen().url;
     const mem = memoryPlatform();
     const secrets = new Map<string, string>();

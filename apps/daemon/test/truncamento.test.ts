@@ -15,7 +15,7 @@ const ID = "44444444-4444-4444-8444-444444444444";
 const CWD = "/home/dev/projeto-trunc";
 
 describe("truncamento", () => {
-  test("arquivo menor que o offset é reindexado do zero", () => {
+  test("arquivo menor que o offset é reindexado do zero", async () => {
     const root = projectsRoot();
     const { db } = new EventStore(":memory:");
     const indexer = new HistoryIndexer({ db, roots: [root] });
@@ -25,12 +25,12 @@ describe("truncamento", () => {
       "linha inválida",
       userLine({ uuid: "u2", text: "outra antiga", cwd: CWD }),
     ]);
-    indexer.scan();
+    await indexer.scan();
     expect(fileRow(db, path)?.parse_errors).toBe(1);
 
     // Same file name, shorter content (truncated or swapped by another tool).
     writeFileSync(path, `${userLine({ uuid: "n1", text: "nova", cwd: CWD })}\n`);
-    expect(indexer.scan().map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
+    expect(await indexer.scan().map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
       [ID, 1, true],
     ]);
     expect(storedMessages(db, ID).map((m) => [m.uuid, m.text])).toEqual([["n1", "nova"]]);
@@ -45,21 +45,21 @@ describe("truncamento", () => {
     expect(session).toEqual({ title: "nova", message_count: 1 });
   });
 
-  test("arquivo esvaziado fica sem mensagens e a próxima linha entra normalmente", () => {
+  test("arquivo esvaziado fica sem mensagens e a próxima linha entra normalmente", async () => {
     const root = projectsRoot();
     const { db } = new EventStore(":memory:");
     const indexer = new HistoryIndexer({ db, roots: [root] });
     const path = writeTranscript(root, "-p", ID, [
       userLine({ uuid: "u1", text: "vai sumir", cwd: CWD }),
     ]);
-    indexer.scan();
+    await indexer.scan();
     writeFileSync(path, "");
-    expect(indexer.scan().map((r) => [r.added, r.reset])).toEqual([[0, true]]);
+    expect(await indexer.scan().map((r) => [r.added, r.reset])).toEqual([[0, true]]);
     expect(storedMessages(db, ID)).toEqual([]);
     expect(fileRow(db, path)?.offset).toBe(0);
 
     writeFileSync(path, `${userLine({ uuid: "u9", text: "voltou", cwd: CWD })}\n`);
-    expect(indexer.scan().map((r) => [r.added, r.reset])).toEqual([[1, false]]);
+    expect(await indexer.scan().map((r) => [r.added, r.reset])).toEqual([[1, false]]);
     expect(storedMessages(db, ID).map((m) => m.text)).toEqual(["voltou"]);
   });
 });

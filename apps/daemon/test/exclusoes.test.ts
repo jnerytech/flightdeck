@@ -24,7 +24,7 @@ const sessionIds = (db: EventStore["db"]) =>
   ).map((r) => r.id);
 
 describe("exclusoes", () => {
-  test("sessão com cwd numa pasta excluída (ou dentro dela) não entra no índice", () => {
+  test("sessão com cwd numa pasta excluída (ou dentro dela) não entra no índice", async () => {
     const root = projectsRoot();
     const { db } = new EventStore(":memory:");
     const excluded = writeTranscript(root, "-x", "s-excluida", [
@@ -57,36 +57,39 @@ describe("exclusoes", () => {
     // Read once and skipped, not read again on every pass.
     expect(fileRow(db, excluded)?.offset).toBe(statSync(excluded).size);
     appendRaw(excluded, `${userLine({ uuid: "u2", text: "mais", cwd: "/home/dev/secreto" })}\n`);
-    expect(indexer.scan()).toEqual([]);
+    expect(await indexer.scan()).toEqual([]);
     expect(storedMessages(db, "s-excluida")).toEqual([]);
   });
 
-  test("cwd que só aparece numa leitura posterior também exclui o que já tinha entrado", () => {
+  test("cwd que só aparece numa leitura posterior também exclui o que já tinha entrado", async () => {
     const root = projectsRoot();
     const { db } = new EventStore(":memory:");
     const path = writeTranscript(root, "-p", "s-tardia", [summaryLine("só o resumo", "x")]);
     const indexer = new HistoryIndexer({ db, roots: [root], excludeCwds: ["/srv/privado"] });
-    indexer.scan();
+    await indexer.scan();
     expect(sessionIds(db)).toEqual(["s-tardia"]);
     appendRaw(path, `${userLine({ uuid: "u1", text: "agora sim", cwd: "/srv/privado/app" })}\n`);
-    indexer.scan();
+    await indexer.scan();
     expect(sessionIds(db)).toEqual([]);
     expect(storedMessages(db, "s-tardia")).toEqual([]);
   });
 
-  test.if(process.platform === "win32")("no Windows a comparação ignora caixa e barras", () => {
-    const root = projectsRoot();
-    const { db } = new EventStore(":memory:");
-    writeTranscript(root, "-p", "s-win", [
-      userLine({ uuid: "u1", text: "x", cwd: "C:\\Users\\Dev\\Privado\\app" }),
-    ]);
-    const indexer = new HistoryIndexer({
-      db,
-      roots: [root],
-      excludeCwds: ["c:/users/dev/privado"],
-    });
-    expect(indexer.scan()).toEqual([]);
-  });
+  test.if(process.platform === "win32")(
+    "no Windows a comparação ignora caixa e barras",
+    async () => {
+      const root = projectsRoot();
+      const { db } = new EventStore(":memory:");
+      writeTranscript(root, "-p", "s-win", [
+        userLine({ uuid: "u1", text: "x", cwd: "C:\\Users\\Dev\\Privado\\app" }),
+      ]);
+      const indexer = new HistoryIndexer({
+        db,
+        roots: [root],
+        excludeCwds: ["c:/users/dev/privado"],
+      });
+      expect(await indexer.scan()).toEqual([]);
+    },
+  );
 
   test("config: history.roots padrão em ~/.claude/projects e ~ expandido nas exclusões", () => {
     const dir = tempDir();

@@ -137,7 +137,7 @@ describe("resumo-lista", () => {
       }),
     ]);
     utimesSync(old, new Date(Date.now() - 3_600_000), new Date(Date.now() - 3_600_000));
-    d.history.scan();
+    await d.history.scan();
 
     const idleSince = Date.parse(managed.updatedAt);
     const store = new AppStore(memoryPlatform().platform, {

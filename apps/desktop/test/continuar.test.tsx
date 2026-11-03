@@ -35,7 +35,7 @@ async function setup(opts: { stale: boolean; cwd?: string }) {
     const old = new Date(Date.now() - 3_600_000);
     utimesSync(path, old, old);
   }
-  d.history.scan();
+  await d.history.scan();
   const server = d.listen();
   const mem = memoryPlatform();
   const copied: string[] = [];

@@ -93,7 +93,7 @@ async function setup() {
       ts: "2026-09-01T10:00:00.000Z",
     }),
   ]);
-  d.history.scan();
+  await d.history.scan();
   // A session opened in the terminal (hooks), live.
   const appA = join(d.root, "app-a");
   mkdirSync(appA);

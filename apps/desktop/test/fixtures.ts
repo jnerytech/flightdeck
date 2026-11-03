@@ -73,7 +73,7 @@ export async function waitFor<T>(
 
 /**
  * In-process daemon with the FakeRuntime and a board; `listen` can be called again on the same port. Its
- * history index reads `historyRoot` (a fake `~/.claude/projects`); call `history.scan()` after
+ * history index reads `historyRoot` (a fake `~/.claude/projects`); call `await history.scan()` after
  * writing transcripts there.
  */
 export function daemon(

@@ -56,7 +56,7 @@ async function setup() {
       ts: "2026-09-10T09:00:00.000Z",
     }),
   ]);
-  d.history.scan();
+  await d.history.scan();
   const server = d.listen();
   const store = new AppStore(memoryPlatform().platform, {
     baseDelayMs: 60_000,

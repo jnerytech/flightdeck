@@ -116,12 +116,12 @@ async function setup() {
   writeTranscript(alfa.historyRoot, "-repo", "ext-1", [
     userLine({ uuid: "x1", text: "rode os testes", cwd: repoA, ts: new Date().toISOString() }),
   ]);
-  alfa.history.scan();
+  await alfa.history.scan();
   const old = writeTranscript(beta.historyRoot, "-repo", "hist-1", [
     userLine({ uuid: "u1", text: "Do histórico", cwd: repoB, ts: "2026-09-01T10:00:00.000Z" }),
   ]);
   utimesSync(old, new Date(Date.now() - 3_600_000), new Date(Date.now() - 3_600_000));
-  beta.history.scan();
+  await beta.history.scan();
 
   const mem = memoryPlatform();
   const copied: string[] = [];

@@ -65,7 +65,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
     }
     const index = new HistoryIndexer({ db: new EventStore(":memory:").db, roots: [root] });
     cleanups.push(() => index.stop());
-    index.scan();
+    await index.scan();
     const { keys, calls } = countingKeys();
     const { manager } = newManager();
     const server = startServer({

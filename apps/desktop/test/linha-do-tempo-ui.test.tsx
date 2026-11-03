@@ -416,7 +416,7 @@ describe("linha-do-tempo-ui", () => {
     writeTranscript(d.historyRoot, "-p", "ext-1", [
       userLine({ uuid: "u-ext", text: "arrume o README", cwd: repo }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {

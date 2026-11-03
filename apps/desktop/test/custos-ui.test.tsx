@@ -266,7 +266,7 @@ describe("custos-ui", () => {
     writeTranscript(d.historyRoot, "-p", "s-hist", [
       userLine({ uuid: "u1", text: "Lido do histórico", cwd: d.project }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     spend(d, { day: "2026-10-15", key: "kA", cost: 5, session: "s-hist" });
     spend(d, { day: "2026-10-15", key: "kA", model: "claude-mystery-9", cost: null });
     await click("Custos");
