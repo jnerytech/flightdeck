@@ -19,6 +19,8 @@ export interface OtlpReceiverOptions {
   port: number;
   /** The receiver's own token, read on every request; none installed means every request is refused. */
   token: () => string | null | undefined | Promise<string | null | undefined>;
+  /** The gzip decompressor; the async zlib one when absent. */
+  inflate?: (body: Uint8Array, options: { maxOutputLength: number }) => Promise<Uint8Array>;
   /** Largest body, before and after gunzip, in bytes. */
   maxBytes?: number;
   onEvents: (events: OtlpEvent[]) => void;
