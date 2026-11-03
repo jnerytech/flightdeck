@@ -33,6 +33,7 @@ import type {
   RunConfigInfo,
   RunState,
   SessionEventOf,
+  SessionImage,
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
@@ -1623,7 +1624,7 @@ export class AppStore {
     }
   }
 
-  async send(text: string): Promise<void> {
+  async send(text: string, _images?: SessionImage[]): Promise<void> {
     startMeasure("send");
     await this.onSelected((conn, sessionId) => conn.request("session.send", { sessionId, text }));
     endMeasure("send");
