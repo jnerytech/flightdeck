@@ -205,7 +205,8 @@ for (const [lang, t] of [
       await settle(() => screen.queryByRole("button", { name: t.githubStart.open }) !== null);
       await click(t.githubStart.open);
       await settle(() => screen.queryByRole("radio", { name: /octocat\/app/ }) !== null);
-      const result = await axe.run(document.body, {
+      // The dialog itself: the modal hides the rest of the page from assistive tech on purpose.
+      const result = await axe.run(screen.getByRole("dialog"), {
         rules: { "color-contrast": { enabled: false } },
       });
       expect(
