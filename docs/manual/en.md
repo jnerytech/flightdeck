@@ -292,6 +292,10 @@ With it off (the default) the daemon refuses to start a session in Bypass, and a
 can never be made more permissive than the mode it started with. A persona's permission mode
 still counts when it is stricter. Turning the switch off asks nothing.
 
+A session in Bypass permissions asks for nothing: Claude Code skips the permission prompt for every
+tool, including the ones that otherwise always ask (such as discarding a card through the
+flightdeck MCP server). That is the choice you make when you pick that mode.
+
 ## Service
 
 ### First run: flightdeckd setup

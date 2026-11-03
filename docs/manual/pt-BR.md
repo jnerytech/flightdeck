@@ -281,6 +281,10 @@ Com ela desligada (o padrão) o daemon recusa iniciar uma sessão em Ignorar per
 sessão aberta nunca fica mais permissiva que o modo em que começou. O modo de permissão de uma
 persona continua valendo quando é mais estrito. Desligar não pergunta nada.
 
+Uma sessão em Ignorar permissões não pede nada: o Claude Code pula o pedido de permissão de toda
+ferramenta, inclusive as que de outro modo sempre perguntam (como descartar um card pelo servidor
+MCP do flightdeck). Essa é a escolha que você faz ao escolher esse modo.
+
 ## Serviço
 
 ### Primeira execução: flightdeckd setup
