@@ -6,16 +6,15 @@
  */
 import { createHash } from "node:crypto";
 import {
-  appendFileSync,
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  realpathSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+  appendFile,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { frontmatter } from "../agentcfg/files.ts";
 import { userHome } from "../config.ts";
@@ -23,6 +22,7 @@ import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
 import { type ContextBudget, contextBudget } from "./budget.ts";
+import { exists } from "./exists.ts";
 import { suggestCleanup } from "./suggest.ts";
 
 export interface MemoryFile {
@@ -80,7 +80,7 @@ export interface ProjectMemoryOptions {
   claudeDir?: string;
   clock?: () => number;
   /** Told of every write and delete that landed. */
-  record?: (decision: MemoryDecision) => void;
+  record?: (decision: MemoryDecision) => void | Promise<void>;
   /** The organization's CLAUDE.md; the platform's own place unless told otherwise. */
   managedClaudeMd?: string;
 }
@@ -97,42 +97,35 @@ const lineCount = (text: string) =>
   text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 
 /** The repository's own folder, from what `git rev-parse --git-common-dir` printed in `real`. */
-function rootFrom(real: string, code: number, out: string): string {
+async function rootFrom(real: string, code: number, out: string): Promise<string> {
   if (code !== 0) return real;
-  const common = realpathSync.native(isAbsolute(out) ? out : resolve(real, out));
+  const common = await realpath(isAbsolute(out) ? out : resolve(real, out));
   return common.endsWith(".git") ? dirname(common) : real;
 }
 
-const gitCommonDir = (real: string) => ({
-  cmd: [whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"],
-  options: { cwd: real, env: process.env, stdout: "pipe", stderr: "pipe" } as const,
-});
-
 /**
  * The repository's own folder when `project` is inside one (a worktree answers for its main one).
- * Waits for git: for a project nobody looked up yet (`ProjectMemory.warm` does it without waiting).
+ * Asked again on every call: a folder can become a repository. The event loop keeps serving while
+ * git runs.
  */
-function repoRoot(project: string): string {
-  const real = realpathSync.native(resolve(project));
-  const { cmd, options } = gitCommonDir(real);
-  const proc = Bun.spawnSync(cmd, options);
-  return rootFrom(real, proc.exitCode, proc.stdout.toString().trim());
-}
-
-/** The same without waiting for the process: the event loop keeps serving while git runs. */
-async function repoRootAsync(project: string): Promise<string> {
-  const real = realpathSync.native(resolve(project));
-  const { cmd, options } = gitCommonDir(real);
-  const proc = Bun.spawn(cmd, { ...options, stdin: "ignore" });
+async function repoRoot(project: string): Promise<string> {
+  const real = await realpath(resolve(project));
+  const proc = Bun.spawn([whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"], {
+    cwd: real,
+    env: process.env,
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
   return rootFrom(real, code, out.trim());
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */
-export function decisionLog(path: string): (decision: MemoryDecision) => void {
-  return (decision) => {
-    mkdirSync(dirname(path), { recursive: true });
-    appendFileSync(path, `${JSON.stringify(decision)}\n`);
+export function decisionLog(path: string): (decision: MemoryDecision) => Promise<void> {
+  return async (decision) => {
+    await mkdir(dirname(path), { recursive: true });
+    await appendFile(path, `${JSON.stringify(decision)}\n`);
   };
 }
 
@@ -144,51 +137,40 @@ export function managedClaudeMdPath(platform: NodeJS.Platform = process.platform
 }
 
 export class ProjectMemory {
-  /** The repository root of each project, as the last `warm` found it. */
-  private readonly roots = new Map<string, string>();
-
   constructor(private readonly opts: ProjectMemoryOptions = {}) {}
 
-  /**
-   * Looks up the repository root of `project` without waiting for git, so what follows (`dir`
-   * and everything built on it) finds it at hand. Done again on every request: a folder can
-   * become a repository.
-   */
-  async warm(project: string): Promise<void> {
-    this.roots.set(project, await repoRootAsync(project));
-  }
-
   /** The memory folder of the project the way Claude Code names it (all worktrees share one). */
-  dir(project: string): string {
-    const slug = (this.roots.get(project) ?? repoRoot(project)).replace(/[^A-Za-z0-9]/g, "-");
+  async dir(project: string): Promise<string> {
+    const slug = (await repoRoot(project)).replace(/[^A-Za-z0-9]/g, "-");
     return join(this.claudeDir(), "projects", slug, "memory");
   }
 
-  list(project: string): MemoryListing {
-    const dir = this.dir(project);
-    if (!existsSync(dir)) return { dir, exists: false, files: [] };
-    this.safeDir(dir);
-    const names = readdirSync(dir, { withFileTypes: true })
+  async list(project: string): Promise<MemoryListing> {
+    const dir = await this.dir(project);
+    if (!(await exists(dir))) return { dir, exists: false, files: [] };
+    await this.safeDir(dir);
+    const names = (await readdir(dir, { withFileTypes: true }))
       .filter((e) => e.isFile() && NAME.test(e.name))
       .map((e) => e.name)
       .sort();
-    const index = existsSync(join(dir, INDEX)) ? readFileSync(join(dir, INDEX), "utf8") : "";
-    return { dir, exists: true, files: names.map((name) => this.describe(dir, name, index)) };
+    const index = await this.index(dir);
+    const files = await Promise.all(names.map((name) => this.describe(dir, name, index)));
+    return { dir, exists: true, files };
   }
 
-  read(project: string, name: string): MemoryFile & { content: string } {
-    const dir = this.dir(project);
-    const file = this.file(dir, name);
-    if (!existsSync(file)) throw new FlightdeckError("not_found", `${name} não existe`);
-    const index = existsSync(join(dir, INDEX)) ? readFileSync(join(dir, INDEX), "utf8") : "";
-    return { ...this.describe(dir, name, index), content: readFileSync(file, "utf8") };
+  async read(project: string, name: string): Promise<MemoryFile & { content: string }> {
+    const dir = await this.dir(project);
+    const file = await this.file(dir, name);
+    if (!(await exists(file))) throw new FlightdeckError("not_found", `${name} não existe`);
+    const index = await this.index(dir);
+    return { ...(await this.describe(dir, name, index)), content: await readFile(file, "utf8") };
   }
 
-  write(project: string, input: MemoryWrite): { hash: string } {
+  async write(project: string, input: MemoryWrite): Promise<{ hash: string }> {
     if (!input.confirm) throw invalid("gravar pede confirm: true");
-    const dir = this.dir(project);
-    const file = this.file(dir, input.name);
-    const current = existsSync(file) ? sha(readFileSync(file)) : null;
+    const dir = await this.dir(project);
+    const file = await this.file(dir, input.name);
+    const current = (await exists(file)) ? sha(await readFile(file)) : null;
     if (current !== input.expectedHash) {
       throw invalid(
         input.expectedHash === null
@@ -196,74 +178,79 @@ export class ProjectMemory {
           : `${input.name} mudou desde que foi aberto`,
       );
     }
-    mkdirSync(dir, { recursive: true });
-    this.safeDir(dir);
-    writeFileSync(file, input.content);
+    await mkdir(dir, { recursive: true });
+    await this.safeDir(dir);
+    await writeFile(file, input.content);
     const hash = sha(input.content);
-    this.record("write", input.name, current, hash);
+    await this.record("write", input.name, current, hash);
     return { hash };
   }
 
-  remove(project: string, input: MemoryRemove): void {
+  async remove(project: string, input: MemoryRemove): Promise<void> {
     if (!input.confirm) throw invalid("apagar pede confirm: true");
-    const file = this.file(this.dir(project), input.name);
-    if (!existsSync(file)) throw new FlightdeckError("not_found", `${input.name} não existe`);
-    const current = sha(readFileSync(file));
+    const file = await this.file(await this.dir(project), input.name);
+    if (!(await exists(file))) throw new FlightdeckError("not_found", `${input.name} não existe`);
+    const current = sha(await readFile(file));
     if (current !== input.expectedHash) throw invalid(`${input.name} mudou desde que foi aberto`);
-    unlinkSync(file);
-    this.record("delete", input.name, current, null);
+    await unlink(file);
+    await this.record("delete", input.name, current, null);
   }
 
   /** What the context holds at the start for a session in `project`, and what the memory leaves out. */
-  budget(project: string): Promise<ContextBudget> {
+  async budget(project: string): Promise<ContextBudget> {
     return contextBudget({
       project,
       claudeDir: this.claudeDir(),
       managedClaudeMd: this.opts.managedClaudeMd ?? managedClaudeMdPath(),
-      memoryDir: this.dir(project),
+      memoryDir: await this.dir(project),
     });
   }
 
   /** Entries that look duplicated, old, orphaned, broken or in contradiction. Read only. */
-  suggest(project: string): Promise<MemorySuggestion[]> {
-    return suggestCleanup(this.dir(project), (this.opts.clock ?? Date.now)());
+  async suggest(project: string): Promise<MemorySuggestion[]> {
+    return suggestCleanup(await this.dir(project), (this.opts.clock ?? Date.now)());
   }
 
   private claudeDir(): string {
     return this.opts.claudeDir ?? join(userHome(), ".claude");
   }
 
-  private record(
+  private async record(
     action: MemoryDecision["action"],
     name: string,
     before: string | null,
     after: string | null,
   ) {
     const at = new Date((this.opts.clock ?? Date.now)()).toISOString();
-    this.opts.record?.({ action, name, before, after, at });
+    await this.opts.record?.({ action, name, before, after, at });
+  }
+
+  /** The text of `MEMORY.md`, or nothing when the folder has none. */
+  private async index(dir: string): Promise<string> {
+    const path = join(dir, INDEX);
+    return (await exists(path)) ? await readFile(path, "utf8") : "";
   }
 
   /** The file's path, refused when the name is not a plain .md name or the folder leads outside. */
-  private file(dir: string, name: string): string {
+  private async file(dir: string, name: string): Promise<string> {
     if (!NAME.test(name)) throw bad(`nome inválido para a memória: ${name}`);
-    if (existsSync(dir)) this.safeDir(dir);
+    if (await exists(dir)) await this.safeDir(dir);
     const file = join(dir, name);
-    if (lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink()) {
-      throw bad(`${name} é um link`);
-    }
+    const info = await lstat(file).catch(() => undefined);
+    if (info?.isSymbolicLink()) throw bad(`${name} é um link`);
     return file;
   }
 
   /** The memory folder must resolve inside the Claude config folder, never through a link out. */
-  private safeDir(dir: string): void {
-    const root = realpathSync.native(this.claudeDir());
-    if (!isInside(root, realpathSync.native(dir))) {
+  private async safeDir(dir: string): Promise<void> {
+    const root = await realpath(this.claudeDir());
+    if (!isInside(root, await realpath(dir))) {
       throw bad("a pasta de memória fica fora da pasta do Claude");
     }
   }
 
-  private describe(dir: string, name: string, index: string): MemoryFile {
-    const bytes = readFileSync(join(dir, name));
+  private async describe(dir: string, name: string, index: string): Promise<MemoryFile> {
+    const bytes = await readFile(join(dir, name));
     const text = bytes.toString("utf8");
     const data = name === INDEX ? null : frontmatter(text);
     const type = typeof data?.type === "string" ? data.type : undefined;

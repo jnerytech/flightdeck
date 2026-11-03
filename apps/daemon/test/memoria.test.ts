@@ -37,7 +37,9 @@ function setup() {
   const memory = new ProjectMemory({
     claudeDir,
     clock: () => Date.UTC(2026, 9, 31, 12),
-    record: (d) => decisions.push(d),
+    record: (d) => {
+      decisions.push(d);
+    },
   });
   const dir = join(claudeDir, "projects", slugOf(repo), "memory");
   const put = (name: string, text: string) => {
@@ -630,8 +632,9 @@ describe("memoria: o registro das decisões", () => {
       after: "h",
       at: "2026-11-03T00:00:00.000Z",
     };
-    expect(record(decision)).toBeInstanceOf(Promise);
-    await record(decision);
+    const written = record(decision);
+    expect(written).toBeInstanceOf(Promise);
+    await written;
     expect(readFileSync(file, "utf8")).toBe(`${JSON.stringify(decision)}\n`);
     rmSync(file);
     const claudeDir = tempDir("fd-claude-");
