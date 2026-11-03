@@ -11,6 +11,8 @@ const enT = translator("en");
 const ptT = translator("pt-BR");
 
 const REASONS = [
+  "bypass_not_allowed",
+  "bypass_confirm",
   "cwd_missing",
   "cwd_outside_roots",
   "request_invalid",
