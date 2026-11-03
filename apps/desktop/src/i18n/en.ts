@@ -1441,6 +1441,7 @@ export const en: Dictionary = {
     previewRefused: "Only 127.0.0.1 and localhost addresses open here.",
   },
   tabs: {
+    actions: "Actions of tab {title}",
     openInNew: "Open in new tab",
     moveToOther: "Move tab {title} to the other area",
     moveLeft: "Move tab {title} left",

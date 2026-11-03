@@ -1441,6 +1441,7 @@ export const ptBR = {
     previewRefused: "Só endereços de 127.0.0.1 e localhost abrem aqui.",
   },
   tabs: {
+    actions: "Ações da aba {title}",
     openInNew: "Abrir em nova aba",
     moveToOther: "Mover a aba {title} para a outra área",
     moveLeft: "Mover a aba {title} para a esquerda",
