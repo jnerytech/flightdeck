@@ -906,6 +906,9 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    github: "o login do GitHub",
+    boardsync: "a sincronização do quadro",
+    roi: "a visão de retorno",
     history: "o histórico",
     central: "a central de sessões",
     vault: "o cofre",
@@ -1240,6 +1243,7 @@ export const ptBR = {
     board_sync_map_invalid: "O mapa tem uma coluna ou um status que o quadro não tem: {option}.",
     board_sync_confirm: "Enviar mudanças ao quadro precisa da sua confirmação.",
     board_sync_failed: "Não deu para falar com o quadro: {detail}",
+    roi_period_invalid: "O período precisa ser de dias reais, de no máximo um ano.",
     root_confirm: "Adicionar uma pasta permitida precisa da sua confirmação.",
     root_missing: "A pasta {path} não existe neste host.",
     root_system:

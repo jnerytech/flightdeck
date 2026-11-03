@@ -145,7 +145,7 @@ function toProject(row: ProjectRow): Project {
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
-    defaultHours: null,
+    defaultHours: row.default_hours,
   };
 }
 
@@ -446,12 +446,13 @@ export class Board {
       ...(patch.personaSubagents
         ? { personaSubagents: subagentsMode(patch.personaSubagents) }
         : {}),
+      ...(patch.defaultHours !== undefined ? { defaultHours: patch.defaultHours } : {}),
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
          prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ?,
-         persona_subagents = ? WHERE id = ?`,
+         persona_subagents = ?, default_hours = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -463,6 +464,7 @@ export class Board {
         next.issues ? JSON.stringify(next.issues) : null,
         JSON.stringify(next.personaByColumn),
         next.personaSubagents,
+        next.defaultHours,
         id,
       );
     return next;
@@ -531,7 +533,7 @@ export class Board {
       issueExternal: row.issue_external === 1,
       externalUrl: row.external_url,
       externalGone: row.external_gone === 1,
-      estimateHours: null,
+      estimateHours: row.estimate_hours,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
@@ -809,6 +811,8 @@ export class Board {
     patch: {
       title?: string | undefined;
       description?: string | undefined;
+      /** Phase 36: `null` removes the estimate. */
+      estimateHours?: number | null | undefined;
       blockedBy?: string[] | undefined;
       unblockWhen?: UnblockWhen | undefined;
       autoStart?: { workflow: string | null } | null | undefined;
@@ -818,12 +822,13 @@ export class Board {
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     this.db
       .query(
-        `UPDATE cards SET title = ?, description = ?, unblock_when = ?, auto_start = ?, updated_at = ?
-         WHERE id = ?`,
+        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, unblock_when = ?, auto_start = ?,
+           updated_at = ? WHERE id = ?`,
       )
       .run(
         patch.title ?? card.title,
         patch.description ?? card.description,
+        patch.estimateHours === undefined ? card.estimateHours : patch.estimateHours,
         patch.unblockWhen ?? card.unblockWhen,
         autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
         now(),

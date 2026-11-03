@@ -289,6 +289,9 @@ export const DAEMON_FEATURES = [
   "bg",
   "summary",
   "webhook",
+  "github",
+  "boardsync",
+  "roi",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

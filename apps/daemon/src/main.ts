@@ -83,6 +83,7 @@ import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
 import { SessionFiles } from "./review/session-files.ts";
+import { RoiSummarizer } from "./roi/summary.ts";
 import type { PlatformInfo } from "./roots.ts";
 import { RunConfigs } from "./runenv/config.ts";
 import { terminalRunHost } from "./runenv/host.ts";
@@ -1018,6 +1019,7 @@ export async function startDaemon(
     fsDirs: true,
     findProjects: true,
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
+    roi: new RoiSummarizer({ db: store.db, keyOf: (path) => keys.known(path) }),
     boardsync: new BoardSyncService({
       board,
       store: boardSyncStore,

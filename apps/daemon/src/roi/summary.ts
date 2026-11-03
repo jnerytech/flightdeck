@@ -5,6 +5,28 @@
  */
 import type { Database } from "bun:sqlite";
 import type { RoiPeriod, RoiSummaryResult, RoiWeek } from "@flightdeck/protocol";
+import { FlightdeckError } from "../errors.ts";
+
+const MAX_DAYS = 366;
+
+/** A calendar day that really exists (not 2026-02-31). */
+const isDay = (day: string): boolean => {
+  const at = Date.parse(`${day}T00:00:00Z`);
+  return !Number.isNaN(at) && new Date(at).toISOString().slice(0, 10) === day;
+};
+
+/** The filter of a request, refused with a reason when the period is not one: backwards, over a year, or not a date. */
+export function roiPeriod(payload: RoiFilter): RoiFilter {
+  const length = isDay(payload.from) && isDay(payload.to) ? lengthOf(payload.from, payload.to) : 0;
+  if (length < 1 || length > MAX_DAYS) {
+    throw new FlightdeckError(
+      "bad_request",
+      "the period must be a real range of days, at most a year",
+      "roi_period_invalid",
+    );
+  }
+  return payload;
+}
 
 export interface RoiFilter {
   /** First and last day, YYYY-MM-DD, both included. */

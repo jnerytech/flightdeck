@@ -910,6 +910,9 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    github: "sign-in with GitHub",
+    boardsync: "board sync",
+    roi: "the ROI view",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
@@ -1243,6 +1246,7 @@ export const en: Dictionary = {
       "The mapping has a column or a status the board does not have: {option}.",
     board_sync_confirm: "Pushing changes to the board needs your confirmation.",
     board_sync_failed: "The board could not be reached: {detail}",
+    roi_period_invalid: "The period must be real days, at most a year long.",
     root_confirm: "Adding an allowed folder needs your confirmation.",
     root_missing: "The folder {path} does not exist on this host.",
     root_system:

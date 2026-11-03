@@ -88,7 +88,7 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
-import type { RoiSummarizer } from "./roi/summary.ts";
+import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
@@ -425,6 +425,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
+    ...(opts.roi ? ["roi"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -562,6 +563,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  function roi(): RoiSummarizer {
+    if (!opts.roi) throw featureOff("roi");
+    return opts.roi;
   }
 
   function boardsync(): BoardSyncService {
@@ -1650,6 +1656,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { depth } = command.payload;
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
+      case "roi.summary":
+        return ok(command.type, roi().summary(roiPeriod(command.payload)));
       case "boardsync.boards":
         return ok(command.type, { boards: await boardsync().boards() });
       case "boardsync.link":

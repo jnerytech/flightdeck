@@ -39,4 +39,6 @@ export type ProjectPatch = Partial<Omit<NewProject, "path">> & {
   personaByColumn?: Partial<Record<BoardColumn, string | null>>;
   /** Which personas the project offers as subagents (phase 20). */
   personaSubagents?: PersonaSubagentsMode;
+  /** Phase 36: the hours a done card is worth without an estimate; `null` removes it. */
+  defaultHours?: number | null;
 };
