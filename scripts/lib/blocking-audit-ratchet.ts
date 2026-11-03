@@ -4,7 +4,6 @@ export const SYNC_COMMANDS_ALLOWED = [
   "set_close_to_tray",
   "tray_set_menu",
   "tray_set_status",
-  "vault_remove_file",
 ];
 
 /** The names of the `#[tauri::command]` functions that are not `async`. */
@@ -14,8 +13,8 @@ export function syncTauriCommands(rust: string): string[] {
     .map((match) => match[2] as string);
 }
 
-/** Async commands that wait on the user (a dialog), so a worker thread is the right place for them. */
-export const ASYNC_INLINE_ALLOWED = ["pick_folder", "vault_pick_file"];
+/** Async commands that may do their blocking work inline: none, the dialogs wait on the blocking pool too. */
+export const ASYNC_INLINE_ALLOWED: string[] = [];
 
 /** The async commands whose body never calls `spawn_blocking`: they still block a runtime worker. */
 export function asyncCommandsInline(rust: string): string[] {
