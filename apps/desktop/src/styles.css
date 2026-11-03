@@ -294,6 +294,29 @@
   max-width: 18rem;
 }
 
+/* The tab strip: the tabs keep their width and the strip scrolls sideways, with no scrollbar. */
+@utility tab-scroller {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+@utility tab-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  width: max-content;
+}
+@utility tab-tool {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 0.125rem;
+}
+@utility tab-item {
+  flex: 0 0 auto;
+  min-width: 7rem;
+  max-width: 12rem;
+}
+
 /* A key of a shortcut, as printed in a list. */
 @utility keycap {
   border: 1px solid var(--border);

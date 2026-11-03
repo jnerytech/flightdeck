@@ -23,13 +23,15 @@ async function many() {
         {
           id: "h",
           name: "pc",
-          status: "online",
+          status: "offline",
           sessions: [
             {
               id: "s0",
               cwd: "/p",
               status: "running",
-              pendingPermissions: [{ requestId: "r", toolName: "Bash", createdAt: "2026-11-03T10:00:00Z" }],
+              pendingPermissions: [
+                { requestId: "r", toolName: "Bash", createdAt: "2026-11-03T10:00:00Z" },
+              ],
             },
           ],
         },
@@ -78,10 +80,11 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
 
   test("the active tab scrolls into view", async () => {
     const seen: HTMLElement[] = [];
-    (HTMLElement.prototype as unknown as { scrollIntoView: (this: HTMLElement) => void }).scrollIntoView =
-      function () {
-        seen.push(this);
-      };
+    (
+      HTMLElement.prototype as unknown as { scrollIntoView: (this: HTMLElement) => void }
+    ).scrollIntoView = function () {
+      seen.push(this);
+    };
     const { store } = await many();
     await act(async () => {
       store.tabs.activate(store.tabs.tabs[3]?.id as string);
