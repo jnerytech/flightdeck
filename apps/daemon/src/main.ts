@@ -1236,7 +1236,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   };
   const report = await runDoctor({
     config: load,
-    isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+    isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
     serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
     healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
@@ -1269,11 +1269,11 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
       home: base.home,
       // The folders it checks are this host's, whatever the service context says it manages.
       platform: process.platform,
-      isDirectory: (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() === true,
+      isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
       tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
       installBinary: async () => {
         const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
-        const placed = installStableBinary(self, stable, base.platform);
+        const placed = await installStableBinary(self, stable, base.platform);
         if (placed === "source") return false;
         command = [stable];
         let running = DAEMON_VERSION;
