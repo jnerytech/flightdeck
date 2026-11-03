@@ -1423,7 +1423,7 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
  * `flightdeckd history reindex`: drops the transcript index and builds it again. Takes the
  * daemon's lock, so it refuses (exit 3) while a daemon uses the same `dataDir`.
  */
-function runReindex(args: CliArgs, deps: CliDeps): void {
+async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
   const config = loadConfig(configPath(args));
   const lock = acquireLock(config.dataDir);
   if (!lock) {
@@ -1436,7 +1436,7 @@ function runReindex(args: CliArgs, deps: CliDeps): void {
       roots: config.history.roots,
       excludeCwds: historyExcludes(config),
     });
-    const { sessions, messages } = history.rebuild();
+    const { sessions, messages } = await history.rebuild();
     deps.log.log(`histórico reconstruído: ${sessions} sessões, ${messages} mensagens`);
   } finally {
     store.close();
@@ -1820,7 +1820,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "history") {
-      runReindex(args, deps);
+      await runReindex(args, deps);
       deps.exit(0);
       return null;
     }

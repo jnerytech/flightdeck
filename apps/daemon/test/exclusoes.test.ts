@@ -45,12 +45,10 @@ describe("exclusoes", () => {
       roots: [root],
       excludeCwds: ["/home/dev/secreto/"],
     });
-    expect(
-      indexer
-        .scan()
-        .map((r) => r.claudeSessionId)
-        .sort(),
-    ).toEqual(["s-nome-enganoso", "s-vizinha"]);
+    expect((await indexer.scan()).map((r) => r.claudeSessionId).sort()).toEqual([
+      "s-nome-enganoso",
+      "s-vizinha",
+    ]);
     expect(sessionIds(db)).toEqual(["s-nome-enganoso", "s-vizinha"]);
     expect(storedMessages(db, "s-excluida")).toEqual([]);
     expect(storedMessages(db, "s-dentro")).toEqual([]);

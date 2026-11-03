@@ -26,7 +26,7 @@ describe("origem", () => {
       userLine({ uuid: "u1", text: "oi", cwd: project }),
     ]);
     writeTranscript(root, "-t", "de-fora", [userLine({ uuid: "u1", text: "x", cwd: "/t" })]);
-    new HistoryIndexer({ db: store.db, roots: [root] }).scan();
+    await new HistoryIndexer({ db: store.db, roots: [root] }).scan();
     expect(origins(store.db)).toEqual({ [managed ?? ""]: "flightdeck", "de-fora": "external" });
   });
 

@@ -30,7 +30,7 @@ describe("incremental", () => {
       first,
       assistantLine({ uuid: "a1", text: "Primeira resposta", cwd: CWD }),
     ]);
-    expect(await indexer.scan().map((r) => [r.claudeSessionId, r.added])).toEqual([[ID, 2]]);
+    expect((await indexer.scan()).map((r) => [r.claudeSessionId, r.added])).toEqual([[ID, 2]]);
     expect(fileRow(db, path)?.offset).toBe(statSync(path).size);
 
     // Rewrite bytes already read (same length): a pass that reread from 0 would pick this up.
@@ -41,7 +41,7 @@ describe("incremental", () => {
       path,
       `${userLine({ uuid: "u2", text: "Segunda com ação 😀", cwd: CWD })}\r\n${assistantLine({ uuid: "a2", text: "ok", cwd: CWD })}\n`,
     );
-    expect(await indexer.scan().map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
+    expect((await indexer.scan()).map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
       [ID, 2, false],
     ]);
     expect(storedMessages(db, ID).map((m) => m.text)).toEqual([
@@ -72,7 +72,7 @@ describe("incremental", () => {
     expect(storedMessages(db, ID).map((m) => m.uuid)).toEqual(["u1"]);
 
     appendRaw(path, `${partial.slice(20)}\n`);
-    expect(await indexer.scan().map((r) => r.added)).toEqual([1]);
+    expect((await indexer.scan()).map((r) => r.added)).toEqual([1]);
     expect(storedMessages(db, ID).map((m) => [m.uuid, m.text])).toEqual([
       ["u1", "completa"],
       ["a1", "meio escrita"],
@@ -80,7 +80,7 @@ describe("incremental", () => {
     expect(fileRow(db, path)?.offset).toBe(statSync(path).size);
   });
 
-  test("linhas inválidas são contadas no arquivo; vários projetos e raízes", () => {
+  test("linhas inválidas são contadas no arquivo; vários projetos e raízes", async () => {
     const { root, db } = setup();
     const other = projectsRoot();
     const first = writeTranscript(root, "-a", "aaaa", [
@@ -90,10 +90,7 @@ describe("incremental", () => {
     writeTranscript(root, "-b", "bbbb", [userLine({ uuid: "u1", text: "dois", cwd: "/b" })]);
     writeTranscript(other, "-c", "cccc", [userLine({ uuid: "u1", text: "três", cwd: "/c" })]);
     const indexer = new HistoryIndexer({ db, roots: [root, other, `${root}-inexistente`] });
-    const ids = indexer
-      .scan()
-      .map((r) => r.claudeSessionId)
-      .sort();
+    const ids = (await indexer.scan()).map((r) => r.claudeSessionId).sort();
     expect(ids).toEqual(["aaaa", "bbbb", "cccc"]);
     expect(fileRow(db, first)?.parse_errors).toBe(1);
   });

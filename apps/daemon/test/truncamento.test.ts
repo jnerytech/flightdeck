@@ -30,7 +30,7 @@ describe("truncamento", () => {
 
     // Same file name, shorter content (truncated or swapped by another tool).
     writeFileSync(path, `${userLine({ uuid: "n1", text: "nova", cwd: CWD })}\n`);
-    expect(await indexer.scan().map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
+    expect((await indexer.scan()).map((r) => [r.claudeSessionId, r.added, r.reset])).toEqual([
       [ID, 1, true],
     ]);
     expect(storedMessages(db, ID).map((m) => [m.uuid, m.text])).toEqual([["n1", "nova"]]);
@@ -54,12 +54,12 @@ describe("truncamento", () => {
     ]);
     await indexer.scan();
     writeFileSync(path, "");
-    expect(await indexer.scan().map((r) => [r.added, r.reset])).toEqual([[0, true]]);
+    expect((await indexer.scan()).map((r) => [r.added, r.reset])).toEqual([[0, true]]);
     expect(storedMessages(db, ID)).toEqual([]);
     expect(fileRow(db, path)?.offset).toBe(0);
 
     writeFileSync(path, `${userLine({ uuid: "u9", text: "voltou", cwd: CWD })}\n`);
-    expect(await indexer.scan().map((r) => [r.added, r.reset])).toEqual([[1, false]]);
+    expect((await indexer.scan()).map((r) => [r.added, r.reset])).toEqual([[1, false]]);
     expect(storedMessages(db, ID).map((m) => m.text)).toEqual(["voltou"]);
   });
 });

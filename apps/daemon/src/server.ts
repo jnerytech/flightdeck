@@ -1384,7 +1384,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "history.get": {
         const { claudeSessionId, cursor, limit } = command.payload;
-        return ok(command.type, history().get(claudeSessionId, cursor, limit));
+        return ok(command.type, await history().get(claudeSessionId, cursor, limit));
       }
       case "history.search": {
         const index = history();
