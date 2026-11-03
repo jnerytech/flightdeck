@@ -23,6 +23,9 @@ interface Closed {
   pinned: boolean;
 }
 
+/** The route as a string that does not depend on the order of its fields. */
+const routeKey = (route: Route): string => JSON.stringify(route, Object.keys(route).sort());
+
 let counter = 0;
 const randomId = () => `tab-${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
@@ -75,6 +78,19 @@ export class Tabs {
     active: number,
     newId?: () => string,
   ): Tabs {
+    // One tab per screen: a duplicate from an older snapshot folds into the first (a pin wins).
+    const kept: typeof entries = [];
+    const slot = new Map<string, number>();
+    const activeKey = routeKey((entries[active] ?? (entries[0] as (typeof entries)[0])).route);
+    for (const entry of entries) {
+      const at = slot.get(routeKey(entry.route));
+      if (at === undefined) {
+        slot.set(routeKey(entry.route), kept.length);
+        kept.push({ ...entry });
+      } else if (entry.pinned) (kept[at] as (typeof kept)[0]).pinned = true;
+    }
+    entries = kept;
+    active = slot.get(activeKey) as number;
     const [first, ...rest] = entries as [
       { route: Route; pinned: boolean; preview?: boolean },
       ...typeof entries,
@@ -122,6 +138,13 @@ export class Tabs {
   openPreview(route: Route): void {
     if (this.newTab) {
       this.open(route);
+      return;
+    }
+    const key = routeKey(route);
+    const existing = this.tabs.find((tab) => routeKey(tab.router.current) === key);
+    if (existing) {
+      this.activeId = existing.id;
+      this.emit();
       return;
     }
     const preview = this.tabs.find((tab) => tab.preview && !tab.pinned);
