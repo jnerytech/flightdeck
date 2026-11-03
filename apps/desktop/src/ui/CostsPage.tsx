@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
@@ -205,6 +206,7 @@ export const CostsPage = memo(function CostsPage(props: {
       : [];
 
   const loading = useMinLoading(hostId !== "" && summary === null);
+  const topModel = [...(summary?.byModel ?? [])].sort((a, b) => b.costUsd - a.costUsd)[0];
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
   return (
     <Page
@@ -396,10 +398,18 @@ export const CostsPage = memo(function CostsPage(props: {
                 [t("costsUi.estimated"), usd(summary.totals.costUsd)],
                 [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
                 [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd)],
+                ...(topModel
+                  ? [[t("costsUi.topModel"), `${topModel.model} · ${usd(topModel.costUsd)}`]]
+                  : []),
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
                   <dt className="text-muted-foreground text-xs">{label}</dt>
-                  <dd className="font-semibold text-xl tabular-nums">
+                  <dd
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      label === t("costsUi.topModel") ? "text-base" : "text-xl",
+                    )}
+                  >
                     <output aria-label={label}>{value}</output>
                   </dd>
                 </div>

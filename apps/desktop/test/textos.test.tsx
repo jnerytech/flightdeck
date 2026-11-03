@@ -154,7 +154,7 @@ describe("textos", () => {
     });
     await act(() => Bun.sleep(200));
     const session = main().textContent ?? "";
-    for (const word of ["End", "Send", "idle"]) {
+    for (const word of ["End", "idle"]) {
       expect(session).toMatch(new RegExp(word));
     }
     expect(session).not.toMatch(/Retomar|Parar|Encerrar|Enviar|Mensagem/);

@@ -1,6 +1,14 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
-import { type ComponentType, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import {
+  type ComponentType,
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -69,6 +77,8 @@ const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPag
 const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
 const PreviewPage = lazyScreen(() => import("./PreviewPage.tsx"), "PreviewPage");
 const ProjectsPage = lazyScreen(() => import("./ProjectsPage.tsx"), "ProjectsPage");
+const ProjectsOverview = lazyScreen(() => import("./ProjectsOverview.tsx"), "ProjectsOverview");
+const ProjectPage = lazyScreen(() => import("./ProjectPage.tsx"), "ProjectPage");
 const SnippetsPage = lazyScreen(() => import("./SnippetsPage.tsx"), "SnippetsPage");
 const TeamsPage = lazyScreen(() => import("./TeamsPage.tsx"), "TeamsPage");
 const VaultPage = lazyScreen(() => import("./VaultPage.tsx"), "VaultPage");
@@ -83,6 +93,7 @@ function hostToWait(route: Route): string | null {
     case "external":
     case "history":
     case "projects":
+    case "project":
     case "board":
     case "card":
     case "workflows":
@@ -135,6 +146,35 @@ function ManagedSession(props: {
     state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
   const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
   const status = session.status;
+  const pinned = claudeId ? state.meta[`${hostId}/${claudeId}`]?.pinned === true : false;
+  const cwd = summary?.cwd ?? session.cwd ?? "";
+  const canFork = hasFeature(host?.hostInfo?.features, "checkpoints", false);
+  // Stable between renders: the finished messages of a long conversation are not drawn again.
+  const pin = useMemo(
+    () =>
+      claudeId
+        ? { pinned, toggle: () => void store.setMeta(hostId, claudeId, { pinned: !pinned }) }
+        : undefined,
+    [store, hostId, claudeId, pinned],
+  );
+  const fork = useMemo(
+    () =>
+      claudeId && canFork
+        ? () =>
+            void store
+              .hostCommand(hostId, "session.fork", {
+                claudeSessionId: claudeId,
+                cwd,
+                open: "flightdeck",
+              })
+              .then((result) => {
+                if (result?.sessionId) {
+                  store.router.push({ name: "session", host: hostId, id: result.sessionId });
+                }
+              })
+        : undefined,
+    [store, hostId, claudeId, canFork, cwd],
+  );
   const [costUsd, setCostUsd] = useState<number | null>(null);
   useEffect(() => {
     setCostUsd(null);
@@ -162,7 +202,10 @@ function ManagedSession(props: {
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         session={session}
         actions={store}
+        {...(pin ? { pin } : {})}
+        {...(fork ? { fork } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        images={hasFeature(host?.hostInfo?.features, "session.images", false)}
         pickPath={(done) =>
           host && (
             <FolderPicker
@@ -377,6 +420,7 @@ export function Screen(props: ScreenProps) {
           store={store}
           state={state}
           density={props.density}
+          project={route.name === "hub" ? route.project : undefined}
           onOpen={(row) => go(rowRoute(row))}
           isOpen={(row) =>
             (opened.id !== undefined && row.sessionId === opened.id) ||
@@ -528,6 +572,25 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <SnippetsPage store={store} go={go} />;
     case "connections":
       return <ConnectionsPage store={store} go={go} connect={route.connect} />;
+    case "all-projects":
+      return (
+        <ProjectsOverview
+          store={store}
+          state={state}
+          onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
+        />
+      );
+    case "project":
+      return (
+        <ProjectPage
+          key={`${route.host}/${route.projectId}`}
+          store={store}
+          state={state}
+          hostId={route.host}
+          projectId={route.projectId}
+          go={go}
+        />
+      );
     case "costs":
       return <CostsPage store={store} onOpenSession={costsOpener(go)} />;
     case "vault":

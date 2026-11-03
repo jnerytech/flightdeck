@@ -6,6 +6,7 @@ import {
   Bot,
   type LucideIcon,
   MessageSquare,
+  MoreHorizontal,
   Pin,
   PinOff,
   Plus,
@@ -16,6 +17,12 @@ import {
 import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
@@ -77,7 +84,7 @@ export function TabBar(props: {
   };
   const activeLabel = active ? title(active, state, store) : "";
   return (
-    <div className="flex h-9 items-end gap-1 border-b px-2">
+    <div className="tab-bar">
       {/* Only tabs (and the presentation wrappers that hold them) in the tablist; the move and pin buttons act on the active tab and sit after it. */}
       <div
         ref={tablist}
@@ -181,46 +188,42 @@ export function TabBar(props: {
         })}
       </div>
       {active && (
-        <div className="mb-0.5 flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t("tabs.moveLeft", { title: activeLabel })}
-            disabled={!tabs.canShift(active.id, -1)}
-            onClick={() => shift(active.id, -1)}
-          >
-            <ArrowLeft />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t("tabs.moveRight", { title: activeLabel })}
-            disabled={!tabs.canShift(active.id, 1)}
-            onClick={() => shift(active.id, 1)}
-          >
-            <ArrowRight />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t("tabs.moveToOther", { title: activeLabel })}
-            onClick={() => store.workspace.moveToOtherArea(active.id)}
-          >
-            <ArrowLeftRight />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            aria-label={t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
-            onClick={() => tabs.pin(active.id, !active.pinned)}
-          >
-            {active.pinned ? <PinOff /> : <Pin />}
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mb-0.5 size-7"
+              aria-label={t("tabs.actions", { title: activeLabel })}
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              disabled={!tabs.canShift(active.id, -1)}
+              onSelect={() => shift(active.id, -1)}
+            >
+              <ArrowLeft aria-hidden="true" />
+              {t("tabs.moveLeft", { title: activeLabel })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!tabs.canShift(active.id, 1)}
+              onSelect={() => shift(active.id, 1)}
+            >
+              <ArrowRight aria-hidden="true" />
+              {t("tabs.moveRight", { title: activeLabel })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => store.workspace.moveToOtherArea(active.id)}>
+              <ArrowLeftRight aria-hidden="true" />
+              {t("tabs.moveToOther", { title: activeLabel })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => tabs.pin(active.id, !active.pinned)}>
+              {active.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+              {t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
       <Button
         variant="ghost"

@@ -32,6 +32,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Como funciona](#como-funciona)
   - [Por que a extensão do VS Code fica de fora](#por-que-a-extensão-do-vs-code-fica-de-fora)
 - [Aprovações e permitir sempre](#aprovações-e-permitir-sempre)
+- [Projetos](#projetos)
 - [Board](#board)
   - [Cadastrar um projeto](#cadastrar-um-projeto)
   - [Ciclo do card](#ciclo-do-card)
@@ -98,6 +99,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Bandeja](#bandeja)
   - [Abrir no terminal](#abrir-no-terminal)
   - [Paleta Ctrl+K](#paleta-ctrlk)
+  - [Atalhos de teclado](#atalhos-de-teclado)
   - [Atalho global](#atalho-global)
 - [Interface](#interface)
   - [Desenho e navegação](#desenho-e-navegação)
@@ -424,6 +426,27 @@ histórico.
     controlável, a caixa de mensagem;
   - encerrada ou do histórico: abre o leitor, com "Continuar no Flightdeck".
 
+### A caixa de mensagem
+
+- Na caixa de mensagem de uma sessão dá para **colar ou soltar imagens** (PNG, JPEG, GIF ou WebP,
+  até cinco por mensagem e 5 MB cada; o host precisa suportar). Elas aparecem como miniaturas que
+  dá para remover antes de enviar, e a conversa indica quantas imagens a mensagem levou. Um
+  arquivo que não cabe diz o motivo em vez de ser anexado.
+- Enquanto um turno roda, **Enfileirar** (ou Enter) põe a mensagem numa lista **Na fila**
+  acima da caixa, em vez de enviá-la. **Editar** devolve a mensagem para a caixa e **Remover** a
+  descarta; quando o turno termina, as mensagens da fila saem em ordem, uma por turno.
+- **Enter** envia a mensagem; **Ctrl+Enter** (ou Shift+Enter) quebra a linha. O ícone de envio
+  (↵) aparece quando a caixa tem texto. Digitar `/` oferece os snippets e os comandos da sessão.
+- Sob cada mensagem do assistente há uma linha que aparece ao passar o mouse ou ao focar pelo
+  teclado: **Copiar mensagem**, **Bifurcar a partir daqui** (na última mensagem: leva a conversa
+  inteira até ali), **Fixar sessão** e há quanto tempo a mensagem foi escrita.
+- A caixa flutua no fim da tela como um cartão arredondado. O **+** anexa imagens (quando o host
+  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, cada um um
+  seletor quando a sessão deixa mudar, e um indicador girando enquanto um turno roda. Durante o
+  turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
+  arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
+  menos movimento.
+
 ### Hooks do Claude Code
 
 As sessões abertas fora do Flightdeck só aparecem com os hooks instalados no host. Há dois
@@ -547,6 +570,45 @@ Cards rodam em worktrees, e cada worktree tem o próprio `.claude`:
 
 Na tela Projetos, **Editar** mostra a seção **Regras** do projeto, com o botão de remover, que
 pede confirmação e preserva o resto do arquivo.
+
+## Projetos
+
+O item **Projetos** da barra lateral (entre Precisa de você e Board) lista todos os projetos de
+todos os hosts como cartões: nome, host, branch base, sessões ativas, cards em andamento, os que
+precisam de você, a última atividade e quanto custou nos últimos sete dias. O custo aparece como
+um traço quando o host não informa custos. Digite na busca para filtrar por nome, host, branch ou
+pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
+precisa de atenção primeiro.
+
+Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões** (a lista, filtrada pelo projeto: um chip "Projeto: nome" com × limpa o filtro), aos
+**Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
+configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
+
+### Sessões lado a lado
+
+Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**: 2, 3, 4
+ou 6 por vez (escolha o número em **Blocos na tela**; ele fica guardado). As sessões que precisam de
+você vêm primeiro, depois as rodando, depois as ociosas. Cada bloco tem o nome da sessão (um botão
+que a abre), o status, as **últimas linhas**, o **pedido** que ela espera (com **Permitir** e
+**Negar**) e uma caixa de mensagem pequena: **Enter** envia, **Ctrl+Enter** quebra a linha, e o
+ícone de envio aparece quando há texto. Pelo teclado, Tab chega a cada bloco e **Alt+setas** movem
+entre eles (esquerda e direita de um em um, cima e baixo uma linha). Os blocos acompanham as
+sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto nunca aparece aqui.
+
+### A barra lateral, a barra de abas e as Configurações
+
+- A barra lateral mantém **Sessões**, **Precisa de você**, **Projetos** e **Board** no topo; o
+  resto fica em três grupos que dobram: **Trabalho** (Workflows, Custos, Conversas, Times),
+  **Biblioteca** (Personas, Snippets, Plugins, Cofre) e **Infra** (Conexões, Histórico). Um grupo
+  sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho estreito de ícones
+  não tem títulos.
+- Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
+  cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
+  para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- As **Configurações** têm um trilho com as suas seções (leva até a seção e põe o foco nela) e uma
+  caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
+- **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
+  cache e o modelo principal com o que ele custou.
 
 ## Board
 
@@ -2159,6 +2221,19 @@ Configurações) e, depois de Enter, **Histórico**.
 - **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
   Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
 - **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
+- Sem nada digitado, uma seção **Recentes** vem primeiro, com as cinco últimas entradas que você
+  abriu (guardadas entre execuções). **Ações** também tem **Ir para Sessões / Precisa de você /
+  Projetos**, **Mostrar os atalhos de teclado** e, enquanto um pedido espera por você, **Aprovar o
+  pedido mais antigo** e **Negar o pedido mais antigo** (um pedido de risco alto é aberto para ser
+  segurado, como na bandeja). Cada comando mostra suas teclas à direita.
+
+### Atalhos de teclado
+
+`?` (fora dos campos de texto) abre uma folha com todos os atalhos, por grupo. Os atalhos de ir
+para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões, `g n` Precisa de
+você, `g p` Projetos, `g c` Custos, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
+`Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
+`j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 
 ### Atalho global
 

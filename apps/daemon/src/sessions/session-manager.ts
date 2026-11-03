@@ -9,6 +9,7 @@ import type {
   PersonaSubagents,
   SessionEvent,
   SessionEventOf,
+  SessionImage,
   SessionPersona,
   SessionStatus,
   SessionSummary,
@@ -77,7 +78,7 @@ export type EventListener = (envelope: EventEnvelope) => void;
 interface LiveSession {
   run: AgentRun;
   /** Messages sent while a turn is in progress, delivered one per turn. */
-  queue: string[];
+  queue: Array<{ text: string; images?: SessionImage[] }>;
   closing: boolean;
   /** The first turn's prompt and uuid, until session.init names the Claude session. */
   pendingBefore?: { text: string; uuid: string };
@@ -263,7 +264,7 @@ export class SessionManager {
     return { sessionId: id };
   }
 
-  send(sessionId: string, text: string): { queued: boolean } {
+  send(sessionId: string, text: string, images?: SessionImage[]): { queued: boolean } {
     const session = this.get(sessionId);
     if (session.status === "ended" || session.status === "error") {
       throw new FlightdeckError(
@@ -278,10 +279,10 @@ export class SessionManager {
       live = this.startRun(sessionId, session.claudeSessionId ?? undefined);
     }
     if (session.status === "idle") {
-      this.deliver(sessionId, text);
+      this.deliver(sessionId, text, images);
       return { queued: false };
     }
-    live.queue.push(text);
+    live.queue.push({ text, ...(images?.length ? { images } : {}) });
     return { queued: true };
   }
 
@@ -536,7 +537,7 @@ export class SessionManager {
         this.turnEdge(sessionId, "after");
         this.emit(sessionId, event);
         const next = live.queue.shift();
-        if (next !== undefined) this.deliver(sessionId, next);
+        if (next !== undefined) this.deliver(sessionId, next.text, next.images);
         else this.setStatus(sessionId, "idle");
         return;
       }
@@ -545,7 +546,7 @@ export class SessionManager {
     }
   }
 
-  private deliver(sessionId: string, text: string): void {
+  private deliver(sessionId: string, text: string, images?: SessionImage[]): void {
     const live = this.live.get(sessionId);
     if (!live)
       throw new FlightdeckError(
@@ -555,7 +556,11 @@ export class SessionManager {
       );
     const status = this.get(sessionId).status;
     if (status !== "starting") this.setStatus(sessionId, "running");
-    this.emit(sessionId, { type: "message.user", text });
+    this.emit(sessionId, {
+      type: "message.user",
+      text,
+      ...(images?.length ? { images: images.length } : {}),
+    });
     for (const listener of this.userListeners) {
       try {
         listener(sessionId, text);
@@ -566,7 +571,7 @@ export class SessionManager {
     const uuid = crypto.randomUUID();
     if (this.get(sessionId).claudeSessionId) this.turnEdge(sessionId, "before", text, uuid);
     else live.pendingBefore = { text, uuid };
-    live.run.send(text, uuid);
+    live.run.send(text, uuid, images);
   }
 
   private turnEdge(

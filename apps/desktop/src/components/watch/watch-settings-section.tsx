@@ -1,6 +1,7 @@
 import type { Project, WatchSettings } from "@flightdeck/protocol";
 import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Grid, Inline, Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,7 @@ function ProjectWatchSettings(props: { store: AppStore; hostId: string; project:
           />
         )}
       </Field>
-      <Inline gap={3}>
+      <FieldRow>
         <ActionButton
           size="sm"
           disabled={problem !== null}
@@ -120,7 +121,7 @@ function ProjectWatchSettings(props: { store: AppStore; hostId: string; project:
         >
           {t("watchSettingsUi.save")}
         </ActionButton>
-      </Inline>
+      </FieldRow>
     </Stack>
   );
 }

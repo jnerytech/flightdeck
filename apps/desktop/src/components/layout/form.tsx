@@ -1,4 +1,11 @@
-import { type ComponentProps, createContext, type ReactNode, useContext, useId } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useId,
+  useState,
+} from "react";
 import { Spinner } from "@/components/feedback/busy";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -190,3 +197,42 @@ export function CheckField(props: {
     </label>
   );
 }
+
+/**
+ * A form row: fields and the buttons that act on them on one line, and under it the help line.
+ * An ActionButton inside says why it is disabled there (aligned with the first field), not under
+ * itself.
+ */
+export function FieldRow(props: {
+  children: ReactNode;
+  className?: string;
+  /** `end` lines the controls up by their bottom edges (fields with labels above them). */
+  align?: "end";
+}) {
+  const id = useId();
+  const [reason, setReason] = useState<string | null>(null);
+  return (
+    <FieldRowContext.Provider value={{ id, setReason }}>
+      <div className="field-row-wrap">
+        <div className={cn("field-row", props.align === "end" && "field-row-end", props.className)}>
+          {props.children}
+        </div>
+        {reason && (
+          <p id={id} className="field-help">
+            {reason}
+          </p>
+        )}
+      </div>
+    </FieldRowContext.Provider>
+  );
+}
+
+interface FieldRowSlot {
+  /** The id of the row's help line, which the button it explains points at. */
+  id: string;
+  setReason(reason: string | null): void;
+}
+
+/** What a button inside a `FieldRow` finds: where to say why it is disabled. */
+const FieldRowContext = createContext<FieldRowSlot | null>(null);
+export const useFieldRow = () => useContext(FieldRowContext);

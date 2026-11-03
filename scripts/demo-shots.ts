@@ -348,6 +348,12 @@ function shots(ids: DemoIds): Shot[] {
       prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
     },
     {
+      // Issue #38: the allowed-folders row, its input and its button on one line.
+      name: "host-pastas",
+      route: { name: "host", host: ALFA },
+      prepare: showSection(/^(Allowed folders|Pastas permitidas)$/),
+    },
+    {
       name: "host-manutencao",
       route: { name: "host", host: ALFA },
       prepare: showSection(/^(Maintenance|Manutenção)$/),

@@ -2,7 +2,7 @@ import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { Field, NativeSelect } from "@/components/layout/form";
+import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { PersonaMultiPicker } from "@/components/personas/persona-multi-picker";
@@ -106,7 +106,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
         value={personas}
         onChange={setWorkerPersonas}
       />
-      <div className="flex gap-2">
+      <FieldRow>
         <ActionButton
           disabled={!goal.trim() || !projectId}
           disabledReason={t(goal.trim() ? "teamsUi.projectNeeded" : "teamsUi.goalNeeded")}
@@ -117,7 +117,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
         <Button variant="ghost" onClick={props.onCancel}>
           {t("teamsUi.cancel")}
         </Button>
-      </div>
+      </FieldRow>
     </div>
   );
 }

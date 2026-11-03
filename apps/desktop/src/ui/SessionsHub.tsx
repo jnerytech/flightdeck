@@ -1,5 +1,5 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { ListFilter, MoreHorizontal, Radio } from "lucide-react";
+import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
@@ -65,9 +65,19 @@ export function SessionsHub(props: {
   /** Whether the row is the session open on the right. */
   isOpen(row: HubRow): boolean;
   density: Density;
+  /** Only this project's sessions, with a chip that clears it (from the project page). */
+  project?: { hostId: string; projectKey: string; name: string } | undefined;
 }) {
   const { store, state } = props;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
+  // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
+  // a session changes the route but not the list); a different project from the route replaces it.
+  const [only, setOnly] = useState(props.project ?? null);
+  const askedKey = props.project ? `${props.project.hostId}/${props.project.projectKey}` : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different project asked for by the route applies
+  useEffect(() => {
+    if (props.project) setOnly(props.project);
+  }, [askedKey]);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   const [name, setName] = useState("");
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
@@ -106,9 +116,15 @@ export function SessionsHub(props: {
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
     () =>
-      store.clientScope().filter(hubRows(state), state.clientSelection, (row) => row.projectKey),
+      store
+        .clientScope()
+        .filter(hubRows(state), state.clientSelection, (row) => row.projectKey)
+        .filter(
+          (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
+        ),
     [
       store,
+      only,
       state.hosts,
       state.hub,
       state.meta,
@@ -292,6 +308,20 @@ export function SessionsHub(props: {
     <Page title={t("sidebar.sessions")} toolbar={toolbar}>
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
+        {only && (
+          <div className="flex items-center gap-1 self-start rounded-full border bg-muted/40 py-0.5 pr-1 pl-3 text-xs">
+            <span>{t("hub.projectFilter", { name: only.name })}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              aria-label={t("hub.clearProjectFilter")}
+              onClick={() => setOnly(null)}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+        )}
         {renaming && (
           <div className="flex items-center gap-2">
             <Input

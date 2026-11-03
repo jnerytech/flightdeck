@@ -82,6 +82,28 @@ describe("ciclo de vida", () => {
   });
 });
 
+describe("images", () => {
+  const image = { mediaType: "image/png" as const, data: "iVBORw0KGgo=" };
+
+  test("a message with images says how many in its user event, now or queued", async () => {
+    const { manager, project } = newManager();
+    const { sessionId } = manager.create({ cwd: project, prompt: "um" });
+    const rec = record(manager, sessionId);
+    expect(manager.send(sessionId, "dois", [image, image])).toEqual({ queued: true });
+    expect(manager.send(sessionId, "três")).toEqual({ queued: true });
+    await waitFor(
+      () => rec.count("turn.result") === 3 && manager.get(sessionId).status === "idle",
+      { label: "three turns" },
+    );
+    const users = rec.find("message.user");
+    expect(users.map((e) => [e.text, (e as { images?: number }).images])).toEqual([
+      ["um", undefined],
+      ["dois", 2],
+      ["três", undefined],
+    ]);
+  });
+});
+
 describe("fila", () => {
   test("mensagens enviadas durante running são entregues nos turnos seguintes, em ordem", async () => {
     const { manager, project } = newManager();

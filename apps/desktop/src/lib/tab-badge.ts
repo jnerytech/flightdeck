@@ -26,6 +26,8 @@ const KINDS: Partial<Record<Route["name"], TabKind>> = {
   "new-session": "session",
   card: "card",
   board: "card",
+  "all-projects": "projects",
+  project: "projects",
   terminal: "terminal",
   reader: "reader",
   agent: "agent",

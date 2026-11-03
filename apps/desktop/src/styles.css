@@ -84,6 +84,10 @@
 }
 
 :root {
+  /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
+  --weight-strong: 600;
+  --weight-label: 500;
+  --weight-text: 400;
   /* The motion tokens as plain variables (the theme's are inlined into utilities, not emitted). */
   --motion-fast: 120ms;
   --motion-base: 180ms;
@@ -293,4 +297,352 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* The images waiting to go with the next message, above the message box. */
+@utility composer-images {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem 0;
+}
+@utility composer-image {
+  display: flex;
+  align-items: flex-start;
+}
+@utility composer-thumb {
+  height: 4rem;
+  width: 4rem;
+  border-radius: 0.375rem;
+  object-fit: cover;
+}
+@utility composer-queued {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The row under an assistant message: shown on hover or focus (always on touch screens). */
+@utility message-actions {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  &:focus-within {
+    opacity: 1;
+  }
+  @media (hover: none) {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+@utility message-hover {
+  &:hover .message-actions {
+    opacity: 1;
+  }
+}
+
+/* Under the conversation: queue, thumbnails, activity line, the floating box and its state line. */
+@utility composer-dock {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.75rem;
+}
+@utility composer-card {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  background: var(--color-card);
+  padding: 0.375rem 0.5rem;
+  box-shadow: 0 1px 6px oklch(0 0 0 / 0.08);
+  &:focus-within {
+    border-color: var(--color-ring);
+  }
+}
+@utility composer-box {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  &:focus-visible {
+    box-shadow: none;
+    outline: none;
+  }
+}
+@utility session-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border: 0;
+  padding: 0 0.5rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+@utility activity-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+
+/* Assistant text: plain on the page, in a readable measure and with room between the lines. */
+@utility message-prose {
+  max-width: 48rem;
+  line-height: 1.65;
+}
+
+/* Sessions of a project side by side (issue #8). */
+@utility tile-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  &[data-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+    &[data-columns="3"] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+@utility session-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 0.75rem;
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+@utility session-tile-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility session-tile-lines {
+  display: flex;
+  min-height: 4.5rem;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+@utility session-tile-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-status-needs-you);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+}
+@utility tile-count {
+  display: flex;
+  gap: 0.25rem;
+  border: 0;
+  padding: 0;
+}
+@utility tile-count-option {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  &:has(input:checked) {
+    background: var(--color-accent);
+    border-color: var(--color-ring);
+  }
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  & input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+/* The sidebar's main block and its folding groups. */
+@utility sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+@utility sidebar-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+@utility sidebar-group-title {
+  display: flex;
+  height: 1.5rem;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  &:hover {
+    color: var(--color-foreground);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+  }
+}
+
+/* An ActionButton's disabled reason hangs under the button and adds no height to its row (issue #38). */
+@utility action-button-box {
+  position: relative;
+  display: inline-flex;
+}
+@utility action-reason {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  margin-top: 0.125rem;
+  width: max-content;
+  max-width: 20rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* A form row and its help line: the reason a button is disabled sits under the first field. */
+@utility field-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility field-help {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
+@utility header-crumbs {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 24rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility header-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-self: stretch;
+  align-items: flex-end;
+}
+@utility tab-bar {
+  display: flex;
+  height: 2.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0.5rem;
+}
+@utility field-row-end {
+  align-items: flex-end;
+}
+
+/* Settings: a rail of the sections (and a search) beside the sections themselves. */
+@utility settings-layout {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+@utility settings-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@utility settings-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  & [aria-current="true"] {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+}
+@utility settings-sections {
+  display: flex;
+  max-width: 42rem;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+@utility settings-section {
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 4px;
+    border-radius: 0.5rem;
+  }
+}
+
+/* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
+[data-slot="button"][data-variant="default"],
+[data-slot="button"][data-variant="destructive"] {
+  font-weight: var(--weight-strong);
+}
+[data-slot="button"][data-variant="outline"],
+[data-slot="button"][data-variant="secondary"],
+[data-slot="button"][data-variant="ghost"] {
+  font-weight: var(--weight-label);
 }

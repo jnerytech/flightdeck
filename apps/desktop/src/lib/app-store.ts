@@ -33,6 +33,7 @@ import type {
   RunConfigInfo,
   RunState,
   SessionEventOf,
+  SessionImage,
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
@@ -103,6 +104,7 @@ import {
   type SessionState,
 } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
@@ -114,6 +116,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
+import { loadTileCount, saveTileCount, type TileCount } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -586,6 +589,9 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
+/** How many used palette entries are kept (the palette shows five). */
+const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
@@ -637,6 +643,8 @@ export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
   private readonly connections = new Map<string, HostConnection>();
+  /** Sessions followed without being open (the project page's tiles), with how many follow each. */
+  private readonly watched = new Map<string, number>();
   private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private searchSeq = 0;
@@ -941,6 +949,33 @@ export class AppStore {
     return true;
   }
 
+  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
+  decideOldest(decision: "approve" | "deny"): void {
+    const item = needsYou(this.state)[0];
+    if (item) this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+  }
+
+  /** What the palette was used for lately, most recent first. */
+  paletteRecents(): string[] {
+    try {
+      const stored = JSON.parse(this.platform.storage.getItem(PALETTE_RECENTS_KEY) ?? "[]");
+      return Array.isArray(stored)
+        ? stored.filter((id): id is string => typeof id === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
+  recordPaletteUse(id: string): void {
+    const next = [id, ...this.paletteRecents().filter((other) => other !== id)].slice(
+      0,
+      PALETTE_RECENTS_KEPT,
+    );
+    this.platform.storage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(next));
+  }
+
   private openRequest(item: PendingItem): void {
     void this.platform.showMainWindow();
     for (const listener of this.openRequestListeners) listener(item);
@@ -976,11 +1011,77 @@ export class AppStore {
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
     const previous = this.state.selected;
-    if (previous?.sessionId && previous.sessionId !== sessionId) {
+    if (
+      previous?.sessionId &&
+      previous.sessionId !== sessionId &&
+      !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
+    ) {
       this.connections.get(previous.hostId)?.unsubscribe(previous.sessionId);
     }
     if (sessionId) this.connections.get(hostId)?.subscribe(sessionId);
     this.update({ selected: { hostId, sessionId } });
+  }
+
+  /**
+   * Follows a session's full event stream without opening it, for as long as the returned function
+   * has not been called (the tiles of a project follow several at once).
+   */
+  watchSession(hostId: string, sessionId: string): () => void {
+    const key = `${hostId}/${sessionId}`;
+    this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
+    this.connections.get(hostId)?.subscribe(sessionId);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const left = (this.watched.get(key) ?? 1) - 1;
+      if (left > 0) {
+        this.watched.set(key, left);
+        return;
+      }
+      this.watched.delete(key);
+      const open = this.state.selected;
+      if (open?.hostId === hostId && open.sessionId === sessionId) return;
+      this.connections.get(hostId)?.unsubscribe(sessionId);
+    };
+  }
+
+  /** The sidebar groups the user folded; kept across starts. */
+  sidebarFolded(): SidebarGroup[] {
+    return loadFolded(this.platform.storage);
+  }
+
+  setSidebarFolded(folded: readonly SidebarGroup[]): void {
+    saveFolded(this.platform.storage, folded);
+  }
+
+  /** How many tiles the project page shows; kept across starts. */
+  tileCount(): TileCount {
+    return loadTileCount(this.platform.storage);
+  }
+
+  setTileCount(count: TileCount): void {
+    saveTileCount(this.platform.storage, count);
+  }
+
+  /** Sends a message to a session of a host, whether it is the open one or not. */
+  async sendTo(
+    hostId: string,
+    sessionId: string,
+    text: string,
+    images?: SessionImage[],
+  ): Promise<void> {
+    const conn = this.connections.get(hostId);
+    if (!conn) return;
+    try {
+      await conn.request("session.send", {
+        sessionId,
+        text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (error) {
+      this.fail(error);
+    }
   }
 
   async setCloseToTray(enabled: boolean): Promise<void> {
@@ -1623,9 +1724,11 @@ export class AppStore {
     }
   }
 
-  async send(text: string): Promise<void> {
+  async send(text: string, images?: SessionImage[]): Promise<void> {
     startMeasure("send");
-    await this.onSelected((conn, sessionId) => conn.request("session.send", { sessionId, text }));
+    await this.onSelected((conn, sessionId) =>
+      conn.request("session.send", { sessionId, text, ...(images?.length ? { images } : {}) }),
+    );
     endMeasure("send");
   }
 
@@ -1868,6 +1971,9 @@ export class AppStore {
     // A session selected before its host had a connection (a route opened at start-up).
     const selected = this.state.selected;
     if (selected?.hostId === config.id && selected.sessionId) conn.subscribe(selected.sessionId);
+    for (const key of this.watched.keys()) {
+      if (key.startsWith(`${config.id}/`)) conn.subscribe(key.slice(config.id.length + 1));
+    }
     conn.watch();
     conn.watchBoard();
     conn.watchHistory();

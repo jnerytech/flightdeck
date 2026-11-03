@@ -100,12 +100,15 @@ describe("sessao-clique: the session screen answers a click", () => {
     expect(busy(/Encerrar/)).toBeNull();
   });
 
-  test("Enviar with an empty box is not dead: it puts the cursor in the box", async () => {
+  test("Enter with an empty box is not dead: it puts the cursor in the box", async () => {
     const a = actions();
     render(
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
     );
-    await press("Enviar");
+    (document.body as HTMLElement).focus();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByLabelText("Mensagem"), { key: "Enter" });
+    });
     expect(document.activeElement).toBe(screen.queryByLabelText("Mensagem"));
     expect(a.calls).toEqual([]);
   });
@@ -151,7 +154,10 @@ describe("sessao-clique: the session screen answers a click", () => {
     const { rerender } = render(
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
     );
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "oi" } });
     expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "" } });
     expect(screen.queryByRole("button", { name: "Parar o turno" })).toBeNull();
     rerender(
       <SessionView

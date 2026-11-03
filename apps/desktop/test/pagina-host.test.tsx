@@ -51,6 +51,9 @@ async function setup(options: Parameters<typeof makeDaemon>[1] = {}) {
   await act(async () => {
     fireEvent.click(open as HTMLElement);
   });
+  // The host page is a lazy chunk: its title shows when the chunk has loaded, which on a loaded
+  // machine is after the click has returned.
+  await waitFor(() => expect(screen.queryByRole("heading", { name: "pc" })).not.toBeNull());
   return { ...d, server, store, hostId, ...mem };
 }
 

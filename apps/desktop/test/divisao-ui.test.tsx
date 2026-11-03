@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { tabMenu } from "./aba-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const menu = tabMenu({ act, fireEvent, screen } as never);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -100,11 +102,11 @@ describe("divisao: a tela dividida", () => {
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
     });
-    await press("Mover a aba Precisa de você para a outra área");
+    await menu.choose("Precisa de você", "Mover a aba Precisa de você para a outra área");
     expect(store.workspace.split).toBe("vertical");
     expect(store.workspace.areas[1]?.tabs).toHaveLength(1);
     expect(store.workspace.areas[1]?.router.current).toEqual({ name: "needs-you" });
-    await press("Mover a aba Precisa de você para a outra área");
+    await menu.choose("Precisa de você", "Mover a aba Precisa de você para a outra área");
     expect(store.workspace.split).toBeNull();
     expect(bars()).toHaveLength(1);
   });

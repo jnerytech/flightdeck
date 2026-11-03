@@ -141,9 +141,13 @@ describe("paleta", () => {
       "flamingo",
       "alfa",
       "Nova sessão em alfa",
+      "Ir para Sessões",
+      "Ir para Precisa de você",
+      "Ir para Projetos",
       "Alternar tema",
       "Trocar idioma",
       "Ir para Configurações",
+      "Mostrar os atalhos de teclado",
       "Gerenciar clientes",
     ]);
     // No screen for it on this host: no "Ir para Custos".
@@ -185,7 +189,7 @@ describe("paleta", () => {
     const { repo, opened } = await setup();
     const choose = async (query: string, ...keys: string[]) => {
       await openPalette();
-      await settle(() => sections().length === 5);
+      await settle(() => sections().includes("Ações"));
       await type(query);
       await press("ArrowDown");
       for (const key of keys) await press(key);

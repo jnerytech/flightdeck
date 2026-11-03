@@ -32,6 +32,7 @@ are written in Portuguese.
   - [How it works](#how-it-works)
   - [Why the VS Code extension is left out](#why-the-vs-code-extension-is-left-out)
 - [Approvals and always allow](#approvals-and-always-allow)
+- [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
   - [Card lifecycle](#card-lifecycle)
@@ -99,6 +100,7 @@ are written in Portuguese.
   - [Tray](#tray)
   - [Open in terminal](#open-in-terminal)
   - [Palette Ctrl+K](#palette-ctrlk)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
   - [Global shortcut](#global-shortcut)
 - [Interface](#interface)
   - [Design and navigation](#design-and-navigation)
@@ -439,6 +441,26 @@ A session appears only once. The order of preference is managed, then terminal, 
     controllable, the message box;
   - ended or from history: opens the reader, with "Continue in Flightdeck".
 
+### The message box
+
+- In a session's message box you can **paste or drop images** (PNG, JPEG, GIF or WebP, up to five
+  per message and 5 MB each; the host must support it). They show as thumbnails you can remove
+  before sending, and the conversation notes how many images a message carried. A file that does
+  not fit says why instead of being attached.
+- While a turn runs, **Queue** (or Enter) puts the message in a **Queued** list above the box
+  instead of sending it. **Edit** takes it back into the box and **Remove** drops it; when the turn
+  ends the queued messages go out in order, one per turn.
+- **Enter** sends the message; **Ctrl+Enter** (or Shift+Enter) adds a new line. The send icon (↵)
+  shows when the box has text. Typing `/` offers the snippets and the commands of the session.
+- Under each assistant message a row shows on hover or keyboard focus: **Copy message**, **Fork from
+  here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
+  long ago the message was written.
+- The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
+  Under the card a status line shows the model and the permission mode, each a picker when the
+  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
+  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  long; the spinner stops moving if your system asks for reduced motion.
+
 ### Claude Code hooks
 
 Sessions opened outside Flightdeck only show up once the hooks are installed on the host. There
@@ -563,6 +585,44 @@ Cards run in worktrees, and each worktree has its own `.claude`:
 
 On the Projects screen, **Edit** shows the project's **Rules** section, with a remove button that
 asks for confirmation and preserves the rest of the file.
+
+## Projects
+
+The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
+host as a card: its name, host, base branch, the live sessions, the cards in progress, the ones
+that need you, the last activity and what it cost over the last seven days. The cost is a dash
+when the host does not report costs. Type in the search box to narrow the list by name, host,
+branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
+needs attention first.
+
+Click a card to open the project's page. It links the project's **Board**, **Sessions**,
+**Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
+settings, where the folder, base branch, setup and personas are edited).
+
+### Sessions side by side
+
+When the project has sessions that Flightdeck started, the page shows them as **tiles**: 2, 3, 4 or
+6 at a time (pick the number in **Tiles on screen**; it is kept). The sessions that need you come
+first, then the running ones, then the idle ones. Each tile has the session's name (a button that
+opens it), its status, its **last lines**, the **request** it is waiting on (with **Allow** and
+**Deny**) and a small message box: **Enter** sends, **Ctrl+Enter** adds a new line, and the send
+icon shows when there is text. From the keyboard, Tab reaches each tile, and **Alt+arrow keys**
+move between them (left and right by one, up and down by a row). The tiles follow their sessions
+live; the list is the project's, so a session of another project never shows here.
+
+### The sidebar, the tab strip and Settings
+
+- The sidebar keeps **Sessions**, **Needs you**, **Projects** and **Board** on top; the rest is in
+  three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
+  Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
+  not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
+  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
+  or right, move to the other area, pin), **New tab** and **Split**.
+- **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
+  a search box: typing keeps the sections whose name or settings match.
+- **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
+  the top model with what it cost.
 
 ## Board
 
@@ -2187,6 +2247,19 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
+- With nothing typed, a **Recent** section comes first with the last five entries you opened
+  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+  keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
+  **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
+  command shows its keys at the right.
+
+### Keyboard shortcuts
+
+`?` (outside text fields) opens a sheet with every shortcut, by group. The go-to chords press `g`
+and then a letter within about a second and a half: `g s` Sessions, `g n` Needs you, `g p`
+Projects, `g c` Costs, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
+forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
+`A`/`N` on a request. None of them fires while you type in a field.
 
 ### Global shortcut
 
