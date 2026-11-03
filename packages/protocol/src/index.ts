@@ -4570,6 +4570,7 @@ export function parseServerMessage(raw: string): ServerMessage {
   return ServerMessage.parse(JSON.parse(raw));
 }
 
+export * from "./activity.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";
