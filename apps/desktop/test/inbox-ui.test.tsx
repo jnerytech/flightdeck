@@ -42,15 +42,19 @@ const ENTRIES = [
 
 const bell = () => screen.queryByRole("button", { name: /^Notificações/ });
 const open = async () => {
+  await waitFor(() => expect(bell()).not.toBeNull());
   await act(async () => {
     fireEvent.click(bell() as HTMLElement);
   });
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeNull());
 };
 
 describe("inbox-ui", () => {
   test("the bell shows the unread count in its name", async () => {
     await setup(ENTRIES);
-    expect(bell()?.getAttribute("aria-label")).toBe("Notificações, 2 não lidas");
+    await waitFor(() =>
+      expect(bell()?.getAttribute("aria-label")).toBe("Notificações, 2 não lidas"),
+    );
   });
 
   test("the panel lists the entries newest first, grouped by day", async () => {
@@ -83,12 +87,14 @@ describe("inbox-ui", () => {
       fireEvent.click(screen.getByRole("button", { name: "Marcar todas como lidas" }));
     });
     expect(store.getState().inbox.every((e) => e.read)).toBe(true);
-    expect(bell()?.getAttribute("aria-label")).toBe("Notificações");
+    await waitFor(() => expect(bell()?.getAttribute("aria-label")).toBe("Notificações"));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
     });
     expect(store.getState().inbox).toEqual([]);
-    expect(screen.getByRole("dialog").textContent).toContain("Nenhuma notificação.");
+    await waitFor(() =>
+      expect(screen.getByRole("dialog").textContent).toContain("Nenhuma notificação."),
+    );
   });
 
   test("Esc closes the panel", async () => {
@@ -97,6 +103,6 @@ describe("inbox-ui", () => {
     await act(async () => {
       fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
