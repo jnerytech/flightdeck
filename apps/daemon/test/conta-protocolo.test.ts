@@ -209,9 +209,22 @@ describe("conta-protocolo: the daemon wires the account to its real runtime", ()
     expect(ack.data).toMatchObject({ status: "unknown", error: "account_unavailable" });
   });
 
-  test("with the fake runtime the host has no account, so no test ever asks a real claude", async () => {
+  test("with the fake runtime the host answers a fixed demo account, so no test or demo asks a real claude", async () => {
     const client = await daemonWith("fake");
     const info = await client.request("host.info", {});
-    expect((info.data as { features: string[] }).features).not.toContain("account");
+    expect((info.data as { features: string[] }).features).toContain("account");
+    const ack = await client.request("account.get", {});
+    expect(ack.ok).toBe(true);
+    const state = AccountState.parse(ack.data);
+    expect(state).toMatchObject({
+      status: "signed_in",
+      name: "demo@example.com",
+      organization: "Demo Org",
+      plan: "max",
+    });
+    expect(state.windows.map((w) => [w.window, w.utilization])).toEqual([
+      ["five_hour", 0.42],
+      ["seven_day", 0.18],
+    ]);
   });
 });
