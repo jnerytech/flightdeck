@@ -7,7 +7,7 @@ import type { Board } from "../board/board.ts";
 import type { Card } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
-import { columnOf } from "./map.ts";
+import { columnOf, optionFor } from "./map.ts";
 import type { BoardProvider, ExternalItem } from "./provider.ts";
 import type { BoardLink, BoardSyncStore, CardExternal } from "./store.ts";
 
@@ -49,6 +49,9 @@ const zero = (): SyncReport => ({
   truncated: false,
   notModified: false,
 });
+
+/** A move that cannot be sent is tried this many times. */
+const PUSH_TRIES = 5;
 
 /** Changes this close in time are a tie. */
 const TIE_MS = 2000;
@@ -107,6 +110,7 @@ export class BoardSync {
         // A full pull that no longer lists an item: its card is flagged, never deleted.
         if (!pulled.truncated) this.flagMissing(projectId, seen, report);
       }
+      if (link.push) report.pushed = await this.pushMoves(projectId, link);
       store.update(projectId, {
         cursor: pulled.cursor,
         lastSyncedAt: this.iso(),
@@ -119,6 +123,71 @@ export class BoardSync {
       store.update(projectId, { lastError: reason });
       throw error;
     }
+  }
+
+  /** Sends the moves made here since the last sync; a card is tried again at most five times. */
+  private async pushMoves(projectId: string, link: BoardLink): Promise<number> {
+    const { store, board, provider } = this.opts;
+    const pending = store.linkedCards(projectId).filter((id) => {
+      const external = store.externalOf(id);
+      return external.localMovedAt !== null && !external.externalGone;
+    });
+    if (pending.length === 0) return 0;
+    const field = await provider.statusField(link.boardId);
+    let pushed = 0;
+    for (const cardId of pending) {
+      const option = field
+        ? optionFor(link.columnMap, field.options, board.getCard(cardId).column)
+        : null;
+      if (!option) {
+        // Nothing on the board stands for this column: there is nothing to reconcile.
+        store.setExternal(cardId, { localMovedAt: null });
+        continue;
+      }
+      const log = store.logOf(cardId);
+      if (log[0]?.kind === "push_gave_up") continue;
+      const failures = log.findIndex((entry) => entry.kind !== "push_failed");
+      const recent = failures === -1 ? log.length : failures;
+      if (recent >= PUSH_TRIES) {
+        store.addLog(cardId, {
+          at: this.iso(),
+          kind: "push_gave_up",
+          winner: null,
+          lostValue: null,
+          lostAt: null,
+          keptValue: option.name,
+          keptAt: null,
+          detail: `${PUSH_TRIES} tries failed`,
+        });
+        continue;
+      }
+      try {
+        const external = store.externalOf(cardId);
+        const result = await provider.setStatus(
+          link.boardId,
+          external.externalId as string,
+          option.id,
+        );
+        store.setExternal(cardId, {
+          externalStatus: option.name,
+          externalUpdatedAt: result.updatedAt,
+          localMovedAt: null,
+        });
+        pushed += 1;
+      } catch (error) {
+        store.addLog(cardId, {
+          at: this.iso(),
+          kind: "push_failed",
+          winner: null,
+          lostValue: null,
+          lostAt: null,
+          keptValue: option.name,
+          keptAt: null,
+          detail: (error as { reason?: string }).reason ?? (error as Error).message,
+        });
+      }
+    }
+    return pushed;
   }
 
   private flagMissing(projectId: string, seen: ReadonlySet<string>, report: SyncReport): void {
