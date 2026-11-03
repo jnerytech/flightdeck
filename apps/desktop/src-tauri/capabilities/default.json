@@ -8,6 +8,8 @@
     "notification:default",
     "deep-link:default",
     "opener:default",
+    { "identifier": "opener:allow-open-path", "allow": [{ "path": "**" }] },
+    "opener:allow-reveal-item-in-dir",
     "autostart:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",

@@ -127,6 +127,7 @@ import {
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
+  isLocalUrl,
   type TerminalEnv,
   type TerminalLaunch,
   type TerminalTarget,
@@ -1165,18 +1166,37 @@ export class AppStore {
   }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
-  canOpenPaths(_hostId: string): boolean {
-    return true;
+  canOpenPaths(hostId: string): boolean {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return this.platform.openPath !== undefined && host !== undefined && isLocalUrl(host.url);
   }
 
   /** Opens a file the host made with the system's default app; false when it cannot. */
-  async openPath(_hostId: string, _path: string): Promise<boolean> {
-    return false;
+  async openPath(hostId: string, path: string): Promise<boolean> {
+    return this.onLocalPath(hostId, path, (p) => this.platform.openPath?.(p));
   }
 
   /** Shows a file the host made in the system's file manager; false when it cannot. */
-  async revealPath(_hostId: string, _path: string): Promise<boolean> {
-    return false;
+  async revealPath(hostId: string, path: string): Promise<boolean> {
+    return this.onLocalPath(hostId, path, (p) => this.platform.revealPath?.(p));
+  }
+
+  private async onLocalPath(
+    hostId: string,
+    path: string,
+    act: (path: string) => Promise<void> | undefined,
+  ): Promise<boolean> {
+    // Only a host of this machine has files that are here, and only a full path says which.
+    if (!this.canOpenPaths(hostId) || !/^([A-Za-z]:[\\/]|\/)/.test(path) || path.includes("..")) {
+      return false;
+    }
+    try {
+      await act(path);
+      return true;
+    } catch (error) {
+      this.fail(error);
+      return false;
+    }
   }
 
   /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
