@@ -539,6 +539,17 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  /**
+   * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
+   * the cache: a cold folder would otherwise cost one blocking git spawn on the event loop, which
+   * on Windows is slow enough to time the list out.
+   */
+  async function warmKeys(cwds: string[]): Promise<void> {
+    if (!opts.central || !opts.warmProjectKey) return;
+    const warm = opts.warmProjectKey;
+    await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
+  }
+
   function vault(): Vault {
     if (!opts.vault) throw featureOff("vault");
     return opts.vault;
@@ -830,10 +841,13 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "session.list":
+      case "session.list": {
+        const sessions = manager.list();
+        await warmKeys(sessions.map((s) => s.cwd));
         return ok(command.type, {
-          sessions: manager.list().map((s) => listed(s, s.claudeSessionId, managedLive(s))),
+          sessions: sessions.map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
+      }
       case "session.create": {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
@@ -1360,6 +1374,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         const page = index.list(
           projectKey ? { ...filter, cwds: await foldersOf(index, projectKey) } : filter,
         );
+        await warmKeys(page.sessions.map((s) => s.cwd));
         const sessions = page.sessions.map((s) =>
           listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
         );
