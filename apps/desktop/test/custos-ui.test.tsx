@@ -135,6 +135,12 @@ describe("custos-ui", () => {
     await click("Custos");
     await settle(() => text("Custo estimado") === "US$ 4.00");
     expect(text("Modelo principal")).toBe("claude-opus-5-5 · US$ 3.50");
+    // A model name is longer than a number: its tile writes it smaller, so it keeps to one line.
+    const value = screen.queryByLabelText("Modelo principal")?.parentElement;
+    expect(value?.className).toContain("text-base");
+    expect(screen.queryByLabelText("Custo estimado")?.parentElement?.className).toContain(
+      "text-xl",
+    );
   });
 
   test("tela Custos: período, totais, economia do cache, gráfico por dia empilhado por projeto, quebras e o aviso de estimativa", async () => {
