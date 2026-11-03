@@ -1189,7 +1189,11 @@ export class AppStore {
     act: (path: string) => Promise<void> | undefined,
   ): Promise<boolean> {
     // Only a host of this machine has files that are here, and only a full path says which.
-    if (!this.canOpenPaths(hostId) || !/^([A-Za-z]:[\\/]|\/)/.test(path) || path.includes("..")) {
+    if (
+      !this.canOpenPaths(hostId) ||
+      !/^([A-Za-z]:[\\/]|\/(?![\\/]))/.test(path) ||
+      path.includes("..")
+    ) {
       return false;
     }
     try {

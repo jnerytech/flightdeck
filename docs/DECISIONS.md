@@ -3263,3 +3263,15 @@ A daemon that started before a release said nothing about it for up to a day, be
 - **Default interval 6 hours** (`updates.checkIntervalH`), down from 24; an existing config keeps its own value.
 - **The app asks on its own** once when the host page opens, only when the app is newer than the daemon and the daemon checks at all, and the store allows it at most once per 10 minutes per host (a map in memory, so it resets with the app). The page also has **Check for updates** whenever the daemon reports an update status, and it shows when the daemon last checked and the error of that check.
 - **Not covered:** a daemon from before this command (such as the 0.32.0 in the report) refuses `daemon.update.check` as an unknown command, so the page shows why and that host is updated once by hand with `flightdeckd update`; the fix applies to every daemon from this version on. The rate limit lives in the app, not the daemon: the daemon answers each request.
+
+## Phase 33: simple mode
+
+### Opening a task's result (`open_result`)
+
+- **The webview never opens a path itself.** `opener:allow-open-path` and `allow-reveal-item-in-dir` are not granted; the Rust command `open_result(path, reveal)` checks the path first, so a compromised webview cannot open an arbitrary file.
+- **Office files stay on the list (documented risk).** `docx`, `xlsx`, `pptx`, `odt`, `ods` and `odp` are active content: a file this machine wrote gets no Protected View, and a remote template can fetch from a share. They stay because they are what people ask tasks for. `svg` (script in a browser) and `json` (some systems open it in a browser) are not on the list.
+- **`csv` stays.** A spreadsheet opens it and can run a formula (`=cmd|...`); the file is the task's own output, and the preview in the app shows it as plain text.
+- **`same_path` trade-off.** The real path (after `canonicalize`) must equal the given one, so a link or junction anywhere on the way refuses the file, and so does an 8.3 spelling. A folder reached through a link in the user's own setup therefore cannot open results; the cost is accepted over a TOCTOU-prone allowlist of link targets.
+- **Showing in the folder (`reveal`)** skips the list of extensions (a folder may be shown) and keeps the text checks, the no-link rule and `same_path`.
+- **Paths.** Any two leading separators (`\\`, `/\`, `\\?\`, `\\.\`) are refused before the disk is touched, because on Windows they are network or device paths and merely looking them up sends credentials. On Windows only `X:\` and `X:/` start a path; elsewhere only `/`. The opener gets the plain form (`dunce::simplified`), as `explorer.exe` cannot open `\\?\C:\...`.
+- **Rust tests run in CI only.** The Pi lacks pkg-config and the GTK/WebKit dev libraries, so `cargo test` runs in the CI Rust step (Windows, where the disk tests for 8.3 names and junctions run).
