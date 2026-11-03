@@ -1518,8 +1518,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { projectId, ...patch } = command.payload;
         return ok(command.type, await board().forWire(board().updateProject(projectId, patch)));
       }
-      case "board.get":
-        return ok(command.type, board().getBoard(command.payload.projectId));
+      case "board.get": {
+        const found = board().getBoard(command.payload.projectId);
+        return ok(command.type, { ...found, project: await board().forWire(found.project) });
+      }
       case "roots.add": {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
