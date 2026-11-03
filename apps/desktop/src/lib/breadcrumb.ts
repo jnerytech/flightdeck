@@ -73,6 +73,9 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       return path(host(route.host), {
         label: route.focus ? t(`sidebar.${route.focus}`) : t("sidebar.hostProjects"),
       });
+    case "all-projects":
+    case "project":
+      return path({ label: "" });
     case "board":
       return path(
         host(route.host),

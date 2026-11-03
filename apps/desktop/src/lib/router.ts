@@ -20,6 +20,10 @@ export type Route =
   | { name: "host"; host: string }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
+  /** Every project of every host, as cards (issue #9). */
+  | { name: "all-projects" }
+  /** One project: its Board, Sessions, Workflows, Costs and settings (issue #9). */
+  | { name: "project"; host: string; projectId: string }
   | { name: "board"; host: string; projectId: string }
   | { name: "card"; host: string; projectId: string; cardId: string }
   | { name: "workflows"; host: string; projectId: string; projectName: string }
@@ -133,6 +137,8 @@ const NAMES: Record<Route["name"], true> = {
   history: true,
   host: true,
   projects: true,
+  "all-projects": true,
+  project: true,
   board: true,
   card: true,
   workflows: true,
