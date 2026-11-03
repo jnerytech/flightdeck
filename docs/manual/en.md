@@ -667,6 +667,34 @@ fd/<slug> <base>` and appends `.flightdeck/worktrees/` to the repository's `.git
   so a private repository needs an SSH key or a credential helper already set up on the host.
   Every refusal says why.
 
+
+### Starting from GitHub
+
+For hosts that announce `github` there are two places:
+
+- **Hosts, GitHub panel.** **Sign in with GitHub** asks the host's `gh` to start GitHub's device
+  flow. The panel shows a one-time code: press **Open GitHub**, type the code on that page and
+  confirm. The panel notices by itself and shows **Signed in as <account>**, where the login is
+  kept (the system keyring, `gh`'s own file, or an environment variable of the daemon) and the
+  permissions (`repo`, `read:project`). Flightdeck never sees your token: `gh` keeps it. **Sign
+  out** asks `gh` to forget it; a login that comes from `GH_TOKEN` or `GITHUB_TOKEN` is managed by
+  the daemon's environment and cannot be signed out here. If `gh` is not installed on the host the
+  panel says so; install it and press **Check again**.
+- **Projects, Start from GitHub.** Lists your repositories (or search them), then pick one and,
+  if you like, one of its open issues. Choose the allowed folder to clone into and whether to open
+  **A board card** or **A session**. The host clones the repository into that folder (or reuses the
+  clone already there), registers it as a project, and then:
+  - **a card** takes the issue's title, body and link (once per issue); an issue written by
+    someone outside the repository's people is marked as third-party content and gets no
+    automatic approval;
+  - **a session** opens in the clone with the issue quoted in its first prompt, under the same
+    mark when it comes from outside.
+  Without an issue, only the repository is cloned and registered. A folder with that name that is
+  another repository is refused, and every refusal says why.
+
+To try it: on the host's page press **Sign in with GitHub**, confirm on GitHub, then on **Projects** press
+**Start from GitHub**, pick a repository, press **Start**.
+
 ### Card lifecycle
 
 - **In review:** the card enters when a turn ends well. A turn that errors, is interrupted by
