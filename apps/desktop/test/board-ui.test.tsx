@@ -374,6 +374,11 @@ describe("board-ui", () => {
     expect(screen.queryByRole("list", { name: "Execuções" })?.textContent ?? "").toContain("#1");
     await settle(() => (screen.queryByRole("log")?.textContent ?? "").includes("Echo:"));
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("crie e commite [commit]");
+    // The card's conversation fills its pane like the session screen: no fixed box, no narrow column.
+    const chat = screen.queryByRole("log", { name: "Conversa do card" }) as HTMLElement;
+    expect(chat.className).toContain("card-chat");
+    expect(chat.className).not.toContain("h-[32rem]");
+    expect(chat.closest(".max-w-4xl")).toBeNull();
     expect(cardItem("Detalhe")).toBeNull();
 
     await type("Ajuste", "mais um [commit]");
