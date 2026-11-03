@@ -2948,3 +2948,12 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   against a local file in WAL mode, are short and indexed, and are measured by `history-perf`. A
   worker would add a message hop to every query and make transactions across calls awkward, so the
   ratchet does not count them and they are an accepted exception.
+- **Tauri: every IO command is async and runs on the blocking pool.** The key and folder dialogs
+  wait for the person inside `spawn_blocking`, the picked key file is read there, and
+  `vault_remove_file` (which does delete a file, so item 1 of the blocking-call audit was wrong to
+  call it state-only) takes the path under the lock and deletes it there. No async command does
+  blocking work inline any more (`ASYNC_INLINE_ALLOWED` is empty). Four commands stay plain `fn`
+  because they only touch the tray or the window, which Tauri wants on the main thread, and do no
+  IO: `tray_set_menu`, `tray_set_status`, `focus_main` and `set_close_to_tray`
+  (`SYNC_COMMANDS_ALLOWED` pins the list). Rust was reviewed by reading: cargo is not on the phase
+  host, so CI's `cargo check` is the compiler check.
