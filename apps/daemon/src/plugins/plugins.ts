@@ -521,11 +521,12 @@ export class Plugins {
     const source = text(entry.source);
     if (!source?.startsWith("./")) return null;
     const dir = resolve(location, source);
+    // The catalog was just read from `location`, so it is there; the plugin's folder may not be.
     const [realLocation, realDir] = await Promise.all([
-      realpath(location).catch(() => null),
+      realpath(location),
       realpath(dir).catch(() => null),
     ]);
-    if (!realLocation || !realDir || !isInside(realLocation, realDir)) return null;
+    if (!realDir || !isInside(realLocation, realDir)) return null;
     return dir;
   }
 
