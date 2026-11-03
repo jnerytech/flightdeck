@@ -122,6 +122,8 @@ jobs:
         run: |
           bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+          # The unit tests of the shell (phase 33: the checks of `open_result`).
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
       # Phase 28: the entry chunk of the build above stays under its gzip budget (bundle-lazy).
       - name: Bundle budget
