@@ -101,6 +101,42 @@ describe("doctor", () => {
   });
 });
 
+describe("doctor for the app", () => {
+  test("every check carries a stable id the app names and fixes in its own language", async () => {
+    const report = await runDoctor(deps());
+    expect(report.checks.map((c) => c.id)).toEqual([
+      "config",
+      "folders",
+      "service",
+      "daemon",
+      "claude",
+      "hooks",
+      "tailscale",
+    ]);
+  });
+
+  test("a folder check may be async, so the running daemon never blocks on the disk", async () => {
+    const report = await runDoctor(deps({ isDirectory: async () => false }));
+    expect(find(report.checks, "project folders")).toMatchObject({ status: "fail" });
+    const fine = await runDoctor(deps({ isDirectory: async () => true }));
+    expect(find(fine.checks, "project folders")).toMatchObject({ status: "ok" });
+  });
+
+  test("the daemon version is reported, and an app of another minor gets a warning with the fix", async () => {
+    const same = await runDoctor(deps({ version: { daemon: "0.32.0", app: "0.32.4" } }));
+    expect(same.checks.at(-1)).toMatchObject({ id: "version", status: "ok", detail: "0.32.0" });
+    const alone = await runDoctor(deps({ version: { daemon: "0.32.0" } }));
+    expect(alone.checks.at(-1)).toMatchObject({ id: "version", status: "ok" });
+    const older = await runDoctor(deps({ version: { daemon: "0.30.1", app: "0.32.0" } }));
+    const version = older.checks.at(-1);
+    expect(version).toMatchObject({ id: "version", status: "warn" });
+    expect(version?.detail).toContain("0.30.1");
+    expect(version?.detail).toContain("0.32.0");
+    expect(version?.fix).toContain("flightdeckd update");
+    expect(older.ok).toBe(true);
+  });
+});
+
 describe("doctor command", () => {
   test("prints each check with its fix and exits 1 when one fails", async () => {
     const out: string[] = [];

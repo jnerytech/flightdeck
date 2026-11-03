@@ -3,15 +3,29 @@ import { loopbackOnly } from "./pairing.ts";
 export interface DoctorDeps {
   /** The config; throws with the cause when it cannot be read. */
   config(): { bind: string; port: number; allowedRoots: string[] };
-  isDirectory(path: string): boolean;
+  isDirectory(path: string): boolean | Promise<boolean>;
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
   tailscaleIp(): Promise<string | null>;
   hooks(): "installed" | "absent" | "outdated";
   claudePath(): string | null;
+  /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
+  version?: { daemon: string; app?: string };
 }
 
+/** A stable key per check, so the app can name it and say how to fix it in its own language. */
+export type DoctorCheckId =
+  | "config"
+  | "folders"
+  | "service"
+  | "daemon"
+  | "claude"
+  | "hooks"
+  | "tailscale"
+  | "version";
+
 export interface DoctorCheck {
+  id: DoctorCheckId;
   name: string;
   status: "ok" | "warn" | "fail";
   detail: string;
@@ -24,7 +38,7 @@ const check = (
   status: DoctorCheck["status"],
   detail: string,
   fix?: string,
-): DoctorCheck => ({ name, status, detail, ...(fix ? { fix } : {}) });
+): DoctorCheck => ({ id: "config", name, status, detail, ...(fix ? { fix } : {}) });
 
 const SETUP = "run: flightdeckd setup";
 
@@ -39,7 +53,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   }
   const checks = [check("config", "ok", "readable")];
 
-  const gone = config.allowedRoots.filter((root) => !deps.isDirectory(root));
+  const gone = config.allowedRoots.filter((root) => !deps.isDirectory(root) === true);
   if (config.allowedRoots.length === 0) {
     checks.push(check("project folders", "fail", "no folder allowed: no session can start", SETUP));
   } else if (gone.length) {

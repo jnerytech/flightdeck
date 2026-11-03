@@ -1083,6 +1083,31 @@ export interface FsFilesResult {
   truncated: boolean;
 }
 
+export const DOCTOR_CHECK_IDS = [
+  "config",
+  "folders",
+  "service",
+  "daemon",
+  "claude",
+  "hooks",
+  "tailscale",
+  "version",
+] as const;
+
+/** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
+export interface DoctorCheckResult {
+  id: (typeof DOCTOR_CHECK_IDS)[number];
+  status: "ok" | "warn" | "fail";
+  detail: string;
+  fix?: string;
+}
+
+/** What `doctor.run` answers. */
+export interface DoctorResult {
+  ok: boolean;
+  checks: DoctorCheckResult[];
+}
+
 /** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
 export interface FsDirsResult {
   /** The folder listed (a real path); null for the list of the allowed roots. */
@@ -3350,6 +3375,8 @@ export const Command = z.discriminatedUnion("type", [
   /** The files of a folder inside the allowed roots (not the subfolders: `fs.dirs` has those). */
   cmd("fs.files", z.object({ path: z.string().min(1), hidden: z.boolean().optional() }).strict()),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
+  /** The host checks itself (version, claude, hooks, ports, folders): each failure carries its fix. */
+  cmd("doctor.run", z.object({}).strict()),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
@@ -3862,6 +3889,7 @@ export interface CommandResults {
   };
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
+  "doctor.run": DoctorResult;
   "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };

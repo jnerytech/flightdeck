@@ -334,6 +334,7 @@ const validCommands: Record<CommandType, unknown> = {
   "files.sessions": { path: "/work/a.ts" },
   "fs.dirs": { path: "/work", hidden: false },
   "fs.files": { path: "/work", hidden: false },
+  "doctor.run": { appVersion: "0.32.0" },
   "session.setMode": { sessionId: "s", permissionMode: "plan" },
   "session.setModel": { sessionId: "s", model: null },
   "session.files": { claudeSessionId: "s" },

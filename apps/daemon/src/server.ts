@@ -10,6 +10,7 @@ import {
   CommandHeader,
   type CommandResults,
   type CommandType,
+  type DoctorResult,
   type EventEnvelope,
   type ExternalPermissionFrame,
   type ExternalSession,
@@ -133,6 +134,8 @@ export interface ServerOptions {
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
+  /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
+  doctor?: (appVersion?: string) => Promise<DoctorResult>;
   /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
   sessionSettings?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
@@ -398,6 +401,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
     ...(opts.sessionSettings ? ["session.settings"] : []),
+    ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -1553,6 +1557,9 @@ export function startServer(opts: ServerOptions): RunningServer {
           listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
+      case "doctor.run":
+        if (!opts.doctor) throw featureOff("doctor.run");
+        return ok(command.type, { ok: false, checks: [] });
       case "fs.files": {
         const { path, hidden } = command.payload;
         return ok(
