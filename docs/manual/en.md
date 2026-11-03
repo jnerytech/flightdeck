@@ -80,6 +80,7 @@ are written in Portuguese.
   - [Who may message whom](#who-may-message-whom)
   - [Teams](#teams)
 - [Costs, budgets and quota](#costs-budgets-and-quota)
+  - [The Claude account of a host](#the-claude-account-of-a-host)
   - [Plan quota](#plan-quota)
   - [Quota queue](#quota-queue)
   - [Usage](#usage)
@@ -1746,6 +1747,38 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   restarts, the team resumes and tells you.
 
 ## Costs, budgets and quota
+
+### The Claude account of a host
+
+The host page has an **Account** card, above the usage panel, that shows which Claude account the
+host's own `claude` is signed in to. Flightdeck never signs you in and never sees a token: it asks
+the `claude` already installed on the host (`claude auth status`, plus the account and usage
+reports of the Agent SDK), and Anthropic's terms keep a login out of third-party apps.
+
+#### Which account is this host using?
+
+- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+  two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
+  the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- It is read when you open the page and again every 5 minutes while the page stays open, and at
+  once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
+  reads now; it waits 30 seconds between reads.
+- Each host has its own account. The email is shown on this card only: it is not put in
+  notifications, the window title, the status line or the tray, and the daemon keeps it in memory,
+  never in its database or logs.
+- If a read fails, the card keeps the last reading and says "Could not refresh". If the host is
+  offline, it says so instead of showing an old reading.
+
+#### What if the host is not signed in?
+
+The card says "This host is not signed in to Claude." and shows the command **`claude auth login`**.
+Open the host's terminal (the **Open terminal** button does), run it there, follow the steps, and
+come back: the card updates. **Copy command** copies it. The card has no form and never asks for a
+code or a token.
+
+A host that uses an API key or a cloud provider (Bedrock, Vertex, a gateway) shows "Plan limits do
+not apply": it has no plan windows. If the card says the account could not be read, check that
+`claude` is installed on that host and press **Try again**.
 
 ### Plan quota
 

@@ -79,6 +79,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Quem pode falar com quem](#quem-pode-falar-com-quem)
   - [Times](#times)
 - [Custos, orçamentos e cota](#custos-orçamentos-e-cota)
+  - [A conta do Claude de um host](#a-conta-do-claude-de-um-host)
   - [Cota do plano](#cota-do-plano)
   - [Fila por cota](#fila-por-cota)
   - [Uso](#uso)
@@ -1728,6 +1729,40 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   retoma e avisa.
 
 ## Custos, orçamentos e cota
+
+### A conta do Claude de um host
+
+A página do host tem um cartão **Conta**, acima do painel de consumo, que mostra em qual conta do
+Claude o próprio `claude` do host está conectado. O Flightdeck nunca faz o seu login e nunca vê um
+token: ele pergunta ao `claude` já instalado no host (`claude auth status`, mais os relatórios de
+conta e de uso do Agent SDK), e os termos da Anthropic não permitem login dentro de apps de
+terceiros.
+
+#### Qual conta este host está usando?
+
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+  barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
+  mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
+  as informa.
+- Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
+  que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
+  fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.
+- Cada host tem a sua conta. O e-mail aparece só neste cartão: não vai para notificações, título
+  da janela, linha de status nem bandeja, e o daemon o guarda só na memória, nunca no banco nem nos
+  logs.
+- Se uma leitura falha, o cartão mantém a última e avisa "Não foi possível atualizar". Se o host
+  está offline, ele diz isso em vez de mostrar uma leitura antiga.
+
+#### E se o host não estiver conectado?
+
+O cartão diz "Este host não está conectado ao Claude." e mostra o comando **`claude auth login`**.
+Abra o terminal do host (o botão **Abrir terminal** faz isso), rode o comando lá, siga os passos e
+volte: o cartão se atualiza. **Copiar comando** copia. O cartão não tem formulário e nunca pede um
+código ou um token.
+
+Um host que usa chave de API ou um provedor de nuvem (Bedrock, Vertex, um gateway) mostra "Os
+limites do plano não se aplicam": ele não tem janelas de plano. Se o cartão disser que não foi
+possível ler a conta, confira se o `claude` está instalado nesse host e aperte **Tentar de novo**.
 
 ### Cota do plano
 
