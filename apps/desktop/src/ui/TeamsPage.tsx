@@ -5,7 +5,7 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
-import { PersonaMultiPicker } from "@/components/personas/persona-multi-picker";
+import { ModelSelect } from "@/components/personas/model-select";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
 import { Badge } from "@/components/ui/badge";
@@ -33,19 +33,29 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
   const [picked, setProjectId] = useState("");
   // The first project until another is chosen; a project just added is chosen at once.
   const projectId = projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
-  const [workers, setWorkers] = useState("2");
   const [persona, setPersona] = useState("");
-  /** The workers' personas, in the workers' order. */
-  const [personas, setWorkerPersonas] = useState<string[]>([]);
+  const [model, setModel] = useState("");
+  /** One row per worker: the row's persona and model ("" is the default). */
+  const [rows, setRows] = useState<Array<{ persona: string; model: string }>>([
+    { persona: "", model: "" },
+    { persona: "", model: "" },
+  ]);
+  const setRow = (index: number, change: Partial<{ persona: string; model: string }>) =>
+    setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
   const create = async () => {
-    const count = Number.parseInt(workers, 10);
     const team = await store.hostCommand(hostId, "teams.create", {
       projectId,
       goal,
       ...(name.trim() ? { name: name.trim() } : {}),
-      workers: Number.isInteger(count) && count > 0 ? count : 1,
+      workers: rows.length,
       ...(persona ? { coordinatorPersona: persona } : {}),
-      ...(personas.length > 0 ? { workerPersonas: personas } : {}),
+      ...(rows.some((row) => row.persona)
+        ? { workerPersonas: rows.map((row) => row.persona) }
+        : {}),
+      ...(model ? { coordinatorModel: model } : {}),
+      ...(rows.some((row) => row.model)
+        ? { workerModels: rows.map((row) => row.model || null) }
+        : {}),
     });
     if (team) props.onCreated();
   };
@@ -81,16 +91,6 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
           )}
         </Field>
       )}
-      <Field label={t("teamsUi.workers")}>
-        {(control) => (
-          <Input
-            {...control}
-            type="number"
-            value={workers}
-            onChange={(e) => setWorkers(e.target.value)}
-          />
-        )}
-      </Field>
       <PersonaPicker
         store={store}
         hostId={hostId}
@@ -99,13 +99,53 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
         onChange={setPersona}
         idsOnly
       />
-      <PersonaMultiPicker
-        store={store}
-        hostId={hostId}
-        label={t("teamsUi.workerPersonas")}
-        value={personas}
-        onChange={setWorkerPersonas}
+      <ModelSelect
+        label={t("teamsUi.coordinatorModel")}
+        defaultLabel={t("teamsUi.modelDefault")}
+        value={model}
+        onChange={setModel}
       />
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1">{t("teamsUi.workersLegend")}</legend>
+        {rows.map((row, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a row has no identity besides its number
+          <div key={i} className="flex flex-wrap items-end gap-2">
+            <PersonaPicker
+              store={store}
+              hostId={hostId}
+              label={t("teamsUi.workerPersona", { n: i + 1 })}
+              value={row.persona}
+              onChange={(value) => setRow(i, { persona: value })}
+              idsOnly
+            />
+            <ModelSelect
+              label={t("teamsUi.workerModel", { n: i + 1 })}
+              defaultLabel={t("teamsUi.modelDefault")}
+              value={row.model}
+              onChange={(value) => setRow(i, { model: value })}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={rows.length === 1}
+              aria-label={t("teamsUi.removeRow", { n: i + 1 })}
+              onClick={() => setRows((all) => all.filter((_, at) => at !== i))}
+            >
+              {t("teamsUi.removeButton")}
+            </Button>
+          </div>
+        ))}
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          disabled={rows.length >= 8}
+          aria-label={t("teamsUi.addRow")}
+          onClick={() => setRows((all) => [...all, { persona: "", model: "" }])}
+        >
+          {t("teamsUi.addWorkerButton")}
+        </Button>
+      </fieldset>
       <div className="flex gap-2">
         <ActionButton
           disabled={!goal.trim() || !projectId}
@@ -143,6 +183,7 @@ function Member(props: {
           {t(member.role === "coordinator" ? "teamsUi.coordinator" : "teamsUi.worker")}
         </Badge>
         {member.persona && <Badge variant="outline">{member.persona}</Badge>}
+        {member.model && <Badge variant="outline">{member.model}</Badge>}
         {member.sessionState && (
           <span className="text-muted-foreground">
             {t(`teamsUi.sessionStates.${member.sessionState}`)}
