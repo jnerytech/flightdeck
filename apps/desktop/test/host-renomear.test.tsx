@@ -28,7 +28,7 @@ let commits = 0;
 
 async function setup() {
   const d = makeDaemon(cleanups, {});
-  const server = d.listen(0, 20);
+  const server = d.listen(0);
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
