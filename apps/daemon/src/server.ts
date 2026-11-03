@@ -955,27 +955,29 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
       }
       case "mcp.list":
-        return ok(command.type, { servers: mcp().list(projectPath(command.payload.projectId)) });
+        return ok(command.type, {
+          servers: await mcp().list(projectPath(command.payload.projectId)),
+        });
       case "mcp.test": {
         const { projectId, name, confirm } = command.payload;
         return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
       }
       case "mcp.save": {
         const path = projectPath(command.payload.projectId);
-        mcp().save(path, command.payload.server, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().save(path, command.payload.server, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.remove": {
         const path = projectPath(command.payload.projectId);
-        mcp().remove(path, command.payload.name, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().remove(path, command.payload.name, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.toggle": {
         const { projectId, name, enabled, confirm, sessionId } = command.payload;
         const path = projectPath(projectId);
-        mcp().toggle(path, name, enabled, confirm === true);
+        await mcp().toggle(path, name, enabled, confirm === true);
         if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
-        return ok(command.type, { servers: mcp().list(path) });
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
