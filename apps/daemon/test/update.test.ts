@@ -400,10 +400,10 @@ describe("update", () => {
     expect(asked).toBe(1);
 
     const dataDir = tempDir();
-    expect(readLockPid(dataDir)).toBeNull();
-    const lock = acquireLock(dataDir);
+    expect(await readLockPid(dataDir)).toBeNull();
+    const lock = await acquireLock(dataDir);
     cleanups.push(() => lock?.release());
-    expect(readLockPid(dataDir)).toBe(process.pid);
+    expect(await readLockPid(dataDir)).toBe(process.pid);
 
     // Paths compared after links are resolved (a package manager may install bun behind one).
     const own = await processPath(process.pid);

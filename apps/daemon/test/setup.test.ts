@@ -405,7 +405,7 @@ describe("setup command", () => {
     // "real" leaves the probe alone: it runs the stable file, which is not a flightdeckd.
     if (stableVersion !== "real") h.deps.binaryVersion = async () => stableVersion;
     if (holdLock) h.deps.serviceStopTimeoutMs = 50;
-    const lock = holdLock ? acquireLock(h.dir) : null;
+    const lock = holdLock ? await acquireLock(h.dir) : null;
     mkdirSync(join(h.dir, "download"));
     writeFileSync(join(h.dir, "download", "flightdeckd"), "new");
     mkdirSync(join(h.dir, ".flightdeck", "bin"), { recursive: true });
@@ -415,7 +415,7 @@ describe("setup command", () => {
     mkdirSync(project);
     await runCli(["setup", "--yes", "--folders", project, "--config", h.file], h.deps);
     await h.stop();
-    lock?.release();
+    await lock?.release();
     return { ...h, stable, text: h.out.join("\n") };
   }
 

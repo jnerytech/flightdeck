@@ -135,33 +135,33 @@ describe("backup", () => {
     expect(disabled.status().lastBackup).toBeNull();
   });
 
-  test("restauração: recusa com o daemon rodando, confere integridade e user_version e guarda o .before-restore", () => {
+  test("restauração: recusa com o daemon rodando, confere integridade e user_version e guarda o .before-restore", async () => {
     const { dataDir, store } = liveDb();
     const good = backupNow(store.db, join(dataDir, "backups"), NOW).path;
     store.db.query("UPDATE sessions SET name = 'depois do backup'").run();
     // The daemon is running: its lock is held.
-    const lock = acquireLock(dataDir);
-    cleanups.push(() => lock?.release());
-    const refuse = (file: string) => {
+    const lock = await acquireLock(dataDir);
+    cleanups.push(async () => lock?.release());
+    const refuse = async (file: string) => {
       try {
-        restoreBackup({ file, dataDir });
+        await restoreBackup({ file, dataDir });
         return "restaurou";
       } catch (error) {
         return (error as Error).message;
       }
     };
-    expect(refuse(good)).toContain("pare o daemon");
-    lock?.release();
+    expect(await refuse(good)).toContain("pare o daemon");
+    await lock?.release();
     store.close();
     const broken = join(tempDir(), "quebrado.db");
     writeFileSync(broken, "isto não é sqlite");
-    expect(refuse(broken)).toContain("integridade");
+    expect(await refuse(broken)).toContain("integridade");
     const future = join(tempDir(), "futuro.db");
     const db = new Database(future);
     db.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`);
     db.close();
-    expect(refuse(future)).toContain("mais nova");
-    const result = restoreBackup({ file: good, dataDir });
+    expect(await refuse(future)).toContain("mais nova");
+    const result = await restoreBackup({ file: good, dataDir });
     expect(result.beforeRestore).toBe(join(dataDir, "flightdeck.db.before-restore"));
     const restored = new EventStore(join(dataDir, "flightdeck.db"));
     expect(restored.getSession("s1")?.name).toBe("guardada");

@@ -251,7 +251,7 @@ describe("servico", () => {
     const token = "u".repeat(32);
     const dataDir = join(tempDir(), "data");
     // The daemon of the service: its lock and its server, which frees the lock on shutdown.
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     const { manager } = newManager();
     const server = startServer({
       manager,
@@ -278,7 +278,7 @@ describe("servico", () => {
     await runCli(["service", "uninstall"], deps);
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End", "/Delete", "query"]);
-    expect(acquireLock(dataDir)).not.toBeNull();
+    expect(await acquireLock(dataDir)).not.toBeNull();
     expect(out.join("\n")).toContain("serviço removido");
   });
 
@@ -301,7 +301,7 @@ describe("servico", () => {
   test("service stop para o daemon do serviço e deixa a tarefa instalada", async () => {
     const token = "s".repeat(32);
     const dataDir = join(tempDir(), "data");
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     const { manager } = newManager();
     const server = startServer({
       manager,
@@ -318,13 +318,13 @@ describe("servico", () => {
     await runCli(["service", "stop"], deps);
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[1])).toEqual(["/Query", "/End"]);
-    expect(acquireLock(dataDir)).not.toBeNull();
+    expect(await acquireLock(dataDir)).not.toBeNull();
     expect(out.join("\n")).toContain("daemon do serviço parado");
   });
 
   test("service stop que não consegue parar sai com 1 sem matar outro programa; sem serviço, avisa", async () => {
     const dataDir = join(tempDir(), "data");
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     stops.push(async () => lock?.release());
     const file = configFile({ token: "s".repeat(32), dataDir, port: 1 });
     const stuck = taskWith(file);
@@ -332,7 +332,7 @@ describe("servico", () => {
     await runCli(["service", "stop"], stuck.deps);
     expect(stuck.exits).toEqual([1]);
     expect(stuck.out.join("\n")).toContain("o daemon do serviço não parou");
-    expect(acquireLock(dataDir)).toBeNull();
+    expect(await acquireLock(dataDir)).toBeNull();
     const none = fakeOs("linux");
     const noneCli = cli(none);
     await runCli(["service", "stop"], noneCli.deps);
@@ -374,7 +374,7 @@ describe("servico", () => {
   test("uninstall com o daemon que não para: remove o serviço e avisa, sem matar outro programa", async () => {
     const dataDir = join(tempDir(), "data");
     // Held by this test process, which is not the service's executable.
-    const lock = acquireLock(dataDir);
+    const lock = await acquireLock(dataDir);
     stops.push(async () => lock?.release());
     const file = configFile({ token: "u".repeat(32), dataDir, port: 1 });
     const os = fakeOs("linux");
@@ -392,7 +392,7 @@ describe("servico", () => {
     expect(exits).toEqual([0]);
     expect(os.calls.map((c) => c[2])).toEqual(["cat", "stop", "disable", "daemon-reload"]);
     expect(out.join("\n")).toContain("o daemon do serviço continua rodando");
-    expect(acquireLock(dataDir)).toBeNull();
+    expect(await acquireLock(dataDir)).toBeNull();
   });
 
   test("com --config, a tarefa e a unit rodam start --config <caminho absoluto>; sem, só start", async () => {
