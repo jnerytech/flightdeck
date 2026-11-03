@@ -362,6 +362,7 @@ export type HostCommandType = Extract<
   | "projects.clone"
   | `github.${string}`
   | `boardsync.${string}`
+  | "roi.summary"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
@@ -2641,10 +2642,21 @@ export class AppStore {
    * that cannot be reached, is left out; the card says how many answered.
    */
   async roiSummaries(
-    _from: string,
-    _to: string,
+    from: string,
+    to: string,
   ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    return [];
+    const hosts = this.getState().hosts.filter(
+      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "roi", false),
+    );
+    const answers = await Promise.all(
+      hosts.map(async (host) => ({
+        hostId: host.id,
+        asked: await this.hostRequest(host.id, "roi.summary", { from, to }),
+      })),
+    );
+    return answers.flatMap(({ hostId, asked }) =>
+      asked.ok ? [{ hostId, result: asked.data }] : [],
+    );
   }
 
   /** Phase 29: the clients, their rules and overrides, kept by the app. */

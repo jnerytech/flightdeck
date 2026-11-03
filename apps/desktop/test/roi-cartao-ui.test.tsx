@@ -218,14 +218,13 @@ for (const [lang, t] of [
 
     test("the trend has eight weeks, as an image with a text alternative", async () => {
       await roiPage(lang, { usage: USAGE, done: SHOP });
-      await settle(() => screen.queryByRole("img", { name: /.+/ }) !== null);
-      const trend = screen
-        .getAllByRole("img")
-        .find((el) =>
-          el.getAttribute("aria-label")?.startsWith(t.roiUi.trendAlt.split("{")[0] ?? ""),
-        );
-      expect(trend).toBeDefined();
-      expect(trend?.getAttribute("aria-label")?.split(",").length).toBeGreaterThanOrEqual(8);
+      const prefix = t.roiUi.trendAlt.split("{")[0] ?? "";
+      const find = () =>
+        screen
+          .queryAllByRole("img")
+          .find((el) => el.getAttribute("aria-label")?.startsWith(prefix));
+      await settle(() => find() !== undefined);
+      expect(find()?.getAttribute("aria-label")?.split(",").length).toBeGreaterThanOrEqual(8);
     });
 
     test("the period switch recomputes the figures", async () => {

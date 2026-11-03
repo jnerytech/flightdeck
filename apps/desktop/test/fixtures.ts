@@ -241,11 +241,15 @@ export function daemon(
   const plugins = options.plugins
     ? new Plugins({ cli: claudeCli(), pins: filePins(join(root, "plugin-pins.json")) })
     : undefined;
+  // Shared with the server like the real daemon does: listings look the keys up before they read them.
+  const keys = new ProjectKeys("h1");
   const board = new Board({
     db: store.db,
     manager,
     allowedRoots: roots,
     quota,
+    // Like main.ts, for the screens that match a project by the key the host summarizes it under.
+    ...(options.roi ? { projectKeys: keys } : {}),
     // Like main.ts: the personas are read at the edge, before a session exists.
     preparePersonas: (ref, cwd) => preparePersonas(personaStore, ref, cwd),
   });
@@ -267,8 +271,6 @@ export function daemon(
   const settingsFile = join(root, "claude-home", "settings.json");
   const configFile = join(root, "config.json");
   writeFileSync(configFile, JSON.stringify({ token: TOKEN }));
-  // Shared with the server like the real daemon does: listings look the keys up before they read them.
-  const keys = new ProjectKeys("h1");
   const central = new Central({
     ...(snapshots ? { snapshots } : {}),
     keys,
